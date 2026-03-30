@@ -2127,88 +2127,129 @@
 
       <!-- ══ AD: POWER RANKINGS ══ -->
       <div>
-        <div style="font-size:13px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">1 of 5 · POWER RANKINGS</div>
-        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Square + Story. Screenshot each.</div>
-        <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;">
+        <div style="font-size:12px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">1 of 5 · POWER RANKINGS</div>
+        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Square + Story — screenshot each.</div>
+        <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap;">
 
           <!-- SQUARE 1080×1080 → 540×540 -->
           <div>
             <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Square · 1080×1080</div>
-            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.4);">
-            <div style="width:1080px;height:1080px;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);background:linear-gradient(135deg,#fef3c7 0%,#fff9e6 40%,#fde68a22 100%);">
-              <!-- Warm texture overlays like Monarch -->
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.2) 0%,transparent 55%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 0% 0%,rgba(255,255,255,0.8) 0%,transparent 50%);"></div>
-              <!-- Top gold bar -->
-              <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+            <div style="width:1080px;height:1080px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(234,179,8,0.14) 0%,transparent 50%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 90% 90%,rgba(234,179,8,0.08) 0%,transparent 45%);"></div>
+              <div style="position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0));"></div>
+              <div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,#eab308,#ca8a04,transparent);"></div>
 
               <!-- LEFT TEXT -->
-              <div style="position:absolute;left:72px;top:0;bottom:180px;right:520px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="margin-bottom:28px;">
-                  <img src="/UFD_V8.png" style="height:80px;width:auto;display:block;">
+              <div style="position:absolute;left:72px;top:0;bottom:180px;right:540px;display:flex;flex-direction:column;justify-content:center;">
+                <div style="margin-bottom:40px;">
+                <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
+                  <span style="font-size:38px;font-weight:900;color:#1a3a6b;font-family:Arial,sans-serif;">ESPN</span>
+                  <span style="font-size:30px;color:rgba(255,255,255,0.2);font-weight:300;">+</span>
+                  <span style="font-size:38px;font-weight:900;color:#6001d1;font-family:Arial,sans-serif;">Yahoo</span>
+                  <span style="font-size:30px;color:#9ca3af;font-weight:500;">Fantasy Baseball</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:40px;">
-                  <div style="background:#1a3a6b;border-radius:8px;padding:5px 12px;display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:18px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span>
-                  </div>
-                  <span style="font-size:20px;color:rgba(0,0,0,0.25);font-weight:300;">+</span>
-                  <div style="background:#6001d1;border-radius:8px;padding:5px 12px;display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:18px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span>
-                  </div>
-                  <span style="font-size:18px;color:rgba(0,0,0,0.3);font-weight:400;margin-left:4px;">Fantasy Baseball</span>
-                </div>
-                <div style="font-size:82px;font-weight:900;color:#ca8a04;line-height:0.9;letter-spacing:-0.03em;margin-bottom:10px;">POWER RANKINGS</div>
-                <div style="font-size:66px;font-weight:900;color:#111827;line-height:0.95;letter-spacing:-0.03em;margin-bottom:36px;">HAVE ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:24px;color:#374151;line-height:1.5;margin-bottom:48px;font-weight:400;max-width:400px;">Automatic weekly rankings so everyone knows who's actually good — and who's just lucky.</div>
+              </div>
+                <div style="font-size:80px;font-weight:900;color:#eab308;line-height:0.9;letter-spacing:-0.03em;margin-bottom:10px;">POWER RANKINGS</div>
+                <div style="font-size:64px;font-weight:900;color:#ffffff;line-height:0.95;letter-spacing:-0.03em;margin-bottom:36px;">HAVE ENTERED THE LEAGUE CHAT.</div>
+                <div style="font-size:24px;color:#9ca3af;line-height:1.5;margin-bottom:48px;font-weight:400;max-width:400px;">Automatic weekly rankings so everyone knows who's actually good — and who's just lucky.</div>
                 <div style="display:inline-flex;">
-                  <div style="background:#111827;color:#fff;font-size:22px;font-weight:900;padding:18px 36px;border-radius:12px;letter-spacing:0.01em;display:flex;align-items:center;gap:12px;">
+                  <div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:22px;font-weight:900;padding:18px 36px;border-radius:12px;letter-spacing:0.01em;display:flex;align-items:center;gap:12px;">
                     Connect Your League Free
-                    <div style="background:#eab308;color:#111827;border-radius:8px;padding:6px 12px;font-size:18px;">→</div>
+                    <div style="background:#eab308;color:#0a0c14;border-radius:8px;padding:6px 14px;font-size:18px;font-weight:900;">→</div>
                   </div>
                 </div>
               </div>
 
               <!-- RIGHT PHONE -->
-              <div style="position:absolute;right:30px;top:30px;bottom:30px;width:520px;display:flex;align-items:center;justify-content:center;">
+              <div style="position:absolute;right:20px;top:20px;bottom:20px;width:560px;display:flex;align-items:center;justify-content:center;">
                 <div style="transform:perspective(1400px) rotateY(-12deg) rotateX(3deg) rotate(3deg);">
                   <div style="position:relative;">
-                  <div style="position:absolute;inset:-30px;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0.15) 0%,transparent 70%);filter:blur(24px);pointer-events:none;z-index:0;"></div>
-                  <div style="width:300px;height:560px;background:#f5f5f5;border-radius:36px;border:none;overflow:hidden;position:relative;z-index:1;box-shadow:0 40px 100px rgba(0,0,0,0.3),0 0 0 8px rgba(0,0,0,0.08),0 0 0 9px rgba(255,255,255,0.6);">
-                    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:96px;height:21px;background:#1c1c1e;border-radius:0 0 12px 12px;z-index:10;"></div>
-                    <div style="position:absolute;top:7px;left:21px;right:21px;display:flex;justify-content:space-between;z-index:11;">
-                      <span style="font-size:9px;color:#1c1c1e;font-weight:600;">9:41</span>
-                      <div style="font-size:8px;color:#1c1c1e;">●●●</div>
-                    </div>
-                    <div style="position:absolute;top:26px;left:0;right:0;bottom:0;background:#fff;padding:8px;display:flex;flex-direction:column;gap:6px;overflow:hidden;">
-                      
-                <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.08);flex-shrink:0;">
-                  <div style="display:flex;align-items:center;gap:5px;">
-                    <div style="width:22px;height:22px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
-                    <div>
-                      <div style="font-size:8px;font-weight:700;color:#111827;">League Chat</div>
-                      <div style="font-size:6px;color:#9ca3af;">12 members</div>
-                    </div>
+                <div style="position:absolute;inset:-40px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.18) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;"></div>
+                <div style="width:300px;height:600px;background:linear-gradient(160deg,#181e2e 0%,#0d1117 60%);border-radius:38px;border:1.5px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(234,179,8,0.15),0 50px 120px rgba(0,0,0,0.85),20px 0 60px rgba(0,0,0,0.4);">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:96px;height:22px;background:#080a10;border-radius:0 0 13px 13px;z-index:10;"></div>
+                  <div style="position:absolute;top:7px;left:21px;right:21px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span>
+                    <div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div>
                   </div>
-                  <img src="/UFD_V8.png" style="height:13px;width:auto;">
-                </div>
-                <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:0;overflow:hidden;flex-shrink:0;">
-                  <div style="background:#fef9c3;border-bottom:1px solid #fde68a;padding:4px 8px;display:flex;align-items:center;gap:4px;">
-                    <img src="/UFD_V8.png" style="height:9px;width:auto;">
-                    <span style="font-size:7px;font-weight:700;color:#92400e;letter-spacing:0.04em;text-transform:uppercase;">Ultimate Fantasy Dashboard</span>
-                  </div>
-                  <div v-html="renderAdCard('powerrankings')" style="border-radius:0;overflow:hidden;"></div>
-                </div>
-                <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">wait this can't be right 💀</div></div>
+                  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div>
+                  <div style="position:absolute;top:28px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <div style="display:flex;align-items:center;gap:5px;">
+                        <div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
+                        <div><div style="font-size:8px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:6px;color:#6b7280;">12 members</div></div>
+                      </div>
+                      <img src="/UFD_V8.png" style="height:13px;width:auto;">
+                    </div>
+                    
+<!-- PR table -->
+<div style="background:#131720;border:1px solid rgba(234,179,8,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:9px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:7px;">⚡ Power Rankings</div>
+  
+    <div style="display:flex;align-items:center;gap:5px;padding:4px 5px;background:rgba(234,179,8,0.07);border-radius:5px;margin-bottom:2px;">
+      <div style="width:16px;height:16px;border-radius:50%;background:#eab308;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:8px;font-weight:900;color:#0a0c14;">1</span></div>
+      <span style="font-size:9px;font-weight:700;color:#fff;flex:1;">The Aman-Ra Stars</span>
+      <span style="font-size:8px;color:#6b7280;">12-5</span>
+      <span style="font-size:9px;font-weight:800;color:#eab308;">75.2</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:5px;padding:4px 5px;margin-bottom:2px;">
+      <div style="width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:8px;font-weight:900;color:#9ca3af;">2</span></div>
+      <span style="font-size:9px;font-weight:600;color:#d1d5db;flex:1;">Mighty Mallards</span>
+      <span style="font-size:8px;color:#6b7280;">11-6</span>
+      <span style="font-size:9px;font-weight:700;color:#9ca3af;">72.7</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:5px;padding:4px 5px;margin-bottom:2px;">
+      <div style="width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:8px;font-weight:900;color:#9ca3af;">3</span></div>
+      <span style="font-size:9px;font-weight:600;color:#d1d5db;flex:1;">Scuttlebucs</span>
+      <span style="font-size:8px;color:#6b7280;">11-6</span>
+      <span style="font-size:9px;font-weight:700;color:#9ca3af;">66.9</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:5px;padding:4px 5px;">
+      <div style="width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:8px;font-weight:900;color:#6b7280;">4</span></div>
+      <span style="font-size:9px;font-weight:600;color:#9ca3af;flex:1;">Gridiron Man</span>
+      <span style="font-size:8px;color:#6b7280;">12-5</span>
+      <span style="font-size:9px;font-weight:700;color:#6b7280;">62.5</span>
+    </div>
+</div>
+<!-- PR trend mini chart -->
+<div style="background:#131720;border:1px solid rgba(234,179,8,0.15);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:8px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px;">📈 Rankings Trend</div>
+  <svg viewBox="0 0 220 65" style="width:100%;display:block;">
+    <line x1="18" y1="8" x2="180" y2="8" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+    <line x1="18" y1="28" x2="180" y2="28" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+    <line x1="18" y1="48" x2="180" y2="48" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+    <text x="2" y="11" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">#1</text>
+    <text x="2" y="31" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">#3</text>
+    <text x="2" y="51" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">#5</text>
+    <path d="M18,48 C45,38 75,18 105,14 C130,10 158,8 180,8" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round"/>
+    <path d="M18,8 C45,12 75,24 105,28 C130,30 158,28 180,28" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/>
+    <path d="M18,28 C45,32 75,40 105,44 C130,46 158,42 180,38" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round" opacity="0.8"/>
+    <path d="M18,18 C45,28 75,38 105,44 C130,48 158,52 180,56" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+    <circle cx="180" cy="8" r="3.5" fill="#eab308"/>
+    <circle cx="180" cy="28" r="3.5" fill="#22c55e"/>
+    <circle cx="180" cy="38" r="3" fill="#3b82f6"/>
+    <circle cx="180" cy="56" r="3" fill="#ef4444"/>
+    <text x="185" y="11" font-size="7" font-weight="700" fill="#eab308" font-family="Arial">Stars</text>
+    <text x="185" y="31" font-size="7" font-weight="700" fill="#22c55e" font-family="Arial">Mallards</text>
+    <text x="185" y="41" font-size="7" font-weight="700" fill="#3b82f6" font-family="Arial">Bucs</text>
+    <text x="185" y="59" font-size="7" font-weight="700" fill="#ef4444" font-family="Arial">Man</text>
+    <text x="20" y="62" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">Wk1</text>
+    <text x="67" y="62" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">Wk2</text>
+    <text x="114" y="62" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">Wk3</text>
+    <text x="161" y="62" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">Wk4</text>
+  </svg>
+</div>
+                    <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">wait this can't be right 💀</div></div>
 <div style="display:flex;justify-content:flex-end;margin-bottom:5px;"><div style="background:#34c759;color:#fff;font-size:9px;font-weight:600;padding:6px 10px;border-radius:14px 14px 2px 14px;max-width:78%;line-height:1.3;">data doesn't lie bro 😂</div></div>
 <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">how do I get this??</div></div>
-                    </div>
-                    <div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:84px;height:3px;background:#1c1c1e;border-radius:2px;"></div>
                   </div>
-                </div>
+                  <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:84px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
                 </div>
               </div>
-
-              <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(transparent,rgba(254,243,199,0.6));pointer-events:none;"></div>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(transparent,rgba(8,12,20,0.7));pointer-events:none;"></div>
             </div>
             </div>
           </div>
@@ -2216,79 +2257,124 @@
           <!-- STORY 1080×1920 → 304×540 -->
           <div>
             <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Story · 1080×1920</div>
-            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.4);">
-            <div style="width:1080px;height:1920px;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);background:linear-gradient(160deg,#fef9e7 0%,#fffdf5 45%,#fef3c7 100%);">
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.25) 0%,transparent 55%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 10% 0%,rgba(255,255,255,0.9) 0%,transparent 40%);"></div>
-              <div style="position:absolute;top:0;left:0;right:0;height:7px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+            <div style="width:1080px;height:1920px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 40%,rgba(234,179,8,0.16) 0%,transparent 55%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.1) 0%,transparent 50%);"></div>
+              <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0));"></div>
 
-              <!-- TEXT below IG safe zone -->
-              <div style="position:absolute;top:240px;left:80px;right:80px;">
-                <div style="margin-bottom:36px;">
-                  <img src="/UFD_V8.png" style="height:100px;width:auto;display:block;">
+              <!-- TEXT — left column, tall, below IG safe zone (220px) -->
+              <div style="position:absolute;top:220px;left:72px;width:580px;bottom:100px;display:flex;flex-direction:column;justify-content:center;">
+                <div style="margin-bottom:52px;">
+                <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;">
+                  <span style="font-size:70px;font-weight:900;color:#1a3a6b;font-family:Arial,sans-serif;">ESPN</span>
+                  <span style="font-size:56px;color:rgba(255,255,255,0.2);font-weight:300;">+</span>
+                  <span style="font-size:70px;font-weight:900;color:#6001d1;font-family:Arial,sans-serif;">Yahoo</span>
+                  <span style="font-size:56px;color:#9ca3af;font-weight:500;">Fantasy Baseball</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:18px;margin-bottom:48px;">
-                  <div style="background:#1a3a6b;border-radius:10px;padding:7px 18px;">
-                    <span style="font-size:28px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span>
-                  </div>
-                  <span style="font-size:28px;color:rgba(0,0,0,0.25);font-weight:300;">+</span>
-                  <div style="background:#6001d1;border-radius:10px;padding:7px 18px;">
-                    <span style="font-size:28px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span>
-                  </div>
-                  <span style="font-size:26px;color:rgba(0,0,0,0.35);font-weight:500;margin-left:6px;">Fantasy Baseball</span>
-                </div>
-                <div style="font-size:104px;font-weight:900;color:#ca8a04;line-height:0.88;letter-spacing:-0.03em;margin-bottom:14px;">POWER RANKINGS</div>
-                <div style="font-size:88px;font-weight:900;color:#111827;line-height:0.92;letter-spacing:-0.03em;margin-bottom:44px;">HAVE ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:38px;color:#374151;line-height:1.5;margin-bottom:56px;font-weight:400;">Automatic weekly rankings so everyone knows who's actually good — and who's just lucky.</div>
+              </div>
+                <div style="font-size:108px;font-weight:900;color:#eab308;line-height:0.88;letter-spacing:-0.03em;margin-bottom:14px;">POWER RANKINGS</div>
+                <div style="font-size:90px;font-weight:900;color:#ffffff;line-height:0.92;letter-spacing:-0.03em;margin-bottom:48px;">HAVE ENTERED THE LEAGUE CHAT.</div>
+                <div style="font-size:38px;color:#9ca3af;line-height:1.5;margin-bottom:60px;font-weight:400;">Automatic weekly rankings so everyone knows who's actually good — and who's just lucky.</div>
                 <div style="display:inline-flex;">
-                  <div style="background:#111827;color:#fff;font-size:38px;font-weight:900;padding:26px 56px;border-radius:16px;letter-spacing:0.01em;display:flex;align-items:center;gap:16px;">
+                  <div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:38px;font-weight:900;padding:26px 52px;border-radius:16px;display:flex;align-items:center;gap:18px;">
                     Connect Your League Free
-                    <div style="background:#eab308;color:#111827;border-radius:10px;padding:8px 16px;font-size:32px;">→</div>
+                    <div style="background:#eab308;color:#0a0c14;border-radius:10px;padding:8px 18px;font-size:32px;font-weight:900;">→</div>
                   </div>
                 </div>
               </div>
 
-              <!-- PHONE lower half -->
-              <div style="position:absolute;bottom:200px;left:50%;transform:translateX(-50%);">
-                <div style="transform:perspective(1600px) rotateY(-10deg) rotateX(2deg) rotate(2deg);">
+              <!-- PHONE — right side, large, slightly off-screen, Monarch style -->
+              <div style="position:absolute;right:-60px;top:180px;bottom:-80px;width:720px;display:flex;align-items:center;justify-content:flex-end;">
+                <div style="transform:perspective(1600px) rotateY(-8deg) rotateX(1deg) rotate(2deg);">
                   <div style="position:relative;">
-                  <div style="position:absolute;inset:-30px;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0.15) 0%,transparent 70%);filter:blur(24px);pointer-events:none;z-index:0;"></div>
-                  <div style="width:340px;height:680px;background:#f5f5f5;border-radius:44px;border:none;overflow:hidden;position:relative;z-index:1;box-shadow:0 40px 100px rgba(0,0,0,0.3),0 0 0 8px rgba(0,0,0,0.08),0 0 0 9px rgba(255,255,255,0.6);">
-                    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:108px;height:25px;background:#1c1c1e;border-radius:0 0 14px 14px;z-index:10;"></div>
-                    <div style="position:absolute;top:8px;left:23px;right:23px;display:flex;justify-content:space-between;z-index:11;">
-                      <span style="font-size:9px;color:#1c1c1e;font-weight:600;">9:41</span>
-                      <div style="font-size:8px;color:#1c1c1e;">●●●</div>
-                    </div>
-                    <div style="position:absolute;top:32px;left:0;right:0;bottom:0;background:#fff;padding:8px;display:flex;flex-direction:column;gap:6px;overflow:hidden;">
-                      
-                <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.08);flex-shrink:0;">
-                  <div style="display:flex;align-items:center;gap:5px;">
-                    <div style="width:22px;height:22px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
-                    <div>
-                      <div style="font-size:8px;font-weight:700;color:#111827;">League Chat</div>
-                      <div style="font-size:6px;color:#9ca3af;">12 members</div>
-                    </div>
+                <div style="position:absolute;inset:-40px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.18) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;"></div>
+                <div style="width:380px;height:780px;background:linear-gradient(160deg,#181e2e 0%,#0d1117 60%);border-radius:48px;border:1.5px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(234,179,8,0.15),0 50px 120px rgba(0,0,0,0.85),20px 0 60px rgba(0,0,0,0.4);">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:121px;height:28px;background:#080a10;border-radius:0 0 17px 17px;z-index:10;"></div>
+                  <div style="position:absolute;top:10px;left:26px;right:26px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span>
+                    <div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div>
                   </div>
-                  <img src="/UFD_V8.png" style="height:13px;width:auto;">
-                </div>
-                <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:0;overflow:hidden;flex-shrink:0;">
-                  <div style="background:#fef9c3;border-bottom:1px solid #fde68a;padding:4px 8px;display:flex;align-items:center;gap:4px;">
-                    <img src="/UFD_V8.png" style="height:9px;width:auto;">
-                    <span style="font-size:7px;font-weight:700;color:#92400e;letter-spacing:0.04em;text-transform:uppercase;">Ultimate Fantasy Dashboard</span>
-                  </div>
-                  <div v-html="renderAdCard('powerrankings')" style="border-radius:0;overflow:hidden;"></div>
-                </div>
-                <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">wait this can't be right 💀</div></div>
+                  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div>
+                  <div style="position:absolute;top:36px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <div style="display:flex;align-items:center;gap:5px;">
+                        <div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
+                        <div><div style="font-size:8px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:6px;color:#6b7280;">12 members</div></div>
+                      </div>
+                      <img src="/UFD_V8.png" style="height:13px;width:auto;">
+                    </div>
+                    
+<!-- PR table -->
+<div style="background:#131720;border:1px solid rgba(234,179,8,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:9px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:7px;">⚡ Power Rankings</div>
+  
+    <div style="display:flex;align-items:center;gap:5px;padding:4px 5px;background:rgba(234,179,8,0.07);border-radius:5px;margin-bottom:2px;">
+      <div style="width:16px;height:16px;border-radius:50%;background:#eab308;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:8px;font-weight:900;color:#0a0c14;">1</span></div>
+      <span style="font-size:9px;font-weight:700;color:#fff;flex:1;">The Aman-Ra Stars</span>
+      <span style="font-size:8px;color:#6b7280;">12-5</span>
+      <span style="font-size:9px;font-weight:800;color:#eab308;">75.2</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:5px;padding:4px 5px;margin-bottom:2px;">
+      <div style="width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:8px;font-weight:900;color:#9ca3af;">2</span></div>
+      <span style="font-size:9px;font-weight:600;color:#d1d5db;flex:1;">Mighty Mallards</span>
+      <span style="font-size:8px;color:#6b7280;">11-6</span>
+      <span style="font-size:9px;font-weight:700;color:#9ca3af;">72.7</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:5px;padding:4px 5px;margin-bottom:2px;">
+      <div style="width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:8px;font-weight:900;color:#9ca3af;">3</span></div>
+      <span style="font-size:9px;font-weight:600;color:#d1d5db;flex:1;">Scuttlebucs</span>
+      <span style="font-size:8px;color:#6b7280;">11-6</span>
+      <span style="font-size:9px;font-weight:700;color:#9ca3af;">66.9</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:5px;padding:4px 5px;">
+      <div style="width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:8px;font-weight:900;color:#6b7280;">4</span></div>
+      <span style="font-size:9px;font-weight:600;color:#9ca3af;flex:1;">Gridiron Man</span>
+      <span style="font-size:8px;color:#6b7280;">12-5</span>
+      <span style="font-size:9px;font-weight:700;color:#6b7280;">62.5</span>
+    </div>
+</div>
+<!-- PR trend mini chart -->
+<div style="background:#131720;border:1px solid rgba(234,179,8,0.15);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:8px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px;">📈 Rankings Trend</div>
+  <svg viewBox="0 0 220 65" style="width:100%;display:block;">
+    <line x1="18" y1="8" x2="180" y2="8" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+    <line x1="18" y1="28" x2="180" y2="28" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+    <line x1="18" y1="48" x2="180" y2="48" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+    <text x="2" y="11" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">#1</text>
+    <text x="2" y="31" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">#3</text>
+    <text x="2" y="51" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">#5</text>
+    <path d="M18,48 C45,38 75,18 105,14 C130,10 158,8 180,8" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round"/>
+    <path d="M18,8 C45,12 75,24 105,28 C130,30 158,28 180,28" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/>
+    <path d="M18,28 C45,32 75,40 105,44 C130,46 158,42 180,38" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round" opacity="0.8"/>
+    <path d="M18,18 C45,28 75,38 105,44 C130,48 158,52 180,56" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+    <circle cx="180" cy="8" r="3.5" fill="#eab308"/>
+    <circle cx="180" cy="28" r="3.5" fill="#22c55e"/>
+    <circle cx="180" cy="38" r="3" fill="#3b82f6"/>
+    <circle cx="180" cy="56" r="3" fill="#ef4444"/>
+    <text x="185" y="11" font-size="7" font-weight="700" fill="#eab308" font-family="Arial">Stars</text>
+    <text x="185" y="31" font-size="7" font-weight="700" fill="#22c55e" font-family="Arial">Mallards</text>
+    <text x="185" y="41" font-size="7" font-weight="700" fill="#3b82f6" font-family="Arial">Bucs</text>
+    <text x="185" y="59" font-size="7" font-weight="700" fill="#ef4444" font-family="Arial">Man</text>
+    <text x="20" y="62" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">Wk1</text>
+    <text x="67" y="62" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">Wk2</text>
+    <text x="114" y="62" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">Wk3</text>
+    <text x="161" y="62" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">Wk4</text>
+  </svg>
+</div>
+                    <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">wait this can't be right 💀</div></div>
 <div style="display:flex;justify-content:flex-end;margin-bottom:5px;"><div style="background:#34c759;color:#fff;font-size:9px;font-weight:600;padding:6px 10px;border-radius:14px 14px 2px 14px;max-width:78%;line-height:1.3;">data doesn't lie bro 😂</div></div>
 <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">how do I get this??</div></div>
-                    </div>
-                    <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:95px;height:3px;background:#1c1c1e;border-radius:2px;"></div>
                   </div>
-                </div>
+                  <div style="position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:106px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
                 </div>
               </div>
+                </div>
+                <!-- Fade at bottom like Monarch -->
+                <div style="position:absolute;bottom:0;left:0;right:0;height:300px;background:linear-gradient(transparent,rgba(8,12,20,0.95));pointer-events:none;"></div>
+              </div>
 
-              <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+              <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0));"></div>
             </div>
             </div>
           </div>
@@ -2298,88 +2384,115 @@
 
       <!-- ══ AD: WIN PROBABILITY ══ -->
       <div>
-        <div style="font-size:13px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">2 of 5 · WIN PROBABILITY</div>
-        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Square + Story. Screenshot each.</div>
-        <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;">
+        <div style="font-size:12px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">2 of 5 · WIN PROBABILITY</div>
+        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Square + Story — screenshot each.</div>
+        <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap;">
 
           <!-- SQUARE 1080×1080 → 540×540 -->
           <div>
             <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Square · 1080×1080</div>
-            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.4);">
-            <div style="width:1080px;height:1080px;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);background:linear-gradient(135deg,#fef3c7 0%,#fff9e6 40%,#fde68a22 100%);">
-              <!-- Warm texture overlays like Monarch -->
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.2) 0%,transparent 55%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 0% 0%,rgba(255,255,255,0.8) 0%,transparent 50%);"></div>
-              <!-- Top gold bar -->
-              <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+            <div style="width:1080px;height:1080px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(234,179,8,0.14) 0%,transparent 50%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 90% 90%,rgba(234,179,8,0.08) 0%,transparent 45%);"></div>
+              <div style="position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0));"></div>
+              <div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,#eab308,#ca8a04,transparent);"></div>
 
               <!-- LEFT TEXT -->
-              <div style="position:absolute;left:72px;top:0;bottom:180px;right:520px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="margin-bottom:28px;">
-                  <img src="/UFD_V8.png" style="height:80px;width:auto;display:block;">
+              <div style="position:absolute;left:72px;top:0;bottom:180px;right:540px;display:flex;flex-direction:column;justify-content:center;">
+                <div style="margin-bottom:40px;">
+                <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
+                  <span style="font-size:38px;font-weight:900;color:#1a3a6b;font-family:Arial,sans-serif;">ESPN</span>
+                  <span style="font-size:30px;color:rgba(255,255,255,0.2);font-weight:300;">+</span>
+                  <span style="font-size:38px;font-weight:900;color:#6001d1;font-family:Arial,sans-serif;">Yahoo</span>
+                  <span style="font-size:30px;color:#9ca3af;font-weight:500;">Fantasy Baseball</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:40px;">
-                  <div style="background:#1a3a6b;border-radius:8px;padding:5px 12px;display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:18px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span>
-                  </div>
-                  <span style="font-size:20px;color:rgba(0,0,0,0.25);font-weight:300;">+</span>
-                  <div style="background:#6001d1;border-radius:8px;padding:5px 12px;display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:18px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span>
-                  </div>
-                  <span style="font-size:18px;color:rgba(0,0,0,0.3);font-weight:400;margin-left:4px;">Fantasy Baseball</span>
-                </div>
-                <div style="font-size:82px;font-weight:900;color:#ca8a04;line-height:0.9;letter-spacing:-0.03em;margin-bottom:10px;">WIN PROBABILITY</div>
-                <div style="font-size:66px;font-weight:900;color:#111827;line-height:0.95;letter-spacing:-0.03em;margin-bottom:36px;">HAS ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:24px;color:#374151;line-height:1.5;margin-bottom:48px;font-weight:400;max-width:400px;">Daily odds on who wins your matchup. The drama builds all week.</div>
+              </div>
+                <div style="font-size:80px;font-weight:900;color:#eab308;line-height:0.9;letter-spacing:-0.03em;margin-bottom:10px;">WIN PROBABILITY</div>
+                <div style="font-size:64px;font-weight:900;color:#ffffff;line-height:0.95;letter-spacing:-0.03em;margin-bottom:36px;">HAS ENTERED THE LEAGUE CHAT.</div>
+                <div style="font-size:24px;color:#9ca3af;line-height:1.5;margin-bottom:48px;font-weight:400;max-width:400px;">Daily odds on who wins your matchup. The drama builds all week.</div>
                 <div style="display:inline-flex;">
-                  <div style="background:#111827;color:#fff;font-size:22px;font-weight:900;padding:18px 36px;border-radius:12px;letter-spacing:0.01em;display:flex;align-items:center;gap:12px;">
+                  <div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:22px;font-weight:900;padding:18px 36px;border-radius:12px;letter-spacing:0.01em;display:flex;align-items:center;gap:12px;">
                     Connect Your League Free
-                    <div style="background:#eab308;color:#111827;border-radius:8px;padding:6px 12px;font-size:18px;">→</div>
+                    <div style="background:#eab308;color:#0a0c14;border-radius:8px;padding:6px 14px;font-size:18px;font-weight:900;">→</div>
                   </div>
                 </div>
               </div>
 
               <!-- RIGHT PHONE -->
-              <div style="position:absolute;right:30px;top:30px;bottom:30px;width:520px;display:flex;align-items:center;justify-content:center;">
+              <div style="position:absolute;right:20px;top:20px;bottom:20px;width:560px;display:flex;align-items:center;justify-content:center;">
                 <div style="transform:perspective(1400px) rotateY(-12deg) rotateX(3deg) rotate(3deg);">
                   <div style="position:relative;">
-                  <div style="position:absolute;inset:-30px;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0.15) 0%,transparent 70%);filter:blur(24px);pointer-events:none;z-index:0;"></div>
-                  <div style="width:300px;height:560px;background:#f5f5f5;border-radius:36px;border:none;overflow:hidden;position:relative;z-index:1;box-shadow:0 40px 100px rgba(0,0,0,0.3),0 0 0 8px rgba(0,0,0,0.08),0 0 0 9px rgba(255,255,255,0.6);">
-                    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:96px;height:21px;background:#1c1c1e;border-radius:0 0 12px 12px;z-index:10;"></div>
-                    <div style="position:absolute;top:7px;left:21px;right:21px;display:flex;justify-content:space-between;z-index:11;">
-                      <span style="font-size:9px;color:#1c1c1e;font-weight:600;">9:41</span>
-                      <div style="font-size:8px;color:#1c1c1e;">●●●</div>
-                    </div>
-                    <div style="position:absolute;top:26px;left:0;right:0;bottom:0;background:#fff;padding:8px;display:flex;flex-direction:column;gap:6px;overflow:hidden;">
-                      
-                <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.08);flex-shrink:0;">
-                  <div style="display:flex;align-items:center;gap:5px;">
-                    <div style="width:22px;height:22px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
-                    <div>
-                      <div style="font-size:8px;font-weight:700;color:#111827;">League Chat</div>
-                      <div style="font-size:6px;color:#9ca3af;">12 members</div>
-                    </div>
+                <div style="position:absolute;inset:-40px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.18) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;"></div>
+                <div style="width:300px;height:600px;background:linear-gradient(160deg,#181e2e 0%,#0d1117 60%);border-radius:38px;border:1.5px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(234,179,8,0.15),0 50px 120px rgba(0,0,0,0.85),20px 0 60px rgba(0,0,0,0.4);">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:96px;height:22px;background:#080a10;border-radius:0 0 13px 13px;z-index:10;"></div>
+                  <div style="position:absolute;top:7px;left:21px;right:21px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span>
+                    <div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div>
                   </div>
-                  <img src="/UFD_V8.png" style="height:13px;width:auto;">
-                </div>
-                <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:0;overflow:hidden;flex-shrink:0;">
-                  <div style="background:#fef9c3;border-bottom:1px solid #fde68a;padding:4px 8px;display:flex;align-items:center;gap:4px;">
-                    <img src="/UFD_V8.png" style="height:9px;width:auto;">
-                    <span style="font-size:7px;font-weight:700;color:#92400e;letter-spacing:0.04em;text-transform:uppercase;">Ultimate Fantasy Dashboard</span>
-                  </div>
-                  <div v-html="renderAdCard('winprob')" style="border-radius:0;overflow:hidden;"></div>
-                </div>
-                <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">bro how are you 28% on Thursday 💀</div></div>
+                  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div>
+                  <div style="position:absolute;top:28px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <div style="display:flex;align-items:center;gap:5px;">
+                        <div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
+                        <div><div style="font-size:8px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:6px;color:#6b7280;">12 members</div></div>
+                      </div>
+                      <img src="/UFD_V8.png" style="height:13px;width:auto;">
+                    </div>
+                    
+<div style="background:#131720;border:1px solid rgba(6,182,212,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:9px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">🎲 Win Probability</div>
+  <div style="display:flex;gap:5px;margin-bottom:7px;">
+    <div style="flex:1;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);border-radius:7px;padding:6px;text-align:center;">
+      <div style="font-size:8px;color:#06b6d4;font-weight:700;">Swamp Pirates</div>
+      <div style="font-size:16px;font-weight:900;color:#06b6d4;">72%</div>
+    </div>
+    <div style="display:flex;align-items:center;font-size:8px;color:#374151;font-weight:700;">VS</div>
+    <div style="flex:1;background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:7px;padding:6px;text-align:center;">
+      <div style="font-size:8px;color:#f97316;font-weight:700;">NC Pale Hose</div>
+      <div style="font-size:16px;font-weight:900;color:#f97316;">28%</div>
+    </div>
+  </div>
+  <div style="height:5px;border-radius:3px;background:rgba(249,115,22,0.3);position:relative;overflow:hidden;">
+    <div style="position:absolute;left:0;top:0;height:100%;width:72%;background:linear-gradient(90deg,#06b6d4,#0891b2);border-radius:3px;"></div>
+  </div>
+</div>
+<div style="background:#131720;border:1px solid rgba(6,182,212,0.15);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:8px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">📊 Daily Trend</div>
+  <svg viewBox="0 0 220 80" style="width:100%;display:block;">
+    <line x1="20" y1="8" x2="200" y2="8" stroke="#1e2130" stroke-width="1"/>
+    <line x1="20" y1="30" x2="200" y2="30" stroke="#374151" stroke-width="1" stroke-dasharray="3,3"/>
+    <line x1="20" y1="52" x2="200" y2="52" stroke="#1e2130" stroke-width="1"/>
+    <line x1="20" y1="72" x2="200" y2="72" stroke="#1e2130" stroke-width="1"/>
+    <text x="2" y="11" font-size="6" fill="#4b5563" font-family="Arial">100%</text>
+    <text x="2" y="33" font-size="6" fill="#6b7280" font-family="Arial">50%</text>
+    <text x="2" y="75" font-size="6" fill="#4b5563" font-family="Arial">0%</text>
+    <path d="M20,28 C50,25 80,20 110,16 C140,12 165,9 200,8" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
+    <path d="M20,32 C50,35 80,40 110,44 C140,48 165,51 200,52" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round"/>
+    <path d="M20,28 C50,25 80,20 110,16 C140,12 165,9 200,8 L200,72 L20,72 Z" fill="rgba(6,182,212,0.1)"/>
+    <path d="M20,32 C50,35 80,40 110,44 C140,48 165,51 200,52 L200,72 L20,72 Z" fill="rgba(249,115,22,0.1)"/>
+    <rect x="12" y="21" width="18" height="11" rx="3" fill="#06b6d4"/><text x="21" y="29" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">58</text>
+    <rect x="90" y="9" width="20" height="11" rx="3" fill="#06b6d4"/><text x="100" y="17" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">64</text>
+    <rect x="180" y="2" width="20" height="11" rx="3" fill="#06b6d4"/><text x="190" y="10" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">72</text>
+    <rect x="12" y="28" width="18" height="11" rx="3" fill="#f97316"/><text x="21" y="36" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">42</text>
+    <rect x="180" y="45" width="20" height="11" rx="3" fill="#f97316"/><text x="190" y="53" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">28</text>
+    <text x="20" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Mon</text>
+    <text x="65" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Wed</text>
+    <text x="110" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Fri</text>
+    <text x="155" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Sat</text>
+    <text x="200" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Sun</text>
+  </svg>
+</div>
+                    <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">bro how are you 28% on Thursday 💀</div></div>
 <div style="display:flex;justify-content:flex-end;margin-bottom:5px;"><div style="background:#34c759;color:#fff;font-size:9px;font-weight:600;padding:6px 10px;border-radius:14px 14px 2px 14px;max-width:78%;line-height:1.3;">I came back. check Sunday 😤</div></div>
 <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">need this for my league</div></div>
-                    </div>
-                    <div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:84px;height:3px;background:#1c1c1e;border-radius:2px;"></div>
                   </div>
-                </div>
+                  <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:84px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
                 </div>
               </div>
-
-              <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(transparent,rgba(254,243,199,0.6));pointer-events:none;"></div>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(transparent,rgba(8,12,20,0.7));pointer-events:none;"></div>
             </div>
             </div>
           </div>
@@ -2387,79 +2500,110 @@
           <!-- STORY 1080×1920 → 304×540 -->
           <div>
             <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Story · 1080×1920</div>
-            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.4);">
-            <div style="width:1080px;height:1920px;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);background:linear-gradient(160deg,#fef9e7 0%,#fffdf5 45%,#fef3c7 100%);">
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.25) 0%,transparent 55%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 10% 0%,rgba(255,255,255,0.9) 0%,transparent 40%);"></div>
-              <div style="position:absolute;top:0;left:0;right:0;height:7px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+            <div style="width:1080px;height:1920px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 40%,rgba(234,179,8,0.16) 0%,transparent 55%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.1) 0%,transparent 50%);"></div>
+              <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0));"></div>
 
-              <!-- TEXT below IG safe zone -->
-              <div style="position:absolute;top:240px;left:80px;right:80px;">
-                <div style="margin-bottom:36px;">
-                  <img src="/UFD_V8.png" style="height:100px;width:auto;display:block;">
+              <!-- TEXT — left column, tall, below IG safe zone (220px) -->
+              <div style="position:absolute;top:220px;left:72px;width:580px;bottom:100px;display:flex;flex-direction:column;justify-content:center;">
+                <div style="margin-bottom:52px;">
+                <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;">
+                  <span style="font-size:70px;font-weight:900;color:#1a3a6b;font-family:Arial,sans-serif;">ESPN</span>
+                  <span style="font-size:56px;color:rgba(255,255,255,0.2);font-weight:300;">+</span>
+                  <span style="font-size:70px;font-weight:900;color:#6001d1;font-family:Arial,sans-serif;">Yahoo</span>
+                  <span style="font-size:56px;color:#9ca3af;font-weight:500;">Fantasy Baseball</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:18px;margin-bottom:48px;">
-                  <div style="background:#1a3a6b;border-radius:10px;padding:7px 18px;">
-                    <span style="font-size:28px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span>
-                  </div>
-                  <span style="font-size:28px;color:rgba(0,0,0,0.25);font-weight:300;">+</span>
-                  <div style="background:#6001d1;border-radius:10px;padding:7px 18px;">
-                    <span style="font-size:28px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span>
-                  </div>
-                  <span style="font-size:26px;color:rgba(0,0,0,0.35);font-weight:500;margin-left:6px;">Fantasy Baseball</span>
-                </div>
-                <div style="font-size:104px;font-weight:900;color:#ca8a04;line-height:0.88;letter-spacing:-0.03em;margin-bottom:14px;">WIN PROBABILITY</div>
-                <div style="font-size:88px;font-weight:900;color:#111827;line-height:0.92;letter-spacing:-0.03em;margin-bottom:44px;">HAS ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:38px;color:#374151;line-height:1.5;margin-bottom:56px;font-weight:400;">Daily odds on who wins your matchup. The drama builds all week.</div>
+              </div>
+                <div style="font-size:108px;font-weight:900;color:#eab308;line-height:0.88;letter-spacing:-0.03em;margin-bottom:14px;">WIN PROBABILITY</div>
+                <div style="font-size:90px;font-weight:900;color:#ffffff;line-height:0.92;letter-spacing:-0.03em;margin-bottom:48px;">HAS ENTERED THE LEAGUE CHAT.</div>
+                <div style="font-size:38px;color:#9ca3af;line-height:1.5;margin-bottom:60px;font-weight:400;">Daily odds on who wins your matchup. The drama builds all week.</div>
                 <div style="display:inline-flex;">
-                  <div style="background:#111827;color:#fff;font-size:38px;font-weight:900;padding:26px 56px;border-radius:16px;letter-spacing:0.01em;display:flex;align-items:center;gap:16px;">
+                  <div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:38px;font-weight:900;padding:26px 52px;border-radius:16px;display:flex;align-items:center;gap:18px;">
                     Connect Your League Free
-                    <div style="background:#eab308;color:#111827;border-radius:10px;padding:8px 16px;font-size:32px;">→</div>
+                    <div style="background:#eab308;color:#0a0c14;border-radius:10px;padding:8px 18px;font-size:32px;font-weight:900;">→</div>
                   </div>
                 </div>
               </div>
 
-              <!-- PHONE lower half -->
-              <div style="position:absolute;bottom:200px;left:50%;transform:translateX(-50%);">
-                <div style="transform:perspective(1600px) rotateY(-10deg) rotateX(2deg) rotate(2deg);">
+              <!-- PHONE — right side, large, slightly off-screen, Monarch style -->
+              <div style="position:absolute;right:-60px;top:180px;bottom:-80px;width:720px;display:flex;align-items:center;justify-content:flex-end;">
+                <div style="transform:perspective(1600px) rotateY(-8deg) rotateX(1deg) rotate(2deg);">
                   <div style="position:relative;">
-                  <div style="position:absolute;inset:-30px;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0.15) 0%,transparent 70%);filter:blur(24px);pointer-events:none;z-index:0;"></div>
-                  <div style="width:340px;height:680px;background:#f5f5f5;border-radius:44px;border:none;overflow:hidden;position:relative;z-index:1;box-shadow:0 40px 100px rgba(0,0,0,0.3),0 0 0 8px rgba(0,0,0,0.08),0 0 0 9px rgba(255,255,255,0.6);">
-                    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:108px;height:25px;background:#1c1c1e;border-radius:0 0 14px 14px;z-index:10;"></div>
-                    <div style="position:absolute;top:8px;left:23px;right:23px;display:flex;justify-content:space-between;z-index:11;">
-                      <span style="font-size:9px;color:#1c1c1e;font-weight:600;">9:41</span>
-                      <div style="font-size:8px;color:#1c1c1e;">●●●</div>
-                    </div>
-                    <div style="position:absolute;top:32px;left:0;right:0;bottom:0;background:#fff;padding:8px;display:flex;flex-direction:column;gap:6px;overflow:hidden;">
-                      
-                <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.08);flex-shrink:0;">
-                  <div style="display:flex;align-items:center;gap:5px;">
-                    <div style="width:22px;height:22px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
-                    <div>
-                      <div style="font-size:8px;font-weight:700;color:#111827;">League Chat</div>
-                      <div style="font-size:6px;color:#9ca3af;">12 members</div>
-                    </div>
+                <div style="position:absolute;inset:-40px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.18) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;"></div>
+                <div style="width:380px;height:780px;background:linear-gradient(160deg,#181e2e 0%,#0d1117 60%);border-radius:48px;border:1.5px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(234,179,8,0.15),0 50px 120px rgba(0,0,0,0.85),20px 0 60px rgba(0,0,0,0.4);">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:121px;height:28px;background:#080a10;border-radius:0 0 17px 17px;z-index:10;"></div>
+                  <div style="position:absolute;top:10px;left:26px;right:26px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span>
+                    <div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div>
                   </div>
-                  <img src="/UFD_V8.png" style="height:13px;width:auto;">
-                </div>
-                <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:0;overflow:hidden;flex-shrink:0;">
-                  <div style="background:#fef9c3;border-bottom:1px solid #fde68a;padding:4px 8px;display:flex;align-items:center;gap:4px;">
-                    <img src="/UFD_V8.png" style="height:9px;width:auto;">
-                    <span style="font-size:7px;font-weight:700;color:#92400e;letter-spacing:0.04em;text-transform:uppercase;">Ultimate Fantasy Dashboard</span>
-                  </div>
-                  <div v-html="renderAdCard('winprob')" style="border-radius:0;overflow:hidden;"></div>
-                </div>
-                <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">bro how are you 28% on Thursday 💀</div></div>
+                  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div>
+                  <div style="position:absolute;top:36px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <div style="display:flex;align-items:center;gap:5px;">
+                        <div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
+                        <div><div style="font-size:8px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:6px;color:#6b7280;">12 members</div></div>
+                      </div>
+                      <img src="/UFD_V8.png" style="height:13px;width:auto;">
+                    </div>
+                    
+<div style="background:#131720;border:1px solid rgba(6,182,212,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:9px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">🎲 Win Probability</div>
+  <div style="display:flex;gap:5px;margin-bottom:7px;">
+    <div style="flex:1;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);border-radius:7px;padding:6px;text-align:center;">
+      <div style="font-size:8px;color:#06b6d4;font-weight:700;">Swamp Pirates</div>
+      <div style="font-size:16px;font-weight:900;color:#06b6d4;">72%</div>
+    </div>
+    <div style="display:flex;align-items:center;font-size:8px;color:#374151;font-weight:700;">VS</div>
+    <div style="flex:1;background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:7px;padding:6px;text-align:center;">
+      <div style="font-size:8px;color:#f97316;font-weight:700;">NC Pale Hose</div>
+      <div style="font-size:16px;font-weight:900;color:#f97316;">28%</div>
+    </div>
+  </div>
+  <div style="height:5px;border-radius:3px;background:rgba(249,115,22,0.3);position:relative;overflow:hidden;">
+    <div style="position:absolute;left:0;top:0;height:100%;width:72%;background:linear-gradient(90deg,#06b6d4,#0891b2);border-radius:3px;"></div>
+  </div>
+</div>
+<div style="background:#131720;border:1px solid rgba(6,182,212,0.15);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:8px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">📊 Daily Trend</div>
+  <svg viewBox="0 0 220 80" style="width:100%;display:block;">
+    <line x1="20" y1="8" x2="200" y2="8" stroke="#1e2130" stroke-width="1"/>
+    <line x1="20" y1="30" x2="200" y2="30" stroke="#374151" stroke-width="1" stroke-dasharray="3,3"/>
+    <line x1="20" y1="52" x2="200" y2="52" stroke="#1e2130" stroke-width="1"/>
+    <line x1="20" y1="72" x2="200" y2="72" stroke="#1e2130" stroke-width="1"/>
+    <text x="2" y="11" font-size="6" fill="#4b5563" font-family="Arial">100%</text>
+    <text x="2" y="33" font-size="6" fill="#6b7280" font-family="Arial">50%</text>
+    <text x="2" y="75" font-size="6" fill="#4b5563" font-family="Arial">0%</text>
+    <path d="M20,28 C50,25 80,20 110,16 C140,12 165,9 200,8" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
+    <path d="M20,32 C50,35 80,40 110,44 C140,48 165,51 200,52" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round"/>
+    <path d="M20,28 C50,25 80,20 110,16 C140,12 165,9 200,8 L200,72 L20,72 Z" fill="rgba(6,182,212,0.1)"/>
+    <path d="M20,32 C50,35 80,40 110,44 C140,48 165,51 200,52 L200,72 L20,72 Z" fill="rgba(249,115,22,0.1)"/>
+    <rect x="12" y="21" width="18" height="11" rx="3" fill="#06b6d4"/><text x="21" y="29" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">58</text>
+    <rect x="90" y="9" width="20" height="11" rx="3" fill="#06b6d4"/><text x="100" y="17" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">64</text>
+    <rect x="180" y="2" width="20" height="11" rx="3" fill="#06b6d4"/><text x="190" y="10" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">72</text>
+    <rect x="12" y="28" width="18" height="11" rx="3" fill="#f97316"/><text x="21" y="36" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">42</text>
+    <rect x="180" y="45" width="20" height="11" rx="3" fill="#f97316"/><text x="190" y="53" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">28</text>
+    <text x="20" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Mon</text>
+    <text x="65" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Wed</text>
+    <text x="110" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Fri</text>
+    <text x="155" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Sat</text>
+    <text x="200" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Sun</text>
+  </svg>
+</div>
+                    <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">bro how are you 28% on Thursday 💀</div></div>
 <div style="display:flex;justify-content:flex-end;margin-bottom:5px;"><div style="background:#34c759;color:#fff;font-size:9px;font-weight:600;padding:6px 10px;border-radius:14px 14px 2px 14px;max-width:78%;line-height:1.3;">I came back. check Sunday 😤</div></div>
 <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">need this for my league</div></div>
-                    </div>
-                    <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:95px;height:3px;background:#1c1c1e;border-radius:2px;"></div>
                   </div>
-                </div>
+                  <div style="position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:106px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
                 </div>
               </div>
+                </div>
+                <!-- Fade at bottom like Monarch -->
+                <div style="position:absolute;bottom:0;left:0;right:0;height:300px;background:linear-gradient(transparent,rgba(8,12,20,0.95));pointer-events:none;"></div>
+              </div>
 
-              <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+              <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0));"></div>
             </div>
             </div>
           </div>
@@ -2469,88 +2613,92 @@
 
       <!-- ══ AD: DRAFT GRADES ══ -->
       <div>
-        <div style="font-size:13px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">3 of 5 · DRAFT GRADES</div>
-        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Square + Story. Screenshot each.</div>
-        <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;">
+        <div style="font-size:12px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">3 of 5 · DRAFT GRADES</div>
+        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Square + Story — screenshot each.</div>
+        <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap;">
 
           <!-- SQUARE 1080×1080 → 540×540 -->
           <div>
             <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Square · 1080×1080</div>
-            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.4);">
-            <div style="width:1080px;height:1080px;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);background:linear-gradient(135deg,#fef3c7 0%,#fff9e6 40%,#fde68a22 100%);">
-              <!-- Warm texture overlays like Monarch -->
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.2) 0%,transparent 55%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 0% 0%,rgba(255,255,255,0.8) 0%,transparent 50%);"></div>
-              <!-- Top gold bar -->
-              <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+            <div style="width:1080px;height:1080px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(234,179,8,0.14) 0%,transparent 50%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 90% 90%,rgba(234,179,8,0.08) 0%,transparent 45%);"></div>
+              <div style="position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0));"></div>
+              <div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,#eab308,#ca8a04,transparent);"></div>
 
               <!-- LEFT TEXT -->
-              <div style="position:absolute;left:72px;top:0;bottom:180px;right:520px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="margin-bottom:28px;">
-                  <img src="/UFD_V8.png" style="height:80px;width:auto;display:block;">
+              <div style="position:absolute;left:72px;top:0;bottom:180px;right:540px;display:flex;flex-direction:column;justify-content:center;">
+                <div style="margin-bottom:40px;">
+                <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
+                  <span style="font-size:38px;font-weight:900;color:#1a3a6b;font-family:Arial,sans-serif;">ESPN</span>
+                  <span style="font-size:30px;color:rgba(255,255,255,0.2);font-weight:300;">+</span>
+                  <span style="font-size:38px;font-weight:900;color:#6001d1;font-family:Arial,sans-serif;">Yahoo</span>
+                  <span style="font-size:30px;color:#9ca3af;font-weight:500;">Fantasy Baseball</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:40px;">
-                  <div style="background:#1a3a6b;border-radius:8px;padding:5px 12px;display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:18px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span>
-                  </div>
-                  <span style="font-size:20px;color:rgba(0,0,0,0.25);font-weight:300;">+</span>
-                  <div style="background:#6001d1;border-radius:8px;padding:5px 12px;display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:18px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span>
-                  </div>
-                  <span style="font-size:18px;color:rgba(0,0,0,0.3);font-weight:400;margin-left:4px;">Fantasy Baseball</span>
-                </div>
-                <div style="font-size:82px;font-weight:900;color:#ca8a04;line-height:0.9;letter-spacing:-0.03em;margin-bottom:10px;">DRAFT GRADES</div>
-                <div style="font-size:66px;font-weight:900;color:#111827;line-height:0.95;letter-spacing:-0.03em;margin-bottom:36px;">HAVE ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:24px;color:#374151;line-height:1.5;margin-bottom:48px;font-weight:400;max-width:400px;">Every pick in your draft, graded. Find out who built a winner and who reached.</div>
+              </div>
+                <div style="font-size:80px;font-weight:900;color:#eab308;line-height:0.9;letter-spacing:-0.03em;margin-bottom:10px;">DRAFT GRADES</div>
+                <div style="font-size:64px;font-weight:900;color:#ffffff;line-height:0.95;letter-spacing:-0.03em;margin-bottom:36px;">HAVE ENTERED THE LEAGUE CHAT.</div>
+                <div style="font-size:24px;color:#9ca3af;line-height:1.5;margin-bottom:48px;font-weight:400;max-width:400px;">Every pick in your draft, graded. Find out who built a winner and who reached.</div>
                 <div style="display:inline-flex;">
-                  <div style="background:#111827;color:#fff;font-size:22px;font-weight:900;padding:18px 36px;border-radius:12px;letter-spacing:0.01em;display:flex;align-items:center;gap:12px;">
+                  <div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:22px;font-weight:900;padding:18px 36px;border-radius:12px;letter-spacing:0.01em;display:flex;align-items:center;gap:12px;">
                     Connect Your League Free
-                    <div style="background:#eab308;color:#111827;border-radius:8px;padding:6px 12px;font-size:18px;">→</div>
+                    <div style="background:#eab308;color:#0a0c14;border-radius:8px;padding:6px 14px;font-size:18px;font-weight:900;">→</div>
                   </div>
                 </div>
               </div>
 
               <!-- RIGHT PHONE -->
-              <div style="position:absolute;right:30px;top:30px;bottom:30px;width:520px;display:flex;align-items:center;justify-content:center;">
+              <div style="position:absolute;right:20px;top:20px;bottom:20px;width:560px;display:flex;align-items:center;justify-content:center;">
                 <div style="transform:perspective(1400px) rotateY(-12deg) rotateX(3deg) rotate(3deg);">
                   <div style="position:relative;">
-                  <div style="position:absolute;inset:-30px;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0.15) 0%,transparent 70%);filter:blur(24px);pointer-events:none;z-index:0;"></div>
-                  <div style="width:300px;height:560px;background:#f5f5f5;border-radius:36px;border:none;overflow:hidden;position:relative;z-index:1;box-shadow:0 40px 100px rgba(0,0,0,0.3),0 0 0 8px rgba(0,0,0,0.08),0 0 0 9px rgba(255,255,255,0.6);">
-                    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:96px;height:21px;background:#1c1c1e;border-radius:0 0 12px 12px;z-index:10;"></div>
-                    <div style="position:absolute;top:7px;left:21px;right:21px;display:flex;justify-content:space-between;z-index:11;">
-                      <span style="font-size:9px;color:#1c1c1e;font-weight:600;">9:41</span>
-                      <div style="font-size:8px;color:#1c1c1e;">●●●</div>
-                    </div>
-                    <div style="position:absolute;top:26px;left:0;right:0;bottom:0;background:#fff;padding:8px;display:flex;flex-direction:column;gap:6px;overflow:hidden;">
-                      
-                <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.08);flex-shrink:0;">
-                  <div style="display:flex;align-items:center;gap:5px;">
-                    <div style="width:22px;height:22px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
-                    <div>
-                      <div style="font-size:8px;font-weight:700;color:#111827;">League Chat</div>
-                      <div style="font-size:6px;color:#9ca3af;">12 members</div>
-                    </div>
+                <div style="position:absolute;inset:-40px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.18) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;"></div>
+                <div style="width:300px;height:600px;background:linear-gradient(160deg,#181e2e 0%,#0d1117 60%);border-radius:38px;border:1.5px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(234,179,8,0.15),0 50px 120px rgba(0,0,0,0.85),20px 0 60px rgba(0,0,0,0.4);">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:96px;height:22px;background:#080a10;border-radius:0 0 13px 13px;z-index:10;"></div>
+                  <div style="position:absolute;top:7px;left:21px;right:21px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span>
+                    <div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div>
                   </div>
-                  <img src="/UFD_V8.png" style="height:13px;width:auto;">
-                </div>
-                <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:0;overflow:hidden;flex-shrink:0;">
-                  <div style="background:#fef9c3;border-bottom:1px solid #fde68a;padding:4px 8px;display:flex;align-items:center;gap:4px;">
-                    <img src="/UFD_V8.png" style="height:9px;width:auto;">
-                    <span style="font-size:7px;font-weight:700;color:#92400e;letter-spacing:0.04em;text-transform:uppercase;">Ultimate Fantasy Dashboard</span>
-                  </div>
-                  <div v-html="renderAdCard('draft')" style="border-radius:0;overflow:hidden;"></div>
-                </div>
-                <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">a C+?? Ohtani was a steal 😤</div></div>
+                  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div>
+                  <div style="position:absolute;top:28px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <div style="display:flex;align-items:center;gap:5px;">
+                        <div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
+                        <div><div style="font-size:8px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:6px;color:#6b7280;">12 members</div></div>
+                      </div>
+                      <img src="/UFD_V8.png" style="height:13px;width:auto;">
+                    </div>
+                    
+<div style="background:#131720;border:1px solid rgba(139,92,246,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:9px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:7px;">📋 Draft Board</div>
+  <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:3px 8px;align-items:center;">
+    <span style="font-size:7px;font-weight:700;color:#6b7280;">R1</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Freddie Freeman</span><span style="font-size:8px;color:#6b7280;">1B·LAD</span><span style="font-size:9px;font-weight:800;color:#22c55e;">A+</span>
+    <span style="font-size:7px;font-weight:700;color:#6b7280;">R2</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Shohei Ohtani</span><span style="font-size:8px;color:#6b7280;">DH·LAD</span><span style="font-size:9px;font-weight:800;color:#22c55e;">A</span>
+    <span style="font-size:7px;font-weight:700;color:#6b7280;">R3</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Paul Skenes</span><span style="font-size:8px;color:#6b7280;">SP·PIT</span><span style="font-size:9px;font-weight:800;color:#22c55e;">A-</span>
+    <span style="font-size:7px;font-weight:700;color:#6b7280;">R4</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Mookie Betts</span><span style="font-size:8px;color:#6b7280;">OF·LAD</span><span style="font-size:9px;font-weight:800;color:#eab308;">B+</span>
+    <span style="font-size:7px;font-weight:700;color:#6b7280;">R5</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Elly De La Cruz</span><span style="font-size:8px;color:#6b7280;">SS·CIN</span><span style="font-size:9px;font-weight:800;color:#eab308;">B</span>
+    <span style="font-size:7px;font-weight:700;color:#6b7280;">R6</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Spencer Strider</span><span style="font-size:8px;color:#6b7280;">SP·ATL</span><span style="font-size:9px;font-weight:800;color:#ef4444;">C+</span>
+  </div>
+</div>
+<div style="background:#131720;border:1px solid rgba(139,92,246,0.15);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:8px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:6px;">📊 Grade Breakdown</div>
+  <div style="display:flex;gap:6px;justify-content:space-between;">
+    <div style="text-align:center;flex:1;"><div style="font-size:14px;font-weight:900;color:#22c55e;">A</div><div style="font-size:7px;color:#6b7280;">3 picks</div></div>
+    <div style="text-align:center;flex:1;"><div style="font-size:14px;font-weight:900;color:#eab308;">B</div><div style="font-size:7px;color:#6b7280;">5 picks</div></div>
+    <div style="text-align:center;flex:1;"><div style="font-size:14px;font-weight:900;color:#ef4444;">C</div><div style="font-size:7px;color:#6b7280;">4 picks</div></div>
+    <div style="text-align:center;flex:1;border-left:1px solid rgba(255,255,255,0.1);padding-left:6px;"><div style="font-size:14px;font-weight:900;color:#a78bfa;">B+</div><div style="font-size:7px;color:#6b7280;">overall</div></div>
+  </div>
+</div>
+                    <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">a C+?? Ohtani was a steal 😤</div></div>
 <div style="display:flex;justify-content:flex-end;margin-bottom:5px;"><div style="background:#34c759;color:#fff;font-size:9px;font-weight:600;padding:6px 10px;border-radius:14px 14px 2px 14px;max-width:78%;line-height:1.3;">the data says otherwise 💀</div></div>
 <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">where do I get this??</div></div>
-                    </div>
-                    <div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:84px;height:3px;background:#1c1c1e;border-radius:2px;"></div>
                   </div>
-                </div>
+                  <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:84px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
                 </div>
               </div>
-
-              <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(transparent,rgba(254,243,199,0.6));pointer-events:none;"></div>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(transparent,rgba(8,12,20,0.7));pointer-events:none;"></div>
             </div>
             </div>
           </div>
@@ -2558,79 +2706,87 @@
           <!-- STORY 1080×1920 → 304×540 -->
           <div>
             <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Story · 1080×1920</div>
-            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.4);">
-            <div style="width:1080px;height:1920px;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);background:linear-gradient(160deg,#fef9e7 0%,#fffdf5 45%,#fef3c7 100%);">
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.25) 0%,transparent 55%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 10% 0%,rgba(255,255,255,0.9) 0%,transparent 40%);"></div>
-              <div style="position:absolute;top:0;left:0;right:0;height:7px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+            <div style="width:1080px;height:1920px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 40%,rgba(234,179,8,0.16) 0%,transparent 55%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.1) 0%,transparent 50%);"></div>
+              <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0));"></div>
 
-              <!-- TEXT below IG safe zone -->
-              <div style="position:absolute;top:240px;left:80px;right:80px;">
-                <div style="margin-bottom:36px;">
-                  <img src="/UFD_V8.png" style="height:100px;width:auto;display:block;">
+              <!-- TEXT — left column, tall, below IG safe zone (220px) -->
+              <div style="position:absolute;top:220px;left:72px;width:580px;bottom:100px;display:flex;flex-direction:column;justify-content:center;">
+                <div style="margin-bottom:52px;">
+                <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;">
+                  <span style="font-size:70px;font-weight:900;color:#1a3a6b;font-family:Arial,sans-serif;">ESPN</span>
+                  <span style="font-size:56px;color:rgba(255,255,255,0.2);font-weight:300;">+</span>
+                  <span style="font-size:70px;font-weight:900;color:#6001d1;font-family:Arial,sans-serif;">Yahoo</span>
+                  <span style="font-size:56px;color:#9ca3af;font-weight:500;">Fantasy Baseball</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:18px;margin-bottom:48px;">
-                  <div style="background:#1a3a6b;border-radius:10px;padding:7px 18px;">
-                    <span style="font-size:28px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span>
-                  </div>
-                  <span style="font-size:28px;color:rgba(0,0,0,0.25);font-weight:300;">+</span>
-                  <div style="background:#6001d1;border-radius:10px;padding:7px 18px;">
-                    <span style="font-size:28px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span>
-                  </div>
-                  <span style="font-size:26px;color:rgba(0,0,0,0.35);font-weight:500;margin-left:6px;">Fantasy Baseball</span>
-                </div>
-                <div style="font-size:104px;font-weight:900;color:#ca8a04;line-height:0.88;letter-spacing:-0.03em;margin-bottom:14px;">DRAFT GRADES</div>
-                <div style="font-size:88px;font-weight:900;color:#111827;line-height:0.92;letter-spacing:-0.03em;margin-bottom:44px;">HAVE ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:38px;color:#374151;line-height:1.5;margin-bottom:56px;font-weight:400;">Every pick in your draft, graded. Find out who built a winner and who reached.</div>
+              </div>
+                <div style="font-size:108px;font-weight:900;color:#eab308;line-height:0.88;letter-spacing:-0.03em;margin-bottom:14px;">DRAFT GRADES</div>
+                <div style="font-size:90px;font-weight:900;color:#ffffff;line-height:0.92;letter-spacing:-0.03em;margin-bottom:48px;">HAVE ENTERED THE LEAGUE CHAT.</div>
+                <div style="font-size:38px;color:#9ca3af;line-height:1.5;margin-bottom:60px;font-weight:400;">Every pick in your draft, graded. Find out who built a winner and who reached.</div>
                 <div style="display:inline-flex;">
-                  <div style="background:#111827;color:#fff;font-size:38px;font-weight:900;padding:26px 56px;border-radius:16px;letter-spacing:0.01em;display:flex;align-items:center;gap:16px;">
+                  <div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:38px;font-weight:900;padding:26px 52px;border-radius:16px;display:flex;align-items:center;gap:18px;">
                     Connect Your League Free
-                    <div style="background:#eab308;color:#111827;border-radius:10px;padding:8px 16px;font-size:32px;">→</div>
+                    <div style="background:#eab308;color:#0a0c14;border-radius:10px;padding:8px 18px;font-size:32px;font-weight:900;">→</div>
                   </div>
                 </div>
               </div>
 
-              <!-- PHONE lower half -->
-              <div style="position:absolute;bottom:200px;left:50%;transform:translateX(-50%);">
-                <div style="transform:perspective(1600px) rotateY(-10deg) rotateX(2deg) rotate(2deg);">
+              <!-- PHONE — right side, large, slightly off-screen, Monarch style -->
+              <div style="position:absolute;right:-60px;top:180px;bottom:-80px;width:720px;display:flex;align-items:center;justify-content:flex-end;">
+                <div style="transform:perspective(1600px) rotateY(-8deg) rotateX(1deg) rotate(2deg);">
                   <div style="position:relative;">
-                  <div style="position:absolute;inset:-30px;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0.15) 0%,transparent 70%);filter:blur(24px);pointer-events:none;z-index:0;"></div>
-                  <div style="width:340px;height:680px;background:#f5f5f5;border-radius:44px;border:none;overflow:hidden;position:relative;z-index:1;box-shadow:0 40px 100px rgba(0,0,0,0.3),0 0 0 8px rgba(0,0,0,0.08),0 0 0 9px rgba(255,255,255,0.6);">
-                    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:108px;height:25px;background:#1c1c1e;border-radius:0 0 14px 14px;z-index:10;"></div>
-                    <div style="position:absolute;top:8px;left:23px;right:23px;display:flex;justify-content:space-between;z-index:11;">
-                      <span style="font-size:9px;color:#1c1c1e;font-weight:600;">9:41</span>
-                      <div style="font-size:8px;color:#1c1c1e;">●●●</div>
-                    </div>
-                    <div style="position:absolute;top:32px;left:0;right:0;bottom:0;background:#fff;padding:8px;display:flex;flex-direction:column;gap:6px;overflow:hidden;">
-                      
-                <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.08);flex-shrink:0;">
-                  <div style="display:flex;align-items:center;gap:5px;">
-                    <div style="width:22px;height:22px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
-                    <div>
-                      <div style="font-size:8px;font-weight:700;color:#111827;">League Chat</div>
-                      <div style="font-size:6px;color:#9ca3af;">12 members</div>
-                    </div>
+                <div style="position:absolute;inset:-40px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.18) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;"></div>
+                <div style="width:380px;height:780px;background:linear-gradient(160deg,#181e2e 0%,#0d1117 60%);border-radius:48px;border:1.5px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(234,179,8,0.15),0 50px 120px rgba(0,0,0,0.85),20px 0 60px rgba(0,0,0,0.4);">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:121px;height:28px;background:#080a10;border-radius:0 0 17px 17px;z-index:10;"></div>
+                  <div style="position:absolute;top:10px;left:26px;right:26px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span>
+                    <div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div>
                   </div>
-                  <img src="/UFD_V8.png" style="height:13px;width:auto;">
-                </div>
-                <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:0;overflow:hidden;flex-shrink:0;">
-                  <div style="background:#fef9c3;border-bottom:1px solid #fde68a;padding:4px 8px;display:flex;align-items:center;gap:4px;">
-                    <img src="/UFD_V8.png" style="height:9px;width:auto;">
-                    <span style="font-size:7px;font-weight:700;color:#92400e;letter-spacing:0.04em;text-transform:uppercase;">Ultimate Fantasy Dashboard</span>
-                  </div>
-                  <div v-html="renderAdCard('draft')" style="border-radius:0;overflow:hidden;"></div>
-                </div>
-                <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">a C+?? Ohtani was a steal 😤</div></div>
+                  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div>
+                  <div style="position:absolute;top:36px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <div style="display:flex;align-items:center;gap:5px;">
+                        <div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
+                        <div><div style="font-size:8px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:6px;color:#6b7280;">12 members</div></div>
+                      </div>
+                      <img src="/UFD_V8.png" style="height:13px;width:auto;">
+                    </div>
+                    
+<div style="background:#131720;border:1px solid rgba(139,92,246,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:9px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:7px;">📋 Draft Board</div>
+  <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:3px 8px;align-items:center;">
+    <span style="font-size:7px;font-weight:700;color:#6b7280;">R1</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Freddie Freeman</span><span style="font-size:8px;color:#6b7280;">1B·LAD</span><span style="font-size:9px;font-weight:800;color:#22c55e;">A+</span>
+    <span style="font-size:7px;font-weight:700;color:#6b7280;">R2</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Shohei Ohtani</span><span style="font-size:8px;color:#6b7280;">DH·LAD</span><span style="font-size:9px;font-weight:800;color:#22c55e;">A</span>
+    <span style="font-size:7px;font-weight:700;color:#6b7280;">R3</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Paul Skenes</span><span style="font-size:8px;color:#6b7280;">SP·PIT</span><span style="font-size:9px;font-weight:800;color:#22c55e;">A-</span>
+    <span style="font-size:7px;font-weight:700;color:#6b7280;">R4</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Mookie Betts</span><span style="font-size:8px;color:#6b7280;">OF·LAD</span><span style="font-size:9px;font-weight:800;color:#eab308;">B+</span>
+    <span style="font-size:7px;font-weight:700;color:#6b7280;">R5</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Elly De La Cruz</span><span style="font-size:8px;color:#6b7280;">SS·CIN</span><span style="font-size:9px;font-weight:800;color:#eab308;">B</span>
+    <span style="font-size:7px;font-weight:700;color:#6b7280;">R6</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Spencer Strider</span><span style="font-size:8px;color:#6b7280;">SP·ATL</span><span style="font-size:9px;font-weight:800;color:#ef4444;">C+</span>
+  </div>
+</div>
+<div style="background:#131720;border:1px solid rgba(139,92,246,0.15);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:8px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:6px;">📊 Grade Breakdown</div>
+  <div style="display:flex;gap:6px;justify-content:space-between;">
+    <div style="text-align:center;flex:1;"><div style="font-size:14px;font-weight:900;color:#22c55e;">A</div><div style="font-size:7px;color:#6b7280;">3 picks</div></div>
+    <div style="text-align:center;flex:1;"><div style="font-size:14px;font-weight:900;color:#eab308;">B</div><div style="font-size:7px;color:#6b7280;">5 picks</div></div>
+    <div style="text-align:center;flex:1;"><div style="font-size:14px;font-weight:900;color:#ef4444;">C</div><div style="font-size:7px;color:#6b7280;">4 picks</div></div>
+    <div style="text-align:center;flex:1;border-left:1px solid rgba(255,255,255,0.1);padding-left:6px;"><div style="font-size:14px;font-weight:900;color:#a78bfa;">B+</div><div style="font-size:7px;color:#6b7280;">overall</div></div>
+  </div>
+</div>
+                    <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">a C+?? Ohtani was a steal 😤</div></div>
 <div style="display:flex;justify-content:flex-end;margin-bottom:5px;"><div style="background:#34c759;color:#fff;font-size:9px;font-weight:600;padding:6px 10px;border-radius:14px 14px 2px 14px;max-width:78%;line-height:1.3;">the data says otherwise 💀</div></div>
 <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">where do I get this??</div></div>
-                    </div>
-                    <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:95px;height:3px;background:#1c1c1e;border-radius:2px;"></div>
                   </div>
-                </div>
+                  <div style="position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:106px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
                 </div>
               </div>
+                </div>
+                <!-- Fade at bottom like Monarch -->
+                <div style="position:absolute;bottom:0;left:0;right:0;height:300px;background:linear-gradient(transparent,rgba(8,12,20,0.95));pointer-events:none;"></div>
+              </div>
 
-              <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+              <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0));"></div>
             </div>
             </div>
           </div>
@@ -2640,88 +2796,98 @@
 
       <!-- ══ AD: LEAGUE HISTORY ══ -->
       <div>
-        <div style="font-size:13px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">4 of 5 · LEAGUE HISTORY</div>
-        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Square + Story. Screenshot each.</div>
-        <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;">
+        <div style="font-size:12px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">4 of 5 · LEAGUE HISTORY</div>
+        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Square + Story — screenshot each.</div>
+        <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap;">
 
           <!-- SQUARE 1080×1080 → 540×540 -->
           <div>
             <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Square · 1080×1080</div>
-            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.4);">
-            <div style="width:1080px;height:1080px;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);background:linear-gradient(135deg,#fef3c7 0%,#fff9e6 40%,#fde68a22 100%);">
-              <!-- Warm texture overlays like Monarch -->
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.2) 0%,transparent 55%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 0% 0%,rgba(255,255,255,0.8) 0%,transparent 50%);"></div>
-              <!-- Top gold bar -->
-              <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+            <div style="width:1080px;height:1080px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(234,179,8,0.14) 0%,transparent 50%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 90% 90%,rgba(234,179,8,0.08) 0%,transparent 45%);"></div>
+              <div style="position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0));"></div>
+              <div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,#eab308,#ca8a04,transparent);"></div>
 
               <!-- LEFT TEXT -->
-              <div style="position:absolute;left:72px;top:0;bottom:180px;right:520px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="margin-bottom:28px;">
-                  <img src="/UFD_V8.png" style="height:80px;width:auto;display:block;">
+              <div style="position:absolute;left:72px;top:0;bottom:180px;right:540px;display:flex;flex-direction:column;justify-content:center;">
+                <div style="margin-bottom:40px;">
+                <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
+                  <span style="font-size:38px;font-weight:900;color:#1a3a6b;font-family:Arial,sans-serif;">ESPN</span>
+                  <span style="font-size:30px;color:rgba(255,255,255,0.2);font-weight:300;">+</span>
+                  <span style="font-size:38px;font-weight:900;color:#6001d1;font-family:Arial,sans-serif;">Yahoo</span>
+                  <span style="font-size:30px;color:#9ca3af;font-weight:500;">Fantasy Baseball</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:40px;">
-                  <div style="background:#1a3a6b;border-radius:8px;padding:5px 12px;display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:18px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span>
-                  </div>
-                  <span style="font-size:20px;color:rgba(0,0,0,0.25);font-weight:300;">+</span>
-                  <div style="background:#6001d1;border-radius:8px;padding:5px 12px;display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:18px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span>
-                  </div>
-                  <span style="font-size:18px;color:rgba(0,0,0,0.3);font-weight:400;margin-left:4px;">Fantasy Baseball</span>
-                </div>
-                <div style="font-size:82px;font-weight:900;color:#ca8a04;line-height:0.9;letter-spacing:-0.03em;margin-bottom:10px;">LEAGUE HISTORY</div>
-                <div style="font-size:66px;font-weight:900;color:#111827;line-height:0.95;letter-spacing:-0.03em;margin-bottom:36px;">HAS ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:24px;color:#374151;line-height:1.5;margin-bottom:48px;font-weight:400;max-width:400px;">Every champion, every award, every season — all in one place. The receipts are in.</div>
+              </div>
+                <div style="font-size:80px;font-weight:900;color:#eab308;line-height:0.9;letter-spacing:-0.03em;margin-bottom:10px;">LEAGUE HISTORY</div>
+                <div style="font-size:64px;font-weight:900;color:#ffffff;line-height:0.95;letter-spacing:-0.03em;margin-bottom:36px;">HAS ENTERED THE LEAGUE CHAT.</div>
+                <div style="font-size:24px;color:#9ca3af;line-height:1.5;margin-bottom:48px;font-weight:400;max-width:400px;">Every champion, every award, every season — all in one place. The receipts are in.</div>
                 <div style="display:inline-flex;">
-                  <div style="background:#111827;color:#fff;font-size:22px;font-weight:900;padding:18px 36px;border-radius:12px;letter-spacing:0.01em;display:flex;align-items:center;gap:12px;">
+                  <div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:22px;font-weight:900;padding:18px 36px;border-radius:12px;letter-spacing:0.01em;display:flex;align-items:center;gap:12px;">
                     Connect Your League Free
-                    <div style="background:#eab308;color:#111827;border-radius:8px;padding:6px 12px;font-size:18px;">→</div>
+                    <div style="background:#eab308;color:#0a0c14;border-radius:8px;padding:6px 14px;font-size:18px;font-weight:900;">→</div>
                   </div>
                 </div>
               </div>
 
               <!-- RIGHT PHONE -->
-              <div style="position:absolute;right:30px;top:30px;bottom:30px;width:520px;display:flex;align-items:center;justify-content:center;">
+              <div style="position:absolute;right:20px;top:20px;bottom:20px;width:560px;display:flex;align-items:center;justify-content:center;">
                 <div style="transform:perspective(1400px) rotateY(-12deg) rotateX(3deg) rotate(3deg);">
                   <div style="position:relative;">
-                  <div style="position:absolute;inset:-30px;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0.15) 0%,transparent 70%);filter:blur(24px);pointer-events:none;z-index:0;"></div>
-                  <div style="width:300px;height:560px;background:#f5f5f5;border-radius:36px;border:none;overflow:hidden;position:relative;z-index:1;box-shadow:0 40px 100px rgba(0,0,0,0.3),0 0 0 8px rgba(0,0,0,0.08),0 0 0 9px rgba(255,255,255,0.6);">
-                    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:96px;height:21px;background:#1c1c1e;border-radius:0 0 12px 12px;z-index:10;"></div>
-                    <div style="position:absolute;top:7px;left:21px;right:21px;display:flex;justify-content:space-between;z-index:11;">
-                      <span style="font-size:9px;color:#1c1c1e;font-weight:600;">9:41</span>
-                      <div style="font-size:8px;color:#1c1c1e;">●●●</div>
-                    </div>
-                    <div style="position:absolute;top:26px;left:0;right:0;bottom:0;background:#fff;padding:8px;display:flex;flex-direction:column;gap:6px;overflow:hidden;">
-                      
-                <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.08);flex-shrink:0;">
-                  <div style="display:flex;align-items:center;gap:5px;">
-                    <div style="width:22px;height:22px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
-                    <div>
-                      <div style="font-size:8px;font-weight:700;color:#111827;">League Chat</div>
-                      <div style="font-size:6px;color:#9ca3af;">12 members</div>
-                    </div>
+                <div style="position:absolute;inset:-40px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.18) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;"></div>
+                <div style="width:300px;height:600px;background:linear-gradient(160deg,#181e2e 0%,#0d1117 60%);border-radius:38px;border:1.5px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(234,179,8,0.15),0 50px 120px rgba(0,0,0,0.85),20px 0 60px rgba(0,0,0,0.4);">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:96px;height:22px;background:#080a10;border-radius:0 0 13px 13px;z-index:10;"></div>
+                  <div style="position:absolute;top:7px;left:21px;right:21px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span>
+                    <div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div>
                   </div>
-                  <img src="/UFD_V8.png" style="height:13px;width:auto;">
-                </div>
-                <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:0;overflow:hidden;flex-shrink:0;">
-                  <div style="background:#fef9c3;border-bottom:1px solid #fde68a;padding:4px 8px;display:flex;align-items:center;gap:4px;">
-                    <img src="/UFD_V8.png" style="height:9px;width:auto;">
-                    <span style="font-size:7px;font-weight:700;color:#92400e;letter-spacing:0.04em;text-transform:uppercase;">Ultimate Fantasy Dashboard</span>
-                  </div>
-                  <div v-html="renderAdCard('history')" style="border-radius:0;overflow:hidden;"></div>
-                </div>
-                <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">the receipts go back 6 seasons 👀</div></div>
+                  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div>
+                  <div style="position:absolute;top:28px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <div style="display:flex;align-items:center;gap:5px;">
+                        <div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
+                        <div><div style="font-size:8px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:6px;color:#6b7280;">12 members</div></div>
+                      </div>
+                      <img src="/UFD_V8.png" style="height:13px;width:auto;">
+                    </div>
+                    
+<div style="background:#131720;border:1px solid rgba(234,179,8,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:9px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:7px;">🏆 League History</div>
+  <div style="display:flex;gap:6px;margin-bottom:8px;">
+    <div style="flex:1;background:rgba(234,179,8,0.08);border-radius:7px;padding:7px;text-align:center;">
+      <div style="font-size:14px;">🥇</div>
+      <div style="font-size:8px;font-weight:700;color:#eab308;margin-top:2px;">Champion</div>
+      <div style="font-size:8px;color:#9ca3af;">Swamp Pirates</div>
+      <div style="font-size:7px;color:#6b7280;">2024</div>
+    </div>
+    <div style="flex:1;background:rgba(255,255,255,0.04);border-radius:7px;padding:7px;text-align:center;">
+      <div style="font-size:14px;">🥈</div>
+      <div style="font-size:8px;font-weight:700;color:#9ca3af;margin-top:2px;">Runner Up</div>
+      <div style="font-size:8px;color:#9ca3af;">NC Pale Hose</div>
+      <div style="font-size:7px;color:#6b7280;">2024</div>
+    </div>
+  </div>
+</div>
+<div style="background:#131720;border:1px solid rgba(234,179,8,0.15);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:8px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:6px;">📊 All-Time Leaderboard</div>
+  <div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:3px 6px;align-items:center;">
+    <span style="font-size:8px;color:#eab308;font-weight:800;">1</span><span style="font-size:9px;color:#e5e7eb;font-weight:700;">Swamp Pirates</span><span style="font-size:7px;color:#eab308;">🏆×3</span><span style="font-size:8px;color:#6b7280;">68-28</span><span style="font-size:8px;color:#22c55e;font-weight:700;">71%</span>
+    <span style="font-size:8px;color:#9ca3af;font-weight:800;">2</span><span style="font-size:9px;color:#d1d5db;">Ctrl Alt DeLauter</span><span style="font-size:7px;color:#eab308;">🏆×2</span><span style="font-size:8px;color:#6b7280;">62-34</span><span style="font-size:8px;color:#22c55e;font-weight:700;">65%</span>
+    <span style="font-size:8px;color:#9ca3af;font-weight:800;">3</span><span style="font-size:9px;color:#d1d5db;">The Projection</span><span style="font-size:7px;color:#6b7280;">🏆×1</span><span style="font-size:8px;color:#6b7280;">58-38</span><span style="font-size:8px;color:#eab308;font-weight:700;">60%</span>
+    <span style="font-size:8px;color:#9ca3af;font-weight:800;">4</span><span style="font-size:9px;color:#d1d5db;">NC Pale Hose</span><span style="font-size:7px;color:#6b7280;">—</span><span style="font-size:8px;color:#6b7280;">51-45</span><span style="font-size:8px;color:#6b7280;">53%</span>
+  </div>
+</div>
+                    <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">the receipts go back 6 seasons 👀</div></div>
 <div style="display:flex;justify-content:flex-end;margin-bottom:5px;"><div style="background:#34c759;color:#fff;font-size:9px;font-weight:600;padding:6px 10px;border-radius:14px 14px 2px 14px;max-width:78%;line-height:1.3;">I've been winning this league for years</div></div>
 <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">this is incredible, how??</div></div>
-                    </div>
-                    <div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:84px;height:3px;background:#1c1c1e;border-radius:2px;"></div>
                   </div>
-                </div>
+                  <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:84px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
                 </div>
               </div>
-
-              <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(transparent,rgba(254,243,199,0.6));pointer-events:none;"></div>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(transparent,rgba(8,12,20,0.7));pointer-events:none;"></div>
             </div>
             </div>
           </div>
@@ -2729,79 +2895,93 @@
           <!-- STORY 1080×1920 → 304×540 -->
           <div>
             <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Story · 1080×1920</div>
-            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.4);">
-            <div style="width:1080px;height:1920px;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);background:linear-gradient(160deg,#fef9e7 0%,#fffdf5 45%,#fef3c7 100%);">
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.25) 0%,transparent 55%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 10% 0%,rgba(255,255,255,0.9) 0%,transparent 40%);"></div>
-              <div style="position:absolute;top:0;left:0;right:0;height:7px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+            <div style="width:1080px;height:1920px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 40%,rgba(234,179,8,0.16) 0%,transparent 55%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.1) 0%,transparent 50%);"></div>
+              <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0));"></div>
 
-              <!-- TEXT below IG safe zone -->
-              <div style="position:absolute;top:240px;left:80px;right:80px;">
-                <div style="margin-bottom:36px;">
-                  <img src="/UFD_V8.png" style="height:100px;width:auto;display:block;">
+              <!-- TEXT — left column, tall, below IG safe zone (220px) -->
+              <div style="position:absolute;top:220px;left:72px;width:580px;bottom:100px;display:flex;flex-direction:column;justify-content:center;">
+                <div style="margin-bottom:52px;">
+                <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;">
+                  <span style="font-size:70px;font-weight:900;color:#1a3a6b;font-family:Arial,sans-serif;">ESPN</span>
+                  <span style="font-size:56px;color:rgba(255,255,255,0.2);font-weight:300;">+</span>
+                  <span style="font-size:70px;font-weight:900;color:#6001d1;font-family:Arial,sans-serif;">Yahoo</span>
+                  <span style="font-size:56px;color:#9ca3af;font-weight:500;">Fantasy Baseball</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:18px;margin-bottom:48px;">
-                  <div style="background:#1a3a6b;border-radius:10px;padding:7px 18px;">
-                    <span style="font-size:28px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span>
-                  </div>
-                  <span style="font-size:28px;color:rgba(0,0,0,0.25);font-weight:300;">+</span>
-                  <div style="background:#6001d1;border-radius:10px;padding:7px 18px;">
-                    <span style="font-size:28px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span>
-                  </div>
-                  <span style="font-size:26px;color:rgba(0,0,0,0.35);font-weight:500;margin-left:6px;">Fantasy Baseball</span>
-                </div>
-                <div style="font-size:104px;font-weight:900;color:#ca8a04;line-height:0.88;letter-spacing:-0.03em;margin-bottom:14px;">LEAGUE HISTORY</div>
-                <div style="font-size:88px;font-weight:900;color:#111827;line-height:0.92;letter-spacing:-0.03em;margin-bottom:44px;">HAS ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:38px;color:#374151;line-height:1.5;margin-bottom:56px;font-weight:400;">Every champion, every award, every season — all in one place. The receipts are in.</div>
+              </div>
+                <div style="font-size:108px;font-weight:900;color:#eab308;line-height:0.88;letter-spacing:-0.03em;margin-bottom:14px;">LEAGUE HISTORY</div>
+                <div style="font-size:90px;font-weight:900;color:#ffffff;line-height:0.92;letter-spacing:-0.03em;margin-bottom:48px;">HAS ENTERED THE LEAGUE CHAT.</div>
+                <div style="font-size:38px;color:#9ca3af;line-height:1.5;margin-bottom:60px;font-weight:400;">Every champion, every award, every season — all in one place. The receipts are in.</div>
                 <div style="display:inline-flex;">
-                  <div style="background:#111827;color:#fff;font-size:38px;font-weight:900;padding:26px 56px;border-radius:16px;letter-spacing:0.01em;display:flex;align-items:center;gap:16px;">
+                  <div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:38px;font-weight:900;padding:26px 52px;border-radius:16px;display:flex;align-items:center;gap:18px;">
                     Connect Your League Free
-                    <div style="background:#eab308;color:#111827;border-radius:10px;padding:8px 16px;font-size:32px;">→</div>
+                    <div style="background:#eab308;color:#0a0c14;border-radius:10px;padding:8px 18px;font-size:32px;font-weight:900;">→</div>
                   </div>
                 </div>
               </div>
 
-              <!-- PHONE lower half -->
-              <div style="position:absolute;bottom:200px;left:50%;transform:translateX(-50%);">
-                <div style="transform:perspective(1600px) rotateY(-10deg) rotateX(2deg) rotate(2deg);">
+              <!-- PHONE — right side, large, slightly off-screen, Monarch style -->
+              <div style="position:absolute;right:-60px;top:180px;bottom:-80px;width:720px;display:flex;align-items:center;justify-content:flex-end;">
+                <div style="transform:perspective(1600px) rotateY(-8deg) rotateX(1deg) rotate(2deg);">
                   <div style="position:relative;">
-                  <div style="position:absolute;inset:-30px;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0.15) 0%,transparent 70%);filter:blur(24px);pointer-events:none;z-index:0;"></div>
-                  <div style="width:340px;height:680px;background:#f5f5f5;border-radius:44px;border:none;overflow:hidden;position:relative;z-index:1;box-shadow:0 40px 100px rgba(0,0,0,0.3),0 0 0 8px rgba(0,0,0,0.08),0 0 0 9px rgba(255,255,255,0.6);">
-                    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:108px;height:25px;background:#1c1c1e;border-radius:0 0 14px 14px;z-index:10;"></div>
-                    <div style="position:absolute;top:8px;left:23px;right:23px;display:flex;justify-content:space-between;z-index:11;">
-                      <span style="font-size:9px;color:#1c1c1e;font-weight:600;">9:41</span>
-                      <div style="font-size:8px;color:#1c1c1e;">●●●</div>
-                    </div>
-                    <div style="position:absolute;top:32px;left:0;right:0;bottom:0;background:#fff;padding:8px;display:flex;flex-direction:column;gap:6px;overflow:hidden;">
-                      
-                <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.08);flex-shrink:0;">
-                  <div style="display:flex;align-items:center;gap:5px;">
-                    <div style="width:22px;height:22px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
-                    <div>
-                      <div style="font-size:8px;font-weight:700;color:#111827;">League Chat</div>
-                      <div style="font-size:6px;color:#9ca3af;">12 members</div>
-                    </div>
+                <div style="position:absolute;inset:-40px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.18) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;"></div>
+                <div style="width:380px;height:780px;background:linear-gradient(160deg,#181e2e 0%,#0d1117 60%);border-radius:48px;border:1.5px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(234,179,8,0.15),0 50px 120px rgba(0,0,0,0.85),20px 0 60px rgba(0,0,0,0.4);">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:121px;height:28px;background:#080a10;border-radius:0 0 17px 17px;z-index:10;"></div>
+                  <div style="position:absolute;top:10px;left:26px;right:26px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span>
+                    <div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div>
                   </div>
-                  <img src="/UFD_V8.png" style="height:13px;width:auto;">
-                </div>
-                <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:0;overflow:hidden;flex-shrink:0;">
-                  <div style="background:#fef9c3;border-bottom:1px solid #fde68a;padding:4px 8px;display:flex;align-items:center;gap:4px;">
-                    <img src="/UFD_V8.png" style="height:9px;width:auto;">
-                    <span style="font-size:7px;font-weight:700;color:#92400e;letter-spacing:0.04em;text-transform:uppercase;">Ultimate Fantasy Dashboard</span>
-                  </div>
-                  <div v-html="renderAdCard('history')" style="border-radius:0;overflow:hidden;"></div>
-                </div>
-                <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">the receipts go back 6 seasons 👀</div></div>
+                  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div>
+                  <div style="position:absolute;top:36px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <div style="display:flex;align-items:center;gap:5px;">
+                        <div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
+                        <div><div style="font-size:8px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:6px;color:#6b7280;">12 members</div></div>
+                      </div>
+                      <img src="/UFD_V8.png" style="height:13px;width:auto;">
+                    </div>
+                    
+<div style="background:#131720;border:1px solid rgba(234,179,8,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:9px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:7px;">🏆 League History</div>
+  <div style="display:flex;gap:6px;margin-bottom:8px;">
+    <div style="flex:1;background:rgba(234,179,8,0.08);border-radius:7px;padding:7px;text-align:center;">
+      <div style="font-size:14px;">🥇</div>
+      <div style="font-size:8px;font-weight:700;color:#eab308;margin-top:2px;">Champion</div>
+      <div style="font-size:8px;color:#9ca3af;">Swamp Pirates</div>
+      <div style="font-size:7px;color:#6b7280;">2024</div>
+    </div>
+    <div style="flex:1;background:rgba(255,255,255,0.04);border-radius:7px;padding:7px;text-align:center;">
+      <div style="font-size:14px;">🥈</div>
+      <div style="font-size:8px;font-weight:700;color:#9ca3af;margin-top:2px;">Runner Up</div>
+      <div style="font-size:8px;color:#9ca3af;">NC Pale Hose</div>
+      <div style="font-size:7px;color:#6b7280;">2024</div>
+    </div>
+  </div>
+</div>
+<div style="background:#131720;border:1px solid rgba(234,179,8,0.15);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:8px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:6px;">📊 All-Time Leaderboard</div>
+  <div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:3px 6px;align-items:center;">
+    <span style="font-size:8px;color:#eab308;font-weight:800;">1</span><span style="font-size:9px;color:#e5e7eb;font-weight:700;">Swamp Pirates</span><span style="font-size:7px;color:#eab308;">🏆×3</span><span style="font-size:8px;color:#6b7280;">68-28</span><span style="font-size:8px;color:#22c55e;font-weight:700;">71%</span>
+    <span style="font-size:8px;color:#9ca3af;font-weight:800;">2</span><span style="font-size:9px;color:#d1d5db;">Ctrl Alt DeLauter</span><span style="font-size:7px;color:#eab308;">🏆×2</span><span style="font-size:8px;color:#6b7280;">62-34</span><span style="font-size:8px;color:#22c55e;font-weight:700;">65%</span>
+    <span style="font-size:8px;color:#9ca3af;font-weight:800;">3</span><span style="font-size:9px;color:#d1d5db;">The Projection</span><span style="font-size:7px;color:#6b7280;">🏆×1</span><span style="font-size:8px;color:#6b7280;">58-38</span><span style="font-size:8px;color:#eab308;font-weight:700;">60%</span>
+    <span style="font-size:8px;color:#9ca3af;font-weight:800;">4</span><span style="font-size:9px;color:#d1d5db;">NC Pale Hose</span><span style="font-size:7px;color:#6b7280;">—</span><span style="font-size:8px;color:#6b7280;">51-45</span><span style="font-size:8px;color:#6b7280;">53%</span>
+  </div>
+</div>
+                    <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">the receipts go back 6 seasons 👀</div></div>
 <div style="display:flex;justify-content:flex-end;margin-bottom:5px;"><div style="background:#34c759;color:#fff;font-size:9px;font-weight:600;padding:6px 10px;border-radius:14px 14px 2px 14px;max-width:78%;line-height:1.3;">I've been winning this league for years</div></div>
 <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">this is incredible, how??</div></div>
-                    </div>
-                    <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:95px;height:3px;background:#1c1c1e;border-radius:2px;"></div>
                   </div>
-                </div>
+                  <div style="position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:106px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
                 </div>
               </div>
+                </div>
+                <!-- Fade at bottom like Monarch -->
+                <div style="position:absolute;bottom:0;left:0;right:0;height:300px;background:linear-gradient(transparent,rgba(8,12,20,0.95));pointer-events:none;"></div>
+              </div>
 
-              <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+              <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0));"></div>
             </div>
             </div>
           </div>
@@ -2811,88 +2991,116 @@
 
       <!-- ══ AD: HEAD-TO-HEAD RECORDS ══ -->
       <div>
-        <div style="font-size:13px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">5 of 5 · HEAD-TO-HEAD RECORDS</div>
-        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Square + Story. Screenshot each.</div>
-        <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;">
+        <div style="font-size:12px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">5 of 5 · HEAD-TO-HEAD RECORDS</div>
+        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Square + Story — screenshot each.</div>
+        <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap;">
 
           <!-- SQUARE 1080×1080 → 540×540 -->
           <div>
             <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Square · 1080×1080</div>
-            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.4);">
-            <div style="width:1080px;height:1080px;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);background:linear-gradient(135deg,#fef3c7 0%,#fff9e6 40%,#fde68a22 100%);">
-              <!-- Warm texture overlays like Monarch -->
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.2) 0%,transparent 55%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 0% 0%,rgba(255,255,255,0.8) 0%,transparent 50%);"></div>
-              <!-- Top gold bar -->
-              <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+            <div style="width:1080px;height:1080px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(234,179,8,0.14) 0%,transparent 50%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 90% 90%,rgba(234,179,8,0.08) 0%,transparent 45%);"></div>
+              <div style="position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0));"></div>
+              <div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,#eab308,#ca8a04,transparent);"></div>
 
               <!-- LEFT TEXT -->
-              <div style="position:absolute;left:72px;top:0;bottom:180px;right:520px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="margin-bottom:28px;">
-                  <img src="/UFD_V8.png" style="height:80px;width:auto;display:block;">
+              <div style="position:absolute;left:72px;top:0;bottom:180px;right:540px;display:flex;flex-direction:column;justify-content:center;">
+                <div style="margin-bottom:40px;">
+                <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
+                  <span style="font-size:38px;font-weight:900;color:#1a3a6b;font-family:Arial,sans-serif;">ESPN</span>
+                  <span style="font-size:30px;color:rgba(255,255,255,0.2);font-weight:300;">+</span>
+                  <span style="font-size:38px;font-weight:900;color:#6001d1;font-family:Arial,sans-serif;">Yahoo</span>
+                  <span style="font-size:30px;color:#9ca3af;font-weight:500;">Fantasy Baseball</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:40px;">
-                  <div style="background:#1a3a6b;border-radius:8px;padding:5px 12px;display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:18px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span>
-                  </div>
-                  <span style="font-size:20px;color:rgba(0,0,0,0.25);font-weight:300;">+</span>
-                  <div style="background:#6001d1;border-radius:8px;padding:5px 12px;display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:18px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span>
-                  </div>
-                  <span style="font-size:18px;color:rgba(0,0,0,0.3);font-weight:400;margin-left:4px;">Fantasy Baseball</span>
-                </div>
-                <div style="font-size:82px;font-weight:900;color:#ca8a04;line-height:0.9;letter-spacing:-0.03em;margin-bottom:10px;">HEAD-TO-HEAD RECORDS</div>
-                <div style="font-size:66px;font-weight:900;color:#111827;line-height:0.95;letter-spacing:-0.03em;margin-bottom:36px;">HAVE ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:24px;color:#374151;line-height:1.5;margin-bottom:48px;font-weight:400;max-width:400px;">Your all-time record against every team in your league. Some rivalries run deep.</div>
+              </div>
+                <div style="font-size:80px;font-weight:900;color:#eab308;line-height:0.9;letter-spacing:-0.03em;margin-bottom:10px;">HEAD-TO-HEAD RECORDS</div>
+                <div style="font-size:64px;font-weight:900;color:#ffffff;line-height:0.95;letter-spacing:-0.03em;margin-bottom:36px;">HAVE ENTERED THE LEAGUE CHAT.</div>
+                <div style="font-size:24px;color:#9ca3af;line-height:1.5;margin-bottom:48px;font-weight:400;max-width:400px;">Your all-time record against every team in your league. Some rivalries run deep.</div>
                 <div style="display:inline-flex;">
-                  <div style="background:#111827;color:#fff;font-size:22px;font-weight:900;padding:18px 36px;border-radius:12px;letter-spacing:0.01em;display:flex;align-items:center;gap:12px;">
+                  <div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:22px;font-weight:900;padding:18px 36px;border-radius:12px;letter-spacing:0.01em;display:flex;align-items:center;gap:12px;">
                     Connect Your League Free
-                    <div style="background:#eab308;color:#111827;border-radius:8px;padding:6px 12px;font-size:18px;">→</div>
+                    <div style="background:#eab308;color:#0a0c14;border-radius:8px;padding:6px 14px;font-size:18px;font-weight:900;">→</div>
                   </div>
                 </div>
               </div>
 
               <!-- RIGHT PHONE -->
-              <div style="position:absolute;right:30px;top:30px;bottom:30px;width:520px;display:flex;align-items:center;justify-content:center;">
+              <div style="position:absolute;right:20px;top:20px;bottom:20px;width:560px;display:flex;align-items:center;justify-content:center;">
                 <div style="transform:perspective(1400px) rotateY(-12deg) rotateX(3deg) rotate(3deg);">
                   <div style="position:relative;">
-                  <div style="position:absolute;inset:-30px;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0.15) 0%,transparent 70%);filter:blur(24px);pointer-events:none;z-index:0;"></div>
-                  <div style="width:300px;height:560px;background:#f5f5f5;border-radius:36px;border:none;overflow:hidden;position:relative;z-index:1;box-shadow:0 40px 100px rgba(0,0,0,0.3),0 0 0 8px rgba(0,0,0,0.08),0 0 0 9px rgba(255,255,255,0.6);">
-                    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:96px;height:21px;background:#1c1c1e;border-radius:0 0 12px 12px;z-index:10;"></div>
-                    <div style="position:absolute;top:7px;left:21px;right:21px;display:flex;justify-content:space-between;z-index:11;">
-                      <span style="font-size:9px;color:#1c1c1e;font-weight:600;">9:41</span>
-                      <div style="font-size:8px;color:#1c1c1e;">●●●</div>
-                    </div>
-                    <div style="position:absolute;top:26px;left:0;right:0;bottom:0;background:#fff;padding:8px;display:flex;flex-direction:column;gap:6px;overflow:hidden;">
-                      
-                <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.08);flex-shrink:0;">
-                  <div style="display:flex;align-items:center;gap:5px;">
-                    <div style="width:22px;height:22px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
-                    <div>
-                      <div style="font-size:8px;font-weight:700;color:#111827;">League Chat</div>
-                      <div style="font-size:6px;color:#9ca3af;">12 members</div>
-                    </div>
+                <div style="position:absolute;inset:-40px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.18) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;"></div>
+                <div style="width:300px;height:600px;background:linear-gradient(160deg,#181e2e 0%,#0d1117 60%);border-radius:38px;border:1.5px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(234,179,8,0.15),0 50px 120px rgba(0,0,0,0.85),20px 0 60px rgba(0,0,0,0.4);">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:96px;height:22px;background:#080a10;border-radius:0 0 13px 13px;z-index:10;"></div>
+                  <div style="position:absolute;top:7px;left:21px;right:21px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span>
+                    <div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div>
                   </div>
-                  <img src="/UFD_V8.png" style="height:13px;width:auto;">
-                </div>
-                <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:0;overflow:hidden;flex-shrink:0;">
-                  <div style="background:#fef9c3;border-bottom:1px solid #fde68a;padding:4px 8px;display:flex;align-items:center;gap:4px;">
-                    <img src="/UFD_V8.png" style="height:9px;width:auto;">
-                    <span style="font-size:7px;font-weight:700;color:#92400e;letter-spacing:0.04em;text-transform:uppercase;">Ultimate Fantasy Dashboard</span>
-                  </div>
-                  <div v-html="renderAdCard('matchup')" style="border-radius:0;overflow:hidden;"></div>
-                </div>
-                <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">4-18 all time?? I'm done 💀</div></div>
+                  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div>
+                  <div style="position:absolute;top:28px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <div style="display:flex;align-items:center;gap:5px;">
+                        <div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
+                        <div><div style="font-size:8px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:6px;color:#6b7280;">12 members</div></div>
+                      </div>
+                      <img src="/UFD_V8.png" style="height:13px;width:auto;">
+                    </div>
+                    
+<div style="background:#131720;border:1px solid rgba(249,115,22,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:9px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:7px;">⚔️ H2H Matrix</div>
+  <div style="overflow:hidden;">
+    <div style="display:grid;grid-template-columns:52px repeat(4,1fr);gap:2px;font-size:7px;">
+      <div style="color:#4b5563;"></div>
+      <div style="text-align:center;color:#6b7280;font-weight:700;padding:2px;">Pirates</div>
+      <div style="text-align:center;color:#6b7280;font-weight:700;padding:2px;">Pale Hose</div>
+      <div style="text-align:center;color:#6b7280;font-weight:700;padding:2px;">Ctrl Alt</div>
+      <div style="text-align:center;color:#6b7280;font-weight:700;padding:2px;">Projection</div>
+      <div style="color:#e5e7eb;font-weight:700;font-size:8px;">Pirates</div>
+      <div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:3px;padding:3px;color:#4b5563;">—</div>
+      <div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">12-4</div>
+      <div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">9-7</div>
+      <div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">11-5</div>
+      <div style="color:#e5e7eb;font-weight:700;font-size:8px;">Pale Hose</div>
+      <div style="text-align:center;background:rgba(239,68,68,0.12);border-radius:3px;padding:3px;color:#ef4444;font-weight:800;">4-12</div>
+      <div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:3px;padding:3px;color:#4b5563;">—</div>
+      <div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">8-8</div>
+      <div style="text-align:center;background:rgba(239,68,68,0.12);border-radius:3px;padding:3px;color:#ef4444;font-weight:800;">6-10</div>
+      <div style="color:#e5e7eb;font-weight:700;font-size:8px;">Ctrl Alt</div>
+      <div style="text-align:center;background:rgba(239,68,68,0.12);border-radius:3px;padding:3px;color:#ef4444;font-weight:800;">7-9</div>
+      <div style="text-align:center;background:rgba(239,68,68,0.12);border-radius:3px;padding:3px;color:#ef4444;font-weight:800;">8-8</div>
+      <div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:3px;padding:3px;color:#4b5563;">—</div>
+      <div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">10-6</div>
+    </div>
+  </div>
+</div>
+<div style="background:#131720;border:1px solid rgba(249,115,22,0.15);border-radius:9px;padding:8px 11px;flex-shrink:0;">
+  <div style="font-size:8px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:5px;">All-Time vs League</div>
+  <div style="display:flex;gap:4px;">
+    <div style="flex:1;text-align:center;background:rgba(34,197,94,0.08);border-radius:6px;padding:5px;">
+      <div style="font-size:13px;font-weight:900;color:#22c55e;">32-14</div>
+      <div style="font-size:7px;color:#6b7280;">your record</div>
+    </div>
+    <div style="flex:1;text-align:center;background:rgba(234,179,8,0.08);border-radius:6px;padding:5px;">
+      <div style="font-size:13px;font-weight:900;color:#eab308;">70%</div>
+      <div style="font-size:7px;color:#6b7280;">win rate</div>
+    </div>
+    <div style="flex:1;text-align:center;background:rgba(249,115,22,0.08);border-radius:6px;padding:5px;">
+      <div style="font-size:13px;font-weight:900;color:#f97316;">#1</div>
+      <div style="font-size:7px;color:#6b7280;">all-time rank</div>
+    </div>
+  </div>
+</div>
+                    <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">4-18 all time?? I'm done 💀</div></div>
 <div style="display:flex;justify-content:flex-end;margin-bottom:5px;"><div style="background:#34c759;color:#fff;font-size:9px;font-weight:600;padding:6px 10px;border-radius:14px 14px 2px 14px;max-width:78%;line-height:1.3;">some things you can't hide 😂</div></div>
 <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">where do I find this??</div></div>
-                    </div>
-                    <div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:84px;height:3px;background:#1c1c1e;border-radius:2px;"></div>
                   </div>
-                </div>
+                  <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:84px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
                 </div>
               </div>
-
-              <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(transparent,rgba(254,243,199,0.6));pointer-events:none;"></div>
+                </div>
+              </div>
+              <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(transparent,rgba(8,12,20,0.7));pointer-events:none;"></div>
             </div>
             </div>
           </div>
@@ -2900,79 +3108,111 @@
           <!-- STORY 1080×1920 → 304×540 -->
           <div>
             <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Story · 1080×1920</div>
-            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.4);">
-            <div style="width:1080px;height:1920px;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);background:linear-gradient(160deg,#fef9e7 0%,#fffdf5 45%,#fef3c7 100%);">
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.25) 0%,transparent 55%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 10% 0%,rgba(255,255,255,0.9) 0%,transparent 40%);"></div>
-              <div style="position:absolute;top:0;left:0;right:0;height:7px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+            <div style="width:1080px;height:1920px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 40%,rgba(234,179,8,0.16) 0%,transparent 55%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.1) 0%,transparent 50%);"></div>
+              <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0));"></div>
 
-              <!-- TEXT below IG safe zone -->
-              <div style="position:absolute;top:240px;left:80px;right:80px;">
-                <div style="margin-bottom:36px;">
-                  <img src="/UFD_V8.png" style="height:100px;width:auto;display:block;">
+              <!-- TEXT — left column, tall, below IG safe zone (220px) -->
+              <div style="position:absolute;top:220px;left:72px;width:580px;bottom:100px;display:flex;flex-direction:column;justify-content:center;">
+                <div style="margin-bottom:52px;">
+                <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;">
+                  <span style="font-size:70px;font-weight:900;color:#1a3a6b;font-family:Arial,sans-serif;">ESPN</span>
+                  <span style="font-size:56px;color:rgba(255,255,255,0.2);font-weight:300;">+</span>
+                  <span style="font-size:70px;font-weight:900;color:#6001d1;font-family:Arial,sans-serif;">Yahoo</span>
+                  <span style="font-size:56px;color:#9ca3af;font-weight:500;">Fantasy Baseball</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:18px;margin-bottom:48px;">
-                  <div style="background:#1a3a6b;border-radius:10px;padding:7px 18px;">
-                    <span style="font-size:28px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span>
-                  </div>
-                  <span style="font-size:28px;color:rgba(0,0,0,0.25);font-weight:300;">+</span>
-                  <div style="background:#6001d1;border-radius:10px;padding:7px 18px;">
-                    <span style="font-size:28px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span>
-                  </div>
-                  <span style="font-size:26px;color:rgba(0,0,0,0.35);font-weight:500;margin-left:6px;">Fantasy Baseball</span>
-                </div>
-                <div style="font-size:104px;font-weight:900;color:#ca8a04;line-height:0.88;letter-spacing:-0.03em;margin-bottom:14px;">HEAD-TO-HEAD RECORDS</div>
-                <div style="font-size:88px;font-weight:900;color:#111827;line-height:0.92;letter-spacing:-0.03em;margin-bottom:44px;">HAVE ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:38px;color:#374151;line-height:1.5;margin-bottom:56px;font-weight:400;">Your all-time record against every team in your league. Some rivalries run deep.</div>
+              </div>
+                <div style="font-size:108px;font-weight:900;color:#eab308;line-height:0.88;letter-spacing:-0.03em;margin-bottom:14px;">HEAD-TO-HEAD RECORDS</div>
+                <div style="font-size:90px;font-weight:900;color:#ffffff;line-height:0.92;letter-spacing:-0.03em;margin-bottom:48px;">HAVE ENTERED THE LEAGUE CHAT.</div>
+                <div style="font-size:38px;color:#9ca3af;line-height:1.5;margin-bottom:60px;font-weight:400;">Your all-time record against every team in your league. Some rivalries run deep.</div>
                 <div style="display:inline-flex;">
-                  <div style="background:#111827;color:#fff;font-size:38px;font-weight:900;padding:26px 56px;border-radius:16px;letter-spacing:0.01em;display:flex;align-items:center;gap:16px;">
+                  <div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:38px;font-weight:900;padding:26px 52px;border-radius:16px;display:flex;align-items:center;gap:18px;">
                     Connect Your League Free
-                    <div style="background:#eab308;color:#111827;border-radius:10px;padding:8px 16px;font-size:32px;">→</div>
+                    <div style="background:#eab308;color:#0a0c14;border-radius:10px;padding:8px 18px;font-size:32px;font-weight:900;">→</div>
                   </div>
                 </div>
               </div>
 
-              <!-- PHONE lower half -->
-              <div style="position:absolute;bottom:200px;left:50%;transform:translateX(-50%);">
-                <div style="transform:perspective(1600px) rotateY(-10deg) rotateX(2deg) rotate(2deg);">
+              <!-- PHONE — right side, large, slightly off-screen, Monarch style -->
+              <div style="position:absolute;right:-60px;top:180px;bottom:-80px;width:720px;display:flex;align-items:center;justify-content:flex-end;">
+                <div style="transform:perspective(1600px) rotateY(-8deg) rotateX(1deg) rotate(2deg);">
                   <div style="position:relative;">
-                  <div style="position:absolute;inset:-30px;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0.15) 0%,transparent 70%);filter:blur(24px);pointer-events:none;z-index:0;"></div>
-                  <div style="width:340px;height:680px;background:#f5f5f5;border-radius:44px;border:none;overflow:hidden;position:relative;z-index:1;box-shadow:0 40px 100px rgba(0,0,0,0.3),0 0 0 8px rgba(0,0,0,0.08),0 0 0 9px rgba(255,255,255,0.6);">
-                    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:108px;height:25px;background:#1c1c1e;border-radius:0 0 14px 14px;z-index:10;"></div>
-                    <div style="position:absolute;top:8px;left:23px;right:23px;display:flex;justify-content:space-between;z-index:11;">
-                      <span style="font-size:9px;color:#1c1c1e;font-weight:600;">9:41</span>
-                      <div style="font-size:8px;color:#1c1c1e;">●●●</div>
-                    </div>
-                    <div style="position:absolute;top:32px;left:0;right:0;bottom:0;background:#fff;padding:8px;display:flex;flex-direction:column;gap:6px;overflow:hidden;">
-                      
-                <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.08);flex-shrink:0;">
-                  <div style="display:flex;align-items:center;gap:5px;">
-                    <div style="width:22px;height:22px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
-                    <div>
-                      <div style="font-size:8px;font-weight:700;color:#111827;">League Chat</div>
-                      <div style="font-size:6px;color:#9ca3af;">12 members</div>
-                    </div>
+                <div style="position:absolute;inset:-40px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.18) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;"></div>
+                <div style="width:380px;height:780px;background:linear-gradient(160deg,#181e2e 0%,#0d1117 60%);border-radius:48px;border:1.5px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(234,179,8,0.15),0 50px 120px rgba(0,0,0,0.85),20px 0 60px rgba(0,0,0,0.4);">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:121px;height:28px;background:#080a10;border-radius:0 0 17px 17px;z-index:10;"></div>
+                  <div style="position:absolute;top:10px;left:26px;right:26px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span>
+                    <div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div>
                   </div>
-                  <img src="/UFD_V8.png" style="height:13px;width:auto;">
-                </div>
-                <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:0;overflow:hidden;flex-shrink:0;">
-                  <div style="background:#fef9c3;border-bottom:1px solid #fde68a;padding:4px 8px;display:flex;align-items:center;gap:4px;">
-                    <img src="/UFD_V8.png" style="height:9px;width:auto;">
-                    <span style="font-size:7px;font-weight:700;color:#92400e;letter-spacing:0.04em;text-transform:uppercase;">Ultimate Fantasy Dashboard</span>
-                  </div>
-                  <div v-html="renderAdCard('matchup')" style="border-radius:0;overflow:hidden;"></div>
-                </div>
-                <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">4-18 all time?? I'm done 💀</div></div>
+                  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div>
+                  <div style="position:absolute;top:36px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <div style="display:flex;align-items:center;gap:5px;">
+                        <div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div>
+                        <div><div style="font-size:8px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:6px;color:#6b7280;">12 members</div></div>
+                      </div>
+                      <img src="/UFD_V8.png" style="height:13px;width:auto;">
+                    </div>
+                    
+<div style="background:#131720;border:1px solid rgba(249,115,22,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;">
+  <div style="font-size:9px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:7px;">⚔️ H2H Matrix</div>
+  <div style="overflow:hidden;">
+    <div style="display:grid;grid-template-columns:52px repeat(4,1fr);gap:2px;font-size:7px;">
+      <div style="color:#4b5563;"></div>
+      <div style="text-align:center;color:#6b7280;font-weight:700;padding:2px;">Pirates</div>
+      <div style="text-align:center;color:#6b7280;font-weight:700;padding:2px;">Pale Hose</div>
+      <div style="text-align:center;color:#6b7280;font-weight:700;padding:2px;">Ctrl Alt</div>
+      <div style="text-align:center;color:#6b7280;font-weight:700;padding:2px;">Projection</div>
+      <div style="color:#e5e7eb;font-weight:700;font-size:8px;">Pirates</div>
+      <div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:3px;padding:3px;color:#4b5563;">—</div>
+      <div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">12-4</div>
+      <div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">9-7</div>
+      <div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">11-5</div>
+      <div style="color:#e5e7eb;font-weight:700;font-size:8px;">Pale Hose</div>
+      <div style="text-align:center;background:rgba(239,68,68,0.12);border-radius:3px;padding:3px;color:#ef4444;font-weight:800;">4-12</div>
+      <div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:3px;padding:3px;color:#4b5563;">—</div>
+      <div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">8-8</div>
+      <div style="text-align:center;background:rgba(239,68,68,0.12);border-radius:3px;padding:3px;color:#ef4444;font-weight:800;">6-10</div>
+      <div style="color:#e5e7eb;font-weight:700;font-size:8px;">Ctrl Alt</div>
+      <div style="text-align:center;background:rgba(239,68,68,0.12);border-radius:3px;padding:3px;color:#ef4444;font-weight:800;">7-9</div>
+      <div style="text-align:center;background:rgba(239,68,68,0.12);border-radius:3px;padding:3px;color:#ef4444;font-weight:800;">8-8</div>
+      <div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:3px;padding:3px;color:#4b5563;">—</div>
+      <div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">10-6</div>
+    </div>
+  </div>
+</div>
+<div style="background:#131720;border:1px solid rgba(249,115,22,0.15);border-radius:9px;padding:8px 11px;flex-shrink:0;">
+  <div style="font-size:8px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:5px;">All-Time vs League</div>
+  <div style="display:flex;gap:4px;">
+    <div style="flex:1;text-align:center;background:rgba(34,197,94,0.08);border-radius:6px;padding:5px;">
+      <div style="font-size:13px;font-weight:900;color:#22c55e;">32-14</div>
+      <div style="font-size:7px;color:#6b7280;">your record</div>
+    </div>
+    <div style="flex:1;text-align:center;background:rgba(234,179,8,0.08);border-radius:6px;padding:5px;">
+      <div style="font-size:13px;font-weight:900;color:#eab308;">70%</div>
+      <div style="font-size:7px;color:#6b7280;">win rate</div>
+    </div>
+    <div style="flex:1;text-align:center;background:rgba(249,115,22,0.08);border-radius:6px;padding:5px;">
+      <div style="font-size:13px;font-weight:900;color:#f97316;">#1</div>
+      <div style="font-size:7px;color:#6b7280;">all-time rank</div>
+    </div>
+  </div>
+</div>
+                    <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">4-18 all time?? I'm done 💀</div></div>
 <div style="display:flex;justify-content:flex-end;margin-bottom:5px;"><div style="background:#34c759;color:#fff;font-size:9px;font-weight:600;padding:6px 10px;border-radius:14px 14px 2px 14px;max-width:78%;line-height:1.3;">some things you can't hide 😂</div></div>
 <div style="display:flex;justify-content:flex-start;margin-bottom:5px;"><div style="background:#e5e7eb;color:#111827;font-size:9px;font-weight:500;padding:6px 10px;border-radius:14px 14px 14px 2px;max-width:78%;line-height:1.3;">where do I find this??</div></div>
-                    </div>
-                    <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:95px;height:3px;background:#1c1c1e;border-radius:2px;"></div>
                   </div>
-                </div>
+                  <div style="position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:106px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
                 </div>
               </div>
+                </div>
+                <!-- Fade at bottom like Monarch -->
+                <div style="position:absolute;bottom:0;left:0;right:0;height:300px;background:linear-gradient(transparent,rgba(8,12,20,0.95));pointer-events:none;"></div>
+              </div>
 
-              <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+              <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0));"></div>
             </div>
             </div>
           </div>
