@@ -23,6 +23,9 @@
       <button @click="activeType='stories'" :class="['type-tab', activeType==='stories'?'type-tab-active':'']">
         <span>📱</span> Stories
       </button>
+      <button @click="activeType='paidads'" :class="['type-tab', activeType==='paidads'?'type-tab-active':'']">
+        <span>📣</span> Paid Ads
+      </button>
     </div>
 
     <!-- FB COVER TAB -->
@@ -2115,7 +2118,606 @@
     </div>
   </template><!-- end stories tab -->
 
+  <!-- ══════════════════════════════════════════════════════════
+       PAID ADS TAB — "Has Entered the League Chat" Series
+  ══════════════════════════════════════════════════════════ -->
+  <template v-if="activeType === 'paidads'">
+    <div class="section-label">📣 Paid Ad Series — "Entered the League Chat" · Each has Square (1080×1080) + Story (1080×1920)</div>
+    <div style="display:flex;flex-direction:column;gap:80px;padding:24px 0;">
 
+
+      <!-- ══ AD: POWER RANKINGS ══ -->
+      <div>
+        <div style="font-size:13px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">1/5 · POWER RANKINGS</div>
+        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Same copy, two formats. Screenshot each one.</div>
+
+        <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;">
+
+          <!-- ── SQUARE 1080×1080 → displayed at 540×540 ── -->
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Square · 1080×1080</div>
+            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+            <div style="width:1080px;height:1080px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
+              <!-- BG -->
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(234,179,8,0.14) 0%,transparent 55%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 85% 80%,rgba(234,179,8,0.07) 0%,transparent 50%);"></div>
+              <!-- Accent left bar -->
+              <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:linear-gradient(180deg,#eab308,#ca8a04,transparent);"></div>
+              <!-- Top line -->
+              <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#eab308,#ca8a04,transparent);"></div>
+
+              <!-- LEFT: text block -->
+              <div style="position:absolute;left:72px;top:80px;right:560px;bottom:160px;display:flex;flex-direction:column;justify-content:center;">
+                <img src="/UFD_V8.png" style="height:80px;width:auto;margin-bottom:48px;">
+                <!-- Feature name -->
+                <div style="font-size:52px;font-weight:900;color:#eab308;line-height:0.95;letter-spacing:-0.02em;margin-bottom:8px;">POWER RANKINGS</div>
+                <!-- Catchphrase -->
+                <div style="font-size:44px;font-weight:900;color:#ffffff;line-height:1.0;letter-spacing:-0.02em;margin-bottom:36px;">HAVE ENTERED<br>THE LEAGUE CHAT.</div>
+                <!-- Tagline -->
+                <div style="font-size:22px;color:#9ca3af;line-height:1.5;margin-bottom:48px;font-weight:400;">Automatic weekly rankings so everyone knows who's actually good — and who's just lucky.</div>
+                <!-- CTA -->
+                <div style="display:inline-flex;">
+                  <div style="background:linear-gradient(135deg,#eab308,#ca8a04);color:#0a0c14;font-size:22px;font-weight:900;padding:18px 36px;border-radius:12px;letter-spacing:0.01em;">Get League Pass →</div>
+                </div>
+                <div style="font-size:14px;color:#374151;margin-top:24px;letter-spacing:0.04em;">ultimatefantasydashboard.com</div>
+              </div>
+
+              <!-- RIGHT: phone -->
+              <div style="position:absolute;right:40px;top:40px;bottom:40px;width:500px;display:flex;align-items:center;justify-content:center;">
+                <div style="position:absolute;width:300px;height:620px;border-radius:42px;background:radial-gradient(ellipse,rgba(234,179,8,0.15) 0%,transparent 70%);transform:perspective(1400px) rotateY(-10deg) rotateX(2deg) rotate(3deg);pointer-events:none;"></div>
+                <div style="width:300px;height:620px;background:#0a0d14;border-radius:42px;border:2px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;transform:perspective(1400px) rotateY(-10deg) rotateX(2deg) rotate(3deg);filter:drop-shadow(0 60px 120px rgba(0,0,0,0.9));">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:100px;height:24px;background:#080a10;border-radius:0 0 14px 14px;z-index:10;"></div>
+                  <div style="position:absolute;top:8px;left:18px;right:18px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:10px;color:#6b7280;font-weight:600;">9:41</span>
+                    <div style="width:12px;height:6px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
+                  </div>
+                  <div style="position:absolute;top:32px;left:0;right:0;bottom:0;background:#0d1117;padding:8px 10px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <img src="/UFD_V8.png" style="height:14px;width:auto;">
+                      <span style="font-size:7px;color:#eab308;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">Fantasy Baseball</span>
+                    </div>
+                    <div v-html="renderAdCard('powerrankings')" style="border-radius:8px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('prtrendchart')" style="border-radius:8px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('history')" style="border-radius:8px;overflow:hidden;flex-shrink:0;opacity:0.5;"></div>
+                  </div>
+                  <div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:70px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
+                </div>
+              </div>
+              <!-- IG safe zone -->
+              <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(transparent,rgba(8,10,16,0.5));pointer-events:none;"></div>
+            </div>
+            </div>
+          </div>
+
+          <!-- ── STORY 1080×1920 → displayed at 304×540 ── -->
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Story · 1080×1920</div>
+            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+            <div style="width:1080px;height:1920px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
+              <!-- BG -->
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 25%,rgba(234,179,8,0.18) 0%,transparent 55%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 95%,rgba(234,179,8,0.08) 0%,transparent 45%);"></div>
+              <div style="position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
+
+              <!-- TEXT — top section, below 220px IG safe zone -->
+              <div style="position:absolute;top:240px;left:80px;right:80px;">
+                <img src="/UFD_V8.png" style="height:100px;width:auto;margin-bottom:48px;">
+                <div style="font-size:96px;font-weight:900;color:#eab308;line-height:0.92;letter-spacing:-0.03em;margin-bottom:12px;">POWER RANKINGS</div>
+                <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:0.95;letter-spacing:-0.03em;margin-bottom:44px;">HAVE ENTERED THE LEAGUE CHAT.</div>
+                <div style="font-size:38px;color:#9ca3af;line-height:1.5;margin-bottom:56px;font-weight:400;">Automatic weekly rankings so everyone knows who's actually good — and who's just lucky.</div>
+                <div style="display:inline-flex;">
+                  <div style="background:linear-gradient(135deg,#eab308,#ca8a04);color:#0a0c14;font-size:40px;font-weight:900;padding:28px 64px;border-radius:18px;letter-spacing:0.01em;">Get League Pass →</div>
+                </div>
+              </div>
+
+              <!-- PHONE — lower half -->
+              <div style="position:absolute;bottom:200px;left:50%;transform:translateX(-50%);width:860px;height:740px;display:flex;align-items:center;justify-content:center;">
+                <div style="position:absolute;width:340px;height:700px;border-radius:46px;background:radial-gradient(ellipse,rgba(234,179,8,0.12) 0%,transparent 70%);transform:perspective(1600px) rotateY(-8deg) rotateX(1deg) rotate(2deg);pointer-events:none;"></div>
+                <div style="width:340px;height:700px;background:#0a0d14;border-radius:46px;border:2px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;transform:perspective(1600px) rotateY(-8deg) rotateX(1deg) rotate(2deg);filter:drop-shadow(0 80px 160px rgba(0,0,0,0.95));">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:116px;height:28px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div>
+                  <div style="position:absolute;top:10px;left:20px;right:20px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:11px;color:#6b7280;font-weight:600;">9:41</span>
+                    <div style="width:14px;height:7px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
+                  </div>
+                  <div style="position:absolute;top:36px;left:0;right:0;bottom:0;background:#0d1117;padding:10px 12px;display:flex;flex-direction:column;gap:9px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <img src="/UFD_V8.png" style="height:17px;width:auto;">
+                      <span style="font-size:8px;color:#eab308;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">Fantasy Baseball</span>
+                    </div>
+                    <div v-html="renderAdCard('powerrankings')" style="border-radius:10px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('prtrendchart')" style="border-radius:10px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('history')" style="border-radius:10px;overflow:hidden;flex-shrink:0;opacity:0.55;"></div>
+                    <div v-html="renderAdCard('season')" style="border-radius:10px;overflow:hidden;flex-shrink:0;opacity:0.35;"></div>
+                  </div>
+                  <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:90px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
+                </div>
+              </div>
+
+              <div style="position:absolute;bottom:210px;left:0;right:0;text-align:center;">
+                <div style="font-size:22px;color:#1e2130;letter-spacing:0.06em;">ultimatefantasydashboard.com</div>
+              </div>
+              <div style="position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
+            </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ══ AD: WIN PROBABILITY ══ -->
+      <div>
+        <div style="font-size:13px;font-weight:800;color:#06b6d4;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">2/5 · WIN PROBABILITY</div>
+        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Same copy, two formats. Screenshot each one.</div>
+
+        <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;">
+
+          <!-- ── SQUARE 1080×1080 → displayed at 540×540 ── -->
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Square · 1080×1080</div>
+            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+            <div style="width:1080px;height:1080px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
+              <!-- BG -->
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(6,182,212,0.14) 0%,transparent 55%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 85% 80%,rgba(6,182,212,0.07) 0%,transparent 50%);"></div>
+              <!-- Accent left bar -->
+              <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:linear-gradient(180deg,#06b6d4,#0891b2,transparent);"></div>
+              <!-- Top line -->
+              <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#06b6d4,#0891b2,transparent);"></div>
+
+              <!-- LEFT: text block -->
+              <div style="position:absolute;left:72px;top:80px;right:560px;bottom:160px;display:flex;flex-direction:column;justify-content:center;">
+                <img src="/UFD_V8.png" style="height:80px;width:auto;margin-bottom:48px;">
+                <!-- Feature name -->
+                <div style="font-size:52px;font-weight:900;color:#06b6d4;line-height:0.95;letter-spacing:-0.02em;margin-bottom:8px;">WIN PROBABILITY</div>
+                <!-- Catchphrase -->
+                <div style="font-size:44px;font-weight:900;color:#ffffff;line-height:1.0;letter-spacing:-0.02em;margin-bottom:36px;">HAS ENTERED<br>THE LEAGUE CHAT.</div>
+                <!-- Tagline -->
+                <div style="font-size:22px;color:#9ca3af;line-height:1.5;margin-bottom:48px;font-weight:400;">Daily odds on who wins your matchup. The drama builds all week.</div>
+                <!-- CTA -->
+                <div style="display:inline-flex;">
+                  <div style="background:linear-gradient(135deg,#06b6d4,#0891b2);color:#0a0c14;font-size:22px;font-weight:900;padding:18px 36px;border-radius:12px;letter-spacing:0.01em;">Get League Pass →</div>
+                </div>
+                <div style="font-size:14px;color:#374151;margin-top:24px;letter-spacing:0.04em;">ultimatefantasydashboard.com</div>
+              </div>
+
+              <!-- RIGHT: phone -->
+              <div style="position:absolute;right:40px;top:40px;bottom:40px;width:500px;display:flex;align-items:center;justify-content:center;">
+                <div style="position:absolute;width:300px;height:620px;border-radius:42px;background:radial-gradient(ellipse,rgba(6,182,212,0.15) 0%,transparent 70%);transform:perspective(1400px) rotateY(-10deg) rotateX(2deg) rotate(3deg);pointer-events:none;"></div>
+                <div style="width:300px;height:620px;background:#0a0d14;border-radius:42px;border:2px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;transform:perspective(1400px) rotateY(-10deg) rotateX(2deg) rotate(3deg);filter:drop-shadow(0 60px 120px rgba(0,0,0,0.9));">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:100px;height:24px;background:#080a10;border-radius:0 0 14px 14px;z-index:10;"></div>
+                  <div style="position:absolute;top:8px;left:18px;right:18px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:10px;color:#6b7280;font-weight:600;">9:41</span>
+                    <div style="width:12px;height:6px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
+                  </div>
+                  <div style="position:absolute;top:32px;left:0;right:0;bottom:0;background:#0d1117;padding:8px 10px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <img src="/UFD_V8.png" style="height:14px;width:auto;">
+                      <span style="font-size:7px;color:#06b6d4;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">Fantasy Baseball</span>
+                    </div>
+                    <div v-html="renderAdCard('winprob')" style="border-radius:8px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('matchupgraph')" style="border-radius:8px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('history')" style="border-radius:8px;overflow:hidden;flex-shrink:0;opacity:0.5;"></div>
+                  </div>
+                  <div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:70px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
+                </div>
+              </div>
+              <!-- IG safe zone -->
+              <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(transparent,rgba(8,10,16,0.5));pointer-events:none;"></div>
+            </div>
+            </div>
+          </div>
+
+          <!-- ── STORY 1080×1920 → displayed at 304×540 ── -->
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Story · 1080×1920</div>
+            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+            <div style="width:1080px;height:1920px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
+              <!-- BG -->
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 25%,rgba(6,182,212,0.18) 0%,transparent 55%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 95%,rgba(6,182,212,0.08) 0%,transparent 45%);"></div>
+              <div style="position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,transparent,#06b6d4,transparent);"></div>
+
+              <!-- TEXT — top section, below 220px IG safe zone -->
+              <div style="position:absolute;top:240px;left:80px;right:80px;">
+                <img src="/UFD_V8.png" style="height:100px;width:auto;margin-bottom:48px;">
+                <div style="font-size:96px;font-weight:900;color:#06b6d4;line-height:0.92;letter-spacing:-0.03em;margin-bottom:12px;">WIN PROBABILITY</div>
+                <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:0.95;letter-spacing:-0.03em;margin-bottom:44px;">HAS ENTERED THE LEAGUE CHAT.</div>
+                <div style="font-size:38px;color:#9ca3af;line-height:1.5;margin-bottom:56px;font-weight:400;">Daily odds on who wins your matchup. The drama builds all week.</div>
+                <div style="display:inline-flex;">
+                  <div style="background:linear-gradient(135deg,#06b6d4,#0891b2);color:#0a0c14;font-size:40px;font-weight:900;padding:28px 64px;border-radius:18px;letter-spacing:0.01em;">Get League Pass →</div>
+                </div>
+              </div>
+
+              <!-- PHONE — lower half -->
+              <div style="position:absolute;bottom:200px;left:50%;transform:translateX(-50%);width:860px;height:740px;display:flex;align-items:center;justify-content:center;">
+                <div style="position:absolute;width:340px;height:700px;border-radius:46px;background:radial-gradient(ellipse,rgba(6,182,212,0.12) 0%,transparent 70%);transform:perspective(1600px) rotateY(-8deg) rotateX(1deg) rotate(2deg);pointer-events:none;"></div>
+                <div style="width:340px;height:700px;background:#0a0d14;border-radius:46px;border:2px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;transform:perspective(1600px) rotateY(-8deg) rotateX(1deg) rotate(2deg);filter:drop-shadow(0 80px 160px rgba(0,0,0,0.95));">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:116px;height:28px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div>
+                  <div style="position:absolute;top:10px;left:20px;right:20px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:11px;color:#6b7280;font-weight:600;">9:41</span>
+                    <div style="width:14px;height:7px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
+                  </div>
+                  <div style="position:absolute;top:36px;left:0;right:0;bottom:0;background:#0d1117;padding:10px 12px;display:flex;flex-direction:column;gap:9px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <img src="/UFD_V8.png" style="height:17px;width:auto;">
+                      <span style="font-size:8px;color:#06b6d4;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">Fantasy Baseball</span>
+                    </div>
+                    <div v-html="renderAdCard('winprob')" style="border-radius:10px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('matchupgraph')" style="border-radius:10px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('history')" style="border-radius:10px;overflow:hidden;flex-shrink:0;opacity:0.55;"></div>
+                    <div v-html="renderAdCard('season')" style="border-radius:10px;overflow:hidden;flex-shrink:0;opacity:0.35;"></div>
+                  </div>
+                  <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:90px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
+                </div>
+              </div>
+
+              <div style="position:absolute;bottom:210px;left:0;right:0;text-align:center;">
+                <div style="font-size:22px;color:#1e2130;letter-spacing:0.06em;">ultimatefantasydashboard.com</div>
+              </div>
+              <div style="position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#06b6d4,transparent);"></div>
+            </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ══ AD: DRAFT GRADES ══ -->
+      <div>
+        <div style="font-size:13px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">3/5 · DRAFT GRADES</div>
+        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Same copy, two formats. Screenshot each one.</div>
+
+        <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;">
+
+          <!-- ── SQUARE 1080×1080 → displayed at 540×540 ── -->
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Square · 1080×1080</div>
+            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+            <div style="width:1080px;height:1080px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
+              <!-- BG -->
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(167,139,250,0.14) 0%,transparent 55%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 85% 80%,rgba(167,139,250,0.07) 0%,transparent 50%);"></div>
+              <!-- Accent left bar -->
+              <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:linear-gradient(180deg,#a78bfa,#7c3aed,transparent);"></div>
+              <!-- Top line -->
+              <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#a78bfa,#7c3aed,transparent);"></div>
+
+              <!-- LEFT: text block -->
+              <div style="position:absolute;left:72px;top:80px;right:560px;bottom:160px;display:flex;flex-direction:column;justify-content:center;">
+                <img src="/UFD_V8.png" style="height:80px;width:auto;margin-bottom:48px;">
+                <!-- Feature name -->
+                <div style="font-size:52px;font-weight:900;color:#a78bfa;line-height:0.95;letter-spacing:-0.02em;margin-bottom:8px;">DRAFT GRADES</div>
+                <!-- Catchphrase -->
+                <div style="font-size:44px;font-weight:900;color:#ffffff;line-height:1.0;letter-spacing:-0.02em;margin-bottom:36px;">HAVE ENTERED<br>THE LEAGUE CHAT.</div>
+                <!-- Tagline -->
+                <div style="font-size:22px;color:#9ca3af;line-height:1.5;margin-bottom:48px;font-weight:400;">Every pick in your draft, graded. Find out who built a winner and who reached.</div>
+                <!-- CTA -->
+                <div style="display:inline-flex;">
+                  <div style="background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#0a0c14;font-size:22px;font-weight:900;padding:18px 36px;border-radius:12px;letter-spacing:0.01em;">Get League Pass →</div>
+                </div>
+                <div style="font-size:14px;color:#374151;margin-top:24px;letter-spacing:0.04em;">ultimatefantasydashboard.com</div>
+              </div>
+
+              <!-- RIGHT: phone -->
+              <div style="position:absolute;right:40px;top:40px;bottom:40px;width:500px;display:flex;align-items:center;justify-content:center;">
+                <div style="position:absolute;width:300px;height:620px;border-radius:42px;background:radial-gradient(ellipse,rgba(167,139,250,0.15) 0%,transparent 70%);transform:perspective(1400px) rotateY(-10deg) rotateX(2deg) rotate(3deg);pointer-events:none;"></div>
+                <div style="width:300px;height:620px;background:#0a0d14;border-radius:42px;border:2px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;transform:perspective(1400px) rotateY(-10deg) rotateX(2deg) rotate(3deg);filter:drop-shadow(0 60px 120px rgba(0,0,0,0.9));">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:100px;height:24px;background:#080a10;border-radius:0 0 14px 14px;z-index:10;"></div>
+                  <div style="position:absolute;top:8px;left:18px;right:18px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:10px;color:#6b7280;font-weight:600;">9:41</span>
+                    <div style="width:12px;height:6px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
+                  </div>
+                  <div style="position:absolute;top:32px;left:0;right:0;bottom:0;background:#0d1117;padding:8px 10px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <img src="/UFD_V8.png" style="height:14px;width:auto;">
+                      <span style="font-size:7px;color:#a78bfa;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">Fantasy Baseball</span>
+                    </div>
+                    <div v-html="renderAdCard('draft')" style="border-radius:8px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('season')" style="border-radius:8px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('history')" style="border-radius:8px;overflow:hidden;flex-shrink:0;opacity:0.5;"></div>
+                  </div>
+                  <div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:70px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
+                </div>
+              </div>
+              <!-- IG safe zone -->
+              <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(transparent,rgba(8,10,16,0.5));pointer-events:none;"></div>
+            </div>
+            </div>
+          </div>
+
+          <!-- ── STORY 1080×1920 → displayed at 304×540 ── -->
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Story · 1080×1920</div>
+            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+            <div style="width:1080px;height:1920px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
+              <!-- BG -->
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 25%,rgba(167,139,250,0.18) 0%,transparent 55%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 95%,rgba(167,139,250,0.08) 0%,transparent 45%);"></div>
+              <div style="position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,transparent,#a78bfa,transparent);"></div>
+
+              <!-- TEXT — top section, below 220px IG safe zone -->
+              <div style="position:absolute;top:240px;left:80px;right:80px;">
+                <img src="/UFD_V8.png" style="height:100px;width:auto;margin-bottom:48px;">
+                <div style="font-size:96px;font-weight:900;color:#a78bfa;line-height:0.92;letter-spacing:-0.03em;margin-bottom:12px;">DRAFT GRADES</div>
+                <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:0.95;letter-spacing:-0.03em;margin-bottom:44px;">HAVE ENTERED THE LEAGUE CHAT.</div>
+                <div style="font-size:38px;color:#9ca3af;line-height:1.5;margin-bottom:56px;font-weight:400;">Every pick in your draft, graded. Find out who built a winner and who reached.</div>
+                <div style="display:inline-flex;">
+                  <div style="background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#0a0c14;font-size:40px;font-weight:900;padding:28px 64px;border-radius:18px;letter-spacing:0.01em;">Get League Pass →</div>
+                </div>
+              </div>
+
+              <!-- PHONE — lower half -->
+              <div style="position:absolute;bottom:200px;left:50%;transform:translateX(-50%);width:860px;height:740px;display:flex;align-items:center;justify-content:center;">
+                <div style="position:absolute;width:340px;height:700px;border-radius:46px;background:radial-gradient(ellipse,rgba(167,139,250,0.12) 0%,transparent 70%);transform:perspective(1600px) rotateY(-8deg) rotateX(1deg) rotate(2deg);pointer-events:none;"></div>
+                <div style="width:340px;height:700px;background:#0a0d14;border-radius:46px;border:2px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;transform:perspective(1600px) rotateY(-8deg) rotateX(1deg) rotate(2deg);filter:drop-shadow(0 80px 160px rgba(0,0,0,0.95));">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:116px;height:28px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div>
+                  <div style="position:absolute;top:10px;left:20px;right:20px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:11px;color:#6b7280;font-weight:600;">9:41</span>
+                    <div style="width:14px;height:7px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
+                  </div>
+                  <div style="position:absolute;top:36px;left:0;right:0;bottom:0;background:#0d1117;padding:10px 12px;display:flex;flex-direction:column;gap:9px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <img src="/UFD_V8.png" style="height:17px;width:auto;">
+                      <span style="font-size:8px;color:#a78bfa;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">Fantasy Baseball</span>
+                    </div>
+                    <div v-html="renderAdCard('draft')" style="border-radius:10px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('season')" style="border-radius:10px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('history')" style="border-radius:10px;overflow:hidden;flex-shrink:0;opacity:0.55;"></div>
+                    <div v-html="renderAdCard('season')" style="border-radius:10px;overflow:hidden;flex-shrink:0;opacity:0.35;"></div>
+                  </div>
+                  <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:90px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
+                </div>
+              </div>
+
+              <div style="position:absolute;bottom:210px;left:0;right:0;text-align:center;">
+                <div style="font-size:22px;color:#1e2130;letter-spacing:0.06em;">ultimatefantasydashboard.com</div>
+              </div>
+              <div style="position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#a78bfa,transparent);"></div>
+            </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ══ AD: LEAGUE HISTORY ══ -->
+      <div>
+        <div style="font-size:13px;font-weight:800;color:#22c55e;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">4/5 · LEAGUE HISTORY</div>
+        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Same copy, two formats. Screenshot each one.</div>
+
+        <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;">
+
+          <!-- ── SQUARE 1080×1080 → displayed at 540×540 ── -->
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Square · 1080×1080</div>
+            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+            <div style="width:1080px;height:1080px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
+              <!-- BG -->
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(34,197,94,0.14) 0%,transparent 55%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 85% 80%,rgba(34,197,94,0.07) 0%,transparent 50%);"></div>
+              <!-- Accent left bar -->
+              <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:linear-gradient(180deg,#22c55e,#16a34a,transparent);"></div>
+              <!-- Top line -->
+              <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#22c55e,#16a34a,transparent);"></div>
+
+              <!-- LEFT: text block -->
+              <div style="position:absolute;left:72px;top:80px;right:560px;bottom:160px;display:flex;flex-direction:column;justify-content:center;">
+                <img src="/UFD_V8.png" style="height:80px;width:auto;margin-bottom:48px;">
+                <!-- Feature name -->
+                <div style="font-size:52px;font-weight:900;color:#22c55e;line-height:0.95;letter-spacing:-0.02em;margin-bottom:8px;">LEAGUE HISTORY</div>
+                <!-- Catchphrase -->
+                <div style="font-size:44px;font-weight:900;color:#ffffff;line-height:1.0;letter-spacing:-0.02em;margin-bottom:36px;">HAS ENTERED<br>THE LEAGUE CHAT.</div>
+                <!-- Tagline -->
+                <div style="font-size:22px;color:#9ca3af;line-height:1.5;margin-bottom:48px;font-weight:400;">Every champion, every award, every season — all in one place. The receipts are in.</div>
+                <!-- CTA -->
+                <div style="display:inline-flex;">
+                  <div style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#0a0c14;font-size:22px;font-weight:900;padding:18px 36px;border-radius:12px;letter-spacing:0.01em;">Get League Pass →</div>
+                </div>
+                <div style="font-size:14px;color:#374151;margin-top:24px;letter-spacing:0.04em;">ultimatefantasydashboard.com</div>
+              </div>
+
+              <!-- RIGHT: phone -->
+              <div style="position:absolute;right:40px;top:40px;bottom:40px;width:500px;display:flex;align-items:center;justify-content:center;">
+                <div style="position:absolute;width:300px;height:620px;border-radius:42px;background:radial-gradient(ellipse,rgba(34,197,94,0.15) 0%,transparent 70%);transform:perspective(1400px) rotateY(-10deg) rotateX(2deg) rotate(3deg);pointer-events:none;"></div>
+                <div style="width:300px;height:620px;background:#0a0d14;border-radius:42px;border:2px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;transform:perspective(1400px) rotateY(-10deg) rotateX(2deg) rotate(3deg);filter:drop-shadow(0 60px 120px rgba(0,0,0,0.9));">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:100px;height:24px;background:#080a10;border-radius:0 0 14px 14px;z-index:10;"></div>
+                  <div style="position:absolute;top:8px;left:18px;right:18px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:10px;color:#6b7280;font-weight:600;">9:41</span>
+                    <div style="width:12px;height:6px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
+                  </div>
+                  <div style="position:absolute;top:32px;left:0;right:0;bottom:0;background:#0d1117;padding:8px 10px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <img src="/UFD_V8.png" style="height:14px;width:auto;">
+                      <span style="font-size:7px;color:#22c55e;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">Fantasy Baseball</span>
+                    </div>
+                    <div v-html="renderAdCard('history')" style="border-radius:8px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('season')" style="border-radius:8px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('history')" style="border-radius:8px;overflow:hidden;flex-shrink:0;opacity:0.5;"></div>
+                  </div>
+                  <div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:70px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
+                </div>
+              </div>
+              <!-- IG safe zone -->
+              <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(transparent,rgba(8,10,16,0.5));pointer-events:none;"></div>
+            </div>
+            </div>
+          </div>
+
+          <!-- ── STORY 1080×1920 → displayed at 304×540 ── -->
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Story · 1080×1920</div>
+            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+            <div style="width:1080px;height:1920px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
+              <!-- BG -->
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 25%,rgba(34,197,94,0.18) 0%,transparent 55%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 95%,rgba(34,197,94,0.08) 0%,transparent 45%);"></div>
+              <div style="position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,transparent,#22c55e,transparent);"></div>
+
+              <!-- TEXT — top section, below 220px IG safe zone -->
+              <div style="position:absolute;top:240px;left:80px;right:80px;">
+                <img src="/UFD_V8.png" style="height:100px;width:auto;margin-bottom:48px;">
+                <div style="font-size:96px;font-weight:900;color:#22c55e;line-height:0.92;letter-spacing:-0.03em;margin-bottom:12px;">LEAGUE HISTORY</div>
+                <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:0.95;letter-spacing:-0.03em;margin-bottom:44px;">HAS ENTERED THE LEAGUE CHAT.</div>
+                <div style="font-size:38px;color:#9ca3af;line-height:1.5;margin-bottom:56px;font-weight:400;">Every champion, every award, every season — all in one place. The receipts are in.</div>
+                <div style="display:inline-flex;">
+                  <div style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#0a0c14;font-size:40px;font-weight:900;padding:28px 64px;border-radius:18px;letter-spacing:0.01em;">Get League Pass →</div>
+                </div>
+              </div>
+
+              <!-- PHONE — lower half -->
+              <div style="position:absolute;bottom:200px;left:50%;transform:translateX(-50%);width:860px;height:740px;display:flex;align-items:center;justify-content:center;">
+                <div style="position:absolute;width:340px;height:700px;border-radius:46px;background:radial-gradient(ellipse,rgba(34,197,94,0.12) 0%,transparent 70%);transform:perspective(1600px) rotateY(-8deg) rotateX(1deg) rotate(2deg);pointer-events:none;"></div>
+                <div style="width:340px;height:700px;background:#0a0d14;border-radius:46px;border:2px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;transform:perspective(1600px) rotateY(-8deg) rotateX(1deg) rotate(2deg);filter:drop-shadow(0 80px 160px rgba(0,0,0,0.95));">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:116px;height:28px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div>
+                  <div style="position:absolute;top:10px;left:20px;right:20px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:11px;color:#6b7280;font-weight:600;">9:41</span>
+                    <div style="width:14px;height:7px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
+                  </div>
+                  <div style="position:absolute;top:36px;left:0;right:0;bottom:0;background:#0d1117;padding:10px 12px;display:flex;flex-direction:column;gap:9px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <img src="/UFD_V8.png" style="height:17px;width:auto;">
+                      <span style="font-size:8px;color:#22c55e;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">Fantasy Baseball</span>
+                    </div>
+                    <div v-html="renderAdCard('history')" style="border-radius:10px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('season')" style="border-radius:10px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('history')" style="border-radius:10px;overflow:hidden;flex-shrink:0;opacity:0.55;"></div>
+                    <div v-html="renderAdCard('season')" style="border-radius:10px;overflow:hidden;flex-shrink:0;opacity:0.35;"></div>
+                  </div>
+                  <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:90px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
+                </div>
+              </div>
+
+              <div style="position:absolute;bottom:210px;left:0;right:0;text-align:center;">
+                <div style="font-size:22px;color:#1e2130;letter-spacing:0.06em;">ultimatefantasydashboard.com</div>
+              </div>
+              <div style="position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#22c55e,transparent);"></div>
+            </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ══ AD: HEAD-TO-HEAD RECORDS ══ -->
+      <div>
+        <div style="font-size:13px;font-weight:800;color:#f97316;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">5/5 · HEAD-TO-HEAD RECORDS</div>
+        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Same copy, two formats. Screenshot each one.</div>
+
+        <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;">
+
+          <!-- ── SQUARE 1080×1080 → displayed at 540×540 ── -->
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Square · 1080×1080</div>
+            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+            <div style="width:1080px;height:1080px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
+              <!-- BG -->
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(249,115,22,0.14) 0%,transparent 55%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 85% 80%,rgba(249,115,22,0.07) 0%,transparent 50%);"></div>
+              <!-- Accent left bar -->
+              <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:linear-gradient(180deg,#f97316,#ea580c,transparent);"></div>
+              <!-- Top line -->
+              <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#f97316,#ea580c,transparent);"></div>
+
+              <!-- LEFT: text block -->
+              <div style="position:absolute;left:72px;top:80px;right:560px;bottom:160px;display:flex;flex-direction:column;justify-content:center;">
+                <img src="/UFD_V8.png" style="height:80px;width:auto;margin-bottom:48px;">
+                <!-- Feature name -->
+                <div style="font-size:52px;font-weight:900;color:#f97316;line-height:0.95;letter-spacing:-0.02em;margin-bottom:8px;">HEAD-TO-HEAD RECORDS</div>
+                <!-- Catchphrase -->
+                <div style="font-size:44px;font-weight:900;color:#ffffff;line-height:1.0;letter-spacing:-0.02em;margin-bottom:36px;">HAVE ENTERED<br>THE LEAGUE CHAT.</div>
+                <!-- Tagline -->
+                <div style="font-size:22px;color:#9ca3af;line-height:1.5;margin-bottom:48px;font-weight:400;">Your all-time record against every team in your league. Some rivalries run deep.</div>
+                <!-- CTA -->
+                <div style="display:inline-flex;">
+                  <div style="background:linear-gradient(135deg,#f97316,#ea580c);color:#0a0c14;font-size:22px;font-weight:900;padding:18px 36px;border-radius:12px;letter-spacing:0.01em;">Get League Pass →</div>
+                </div>
+                <div style="font-size:14px;color:#374151;margin-top:24px;letter-spacing:0.04em;">ultimatefantasydashboard.com</div>
+              </div>
+
+              <!-- RIGHT: phone -->
+              <div style="position:absolute;right:40px;top:40px;bottom:40px;width:500px;display:flex;align-items:center;justify-content:center;">
+                <div style="position:absolute;width:300px;height:620px;border-radius:42px;background:radial-gradient(ellipse,rgba(249,115,22,0.15) 0%,transparent 70%);transform:perspective(1400px) rotateY(-10deg) rotateX(2deg) rotate(3deg);pointer-events:none;"></div>
+                <div style="width:300px;height:620px;background:#0a0d14;border-radius:42px;border:2px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;transform:perspective(1400px) rotateY(-10deg) rotateX(2deg) rotate(3deg);filter:drop-shadow(0 60px 120px rgba(0,0,0,0.9));">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:100px;height:24px;background:#080a10;border-radius:0 0 14px 14px;z-index:10;"></div>
+                  <div style="position:absolute;top:8px;left:18px;right:18px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:10px;color:#6b7280;font-weight:600;">9:41</span>
+                    <div style="width:12px;height:6px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
+                  </div>
+                  <div style="position:absolute;top:32px;left:0;right:0;bottom:0;background:#0d1117;padding:8px 10px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <img src="/UFD_V8.png" style="height:14px;width:auto;">
+                      <span style="font-size:7px;color:#f97316;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">Fantasy Baseball</span>
+                    </div>
+                    <div v-html="renderAdCard('matchup')" style="border-radius:8px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('history')" style="border-radius:8px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('history')" style="border-radius:8px;overflow:hidden;flex-shrink:0;opacity:0.5;"></div>
+                  </div>
+                  <div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:70px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
+                </div>
+              </div>
+              <!-- IG safe zone -->
+              <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(transparent,rgba(8,10,16,0.5));pointer-events:none;"></div>
+            </div>
+            </div>
+          </div>
+
+          <!-- ── STORY 1080×1920 → displayed at 304×540 ── -->
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Story · 1080×1920</div>
+            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+            <div style="width:1080px;height:1920px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
+              <!-- BG -->
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 25%,rgba(249,115,22,0.18) 0%,transparent 55%);"></div>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 95%,rgba(249,115,22,0.08) 0%,transparent 45%);"></div>
+              <div style="position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,transparent,#f97316,transparent);"></div>
+
+              <!-- TEXT — top section, below 220px IG safe zone -->
+              <div style="position:absolute;top:240px;left:80px;right:80px;">
+                <img src="/UFD_V8.png" style="height:100px;width:auto;margin-bottom:48px;">
+                <div style="font-size:96px;font-weight:900;color:#f97316;line-height:0.92;letter-spacing:-0.03em;margin-bottom:12px;">HEAD-TO-HEAD RECORDS</div>
+                <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:0.95;letter-spacing:-0.03em;margin-bottom:44px;">HAVE ENTERED THE LEAGUE CHAT.</div>
+                <div style="font-size:38px;color:#9ca3af;line-height:1.5;margin-bottom:56px;font-weight:400;">Your all-time record against every team in your league. Some rivalries run deep.</div>
+                <div style="display:inline-flex;">
+                  <div style="background:linear-gradient(135deg,#f97316,#ea580c);color:#0a0c14;font-size:40px;font-weight:900;padding:28px 64px;border-radius:18px;letter-spacing:0.01em;">Get League Pass →</div>
+                </div>
+              </div>
+
+              <!-- PHONE — lower half -->
+              <div style="position:absolute;bottom:200px;left:50%;transform:translateX(-50%);width:860px;height:740px;display:flex;align-items:center;justify-content:center;">
+                <div style="position:absolute;width:340px;height:700px;border-radius:46px;background:radial-gradient(ellipse,rgba(249,115,22,0.12) 0%,transparent 70%);transform:perspective(1600px) rotateY(-8deg) rotateX(1deg) rotate(2deg);pointer-events:none;"></div>
+                <div style="width:340px;height:700px;background:#0a0d14;border-radius:46px;border:2px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;transform:perspective(1600px) rotateY(-8deg) rotateX(1deg) rotate(2deg);filter:drop-shadow(0 80px 160px rgba(0,0,0,0.95));">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:116px;height:28px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div>
+                  <div style="position:absolute;top:10px;left:20px;right:20px;display:flex;justify-content:space-between;z-index:11;">
+                    <span style="font-size:11px;color:#6b7280;font-weight:600;">9:41</span>
+                    <div style="width:14px;height:7px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
+                  </div>
+                  <div style="position:absolute;top:36px;left:0;right:0;bottom:0;background:#0d1117;padding:10px 12px;display:flex;flex-direction:column;gap:9px;overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                      <img src="/UFD_V8.png" style="height:17px;width:auto;">
+                      <span style="font-size:8px;color:#f97316;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">Fantasy Baseball</span>
+                    </div>
+                    <div v-html="renderAdCard('matchup')" style="border-radius:10px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('history')" style="border-radius:10px;overflow:hidden;flex-shrink:0;"></div>
+                    <div v-html="renderAdCard('history')" style="border-radius:10px;overflow:hidden;flex-shrink:0;opacity:0.55;"></div>
+                    <div v-html="renderAdCard('season')" style="border-radius:10px;overflow:hidden;flex-shrink:0;opacity:0.35;"></div>
+                  </div>
+                  <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:90px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
+                </div>
+              </div>
+
+              <div style="position:absolute;bottom:210px;left:0;right:0;text-align:center;">
+                <div style="font-size:22px;color:#1e2130;letter-spacing:0.06em;">ultimatefantasydashboard.com</div>
+              </div>
+              <div style="position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#f97316,transparent);"></div>
+            </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </template><!-- end paid ads tab -->
 
   </div>
 </template>
