@@ -201,6 +201,11 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (signUpError) throw signUpError
 
+      // Meta Pixel - Account Created
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'CompleteRegistration')
+      }
+
       return { success: true, data }
     } catch (err: any) {
       error.value = extractErrorMessage(err, 'Sign up failed')
