@@ -115,7 +115,7 @@
               <button
                 @click="showLeagueDropdown = !showLeagueDropdown"
                 class="flex items-center gap-2 px-2 py-1 rounded-lg bg-dark-card/50 border border-dark-border/50 hover:border-primary/50 transition-colors"
-                :class="showLeagueHelper ? 'border-primary/70 shadow-[0_0_12px_rgba(34,197,94,0.35)]' : ''"
+                :class="[showLeagueHelper ? 'border-primary/70 shadow-[0_0_12px_rgba(34,197,94,0.35)]' : '', activeLeagueHasPass ? 'border-yellow-500/60 shadow-[0_0_10px_rgba(234,179,8,0.3)]' : '']"
               >
                 <template v-if="leagueStore.currentLeague">
                   <img 
@@ -407,7 +407,7 @@
                   <button
                     @click="showLeagueDropdown = !showLeagueDropdown"
                     class="flex items-center gap-1.5 px-3 py-2 bg-black/20 rounded-lg text-white text-sm"
-                    :class="showLeagueHelper ? 'ring-1 ring-primary/70 shadow-[0_0_10px_rgba(34,197,94,0.3)]' : ''"
+                    :class="[showLeagueHelper ? 'ring-1 ring-primary/70 shadow-[0_0_10px_rgba(34,197,94,0.3)]' : '', activeLeagueHasPass ? 'ring-1 ring-yellow-500/60 shadow-[0_0_8px_rgba(234,179,8,0.25)]' : '']"
                   >
                     <template v-if="leagueStore.currentLeague">
                       <img 
@@ -1005,6 +1005,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useSportStore, type Sport } from '@/stores/sport'
 import { usePlatformsStore } from '@/stores/platforms'
 import { espnService } from '@/services/espn'
+import { supabase } from '@/lib/supabase'
 import AuthModal from '@/components/AuthModal.vue'
 import LandingPage from '@/components/LandingPage.vue'
 import LeaguePassBanner from '@/components/LeaguePassBanner.vue'
@@ -1153,12 +1154,60 @@ function hasPreviousSportLeagues(currentIndex: number): boolean {
   return false
 }
 
-// Check if league has League Pass subscription
-function hasLeaguePass(league: any): boolean {
-  // TODO: Integrate with useFeatureAccess composable for real subscription check
-  // For now, return false - will be implemented with subscription system
-  return false
+// ─── League Pass badge logic ──────────────────────────────────────────────
+// Stores the set of league_ids that have an active League Pass.
+// Queried in bulk so every row in the dropdown can show the badge without
+// triggering individual per-league fetches.
+const leaguePassIds = ref<Set<string>>(new Set())
+
+async function fetchAllLeaguePasses() {
+  if (!supabase || !leagueStore.allLeagues?.length) return
+
+  const now = new Date().toISOString()
+  const allIds = leagueStore.allLeagues.flatMap(l => {
+    const ids = [l.league_id]
+    // Also include the short numeric ID (espn_baseball_6416_2026 → 6416)
+    const parts = l.league_id.split('_')
+    if (parts.length >= 3) ids.push(parts[2])
+    return ids
+  })
+
+  try {
+    const { data } = await supabase
+      .from('league_passes')
+      .select('league_id')
+      .in('league_id', allIds)
+      .eq('active', true)
+      .gt('expires_at', now)
+
+    const ids = new Set<string>(data?.map(r => r.league_id) ?? [])
+
+    // Map short IDs back to full league IDs so lookups always work
+    const resolved = new Set<string>()
+    for (const league of leagueStore.allLeagues) {
+      if (ids.has(league.league_id)) {
+        resolved.add(league.league_id)
+      } else {
+        const parts = league.league_id.split('_')
+        const shortId = parts.length >= 3 ? parts[2] : null
+        if (shortId && ids.has(shortId)) resolved.add(league.league_id)
+      }
+    }
+    leaguePassIds.value = resolved
+  } catch (err) {
+    console.warn('[App] fetchAllLeaguePasses error:', err)
+  }
 }
+
+function hasLeaguePass(league: any): boolean {
+  return leaguePassIds.value.has(league?.league_id)
+}
+
+// Active league has a pass — used to add glow to dropdown button
+const activeLeagueHasPass = computed(() =>
+  !!leagueStore.activeLeagueId && leaguePassIds.value.has(leagueStore.activeLeagueId)
+)
+// ─────────────────────────────────────────────────────────────────────────
 
 // Get sport emoji
 function getSportEmoji(sport: string): string {
@@ -1263,7 +1312,8 @@ async function handleAuthSuccess() {
 
 async function handleLeagueAdded(league: any) {
   showAddLeagueModal.value = false
-  dismissLeagueHelper() // User added a league — no need for the helper anymore
+  dismissLeagueHelper()
+  fetchAllLeaguePasses()
   
   if (authStore.user?.id && leagueStore.currentUsername) {
     // Map Sleeper sport codes to our sport types
@@ -1440,7 +1490,8 @@ onMounted(async () => {
   if (authStore.isAuthenticated && authStore.user?.id) {
     await leagueStore.loadSavedLeagues(authStore.user.id)
     leagueStore.refreshYahooLeagues(authStore.user.id)
-    platformsStore.fetchConnectedPlatforms() // load ESPN creds from Supabase for cross-device access
+    platformsStore.fetchConnectedPlatforms()
+    fetchAllLeaguePasses() // load pass badges for all leagues
     
     // Sync sport store with league store's persisted sport
     if (leagueStore.activeSport) {
@@ -1463,6 +1514,7 @@ watch(() => authStore.isAuthenticated, async (isAuth) => {
 
     await leagueStore.loadSavedLeagues(authStore.user.id)
     platformsStore.fetchConnectedPlatforms() // load ESPN creds from Supabase for cross-device access
+    fetchAllLeaguePasses() // refresh pass badges
     
     // Sync sport store with league store's persisted sport
     if (leagueStore.activeSport) {
