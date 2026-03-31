@@ -1890,6 +1890,29 @@
           <span v-if="mtStatus" style="font-size:12px;color:#f97316">{{ mtStatus }}</span>
           <span v-if="mtError" style="font-size:12px;color:#ef4444">{{ mtError }}</span>
         </div>
+        <!-- Yahoo session cookie (needed for auth) -->
+        <div style="margin-top:10px">
+          <button
+            @click="mtCookieVisible=!mtCookieVisible"
+            style="font-size:11px;color:#6b7280;background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">
+            {{ mtCookieVisible ? '▲ Hide' : '▼ Yahoo session cookie (required)' }}
+          </button>
+          <div v-if="mtCookieVisible" style="margin-top:8px">
+            <div style="font-size:11px;color:#4b5563;margin-bottom:4px">
+              Paste your Yahoo <code style="color:#f97316">Y</code> and <code style="color:#f97316">T</code> cookies below.<br/>
+              In Chrome DevTools → Application → Cookies → yahoo.com → copy <strong>Y</strong> and <strong>T</strong> values,
+              then paste as: <code style="color:#9ca3af;font-size:10px">Y=your_value; T=your_value</code>
+            </div>
+            <input
+              v-model="mtYahooCookie"
+              class="wp-input"
+              style="width:100%;font-size:11px;font-family:monospace"
+              placeholder="Y=ABC123...; T=DEF456..."
+              type="password"
+            />
+          </div>
+        </div>
+
         <!-- Manual overrides -->
         <div style="margin-top:12px">
           <div style="font-size:11px;color:#4b5563;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Manual Player Data (paste or edit after fetch)</div>
@@ -3961,6 +3984,9 @@ const mtLoading = ref(false)
 const mtStatus = ref('')
 const mtError = ref('')
 
+const mtYahooCookie = ref('')
+const mtCookieVisible = ref(false)
+
 const mtTimeframes = [
   { label: 'Today',       value: 'today',   trendtab: 'O' },
   { label: 'Last 7 Days', value: 'week',    trendtab: 'W' },
@@ -3984,13 +4010,16 @@ async function fetchMostTraded() {
     const trendtab = tf?.trendtab ?? 'O'
     const pos = mtPosition.value
 
-    const proxyUrl = `/api/yahoo-buzzindex?date=${today}&pos=${encodeURIComponent(pos)}&trendtab=${trendtab}&sort=BI_T`
+    const cookieParam = mtYahooCookie.value.trim()
+      ? `&cookie=${encodeURIComponent(mtYahooCookie.value.trim())}`
+      : ''
+    const proxyUrl = `/api/yahoo-buzzindex?date=${today}&pos=${encodeURIComponent(pos)}&trendtab=${trendtab}&sort=BI_T${cookieParam}`
     const res = await fetch(proxyUrl)
     const json = await res.json()
 
     // Auth required — Yahoo redirected to login
     if (json.error === 'auth_required') {
-      mtError.value = 'Yahoo requires a session cookie for this endpoint. Try opening the page while logged into Yahoo in this browser.'
+      mtError.value = 'Yahoo requires a session cookie — expand "Yahoo session cookie" below the fetch button, paste your Y and T cookies, then try again.'
       console.warn('[Most Traded] Auth required:', json.message)
       return
     }
