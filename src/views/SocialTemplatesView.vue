@@ -3982,72 +3982,41 @@ async function fetchMostTraded() {
     const today = new Date().toISOString().slice(0, 10)
     const tf = mtTimeframes.find(t => t.value === mtTimeframe.value)
     const trendtab = tf?.trendtab ?? 'O'
-    const pos = mtPosition.value === 'ALL' ? 'ALL' : mtPosition.value
+    const pos = mtPosition.value
 
-    // Attempt via Vercel proxy to avoid CORS — same pattern as ESPN proxy
-    const proxyUrl = `/api/yahoo-buzzindex?date=${today}&pos=${pos}&trendtab=${trendtab}&sort=BI_T&season=${mtSeason.value}`
+    const proxyUrl = `/api/yahoo-buzzindex?date=${today}&pos=${encodeURIComponent(pos)}&trendtab=${trendtab}&sort=BI_T`
     const res = await fetch(proxyUrl)
+    const json = await res.json()
 
-    if (!res.ok) {
-      // Proxy not set up yet — show the raw Yahoo URL for manual testing
-      mtError.value = `Proxy not configured yet (${res.status}). See console for direct URL.`
-      const directUrl = `https://baseball.fantasysports.yahoo.com/b1/buzzindex?date=${today}&pos=${encodeURIComponent(pos)}&src=combined&bimtab=A&trendtab=${trendtab}&sort=BI_T&sdir=1&pspid=782205891&activity=players_sort_click`
-      console.log('[Most Traded] Direct Yahoo URL:', directUrl)
-      mtStatus.value = 'Direct URL logged to console — open it in browser to verify data'
+    // Auth required — Yahoo redirected to login
+    if (json.error === 'auth_required') {
+      mtError.value = 'Yahoo requires a session cookie for this endpoint. Try opening the page while logged into Yahoo in this browser.'
+      console.warn('[Most Traded] Auth required:', json.message)
       return
     }
 
-    const html = await res.text()
-
-    // Parse the player table rows
-    // Yahoo renders rows as <tr> with player data cells
-    const rows = html.match(/<tr[^>]*class="[^"]*player[^"]*"[^>]*>[\s\S]*?<\/tr>/gi) || []
-
-    if (rows.length === 0) {
-      // Try alternate selector pattern
-      const tableMatch = html.match(/class="[^"]*ysf-player-name[^"]*"[\s\S]*?<\/table>/i)
-      if (!tableMatch) {
-        mtError.value = 'Could not parse response — Yahoo may have changed their HTML structure'
-        console.log('[Most Traded] Raw HTML sample:', html.slice(0, 2000))
-        return
-      }
+    if (!res.ok || json.error) {
+      mtError.value = json.message || `Proxy error (${res.status})`
+      console.error('[Most Traded] Proxy error:', json)
+      return
     }
 
-    const parsed: MtPlayer[] = []
-    for (const row of rows.slice(0, 10)) {
-      // Extract player name
-      const nameMatch = row.match(/class="[^"]*ysf-player-name[^"]*"[^>]*>\s*<a[^>]*>([^<]+)<\/a>/)
-        || row.match(/<a[^>]*class="[^"]*name[^"]*"[^>]*>([^<]+)<\/a>/)
-      const name = nameMatch?.[1]?.trim() || ''
-
-      // Extract team + position (usually "LAA - OF" format)
-      const teamPosMatch = row.match(/([A-Z]{2,4})\s*[-–]\s*([A-Z0-9,]+)/)
-      const team = teamPosMatch?.[1] || ''
-      const position = teamPosMatch?.[2] || ''
-
-      // Extract trade count — it's in a <td> near "Trades" column
-      // Yahoo typically puts it as the 6th or 7th <td>
-      const tds = row.match(/<td[^>]*>([^<]*)<\/td>/g) || []
-      let trades = 0
-      for (const td of tds) {
-        const num = parseInt(td.replace(/<[^>]+>/g, '').trim())
-        if (!isNaN(num) && num > trades && num < 10000) trades = num
-      }
-
-      if (name) parsed.push({ name, team, position, trades })
+    // Debug mode — proxy returned 0 players
+    if (json.players?.length === 0 && json.debug) {
+      mtError.value = 'Proxy returned 0 players — HTML parse may need adjustment. Check console.'
+      console.log('[Most Traded] Debug info:', json.debug)
+      return
     }
 
-    if (parsed.length > 0) {
-      // Sort by trades descending
-      parsed.sort((a, b) => b.trades - a.trades)
+    const players: MtPlayer[] = (json.players || []).slice(0, 10)
+    if (players.length > 0) {
       for (let i = 0; i < 10; i++) {
-        mtPlayers.value[i] = parsed[i] ?? { name: '', team: '', position: '', trades: 0 }
+        mtPlayers.value[i] = players[i] ?? { name: '', team: '', position: '', trades: 0 }
       }
-      mtStatus.value = `✓ Loaded ${parsed.length} players`
+      mtStatus.value = `✓ Loaded ${players.length} players (${tf?.label})`
       mtError.value = ''
     } else {
-      mtError.value = 'Parsed 0 players — HTML structure may differ. Check console.'
-      console.log('[Most Traded] Raw HTML (first 3000 chars):', html.slice(0, 3000))
+      mtError.value = 'No player data returned. Yahoo may require auth or the endpoint changed.'
     }
 
   } catch (err: any) {
