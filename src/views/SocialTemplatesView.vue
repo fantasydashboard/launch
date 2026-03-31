@@ -1849,7 +1849,159 @@
       </div>
     </div>
 
-  </template><!-- end interactive tab -->
+
+    <!-- ══════════════════════════════════════════════════════════
+         32 · MOST TRADED PLAYERS — Yahoo buzzindex live fetch
+    ══════════════════════════════════════════════════════════ -->
+    <div class="post-wrap wp-post-wrap">
+      <div class="post-label">32 · Most Traded Players — Yahoo (Live)</div>
+
+      <!-- ── Controls ── -->
+      <div class="wp-controls">
+        <div class="wp-ctrl-row">
+          <div class="wp-ctrl-group">
+            <label>Timeframe</label>
+            <div class="wp-pills">
+              <button v-for="tf in mtTimeframes" :key="tf.value"
+                @click="mtTimeframe=tf.value"
+                :class="mtTimeframe===tf.value?'wp-pill-on':'wp-pill-off'">{{ tf.label }}</button>
+            </div>
+          </div>
+          <div class="wp-ctrl-group">
+            <label>Position</label>
+            <div class="wp-pills" style="flex-wrap:wrap">
+              <button v-for="pos in mtPositions" :key="pos"
+                @click="mtPosition=pos"
+                :class="mtPosition===pos?'wp-pill-on':'wp-pill-off'">{{ pos }}</button>
+            </div>
+          </div>
+          <div class="wp-ctrl-group wp-ctrl-sm">
+            <label>Season</label>
+            <input v-model="mtSeason" class="wp-input" style="width:72px" placeholder="2026" />
+          </div>
+        </div>
+        <div class="wp-ctrl-row" style="align-items:center;gap:12px">
+          <button @click="fetchMostTraded"
+            :disabled="mtLoading"
+            style="padding:8px 18px;background:#f97316;color:#0a0c14;border:none;border-radius:8px;font-weight:800;font-size:13px;cursor:pointer;letter-spacing:0.04em;opacity:1"
+            :style="mtLoading?'opacity:0.5;cursor:not-allowed':''">
+            {{ mtLoading ? 'Fetching...' : '⬇ Fetch from Yahoo' }}
+          </button>
+          <span v-if="mtStatus" style="font-size:12px;color:#f97316">{{ mtStatus }}</span>
+          <span v-if="mtError" style="font-size:12px;color:#ef4444">{{ mtError }}</span>
+        </div>
+        <!-- Manual overrides -->
+        <div style="margin-top:12px">
+          <div style="font-size:11px;color:#4b5563;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Manual Player Data (paste or edit after fetch)</div>
+          <div v-for="(p, i) in mtPlayers" :key="'mtp'+i"
+            style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+            <span style="font-size:11px;color:#4b5563;width:16px;text-align:right">{{ i+1 }}</span>
+            <input v-model="p.name" class="wp-input" style="width:160px" :placeholder="'Player Name'" />
+            <input v-model="p.team" class="wp-input" style="width:54px" placeholder="LAA" />
+            <input v-model="p.position" class="wp-input" style="width:50px" placeholder="OF" />
+            <input v-model.number="p.trades" class="wp-input" style="width:56px" type="number" placeholder="28" />
+            <span style="font-size:11px;color:#4b5563">trades</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Screenshottable card ── -->
+      <div class="sq sq-wp-bg" style="height:640px">
+        <div class="sq-grain"></div>
+        <svg viewBox="0 0 540 640" xmlns="http://www.w3.org/2000/svg"
+          style="position:absolute;inset:0;width:100%;height:100%;z-index:2">
+          <defs>
+            <linearGradient id="mt-orange" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#f97316" stop-opacity="0.95"/>
+              <stop offset="100%" stop-color="#f97316" stop-opacity="0.2"/>
+            </linearGradient>
+            <radialGradient id="mt-glow" cx="15%" cy="50%" r="60%">
+              <stop offset="0%" stop-color="#f97316" stop-opacity="0.1"/>
+              <stop offset="100%" stop-color="#f97316" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+
+          <!-- BG -->
+          <rect x="0" y="0" width="540" height="640" fill="#07080e"/>
+          <rect x="0" y="0" width="540" height="640" fill="url(#mt-glow)"/>
+          <!-- Top accent bar -->
+          <rect x="0" y="0" width="540" height="5" fill="url(#mt-orange)"/>
+
+          <!-- ── HEADER ── -->
+          <!-- Logo top-right -->
+          <image href="/UFD_V8.png" x="370" y="8" width="128" height="68"
+            preserveAspectRatio="xMidYMid meet"/>
+
+          <!-- Big bold headline -->
+          <text x="20" y="46" font-size="28" font-weight="900" letter-spacing="-0.01em"
+            fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">MOST TRADED</text>
+          <text x="20" y="78" font-size="28" font-weight="900" letter-spacing="-0.01em"
+            fill="#f97316" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">PLAYERS</text>
+
+          <!-- Timeframe + date badge -->
+          <text x="20" y="104" font-size="13" font-weight="700" letter-spacing="0.06em"
+            fill="#f97316" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
+            {{ mtTimeframes.find(t=>t.value===mtTimeframe)?.label?.toUpperCase() }} · ⚾ FANTASY BASEBALL · YAHOO
+          </text>
+          <line x1="0" y1="116" x2="540" y2="116" stroke="#1e2130" stroke-width="1"/>
+
+          <!-- ── PLAYER ROWS (5 × 104px, start y=116) ── -->
+          <g v-for="(p, i) in mtPlayers.slice(0,5)" :key="'mtrow'+i">
+            <!-- Row bg -->
+            <rect x="0" :y="116+i*104" width="540" :height="103"
+              :fill="i===0?'rgba(249,115,22,0.1)':'rgba(255,255,255,0.012)'"/>
+            <line x1="0" :y1="116+(i+1)*104" x2="540" :y2="116+(i+1)*104"
+              stroke="#1e2130" stroke-width="1"/>
+
+            <!-- Rank number — large, left -->
+            <text x="22" :y="116+i*104+62" font-size="32" font-weight="900" text-anchor="middle"
+              :fill="i===0?'#f97316':'#1e2a3a'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ i+1 }}</text>
+
+            <!-- Orange left bar for #1 -->
+            <rect v-if="i===0" x="0" :y="116+i*104" width="4" :height="103" fill="#f97316"/>
+
+            <!-- Name -->
+            <text x="50" :y="116+i*104+45" font-size="20" font-weight="900"
+              fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.name || '—' }}</text>
+
+            <!-- Team · Position -->
+            <text x="50" :y="116+i*104+68" font-size="13" font-weight="600"
+              fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.team || '—' }} · {{ p.position || '—' }}</text>
+
+            <!-- Bar -->
+            <rect x="50" :y="116+i*104+80" width="280" height="4" rx="2"
+              fill="rgba(255,255,255,0.05)"/>
+            <rect x="50" :y="116+i*104+80"
+              :width="mtPlayers[0]?.trades>0 ? Math.min(280,(p.trades/mtPlayers[0].trades)*280) : 0"
+              height="4" rx="2"
+              :fill="i===0?'#f97316':'rgba(249,115,22,0.35)'"/>
+
+            <!-- Trade count — hero number right -->
+            <text x="520" :y="116+i*104+52" text-anchor="end"
+              :font-size="i===0?'42':'32'" font-weight="900"
+              :fill="i===0?'#f97316':'#374151'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.trades || 0 }}</text>
+            <text x="520" :y="116+i*104+72" text-anchor="end" font-size="11"
+              :fill="i===0?'#f97316':'#374151'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">TRADES</text>
+          </g>
+
+          <!-- Empty state -->
+          <text v-if="!mtPlayers.some(p=>p.name)" x="270" y="380" text-anchor="middle"
+            font-size="15" fill="#374151"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Fetch data or fill in players above</text>
+
+          <!-- Footer -->
+          <line x1="0" y1="633" x2="540" y2="633" stroke="#1e2130" stroke-width="1"/>
+          <text x="270" y="638" text-anchor="middle" font-size="9" fill="#1a1f2e"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
+        </svg>
+      </div>
+    </div>
+
+
+    </template><!-- end interactive tab -->
 
   <!-- ══════════════════════════════════════════════════════════
        STORIES TAB  — 9:16 vertical format (1080 × 1920 → displayed at 540×960)
@@ -3799,6 +3951,113 @@ const wplPath1Computed = computed(()=>wplD1.value.map((v,i)=>`${i===0?'M':'L'}${
 const wplPath2Computed = computed(()=>wplD2.value.map((v,i)=>`${i===0?'M':'L'}${wplSvgX(i)} ${wplSvgY(v)}`).join(' '))
 const wplFill1Computed = computed(()=>{ if(!wplD1.value.length) return ''; const n=wplD1.value.length; return wplPath1Computed.value+` L${wplSvgX(n-1)} 176 L48 176 Z` })
 const wplFill2Computed = computed(()=>{ if(!wplD2.value.length) return ''; const n=wplD2.value.length; return wplPath2Computed.value+` L${wplSvgX(n-1)} 176 L48 176 Z` })
+
+
+// ── Most Traded Players (Graphic 32) ─────────────────────────────────────
+const mtTimeframe = ref('today')
+const mtPosition = ref('ALL')
+const mtSeason = ref(new Date().getFullYear().toString())
+const mtLoading = ref(false)
+const mtStatus = ref('')
+const mtError = ref('')
+
+const mtTimeframes = [
+  { label: 'Today',       value: 'today',   trendtab: 'O' },
+  { label: 'Last 7 Days', value: 'week',    trendtab: 'W' },
+  { label: 'Last Month',  value: 'month',   trendtab: 'M' },
+]
+const mtPositions = ['ALL','C','1B','2B','3B','SS','OF','Util','SP','RP','P']
+
+interface MtPlayer { name: string; team: string; position: string; trades: number }
+const mtPlayers = ref<MtPlayer[]>(
+  Array.from({ length: 10 }, () => ({ name: '', team: '', position: '', trades: 0 }))
+)
+
+async function fetchMostTraded() {
+  mtLoading.value = true
+  mtError.value = ''
+  mtStatus.value = 'Connecting to Yahoo...'
+
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    const tf = mtTimeframes.find(t => t.value === mtTimeframe.value)
+    const trendtab = tf?.trendtab ?? 'O'
+    const pos = mtPosition.value === 'ALL' ? 'ALL' : mtPosition.value
+
+    // Attempt via Vercel proxy to avoid CORS — same pattern as ESPN proxy
+    const proxyUrl = `/api/yahoo-buzzindex?date=${today}&pos=${pos}&trendtab=${trendtab}&sort=BI_T&season=${mtSeason.value}`
+    const res = await fetch(proxyUrl)
+
+    if (!res.ok) {
+      // Proxy not set up yet — show the raw Yahoo URL for manual testing
+      mtError.value = `Proxy not configured yet (${res.status}). See console for direct URL.`
+      const directUrl = `https://baseball.fantasysports.yahoo.com/b1/buzzindex?date=${today}&pos=${encodeURIComponent(pos)}&src=combined&bimtab=A&trendtab=${trendtab}&sort=BI_T&sdir=1&pspid=782205891&activity=players_sort_click`
+      console.log('[Most Traded] Direct Yahoo URL:', directUrl)
+      mtStatus.value = 'Direct URL logged to console — open it in browser to verify data'
+      return
+    }
+
+    const html = await res.text()
+
+    // Parse the player table rows
+    // Yahoo renders rows as <tr> with player data cells
+    const rows = html.match(/<tr[^>]*class="[^"]*player[^"]*"[^>]*>[\s\S]*?<\/tr>/gi) || []
+
+    if (rows.length === 0) {
+      // Try alternate selector pattern
+      const tableMatch = html.match(/class="[^"]*ysf-player-name[^"]*"[\s\S]*?<\/table>/i)
+      if (!tableMatch) {
+        mtError.value = 'Could not parse response — Yahoo may have changed their HTML structure'
+        console.log('[Most Traded] Raw HTML sample:', html.slice(0, 2000))
+        return
+      }
+    }
+
+    const parsed: MtPlayer[] = []
+    for (const row of rows.slice(0, 10)) {
+      // Extract player name
+      const nameMatch = row.match(/class="[^"]*ysf-player-name[^"]*"[^>]*>\s*<a[^>]*>([^<]+)<\/a>/)
+        || row.match(/<a[^>]*class="[^"]*name[^"]*"[^>]*>([^<]+)<\/a>/)
+      const name = nameMatch?.[1]?.trim() || ''
+
+      // Extract team + position (usually "LAA - OF" format)
+      const teamPosMatch = row.match(/([A-Z]{2,4})\s*[-–]\s*([A-Z0-9,]+)/)
+      const team = teamPosMatch?.[1] || ''
+      const position = teamPosMatch?.[2] || ''
+
+      // Extract trade count — it's in a <td> near "Trades" column
+      // Yahoo typically puts it as the 6th or 7th <td>
+      const tds = row.match(/<td[^>]*>([^<]*)<\/td>/g) || []
+      let trades = 0
+      for (const td of tds) {
+        const num = parseInt(td.replace(/<[^>]+>/g, '').trim())
+        if (!isNaN(num) && num > trades && num < 10000) trades = num
+      }
+
+      if (name) parsed.push({ name, team, position, trades })
+    }
+
+    if (parsed.length > 0) {
+      // Sort by trades descending
+      parsed.sort((a, b) => b.trades - a.trades)
+      for (let i = 0; i < 10; i++) {
+        mtPlayers.value[i] = parsed[i] ?? { name: '', team: '', position: '', trades: 0 }
+      }
+      mtStatus.value = `✓ Loaded ${parsed.length} players`
+      mtError.value = ''
+    } else {
+      mtError.value = 'Parsed 0 players — HTML structure may differ. Check console.'
+      console.log('[Most Traded] Raw HTML (first 3000 chars):', html.slice(0, 3000))
+    }
+
+  } catch (err: any) {
+    mtError.value = err.message || 'Fetch failed'
+    console.error('[Most Traded] Error:', err)
+  } finally {
+    mtLoading.value = false
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────
 
 
 </script>
