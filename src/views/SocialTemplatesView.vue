@@ -1899,15 +1899,13 @@
           </button>
           <div v-if="mtCookieVisible" style="margin-top:8px">
             <div style="font-size:11px;color:#4b5563;margin-bottom:4px">
-              Paste your Yahoo <code style="color:#f97316">Y</code> and <code style="color:#f97316">T</code> cookies below.<br/>
-              In Chrome DevTools → Application → Cookies → yahoo.com → copy <strong>Y</strong> and <strong>T</strong> values,
-              then paste as: <code style="color:#9ca3af;font-size:10px">Y=your_value; T=your_value</code>
+              In Chrome DevTools → <strong>Network</strong> tab → load the Yahoo buzzindex page → click the request → <strong>Request Headers</strong> → copy the full <strong>Cookie:</strong> header value and paste below.
             </div>
             <input
               v-model="mtYahooCookie"
               class="wp-input"
               style="width:100%;font-size:11px;font-family:monospace"
-              placeholder="Y=ABC123...; T=DEF456..."
+              placeholder="A3=d=...; A1=d=...; gpp=..."
               type="password"
             />
           </div>
@@ -4010,16 +4008,20 @@ async function fetchMostTraded() {
     const trendtab = tf?.trendtab ?? 'O'
     const pos = mtPosition.value
 
-    const cookieParam = mtYahooCookie.value.trim()
-      ? `&cookie=${encodeURIComponent(mtYahooCookie.value.trim())}`
-      : ''
-    const proxyUrl = `/api/yahoo-buzzindex?date=${today}&pos=${encodeURIComponent(pos)}&trendtab=${trendtab}&sort=BI_T${cookieParam}`
-    const res = await fetch(proxyUrl)
+    const proxyUrl = `/api/yahoo-buzzindex?date=${today}&pos=${encodeURIComponent(pos)}&trendtab=${trendtab}&sort=BI_T`
+    const cookie = mtYahooCookie.value.trim()
+
+    // POST the cookie in the body so & characters in cookie values don't get URL-mangled
+    const res = await fetch(proxyUrl, {
+      method: cookie ? 'POST' : 'GET',
+      headers: cookie ? { 'Content-Type': 'text/plain' } : {},
+      body: cookie || undefined,
+    })
     const json = await res.json()
 
     // Auth required — Yahoo redirected to login
     if (json.error === 'auth_required') {
-      mtError.value = 'Yahoo requires a session cookie — expand "Yahoo session cookie" below the fetch button, paste your Y and T cookies, then try again.'
+      mtError.value = 'Cookie rejected by Yahoo — paste the full Cookie header from DevTools Network tab (not just A1/A3). See instructions below.'
       console.warn('[Most Traded] Auth required:', json.message)
       return
     }
