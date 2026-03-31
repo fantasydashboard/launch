@@ -290,6 +290,14 @@
               <input v-model="emailSubject" class="ctrl-input" placeholder="Your league deserves better analytics" />
             </div>
             <div class="ctrl-group">
+              <label class="ctrl-label">Overline Label (above headline)</label>
+              <input v-model="emailOverline" class="ctrl-input" placeholder="e.g. THIS WEEK ONLY" />
+            </div>
+            <div class="ctrl-group">
+              <label class="ctrl-label">Top Banner (optional — leave blank to hide)</label>
+              <input v-model="emailBanner" class="ctrl-input" placeholder="e.g. ⚾ Fantasy baseball season is here. Week 1 power rankings..." />
+            </div>
+            <div class="ctrl-group">
               <label class="ctrl-label">Preview Text (shown in inbox)</label>
               <input v-model="emailPreview" class="ctrl-input" placeholder="Power rankings, win probability, draft grades — unlock everything." />
             </div>
@@ -655,6 +663,8 @@ const emailSubject = ref("You're one step away from unlocking your league")
 const emailPreview = ref('Power rankings, win probability, draft grades, league history — all waiting for you.')
 const emailHeadline = ref("One step to keep your league talking all season.")
 const emailBody = ref("You've already connected your league — the hard part is done. One League Pass unlocks power rankings, live win probability, draft grades, full league history, and shareable graphics for your entire league. Everything you need to keep the conversation going from draft day to the championship.")
+const emailOverline = ref('THIS WEEK ONLY')
+const emailBanner = ref('⚾ Fantasy baseball season is here. Week 1 power rankings are already cooking — be the first to drop them in your league chat.')
 const emailCta = ref('UNLOCK YOUR LEAGUE →')
 const emailCtaUrl = ref('https://ultimatefantasydashboard.com/pricing')
 const campaignRecipients = ref<any[]>([])
@@ -685,6 +695,8 @@ const renderedEmailHtml = computed(() => {
   return buildEmailHtml({
     subject: emailSubject.value,
     previewText: emailPreview.value,
+    overline: emailOverline.value,
+    banner: emailBanner.value,
     headline: emailHeadline.value,
     body: emailBody.value,
     cta: emailCta.value,
@@ -692,8 +704,8 @@ const renderedEmailHtml = computed(() => {
   })
 })
 
-function buildEmailHtml({ subject, previewText, headline, body, cta, ctaUrl }: {
-  subject: string, previewText: string, headline: string, body: string, cta: string, ctaUrl: string
+function buildEmailHtml({ subject, previewText, overline, banner, headline, body, cta, ctaUrl }: {
+  subject: string, previewText: string, overline: string, banner: string, headline: string, body: string, cta: string, ctaUrl: string
 }) {
   return `<!DOCTYPE html>
 <html lang="en" style="background-color:#05060a !important;">
@@ -736,11 +748,16 @@ function buildEmailHtml({ subject, previewText, headline, body, cta, ctaUrl }: {
   </td></tr>
   <tr><td style="background:linear-gradient(90deg,#05060a,#eab308,#05060a);height:2px;font-size:0;line-height:0;">&nbsp;</td></tr>
 
+  <!-- Optional banner strip -->
+  ${banner ? `<tr><td style="background-color:#0f1a0f;border-left:1px solid #22c55e33;border-right:1px solid #22c55e33;border-top:1px solid #22c55e22;border-bottom:1px solid #22c55e22;padding:14px 28px;text-align:center;">
+    <p style="margin:0;font-size:13px;line-height:1.5;color:#86efac;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${banner}</p>
+  </td></tr>` : ''}
+
   <!-- Hero -->
   <tr><td style="background-color:#0a0c14;border-left:1px solid #1e2130;border-right:1px solid #1e2130;padding:44px 36px 36px;">
-    <p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#eab308;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Almost There</p>
+    <p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#eab308;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${overline || 'Almost There'}</p>
     <h1 style="margin:0 0 18px;font-size:34px;font-weight:900;line-height:1.1;letter-spacing:-0.02em;color:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${headline}</h1>
-    <p style="margin:0 0 28px;font-size:16px;line-height:1.6;color:#9ca3af;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${body}</p>
+    <p style="margin:0 0 28px;font-size:16px;line-height:1.6;color:#9ca3af;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${body.replace(/\n/g, '<br>')}</p>
     <table cellpadding="0" cellspacing="0" border="0"><tr>
       <td style="background-color:#eab308;border-radius:10px;">
         <a href="${ctaUrl}" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:800;letter-spacing:0.04em;text-decoration:none;color:#0a0c14;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${cta}</a>
