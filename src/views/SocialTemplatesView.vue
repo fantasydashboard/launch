@@ -868,164 +868,6 @@
       </div>
     </div>
     <div style="height:20px;grid-column:1/-1;"></div>
-      <!-- ── GRAPHIC 33: Power Rankings Demo — Sample graphic ── -->
-      <div class="post-wrap" style="grid-column: 1 / -1;">
-        <div class="post-label">33 · Power Rankings — Sample Demo Graphic</div>
-        <div class="sq sq-wp-bg" style="height:660px;max-width:540px;">
-          <div class="sq-grain"></div>
-          <svg viewBox="0 0 540 660" xmlns="http://www.w3.org/2000/svg"
-            style="position:absolute;inset:0;width:100%;height:100%;z-index:2">
-            <defs>
-              <linearGradient id="pr-gold" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stop-color="#eab308" stop-opacity="0.95"/>
-                <stop offset="100%" stop-color="#eab308" stop-opacity="0.2"/>
-              </linearGradient>
-              <radialGradient id="pr-glow" cx="50%" cy="0%" r="60%">
-                <stop offset="0%" stop-color="#eab308" stop-opacity="0.1"/>
-                <stop offset="100%" stop-color="#eab308" stop-opacity="0"/>
-              </radialGradient>
-            </defs>
-            <rect x="0" y="0" width="540" height="660" fill="#07080e"/>
-            <rect x="0" y="0" width="540" height="660" fill="url(#pr-glow)"/>
-            <rect x="0" y="0" width="540" height="4" fill="url(#pr-gold)"/>
-            <image href="/UFD_V8.png" x="380" y="4" width="140" height="76" preserveAspectRatio="xMidYMid meet"/>
-            <text x="16" y="26" font-size="11" font-weight="700" letter-spacing="0.14em" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">LEVEL UP YOUR LEAGUE WITH</text>
-            <text x="16" y="57" font-size="34" font-weight="900" letter-spacing="-0.01em" fill="#eab308" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">POWER RANKINGS</text>
-            <!-- Header divider -->
-            <line x1="0" y1="72" x2="540" y2="72" stroke="#1e2130" stroke-width="1"/>
-          <rect x="0" y="82" width="540" height="48" fill="rgba(234,179,8,0.09)"/>
-          <rect x='0' y='82' width='3' height='48' fill='#eab308'/>
-          <line x1="0" y1="130" x2="540" y2="130" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="112" font-size="16" font-weight="900" fill="#eab308" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#1</text>
-          <circle cx="54" cy="107" r="14" fill="rgba(0,0,0,0.3)" stroke="#eab308" stroke-width="2" stroke-opacity="1"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-5.svg" x="40" y="93" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="77" y="112" font-size="14" font-weight="800" fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Crazy Eights</text>
-          <text x="390" y="111" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">78.4 pts avg</text>
-          <text x="440" y="112" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑1</text>
-          <rect x="0" y="131" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
-          
-          <line x1="0" y1="179" x2="540" y2="179" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="161" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#2</text>
-          <circle cx="54" cy="156" r="14" fill="rgba(0,0,0,0.3)" stroke="#22c55e" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-6.svg" x="40" y="142" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="77" y="161" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">The Roto Rooters</text>
-          <text x="390" y="160" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">74.2 pts avg</text>
-          <text x="440" y="161" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑1</text>
-          <rect x="0" y="180" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
-          
-          <line x1="0" y1="228" x2="540" y2="228" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="210" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#3</text>
-          <circle cx="54" cy="205" r="14" fill="rgba(0,0,0,0.3)" stroke="#06b6d4" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-01.svg" x="40" y="191" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="77" y="210" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Caught Looking</text>
-          <text x="390" y="209" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">71.6 pts avg</text>
-          <text x="440" y="210" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑2</text>
-          <rect x="0" y="229" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
-          
-          <line x1="0" y1="277" x2="540" y2="277" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="259" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#4</text>
-          <circle cx="54" cy="254" r="14" fill="rgba(0,0,0,0.3)" stroke="#f97316" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-10.svg" x="40" y="240" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="77" y="259" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Dinger Party</text>
-          <text x="390" y="258" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">69.8 pts avg</text>
-          <text x="440" y="259" font-size="12" font-weight="700" fill="#ef4444" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↓3</text>
-          <rect x="0" y="278" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
-          
-          <line x1="0" y1="326" x2="540" y2="326" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="308" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#5</text>
-          <circle cx="54" cy="303" r="14" fill="rgba(0,0,0,0.3)" stroke="#8b5cf6" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--03.svg" x="40" y="289" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="77" y="308" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Full Count</text>
-          <text x="390" y="307" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">66.3 pts avg</text>
-          <text x="440" y="308" font-size="12" font-weight="700" fill="#ef4444" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↓1</text>
-          <rect x="0" y="327" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
-          
-          <line x1="0" y1="375" x2="540" y2="375" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="357" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#6</text>
-          <circle cx="54" cy="352" r="14" fill="rgba(0,0,0,0.3)" stroke="#ef4444" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--10.svg" x="40" y="338" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="77" y="357" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">The Benchwarmers</text>
-          <text x="390" y="356" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">63.1 pts avg</text>
-          <text x="440" y="357" font-size="12" font-weight="700" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">—</text>
-          <rect x="0" y="376" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
-          
-          <line x1="0" y1="424" x2="540" y2="424" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="406" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#7</text>
-          <circle cx="54" cy="401" r="14" fill="rgba(0,0,0,0.3)" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-09.svg" x="40" y="387" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="77" y="406" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Exit Velocity</text>
-          <text x="390" y="405" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">60.5 pts avg</text>
-          <text x="440" y="406" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑1</text>
-          <rect x="0" y="425" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
-          
-          <line x1="0" y1="473" x2="540" y2="473" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="455" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#8</text>
-          <circle cx="54" cy="450" r="14" fill="rgba(0,0,0,0.3)" stroke="#ec4899" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-08.svg" x="40" y="436" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="77" y="455" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Midnight Lineup</text>
-          <text x="390" y="454" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">57.9 pts avg</text>
-          <text x="440" y="455" font-size="12" font-weight="700" fill="#ef4444" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↓1</text>
-            <!-- Graph section -->
-            <rect x="0" y="474" width="540" height="1" fill="#1e2130"/>
-            <rect x="0" y="475" width="540" height="22" fill="rgba(234,179,8,0.04)"/>
-            <text x="16" y="490" font-size="10" font-weight="700" letter-spacing="0.14em" fill="#4b5563" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RANKINGS TREND  ·  WK 5 – WK 8</text>
-            <line x1="0" y1="497" x2="540" y2="497" stroke="#1e2130" stroke-width="1"/>
-            <line x1="50" y1="510" x2="449" y2="510" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-            <line x1="50" y1="526" x2="449" y2="526" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-            <line x1="50" y1="542" x2="449" y2="542" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-            <line x1="50" y1="557" x2="449" y2="557" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-            <line x1="50" y1="573" x2="449" y2="573" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-            <line x1="50" y1="589" x2="449" y2="589" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-            <line x1="50" y1="605" x2="449" y2="605" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-            <line x1="50" y1="620" x2="449" y2="620" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-            <line x1="50" y1="508" x2="50" y2="622" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
-            <line x1="183" y1="508" x2="183" y2="622" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
-            <line x1="316" y1="508" x2="316" y2="622" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
-            <line x1="449" y1="508" x2="449" y2="622" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
-            <text x="36" y="514" font-size="9" fill="#374151" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">#1</text>
-            <text x="36" y="624" font-size="9" fill="#374151" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">#8</text>
-            <path d="M50,542 C94,542 139,526 183,526 C227,526 272,526 316,526 C360,526 405,510 449,510" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round"/>
-          <circle cx="449" cy="510" r="4" fill="#eab308"/>
-          <path d="M50,526 C94,526 139,542 183,542 C227,542 272,542 316,542 C360,542 405,526 449,526" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/>
-          <circle cx="449" cy="526" r="4" fill="#22c55e"/>
-          <path d="M50,573 C94,573 139,557 183,557 C227,557 272,573 316,573 C360,573 405,542 449,542" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
-          <circle cx="449" cy="542" r="4" fill="#06b6d4"/>
-          <path d="M50,510 C94,510 139,510 183,510 C227,510 272,510 316,510 C360,510 405,557 449,557" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round"/>
-          <circle cx="449" cy="557" r="4" fill="#f97316"/>
-          <path d="M50,557 C94,557 139,573 183,573 C227,573 272,557 316,557 C360,557 405,573 449,573" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round"/>
-          <circle cx="449" cy="573" r="4" fill="#8b5cf6"/>
-          <path d="M50,589 C94,589 139,589 183,589 C227,589 272,589 316,589 C360,589 405,589 449,589" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
-          <circle cx="449" cy="589" r="4" fill="#ef4444"/>
-          <path d="M50,620 C94,620 139,620 183,620 C227,620 272,620 316,620 C360,620 405,605 449,605" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
-          <circle cx="449" cy="605" r="4" fill="#3b82f6"/>
-          <path d="M50,605 C94,605 139,605 183,605 C227,605 272,605 316,605 C360,605 405,620 449,620" fill="none" stroke="#ec4899" stroke-width="2" stroke-linecap="round"/>
-          <circle cx="449" cy="620" r="4" fill="#ec4899"/>
-            <circle cx="466" cy="510" r="10" fill="#0a0c14" stroke="#eab308" stroke-width="1.5"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-5.svg" x="456" y="500" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-          <circle cx="466" cy="526" r="10" fill="#0a0c14" stroke="#22c55e" stroke-width="1.5"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-6.svg" x="456" y="516" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-          <circle cx="466" cy="542" r="10" fill="#0a0c14" stroke="#06b6d4" stroke-width="1.5"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-01.svg" x="456" y="532" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-          <circle cx="466" cy="557" r="10" fill="#0a0c14" stroke="#f97316" stroke-width="1.5"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-10.svg" x="456" y="547" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-          <circle cx="466" cy="573" r="10" fill="#0a0c14" stroke="#8b5cf6" stroke-width="1.5"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--03.svg" x="456" y="563" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-          <circle cx="466" cy="589" r="10" fill="#0a0c14" stroke="#ef4444" stroke-width="1.5"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--10.svg" x="456" y="579" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-          <circle cx="466" cy="605" r="10" fill="#0a0c14" stroke="#3b82f6" stroke-width="1.5"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-09.svg" x="456" y="595" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-          <circle cx="466" cy="620" r="10" fill="#0a0c14" stroke="#ec4899" stroke-width="1.5"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-08.svg" x="456" y="610" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-            <text x="50" y="638" font-size="10" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 5</text>
-            <text x="183" y="638" font-size="10" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 6</text>
-            <text x="316" y="638" font-size="10" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 7</text>
-            <text x="449" y="638" font-size="10" fill="#eab308" text-anchor="middle" font-weight="700" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 8 ▶</text>
-            <line x1="0" y1="648" x2="540" y2="648" stroke="#1e2130" stroke-width="1"/>
-            <text x="270" y="655" text-anchor="middle" font-size="9" fill="#1a1f2e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
-          </svg>
-        </div>
-      </div>
-
     </div><!-- end posts-grid -->
     </template><!-- end square tab -->
 
@@ -2180,6 +2022,186 @@
     </div>
 
 
+
+    <!-- ══════════════════════════════════════════════════════════
+         34 · PLAYER RANKING IMPACT (PRI) — Weekly power ranking movement
+    ══════════════════════════════════════════════════════════ -->
+    <div class="post-wrap wp-post-wrap">
+      <div class="post-label">34 · Player Ranking Impact — Who moved the needle this week</div>
+
+      <!-- ── Controls ── -->
+      <div class="wp-controls">
+        <div class="wp-ctrl-row" style="align-items:flex-end;gap:16px;flex-wrap:wrap;">
+          <div class="wp-ctrl-group">
+            <label>Week (auto — Mon–Sun)</label>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="font-size:13px;color:#e5e7eb;font-weight:600;">{{ priWeekLabel }}</div>
+              <button @click="priWeekOffset--; buildPriWeek()" style="padding:4px 10px;background:#1e2130;border:1px solid #374151;border-radius:6px;color:#9ca3af;cursor:pointer;font-size:12px;">◀ Prev</button>
+              <button @click="priWeekOffset++; buildPriWeek()" :disabled="priWeekOffset >= -1" style="padding:4px 10px;background:#1e2130;border:1px solid #374151;border-radius:6px;color:#9ca3af;cursor:pointer;font-size:12px;opacity:priWeekOffset>=-1?0.4:1;">Next ▶</button>
+            </div>
+          </div>
+          <div class="wp-ctrl-group">
+            <label>Week label (for graphic)</label>
+            <input v-model="priWeekNum" class="wp-input" style="width:64px" placeholder="8" />
+          </div>
+          <div class="wp-ctrl-group">
+            <label>Avg pts gap between ranks</label>
+            <input v-model.number="priPtsGap" type="number" class="wp-input" style="width:64px" placeholder="5.5" />
+          </div>
+          <div class="wp-ctrl-group">
+            <label>Avg pts per player/game</label>
+            <input v-model.number="priAvgPts" type="number" class="wp-input" style="width:64px" placeholder="7.5" />
+          </div>
+          <button @click="loadPriData"
+            :disabled="priLoading"
+            style="padding:8px 18px;background:#22c55e;color:#0a0c14;border:none;border-radius:8px;font-weight:800;font-size:13px;cursor:pointer;"
+            :style="priLoading?'opacity:0.5;cursor:not-allowed':''">
+            {{ priLoading ? '⏳ Loading…' : '⬇ Fetch Week' }}
+          </button>
+        </div>
+        <div v-if="priError" style="color:#ef4444;font-size:12px;margin-top:8px;">⚠️ {{ priError }}</div>
+        <div v-if="priStatus" style="color:#22c55e;font-size:12px;margin-top:8px;">{{ priStatus }}</div>
+
+        <!-- Legend -->
+        <div style="display:flex;align-items:center;gap:20px;margin-top:10px;flex-wrap:wrap;">
+          <div style="font-size:11px;color:#6b7280;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Formula:</div>
+          <div style="font-size:12px;color:#9ca3af;">Impact = (Player pts − avg {{ priAvgPts }}) ÷ pts-gap {{ priPtsGap }} = ranking spots moved</div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div style="width:24px;height:8px;background:#22c55e;border-radius:2px;"></div>
+            <span style="font-size:11px;color:#9ca3af;">Boosted ranking</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div style="width:24px;height:8px;background:#ef4444;border-radius:2px;"></div>
+            <span style="font-size:11px;color:#9ca3af;">Hurt ranking</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Screenshottable card ── -->
+      <div class="sq sq-wp-bg" style="height:620px;max-width:540px;">
+        <div class="sq-grain"></div>
+        <svg viewBox="0 0 540 620" xmlns="http://www.w3.org/2000/svg"
+          style="position:absolute;inset:0;width:100%;height:100%;z-index:2">
+          <defs>
+            <linearGradient id="pri-green" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#22c55e" stop-opacity="0.9"/>
+              <stop offset="100%" stop-color="#22c55e" stop-opacity="0.3"/>
+            </linearGradient>
+            <linearGradient id="pri-red" x1="1" y1="0" x2="0" y2="0">
+              <stop offset="0%" stop-color="#ef4444" stop-opacity="0.9"/>
+              <stop offset="100%" stop-color="#ef4444" stop-opacity="0.3"/>
+            </linearGradient>
+            <linearGradient id="pri-header" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#22c55e" stop-opacity="0.95"/>
+              <stop offset="100%" stop-color="#22c55e" stop-opacity="0.2"/>
+            </linearGradient>
+            <radialGradient id="pri-glow" cx="50%" cy="0%" r="70%">
+              <stop offset="0%" stop-color="#22c55e" stop-opacity="0.08"/>
+              <stop offset="100%" stop-color="#22c55e" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+
+          <!-- BG -->
+          <rect x="0" y="0" width="540" height="620" fill="#07080e"/>
+          <rect x="0" y="0" width="540" height="620" fill="url(#pri-glow)"/>
+          <rect x="0" y="0" width="540" height="4" fill="url(#pri-header)"/>
+
+          <!-- UFD Logo -->
+          <image href="/UFD_V8.png" x="360" y="5" width="160" height="80"
+            preserveAspectRatio="xMidYMid meet"/>
+
+          <!-- Header -->
+          <text x="16" y="30" font-size="11" font-weight="700" letter-spacing="0.14em"
+            fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RANKING IMPACT</text>
+          <text x="16" y="60" font-size="28" font-weight="900" letter-spacing="-0.01em"
+            fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Who Moved the Needle</text>
+          <text x="16" y="80" font-size="13" font-weight="700" letter-spacing="0.06em"
+            fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
+            ⚾ WK {{ priWeekNum }} · {{ priWeekLabel }}
+          </text>
+
+          <!-- Divider + column labels -->
+          <line x1="0" y1="90" x2="540" y2="90" stroke="#1e2130" stroke-width="1"/>
+          <rect x="0" y="90" width="540" height="18" fill="rgba(255,255,255,0.012)"/>
+          <text x="16" y="103" font-size="9" fill="#374151" font-weight="700" letter-spacing="0.12em"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">PLAYER</text>
+          <text x="270" y="103" text-anchor="middle" font-size="9" fill="#374151" font-weight="700" letter-spacing="0.1em"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">← HURT  |  HELPED →</text>
+          <text x="524" y="103" text-anchor="end" font-size="9" fill="#374151" font-weight="700" letter-spacing="0.08em"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">IMPACT</text>
+          <line x1="0" y1="108" x2="540" y2="108" stroke="#1e2130" stroke-width="1"/>
+
+          <!-- Center axis -->
+          <line x1="270" y1="108" x2="270" y2="530" stroke="#374151" stroke-width="1" stroke-dasharray="3,3"/>
+
+          <!-- Player rows -->
+          <g v-for="(p, i) in priPlayers" :key="'pri'+i">
+            <!-- Row bg -->
+            <rect x="0" :y="108+i*52" width="540" height="51"
+              :fill="i===0 ? (p.impact>0 ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)') : 'rgba(255,255,255,0.012)'"/>
+            <line x1="0" :y1="108+(i+1)*52" x2="540" :y2="108+(i+1)*52"
+              stroke="#1e2130" stroke-width="1"/>
+
+            <!-- Headshot -->
+            <circle :cx="22" :cy="108+i*52+26" r="16"
+              fill="rgba(0,0,0,0.4)"
+              :stroke="p.impact>0?'rgba(34,197,94,0.5)':'rgba(239,68,68,0.5)'" stroke-width="1.5"/>
+            <image :href="p.headshot" :x="6" :y="108+i*52+10" width="32" height="32"
+              preserveAspectRatio="xMidYMid slice"
+              style="clip-path:circle(15px at 16px 16px)"/>
+
+            <!-- Name + team/pos -->
+            <text :x="46" :y="108+i*52+22" font-size="12" font-weight="700"
+              fill="#e5e7eb" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.name }}</text>
+            <text :x="46" :y="108+i*52+36" font-size="10" fill="#6b7280"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.team }} · {{ p.position }} · {{ p.pts.toFixed(1) }} pts</text>
+
+            <!-- Bar — extends right (green) or left (red) from center -->
+            <rect
+              :x="p.impact>=0 ? 270 : 270 + Math.max(-200, p.barPx)"
+              :y="108+i*52+36"
+              :width="Math.abs(p.barPx)"
+              height="8" rx="0"
+              :fill="p.impact>=0 ? 'url(#pri-green)' : 'url(#pri-red)'"/>
+
+            <!-- Impact label -->
+            <text x="524" :y="108+i*52+29" text-anchor="end"
+              :font-size="i===0?'18':'15'" font-weight="900"
+              :fill="p.impact>=0?'#22c55e':'#ef4444'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
+              {{ p.impact>=0?'+':'' }}{{ p.impact.toFixed(1) }}
+            </text>
+            <text x="524" :y="108+i*52+42" text-anchor="end" font-size="9"
+              :fill="p.impact>=0?'rgba(34,197,94,0.6)':'rgba(239,68,68,0.6)'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">spots</text>
+
+            <!-- #1 glow accent -->
+            <rect v-if="i===0" x="0" :y="108+i*52" width="3" height="51"
+              :fill="p.impact>=0?'#22c55e':'#ef4444'"/>
+          </g>
+
+          <!-- Empty state -->
+          <text v-if="!priPlayers.length" x="270" y="320" text-anchor="middle"
+            font-size="14" fill="#374151"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Fetch a week to see player impact</text>
+
+          <!-- Footer -->
+          <line x1="0" y1="530" x2="540" y2="530" stroke="#1e2130" stroke-width="1"/>
+          <rect x="0" y="531" width="540" height="89" fill="rgba(0,0,0,0.3)"/>
+          <text x="16" y="548" font-size="9" fill="#374151" font-weight="700" letter-spacing="0.1em"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">HOW TO READ THIS</text>
+          <text x="16" y="562" font-size="10" fill="#4b5563"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Each bar = estimated ranking spots moved based on weekly pts vs league avg.</text>
+          <text x="16" y="576" font-size="10" fill="#4b5563"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Formula: (Player pts − avg) ÷ pts gap between ranks. Max ±4 spots.</text>
+          <line x1="0" y1="588" x2="540" y2="588" stroke="#1e2130" stroke-width="1"/>
+          <text x="270" y="610" text-anchor="middle" font-size="9" fill="#1a1f2e"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
+        </svg>
+      </div>
+    </div>
+
+
     </template><!-- end interactive tab -->
 
   <!-- ══════════════════════════════════════════════════════════
@@ -2447,150 +2469,6 @@
       </div>
 
     </div>
-      <!-- ── STORY: Power Rankings Demo ── -->
-      <div>
-        <div class="post-label">📱 Story · Power Rankings — Sample Demo Graphic</div>
-        <div style="width:540px;height:960px;background:#07080e;border-radius:0;overflow:hidden;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
-          <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(234,179,8,0.12) 0%,transparent 55%);pointer-events:none;"></div>
-          <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
-          <svg viewBox="0 0 540 960" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%;">
-            <image href="/UFD_V8.png" x="360" y="48" width="160" height="86" preserveAspectRatio="xMidYMid meet"/>
-            <text x="22" y="80" font-size="12" font-weight="700" letter-spacing="0.14em" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">LEVEL UP YOUR LEAGUE WITH</text>
-            <text x="22" y="122" font-size="46" font-weight="900" letter-spacing="-0.02em" fill="#eab308" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">POWER</text>
-            <text x="22" y="165" font-size="46" font-weight="900" letter-spacing="-0.02em" fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RANKINGS</text>
-            <line x1="0" y1="178" x2="540" y2="178" stroke="#1e2130" stroke-width="1"/>
-          <rect x="0" y="185" width="540" height="45" fill="rgba(234,179,8,0.09)"/>
-          <rect x='0' y='185' width='3' height='45' fill='#eab308'/>
-          <line x1="0" y1="230" x2="540" y2="230" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="213" font-size="14" font-weight="900" fill="#eab308" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#1</text>
-          <circle cx="52" cy="208" r="14" fill="rgba(0,0,0,0.3)" stroke="#eab308" stroke-width="2" stroke-opacity="1"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-5.svg" x="38" y="194" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="75" y="213" font-size="14" font-weight="800" fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Crazy Eights</text>
-          <text x="388" y="212" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">78.4 pts avg</text>
-          <text x="440" y="213" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑1</text>
-          <rect x="0" y="231" width="540" height="45" fill="rgba(255,255,255,0.018)"/>
-          
-          <line x1="0" y1="276" x2="540" y2="276" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="259" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#2</text>
-          <circle cx="52" cy="254" r="14" fill="rgba(0,0,0,0.3)" stroke="#22c55e" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-6.svg" x="38" y="240" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="75" y="259" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">The Roto Rooters</text>
-          <text x="388" y="258" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">74.2 pts avg</text>
-          <text x="440" y="259" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑1</text>
-          <rect x="0" y="277" width="540" height="45" fill="rgba(255,255,255,0.018)"/>
-          
-          <line x1="0" y1="322" x2="540" y2="322" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="305" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#3</text>
-          <circle cx="52" cy="300" r="14" fill="rgba(0,0,0,0.3)" stroke="#06b6d4" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-01.svg" x="38" y="286" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="75" y="305" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Caught Looking</text>
-          <text x="388" y="304" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">71.6 pts avg</text>
-          <text x="440" y="305" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑2</text>
-          <rect x="0" y="323" width="540" height="45" fill="rgba(255,255,255,0.018)"/>
-          
-          <line x1="0" y1="368" x2="540" y2="368" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="351" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#4</text>
-          <circle cx="52" cy="346" r="14" fill="rgba(0,0,0,0.3)" stroke="#f97316" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-10.svg" x="38" y="332" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="75" y="351" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Dinger Party</text>
-          <text x="388" y="350" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">69.8 pts avg</text>
-          <text x="440" y="351" font-size="12" font-weight="700" fill="#ef4444" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↓3</text>
-          <rect x="0" y="369" width="540" height="45" fill="rgba(255,255,255,0.018)"/>
-          
-          <line x1="0" y1="414" x2="540" y2="414" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="397" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#5</text>
-          <circle cx="52" cy="392" r="14" fill="rgba(0,0,0,0.3)" stroke="#8b5cf6" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--03.svg" x="38" y="378" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="75" y="397" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Full Count</text>
-          <text x="388" y="396" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">66.3 pts avg</text>
-          <text x="440" y="397" font-size="12" font-weight="700" fill="#ef4444" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↓1</text>
-          <rect x="0" y="415" width="540" height="45" fill="rgba(255,255,255,0.018)"/>
-          
-          <line x1="0" y1="460" x2="540" y2="460" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="443" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#6</text>
-          <circle cx="52" cy="438" r="14" fill="rgba(0,0,0,0.3)" stroke="#ef4444" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--10.svg" x="38" y="424" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="75" y="443" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">The Benchwarmers</text>
-          <text x="388" y="442" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">63.1 pts avg</text>
-          <text x="440" y="443" font-size="12" font-weight="700" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">—</text>
-          <rect x="0" y="461" width="540" height="45" fill="rgba(255,255,255,0.018)"/>
-          
-          <line x1="0" y1="506" x2="540" y2="506" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="489" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#7</text>
-          <circle cx="52" cy="484" r="14" fill="rgba(0,0,0,0.3)" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-09.svg" x="38" y="470" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="75" y="489" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Exit Velocity</text>
-          <text x="388" y="488" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">60.5 pts avg</text>
-          <text x="440" y="489" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑1</text>
-          <rect x="0" y="507" width="540" height="45" fill="rgba(255,255,255,0.018)"/>
-          
-          <line x1="0" y1="552" x2="540" y2="552" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="535" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#8</text>
-          <circle cx="52" cy="530" r="14" fill="rgba(0,0,0,0.3)" stroke="#ec4899" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-08.svg" x="38" y="516" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="75" y="535" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Midnight Lineup</text>
-          <text x="388" y="534" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">57.9 pts avg</text>
-          <text x="440" y="535" font-size="12" font-weight="700" fill="#ef4444" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↓1</text>
-            <rect x="0" y="553" width="540" height="1" fill="#1e2130"/>
-            <rect x="0" y="554" width="540" height="26" fill="rgba(234,179,8,0.04)"/>
-            <text x="20" y="571" font-size="10" font-weight="700" letter-spacing="0.14em" fill="#4b5563" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RANKINGS TREND  ·  WK 5 – WK 8</text>
-            <line x1="0" y1="580" x2="540" y2="580" stroke="#1e2130" stroke-width="1"/>
-            <line x1="60" y1="584" x2="450" y2="584" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-            <line x1="60" y1="607" x2="450" y2="607" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-            <line x1="60" y1="630" x2="450" y2="630" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-            <line x1="60" y1="653" x2="450" y2="653" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-            <line x1="60" y1="677" x2="450" y2="677" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-            <line x1="60" y1="700" x2="450" y2="700" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-            <line x1="60" y1="723" x2="450" y2="723" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-            <line x1="60" y1="746" x2="450" y2="746" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-            <line x1="60" y1="578" x2="60" y2="750" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
-            <line x1="193" y1="578" x2="193" y2="750" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
-            <line x1="326" y1="578" x2="326" y2="750" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
-            <line x1="450" y1="578" x2="450" y2="750" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
-            <text x="46" y="588" font-size="9" fill="#374151" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">#1</text>
-            <text x="46" y="750" font-size="9" fill="#374151" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">#8</text>
-            <path d="M60,630 C104,630 149,607 193,607 C237,607 282,607 326,607 C370,607 406,584 450,584" fill="none" stroke="#eab308" stroke-width="2.5" stroke-linecap="round"/>
-          <circle cx="450" cy="584" r="4" fill="#eab308"/>
-          <path d="M60,607 C104,607 149,630 193,630 C237,630 282,630 326,630 C370,630 406,607 450,607" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/>
-          <circle cx="450" cy="607" r="4" fill="#22c55e"/>
-          <path d="M60,677 C104,677 149,653 193,653 C237,653 282,677 326,677 C370,677 406,630 450,630" fill="none" stroke="#06b6d4" stroke-width="2.5" stroke-linecap="round"/>
-          <circle cx="450" cy="630" r="4" fill="#06b6d4"/>
-          <path d="M60,584 C104,584 149,584 193,584 C237,584 282,584 326,584 C370,584 406,653 450,653" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round"/>
-          <circle cx="450" cy="653" r="4" fill="#f97316"/>
-          <path d="M60,653 C104,653 149,677 193,677 C237,677 282,653 326,653 C370,653 406,677 450,677" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-linecap="round"/>
-          <circle cx="450" cy="677" r="4" fill="#8b5cf6"/>
-          <path d="M60,700 C104,700 149,700 193,700 C237,700 282,700 326,700 C370,700 406,700 450,700" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
-          <circle cx="450" cy="700" r="4" fill="#ef4444"/>
-          <path d="M60,746 C104,746 149,746 193,746 C237,746 282,746 326,746 C370,746 406,723 450,723" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/>
-          <circle cx="450" cy="723" r="4" fill="#3b82f6"/>
-          <path d="M60,723 C104,723 149,723 193,723 C237,723 282,723 326,723 C370,723 406,746 450,746" fill="none" stroke="#ec4899" stroke-width="2.5" stroke-linecap="round"/>
-          <circle cx="450" cy="746" r="4" fill="#ec4899"/>
-            <circle cx="464" cy="584" r="10" fill="#0a0c14" stroke="#eab308" stroke-width="1.5"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-5.svg" x="454" y="574" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-          <circle cx="464" cy="607" r="10" fill="#0a0c14" stroke="#22c55e" stroke-width="1.5"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-6.svg" x="454" y="597" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-          <circle cx="464" cy="630" r="10" fill="#0a0c14" stroke="#06b6d4" stroke-width="1.5"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-01.svg" x="454" y="620" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-          <circle cx="464" cy="653" r="10" fill="#0a0c14" stroke="#f97316" stroke-width="1.5"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-10.svg" x="454" y="643" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-          <circle cx="464" cy="677" r="10" fill="#0a0c14" stroke="#8b5cf6" stroke-width="1.5"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--03.svg" x="454" y="667" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-          <circle cx="464" cy="700" r="10" fill="#0a0c14" stroke="#ef4444" stroke-width="1.5"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--10.svg" x="454" y="690" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-          <circle cx="464" cy="723" r="10" fill="#0a0c14" stroke="#3b82f6" stroke-width="1.5"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-09.svg" x="454" y="713" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-          <circle cx="464" cy="746" r="10" fill="#0a0c14" stroke="#ec4899" stroke-width="1.5"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-08.svg" x="454" y="736" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-            <text x="60" y="768" font-size="11" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 5</text>
-            <text x="193" y="768" font-size="11" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 6</text>
-            <text x="326" y="768" font-size="11" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 7</text>
-            <text x="450" y="768" font-size="11" fill="#eab308" text-anchor="middle" font-weight="700" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 8 ▶</text>
-            <text x="270" y="808" text-anchor="middle" font-size="11" fill="#1e2130" letter-spacing="0.06em" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
-          </svg>
-        </div>
-      </div>
-
-
   </template><!-- end stories tab -->
 
   <!-- ══════════════════════════════════════════════════════════
@@ -4357,6 +4235,251 @@ async function fetchMostTraded() {
     console.error('[Most Traded] Error:', err)
   } finally {
     mtLoading.value = false
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────
+
+
+
+// ── Graphic 34: Player Ranking Impact (PRI) ──────────────────────────────────
+// Formula: impact = (playerWeeklyPts - avgPtsPerPlayer) / avgPtsGapBetweenRanks
+// Capped at ±4 spots. Pulls Mon-Sun of the most recent completed week.
+
+// Calculate the Mon-Sun week boundaries based on offset from current week
+function getPriWeekRange(offset = -1): { start: Date; end: Date } {
+  const now = new Date()
+  const day = now.getDay() // 0=Sun,1=Mon...6=Sat
+  // Days since last Monday
+  const daysSinceMonday = day === 0 ? 6 : day - 1
+  // Start of THIS week's Monday
+  const thisMonday = new Date(now)
+  thisMonday.setDate(now.getDate() - daysSinceMonday)
+  thisMonday.setHours(0,0,0,0)
+  // Apply offset (default -1 = previous week)
+  const start = new Date(thisMonday)
+  start.setDate(thisMonday.getDate() + offset * 7)
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6) // Sunday
+  return { start, end }
+}
+
+function dateToStr(d: Date): string {
+  return d.toISOString().slice(0,10).replace(/-/g,'')
+}
+
+function formatWeekLabel(start: Date, end: Date): string {
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
+  return `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', opts)}`
+}
+
+const priWeekOffset = ref(-1) // -1 = last completed Mon-Sun week
+const priWeekNum = ref('8')
+const priPtsGap = ref(5.5)
+const priAvgPts = ref(7.5)
+const priLoading = ref(false)
+const priError = ref('')
+const priStatus = ref('')
+
+const priWeekLabel = computed(() => {
+  const { start, end } = getPriWeekRange(priWeekOffset.value)
+  return formatWeekLabel(start, end)
+})
+
+interface PriPlayer {
+  id: string
+  name: string
+  team: string
+  position: string
+  headshot: string
+  pts: number
+  impact: number   // ranking spots moved (+ = helped, - = hurt)
+  barPx: number    // pixel width for bar (signed — negative = left)
+  statLine: string
+}
+
+const priPlayers = ref<PriPlayer[]>([])
+
+function buildPriWeek() {
+  // Just updates the label — actual fetch happens on button click
+  priPlayers.value = []
+  priError.value = ''
+  priStatus.value = ''
+}
+
+async function loadPriData() {
+  priLoading.value = true
+  priError.value = ''
+  priPlayers.value = []
+
+  const { start, end } = getPriWeekRange(priWeekOffset.value)
+  const BAR_MAX_PX = 200
+  const SPOTS_MAX = 4
+
+  // Build array of all dates Mon-Sun
+  const dates: string[] = []
+  const cur = new Date(start)
+  while (cur <= end) {
+    dates.push(dateToStr(cur))
+    cur.setDate(cur.getDate() + 1)
+  }
+
+  priStatus.value = `Fetching ${dates.length} days (${formatWeekLabel(start, end)})…`
+
+  // Accumulate pts per player across all days
+  const playerPtsMap = new Map<string, { name: string; team: string; position: string; headshot: string; pts: number; statLine: string }>()
+  const dailyPts: number[] = []
+
+  try {
+    for (const dateStr of dates) {
+      const sbRes = await fetch(
+        `https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates=${dateStr}&limit=30`
+      )
+      if (!sbRes.ok) continue
+      const sbData = await sbRes.json()
+      const events = sbData.events || []
+      if (!events.length) continue
+
+      priStatus.value = `${dateStr.slice(4,6)}/${dateStr.slice(6,8)}: ${events.length} games…`
+
+      const summaries = await Promise.all(
+        events.map((e: any) =>
+          fetch(`https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/summary?event=${e.id}`)
+            .then(r => r.ok ? r.json() : null).catch(() => null)
+        )
+      )
+
+      for (const summary of summaries) {
+        if (!summary?.boxscore?.players) continue
+        for (const teamData of summary.boxscore.players) {
+          const teamAbbr = teamData.team?.abbreviation || ''
+          for (const statGroup of (teamData.statistics || [])) {
+            const keys: string[] = statGroup.keys || []
+            const keySet = new Set(keys)
+            if (!keySet.has('fullInnings.partInnings') && !keySet.has('atBats') &&
+                !keySet.has('hits') && !keySet.has('homeRuns')) continue
+
+            for (const athlete of (statGroup.athletes || [])) {
+              const pid = String(athlete.athlete?.id || athlete.id || '')
+              if (!pid) continue
+
+              const posAbbr = (athlete.athlete?.position?.abbreviation || '').toUpperCase()
+              const PITCHER_SET = new Set(['SP','RP','P','LHP','RHP'])
+              let isPit = PITCHER_SET.has(posAbbr)
+
+              // Two-way detection
+              if (isPit) {
+                const statsArr = athlete.stats || []
+                let ab = 0
+                const habIdx = keys.indexOf('hits-atBats')
+                if (habIdx >= 0) {
+                  const raw = String(statsArr[habIdx] || '')
+                  if (raw.includes('-')) ab = parseFloat(raw.split('-')[1]) || 0
+                }
+                if (!ab) {
+                  const abIdx = keys.indexOf('atBats')
+                  if (abIdx >= 0) ab = parseFloat(String(statsArr[abIdx])) || 0
+                }
+                if (ab > 0) isPit = false
+              }
+
+              // Parse stats
+              const statsArr = athlete.stats || []
+              const s: any = {}
+              keys.forEach((k: string, idx: number) => {
+                const raw = statsArr[idx]
+                if (raw === '--' || raw == null) return
+                if (typeof raw === 'string' && raw.includes('-') && k === 'hits-atBats') {
+                  const [h, ab] = raw.split('-').map(Number)
+                  if (!isNaN(h)) s['hits'] = h
+                  if (!isNaN(ab)) s['atBats'] = ab
+                } else {
+                  const v = parseFloat(String(raw))
+                  if (!isNaN(v)) s[k] = v
+                }
+              })
+
+              const n: any = {
+                atBats: s['atBats'] || 0, hits: s['hits'] || 0,
+                homeRuns: s['homeRuns'] || 0, runs: s['runs'] || 0,
+                rbi: s['RBI'] || s['rbi'] || 0, stolenBases: s['stolenBases'] || 0,
+                baseOnBalls: s['walks'] || s['baseOnBalls'] || 0,
+                inningsPitched: s['fullInnings.partInnings'] || 0,
+                strikeOuts: s['strikeouts'] || s['strikeOuts'] || 0,
+                earnedRuns: s['earnedRuns'] || 0, wins: s['wins'] || 0,
+                saves: s['saves'] || 0, holds: s['holds'] || 0,
+              }
+
+              // Guard: must have played
+              if (!isPit && n.atBats < 1) {
+                const habIdx = keys.indexOf('hits-atBats')
+                if (habIdx >= 0) {
+                  const raw = String(statsArr[habIdx] || '')
+                  if (raw.includes('-')) {
+                    n.atBats = parseFloat(raw.split('-')[1]) || 0
+                    n.hits = parseFloat(raw.split('-')[0]) || n.hits
+                  }
+                }
+                if (n.atBats < 1) continue
+              }
+
+              const pts = calcFantasyPts(n, isPit)
+              if (pts <= 0) continue
+
+              const name = athlete.athlete?.displayName || 'Unknown'
+              const headshot = athlete.athlete?.headshot?.href ||
+                `https://a.espncdn.com/i/headshots/mlb/players/full/${pid}.png`
+              const pos = isPit
+                ? (n.saves > 0 ? 'RP' : n.inningsPitched >= 3 ? 'SP' : 'RP')
+                : (athlete.athlete?.position?.abbreviation || 'OF')
+              const statLine = buildStatLine(n, isPit)
+              dailyPts.push(pts)
+
+              if (playerPtsMap.has(pid)) {
+                const existing = playerPtsMap.get(pid)!
+                existing.pts += pts
+              } else {
+                playerPtsMap.set(pid, { name, team: teamAbbr, position: pos, headshot, pts, statLine })
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (playerPtsMap.size === 0) {
+      priError.value = 'No data found for this week. The week may not have MLB games or data is not available yet.'
+      return
+    }
+
+    // League avg pts per player for the week
+    const allPts = [...playerPtsMap.values()].map(p => p.pts)
+    const weekAvg = allPts.reduce((a,b) => a+b, 0) / allPts.length
+    const ptsGap = priPtsGap.value || 5.5
+
+    priStatus.value = `✓ ${playerPtsMap.size} players · week avg ${weekAvg.toFixed(1)} pts`
+
+    // Calculate PRI for each player
+    const players: PriPlayer[] = []
+    for (const [pid, p] of playerPtsMap) {
+      const rawImpact = (p.pts - weekAvg) / ptsGap
+      const impact = Math.max(-SPOTS_MAX, Math.min(SPOTS_MAX, rawImpact))
+      const barPx = impact >= 0
+        ? Math.min(BAR_MAX_PX, (impact / SPOTS_MAX) * BAR_MAX_PX)
+        : Math.max(-BAR_MAX_PX, (impact / SPOTS_MAX) * BAR_MAX_PX)
+      players.push({ id: pid, ...p, impact: Math.round(impact * 10) / 10, barPx: Math.round(barPx) })
+    }
+
+    // Sort: positive impact first (desc), then negative (asc)
+    // Show top 5 boosters + top 3 detractors interleaved
+    const boosters = players.filter(p => p.impact > 0).sort((a,b) => b.impact - a.impact).slice(0,5)
+    const detractors = players.filter(p => p.impact < 0).sort((a,b) => a.impact - b.impact).slice(0,3)
+    priPlayers.value = [...boosters, ...detractors]
+
+  } catch (err: any) {
+    priError.value = err.message || 'Fetch failed'
+  } finally {
+    priLoading.value = false
+    if (!priError.value) priStatus.value = priStatus.value
   }
 }
 // ─────────────────────────────────────────────────────────────────────────
