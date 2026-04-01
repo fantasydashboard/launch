@@ -1468,11 +1468,11 @@
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">win prob change</text>
 
             <!-- Thin bar -->
-            <rect x="106" :y="94+i*101+84" width="200" height="3" rx="1"
+            <rect x="106" :y="94+i*101+84" width="200" height="3" rx="0"
               fill="rgba(255,255,255,0.05)"/>
             <rect x="106" :y="94+i*101+84"
               :width="wpiTopBatters.length && wpiTopBatters[0].wpImpact>0 ? Math.min(200,(p.wpImpact/wpiTopBatters[0].wpImpact)*200) : 0"
-              height="3" rx="1"
+              height="3" rx="0"
               :fill="i===0?'#eab308':'rgba(107,114,128,0.5)'"/>
           </g>
 
@@ -1569,11 +1569,11 @@
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">win prob change</text>
 
             <!-- Thin bar -->
-            <rect x="106" :y="94+i*101+84" width="200" height="3" rx="1"
+            <rect x="106" :y="94+i*101+84" width="200" height="3" rx="0"
               fill="rgba(255,255,255,0.05)"/>
             <rect x="106" :y="94+i*101+84"
               :width="wpiTopPitchers.length && wpiTopPitchers[0].wpImpact>0 ? Math.min(200,(p.wpImpact/wpiTopPitchers[0].wpImpact)*200) : 0"
-              height="3" rx="1"
+              height="3" rx="0"
               :fill="i===0?'#06b6d4':'rgba(107,114,128,0.5)'"/>
           </g>
 
@@ -1991,11 +1991,11 @@
               fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.team || '—' }} · {{ p.position || '—' }}</text>
 
             <!-- Bar -->
-            <rect x="50" :y="116+i*104+80" width="280" height="4" rx="2"
+            <rect x="50" :y="116+i*104+80" width="280" height="4" rx="0"
               fill="rgba(255,255,255,0.05)"/>
             <rect x="50" :y="116+i*104+80"
               :width="mtPlayers[0]?.trades>0 ? Math.min(280,(p.trades/mtPlayers[0].trades)*280) : 0"
-              height="4" rx="2"
+              height="4" rx="0"
               :fill="i===0?'#f97316':'rgba(249,115,22,0.35)'"/>
 
             <!-- Trade count — hero number right -->
@@ -2056,7 +2056,7 @@
       <!-- ══ STORY 1: BEST BATTERS ══ -->
       <div>
         <div class="post-label">📱 Story · Best Batters</div>
-        <div style="width:540px;height:960px;background:#0d0f18;border-radius:16px;overflow:hidden;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;box-shadow:0 0 0 1px rgba(255,255,255,0.06);">
+        <div style="width:540px;height:960px;background:#0d0f18;border-radius:0;overflow:hidden;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;box-shadow:0 0 0 1px rgba(255,255,255,0.06);">
           <!-- BG -->
           <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% -10%,rgba(234,179,8,0.18) 0%,transparent 55%);pointer-events:none;"></div>
           <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 105%,rgba(234,179,8,0.08) 0%,transparent 50%);pointer-events:none;"></div>
@@ -2129,7 +2129,7 @@
       <!-- ══ STORY 2: BEST PITCHERS ══ -->
       <div>
         <div class="post-label">📱 Story · Best Pitchers</div>
-        <div style="width:540px;height:960px;background:#0d0f18;border-radius:16px;overflow:hidden;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;box-shadow:0 0 0 1px rgba(255,255,255,0.06);">
+        <div style="width:540px;height:960px;background:#0d0f18;border-radius:0;overflow:hidden;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;box-shadow:0 0 0 1px rgba(255,255,255,0.06);">
           <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% -10%,rgba(6,182,212,0.18) 0%,transparent 55%);pointer-events:none;"></div>
           <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 105%,rgba(6,182,212,0.08) 0%,transparent 50%);pointer-events:none;"></div>
           <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#06b6d4,transparent);"></div>
@@ -2190,7 +2190,7 @@
       <!-- ══ STORY 3: WIN PROBABILITY ══ -->
       <div>
         <div class="post-label">📱 Story · Win Probability — uses Graphic 29 inputs (Interactive tab)</div>
-        <div style="width:540px;height:960px;background:#0d0f18;border-radius:16px;overflow:hidden;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;box-shadow:0 0 0 1px rgba(255,255,255,0.06);">
+        <div style="width:540px;height:960px;background:#0d0f18;border-radius:0;overflow:hidden;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;box-shadow:0 0 0 1px rgba(255,255,255,0.06);">
           <!-- Dual gradient bg -->
           <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(6,182,212,0.14) 0%,transparent 45%,rgba(249,115,22,0.12) 100%);pointer-events:none;"></div>
           <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#06b6d4,#f97316);"></div>
@@ -2213,7 +2213,7 @@
             <!-- Team cards — bigger to fill space -->
             <div style="display:flex;gap:14px;margin-bottom:18px;">
               <!-- Team 1 -->
-              <div style="flex:1;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.3);border-radius:18px;padding:22px 14px;text-align:center;">
+              <div style="flex:1;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.3);border-radius:0;padding:22px 14px;text-align:center;">
                 <img v-if="wplPresetTeams[0].logo" :src="wplPresetTeams[0].logo"
                   style="width:80px;height:80px;border-radius:50%;border:3px solid #06b6d4;object-fit:cover;margin:0 auto 12px;display:block;"
                   @error="($event.target as HTMLImageElement).style.display='none'">
@@ -2226,7 +2226,7 @@
                 <span style="font-size:20px;font-weight:900;color:#374151;">VS</span>
               </div>
               <!-- Team 2 -->
-              <div style="flex:1;background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.3);border-radius:18px;padding:22px 14px;text-align:center;">
+              <div style="flex:1;background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.3);border-radius:0;padding:22px 14px;text-align:center;">
                 <img v-if="wplPresetTeams[1].logo" :src="wplPresetTeams[1].logo"
                   style="width:80px;height:80px;border-radius:50%;border:3px solid #f97316;object-fit:cover;margin:0 auto 12px;display:block;"
                   @error="($event.target as HTMLImageElement).style.display='none'">
@@ -2861,46 +2861,11 @@ async function loadWpiData() {
           for (const athlete of (statGroup.athletes || [])) {
             const pid = athlete.athlete?.id || athlete.id
             if (!pid) continue
-
             // Use player's actual position to classify
             const posAbbr = (athlete.athlete?.position?.abbreviation ||
                              athlete.position?.abbreviation || '').toUpperCase()
             const PITCHER_POS_SET = new Set(['SP','RP','P','LHP','RHP'])
-            let isPit = PITCHER_POS_SET.has(posAbbr)
-
-            // Two-way player detection: if ESPN classifies as pitcher but the player
-            // has real at-bats today, treat them as a batter instead.
-            // ESPN uses a combined 'hits-atBats' key (e.g. "2-4") not a standalone 'atBats' key,
-            // so we must check both formats.
-            if (isPit) {
-              const statsArr = athlete.stats || []
-              let atBats = 0
-
-              // Direct atBats key (some ESPN endpoints)
-              const atBatsIdx = keys.indexOf('atBats')
-              if (atBatsIdx >= 0) {
-                atBats = parseFloat(String(statsArr[atBatsIdx])) || 0
-              }
-
-              // Combined 'hits-atBats' key — ESPN format "H-AB" e.g. "2-4"
-              if (atBats === 0) {
-                const habIdx = keys.indexOf('hits-atBats')
-                if (habIdx >= 0) {
-                  const raw = String(statsArr[habIdx] || '')
-                  if (raw.includes('-')) {
-                    atBats = parseFloat(raw.split('-')[1]) || 0
-                  }
-                }
-              }
-
-              const playerName = athlete.athlete?.displayName || ''
-              console.log(`[WPI] Pitcher position player: ${playerName} | atBats resolved: ${atBats} | keys: ${keys.slice(0,8).join(',')}`)
-
-              if (atBats > 0) {
-                console.log(`[WPI] Two-way player: ${playerName} has ${atBats} AB — routing to batters`)
-                isPit = false
-              }
-            }
+            const isPit = PITCHER_POS_SET.has(posAbbr)
 
             // Skip if already processed this player in this role
             if (isPit && seenPit.has(pid)) continue
@@ -2974,37 +2939,8 @@ async function loadWpiData() {
       }
     }
 
-    // ── Two-way player merge ─────────────────────────────────────────────
-    // If a player ended up in both maps (e.g. Ohtani who bats AND pitches),
-    // combine their pts/wpImpact and keep them only in the batter bucket so
-    // their full contribution shows in Best Batters.
-    for (const [pid, batEntry] of batterMap) {
-      if (pitcherMap.has(pid)) {
-        const pitEntry = pitcherMap.get(pid)!
-        const combinedPts = batEntry.pts + pitEntry.pts
-        const avgPts = 4 // batter average baseline for wp impact
-        const combinedWp = calcWpImpact(combinedPts, avgPts)
-        console.log(`[WPI] Merging two-way player ${batEntry.name}: bat=${batEntry.pts.toFixed(1)} + pit=${pitEntry.pts.toFixed(1)} = ${combinedPts.toFixed(1)} pts`)
-        batterMap.set(pid, {
-          ...batEntry,
-          pts: combinedPts,
-          wpImpact: combinedWp,
-          statLine: `${batEntry.statLine} / ${pitEntry.statLine}`
-        })
-        // Remove from pitcher map so they don't appear in both graphics
-        pitcherMap.delete(pid)
-      }
-    }
-    // ─────────────────────────────────────────────────────────────────────
-
-    // Final filter + sort: only keep players with positive wpImpact (applied here
-    // instead of inside parseAthleteRow so two-way players survive the merge first)
-    const batters  = [...batterMap.values()]
-      .filter(p => p.wpImpact > 0)
-      .sort((a,b) => b.pts - a.pts)
-    const pitchers = [...pitcherMap.values()]
-      .filter(p => p.wpImpact > 0)
-      .sort((a,b) => b.pts - a.pts)
+    const batters  = [...batterMap.values()].sort((a,b) => b.pts - a.pts)
+    const pitchers = [...pitcherMap.values()].sort((a,b) => b.pts - a.pts)
     wpiTopBatters.value  = batters.slice(0,5)
     wpiTopPitchers.value = pitchers.slice(0,5)
 
@@ -3100,24 +3036,7 @@ function parseAthleteRow(
   }
 
   const ip = n.inningsPitched
-  // If atBats still 0 after parsing, check the hits-atBats combined key directly
-  // (ESPN uses "H-AB" format e.g. "2-4" — parseAthleteRow handles this in the loop
-  // but the combined key is 'hits-atBats', not 'atBats', so n.atBats may still be 0)
-  if (!isPitcherGroup && n.atBats < 1) {
-    const habIdx = keys.indexOf('hits-atBats')
-    if (habIdx >= 0) {
-      const raw = String((athlete.stats || [])[habIdx] || '')
-      if (raw.includes('-')) {
-        const ab = parseFloat(raw.split('-')[1]) || 0
-        if (ab > 0) {
-          n.atBats = ab
-          const hRaw = raw.split('-')[0]
-          n.hits = parseFloat(hRaw) || n.hits
-        }
-      }
-    }
-    if (n.atBats < 1) return
-  }
+  if (!isPitcherGroup && n.atBats < 1) return
   // For pitchers: keep anyone in the pitching stats group (IP may be 0 for openers/closers)
 
   const name     = athlete.athlete?.displayName || 'Unknown'
@@ -3132,11 +3051,9 @@ function parseAthleteRow(
   if (pts <= 0) return
 
   // WP impact: points above position average × 0.75%
-  // NOTE: Do NOT filter on wpImpact <= 0 here — two-way players like Ohtani have
-  // low batting pts alone but get merged with pitching pts after this step.
-  // wpImpact filter is applied at the final sort after the merge.
   const avgPts = isPitcherGroup ? (ip >= 5 ? 14 : ip >= 2 ? 7 : 4) : 4
   const wpImpact = calcWpImpact(pts, avgPts)
+  if (wpImpact <= 0) return
 
   const posFromAthlete = athlete.athlete?.position?.abbreviation ||
                          athlete.position?.abbreviation || (isPitcherGroup ? 'P' : 'OF')
