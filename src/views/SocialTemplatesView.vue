@@ -1468,11 +1468,11 @@
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">win prob change</text>
 
             <!-- Thin bar -->
-            <rect x="106" :y="94+i*101+84" width="200" height="3" rx="0"
+            <rect x="106" :y="94+i*101+84" width="200" height="3" rx="1"
               fill="rgba(255,255,255,0.05)"/>
             <rect x="106" :y="94+i*101+84"
               :width="wpiTopBatters.length && wpiTopBatters[0].wpImpact>0 ? Math.min(200,(p.wpImpact/wpiTopBatters[0].wpImpact)*200) : 0"
-              height="3" rx="0"
+              height="3" rx="1"
               :fill="i===0?'#eab308':'rgba(107,114,128,0.5)'"/>
           </g>
 
@@ -1569,11 +1569,11 @@
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">win prob change</text>
 
             <!-- Thin bar -->
-            <rect x="106" :y="94+i*101+84" width="200" height="3" rx="0"
+            <rect x="106" :y="94+i*101+84" width="200" height="3" rx="1"
               fill="rgba(255,255,255,0.05)"/>
             <rect x="106" :y="94+i*101+84"
               :width="wpiTopPitchers.length && wpiTopPitchers[0].wpImpact>0 ? Math.min(200,(p.wpImpact/wpiTopPitchers[0].wpImpact)*200) : 0"
-              height="3" rx="0"
+              height="3" rx="1"
               :fill="i===0?'#06b6d4':'rgba(107,114,128,0.5)'"/>
           </g>
 
@@ -1991,11 +1991,11 @@
               fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.team || '—' }} · {{ p.position || '—' }}</text>
 
             <!-- Bar -->
-            <rect x="50" :y="116+i*104+80" width="280" height="4" rx="0"
+            <rect x="50" :y="116+i*104+80" width="280" height="4" rx="2"
               fill="rgba(255,255,255,0.05)"/>
             <rect x="50" :y="116+i*104+80"
               :width="mtPlayers[0]?.trades>0 ? Math.min(280,(p.trades/mtPlayers[0].trades)*280) : 0"
-              height="4" rx="0"
+              height="4" rx="2"
               :fill="i===0?'#f97316':'rgba(249,115,22,0.35)'"/>
 
             <!-- Trade count — hero number right -->
@@ -2861,11 +2861,30 @@ async function loadWpiData() {
           for (const athlete of (statGroup.athletes || [])) {
             const pid = athlete.athlete?.id || athlete.id
             if (!pid) continue
-            // Use player's actual position to classify
             const posAbbr = (athlete.athlete?.position?.abbreviation ||
                              athlete.position?.abbreviation || '').toUpperCase()
             const PITCHER_POS_SET = new Set(['SP','RP','P','LHP','RHP'])
-            const isPit = PITCHER_POS_SET.has(posAbbr)
+            let isPit = PITCHER_POS_SET.has(posAbbr)
+
+            // Two-way player detection: pitcher with real at-bats → route to batters.
+            // ESPN uses 'hits-atBats' combined key ("2-4") not a standalone 'atBats' key.
+            if (isPit) {
+              const statsArr = athlete.stats || []
+              let atBats = 0
+              const atBatsIdx = keys.indexOf('atBats')
+              if (atBatsIdx >= 0) atBats = parseFloat(String(statsArr[atBatsIdx])) || 0
+              if (atBats === 0) {
+                const habIdx = keys.indexOf('hits-atBats')
+                if (habIdx >= 0) {
+                  const raw = String(statsArr[habIdx] || '')
+                  if (raw.includes('-')) atBats = parseFloat(raw.split('-')[1]) || 0
+                }
+              }
+              if (atBats > 0) {
+                console.log(`[WPI] Two-way: ${athlete.athlete?.displayName} has ${atBats} AB — routing to batters`)
+                isPit = false
+              }
+            }
 
             // Skip if already processed this player in this role
             if (isPit && seenPit.has(pid)) continue
@@ -2939,8 +2958,21 @@ async function loadWpiData() {
       }
     }
 
-    const batters  = [...batterMap.values()].sort((a,b) => b.pts - a.pts)
-    const pitchers = [...pitcherMap.values()].sort((a,b) => b.pts - a.pts)
+    // Two-way player merge: if a player is in both maps, combine pts into batter bucket
+    for (const [pid, batEntry] of batterMap) {
+      if (pitcherMap.has(pid)) {
+        const pitEntry = pitcherMap.get(pid)!
+        const combinedPts = batEntry.pts + pitEntry.pts
+        const combinedWp = calcWpImpact(combinedPts, 4)
+        console.log(`[WPI] Merging two-way: ${batEntry.name} bat=${batEntry.pts.toFixed(1)} + pit=${pitEntry.pts.toFixed(1)} = ${combinedPts.toFixed(1)} pts`)
+        batterMap.set(pid, { ...batEntry, pts: combinedPts, wpImpact: combinedWp,
+          statLine: `${batEntry.statLine} / ${pitEntry.statLine}` })
+        pitcherMap.delete(pid)
+      }
+    }
+
+    const batters  = [...batterMap.values()].filter(p => p.wpImpact > 0).sort((a,b) => b.pts - a.pts)
+    const pitchers = [...pitcherMap.values()].filter(p => p.wpImpact > 0).sort((a,b) => b.pts - a.pts)
     wpiTopBatters.value  = batters.slice(0,5)
     wpiTopPitchers.value = pitchers.slice(0,5)
 
@@ -3036,7 +3068,18 @@ function parseAthleteRow(
   }
 
   const ip = n.inningsPitched
-  if (!isPitcherGroup && n.atBats < 1) return
+  // If atBats still 0, check hits-atBats combined key (ESPN "H-AB" format e.g. "2-4")
+  if (!isPitcherGroup && n.atBats < 1) {
+    const habIdx = keys.indexOf('hits-atBats')
+    if (habIdx >= 0) {
+      const raw = String((athlete.stats || [])[habIdx] || '')
+      if (raw.includes('-')) {
+        const ab = parseFloat(raw.split('-')[1]) || 0
+        if (ab > 0) { n.atBats = ab; n.hits = parseFloat(raw.split('-')[0]) || n.hits }
+      }
+    }
+    if (n.atBats < 1) return
+  }
   // For pitchers: keep anyone in the pitching stats group (IP may be 0 for openers/closers)
 
   const name     = athlete.athlete?.displayName || 'Unknown'
@@ -3052,8 +3095,9 @@ function parseAthleteRow(
 
   // WP impact: points above position average × 0.75%
   const avgPts = isPitcherGroup ? (ip >= 5 ? 14 : ip >= 2 ? 7 : 4) : 4
+  // wpImpact filter moved to final sort — two-way players need to survive here
+  // so their batting+pitching pts can be merged before filtering
   const wpImpact = calcWpImpact(pts, avgPts)
-  if (wpImpact <= 0) return
 
   const posFromAthlete = athlete.athlete?.position?.abbreviation ||
                          athlete.position?.abbreviation || (isPitcherGroup ? 'P' : 'OF')
@@ -4135,7 +4179,7 @@ async function fetchMostTraded() {
 .post-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #4b5563; margin-bottom: 12px; }
 
 /* Square */
-.sq { width: 100%; aspect-ratio: 1/1; position: relative; overflow: hidden; border-radius: 4px; box-shadow: 0 0 0 1px #1e2130, 0 20px 60px rgba(0,0,0,0.7); flex-shrink: 0; display: flex; flex-direction: column; }
+.sq { width: 100%; aspect-ratio: 1/1; position: relative; overflow: hidden; border-radius: 0; box-shadow: 0 0 0 1px #1e2130, 0 20px 60px rgba(0,0,0,0.7); flex-shrink: 0; display: flex; flex-direction: column; }
 .sq-dark   { background: radial-gradient(ellipse 120% 100% at 50% 0%, rgba(234,179,8,0.09) 0%, transparent 60%), linear-gradient(145deg,#05060a,#090c14); }
 .sq-green  { background: radial-gradient(ellipse 120% 100% at 50% 20%, rgba(34,197,94,0.09) 0%, transparent 60%), linear-gradient(145deg,#040a06,#060e08); }
 .sq-cyan   { background: radial-gradient(ellipse 120% 100% at 70% 80%, rgba(6,182,212,0.08) 0%, transparent 60%), linear-gradient(145deg,#040810,#080c18); }
