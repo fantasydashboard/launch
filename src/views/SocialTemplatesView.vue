@@ -2997,8 +2997,14 @@ async function loadWpiData() {
     }
     // ─────────────────────────────────────────────────────────────────────
 
-    const batters  = [...batterMap.values()].sort((a,b) => b.pts - a.pts)
-    const pitchers = [...pitcherMap.values()].sort((a,b) => b.pts - a.pts)
+    // Final filter + sort: only keep players with positive wpImpact (applied here
+    // instead of inside parseAthleteRow so two-way players survive the merge first)
+    const batters  = [...batterMap.values()]
+      .filter(p => p.wpImpact > 0)
+      .sort((a,b) => b.pts - a.pts)
+    const pitchers = [...pitcherMap.values()]
+      .filter(p => p.wpImpact > 0)
+      .sort((a,b) => b.pts - a.pts)
     wpiTopBatters.value  = batters.slice(0,5)
     wpiTopPitchers.value = pitchers.slice(0,5)
 
@@ -3126,9 +3132,11 @@ function parseAthleteRow(
   if (pts <= 0) return
 
   // WP impact: points above position average × 0.75%
+  // NOTE: Do NOT filter on wpImpact <= 0 here — two-way players like Ohtani have
+  // low batting pts alone but get merged with pitching pts after this step.
+  // wpImpact filter is applied at the final sort after the merge.
   const avgPts = isPitcherGroup ? (ip >= 5 ? 14 : ip >= 2 ? 7 : 4) : 4
   const wpImpact = calcWpImpact(pts, avgPts)
-  if (wpImpact <= 0) return
 
   const posFromAthlete = athlete.athlete?.position?.abbreviation ||
                          athlete.position?.abbreviation || (isPitcherGroup ? 'P' : 'OF')
