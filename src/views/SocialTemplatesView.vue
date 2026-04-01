@@ -2861,18 +2861,26 @@ async function loadWpiData() {
           for (const athlete of (statGroup.athletes || [])) {
             const pid = athlete.athlete?.id || athlete.id
             if (!pid) continue
+
             // Use player's actual position to classify
             const posAbbr = (athlete.athlete?.position?.abbreviation ||
                              athlete.position?.abbreviation || '').toUpperCase()
             const PITCHER_POS_SET = new Set(['SP','RP','P','LHP','RHP'])
+            let isPit = PITCHER_POS_SET.has(posAbbr)
 
-            // Two-way player exceptions — always treat as batter regardless of position.
-            // Ohtani (ESPN id 39832) pitches AND hits; ESPN sometimes returns him as SP
-            // which routes him to the pitcher bucket even on days he bats. Force batter.
-            const TWO_WAY_BATTER_IDS = new Set(['39832']) // Shohei Ohtani
-            const isPit = TWO_WAY_BATTER_IDS.has(String(pid))
-              ? false
-              : PITCHER_POS_SET.has(posAbbr)
+            // Two-way player detection: if ESPN classifies as pitcher but the player
+            // has real at-bats today, treat them as a batter instead.
+            // This handles Ohtani and any future two-way players automatically.
+            if (isPit) {
+              const statsArr = athlete.stats || []
+              const atBatsIdx = keys.indexOf('atBats')
+              const atBats = atBatsIdx >= 0 ? parseFloat(String(statsArr[atBatsIdx])) : 0
+              if (!isNaN(atBats) && atBats > 0) {
+                const name = athlete.athlete?.displayName || ''
+                console.log(`[WPI] Two-way player detected: ${name} has ${atBats} AB — routing to batters`)
+                isPit = false
+              }
+            }
 
             // Skip if already processed this player in this role
             if (isPit && seenPit.has(pid)) continue
