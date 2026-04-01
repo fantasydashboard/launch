@@ -885,225 +885,143 @@
                 <stop offset="100%" stop-color="#eab308" stop-opacity="0"/>
               </radialGradient>
             </defs>
-
-            <!-- BG -->
             <rect x="0" y="0" width="540" height="660" fill="#07080e"/>
             <rect x="0" y="0" width="540" height="660" fill="url(#pr-glow)"/>
-            <!-- Top accent bar -->
             <rect x="0" y="0" width="540" height="4" fill="url(#pr-gold)"/>
-
-            <!-- UFD Logo -->
-            <image href="/UFD_V8.png" x="380" y="6" width="140" height="76" preserveAspectRatio="xMidYMid meet"/>
-
-            <!-- Header text -->
-            <text x="16" y="32" font-size="11" font-weight="700" letter-spacing="0.14em" fill="#6b7280"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-transform="uppercase">LEVEL UP YOUR LEAGUE WITH</text>
-            <text x="16" y="62" font-size="32" font-weight="900" letter-spacing="-0.01em" fill="#eab308"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">POWER RANKINGS</text>
+            <image href="/UFD_V8.png" x="380" y="4" width="140" height="76" preserveAspectRatio="xMidYMid meet"/>
+            <text x="16" y="26" font-size="11" font-weight="700" letter-spacing="0.14em" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">LEVEL UP YOUR LEAGUE WITH</text>
+            <text x="16" y="57" font-size="34" font-weight="900" letter-spacing="-0.01em" fill="#eab308" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">POWER RANKINGS</text>
             <!-- Header divider -->
-            <line x1="0" y1="82" x2="540" y2="82" stroke="#1e2130" stroke-width="1"/>
-
-            <!-- Rankings rows -->
-            
-          <!-- Row 1 -->
-          <rect x="0" y="95" width="540" height="48" fill="rgba(234,179,8,0.09)"/>
-          <rect x='0' y='95' width='3' height='48' fill='#eab308'/>
-          <line x1="0" y1="143" x2="540" y2="143" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="125" font-size="16" font-weight="900" fill="#eab308" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#1</text>
-          <circle cx="54" cy="120" r="14" fill="rgba(0,0,0,0.3)" stroke="#eab308" stroke-width="2" stroke-opacity="1"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-5.svg" x="40" y="106" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="77" y="125" font-size="14" font-weight="800" fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Crazy Eights</text>
-          <text x="390" y="124" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">82.4 pts</text>
-          <text x="440" y="125" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑2</text>
-        
-
-          <!-- Row 2 -->
-          <rect x="0" y="144" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
+            <line x1="0" y1="72" x2="540" y2="72" stroke="#1e2130" stroke-width="1"/>
+          <rect x="0" y="82" width="540" height="48" fill="rgba(234,179,8,0.09)"/>
+          <rect x='0' y='82' width='3' height='48' fill='#eab308'/>
+          <line x1="0" y1="130" x2="540" y2="130" stroke="#1e2130" stroke-width="1"/>
+          <text x="22" y="112" font-size="16" font-weight="900" fill="#eab308" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#1</text>
+          <circle cx="54" cy="107" r="14" fill="rgba(0,0,0,0.3)" stroke="#eab308" stroke-width="2" stroke-opacity="1"/>
+          <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-5.svg" x="40" y="93" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
+          <text x="77" y="112" font-size="14" font-weight="800" fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Crazy Eights</text>
+          <text x="390" y="111" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">78.4 pts avg</text>
+          <text x="440" y="112" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑1</text>
+          <rect x="0" y="131" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
           
-          <line x1="0" y1="192" x2="540" y2="192" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="174" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#2</text>
-          <circle cx="54" cy="169" r="14" fill="rgba(0,0,0,0.3)" stroke="#22c55e" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-6.svg" x="40" y="155" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="77" y="174" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">The Roto Rooters</text>
-          <text x="390" y="173" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">79.1 pts</text>
-          <text x="440" y="174" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑1</text>
-        
-
-          <!-- Row 3 -->
-          <rect x="0" y="193" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
+          <line x1="0" y1="179" x2="540" y2="179" stroke="#1e2130" stroke-width="1"/>
+          <text x="22" y="161" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#2</text>
+          <circle cx="54" cy="156" r="14" fill="rgba(0,0,0,0.3)" stroke="#22c55e" stroke-width="1.5" stroke-opacity="0.6"/>
+          <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-6.svg" x="40" y="142" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
+          <text x="77" y="161" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">The Roto Rooters</text>
+          <text x="390" y="160" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">74.2 pts avg</text>
+          <text x="440" y="161" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑1</text>
+          <rect x="0" y="180" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
           
-          <line x1="0" y1="241" x2="540" y2="241" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="223" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#3</text>
-          <circle cx="54" cy="218" r="14" fill="rgba(0,0,0,0.3)" stroke="#06b6d4" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-01.svg" x="40" y="204" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="77" y="223" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Caught Looking</text>
-          <text x="390" y="222" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">76.8 pts</text>
-          <text x="440" y="223" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑2</text>
-        
-
-          <!-- Row 4 -->
-          <rect x="0" y="242" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
+          <line x1="0" y1="228" x2="540" y2="228" stroke="#1e2130" stroke-width="1"/>
+          <text x="22" y="210" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#3</text>
+          <circle cx="54" cy="205" r="14" fill="rgba(0,0,0,0.3)" stroke="#06b6d4" stroke-width="1.5" stroke-opacity="0.6"/>
+          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-01.svg" x="40" y="191" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
+          <text x="77" y="210" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Caught Looking</text>
+          <text x="390" y="209" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">71.6 pts avg</text>
+          <text x="440" y="210" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑2</text>
+          <rect x="0" y="229" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
           
-          <line x1="0" y1="290" x2="540" y2="290" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="272" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#4</text>
-          <circle cx="54" cy="267" r="14" fill="rgba(0,0,0,0.3)" stroke="#f97316" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-10.svg" x="40" y="253" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="77" y="272" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Dinger Party</text>
-          <text x="390" y="271" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">74.5 pts</text>
-          <text x="440" y="272" font-size="12" font-weight="700" fill="#ef4444" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↓3</text>
-        
-
-          <!-- Row 5 -->
-          <rect x="0" y="291" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
+          <line x1="0" y1="277" x2="540" y2="277" stroke="#1e2130" stroke-width="1"/>
+          <text x="22" y="259" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#4</text>
+          <circle cx="54" cy="254" r="14" fill="rgba(0,0,0,0.3)" stroke="#f97316" stroke-width="1.5" stroke-opacity="0.6"/>
+          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-10.svg" x="40" y="240" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
+          <text x="77" y="259" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Dinger Party</text>
+          <text x="390" y="258" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">69.8 pts avg</text>
+          <text x="440" y="259" font-size="12" font-weight="700" fill="#ef4444" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↓3</text>
+          <rect x="0" y="278" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
           
-          <line x1="0" y1="339" x2="540" y2="339" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="321" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#5</text>
-          <circle cx="54" cy="316" r="14" fill="rgba(0,0,0,0.3)" stroke="#8b5cf6" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--03.svg" x="40" y="302" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="77" y="321" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Full Count</text>
-          <text x="390" y="320" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">71.2 pts</text>
-          <text x="440" y="321" font-size="12" font-weight="700" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">—</text>
-        
-
-          <!-- Row 6 -->
-          <rect x="0" y="340" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
+          <line x1="0" y1="326" x2="540" y2="326" stroke="#1e2130" stroke-width="1"/>
+          <text x="22" y="308" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#5</text>
+          <circle cx="54" cy="303" r="14" fill="rgba(0,0,0,0.3)" stroke="#8b5cf6" stroke-width="1.5" stroke-opacity="0.6"/>
+          <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--03.svg" x="40" y="289" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
+          <text x="77" y="308" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Full Count</text>
+          <text x="390" y="307" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">66.3 pts avg</text>
+          <text x="440" y="308" font-size="12" font-weight="700" fill="#ef4444" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↓1</text>
+          <rect x="0" y="327" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
           
-          <line x1="0" y1="388" x2="540" y2="388" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="370" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#6</text>
-          <circle cx="54" cy="365" r="14" fill="rgba(0,0,0,0.3)" stroke="#ef4444" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--10.svg" x="40" y="351" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="77" y="370" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">The Benchwarmers</text>
-          <text x="390" y="369" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">68.9 pts</text>
-          <text x="440" y="370" font-size="12" font-weight="700" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">—</text>
-        
-
-          <!-- Row 7 -->
-          <rect x="0" y="389" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
+          <line x1="0" y1="375" x2="540" y2="375" stroke="#1e2130" stroke-width="1"/>
+          <text x="22" y="357" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#6</text>
+          <circle cx="54" cy="352" r="14" fill="rgba(0,0,0,0.3)" stroke="#ef4444" stroke-width="1.5" stroke-opacity="0.6"/>
+          <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--10.svg" x="40" y="338" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
+          <text x="77" y="357" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">The Benchwarmers</text>
+          <text x="390" y="356" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">63.1 pts avg</text>
+          <text x="440" y="357" font-size="12" font-weight="700" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">—</text>
+          <rect x="0" y="376" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
           
-          <line x1="0" y1="437" x2="540" y2="437" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="419" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#7</text>
-          <circle cx="54" cy="414" r="14" fill="rgba(0,0,0,0.3)" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-09.svg" x="40" y="400" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="77" y="419" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Exit Velocity</text>
-          <text x="390" y="418" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">66.3 pts</text>
-          <text x="440" y="419" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑1</text>
-        
-
-          <!-- Row 8 -->
-          <rect x="0" y="438" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
+          <line x1="0" y1="424" x2="540" y2="424" stroke="#1e2130" stroke-width="1"/>
+          <text x="22" y="406" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#7</text>
+          <circle cx="54" cy="401" r="14" fill="rgba(0,0,0,0.3)" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.6"/>
+          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-09.svg" x="40" y="387" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
+          <text x="77" y="406" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Exit Velocity</text>
+          <text x="390" y="405" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">60.5 pts avg</text>
+          <text x="440" y="406" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑1</text>
+          <rect x="0" y="425" width="540" height="48" fill="rgba(255,255,255,0.018)"/>
           
-          <line x1="0" y1="486" x2="540" y2="486" stroke="#1e2130" stroke-width="1"/>
-          <text x="22" y="468" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#8</text>
-          <circle cx="54" cy="463" r="14" fill="rgba(0,0,0,0.3)" stroke="#ec4899" stroke-width="1.5" stroke-opacity="0.6"/>
-          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-08.svg" x="40" y="449" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
-          <text x="77" y="468" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Midnight Lineup</text>
-          <text x="390" y="467" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">63.7 pts</text>
-          <text x="440" y="468" font-size="12" font-weight="700" fill="#ef4444" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↓1</text>
-        
-
-            <!-- Graph section divider -->
-            <rect x="0" y="487" width="540" height="1" fill="#1e2130"/>
-            <rect x="0" y="488" width="540" height="22" fill="rgba(234,179,8,0.04)"/>
-            <text x="16" y="503" font-size="10" font-weight="700" letter-spacing="0.14em" fill="#4b5563"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RANKINGS TREND  ·  WK 5 – WK 8</text>
-            <line x1="0" y1="510" x2="540" y2="510" stroke="#1e2130" stroke-width="1"/>
-
-            <!-- Grid lines -->
+          <line x1="0" y1="473" x2="540" y2="473" stroke="#1e2130" stroke-width="1"/>
+          <text x="22" y="455" font-size="14" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">#8</text>
+          <circle cx="54" cy="450" r="14" fill="rgba(0,0,0,0.3)" stroke="#ec4899" stroke-width="1.5" stroke-opacity="0.6"/>
+          <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-08.svg" x="40" y="436" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
+          <text x="77" y="455" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Midnight Lineup</text>
+          <text x="390" y="454" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">57.9 pts avg</text>
+          <text x="440" y="455" font-size="12" font-weight="700" fill="#ef4444" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↓1</text>
+            <!-- Graph section -->
+            <rect x="0" y="474" width="540" height="1" fill="#1e2130"/>
+            <rect x="0" y="475" width="540" height="22" fill="rgba(234,179,8,0.04)"/>
+            <text x="16" y="490" font-size="10" font-weight="700" letter-spacing="0.14em" fill="#4b5563" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RANKINGS TREND  ·  WK 5 – WK 8</text>
+            <line x1="0" y1="497" x2="540" y2="497" stroke="#1e2130" stroke-width="1"/>
             <line x1="50" y1="510" x2="449" y2="510" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-<line x1="50" y1="526" x2="449" y2="526" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-<line x1="50" y1="542" x2="449" y2="542" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-<line x1="50" y1="557" x2="449" y2="557" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-<line x1="50" y1="573" x2="449" y2="573" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-<line x1="50" y1="589" x2="449" y2="589" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-<line x1="50" y1="605" x2="449" y2="605" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-<line x1="50" y1="620" x2="449" y2="620" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-<line x1="50" y1="508" x2="50" y2="622" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
-<line x1="183" y1="508" x2="183" y2="622" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
-<line x1="316" y1="508" x2="316" y2="622" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
-<line x1="449" y1="508" x2="449" y2="622" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
-
-            <!-- Y-axis rank labels -->
+            <line x1="50" y1="526" x2="449" y2="526" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <line x1="50" y1="542" x2="449" y2="542" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <line x1="50" y1="557" x2="449" y2="557" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <line x1="50" y1="573" x2="449" y2="573" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <line x1="50" y1="589" x2="449" y2="589" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <line x1="50" y1="605" x2="449" y2="605" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <line x1="50" y1="620" x2="449" y2="620" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <line x1="50" y1="508" x2="50" y2="622" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
+            <line x1="183" y1="508" x2="183" y2="622" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
+            <line x1="316" y1="508" x2="316" y2="622" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
+            <line x1="449" y1="508" x2="449" y2="622" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
             <text x="36" y="514" font-size="9" fill="#374151" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">#1</text>
             <text x="36" y="624" font-size="9" fill="#374151" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">#8</text>
-
-            <!-- Graph lines -->
-            
-          <path d="M50,526 C94,526 139,510 183,510 C227,510 272,510 316,510 C360,510 405,510 449,510" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round"/>
+            <path d="M50,542 C94,542 139,526 183,526 C227,526 272,526 316,526 C360,526 405,510 449,510" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round"/>
           <circle cx="449" cy="510" r="4" fill="#eab308"/>
-        
-
-          <path d="M50,542 C94,542 139,542 183,542 C227,542 272,526 316,526 C360,526 405,526 449,526" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/>
+          <path d="M50,526 C94,526 139,542 183,542 C227,542 272,542 316,542 C360,542 405,526 449,526" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/>
           <circle cx="449" cy="526" r="4" fill="#22c55e"/>
-        
-
-          <path d="M50,573 C94,573 139,557 183,557 C227,557 272,542 316,542 C360,542 405,542 449,542" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
+          <path d="M50,573 C94,573 139,557 183,557 C227,557 272,573 316,573 C360,573 405,542 449,542" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
           <circle cx="449" cy="542" r="4" fill="#06b6d4"/>
-        
-
-          <path d="M50,510 C94,510 139,526 183,526 C227,526 272,557 316,557 C360,557 405,557 449,557" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round"/>
+          <path d="M50,510 C94,510 139,510 183,510 C227,510 272,510 316,510 C360,510 405,557 449,557" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round"/>
           <circle cx="449" cy="557" r="4" fill="#f97316"/>
-        
-
-          <path d="M50,557 C94,557 139,573 183,573 C227,573 272,573 316,573 C360,573 405,573 449,573" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round"/>
+          <path d="M50,557 C94,557 139,573 183,573 C227,573 272,557 316,557 C360,557 405,573 449,573" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round"/>
           <circle cx="449" cy="573" r="4" fill="#8b5cf6"/>
-        
-
-          <path d="M50,605 C94,605 139,589 183,589 C227,589 272,589 316,589 C360,589 405,589 449,589" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
+          <path d="M50,589 C94,589 139,589 183,589 C227,589 272,589 316,589 C360,589 405,589 449,589" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
           <circle cx="449" cy="589" r="4" fill="#ef4444"/>
-        
-
-          <path d="M50,589 C94,589 139,605 183,605 C227,605 272,620 316,620 C360,620 405,605 449,605" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+          <path d="M50,620 C94,620 139,620 183,620 C227,620 272,620 316,620 C360,620 405,605 449,605" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
           <circle cx="449" cy="605" r="4" fill="#3b82f6"/>
-        
-
-          <path d="M50,620 C94,620 139,620 183,620 C227,620 272,605 316,605 C360,605 405,620 449,620" fill="none" stroke="#ec4899" stroke-width="2" stroke-linecap="round"/>
+          <path d="M50,605 C94,605 139,605 183,605 C227,605 272,605 316,605 C360,605 405,620 449,620" fill="none" stroke="#ec4899" stroke-width="2" stroke-linecap="round"/>
           <circle cx="449" cy="620" r="4" fill="#ec4899"/>
-        
-
-            <!-- Team logos at end of lines -->
-            
-          <circle cx="466" cy="510" r="10" fill="#0a0c14" stroke="#eab308" stroke-width="1.5"/>
+            <circle cx="466" cy="510" r="10" fill="#0a0c14" stroke="#eab308" stroke-width="1.5"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-5.svg" x="456" y="500" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-        
-
           <circle cx="466" cy="526" r="10" fill="#0a0c14" stroke="#22c55e" stroke-width="1.5"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-6.svg" x="456" y="516" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-        
-
           <circle cx="466" cy="542" r="10" fill="#0a0c14" stroke="#06b6d4" stroke-width="1.5"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-01.svg" x="456" y="532" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-        
-
           <circle cx="466" cy="557" r="10" fill="#0a0c14" stroke="#f97316" stroke-width="1.5"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-10.svg" x="456" y="547" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-        
-
           <circle cx="466" cy="573" r="10" fill="#0a0c14" stroke="#8b5cf6" stroke-width="1.5"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--03.svg" x="456" y="563" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-        
-
           <circle cx="466" cy="589" r="10" fill="#0a0c14" stroke="#ef4444" stroke-width="1.5"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--10.svg" x="456" y="579" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-        
-
           <circle cx="466" cy="605" r="10" fill="#0a0c14" stroke="#3b82f6" stroke-width="1.5"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-09.svg" x="456" y="595" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-        
-
           <circle cx="466" cy="620" r="10" fill="#0a0c14" stroke="#ec4899" stroke-width="1.5"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-08.svg" x="456" y="610" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-        
-
-            <!-- Week labels -->
-            <text x="50" y="640" font-size="10" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 5</text>
-            <text x="183" y="640" font-size="10" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 6</text>
-            <text x="316" y="640" font-size="10" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 7</text>
-            <text x="449" y="640" font-size="10" fill="#eab308" text-anchor="middle" font-weight="700" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 8</text>
-
-            <!-- Watermark -->
-            <line x1="0" y1="652" x2="540" y2="652" stroke="#1e2130" stroke-width="1"/>
-            <text x="270" y="657" text-anchor="middle" font-size="9" fill="#1a1f2e"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
+            <text x="50" y="638" font-size="10" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 5</text>
+            <text x="183" y="638" font-size="10" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 6</text>
+            <text x="316" y="638" font-size="10" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 7</text>
+            <text x="449" y="638" font-size="10" fill="#eab308" text-anchor="middle" font-weight="700" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 8 ▶</text>
+            <line x1="0" y1="648" x2="540" y2="648" stroke="#1e2130" stroke-width="1"/>
+            <text x="270" y="655" text-anchor="middle" font-size="9" fill="#1a1f2e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
           </svg>
         </div>
       </div>
@@ -2533,28 +2451,14 @@
       <div>
         <div class="post-label">📱 Story · Power Rankings — Sample Demo Graphic</div>
         <div style="width:540px;height:960px;background:#07080e;border-radius:0;overflow:hidden;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
-          <!-- BG glow -->
           <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(234,179,8,0.12) 0%,transparent 55%);pointer-events:none;"></div>
-          <!-- Top accent bar -->
           <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
-
-          <svg viewBox="0 0 540 960" xmlns="http://www.w3.org/2000/svg"
-            style="position:absolute;inset:0;width:100%;height:100%;">
-
-            <!-- UFD Logo top-right -->
-            <image href="/UFD_V8.png" x="360" y="55" width="160" height="86" preserveAspectRatio="xMidYMid meet"/>
-
-            <!-- Header text -->
-            <text x="22" y="90" font-size="12" font-weight="700" letter-spacing="0.14em" fill="#6b7280"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">LEVEL UP YOUR LEAGUE WITH</text>
-            <text x="22" y="130" font-size="44" font-weight="900" letter-spacing="-0.02em" fill="#eab308"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">POWER</text>
-            <text x="22" y="172" font-size="44" font-weight="900" letter-spacing="-0.02em" fill="#ffffff"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RANKINGS</text>
-            <line x1="0" y1="184" x2="540" y2="184" stroke="#1e2130" stroke-width="1"/>
-
-            <!-- Rankings rows (8 × 46px = 368px, starts at 185, ends at 553) -->
-            
+          <svg viewBox="0 0 540 960" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%;">
+            <image href="/UFD_V8.png" x="360" y="48" width="160" height="86" preserveAspectRatio="xMidYMid meet"/>
+            <text x="22" y="80" font-size="12" font-weight="700" letter-spacing="0.14em" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">LEVEL UP YOUR LEAGUE WITH</text>
+            <text x="22" y="122" font-size="46" font-weight="900" letter-spacing="-0.02em" fill="#eab308" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">POWER</text>
+            <text x="22" y="165" font-size="46" font-weight="900" letter-spacing="-0.02em" fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RANKINGS</text>
+            <line x1="0" y1="178" x2="540" y2="178" stroke="#1e2130" stroke-width="1"/>
           <rect x="0" y="185" width="540" height="45" fill="rgba(234,179,8,0.09)"/>
           <rect x='0' y='185' width='3' height='45' fill='#eab308'/>
           <line x1="0" y1="230" x2="540" y2="230" stroke="#1e2130" stroke-width="1"/>
@@ -2562,10 +2466,8 @@
           <circle cx="52" cy="208" r="14" fill="rgba(0,0,0,0.3)" stroke="#eab308" stroke-width="2" stroke-opacity="1"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-5.svg" x="38" y="194" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
           <text x="75" y="213" font-size="14" font-weight="800" fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Crazy Eights</text>
-          <text x="388" y="212" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">82.4 pts</text>
-          <text x="440" y="213" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑2</text>
-        
-
+          <text x="388" y="212" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">78.4 pts avg</text>
+          <text x="440" y="213" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑1</text>
           <rect x="0" y="231" width="540" height="45" fill="rgba(255,255,255,0.018)"/>
           
           <line x1="0" y1="276" x2="540" y2="276" stroke="#1e2130" stroke-width="1"/>
@@ -2573,10 +2475,8 @@
           <circle cx="52" cy="254" r="14" fill="rgba(0,0,0,0.3)" stroke="#22c55e" stroke-width="1.5" stroke-opacity="0.6"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-6.svg" x="38" y="240" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
           <text x="75" y="259" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">The Roto Rooters</text>
-          <text x="388" y="258" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">79.1 pts</text>
+          <text x="388" y="258" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">74.2 pts avg</text>
           <text x="440" y="259" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑1</text>
-        
-
           <rect x="0" y="277" width="540" height="45" fill="rgba(255,255,255,0.018)"/>
           
           <line x1="0" y1="322" x2="540" y2="322" stroke="#1e2130" stroke-width="1"/>
@@ -2584,10 +2484,8 @@
           <circle cx="52" cy="300" r="14" fill="rgba(0,0,0,0.3)" stroke="#06b6d4" stroke-width="1.5" stroke-opacity="0.6"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-01.svg" x="38" y="286" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
           <text x="75" y="305" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Caught Looking</text>
-          <text x="388" y="304" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">76.8 pts</text>
+          <text x="388" y="304" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">71.6 pts avg</text>
           <text x="440" y="305" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑2</text>
-        
-
           <rect x="0" y="323" width="540" height="45" fill="rgba(255,255,255,0.018)"/>
           
           <line x1="0" y1="368" x2="540" y2="368" stroke="#1e2130" stroke-width="1"/>
@@ -2595,10 +2493,8 @@
           <circle cx="52" cy="346" r="14" fill="rgba(0,0,0,0.3)" stroke="#f97316" stroke-width="1.5" stroke-opacity="0.6"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-10.svg" x="38" y="332" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
           <text x="75" y="351" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Dinger Party</text>
-          <text x="388" y="350" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">74.5 pts</text>
+          <text x="388" y="350" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">69.8 pts avg</text>
           <text x="440" y="351" font-size="12" font-weight="700" fill="#ef4444" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↓3</text>
-        
-
           <rect x="0" y="369" width="540" height="45" fill="rgba(255,255,255,0.018)"/>
           
           <line x1="0" y1="414" x2="540" y2="414" stroke="#1e2130" stroke-width="1"/>
@@ -2606,10 +2502,8 @@
           <circle cx="52" cy="392" r="14" fill="rgba(0,0,0,0.3)" stroke="#8b5cf6" stroke-width="1.5" stroke-opacity="0.6"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--03.svg" x="38" y="378" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
           <text x="75" y="397" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Full Count</text>
-          <text x="388" y="396" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">71.2 pts</text>
-          <text x="440" y="397" font-size="12" font-weight="700" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">—</text>
-        
-
+          <text x="388" y="396" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">66.3 pts avg</text>
+          <text x="440" y="397" font-size="12" font-weight="700" fill="#ef4444" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↓1</text>
           <rect x="0" y="415" width="540" height="45" fill="rgba(255,255,255,0.018)"/>
           
           <line x1="0" y1="460" x2="540" y2="460" stroke="#1e2130" stroke-width="1"/>
@@ -2617,10 +2511,8 @@
           <circle cx="52" cy="438" r="14" fill="rgba(0,0,0,0.3)" stroke="#ef4444" stroke-width="1.5" stroke-opacity="0.6"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--10.svg" x="38" y="424" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
           <text x="75" y="443" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">The Benchwarmers</text>
-          <text x="388" y="442" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">68.9 pts</text>
+          <text x="388" y="442" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">63.1 pts avg</text>
           <text x="440" y="443" font-size="12" font-weight="700" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">—</text>
-        
-
           <rect x="0" y="461" width="540" height="45" fill="rgba(255,255,255,0.018)"/>
           
           <line x1="0" y1="506" x2="540" y2="506" stroke="#1e2130" stroke-width="1"/>
@@ -2628,10 +2520,8 @@
           <circle cx="52" cy="484" r="14" fill="rgba(0,0,0,0.3)" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.6"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-09.svg" x="38" y="470" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
           <text x="75" y="489" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Exit Velocity</text>
-          <text x="388" y="488" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">66.3 pts</text>
+          <text x="388" y="488" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">60.5 pts avg</text>
           <text x="440" y="489" font-size="12" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↑1</text>
-        
-
           <rect x="0" y="507" width="540" height="45" fill="rgba(255,255,255,0.018)"/>
           
           <line x1="0" y1="552" x2="540" y2="552" stroke="#1e2130" stroke-width="1"/>
@@ -2639,83 +2529,67 @@
           <circle cx="52" cy="530" r="14" fill="rgba(0,0,0,0.3)" stroke="#ec4899" stroke-width="1.5" stroke-opacity="0.6"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-08.svg" x="38" y="516" width="28" height="28" preserveAspectRatio="xMidYMid meet" clip-path="circle(13px at 14px 14px)"/>
           <text x="75" y="535" font-size="13" font-weight="600" fill="#d1d5db" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Midnight Lineup</text>
-          <text x="388" y="534" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">63.7 pts</text>
+          <text x="388" y="534" font-size="12" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="end">57.9 pts avg</text>
           <text x="440" y="535" font-size="12" font-weight="700" fill="#ef4444" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-anchor="middle">↓1</text>
-        
-
-            <!-- Graph section -->
             <rect x="0" y="553" width="540" height="1" fill="#1e2130"/>
             <rect x="0" y="554" width="540" height="26" fill="rgba(234,179,8,0.04)"/>
-            <text x="20" y="571" font-size="10" font-weight="700" letter-spacing="0.14em" fill="#4b5563"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RANKINGS TREND  ·  WK 5 – WK 8</text>
+            <text x="20" y="571" font-size="10" font-weight="700" letter-spacing="0.14em" fill="#4b5563" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RANKINGS TREND  ·  WK 5 – WK 8</text>
             <line x1="0" y1="580" x2="540" y2="580" stroke="#1e2130" stroke-width="1"/>
-
-            <!-- Grid -->
             <line x1="60" y1="584" x2="450" y2="584" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-<line x1="60" y1="607" x2="450" y2="607" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-<line x1="60" y1="630" x2="450" y2="630" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-<line x1="60" y1="653" x2="450" y2="653" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-<line x1="60" y1="677" x2="450" y2="677" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-<line x1="60" y1="700" x2="450" y2="700" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-<line x1="60" y1="723" x2="450" y2="723" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-<line x1="60" y1="746" x2="450" y2="746" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-<line x1="60" y1="578" x2="60" y2="750" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
-<line x1="193" y1="578" x2="193" y2="750" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
-<line x1="326" y1="578" x2="326" y2="750" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
-<line x1="450" y1="578" x2="450" y2="750" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
-
-            <!-- Y-axis labels -->
+            <line x1="60" y1="607" x2="450" y2="607" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <line x1="60" y1="630" x2="450" y2="630" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <line x1="60" y1="653" x2="450" y2="653" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <line x1="60" y1="677" x2="450" y2="677" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <line x1="60" y1="700" x2="450" y2="700" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <line x1="60" y1="723" x2="450" y2="723" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <line x1="60" y1="746" x2="450" y2="746" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            <line x1="60" y1="578" x2="60" y2="750" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
+            <line x1="193" y1="578" x2="193" y2="750" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
+            <line x1="326" y1="578" x2="326" y2="750" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
+            <line x1="450" y1="578" x2="450" y2="750" stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3,3"/>
             <text x="46" y="588" font-size="9" fill="#374151" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">#1</text>
             <text x="46" y="750" font-size="9" fill="#374151" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">#8</text>
-
-            <!-- Graph paths -->
-            <path d="M60,607 C104,607 149,584 193,584 C237,584 282,584 326,584 C370,584 406,584 450,584" fill="none" stroke="#eab308" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M60,630 C104,630 149,607 193,607 C237,607 282,607 326,607 C370,607 406,584 450,584" fill="none" stroke="#eab308" stroke-width="2.5" stroke-linecap="round"/>
           <circle cx="450" cy="584" r="4" fill="#eab308"/>
-<path d="M60,630 C104,630 149,630 193,630 C237,630 282,607 326,607 C370,607 406,607 450,607" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M60,607 C104,607 149,630 193,630 C237,630 282,630 326,630 C370,630 406,607 450,607" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/>
           <circle cx="450" cy="607" r="4" fill="#22c55e"/>
-<path d="M60,677 C104,677 149,653 193,653 C237,653 282,630 326,630 C370,630 406,630 450,630" fill="none" stroke="#06b6d4" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M60,677 C104,677 149,653 193,653 C237,653 282,677 326,677 C370,677 406,630 450,630" fill="none" stroke="#06b6d4" stroke-width="2.5" stroke-linecap="round"/>
           <circle cx="450" cy="630" r="4" fill="#06b6d4"/>
-<path d="M60,584 C104,584 149,607 193,607 C237,607 282,653 326,653 C370,653 406,653 450,653" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M60,584 C104,584 149,584 193,584 C237,584 282,584 326,584 C370,584 406,653 450,653" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round"/>
           <circle cx="450" cy="653" r="4" fill="#f97316"/>
-<path d="M60,653 C104,653 149,677 193,677 C237,677 282,677 326,677 C370,677 406,677 450,677" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M60,653 C104,653 149,677 193,677 C237,677 282,653 326,653 C370,653 406,677 450,677" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-linecap="round"/>
           <circle cx="450" cy="677" r="4" fill="#8b5cf6"/>
-<path d="M60,723 C104,723 149,700 193,700 C237,700 282,700 326,700 C370,700 406,700 450,700" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M60,700 C104,700 149,700 193,700 C237,700 282,700 326,700 C370,700 406,700 450,700" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
           <circle cx="450" cy="700" r="4" fill="#ef4444"/>
-<path d="M60,700 C104,700 149,723 193,723 C237,723 282,746 326,746 C370,746 406,723 450,723" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M60,746 C104,746 149,746 193,746 C237,746 282,746 326,746 C370,746 406,723 450,723" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/>
           <circle cx="450" cy="723" r="4" fill="#3b82f6"/>
-<path d="M60,746 C104,746 149,746 193,746 C237,746 282,723 326,723 C370,723 406,746 450,746" fill="none" stroke="#ec4899" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M60,723 C104,723 149,723 193,723 C237,723 282,723 326,723 C370,723 406,746 450,746" fill="none" stroke="#ec4899" stroke-width="2.5" stroke-linecap="round"/>
           <circle cx="450" cy="746" r="4" fill="#ec4899"/>
-
-            <!-- Logos at end of lines -->
             <circle cx="464" cy="584" r="10" fill="#0a0c14" stroke="#eab308" stroke-width="1.5"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-5.svg" x="454" y="574" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-<circle cx="464" cy="607" r="10" fill="#0a0c14" stroke="#22c55e" stroke-width="1.5"/>
+          <circle cx="464" cy="607" r="10" fill="#0a0c14" stroke="#22c55e" stroke-width="1.5"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/Mascots/mascots-6.svg" x="454" y="597" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-<circle cx="464" cy="630" r="10" fill="#0a0c14" stroke="#06b6d4" stroke-width="1.5"/>
+          <circle cx="464" cy="630" r="10" fill="#0a0c14" stroke="#06b6d4" stroke-width="1.5"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-01.svg" x="454" y="620" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-<circle cx="464" cy="653" r="10" fill="#0a0c14" stroke="#f97316" stroke-width="1.5"/>
+          <circle cx="464" cy="653" r="10" fill="#0a0c14" stroke="#f97316" stroke-width="1.5"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-10.svg" x="454" y="643" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-<circle cx="464" cy="677" r="10" fill="#0a0c14" stroke="#8b5cf6" stroke-width="1.5"/>
+          <circle cx="464" cy="677" r="10" fill="#0a0c14" stroke="#8b5cf6" stroke-width="1.5"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--03.svg" x="454" y="667" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-<circle cx="464" cy="700" r="10" fill="#0a0c14" stroke="#ef4444" stroke-width="1.5"/>
+          <circle cx="464" cy="700" r="10" fill="#0a0c14" stroke="#ef4444" stroke-width="1.5"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/flb/fake-team-logos-martin-laksman/logos--10.svg" x="454" y="690" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-<circle cx="464" cy="723" r="10" fill="#0a0c14" stroke="#3b82f6" stroke-width="1.5"/>
+          <circle cx="464" cy="723" r="10" fill="#0a0c14" stroke="#3b82f6" stroke-width="1.5"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-09.svg" x="454" y="713" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-<circle cx="464" cy="746" r="10" fill="#0a0c14" stroke="#ec4899" stroke-width="1.5"/>
+          <circle cx="464" cy="746" r="10" fill="#0a0c14" stroke="#ec4899" stroke-width="1.5"/>
           <image href="https://g.espncdn.com/lm-static/logo-packs/core/TeamMascots-RobbHarskamp/Team_Mascots-08.svg" x="454" y="736" width="20" height="20" preserveAspectRatio="xMidYMid meet" clip-path="circle(9px at 10px 10px)"/>
-
-            <!-- Week labels -->
-            <text x="60" y="770" font-size="11" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 5</text>
-            <text x="193" y="770" font-size="11" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 6</text>
-            <text x="326" y="770" font-size="11" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 7</text>
-            <text x="450" y="770" font-size="11" fill="#eab308" text-anchor="middle" font-weight="700" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 8</text>
-
-            <!-- UFD watermark bottom -->
-            <text x="270" y="810" text-anchor="middle" font-size="11" fill="#1e2130" letter-spacing="0.06em"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
+            <text x="60" y="768" font-size="11" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 5</text>
+            <text x="193" y="768" font-size="11" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 6</text>
+            <text x="326" y="768" font-size="11" fill="#4b5563" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 7</text>
+            <text x="450" y="768" font-size="11" fill="#eab308" text-anchor="middle" font-weight="700" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Wk 8 ▶</text>
+            <text x="270" y="808" text-anchor="middle" font-size="11" fill="#1e2130" letter-spacing="0.06em" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
           </svg>
         </div>
       </div>
+
 
   </template><!-- end stories tab -->
 
