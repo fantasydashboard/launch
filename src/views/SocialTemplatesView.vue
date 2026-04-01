@@ -2865,7 +2865,14 @@ async function loadWpiData() {
             const posAbbr = (athlete.athlete?.position?.abbreviation ||
                              athlete.position?.abbreviation || '').toUpperCase()
             const PITCHER_POS_SET = new Set(['SP','RP','P','LHP','RHP'])
-            const isPit = PITCHER_POS_SET.has(posAbbr)
+
+            // Two-way player exceptions — always treat as batter regardless of position.
+            // Ohtani (ESPN id 39832) pitches AND hits; ESPN sometimes returns him as SP
+            // which routes him to the pitcher bucket even on days he bats. Force batter.
+            const TWO_WAY_BATTER_IDS = new Set(['39832']) // Shohei Ohtani
+            const isPit = TWO_WAY_BATTER_IDS.has(String(pid))
+              ? false
+              : PITCHER_POS_SET.has(posAbbr)
 
             // Skip if already processed this player in this role
             if (isPit && seenPit.has(pid)) continue
