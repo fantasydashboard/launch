@@ -2974,6 +2974,29 @@ async function loadWpiData() {
       }
     }
 
+    // ── Two-way player merge ─────────────────────────────────────────────
+    // If a player ended up in both maps (e.g. Ohtani who bats AND pitches),
+    // combine their pts/wpImpact and keep them only in the batter bucket so
+    // their full contribution shows in Best Batters.
+    for (const [pid, batEntry] of batterMap) {
+      if (pitcherMap.has(pid)) {
+        const pitEntry = pitcherMap.get(pid)!
+        const combinedPts = batEntry.pts + pitEntry.pts
+        const avgPts = 4 // batter average baseline for wp impact
+        const combinedWp = calcWpImpact(combinedPts, avgPts)
+        console.log(`[WPI] Merging two-way player ${batEntry.name}: bat=${batEntry.pts.toFixed(1)} + pit=${pitEntry.pts.toFixed(1)} = ${combinedPts.toFixed(1)} pts`)
+        batterMap.set(pid, {
+          ...batEntry,
+          pts: combinedPts,
+          wpImpact: combinedWp,
+          statLine: `${batEntry.statLine} / ${pitEntry.statLine}`
+        })
+        // Remove from pitcher map so they don't appear in both graphics
+        pitcherMap.delete(pid)
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     const batters  = [...batterMap.values()].sort((a,b) => b.pts - a.pts)
     const pitchers = [...pitcherMap.values()].sort((a,b) => b.pts - a.pts)
     wpiTopBatters.value  = batters.slice(0,5)
