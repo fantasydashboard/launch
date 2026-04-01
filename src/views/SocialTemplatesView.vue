@@ -900,11 +900,8 @@
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif" text-transform="uppercase">LEVEL UP YOUR LEAGUE WITH</text>
             <text x="16" y="62" font-size="32" font-weight="900" letter-spacing="-0.01em" fill="#eab308"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">POWER RANKINGS</text>
-            <text x="16" y="82" font-size="12" font-weight="700" letter-spacing="0.07em" fill="#6b7280"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">⚾  FANTASY BASEBALL  ·  WK 8  ·  MID-SEASON</text>
-
             <!-- Header divider -->
-            <line x1="0" y1="93" x2="540" y2="93" stroke="#1e2130" stroke-width="1"/>
+            <line x1="0" y1="82" x2="540" y2="82" stroke="#1e2130" stroke-width="1"/>
 
             <!-- Rankings rows -->
             
@@ -2554,10 +2551,7 @@
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">POWER</text>
             <text x="22" y="172" font-size="44" font-weight="900" letter-spacing="-0.02em" fill="#ffffff"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RANKINGS</text>
-            <text x="22" y="194" font-size="12" font-weight="700" letter-spacing="0.07em" fill="#6b7280"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">⚾  FANTASY BASEBALL  ·  WK 8  ·  MID-SEASON</text>
-
-            <line x1="0" y1="204" x2="540" y2="204" stroke="#1e2130" stroke-width="1"/>
+            <line x1="0" y1="184" x2="540" y2="184" stroke="#1e2130" stroke-width="1"/>
 
             <!-- Rankings rows (8 × 46px = 368px, starts at 185, ends at 553) -->
             
@@ -4569,7 +4563,7 @@ async function fetchMostTraded() {
 .post-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #4b5563; margin-bottom: 12px; }
 
 /* Square */
-.sq { width: 100%; aspect-ratio: 1/1; position: relative; overflow: hidden; border-radius: 4px; box-shadow: 0 0 0 1px #1e2130, 0 20px 60px rgba(0,0,0,0.7); flex-shrink: 0; display: flex; flex-direction: column; }
+.sq { width: 100%; aspect-ratio: 1/1; position: relative; overflow: hidden; border-radius: 0; box-shadow: 0 0 0 1px #1e2130, 0 20px 60px rgba(0,0,0,0.7); flex-shrink: 0; display: flex; flex-direction: column; }
 .sq-dark   { background: radial-gradient(ellipse 120% 100% at 50% 0%, rgba(234,179,8,0.09) 0%, transparent 60%), linear-gradient(145deg,#05060a,#090c14); }
 .sq-green  { background: radial-gradient(ellipse 120% 100% at 50% 20%, rgba(34,197,94,0.09) 0%, transparent 60%), linear-gradient(145deg,#040a06,#060e08); }
 .sq-cyan   { background: radial-gradient(ellipse 120% 100% at 70% 80%, rgba(6,182,212,0.08) 0%, transparent 60%), linear-gradient(145deg,#040810,#080c18); }
@@ -4736,7 +4730,7 @@ async function fetchMostTraded() {
   width: 100%;
   aspect-ratio: 9/10 !important;
   background: #0a0c14;
-  border-radius: 6px;
+  border-radius: 0;
 }
 .wp-controls {
   background: #0c0e17; border: 1px solid #1e2130; border-radius: 12px;
