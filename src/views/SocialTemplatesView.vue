@@ -2063,11 +2063,10 @@
           <!-- Top accent line -->
           <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
 
-          <!-- Content — starts below safe zone -->
-          <div style="position:absolute;top:150px;left:0;right:0;bottom:220px;padding:0 32px;display:flex;flex-direction:column;">
-            <!-- Branding -->
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-              <img src="/UFD_V8.png" style="height:30px;width:auto;">
+          <!-- Content — centered vertically, no top logo -->
+          <div style="position:absolute;top:60px;left:0;right:0;bottom:60px;padding:0 32px;display:flex;flex-direction:column;">
+            <!-- Branding — text only, no logo -->
+            <div style="margin-bottom:16px;">
               <span style="font-size:11px;color:#4b5563;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Ultimate Fantasy Dashboard</span>
             </div>
             <!-- Title -->
@@ -2084,7 +2083,7 @@
                 :style="{
                   background: i===0 ? 'rgba(234,179,8,0.1)' : 'rgba(255,255,255,0.04)',
                   border: i===0 ? '1px solid rgba(234,179,8,0.35)' : '1px solid rgba(255,255,255,0.07)',
-                  borderRadius:'14px', padding:'16px 18px', display:'flex', alignItems:'center', gap:'14px',
+                  borderRadius:'0', padding:'16px 18px', display:'flex', alignItems:'center', gap:'14px',
                   flex:'1'
                 }">
                 <!-- Rank -->
@@ -2134,9 +2133,8 @@
           <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 105%,rgba(6,182,212,0.08) 0%,transparent 50%);pointer-events:none;"></div>
           <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#06b6d4,transparent);"></div>
 
-          <div style="position:absolute;top:150px;left:0;right:0;bottom:220px;padding:0 32px;display:flex;flex-direction:column;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-              <img src="/UFD_V8.png" style="height:30px;width:auto;">
+          <div style="position:absolute;top:60px;left:0;right:0;bottom:60px;padding:0 32px;display:flex;flex-direction:column;">
+            <div style="margin-bottom:16px;">
               <span style="font-size:11px;color:#4b5563;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Ultimate Fantasy Dashboard</span>
             </div>
             <div style="margin-bottom:24px;">
@@ -2151,7 +2149,7 @@
                 :style="{
                   background: i===0 ? 'rgba(6,182,212,0.1)' : 'rgba(255,255,255,0.04)',
                   border: i===0 ? '1px solid rgba(6,182,212,0.35)' : '1px solid rgba(255,255,255,0.07)',
-                  borderRadius:'14px', padding:'16px 18px', display:'flex', alignItems:'center', gap:'14px',
+                  borderRadius:'0', padding:'16px 18px', display:'flex', alignItems:'center', gap:'14px',
                   flex:'1'
                 }">
                 <div :style="{
@@ -4346,7 +4344,7 @@ async function fetchMostTraded() {
   width: 100%;
   aspect-ratio: 9/10 !important;
   background: #0a0c14;
-  border-radius: 6px;
+  border-radius: 0;
 }
 .wp-controls {
   background: #0c0e17; border: 1px solid #1e2130; border-radius: 12px;
