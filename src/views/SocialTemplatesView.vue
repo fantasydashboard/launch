@@ -2870,14 +2870,34 @@ async function loadWpiData() {
 
             // Two-way player detection: if ESPN classifies as pitcher but the player
             // has real at-bats today, treat them as a batter instead.
-            // This handles Ohtani and any future two-way players automatically.
+            // ESPN uses a combined 'hits-atBats' key (e.g. "2-4") not a standalone 'atBats' key,
+            // so we must check both formats.
             if (isPit) {
               const statsArr = athlete.stats || []
+              let atBats = 0
+
+              // Direct atBats key (some ESPN endpoints)
               const atBatsIdx = keys.indexOf('atBats')
-              const atBats = atBatsIdx >= 0 ? parseFloat(String(statsArr[atBatsIdx])) : 0
-              if (!isNaN(atBats) && atBats > 0) {
-                const name = athlete.athlete?.displayName || ''
-                console.log(`[WPI] Two-way player detected: ${name} has ${atBats} AB — routing to batters`)
+              if (atBatsIdx >= 0) {
+                atBats = parseFloat(String(statsArr[atBatsIdx])) || 0
+              }
+
+              // Combined 'hits-atBats' key — ESPN format "H-AB" e.g. "2-4"
+              if (atBats === 0) {
+                const habIdx = keys.indexOf('hits-atBats')
+                if (habIdx >= 0) {
+                  const raw = String(statsArr[habIdx] || '')
+                  if (raw.includes('-')) {
+                    atBats = parseFloat(raw.split('-')[1]) || 0
+                  }
+                }
+              }
+
+              const playerName = athlete.athlete?.displayName || ''
+              console.log(`[WPI] Pitcher position player: ${playerName} | atBats resolved: ${atBats} | keys: ${keys.slice(0,8).join(',')}`)
+
+              if (atBats > 0) {
+                console.log(`[WPI] Two-way player: ${playerName} has ${atBats} AB — routing to batters`)
                 isPit = false
               }
             }
@@ -3051,7 +3071,24 @@ function parseAthleteRow(
   }
 
   const ip = n.inningsPitched
-  if (!isPitcherGroup && n.atBats < 1) return
+  // If atBats still 0 after parsing, check the hits-atBats combined key directly
+  // (ESPN uses "H-AB" format e.g. "2-4" — parseAthleteRow handles this in the loop
+  // but the combined key is 'hits-atBats', not 'atBats', so n.atBats may still be 0)
+  if (!isPitcherGroup && n.atBats < 1) {
+    const habIdx = keys.indexOf('hits-atBats')
+    if (habIdx >= 0) {
+      const raw = String((athlete.stats || [])[habIdx] || '')
+      if (raw.includes('-')) {
+        const ab = parseFloat(raw.split('-')[1]) || 0
+        if (ab > 0) {
+          n.atBats = ab
+          const hRaw = raw.split('-')[0]
+          n.hits = parseFloat(hRaw) || n.hits
+        }
+      }
+    }
+    if (n.atBats < 1) return
+  }
   // For pitchers: keep anyone in the pitching stats group (IP may be 0 for openers/closers)
 
   const name     = athlete.athlete?.displayName || 'Unknown'
