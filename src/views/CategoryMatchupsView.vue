@@ -234,7 +234,114 @@
                 <div class="text-dark-textMuted text-sm animate-pulse">Loading daily stats...</div>
               </div>
               <div ref="winProbChartEl" class="h-48"></div>
-              <p class="text-xs text-dark-textMuted mt-2 text-center">Win probability after each day based on real cumulative stats.</p>
+
+              <!-- ── Day Breakdown Hover Panel ── -->
+              <Transition name="cat-day-panel">
+                <div
+                  v-if="hoveredCatDayData"
+                  class="mt-3 rounded-xl border border-dark-border/60 overflow-hidden"
+                  style="background: #0d1019;"
+                >
+                  <!-- Header -->
+                  <div class="flex items-center justify-between px-4 py-2 border-b border-dark-border/40" style="background:#0a0c14;">
+                    <span class="text-xs font-bold text-dark-textMuted tracking-widest uppercase">{{ hoveredCatDayData.day }} — Day Breakdown</span>
+                    <span class="text-xs text-dark-textMuted">Hover each day to explore</span>
+                  </div>
+
+                  <div class="grid grid-cols-2 divide-x divide-dark-border/40">
+                    <!-- Team 1 -->
+                    <div class="p-4">
+                      <div class="flex items-center gap-2 mb-3">
+                        <div class="w-2 h-2 rounded-full bg-cyan-400 flex-shrink-0"></div>
+                        <span class="text-xs font-semibold text-cyan-400 truncate">{{ selectedMatchup?.team1?.name }}</span>
+                      </div>
+                      <!-- Category record -->
+                      <div class="mb-3">
+                        <div class="text-xs text-dark-textMuted mb-0.5">Category record</div>
+                        <div class="text-xl font-black text-white">
+                          {{ selectedMatchup?.team1CatWins }}-{{ selectedMatchup?.team2CatWins }}-{{ selectedMatchup?.ties }}
+                        </div>
+                        <div class="text-xs text-dark-textMuted mt-0.5">live standings</div>
+                      </div>
+                      <!-- Win prob -->
+                      <div class="rounded-lg px-3 py-2"
+                        :style="hoveredCatDayData.team1.probDelta > 0 ? 'background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2)' : hoveredCatDayData.team1.probDelta < 0 ? 'background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2)' : 'background:rgba(107,114,128,0.08);border:1px solid rgba(107,114,128,0.2)'">
+                        <div class="text-xs text-dark-textMuted mb-0.5">Win probability</div>
+                        <div class="flex items-center gap-1.5">
+                          <span class="text-lg font-black"
+                            :class="hoveredCatDayData.team1.probDelta > 0 ? 'text-cyan-400' : hoveredCatDayData.team1.probDelta < 0 ? 'text-red-400' : 'text-dark-textMuted'">
+                            {{ hoveredCatDayData.team1.prob.toFixed(1) }}%
+                          </span>
+                          <span class="text-xs font-bold px-1.5 py-0.5 rounded"
+                            :class="hoveredCatDayData.team1.probDelta > 0 ? 'text-cyan-400 bg-cyan-400/10' : hoveredCatDayData.team1.probDelta < 0 ? 'text-red-400 bg-red-400/10' : 'text-dark-textMuted'">
+                            {{ hoveredCatDayData.team1.probDelta > 0 ? '▲' : hoveredCatDayData.team1.probDelta < 0 ? '▼' : '—' }}
+                            {{ Math.abs(hoveredCatDayData.team1.probDelta).toFixed(1) }}%
+                          </span>
+                        </div>
+                        <div v-if="Math.abs(hoveredCatDayData.team1.probDelta) >= 8" class="mt-1 text-xs font-bold"
+                          :class="hoveredCatDayData.team1.probDelta > 0 ? 'text-cyan-300' : 'text-red-300'">
+                          {{ hoveredCatDayData.team1.probDelta > 0 ? '⚡ Big day — categories swinging your way' : '💥 Rough day — categories slipping' }}
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Team 2 -->
+                    <div class="p-4">
+                      <div class="flex items-center gap-2 mb-3">
+                        <div class="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0"></div>
+                        <span class="text-xs font-semibold text-orange-400 truncate">{{ selectedMatchup?.team2?.name }}</span>
+                      </div>
+                      <!-- Category record -->
+                      <div class="mb-3">
+                        <div class="text-xs text-dark-textMuted mb-0.5">Category record</div>
+                        <div class="text-xl font-black text-white">
+                          {{ selectedMatchup?.team2CatWins }}-{{ selectedMatchup?.team1CatWins }}-{{ selectedMatchup?.ties }}
+                        </div>
+                        <div class="text-xs text-dark-textMuted mt-0.5">live standings</div>
+                      </div>
+                      <!-- Win prob -->
+                      <div class="rounded-lg px-3 py-2"
+                        :style="hoveredCatDayData.team2.probDelta > 0 ? 'background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2)' : hoveredCatDayData.team2.probDelta < 0 ? 'background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2)' : 'background:rgba(107,114,128,0.08);border:1px solid rgba(107,114,128,0.2)'">
+                        <div class="text-xs text-dark-textMuted mb-0.5">Win probability</div>
+                        <div class="flex items-center gap-1.5">
+                          <span class="text-lg font-black"
+                            :class="hoveredCatDayData.team2.probDelta > 0 ? 'text-orange-400' : hoveredCatDayData.team2.probDelta < 0 ? 'text-red-400' : 'text-dark-textMuted'">
+                            {{ hoveredCatDayData.team2.prob.toFixed(1) }}%
+                          </span>
+                          <span class="text-xs font-bold px-1.5 py-0.5 rounded"
+                            :class="hoveredCatDayData.team2.probDelta > 0 ? 'text-orange-400 bg-orange-400/10' : hoveredCatDayData.team2.probDelta < 0 ? 'text-red-400 bg-red-400/10' : 'text-dark-textMuted'">
+                            {{ hoveredCatDayData.team2.probDelta > 0 ? '▲' : hoveredCatDayData.team2.probDelta < 0 ? '▼' : '—' }}
+                            {{ Math.abs(hoveredCatDayData.team2.probDelta).toFixed(1) }}%
+                          </span>
+                        </div>
+                        <div v-if="Math.abs(hoveredCatDayData.team2.probDelta) >= 8" class="mt-1 text-xs font-bold"
+                          :class="hoveredCatDayData.team2.probDelta > 0 ? 'text-orange-300' : 'text-red-300'">
+                          {{ hoveredCatDayData.team2.probDelta > 0 ? '⚡ Big day — categories swinging your way' : '💥 Rough day — categories slipping' }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Bottom bar -->
+                  <div class="px-4 py-2 border-t border-dark-border/40 flex items-center justify-between" style="background:#0a0c14;">
+                    <span class="text-xs text-dark-textMuted">
+                      Leader after {{ hoveredCatDayData.day }}:
+                      <span class="font-bold" :class="hoveredCatDayData.team1.prob > hoveredCatDayData.team2.prob ? 'text-cyan-400' : 'text-orange-400'">
+                        {{ hoveredCatDayData.team1.prob > hoveredCatDayData.team2.prob ? selectedMatchup?.team1?.name : selectedMatchup?.team2?.name }}
+                      </span>
+                      at {{ Math.max(hoveredCatDayData.team1.prob, hoveredCatDayData.team2.prob).toFixed(1) }}%
+                    </span>
+                    <span class="text-xs text-dark-textMuted">Day {{ hoveredCatDayData.dayIndex + 1 }} of {{ cachedChartD1.length }}</span>
+                  </div>
+                </div>
+
+                <!-- Default prompt -->
+                <div v-else-if="cachedChartD1.length > 0" class="mt-3 text-center py-2">
+                  <span class="text-xs text-dark-textMuted">Hover any point on the chart to see that day's breakdown</span>
+                </div>
+              </Transition>
+
+              <p class="text-xs text-dark-textMuted mt-3 text-center">Win probability after each day based on real cumulative stats.</p>
               <p class="text-xs text-dark-textMuted mt-1 text-center italic">10,000 Monte Carlo simulations per day using actual daily stat data.</p>
             </div>
             </LeagueGate>
@@ -507,6 +614,38 @@ let winProbChart: ApexCharts | null = null
 const cachedChartD1 = ref<number[]>([])
 const cachedChartD2 = ref<number[]>([])
 const cachedChartLabels = ref<string[]>([])
+
+// ── Day breakdown hover state (category) ─────────────────────────────────
+const hoveredCatDayIndex = ref<number | null>(null)
+let catHoverLeaveTimer: ReturnType<typeof setTimeout> | null = null
+
+const hoveredCatDayData = computed(() => {
+  if (hoveredCatDayIndex.value === null) return null
+  const idx = hoveredCatDayIndex.value
+  const d1 = cachedChartD1.value
+  const d2 = cachedChartD2.value
+  const labels = cachedChartLabels.value
+  if (!d1.length || idx >= d1.length) return null
+
+  const prob1 = d1[idx]
+  const prob2 = d2[idx]
+  const prevProb1 = idx > 0 ? d1[idx - 1] : prob1
+  const prevProb2 = idx > 0 ? d2[idx - 1] : prob2
+
+  return {
+    day: labels[idx] || `Day ${idx + 1}`,
+    dayIndex: idx,
+    team1: {
+      prob: Math.round(prob1 * 10) / 10,
+      probDelta: Math.round((prob1 - prevProb1) * 10) / 10,
+    },
+    team2: {
+      prob: Math.round(prob2 * 10) / 10,
+      probDelta: Math.round((prob2 - prevProb2) * 10) / 10,
+    },
+  }
+})
+// ─────────────────────────────────────────────────────────────────────────
 
 const BATTING_STAT_IDS = ['60', '7', '12', '16', '3', '55', '56']
 const PITCHING_STAT_IDS = ['28', '32', '42', '26', '27', '48']
@@ -2497,7 +2636,21 @@ function renderWinProbChart(matchup: any, d1: number[], d2: number[], dayLabels:
   const c2 = '#f97316' // orange
   
   winProbChart = new ApexCharts(winProbChartEl.value, {
-    chart: { type: 'area', height: 192, background: 'transparent', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 500 } },
+    chart: {
+      type: 'area', height: 192, background: 'transparent',
+      toolbar: { show: false }, zoom: { enabled: false },
+      animations: { enabled: true, speed: 500 },
+      events: {
+        mouseMove: (_event: any, _chartCtx: any, config: any) => {
+          if (catHoverLeaveTimer) { clearTimeout(catHoverLeaveTimer); catHoverLeaveTimer = null }
+          const idx = config?.dataPointIndex
+          if (idx !== undefined && idx >= 0) hoveredCatDayIndex.value = idx
+        },
+        mouseLeave: () => {
+          catHoverLeaveTimer = setTimeout(() => { hoveredCatDayIndex.value = null }, 300)
+        },
+      }
+    },
     series: [{ name: matchup.team1.name, data: d1 }, { name: matchup.team2.name, data: d2 }],
     colors: [c1, c2],
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1, stops: [0, 100] } },
