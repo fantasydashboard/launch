@@ -45,6 +45,33 @@
 
     <!-- Show Full App for authenticated users -->
     <template v-else>
+
+      <!-- Trial banner — fixed to very top of viewport, above everything -->
+      <Teleport to="body">
+        <div v-if="(isOnActiveTrial || isTrialExpired) && !isPaid"
+          style="position:fixed;top:0;left:0;right:0;z-index:9999;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:6px 16px;"
+          :style="isOnActiveTrial ? 'background:linear-gradient(90deg,#0f2d1a,#0a1f12);border-bottom:1px solid rgba(34,197,94,0.25);' : 'background:linear-gradient(90deg,#2d0f0f,#1f0a0a);border-bottom:1px solid rgba(239,68,68,0.25);'">
+          <span v-if="isOnActiveTrial" style="font-size:12px;color:#22c55e;font-weight:700;">
+            ⏱ {{ trialDaysRemaining }} day{{ trialDaysRemaining === 1 ? '' : 's' }} left in your free trial
+          </span>
+          <span v-else style="font-size:12px;color:#ef4444;font-weight:700;">
+            ⚠️ Your 14-day free trial has ended
+          </span>
+          <span style="font-size:12px;color:#6b7280;">—</span>
+          <span style="font-size:12px;color:#9ca3af;">
+            {{ isOnActiveTrial ? 'Unlock everything when you are ready.' : 'Upgrade to keep full access.' }}
+          </span>
+          <button @click="$router.push('/pricing')"
+            style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;padding:4px 12px;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;"
+            :style="isOnActiveTrial ? 'background:#eab308;color:#0a0c14;' : 'background:#ef4444;color:#fff;'">
+            {{ isOnActiveTrial ? 'Upgrade now →' : 'View plans →' }}
+          </button>
+        </div>
+      </Teleport>
+
+      <!-- Push content down when trial banner is visible -->
+      <div v-if="(isOnActiveTrial || isTrialExpired) && !isPaid" style="height:33px;flex-shrink:0;"></div>
+
       <!-- Combined Header Container -->
         <LeaguePassBanner />
       <div class="relative z-40">
@@ -299,34 +326,6 @@
             </div>
           </div>
         </header>
-
-        <!-- Trial countdown banner -->
-        <Transition name="slide-down">
-          <div v-if="isOnActiveTrial && !isPaid"
-            style="background: linear-gradient(90deg, #0f2d1a, #0a1f12); border-bottom: 1px solid rgba(34,197,94,0.25); padding: 7px 16px; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; position: relative; z-index: 49;">
-            <span style="font-size: 12px; color: #22c55e; font-weight: 700;">
-              ⏱ {{ trialDaysRemaining }} day{{ trialDaysRemaining === 1 ? '' : 's' }} left in your free trial
-            </span>
-            <span style="font-size: 12px; color: #6b7280;">—</span>
-            <span style="font-size: 12px; color: #9ca3af;">Unlock everything when you're ready.</span>
-            <button @click="$router.push('/pricing')"
-              style="font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 12px; background: #22c55e; color: #0a0c14; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap;">
-              Upgrade now →
-            </button>
-          </div>
-          <div v-else-if="isTrialExpired && !isPaid"
-            style="background: linear-gradient(90deg, #2d0f0f, #1f0a0a); border-bottom: 1px solid rgba(239,68,68,0.25); padding: 7px 16px; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; position: relative; z-index: 49;">
-            <span style="font-size: 12px; color: #ef4444; font-weight: 700;">
-              ⚠️ Your 14-day free trial has ended
-            </span>
-            <span style="font-size: 12px; color: #6b7280;">—</span>
-            <span style="font-size: 12px; color: #9ca3af;">Upgrade to keep full access.</span>
-            <button @click="$router.push('/pricing')"
-              style="font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 12px; background: #ef4444; color: #fff; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap;">
-              View plans →
-            </button>
-          </div>
-        </Transition>
 
         <!-- Menu Header Bar - Fixed at top when scrolled -->
         <nav 
