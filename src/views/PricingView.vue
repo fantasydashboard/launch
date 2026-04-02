@@ -37,20 +37,38 @@
       </div>
 
       <!-- ── Key distinction callout ── -->
-      <div class="max-w-2xl mx-auto mb-10 rounded-xl p-4 flex flex-col sm:flex-row gap-4"
-        style="background: #0d0f18; border: 1px solid #1e2130;">
-        <div class="flex-1 flex items-start gap-3 p-3 rounded-lg" style="background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.15);">
-          <span class="text-xl flex-shrink-0">👤</span>
-          <div>
-            <div class="text-sm font-bold text-white mb-1">Individual Plan</div>
-            <div class="text-xs" style="color: #9ca3af;">For <strong class="text-white">you only</strong> — unlocks all your leagues across all sports. Best for the data guy in the league.</div>
+      <div class="max-w-3xl mx-auto mb-10">
+        <p class="text-center text-xs font-bold mb-4" style="color:#6b7280;text-transform:uppercase;letter-spacing:0.14em;">⚠️ Before you choose — understand the difference</p>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div class="rounded-2xl p-6" style="background: linear-gradient(135deg,rgba(34,197,94,0.1),rgba(34,197,94,0.04)); border: 1.5px solid rgba(34,197,94,0.4);">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(34,197,94,0.2);border:1px solid rgba(34,197,94,0.4);">
+                <span class="text-lg">👤</span>
+              </div>
+              <div>
+                <div class="font-black text-white text-base">Individual Plan</div>
+                <div class="text-xs font-bold" style="color:#22c55e;">For you only</div>
+              </div>
+            </div>
+            <p class="text-sm" style="color:#d1d5db;">Unlocks <strong class="text-white">all of your leagues</strong> across all platforms and sports. You get full access everywhere — but your leaguemates do not.</p>
+            <div class="mt-3 pt-3" style="border-top:1px solid rgba(34,197,94,0.2);">
+              <span class="text-xs font-bold px-2 py-1 rounded-full" style="background:rgba(34,197,94,0.15);color:#22c55e;">Best for: the data guy in the league</span>
+            </div>
           </div>
-        </div>
-        <div class="flex-1 flex items-start gap-3 p-3 rounded-lg" style="background: rgba(234,179,8,0.06); border: 1px solid rgba(234,179,8,0.15);">
-          <span class="text-xl flex-shrink-0">🏆</span>
-          <div>
-            <div class="text-sm font-bold text-white mb-1">League Pass</div>
-            <div class="text-xs" style="color: #9ca3af;"><strong class="text-white">One specific league</strong> for 365 days — everyone in that league gets access automatically. Best for commissioners.</div>
+          <div class="rounded-2xl p-6" style="background: linear-gradient(135deg,rgba(234,179,8,0.1),rgba(234,179,8,0.04)); border: 1.5px solid rgba(234,179,8,0.4);">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(234,179,8,0.2);border:1px solid rgba(234,179,8,0.4);">
+                <span class="text-lg">🏆</span>
+              </div>
+              <div>
+                <div class="font-black text-white text-base">League Pass</div>
+                <div class="text-xs font-bold" style="color:#eab308;">One league · whole team</div>
+              </div>
+            </div>
+            <p class="text-sm" style="color:#d1d5db;">Covers <strong class="text-white">one specific league</strong> for 365 days. Every member gets full access automatically — no codes, no hassle.</p>
+            <div class="mt-3 pt-3" style="border-top:1px solid rgba(234,179,8,0.2);">
+              <span class="text-xs font-bold px-2 py-1 rounded-full" style="background:rgba(234,179,8,0.15);color:#eab308;">Best for: commissioners who want everyone in</span>
+            </div>
           </div>
         </div>
       </div>
@@ -59,10 +77,10 @@
       <div class="flex items-center justify-center gap-4 mb-10">
         <span class="text-sm font-bold" :style="{ color: billingCycle === 'monthly' ? '#fff' : '#6b7280' }">Monthly</span>
         <button @click="billingCycle = billingCycle === 'monthly' ? 'annual' : 'monthly'"
-          class="relative w-12 h-6 rounded-full transition-colors"
+          style="position:relative;width:52px;height:28px;border-radius:999px;border:none;cursor:pointer;transition:background 0.2s;flex-shrink:0;padding:0;"
           :style="{ background: billingCycle === 'annual' ? '#22c55e' : '#374151' }">
-          <span class="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform"
-            :style="{ transform: billingCycle === 'annual' ? 'translateX(26px)' : 'translateX(2px)' }"></span>
+          <span style="position:absolute;top:3px;width:22px;height:22px;background:white;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.3);transition:left 0.2s;"
+            :style="{ left: billingCycle === 'annual' ? '27px' : '3px' }"></span>
         </button>
         <span class="text-sm font-bold" :style="{ color: billingCycle === 'annual' ? '#fff' : '#6b7280' }">
           Annual
@@ -154,7 +172,7 @@
             class="w-full py-4 rounded-xl font-black text-base transition-all transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
             style="background: linear-gradient(135deg, #22c55e, #16a34a); color: #0a0c14; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 4px 20px rgba(34,197,94,0.3);">
             <span v-if="checkingOut && checkoutTarget === 'individual'">Redirecting…</span>
-            <span v-else>Start for Free — 14 Days</span>
+            <span v-else>Try it for Free</span>
           </button>
           <p class="text-center text-xs mt-3" style="color: #4b5563;">No credit card required · cancel anytime</p>
         </div>
@@ -212,7 +230,7 @@
             class="w-full py-4 rounded-xl font-black text-base transition-all transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
             style="background: linear-gradient(135deg, #eab308, #ca8a04); color: #0a0c14; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 4px 20px rgba(234,179,8,0.25);">
             <span v-if="checkingOut && checkoutTarget === 'league'">Redirecting…</span>
-            <span v-else>Start for Free — 14 Days</span>
+            <span v-else>Try it for Free</span>
           </button>
           <p class="text-center text-xs mt-3" style="color: #4b5563;">No credit card required · buy the pass after your trial</p>
 
