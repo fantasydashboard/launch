@@ -330,8 +330,8 @@
         <!-- Menu Header Bar - Fixed at top when scrolled -->
         <nav 
           class="z-40 overflow-visible transition-all duration-300"
-          :class="isScrolled ? 'fixed top-0 left-0 right-0' : 'relative'"
-          :style="{ background: sportColor, height: '56px' }"
+          :class="isScrolled ? 'fixed left-0 right-0' : 'relative'"
+          :style="{ background: sportColor, height: '56px', top: isScrolled ? (((isOnActiveTrial || isTrialExpired) && !isPaid) ? '33px' : '0') : 'auto' }"
         >
           <!-- Logo Container - Fits within combined headers, never goes below green menu -->
           <div 
