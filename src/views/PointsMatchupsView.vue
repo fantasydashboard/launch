@@ -188,7 +188,7 @@
                 <h2 class="card-title">Win Probability</h2>
               </div>
               <button 
-                v-if="hasLeagueAccess"
+                v-if="canExpand"
                 @click="downloadWinProbability"
                 :disabled="isDownloading"
                 class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all disabled:opacity-50"
@@ -287,143 +287,20 @@
             </div>
 
             <!-- Win Probability Trend Chart — gated -->
-            <LeagueGate wrap :locked="!hasLeagueAccess" label="Matchup Deep Dive">
+            <LeagueGate wrap :locked="!canExpand" label="Matchup Deep Dive">
             <div class="mt-6">
               <div v-if="probabilityHistory.length > 0" class="h-52">
                 <apexchart 
                   type="area" 
                   height="200" 
                   :options="probabilityChartOptions" 
-                  :series="probabilityChartSeries"
-                  @mouseMove="onChartHover"
-                  @mouseLeave="onChartLeave"
+                  :series="probabilityChartSeries" 
                 />
               </div>
               <div v-else class="text-center py-8 text-dark-textMuted">
                 <p>Win probability trend will show as the week progresses</p>
               </div>
-
-              <!-- ── Day Breakdown Hover Panel ── -->
-              <Transition name="day-panel">
-                <div
-                  v-if="hoveredDayData"
-                  class="mt-3 rounded-xl border border-dark-border/60 overflow-hidden"
-                  style="background: #0d1019;"
-                >
-                  <!-- Header row -->
-                  <div class="flex items-center justify-between px-4 py-2 border-b border-dark-border/40" style="background: #0a0c14;">
-                    <span class="text-xs font-bold text-dark-textMuted tracking-widest uppercase">{{ hoveredDayData.day }} — Day Breakdown</span>
-                    <span class="text-xs text-dark-textMuted">Hover each day to explore</span>
-                  </div>
-
-                  <div class="grid grid-cols-2 divide-x divide-dark-border/40">
-                    <!-- Team 1 -->
-                    <div class="p-4">
-                      <div class="flex items-center gap-2 mb-3">
-                        <div class="w-2 h-2 rounded-full bg-cyan-400 flex-shrink-0"></div>
-                        <span class="text-xs font-semibold text-cyan-400 truncate">{{ selectedMatchup?.team1?.name }}</span>
-                      </div>
-
-                      <!-- Points scored this day -->
-                      <div class="mb-3">
-                        <div class="text-xs text-dark-textMuted mb-0.5">Points scored</div>
-                        <div class="flex items-baseline gap-2">
-                          <span class="text-2xl font-black" :class="hoveredDayData.team1.ptsDay >= 0 ? 'text-white' : 'text-red-400'">
-                            {{ hoveredDayData.team1.ptsDay >= 0 ? '+' : '' }}{{ hoveredDayData.team1.ptsDay.toFixed(1) }}
-                          </span>
-                          <span class="text-xs text-dark-textMuted">pts today</span>
-                        </div>
-                        <div class="text-xs text-dark-textMuted mt-0.5">{{ hoveredDayData.team1.ptsCumulative.toFixed(1) }} cumulative</div>
-                      </div>
-
-                      <!-- Win prob change -->
-                      <div class="rounded-lg px-3 py-2" :style="hoveredDayData.team1.probDelta > 0 ? 'background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2)' : hoveredDayData.team1.probDelta < 0 ? 'background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2)' : 'background:rgba(107,114,128,0.08);border:1px solid rgba(107,114,128,0.2)'">
-                        <div class="text-xs text-dark-textMuted mb-0.5">Win probability</div>
-                        <div class="flex items-center gap-1.5">
-                          <span class="text-lg font-black"
-                            :class="hoveredDayData.team1.probDelta > 0 ? 'text-cyan-400' : hoveredDayData.team1.probDelta < 0 ? 'text-red-400' : 'text-dark-textMuted'">
-                            {{ hoveredDayData.team1.prob.toFixed(1) }}%
-                          </span>
-                          <span class="text-xs font-bold px-1.5 py-0.5 rounded"
-                            :class="hoveredDayData.team1.probDelta > 0 ? 'text-cyan-400 bg-cyan-400/10' : hoveredDayData.team1.probDelta < 0 ? 'text-red-400 bg-red-400/10' : 'text-dark-textMuted'"
-                          >
-                            {{ hoveredDayData.team1.probDelta > 0 ? '▲' : hoveredDayData.team1.probDelta < 0 ? '▼' : '—' }}
-                            {{ Math.abs(hoveredDayData.team1.probDelta).toFixed(1) }}%
-                          </span>
-                        </div>
-                        <!-- Big swing callout -->
-                        <div v-if="Math.abs(hoveredDayData.team1.probDelta) >= 8" class="mt-1 text-xs font-bold"
-                          :class="hoveredDayData.team1.probDelta > 0 ? 'text-cyan-300' : 'text-red-300'">
-                          {{ hoveredDayData.team1.probDelta > 0 ? '⚡ Big day — momentum shifted' : '💥 Rough day — took a hit' }}
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Team 2 -->
-                    <div class="p-4">
-                      <div class="flex items-center gap-2 mb-3">
-                        <div class="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0"></div>
-                        <span class="text-xs font-semibold text-orange-400 truncate">{{ selectedMatchup?.team2?.name }}</span>
-                      </div>
-
-                      <!-- Points scored this day -->
-                      <div class="mb-3">
-                        <div class="text-xs text-dark-textMuted mb-0.5">Points scored</div>
-                        <div class="flex items-baseline gap-2">
-                          <span class="text-2xl font-black" :class="hoveredDayData.team2.ptsDay >= 0 ? 'text-white' : 'text-red-400'">
-                            {{ hoveredDayData.team2.ptsDay >= 0 ? '+' : '' }}{{ hoveredDayData.team2.ptsDay.toFixed(1) }}
-                          </span>
-                          <span class="text-xs text-dark-textMuted">pts today</span>
-                        </div>
-                        <div class="text-xs text-dark-textMuted mt-0.5">{{ hoveredDayData.team2.ptsCumulative.toFixed(1) }} cumulative</div>
-                      </div>
-
-                      <!-- Win prob change -->
-                      <div class="rounded-lg px-3 py-2" :style="hoveredDayData.team2.probDelta > 0 ? 'background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2)' : hoveredDayData.team2.probDelta < 0 ? 'background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2)' : 'background:rgba(107,114,128,0.08);border:1px solid rgba(107,114,128,0.2)'">
-                        <div class="text-xs text-dark-textMuted mb-0.5">Win probability</div>
-                        <div class="flex items-center gap-1.5">
-                          <span class="text-lg font-black"
-                            :class="hoveredDayData.team2.probDelta > 0 ? 'text-orange-400' : hoveredDayData.team2.probDelta < 0 ? 'text-red-400' : 'text-dark-textMuted'">
-                            {{ hoveredDayData.team2.prob.toFixed(1) }}%
-                          </span>
-                          <span class="text-xs font-bold px-1.5 py-0.5 rounded"
-                            :class="hoveredDayData.team2.probDelta > 0 ? 'text-orange-400 bg-orange-400/10' : hoveredDayData.team2.probDelta < 0 ? 'text-red-400 bg-red-400/10' : 'text-dark-textMuted'"
-                          >
-                            {{ hoveredDayData.team2.probDelta > 0 ? '▲' : hoveredDayData.team2.probDelta < 0 ? '▼' : '—' }}
-                            {{ Math.abs(hoveredDayData.team2.probDelta).toFixed(1) }}%
-                          </span>
-                        </div>
-                        <div v-if="Math.abs(hoveredDayData.team2.probDelta) >= 8" class="mt-1 text-xs font-bold"
-                          :class="hoveredDayData.team2.probDelta > 0 ? 'text-orange-300' : 'text-red-300'">
-                          {{ hoveredDayData.team2.probDelta > 0 ? '⚡ Big day — momentum shifted' : '💥 Rough day — took a hit' }}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Margin callout -->
-                  <div class="px-4 py-2 border-t border-dark-border/40 flex items-center justify-between" style="background:#0a0c14;">
-                    <span class="text-xs text-dark-textMuted">
-                      Scoring gap after {{ hoveredDayData.day }}:
-                      <span class="font-bold" :class="hoveredDayData.team1.ptsCumulative > hoveredDayData.team2.ptsCumulative ? 'text-cyan-400' : 'text-orange-400'">
-                        {{ Math.abs(hoveredDayData.team1.ptsCumulative - hoveredDayData.team2.ptsCumulative).toFixed(1) }} pts
-                      </span>
-                      in favor of
-                      <span class="font-bold" :class="hoveredDayData.team1.ptsCumulative > hoveredDayData.team2.ptsCumulative ? 'text-cyan-400' : 'text-orange-400'">
-                        {{ hoveredDayData.team1.ptsCumulative > hoveredDayData.team2.ptsCumulative ? selectedMatchup?.team1?.name : selectedMatchup?.team2?.name }}
-                      </span>
-                    </span>
-                    <span class="text-xs text-dark-textMuted">{{ hoveredDayData.day }} of {{ probabilityHistory.length }}-day matchup</span>
-                  </div>
-                </div>
-
-                <!-- Default prompt when nothing hovered -->
-                <div v-else-if="probabilityHistory.length > 0" class="mt-3 text-center py-3">
-                  <span class="text-xs text-dark-textMuted">Hover any point on the chart to see that day's breakdown</span>
-                </div>
-              </Transition>
-
-              <div class="flex items-center justify-center gap-2 mt-3">
+              <div class="flex items-center justify-center gap-2 mt-1">
                 <div v-if="hasRealSnapshots" class="flex items-center gap-1">
                   <span class="w-2 h-2 rounded-full bg-green-500"></span>
                   <span class="text-[10px] text-green-400">Real Snapshots</span>
@@ -452,7 +329,7 @@
         </div>
 
         <!-- Scouting Reports + Stats + History — gated -->
-        <LeagueGate wrap :locked="!hasLeagueAccess" label="Full Matchup Analysis">
+        <LeagueGate wrap :locked="!canExpand" label="Full Matchup Analysis">
         <div class="card">
           <div class="card-header">
             <div class="flex items-center gap-2">
@@ -730,7 +607,7 @@ import { useRouter } from 'vue-router'
 
 const leagueStore = useLeagueStore()
 const router = useRouter()
-const { hasLeagueAccess } = useFeatureAccess()
+const { hasLeagueAccess, canExpand } = useFeatureAccess()
 
 function goToPricing() {
   const params = new URLSearchParams()
@@ -772,69 +649,6 @@ const monteCarloCache = ref<Map<string, { team1: number; team2: number; simulati
 // Refs for download
 const winProbRef = ref<HTMLElement | null>(null)
 const winProbSectionRef = ref<HTMLElement | null>(null)
-
-// ── Day breakdown hover state ─────────────────────────────────────────────
-const hoveredDayIndex = ref<number | null>(null)
-let hoverLeaveTimer: ReturnType<typeof setTimeout> | null = null
-
-const hoveredDayData = computed(() => {
-  if (hoveredDayIndex.value === null) return null
-  const idx = hoveredDayIndex.value
-  const history = probabilityHistory.value
-  if (!history.length || idx >= history.length) return null
-
-  const cur = history[idx]
-  const prev = idx > 0 ? history[idx - 1] : null
-
-  // Points scored on this specific day (delta from previous day)
-  const team1PtsDay = prev
-    ? Math.round((cur.points.team1 - prev.points.team1) * 10) / 10
-    : Math.round(cur.points.team1 * 10) / 10
-  const team2PtsDay = prev
-    ? Math.round((cur.points.team2 - prev.points.team2) * 10) / 10
-    : Math.round(cur.points.team2 * 10) / 10
-
-  // Win prob delta vs previous day
-  const team1ProbDelta = prev
-    ? Math.round((cur.team1 - prev.team1) * 10) / 10
-    : 0
-  const team2ProbDelta = prev
-    ? Math.round((cur.team2 - prev.team2) * 10) / 10
-    : 0
-
-  return {
-    day: cur.day,
-    dayIndex: idx,
-    team1: {
-      ptsDay: team1PtsDay,
-      ptsCumulative: cur.points.team1,
-      prob: cur.team1,
-      probDelta: team1ProbDelta,
-    },
-    team2: {
-      ptsDay: team2PtsDay,
-      ptsCumulative: cur.points.team2,
-      prob: cur.team2,
-      probDelta: team2ProbDelta,
-    },
-  }
-})
-
-function onChartHover(_event: any, _chartContext: any, config: any) {
-  if (hoverLeaveTimer) { clearTimeout(hoverLeaveTimer); hoverLeaveTimer = null }
-  const idx = config?.dataPointIndex
-  if (idx !== undefined && idx >= 0) {
-    hoveredDayIndex.value = idx
-  }
-}
-
-function onChartLeave() {
-  // Small delay so panel doesn't flash off when moving between data points
-  hoverLeaveTimer = setTimeout(() => {
-    hoveredDayIndex.value = null
-  }, 300)
-}
-// ─────────────────────────────────────────────────────────────────────────
 const comparisonRef = ref<HTMLElement | null>(null)
 
 // Check if ESPN platform

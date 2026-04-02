@@ -165,7 +165,7 @@
                 </div>
               </label>
               <button 
-                v-if="hasLeagueAccess"
+                v-if="canExpand"
                 @click="downloadCareerStats"
                 :disabled="isDownloading"
                 class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
@@ -272,7 +272,7 @@
               <h2 class="card-title">Season-by-Season Records</h2>
             </div>
             <button 
-              v-if="hasLeagueAccess"
+              v-if="canExpand"
               @click="downloadSeasonHistory"
               :disabled="isDownloadingSeason"
               class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
@@ -422,7 +422,7 @@
                 <h2 class="card-title">Tale of the Tape</h2>
               </div>
               <button 
-                v-if="hasLeagueAccess"
+                v-if="canExpand"
                 @click="downloadComparison"
                 :disabled="isDownloadingComparison"
                 class="px-4 py-2 rounded-lg font-medium flex items-center gap-2 text-sm transition-all disabled:opacity-50"
@@ -611,7 +611,7 @@
         </div>
 
         <!-- Rivalry Highlights — gated -->
-        <LeagueGate wrap :locked="!hasLeagueAccess" label="Rivalry Deep Stats">
+        <LeagueGate wrap :locked="!canExpand" label="Rivalry Deep Stats">
         <div v-if="compareRivalryHighlights" class="mb-6">
           <!-- Desktop: 3 cards -->
           <div class="hidden md:grid grid-cols-3 gap-4">
@@ -750,7 +750,7 @@
                 </div>
               </label>
               <button 
-                v-if="hasLeagueAccess"
+                v-if="canExpand"
                 @click="downloadH2HMatrix"
                 :disabled="isDownloadingH2H"
                 class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
@@ -1624,7 +1624,7 @@
                 </div>
               </div>
               <button 
-                v-if="hasLeagueAccess"
+                v-if="canExpand"
                 @click="downloadLegacyLeaderboard"
                 :disabled="isDownloadingLegacy"
                 class="px-4 py-2 rounded-lg font-medium flex items-center gap-2 text-sm transition-all disabled:opacity-50"
@@ -1849,7 +1849,7 @@
           </div>
           <div class="flex items-center gap-2">
             <button 
-              v-if="hasLeagueAccess"
+              v-if="canExpand"
               @click="downloadRecordRankings(recordModalLabel)" 
               :disabled="isDownloadingRecord"
               class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
@@ -1939,7 +1939,7 @@
           </div>
           <div class="flex items-center gap-2">
             <button 
-              v-if="hasLeagueAccess"
+              v-if="canExpand"
               @click="downloadAwardRankings(awardModalCategory, awardModalType, awardModalCatType)" 
               :disabled="isDownloadingAward"
               class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
@@ -2140,7 +2140,7 @@ import { useRouter } from 'vue-router'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const leagueStore = useLeagueStore()
-const { hasLeagueAccess } = useFeatureAccess()
+const { hasLeagueAccess, canExpand } = useFeatureAccess()
 const router = useRouter()
 function goToPricing() {
   const params = new URLSearchParams()
@@ -2150,15 +2150,15 @@ function goToPricing() {
 }
 
 // Gated computeds
-const gatedSeasonRecords = computed(() => hasLeagueAccess.value ? seasonRecords.value : seasonRecords.value.slice(0, 3))
-const gatedHoFHitting = computed(() => hasLeagueAccess.value ? hallOfFameHitting.value : hallOfFameHitting.value.slice(0, 1))
-const gatedHoFPitching = computed(() => hasLeagueAccess.value ? hallOfFamePitching.value : hallOfFamePitching.value.slice(0, 1))
-const gatedHoSHitting = computed(() => hasLeagueAccess.value ? hallOfShameHitting.value : hallOfShameHitting.value.slice(0, 1))
-const gatedHoSPitching = computed(() => hasLeagueAccess.value ? hallOfShamePitching.value : hallOfShamePitching.value.slice(0, 1))
-const gatedSeasonHoFHitting = computed(() => hasLeagueAccess.value ? seasonHallOfFameHitting.value : seasonHallOfFameHitting.value.slice(0, 1))
-const gatedSeasonHoFPitching = computed(() => hasLeagueAccess.value ? seasonHallOfFamePitching.value : seasonHallOfFamePitching.value.slice(0, 1))
-const gatedSeasonHoSHitting = computed(() => hasLeagueAccess.value ? seasonHallOfShameHitting.value : seasonHallOfShameHitting.value.slice(0, 1))
-const gatedSeasonHoSPitching = computed(() => hasLeagueAccess.value ? seasonHallOfShamePitching.value : seasonHallOfShamePitching.value.slice(0, 1))
+const gatedSeasonRecords = computed(() => canExpand.value ? seasonRecords.value : seasonRecords.value.slice(0, 3))
+const gatedHoFHitting = computed(() => canExpand.value ? hallOfFameHitting.value : hallOfFameHitting.value.slice(0, 1))
+const gatedHoFPitching = computed(() => canExpand.value ? hallOfFamePitching.value : hallOfFamePitching.value.slice(0, 1))
+const gatedHoSHitting = computed(() => canExpand.value ? hallOfShameHitting.value : hallOfShameHitting.value.slice(0, 1))
+const gatedHoSPitching = computed(() => canExpand.value ? hallOfShamePitching.value : hallOfShamePitching.value.slice(0, 1))
+const gatedSeasonHoFHitting = computed(() => canExpand.value ? seasonHallOfFameHitting.value : seasonHallOfFameHitting.value.slice(0, 1))
+const gatedSeasonHoFPitching = computed(() => canExpand.value ? seasonHallOfFamePitching.value : seasonHallOfFamePitching.value.slice(0, 1))
+const gatedSeasonHoSHitting = computed(() => canExpand.value ? seasonHallOfShameHitting.value : seasonHallOfShameHitting.value.slice(0, 1))
+const gatedSeasonHoSPitching = computed(() => canExpand.value ? seasonHallOfShamePitching.value : seasonHallOfShamePitching.value.slice(0, 1))
 const authStore = useAuthStore()
 
 // Platform detection
@@ -2817,7 +2817,7 @@ const filteredCareerStats = computed(() => {
   return careerStats.value.filter(stat => currentMembers.value.has(stat.team_key))
 })
 const gatedCareerStats = computed(() =>
-  hasLeagueAccess.value ? filteredCareerStats.value : filteredCareerStats.value.slice(0, 3)
+  canExpand.value ? filteredCareerStats.value : filteredCareerStats.value.slice(0, 3)
 )
 
 // Season-by-Season Records
@@ -3783,7 +3783,7 @@ const filteredLegacyScores = computed(() => {
   return legacyScores.value.filter(team => currentMembers.value.has(team.team_key))
 })
 const gatedLegacyScores = computed(() =>
-  hasLeagueAccess.value ? filteredLegacyScores.value : filteredLegacyScores.value.slice(0, 3)
+  canExpand.value ? filteredLegacyScores.value : filteredLegacyScores.value.slice(0, 3)
 )
 
 // ── Legacy Chart: cumulative year-by-year scores ─────────────────────────
@@ -4296,7 +4296,7 @@ const filteredH2HTeams = computed(() => {
   return h2hTeams.value.filter(t => currentMembers.value.has(t.team_key))
 })
 const gatedH2HTeams = computed(() =>
-  hasLeagueAccess.value ? filteredH2HTeams.value : filteredH2HTeams.value.slice(0, 3)
+  canExpand.value ? filteredH2HTeams.value : filteredH2HTeams.value.slice(0, 3)
 )
 
 // ==================== TEAM COMPARISON COMPUTED ====================

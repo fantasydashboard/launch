@@ -167,7 +167,7 @@
               <div class="flex items-center gap-2">
                 <span class="text-xs text-dark-textMuted italic">Downloads in current sort order</span>
                 <button 
-                  v-if="hasLeagueAccess"
+                  v-if="canExpand"
                   @click="downloadCareerStats"
                   :disabled="isDownloadingCareerStats"
                   class="px-4 py-2 rounded-lg font-medium flex items-center gap-2 text-sm transition-all disabled:opacity-50"
@@ -588,7 +588,7 @@
         </div>
 
         <!-- Rivalry Highlights — gated -->
-        <LeagueGate wrap :locked="!hasLeagueAccess" label="Rivalry Deep Stats">
+        <LeagueGate wrap :locked="!canExpand" label="Rivalry Deep Stats">
         <div v-if="compareRivalryHighlights" class="mb-6">
           <!-- Desktop: 3 cards -->
           <div class="hidden md:grid grid-cols-3 gap-4">
@@ -1451,7 +1451,7 @@
                   </div>
                   <!-- Share button -->
                   <button 
-                    v-if="hasLeagueAccess"
+                    v-if="canExpand"
                     @click.stop="downloadTeamLegacy(selectedLegacyTeamDetails)"
                     :disabled="isDownloadingTeamLegacy"
                     class="px-3 py-1.5 rounded-lg font-medium flex items-center gap-2 text-sm transition-all disabled:opacity-50"
@@ -1556,7 +1556,7 @@
             </div>
             <div class="flex items-center gap-2">
 <button 
-                v-if="hasLeagueAccess"
+                v-if="canExpand"
                 @click="downloadRecordRankings(recordModalLabel)" 
                 :disabled="isDownloadingRecord"
                 class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
@@ -1657,7 +1657,7 @@
             </div>
             <div class="flex items-center gap-2">
 <button 
-                v-if="hasLeagueAccess"
+                v-if="canExpand"
                 @click="downloadAwardRankings(awardModalTitle, awardModalType)" 
                 :disabled="isDownloadingAward"
                 class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
@@ -1760,7 +1760,7 @@
             </div>
             <div class="flex items-center gap-2">
 <button 
-                v-if="hasLeagueAccess"
+                v-if="canExpand"
                 @click="downloadSeasonAwardRankings(seasonAwardModalTitle, seasonAwardModalType)" 
                 :disabled="isDownloadingSeasonAward"
                 class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
@@ -1863,7 +1863,7 @@
             </div>
             <div class="flex items-center gap-2">
 <button 
-                v-if="hasLeagueAccess"
+                v-if="canExpand"
                 @click="downloadWeeklyAwardRankings(weeklyAwardModalTitle, weeklyAwardModalType)" 
                 :disabled="isDownloadingWeeklyAward"
                 class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
@@ -2262,7 +2262,7 @@ import VueApexCharts from 'vue3-apexcharts'
 const apexchart = VueApexCharts
 
 const leagueStore = useLeagueStore()
-const { hasLeagueAccess } = useFeatureAccess()
+const { hasLeagueAccess, canExpand } = useFeatureAccess()
 const router = useRouter()
 function goToPricing() {
   const params = new URLSearchParams()
@@ -2272,12 +2272,12 @@ function goToPricing() {
 }
 
 // Gated computeds
-const gatedSeasonRecords = computed(() => hasLeagueAccess.value ? seasonRecords.value : seasonRecords.value.slice(0, 3))
-const gatedAllTimeHoF = computed(() => hasLeagueAccess.value ? allTimeHallOfFame.value : allTimeHallOfFame.value.slice(0, 1))
-const gatedAllTimeHoS = computed(() => hasLeagueAccess.value ? allTimeHallOfShame.value : allTimeHallOfShame.value.slice(0, 1))
-const gatedSeasonHoF = computed(() => hasLeagueAccess.value ? seasonHallOfFame.value : seasonHallOfFame.value.slice(0, 1))
-const gatedSeasonHoS = computed(() => hasLeagueAccess.value ? seasonHallOfShame.value : seasonHallOfShame.value.slice(0, 1))
-const gatedWeeklyAwards = computed(() => hasLeagueAccess.value ? weeklyAwards.value : weeklyAwards.value.slice(0, 1))
+const gatedSeasonRecords = computed(() => canExpand.value ? seasonRecords.value : seasonRecords.value.slice(0, 3))
+const gatedAllTimeHoF = computed(() => canExpand.value ? allTimeHallOfFame.value : allTimeHallOfFame.value.slice(0, 1))
+const gatedAllTimeHoS = computed(() => canExpand.value ? allTimeHallOfShame.value : allTimeHallOfShame.value.slice(0, 1))
+const gatedSeasonHoF = computed(() => canExpand.value ? seasonHallOfFame.value : seasonHallOfFame.value.slice(0, 1))
+const gatedSeasonHoS = computed(() => canExpand.value ? seasonHallOfShame.value : seasonHallOfShame.value.slice(0, 1))
+const gatedWeeklyAwards = computed(() => canExpand.value ? weeklyAwards.value : weeklyAwards.value.slice(0, 1))
 const authStore = useAuthStore()
 
 // Check if ESPN platform - use both activePlatform AND league key format for robustness
@@ -2645,7 +2645,7 @@ const filteredCareerStats = computed(() => {
   return careerStats.value.filter(stat => currentMembers.value.includes(stat.team_key))
 })
 const gatedCareerStats = computed(() =>
-  hasLeagueAccess.value ? filteredCareerStats.value : filteredCareerStats.value.slice(0, 3)
+  canExpand.value ? filteredCareerStats.value : filteredCareerStats.value.slice(0, 3)
 )
 
 // Computed: Season Records
@@ -2719,7 +2719,7 @@ const filteredH2HTeams = computed(() => {
   return h2hTeams.value.filter(team => currentMembers.value.includes(team.team_key))
 })
 const gatedH2HTeams = computed(() =>
-  hasLeagueAccess.value ? filteredH2HTeams.value : filteredH2HTeams.value.slice(0, 3)
+  canExpand.value ? filteredH2HTeams.value : filteredH2HTeams.value.slice(0, 3)
 )
 
 // ==================== TEAM COMPARISON COMPUTED ====================
@@ -3419,7 +3419,7 @@ const filteredLegacyScores = computed(() => {
   return legacyScores.value.filter(team => currentMembers.value.includes(team.team_key))
 })
 const gatedLegacyScores = computed(() =>
-  hasLeagueAccess.value ? filteredLegacyScores.value : filteredLegacyScores.value.slice(0, 3)
+  canExpand.value ? filteredLegacyScores.value : filteredLegacyScores.value.slice(0, 3)
 )
 
 // Computed: Legacy statistics for summary cards

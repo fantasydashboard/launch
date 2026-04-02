@@ -341,7 +341,7 @@
               </div>
               <div class="flex items-center gap-2">
 <button 
-                  v-if="hasLeagueAccess"
+                  v-if="canExpand"
                   @click="downloadTeamDraftImage" 
                   :disabled="isDownloadingTeamDraft"
                   class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
@@ -889,7 +889,7 @@
               </div>
               <div class="flex items-center gap-2">
 <button 
-                  v-if="hasLeagueAccess"
+                  v-if="canExpand"
                   @click="downloadBalanceImage" 
                   :disabled="isDownloadingBalance"
                   class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
@@ -1036,7 +1036,7 @@
                   <p class="card-subtitle mt-1">Best value relative to draft position</p>
                 </div>
               </div>
-              <button v-if="hasLeagueAccess" @click="downloadStealsImage" :disabled="isDownloadingSteals" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50" :style="stealsToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'">
+              <button v-if="canExpand" @click="downloadStealsImage" :disabled="isDownloadingSteals" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50" :style="stealsToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'">
                 <svg v-if="isDownloadingSteals" class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 <svg v-else-if="stealsToast === 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                 <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
@@ -1111,7 +1111,7 @@
                   <p class="card-subtitle mt-1">Underperformed relative to draft position</p>
                 </div>
               </div>
-              <button v-if="hasLeagueAccess" @click="downloadBustsImage" :disabled="isDownloadingBusts" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50" :style="bustsToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'">
+              <button v-if="canExpand" @click="downloadBustsImage" :disabled="isDownloadingBusts" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50" :style="bustsToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'">
                 <svg v-if="isDownloadingBusts" class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 <svg v-else-if="bustsToast === 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                 <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
@@ -1247,7 +1247,7 @@
       </div>
 
       <!-- Late Round Gems by Category — gated -->
-      <LeagueGate wrap :locked="!hasLeagueAccess" label="Late Round Gems by Category">
+      <LeagueGate wrap :locked="!canExpand" label="Late Round Gems by Category">
       <div class="card mt-6">
         <div class="card-header">
           <div class="flex items-center gap-2">
@@ -1443,7 +1443,7 @@ import {
 } from '@/services/draftGrading'
 
 const leagueStore = useLeagueStore()
-const { hasLeagueAccess } = useFeatureAccess()
+const { hasLeagueAccess, canExpand } = useFeatureAccess()
 const router = useRouter()
 
 function goToPricing() {
@@ -1455,12 +1455,12 @@ function goToPricing() {
 const authStore = useAuthStore()
 
 // Gated list computeds (avoid ternary in v-for which crashes Vue compiler)
-const gatedRounds = computed(() => hasLeagueAccess.value ? totalRounds.value : Math.min(totalRounds.value, 3))
-const gatedImpactPicks = computed(() => hasLeagueAccess.value ? sortedImpactPicks.value : sortedImpactPicks.value.slice(0, 3))
-const gatedTeamBalance = computed(() => hasLeagueAccess.value ? teamBalanceData.value : teamBalanceData.value.slice(0, 3))
-const gatedTopSteals = computed(() => hasLeagueAccess.value ? topSteals.value : topSteals.value.slice(0, 3))
-const gatedTopBusts = computed(() => hasLeagueAccess.value ? topBusts.value : topBusts.value.slice(0, 3))
-const gatedCategorySteals = computed(() => hasLeagueAccess.value ? categorySteals.value : categorySteals.value.slice(0, 3))
+const gatedRounds = computed(() => canExpand.value ? totalRounds.value : Math.min(totalRounds.value, 3))
+const gatedImpactPicks = computed(() => canExpand.value ? sortedImpactPicks.value : sortedImpactPicks.value.slice(0, 3))
+const gatedTeamBalance = computed(() => canExpand.value ? teamBalanceData.value : teamBalanceData.value.slice(0, 3))
+const gatedTopSteals = computed(() => canExpand.value ? topSteals.value : topSteals.value.slice(0, 3))
+const gatedTopBusts = computed(() => canExpand.value ? topBusts.value : topBusts.value.slice(0, 3))
+const gatedCategorySteals = computed(() => canExpand.value ? categorySteals.value : categorySteals.value.slice(0, 3))
 
 // Platform detection
 const isEspn = computed(() => leagueStore.activePlatform === 'espn')
