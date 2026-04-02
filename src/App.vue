@@ -300,6 +300,34 @@
           </div>
         </header>
 
+        <!-- Trial countdown banner -->
+        <Transition name="slide-down">
+          <div v-if="isOnActiveTrial && !isPaid"
+            style="background: linear-gradient(90deg, #0f2d1a, #0a1f12); border-bottom: 1px solid rgba(34,197,94,0.25); padding: 7px 16px; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; position: relative; z-index: 49;">
+            <span style="font-size: 12px; color: #22c55e; font-weight: 700;">
+              ⏱ {{ trialDaysRemaining }} day{{ trialDaysRemaining === 1 ? '' : 's' }} left in your free trial
+            </span>
+            <span style="font-size: 12px; color: #6b7280;">—</span>
+            <span style="font-size: 12px; color: #9ca3af;">Unlock everything when you're ready.</span>
+            <button @click="$router.push('/pricing')"
+              style="font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 12px; background: #22c55e; color: #0a0c14; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap;">
+              Upgrade now →
+            </button>
+          </div>
+          <div v-else-if="isTrialExpired && !isPaid"
+            style="background: linear-gradient(90deg, #2d0f0f, #1f0a0a); border-bottom: 1px solid rgba(239,68,68,0.25); padding: 7px 16px; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; position: relative; z-index: 49;">
+            <span style="font-size: 12px; color: #ef4444; font-weight: 700;">
+              ⚠️ Your 14-day free trial has ended
+            </span>
+            <span style="font-size: 12px; color: #6b7280;">—</span>
+            <span style="font-size: 12px; color: #9ca3af;">Upgrade to keep full access.</span>
+            <button @click="$router.push('/pricing')"
+              style="font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 12px; background: #ef4444; color: #fff; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap;">
+              View plans →
+            </button>
+          </div>
+        </Transition>
+
         <!-- Menu Header Bar - Fixed at top when scrolled -->
         <nav 
           class="z-40 overflow-visible transition-all duration-300"
@@ -991,32 +1019,6 @@
       </div>
     </Teleport>
     
-    <!-- Upgrade prompt (triggered by ufd:show-upgrade event) -->
-    <Teleport to="body">
-      <div v-if="showUpgradePrompt" class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60"
-        @click.self="showUpgradePrompt = false">
-        <div class="bg-dark-card border border-dark-border rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center">
-          <div class="text-4xl mb-3">🔒</div>
-          <h3 class="text-xl font-black text-white mb-2">Upgrade to unlock</h3>
-          <p class="text-dark-textMuted text-sm mb-6">Start your 14-day free trial — no credit card required. Or view plans to choose the right option for you.</p>
-          <div class="flex gap-3">
-            <button @click="$router.push('/pricing?intent=trial'); showUpgradePrompt = false"
-              class="flex-1 py-3 rounded-xl font-bold text-sm text-gray-900 transition-colors"
-              style="background:#22c55e;">
-              Start free trial
-            </button>
-            <button @click="$router.push('/pricing'); showUpgradePrompt = false"
-              class="flex-1 py-3 rounded-xl font-bold text-sm text-dark-textMuted border border-dark-border hover:border-dark-textMuted transition-colors">
-              View plans
-            </button>
-          </div>
-          <button @click="showUpgradePrompt = false" class="mt-4 text-xs text-dark-textMuted hover:text-white transition-colors">
-            Maybe later
-          </button>
-        </div>
-      </div>
-    </Teleport>
-
     <!-- Dev Mode Panel (Admin Only) -->
     <DevModePanel />
   </div>
@@ -1024,6 +1026,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { useRouter, useRoute } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { useDarkModeStore } from '@/stores/darkMode'
@@ -1054,6 +1057,7 @@ const showLeagueDropdown = ref(false)
 const showUserMenu = ref(false)
 const showAddLeagueModal = ref(false)
 const showUpgradePrompt = ref(false)
+const { isOnActiveTrial, isTrialExpired, trialDaysRemaining, isPaid } = useFeatureAccess()
 const showMobileMenu = ref(false)
 const leagueDropdownRef = ref<HTMLElement | null>(null)
 const mobileLeagueDropdownRef = ref<HTMLElement | null>(null)
@@ -1513,7 +1517,6 @@ onMounted(async () => {
   
   document.addEventListener('click', handleClickOutside)
   window.addEventListener('scroll', handleScroll)
-  window.addEventListener('ufd:show-upgrade', () => { showUpgradePrompt.value = true })
   
   if (authStore.isAuthenticated && authStore.user?.id) {
     await leagueStore.loadSavedLeagues(authStore.user.id)
@@ -1531,7 +1534,6 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
   window.removeEventListener('scroll', handleScroll)
-  window.removeEventListener('ufd:show-upgrade', () => {})
 })
 
 // Watch for auth changes
@@ -1574,4 +1576,6 @@ watch(() => route.path, () => {
   opacity: 0;
   transform: translateY(-4px) scale(0.97);
 }
+.slide-down-enter-active, .slide-down-leave-active { transition: all 0.3s ease; }
+.slide-down-enter-from, .slide-down-leave-to { opacity: 0; transform: translateY(-100%); }
 </style>
