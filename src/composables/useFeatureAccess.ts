@@ -1,100 +1,147 @@
 // composables/useFeatureAccess.ts
 // Handles subscription tier checking and feature gating.
 //
-// Access model:
-//   League Pass  — purchased once per league; unlocks league-wide features for
-//                  ANY user who loads that league. Stored in `league_subscriptions`.
-//   Premium      — individual per-user subscription; unlocks personal tools
-//                  (projections, start/sit, waiver analysis). Stored in `profiles`.
-//   Admin        — full access; set via profiles.subscription_tier = 'admin'.
+// Access model (updated):
+//   Free trial    — 14 days from first login; full access during trial.
+//                   Stored in profiles.trial_started_at / trial_expires_at.
+//   League Pass   — purchased once per league ($29); unlocks league-wide features
+//                   for ANY user who loads that league. Stored in `league_passes`.
+//   Individual    — per-user subscription ($7.99/mo or $49/yr); unlocks all features
+//                   for the purchasing user across all their leagues.
+//                   Stored in `individual_subscriptions` + profiles.subscription_tier.
+//   Admin         — full access; set via profiles.subscription_tier = 'admin'.
 
 import { ref, computed, watch } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 
-// Pricing constants
+// ── Pricing constants (updated) ───────────────────────────────────────────────
 export const PRICING = {
   leaguePass: {
-    small: 3900,  // $39 for 1-12 teams
-    large: 4900,  // $49 for 13+ teams
-    threshold: 12
+    price: 2900,      // $29 one-time per league
   },
-  premium: {
-    monthly: 499,   // $4.99/month
-    season: 1900    // $19/season
+  individual: {
+    monthly: 799,     // $7.99/month
+    annual:  4900,    // $49/year
+  },
+  trial: {
+    days: 14,
   }
 }
 
-export type SubscriptionTier = 'free' | 'league' | 'premium' | 'admin'
+export type SubscriptionTier = 'free' | 'trial' | 'individual' | 'league' | 'admin'
 
 export function useFeatureAccess() {
   const leagueStore = useLeagueStore()
   const authStore = useAuthStore()
 
-  // Loading / error state
+  // ── Loading / error state ─────────────────────────────────────────────────
   const isCheckingAccess = ref(false)
   const accessError = ref<string | null>(null)
 
-  // Raw subscription data
+  // ── Raw subscription state ────────────────────────────────────────────────
   const isAdmin = ref(false)
-  const hasRealLeagueAccess = ref(false)
-  const hasRealPremiumAccess = ref(false)
+  const hasRealLeagueAccess = ref(false)        // League Pass for active league
+  const hasRealIndividualAccess = ref(false)     // Individual subscription
+  const isOnActiveTrial = ref(false)             // Within 14-day free trial
+  const trialExpiresAt = ref<Date | null>(null)
+  const trialDaysRemaining = ref(0)
   const leagueSubscription = ref<any>(null)
-  const premiumSubscription = ref<any>(null)
+  const individualSubscription = ref<any>(null)
 
   // Dev-mode tier override (admin only)
   const devTierOverride = ref<string | null>(null)
 
-  // ── Core access check ──────────────────────────────────────────────────────
-  // Called on mount and whenever the active league changes.
-  // 1. Checks profiles for admin / premium tier (per-user).
-  // 2. Checks league_passes + league_subscriptions for an active League Pass (per-league).
-  //
-  // IMPORTANT: We reset hasRealLeagueAccess to false at the start (fail-closed).
-  // If any error occurs, access is denied for the new league rather than
-  // accidentally inheriting access from a previously-checked league.
+  // ── Core access check ─────────────────────────────────────────────────────
   async function checkAllAccess() {
     if (!supabase) return
 
-    // ── RESET immediately (fail-closed) ──
-    // Must happen synchronously before any awaits so that if this function
-    // is called when switching leagues, the old league's access is revoked
-    // right away — even while the new league's DB query is in-flight.
+    // Reset fail-closed
     hasRealLeagueAccess.value = false
+    hasRealIndividualAccess.value = false
+    isOnActiveTrial.value = false
     leagueSubscription.value = null
+    individualSubscription.value = null
 
     isCheckingAccess.value = true
     accessError.value = null
 
     try {
-      // ── 1. Profile-level checks (admin + individual premium) ──
-      const tier = authStore.profile?.subscription_tier || 'free'
-      isAdmin.value = tier === 'admin'
-      hasRealPremiumAccess.value = isAdmin.value || ['premium', 'pro'].includes(tier)
+      const userId = authStore.user?.id
+      if (!userId) return
 
-      // Restore admin league access after the reset above
+      // ── 1. Profile-level checks (admin + trial + individual) ──────────────
+      const profile = authStore.profile
+      const tier = profile?.subscription_tier || 'free'
+      isAdmin.value = tier === 'admin'
+
       if (isAdmin.value) {
         hasRealLeagueAccess.value = true
+        hasRealIndividualAccess.value = true
       }
 
-      // ── 2. League Pass check ──
-      // Stripe webhook writes to `league_passes` (active + expires_at).
-      // Legacy code may also write to `league_subscriptions`.
-      // Check both tables so either path grants access.
+      // ── Trial check ───────────────────────────────────────────────────────
+      // Auto-start trial if profile has no trial_started_at yet
+      if (!profile?.trial_started_at && supabase) {
+        await supabase.rpc('start_trial_if_new')
+        // Reload profile to get the new trial dates
+        await authStore.loadProfile?.()
+      }
+
+      const expiresAt = profile?.trial_expires_at
+        ? new Date(profile.trial_expires_at)
+        : null
+
+      if (expiresAt) {
+        trialExpiresAt.value = expiresAt
+        const now = new Date()
+        const isActive = now < expiresAt
+        isOnActiveTrial.value = isActive
+        if (isActive) {
+          const msRemaining = expiresAt.getTime() - now.getTime()
+          trialDaysRemaining.value = Math.ceil(msRemaining / (1000 * 60 * 60 * 24))
+        } else {
+          trialDaysRemaining.value = 0
+        }
+      }
+
+      // ── Individual subscription check ─────────────────────────────────────
+      // Check both the tier column (set by webhook) and the subscriptions table
+      const hasIndividualTier = ['individual_monthly', 'individual_annual', 'premium', 'pro'].includes(tier)
+
+      if (hasIndividualTier && !isAdmin.value) {
+        // Verify it's still active in the subscriptions table
+        const now = new Date().toISOString()
+        const { data: subData } = await supabase
+          .from('individual_subscriptions')
+          .select('id, status, tier, current_period_end')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .gt('current_period_end', now)
+          .limit(1)
+          .maybeSingle()
+
+        if (subData) {
+          hasRealIndividualAccess.value = true
+          individualSubscription.value = subData
+          console.log('[FeatureAccess] Individual subscription active ✓')
+        } else if (hasIndividualTier) {
+          // Tier column says paid but subscription expired — grant grace, log warning
+          console.warn('[FeatureAccess] Individual tier set but no active subscription found')
+          hasRealIndividualAccess.value = false
+        }
+      }
+
+      // ── League Pass check ─────────────────────────────────────────────────
       const leagueId = leagueStore.activeLeagueId
       const platform = leagueStore.activePlatform
 
-      if (leagueId && platform) {
+      if (leagueId && platform && !isAdmin.value) {
         const now = new Date().toISOString()
-
-        // The league_passes table may have the full key (espn_baseball_6416_2026)
-        // OR just the numeric ID (6416) depending on which path created the row.
-        // Extract the short numeric ID as a fallback.
         const parts = leagueId.split('_')
         const shortLeagueId = parts.length >= 3 ? parts[2] : leagueId
 
-        // Primary: league_passes (what stripe-webhook actually creates)
         const { data: passData, error: passError } = await supabase
           .from('league_passes')
           .select('id, expires_at')
@@ -107,86 +154,114 @@ export function useFeatureAccess() {
         if (passError) console.warn('[FeatureAccess] league_passes query error:', passError)
 
         if (passData) {
-          console.log('[FeatureAccess] League pass found in league_passes ✓')
+          console.log('[FeatureAccess] League pass found ✓')
           hasRealLeagueAccess.value = true
           leagueSubscription.value = passData
         } else {
-          // Fallback: league_subscriptions (legacy path)
-          const { data: subData, error: subError } = await supabase
+          // Fallback: legacy league_subscriptions table
+          const { data: subData } = await supabase
             .from('league_subscriptions')
             .select('*')
             .in('league_id', [leagueId, shortLeagueId])
             .eq('status', 'active')
             .maybeSingle()
 
-          if (subError) {
-            console.error('[FeatureAccess] league_subscriptions check failed:', subError)
+          if (subData) {
+            hasRealLeagueAccess.value = true
+            leagueSubscription.value = subData
+            console.log('[FeatureAccess] League pass found in legacy table ✓')
           }
-
-          leagueSubscription.value = subData || null
-          // Only grant access if admin OR an active subscription was found
-          hasRealLeagueAccess.value = isAdmin.value || !!subData
-          if (subData) console.log('[FeatureAccess] League pass found in league_subscriptions ✓')
         }
-      } else {
-        // No active league selected — only admins retain league access
+      } else if (!leagueId) {
         hasRealLeagueAccess.value = isAdmin.value
-        leagueSubscription.value = null
       }
+
     } catch (err: any) {
-      // Fail-closed: on any error, revoke access for safety
       console.error('[FeatureAccess] checkAllAccess error:', err)
       accessError.value = err?.message || 'Access check failed'
-      hasRealLeagueAccess.value = isAdmin.value  // admins always keep access
-      leagueSubscription.value = null
+      hasRealLeagueAccess.value = isAdmin.value
     } finally {
       isCheckingAccess.value = false
     }
   }
 
-  // Re-check whenever the active league changes
+  // Re-check when league or profile changes
   watch(
     () => [leagueStore.activeLeagueId, leagueStore.activePlatform],
     () => checkAllAccess(),
     { immediate: true }
   )
-
-  // Also re-check if the user's profile updates (e.g. after purchase)
-  // immediate: true is critical — catches the case where profile already
-  // loaded before this watcher was registered (page load timing race)
   watch(
     () => authStore.profile?.subscription_tier,
     () => checkAllAccess(),
     { immediate: true }
   )
+  // Also watch trial expiry date in case profile reloads
+  watch(
+    () => authStore.profile?.trial_expires_at,
+    () => checkAllAccess()
+  )
 
-  // ── Effective access (respects dev-mode override for admins) ──────────────
+  // ── Effective access ──────────────────────────────────────────────────────
+  const isPaid = computed(() =>
+    isAdmin.value || hasRealLeagueAccess.value || hasRealIndividualAccess.value
+  )
+
+  // Full access = paid OR on active trial
+  const hasFullAccess = computed(() => isPaid.value || isOnActiveTrial.value)
+
+  const effectiveTier = computed((): SubscriptionTier => {
+    if (isAdmin.value) return 'admin'
+    if (hasRealIndividualAccess.value) return 'individual'
+    if (hasRealLeagueAccess.value) return 'league'
+    if (isOnActiveTrial.value) return 'trial'
+    return 'free'
+  })
+
+  // Dev-mode override (admin only)
   const effectiveAccess = computed(() => {
     if (isAdmin.value && devTierOverride.value) {
       const t = devTierOverride.value as SubscriptionTier
-      return {
-        tier: t,
-        hasLeague: t !== 'free',
-        hasPremium: t === 'premium' || t === 'admin'
-      }
+      return { tier: t, hasLeague: t !== 'free', hasPremium: t === 'individual' || t === 'admin' }
     }
-    const tier: SubscriptionTier = isAdmin.value
-      ? 'admin'
-      : hasRealPremiumAccess.value
-        ? 'premium'
-        : hasRealLeagueAccess.value
-          ? 'league'
-          : 'free'
     return {
-      tier,
-      hasLeague: hasRealLeagueAccess.value || hasRealPremiumAccess.value || isAdmin.value,
-      // BETA: League Pass includes Ultimate features. When Ultimate goes paid, revert to:
-      // hasPremium: hasRealPremiumAccess.value || isAdmin.value
-      hasPremium: hasRealLeagueAccess.value || hasRealPremiumAccess.value || isAdmin.value
+      tier: effectiveTier.value,
+      hasLeague: hasFullAccess.value,
+      hasPremium: hasFullAccess.value,
     }
   })
 
-  // Dev-mode helpers (admin only)
+  // ── New gating properties ─────────────────────────────────────────────────
+
+  // canExpand: can click to expand any section (paid OR trial)
+  const canExpand = computed(() => {
+    if (isAdmin.value && devTierOverride.value) return devTierOverride.value !== 'free'
+    return hasFullAccess.value
+  })
+
+  // canDownload: can download graphics (paid OR trial)
+  const canDownload = computed(() => {
+    if (isAdmin.value && devTierOverride.value) return devTierOverride.value !== 'free'
+    return hasFullAccess.value
+  })
+
+  // Trial status helpers
+  const isTrialExpired = computed(() =>
+    !!trialExpiresAt.value && new Date() >= trialExpiresAt.value && !isPaid.value
+  )
+
+  const currentTierLabel = computed(() => {
+    if (isAdmin.value && devTierOverride.value) return `Dev: ${devTierOverride.value}`
+    switch (effectiveTier.value) {
+      case 'admin':      return 'Admin'
+      case 'individual': return 'Individual'
+      case 'league':     return 'League Pass'
+      case 'trial':      return `Free Trial (${trialDaysRemaining.value}d left)`
+      default:           return 'Free'
+    }
+  })
+
+  // Dev-mode helpers
   function setDevTier(tier: string | null) {
     if (!isAdmin.value) return
     devTierOverride.value = tier
@@ -194,15 +269,6 @@ export function useFeatureAccess() {
   function clearDevMode() {
     devTierOverride.value = null
   }
-
-  const currentTierLabel = computed(() => {
-    if (isAdmin.value && devTierOverride.value) return `Dev: ${devTierOverride.value}`
-    const t = effectiveAccess.value.tier
-    if (t === 'admin') return 'Admin'
-    if (t === 'premium') return 'Premium'
-    if (t === 'league') return 'League Pass'
-    return 'Free'
-  })
 
   return {
     // Loading state
@@ -212,35 +278,41 @@ export function useFeatureAccess() {
     // Raw subscription data
     isAdmin,
     hasRealLeagueAccess,
-    hasRealPremiumAccess,
+    hasRealIndividualAccess,
+    isOnActiveTrial,
+    isTrialExpired,
+    trialExpiresAt,
+    trialDaysRemaining,
     leagueSubscription,
-    premiumSubscription,
+    individualSubscription,
 
-    // Effective values (respects dev mode)
+    // Effective access
+    isPaid,
+    hasFullAccess,
     hasLeagueAccess: computed(() => effectiveAccess.value.hasLeague),
     hasPremiumAccess: computed(() => effectiveAccess.value.hasPremium),
     currentTier: computed(() => effectiveAccess.value.tier),
     currentTierLabel,
 
-    // Dev mode controls (admin only)
+    // ── NEW: key gating flags ──
+    canExpand,    // expand any section (trial OR paid)
+    canDownload,  // download graphics (trial OR paid)
+
+    // Dev mode
     devTierOverride: computed(() => devTierOverride.value),
     isDevMode: computed(() => isAdmin.value && !!devTierOverride.value),
     setDevTier,
     clearDevMode,
 
-    // Feature flags — FREE TIER
+    // Feature flags (all now unified under hasFullAccess)
     canViewHomepage: computed(() => true),
     canViewBasicMatchups: computed(() => true),
-
-    // Feature flags — LEAGUE PASS TIER
     canViewFullMatchups: computed(() => effectiveAccess.value.hasLeague),
     canViewHistory: computed(() => effectiveAccess.value.hasLeague),
     canViewPowerRankings: computed(() => effectiveAccess.value.hasLeague),
     canViewH2HRecords: computed(() => effectiveAccess.value.hasLeague),
     canViewCareerStats: computed(() => effectiveAccess.value.hasLeague),
-    canDownloadGraphics: computed(() => effectiveAccess.value.hasLeague),
-
-    // Feature flags — PREMIUM TIER
+    canDownloadGraphics: computed(() => canDownload.value),
     canUseMyTeamTools: computed(() => effectiveAccess.value.hasPremium),
     canViewProjections: computed(() => effectiveAccess.value.hasPremium),
     canUseStartSit: computed(() => effectiveAccess.value.hasPremium),
@@ -248,16 +320,14 @@ export function useFeatureAccess() {
     canUseTradeAnalyzer: computed(() => effectiveAccess.value.hasPremium),
 
     // Refresh
-    refreshAccess: checkAllAccess
+    refreshAccess: checkAllAccess,
   }
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-export function calculateLeaguePrice(numTeams: number): number {
-  return numTeams > PRICING.leaguePass.threshold
-    ? PRICING.leaguePass.large
-    : PRICING.leaguePass.small
+export function calculateLeaguePrice(): number {
+  return PRICING.leaguePass.price
 }
 
 export function formatPrice(cents: number): string {
@@ -269,13 +339,11 @@ export function applyDiscount(
   discount: { discount_type: string; discount_value: number } | null
 ): { finalPrice: number; discountAmount: number } {
   if (!discount) return { finalPrice: basePrice, discountAmount: 0 }
-
   let discountAmount = 0
   if (discount.discount_type === 'fixed') {
     discountAmount = discount.discount_value
   } else if (discount.discount_type === 'percentage') {
     discountAmount = Math.round(basePrice * (discount.discount_value / 100))
   }
-
   return { finalPrice: Math.max(0, basePrice - discountAmount), discountAmount }
 }
