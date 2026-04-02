@@ -176,7 +176,7 @@
                 <tr 
                   v-for="team in sortedPowerRankings" 
                   :key="team.team_key"
-                  @click="hasLeagueAccess || team.rank <= 3 ? openTeamModal(team) : null"
+                  @click="canExpand || team.rank <= 3 ? openTeamModal(team) : null"
                   class="border-b border-dark-border/50 transition-colors"
                   :class="{ 
                     'bg-yellow-500/10 ring-2 ring-yellow-500/50 ring-inset': team.is_my_team && (hasLeagueAccess || team.rank <= 3),
@@ -856,7 +856,7 @@ import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const leagueStore = useLeagueStore()
 const router = useRouter()
-const { hasLeagueAccess } = useFeatureAccess()
+const { hasLeagueAccess, canExpand } = useFeatureAccess()
 
 function goToPricing() {
   const params = new URLSearchParams()

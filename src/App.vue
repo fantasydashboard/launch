@@ -991,6 +991,32 @@
       </div>
     </Teleport>
     
+    <!-- Upgrade prompt (triggered by ufd:show-upgrade event) -->
+    <Teleport to="body">
+      <div v-if="showUpgradePrompt" class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60"
+        @click.self="showUpgradePrompt = false">
+        <div class="bg-dark-card border border-dark-border rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center">
+          <div class="text-4xl mb-3">🔒</div>
+          <h3 class="text-xl font-black text-white mb-2">Upgrade to unlock</h3>
+          <p class="text-dark-textMuted text-sm mb-6">Start your 14-day free trial — no credit card required. Or view plans to choose the right option for you.</p>
+          <div class="flex gap-3">
+            <button @click="$router.push('/pricing?intent=trial'); showUpgradePrompt = false"
+              class="flex-1 py-3 rounded-xl font-bold text-sm text-gray-900 transition-colors"
+              style="background:#22c55e;">
+              Start free trial
+            </button>
+            <button @click="$router.push('/pricing'); showUpgradePrompt = false"
+              class="flex-1 py-3 rounded-xl font-bold text-sm text-dark-textMuted border border-dark-border hover:border-dark-textMuted transition-colors">
+              View plans
+            </button>
+          </div>
+          <button @click="showUpgradePrompt = false" class="mt-4 text-xs text-dark-textMuted hover:text-white transition-colors">
+            Maybe later
+          </button>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Dev Mode Panel (Admin Only) -->
     <DevModePanel />
   </div>
@@ -1027,6 +1053,7 @@ const authMode = ref<'login' | 'signup'>('signup')
 const showLeagueDropdown = ref(false)
 const showUserMenu = ref(false)
 const showAddLeagueModal = ref(false)
+const showUpgradePrompt = ref(false)
 const showMobileMenu = ref(false)
 const leagueDropdownRef = ref<HTMLElement | null>(null)
 const mobileLeagueDropdownRef = ref<HTMLElement | null>(null)
@@ -1486,6 +1513,7 @@ onMounted(async () => {
   
   document.addEventListener('click', handleClickOutside)
   window.addEventListener('scroll', handleScroll)
+  window.addEventListener('ufd:show-upgrade', () => { showUpgradePrompt.value = true })
   
   if (authStore.isAuthenticated && authStore.user?.id) {
     await leagueStore.loadSavedLeagues(authStore.user.id)
@@ -1503,6 +1531,7 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
   window.removeEventListener('scroll', handleScroll)
+  window.removeEventListener('ufd:show-upgrade', () => {})
 })
 
 // Watch for auth changes

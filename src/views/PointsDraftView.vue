@@ -391,7 +391,7 @@
           :key="team.team_key"
           class="card cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all relative"
           :class="{ 'draft-blur-row': !hasLeagueAccess && idx >= 4 }"
-          @click="(!hasLeagueAccess && idx >= 4) ? null : openTeamModal(team)"
+          @click="(!canExpand && idx >= 4) ? null : openTeamModal(team)"
         >
           <!-- Rank Badge -->
           <div 
@@ -1182,7 +1182,7 @@ import {
 
 const router = useRouter()
 const leagueStore = useLeagueStore()
-const { hasLeagueAccess } = useFeatureAccess()
+const { hasLeagueAccess, canExpand } = useFeatureAccess()
 
 function goToPricing() {
   const params = new URLSearchParams()

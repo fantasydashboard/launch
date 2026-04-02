@@ -575,10 +575,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, Teleport } from 'vue'
 import { useLeagueStore } from '@/stores/league'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { espnService } from '@/services/espn'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const leagueStore = useLeagueStore()
+const { canExpand } = useFeatureAccess()
 
 // Platform detection (for badge display only - behavior is identical)
 const isSleeper = computed(() => leagueStore.activePlatform === 'sleeper')
@@ -1116,6 +1118,10 @@ function getStandingsAvatarPosition(team: any): Record<string, string> {
 
 // Open quick stat modal - reuses the leader modal
 function openQuickStatModal(type: string) {
+  if (!canExpand.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
   leaderModalType.value = type
   showLeaderModal.value = true
 }
@@ -1227,7 +1233,16 @@ function getCategoryWinClass(wins: number, catId: string) {
 }
 
 function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultAvatar.value }
-function openLeaderModal(type: string) { leaderModalType.value = type; showLeaderModal.value = true }
+function openLeaderModal(type: string) {
+  if (!canExpand.value) {
+    // Route to pricing — ExpandGate handles this inline but modal triggers need manual guard
+    import('@/composables/useFeatureAccess').then(() => {})
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+  leaderModalType.value = type
+  showLeaderModal.value = true
+}
 function closeLeaderModal() { showLeaderModal.value = false }
 
 // Download Leader/Quick Stat image

@@ -6,14 +6,18 @@
       <div class="lgw-cta">
         <div class="lgw-lock">🔒</div>
         <div class="lgw-text">
-          <div class="lgw-headline">{{ label || 'League Pass Required' }}</div>
-          <div class="lgw-sub">Unlock everything for your whole league — one flat fee, one season.</div>
+          <div class="lgw-headline">{{ label || 'Upgrade to unlock' }}</div>
+          <div class="lgw-sub">Start your 14-day free trial or view plans — no credit card required.</div>
         </div>
-        <button class="lgw-btn" @click="goToPricing">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-          GET LEAGUE PASS
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </button>
+        <div class="lgw-btns">
+          <button class="lgw-btn lgw-btn-trial" @click="goToTrial">
+            Start free trial
+          </button>
+          <button class="lgw-btn lgw-btn-plans" @click="goToPricing">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            View plans
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -24,10 +28,12 @@
     <div class="lgi-bar">
       <div class="lgi-inner">
         <span class="lgi-lock">🔒</span>
-        <span class="lgi-text">The rest of your league is hiding behind League Pass.</span>
-        <button class="lgi-btn" @click="goToPricing">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-          GET LEAGUE PASS
+        <span class="lgi-text">Start your free trial or upgrade to see everything.</span>
+        <button class="lgi-btn lgi-btn-trial" @click="goToTrial">
+          Start free trial
+        </button>
+        <button class="lgi-btn lgi-btn-plans" @click="goToPricing">
+          View plans
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
       </div>
@@ -157,6 +163,15 @@ function goToPricing() {
   router.push(pricingUrl.value)
 }
 
+function goToTrial() {
+  const params = new URLSearchParams()
+  if (leagueStore.activeLeagueId) params.set('league', leagueStore.activeLeagueId)
+  if (leagueStore.activePlatform) params.set('platform', leagueStore.activePlatform)
+  params.set('intent', 'trial')
+  const qs = params.toString()
+  router.push(qs ? `/pricing?${qs}` : '/pricing')
+}
+
 // ── Cache invalidation (call after successful purchase) ──────────────────────
 function invalidateCache(leagueId?: string) {
   if (leagueId) {
@@ -194,21 +209,23 @@ defineExpose({ invalidateCache })
   font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.02em;
 }
 .lgw-sub { font-size: 0.77rem; color: #6b7280; }
+.lgw-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .lgw-btn {
-  display: inline-flex; align-items: center; gap: 8px; padding: 11px 22px; white-space: nowrap;
-  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
-  color: #0a0c14;
-  font-family: 'Barlow Condensed', sans-serif; font-size: 0.9rem; font-weight: 900;
-  letter-spacing: 0.08em; text-transform: uppercase;
-  border: none; border-radius: 8px; cursor: pointer;
-  box-shadow: 0 2px 16px rgba(234,179,8,0.35);
-  transition: all 0.15s;
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; white-space: nowrap;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 0.88rem; font-weight: 900;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  border-radius: 8px; cursor: pointer; transition: all 0.15s;
 }
-.lgw-btn:hover {
-  background: linear-gradient(135deg, #fbbf24 0%, #eab308 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 24px rgba(234,179,8,0.5);
+.lgw-btn-trial {
+  background: #22c55e; color: #0a0c14; border: none;
+  box-shadow: 0 2px 16px rgba(34,197,94,0.3);
 }
+.lgw-btn-trial:hover { background: #16a34a; transform: translateY(-1px); }
+.lgw-btn-plans {
+  background: transparent; color: #9ca3af;
+  border: 1px solid #374151;
+}
+.lgw-btn-plans:hover { border-color: #6b7280; color: #e5e7eb; }
 .lgw-btn:active { transform: translateY(0); }
 
 /* ── Inline bar ── */
@@ -219,18 +236,19 @@ defineExpose({ invalidateCache })
 .lgi-lock { font-size: 1rem; }
 .lgi-text { font-size: 0.82rem; color: #6b7280; }
 .lgi-btn {
-  display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px;
-  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
-  color: #0a0c14;
-  font-family: 'Barlow Condensed', sans-serif; font-size: 0.85rem; font-weight: 900;
-  letter-spacing: 0.07em; text-transform: uppercase;
-  border: none; border-radius: 7px; cursor: pointer;
-  box-shadow: 0 2px 12px rgba(234,179,8,0.3);
-  transition: all 0.15s;
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 0.82rem; font-weight: 900;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  border-radius: 6px; cursor: pointer; transition: all 0.15s;
 }
-.lgi-btn:hover {
-  background: linear-gradient(135deg, #fbbf24 0%, #eab308 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 3px 18px rgba(234,179,8,0.45);
+.lgi-btn-trial {
+  background: #22c55e; color: #0a0c14; border: none;
+  box-shadow: 0 2px 10px rgba(34,197,94,0.25);
 }
+.lgi-btn-trial:hover { background: #16a34a; }
+.lgi-btn-plans {
+  background: transparent; color: #9ca3af;
+  border: 1px solid #374151;
+}
+.lgi-btn-plans:hover { border-color: #6b7280; color: #e5e7eb; }
 </style>
