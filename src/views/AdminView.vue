@@ -487,7 +487,7 @@
           <tbody>
             <tr v-for="u in kpiDetailFiltered" :key="u.id"
               style="border-bottom:1px solid #0f1017;cursor:pointer;"
-              @click="openUserDetail(u)"
+              @click.stop="openUserDetail(u)"
               @mouseover="$event.currentTarget.style.background='rgba(255,255,255,0.03)'"
               @mouseout="$event.currentTarget.style.background=''">
               <td style="padding:11px 16px;color:#22c55e;font-weight:600;text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(34,197,94,0.4);">{{ u.full_name || u.email || '—' }}</td>
@@ -512,9 +512,8 @@
 
   <!-- ── User Detail Slide-in Panel ── -->
   <Teleport to="body">
-    <Transition name="ud-slide">
-      <div v-if="userDetail" class="ud-backdrop" @click.self="closeUserDetail">
-        <div class="ud-panel">
+    <div v-if="userDetail" class="ud-backdrop" @click.self="closeUserDetail" style="position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,0.6);display:flex;justify-content:flex-end;">
+        <div class="ud-panel" style="width:100%;max-width:480px;height:100%;background:#0d0f18;border-left:1px solid #1e2130;display:flex;flex-direction:column;box-shadow:-8px 0 40px rgba(0,0,0,0.5);overflow-y:auto;margin-left:auto;">
 
           <!-- Header -->
           <div class="ud-header">
@@ -636,7 +635,6 @@
           </div><!-- end ud-body -->
         </div><!-- end ud-panel -->
       </div>
-    </Transition>
   </Teleport>
 
 </template>
@@ -752,6 +750,7 @@ const userDetailLoading = ref(false)
 
 async function openUserDetail(user: any) {
   console.log('[admin] openUserDetail called for:', user.id, user.email)
+  console.log('[admin] userDetail before set:', userDetail.value)
   userDetailLoading.value = true
   userDetail.value = { ...user, _loading: true }
   try {
