@@ -199,7 +199,7 @@
         <div class="charts-row">
           <!-- Signups chart -->
           <div class="chart-card">
-            <div class="chart-title">New Signups</div>
+            <div class="chart-title">New Users</div>
             <apexchart v-if="signupSeries.length"
               type="area" height="200"
               :options="signupChartOpts"
@@ -209,7 +209,7 @@
           </div>
           <!-- Passes chart -->
           <div class="chart-card">
-            <div class="chart-title">New League Passes</div>
+            <div class="chart-title">New Passes</div>
             <apexchart v-if="passSeries.length"
               type="bar" height="200"
               :options="passChartOpts"
@@ -626,6 +626,12 @@ function downloadKpiCsv() {
 }
 const signupsByDay = ref<{date:string,count:number}[]>([])
 const passesByDay = ref<{date:string,count:number}[]>([])
+const passesByDayBreakdown = ref<{
+  date: string
+  individual_monthly: number
+  individual_annual: number
+  league_passes: number
+}[]>([])
 const segRows = ref<any[]>([])
 const segCounts = ref<Record<string, number>>({})
 
@@ -671,6 +677,7 @@ async function loadStats() {
     kpis.value = data.kpis
     signupsByDay.value = data.charts.signupsByDay
     passesByDay.value = data.charts.passesByDay
+    passesByDayBreakdown.value = data.charts.passesByDayBreakdown || []
   } catch (e: any) {
     apiError.value = e.message
   } finally {
@@ -779,10 +786,27 @@ function downloadCampaignCsv() {
 // ── Chart data ────────────────────────────────────────────────────────────────
 const signupSeries = computed(() => {
   if (!signupsByDay.value.length) return []
-  return [{ name: 'New Signups', data: signupsByDay.value.map(d => ({ x: d.date, y: d.count })) }]
+  return [{ name: 'New Users', data: signupsByDay.value.map(d => ({ x: d.date, y: d.count })) }]
 })
 
 const passSeries = computed(() => {
+  // Use breakdown data if available, fall back to single series
+  if (passesByDayBreakdown.value.length) {
+    return [
+      {
+        name: 'Individual Monthly',
+        data: passesByDayBreakdown.value.map(d => ({ x: d.date, y: d.individual_monthly || 0 }))
+      },
+      {
+        name: 'Individual Annual',
+        data: passesByDayBreakdown.value.map(d => ({ x: d.date, y: d.individual_annual || 0 }))
+      },
+      {
+        name: 'League Passes',
+        data: passesByDayBreakdown.value.map(d => ({ x: d.date, y: d.league_passes || 0 }))
+      },
+    ]
+  }
   if (!passesByDay.value.length) return []
   return [{ name: 'New Passes', data: passesByDay.value.map(d => ({ x: d.date, y: d.count })) }]
 })
@@ -809,9 +833,35 @@ const signupChartOpts = computed(() => ({
 
 const passChartOpts = computed(() => ({
   ...baseChartOpts,
-  colors: ['#eab308'],
-  plotOptions: { bar: { borderRadius: 4, columnWidth: '60%' } },
-  fill: { opacity: 0.85 },
+  // Individual Monthly = cyan, Individual Annual = purple, League Passes = orange
+  // Matching the KPI card accent colors above
+  colors: ['#06b6d4', '#8b5cf6', '#f97316'],
+  chart: {
+    ...baseChartOpts.chart,
+    stacked: true,
+  },
+  plotOptions: {
+    bar: {
+      borderRadius: 3,
+      columnWidth: '60%',
+      borderRadiusApplication: 'end',
+    }
+  },
+  fill: { opacity: 0.9 },
+  legend: {
+    show: true,
+    position: 'top',
+    labels: { colors: '#9ca3af' },
+    markers: { width: 8, height: 8, radius: 4 },
+    fontSize: '11px',
+    fontFamily: 'inherit',
+    itemMargin: { horizontal: 8 },
+  },
+  tooltip: {
+    ...baseChartOpts.tooltip,
+    shared: true,
+    intersect: false,
+  },
 }))
 
 // ── Email Campaign ────────────────────────────────────────────────────────────
