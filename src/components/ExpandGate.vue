@@ -23,7 +23,7 @@
         </div>
         <!-- Trial countdown if on expired trial -->
         <div v-if="isTrialExpired" class="eg-trial-note">
-          Your 14-day free trial has ended. Upgrade to keep full access.
+          Your 7-day free trial has ended. Upgrade to keep full access.
         </div>
       </div>
     </div>

@@ -7,7 +7,7 @@
         <div class="lgw-lock">🔒</div>
         <div class="lgw-text">
           <div class="lgw-headline">{{ label || 'Upgrade to unlock' }}</div>
-          <div class="lgw-sub">Start your 14-day free trial or view plans — no credit card required.</div>
+          <div class="lgw-sub">Start your 7-day free trial or view plans — no credit card required.</div>
         </div>
         <div class="lgw-btns">
           <button class="lgw-btn lgw-btn-trial" @click="goToTrial">

@@ -32,7 +32,7 @@
           Start free. Upgrade when ready.
         </h1>
         <p class="text-lg max-w-xl mx-auto" style="color: #9ca3af;">
-          14-day free trial on all plans — no credit card required.
+          7-day free trial on all plans — no credit card required.
         </p>
       </div>
 
@@ -334,7 +334,7 @@
         </div>
         <div class="flex items-center gap-2" style="color: #6b7280;">
           <span>🗓️</span>
-          <span class="text-sm">14-day free trial · no card required</span>
+          <span class="text-sm">7-day free trial · no card required</span>
         </div>
         <div class="flex items-center gap-2" style="color: #6b7280;">
           <span>⚾</span>
@@ -445,10 +445,10 @@ const faqs = [
   },
   {
     question: 'Do I need a credit card for the free trial?',
-    answer: 'No. Your 14-day free trial starts the moment you create an account — no card, no commitment. At the end of your trial you can choose a plan or stay on the free tier.'
+    answer: 'No. Your 7-day free trial starts the moment you create an account — no card, no commitment. At the end of your trial you can choose a plan or stay on the free tier.'
   },
   {
-    question: 'What happens after 14 days?',
+    question: 'What happens after 7 days?',
     answer: 'If you don\'t upgrade, the app stays free but expandable sections and downloads will be locked. You can upgrade at any time to unlock everything again.'
   },
   {

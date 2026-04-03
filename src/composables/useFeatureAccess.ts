@@ -2,7 +2,7 @@
 // Handles subscription tier checking and feature gating.
 //
 // Access model (updated):
-//   Free trial    — 14 days from first login; full access during trial.
+//   Free trial    — 7 days from first login; full access during trial.
 //                   Stored in profiles.trial_started_at / trial_expires_at.
 //   League Pass   — purchased once per league ($29); unlocks league-wide features
 //                   for ANY user who loads that league. Stored in `league_passes`.
@@ -26,7 +26,7 @@ export const PRICING = {
     annual:  4900,    // $49/year
   },
   trial: {
-    days: 14,
+    days: 7,
   }
 }
 
@@ -44,7 +44,7 @@ export function useFeatureAccess() {
   const isAdmin = ref(false)
   const hasRealLeagueAccess = ref(false)        // League Pass for active league
   const hasRealIndividualAccess = ref(false)     // Individual subscription
-  const isOnActiveTrial = ref(false)             // Within 14-day free trial
+  const isOnActiveTrial = ref(false)             // Within 7-day free trial
   const trialExpiresAt = ref<Date | null>(null)
   const trialDaysRemaining = ref(0)
   const leagueSubscription = ref<any>(null)
