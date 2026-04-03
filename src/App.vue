@@ -108,47 +108,6 @@
                   v-if="showLeagueHelper"
                   class="absolute top-full right-0 mt-4 z-[200] w-64 pointer-events-auto"
                 >
-                  <div class="flex justify-end pr-5 -mb-px">
-                    <div class="w-3 h-3 rotate-45 border-t border-l"
-                      style="background: #181b25; border-color: rgba(34,197,94,0.5);"
-                    ></div>
-                  </div>
-                  <div class="rounded-xl p-4 shadow-2xl relative"
-                    style="background: #181b25; border: 1px solid rgba(34,197,94,0.45); box-shadow: 0 0 32px rgba(34,197,94,0.12);"
-                  >
-                    <button
-                      @click.stop="dismissLeagueHelper"
-                      class="absolute top-2.5 right-2.5 w-5 h-5 flex items-center justify-center rounded-full text-dark-textMuted hover:text-white hover:bg-dark-border/60 transition-colors text-xs"
-                    >✕</button>
-                    <div class="flex items-center gap-2 mb-2">
-                      <span class="text-lg">👋</span>
-                      <span class="text-primary font-bold text-sm">Welcome to UFD!</span>
-                    </div>
-                    <p class="text-dark-textSecondary text-xs leading-relaxed mb-3">
-                      Add your first league here to start tracking stats, matchups, power rankings, and more.
-                    </p>
-                    <button
-                      @click.stop="showAddLeagueModal = true; dismissLeagueHelper()"
-                      class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-gray-900 transition-colors"
-                      style="background: #22c55e;"
-                    >
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                      </svg>
-                      Add Your First League
-                    </button>
-                    <div v-if="forceNoLeaguesTest" class="mt-2 text-center">
-                      <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">🧪 TEST MODE — ?forceNoLeagues=true</span>
-                    </div>
-                  </div>
-                </div>
-              </Transition>
-              <!-- League Helper Tooltip (Desktop) -->
-              <Transition name="helper-pop">
-                <div
-                  v-if="showLeagueHelper"
-                  class="absolute top-full right-0 mt-4 z-[200] w-64 pointer-events-auto"
-                >
                   <!-- Arrow pointing up to button -->
                   <div class="flex justify-end pr-5 -mb-px">
                     <div class="w-3 h-3 rotate-45 border-t border-l"
