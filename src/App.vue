@@ -1029,6 +1029,9 @@
     </Teleport>
     
     <!-- Dev Mode Panel (Admin Only) -->
+    <!-- Onboarding Tour -->
+    <OnboardingTour :show="showOnboardingTour" @close="closeTour" />
+
     <DevModePanel />
   </div>
 </template>
@@ -1051,6 +1054,7 @@ import AddLeagueModal from '@/components/AddLeagueModal.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import DevModePanel from '@/components/DevModePanel.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import OnboardingTour from '@/components/OnboardingTour.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -1066,6 +1070,21 @@ const showLeagueDropdown = ref(false)
 const showUserMenu = ref(false)
 const showAddLeagueModal = ref(false)
 const showUpgradePrompt = ref(false)
+const showOnboardingTour = ref(false)
+
+const TOUR_KEY = 'ufd_onboarding_tour_done'
+
+function maybeShowTour() {
+  // Only show on very first league add ever
+  if (!localStorage.getItem(TOUR_KEY)) {
+    showOnboardingTour.value = true
+  }
+}
+
+function closeTour() {
+  showOnboardingTour.value = false
+  localStorage.setItem(TOUR_KEY, '1')
+}
 
 // ─── League Helper Tooltip ────────────────────────────────────────────────
 const helperDismissed = ref(false)
@@ -1388,6 +1407,8 @@ async function handleLeagueAdded(league: any) {
     // Set sport based on league type
     sportStore.setSport(sport)
     leagueStore.setActiveSport(sport)
+
+    maybeShowTour()
   }
 }
 
@@ -1411,6 +1432,8 @@ async function handleYahooLeagueAdded(league: any) {
     // Update sport
     sportStore.setSport(sport as Sport)
     leagueStore.setActiveSport(sport as Sport)
+
+    maybeShowTour()
   } catch (err) {
     console.error('Failed to add Yahoo league:', err)
   }
@@ -1448,6 +1471,8 @@ async function handleEspnLeagueAdded(data: { leagueId: string; sport: string; se
     // Update sport
     sportStore.setSport(sport)
     leagueStore.setActiveSport(sport)
+
+    maybeShowTour()
     
     console.log('[ESPN] League activated:', leagueKey)
   } catch (err) {
