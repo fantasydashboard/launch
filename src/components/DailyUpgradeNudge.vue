@@ -49,14 +49,14 @@
                     <div class="nudge-plan-desc">You only · all leagues · all sports</div>
                   </div>
                   <div class="nudge-plan-price">
-                    <span class="nudge-plan-amount">$7.99</span>
-                    <span class="nudge-plan-period">/mo</span>
+                    <span class="nudge-plan-amount">$49</span>
+                    <span class="nudge-plan-period">/yr</span>
                   </div>
                 </div>
                 <button class="nudge-btn nudge-btn-green" @click="goTo('individual')">
                   Get Individual →
                 </button>
-                <div class="nudge-plan-alt">or <strong>$49/yr</strong> — save 49%</div>
+                <div class="nudge-plan-alt">or <strong>$7.99/mo</strong> billed monthly</div>
               </div>
 
               <!-- League Pass -->
