@@ -1032,6 +1032,9 @@
     <!-- Onboarding Tour -->
     <OnboardingTour :show="showOnboardingTour" @close="closeTour" />
 
+    <!-- Daily upgrade nudge for expired trial users -->
+    <DailyUpgradeNudge />
+
     <DevModePanel />
   </div>
 </template>
@@ -1055,6 +1058,7 @@ import AppFooter from '@/components/AppFooter.vue'
 import DevModePanel from '@/components/DevModePanel.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import OnboardingTour from '@/components/OnboardingTour.vue'
+import DailyUpgradeNudge from '@/components/DailyUpgradeNudge.vue'
 
 const router = useRouter()
 const route = useRoute()
