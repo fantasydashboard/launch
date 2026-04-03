@@ -1091,15 +1091,15 @@ const helperDismissed = ref(false)
 const forceNoLeaguesTest = computed(() => route.query.forceNoLeagues === 'true')
 const showLeagueHelper = computed(() => {
   if (!authStore.isAuthenticated) return false
-  if (helperDismissed.value && !forceNoLeaguesTest.value) return false
+  // Always show when user has no leagues — dismissed state is ignored
+  // so they can't accidentally close it and get stuck with nothing to do
   const hasNoLeagues = !leagueStore.allLeagues || leagueStore.allLeagues.length === 0
   return hasNoLeagues || forceNoLeaguesTest.value
 })
 function dismissLeagueHelper() {
+  // Only dismiss for the current session — never persist to localStorage
+  // so the helper reappears every time the user has no leagues connected
   helperDismissed.value = true
-  if (!forceNoLeaguesTest.value) {
-    localStorage.setItem('ufd_league_helper_dismissed', '1')
-  }
 }
 // ─────────────────────────────────────────────────────────────────────────
 const { isOnActiveTrial, isTrialExpired, trialDaysRemaining, isPaid } = useFeatureAccess()
@@ -1541,10 +1541,9 @@ onMounted(async () => {
   window.addEventListener('scroll', handleScroll)
   window.addEventListener('ufd:show-upgrade', () => { showUpgradePrompt.value = true })
 
-  // Restore helper dismissed state
-  if (!route.query.forceNoLeagues) {
-    helperDismissed.value = !!localStorage.getItem('ufd_league_helper_dismissed')
-  }
+  // Helper dismissed state is session-only — clear any old localStorage key
+  // so returning users who previously dismissed it will see it again
+  localStorage.removeItem('ufd_league_helper_dismissed')
   
   if (authStore.isAuthenticated && authStore.user?.id) {
     await leagueStore.loadSavedLeagues(authStore.user.id)
