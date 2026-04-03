@@ -347,6 +347,73 @@ export default async function handler(req, res) {
       return res.status(200).json({ rows })
     }
 
+    if (action === 'user_detail') {
+      const { user_id } = req.body
+      if (!user_id) return res.status(400).json({ error: 'user_id required' })
+
+      // Profile
+      const { data: profile } = await admin
+        .from('profiles')
+        .select('id, email, full_name, created_at, trial_started_at, trial_expires_at, subscription_tier, stripe_customer_id')
+        .eq('id', user_id)
+        .single()
+
+      // Auth user (for last_sign_in_at)
+      const { data: { user: authUser } } = await admin.auth.admin.getUserById(user_id)
+
+      // Connected leagues
+      const { data: leagues } = await admin
+        .from('user_leagues')
+        .select('league_id, league_name, platform, sport, season, scoring_type, created_at')
+        .eq('user_id', user_id)
+        .order('created_at', { ascending: false })
+
+      // Connected platforms
+      const { data: platforms } = await admin
+        .from('connected_platforms')
+        .select('platform, platform_username, created_at')
+        .eq('user_id', user_id)
+
+      // Individual subscription
+      const { data: indSub } = await admin
+        .from('individual_subscriptions')
+        .select('tier, status, current_period_start, current_period_end, created_at')
+        .eq('user_id', user_id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      // League passes purchased
+      const { data: passes } = await admin
+        .from('league_passes')
+        .select('league_id, platform, sport, active, expires_at, created_at')
+        .eq('purchased_by_user_id', user_id)
+        .order('created_at', { ascending: false })
+
+      const now = new Date()
+
+      return res.status(200).json({
+        profile: {
+          ...profile,
+          last_sign_in: authUser?.last_sign_in_at || null,
+        },
+        leagues: leagues || [],
+        platforms: platforms || [],
+        subscription: indSub || null,
+        passes: passes || [],
+        summary: {
+          league_count: (leagues || []).length,
+          platform_count: (platforms || []).length,
+          sports: [...new Set((leagues || []).map(l => l.sport).filter(Boolean))],
+          platforms_used: [...new Set((platforms || []).map(p => p.platform).filter(Boolean))],
+          has_paid: !!(indSub || (passes || []).some(p => p.active && new Date(p.expires_at) > now)),
+          trial_active: profile?.trial_expires_at && new Date(profile.trial_expires_at) > now,
+          trial_expired: profile?.trial_expires_at && new Date(profile.trial_expires_at) <= now,
+        }
+      })
+    }
+
     return res.status(400).json({ error: 'Unknown action: ' + action })
 
   } catch (err) {

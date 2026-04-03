@@ -486,10 +486,11 @@
           </thead>
           <tbody>
             <tr v-for="u in kpiDetailFiltered" :key="u.id"
-              style="border-bottom:1px solid #0f1017;"
-              onmouseover="this.style.background='rgba(255,255,255,0.02)'"
-              onmouseout="this.style.background=''">
-              <td style="padding:11px 16px;color:#fff;font-weight:600;">{{ u.full_name || '—' }}</td>
+              style="border-bottom:1px solid #0f1017;cursor:pointer;"
+              @click="openUserDetail(u)"
+              @mouseover="$event.currentTarget.style.background='rgba(255,255,255,0.03)'"
+              @mouseout="$event.currentTarget.style.background=''">
+              <td style="padding:11px 16px;color:#22c55e;font-weight:600;text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(34,197,94,0.4);">{{ u.full_name || u.email || '—' }}</td>
               <td style="padding:11px 16px;color:#9ca3af;">{{ u.email }}</td>
               <td style="padding:11px 16px;">
                 <span :style="`display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${u.status_color || '#22c55e'}22;color:${u.status_color || '#22c55e'};border:1px solid ${u.status_color || '#22c55e'}44`">
@@ -507,6 +508,135 @@
 
     </div>
   </div>
+  </Teleport>
+
+  <!-- ── User Detail Slide-in Panel ── -->
+  <Teleport to="body">
+    <Transition name="ud-slide">
+      <div v-if="userDetail" class="ud-backdrop" @click.self="closeUserDetail">
+        <div class="ud-panel">
+
+          <!-- Header -->
+          <div class="ud-header">
+            <div class="ud-avatar">{{ (userDetail.full_name || userDetail.email || '?')[0].toUpperCase() }}</div>
+            <div class="ud-header-info">
+              <div class="ud-name">{{ userDetail.full_name || '—' }}</div>
+              <div class="ud-email">{{ userDetail.email }}</div>
+            </div>
+            <button class="ud-close" @click="closeUserDetail">✕</button>
+          </div>
+
+          <!-- Loading -->
+          <div v-if="userDetail._loading" class="ud-loading">Loading profile…</div>
+
+          <!-- Error -->
+          <div v-else-if="userDetail._error" class="ud-error">{{ userDetail._error }}</div>
+
+          <!-- Content -->
+          <div v-else class="ud-body">
+
+            <!-- Status badges -->
+            <div class="ud-badges">
+              <span class="ud-badge" :style="userDetail.summary?.has_paid ? 'background:rgba(34,197,94,0.15);color:#22c55e;border-color:rgba(34,197,94,0.3)' : userDetail.summary?.trial_active ? 'background:rgba(6,182,212,0.15);color:#06b6d4;border-color:rgba(6,182,212,0.3)' : 'background:rgba(239,68,68,0.15);color:#ef4444;border-color:rgba(239,68,68,0.3)'">
+                {{ userDetail.summary?.has_paid ? '✓ Paid' : userDetail.summary?.trial_active ? '⏳ Free Trial' : '🔒 Expired' }}
+              </span>
+              <span v-for="p in (userDetail.summary?.platforms_used || [])" :key="p" class="ud-badge" style="background:rgba(234,179,8,0.1);color:#eab308;border-color:rgba(234,179,8,0.25);">
+                {{ platformLabel(p) }}
+              </span>
+              <span v-for="s in (userDetail.summary?.sports || [])" :key="s" class="ud-badge" style="background:rgba(255,255,255,0.05);color:#9ca3af;border-color:#1e2130;">
+                {{ sportEmoji(s) }} {{ s }}
+              </span>
+            </div>
+
+            <!-- Key stats row -->
+            <div class="ud-stats-row">
+              <div class="ud-stat">
+                <div class="ud-stat-val">{{ userDetail.summary?.league_count ?? 0 }}</div>
+                <div class="ud-stat-label">Leagues</div>
+              </div>
+              <div class="ud-stat">
+                <div class="ud-stat-val">{{ userDetail.summary?.platform_count ?? 0 }}</div>
+                <div class="ud-stat-label">Platforms</div>
+              </div>
+              <div class="ud-stat">
+                <div class="ud-stat-val">{{ (userDetail.passes || []).length }}</div>
+                <div class="ud-stat-label">Passes Bought</div>
+              </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="ud-section">
+              <div class="ud-section-title">Timeline</div>
+              <div class="ud-timeline">
+                <div class="ud-timeline-row">
+                  <span class="ud-tl-label">Joined</span>
+                  <span class="ud-tl-val">{{ formatDate(userDetail.profile?.created_at) }}</span>
+                </div>
+                <div class="ud-timeline-row">
+                  <span class="ud-tl-label">Last Sign In</span>
+                  <span class="ud-tl-val">{{ formatDate(userDetail.profile?.last_sign_in) }}</span>
+                </div>
+                <div class="ud-timeline-row">
+                  <span class="ud-tl-label">Trial Started</span>
+                  <span class="ud-tl-val">{{ formatDate(userDetail.profile?.trial_started_at) }}</span>
+                </div>
+                <div class="ud-timeline-row">
+                  <span class="ud-tl-label">Trial Expires</span>
+                  <span class="ud-tl-val" :style="userDetail.summary?.trial_expired ? 'color:#ef4444' : ''">
+                    {{ formatDate(userDetail.profile?.trial_expires_at) }}
+                  </span>
+                </div>
+                <div v-if="userDetail.subscription" class="ud-timeline-row">
+                  <span class="ud-tl-label">Subscribed</span>
+                  <span class="ud-tl-val" style="color:#22c55e;">{{ formatDate(userDetail.subscription?.created_at) }} · {{ userDetail.subscription?.tier }}</span>
+                </div>
+                <div v-if="userDetail.subscription" class="ud-timeline-row">
+                  <span class="ud-tl-label">Renews</span>
+                  <span class="ud-tl-val">{{ formatDate(userDetail.subscription?.current_period_end) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Connected Leagues -->
+            <div class="ud-section" v-if="(userDetail.leagues || []).length">
+              <div class="ud-section-title">Connected Leagues ({{ userDetail.leagues.length }})</div>
+              <div class="ud-league-list">
+                <div v-for="l in userDetail.leagues" :key="l.league_id" class="ud-league-row">
+                  <span class="ud-league-sport">{{ sportEmoji(l.sport) }}</span>
+                  <div class="ud-league-info">
+                    <div class="ud-league-name">{{ l.league_name || l.league_id }}</div>
+                    <div class="ud-league-meta">{{ platformLabel(l.platform) }} · {{ l.sport }} · {{ l.season }}</div>
+                  </div>
+                  <span class="ud-league-type">{{ l.scoring_type || '' }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="ud-section" v-else>
+              <div class="ud-section-title">Connected Leagues</div>
+              <div class="ud-empty">No leagues connected yet</div>
+            </div>
+
+            <!-- League Passes purchased -->
+            <div class="ud-section" v-if="(userDetail.passes || []).length">
+              <div class="ud-section-title">League Passes Purchased</div>
+              <div class="ud-league-list">
+                <div v-for="p in userDetail.passes" :key="p.league_id + p.created_at" class="ud-league-row">
+                  <span class="ud-league-sport">🎟️</span>
+                  <div class="ud-league-info">
+                    <div class="ud-league-name">{{ p.league_id }}</div>
+                    <div class="ud-league-meta">{{ platformLabel(p.platform) }} · {{ p.sport }} · Expires {{ formatDate(p.expires_at) }}</div>
+                  </div>
+                  <span class="ud-badge" :style="p.active && new Date(p.expires_at) > new Date() ? 'background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.3)' : 'background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3)'">
+                    {{ p.active && new Date(p.expires_at) > new Date() ? 'Active' : 'Expired' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- end ud-body -->
+        </div><!-- end ud-panel -->
+      </div>
+    </Transition>
   </Teleport>
 
 </template>
@@ -615,6 +745,41 @@ const KPI_TITLES: Record<string, string> = {
   league_passes:      'Active League Passes',
   expired:            'Expired Trial — No Paid Plan',
 }
+
+// ── User Detail Panel ────────────────────────────────────────────────────────
+const userDetail = ref<any>(null)
+const userDetailLoading = ref(false)
+
+async function openUserDetail(user: any) {
+  userDetailLoading.value = true
+  userDetail.value = { ...user, _loading: true }
+  try {
+    const data = await callAdmin({ action: 'user_detail', user_id: user.id })
+    userDetail.value = { ...user, ...data, _loading: false }
+  } catch (e: any) {
+    userDetail.value = { ...user, _error: e.message, _loading: false }
+  } finally {
+    userDetailLoading.value = false
+  }
+}
+
+function closeUserDetail() { userDetail.value = null }
+
+function formatDate(iso: string | null) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function sportEmoji(sport: string) {
+  const map: Record<string,string> = { football: '🏈', baseball: '⚾', basketball: '🏀', hockey: '🏒' }
+  return map[sport] || '🏆'
+}
+
+function platformLabel(p: string) {
+  const map: Record<string,string> = { espn: 'ESPN', yahoo: 'Yahoo', sleeper: 'Sleeper' }
+  return map[p] || p
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function openKpiDetail(type: string) {
   kpiDetail.value = { show: true, loading: true, title: KPI_TITLES[type] || type, type, rows: [], search: '' }
@@ -1024,6 +1189,88 @@ function buildEmailHtml({ subject, previewText, overline, banner, headline, body
   padding: 2px 8px; border-radius: 20px; border: 1px solid;
   background: rgba(34,197,94,0.1); color: #22c55e; border-color: rgba(34,197,94,0.3);
 }
+
+/* ── User Detail Panel ── */
+.ud-backdrop {
+  position: fixed; inset: 0; z-index: 100000;
+  background: rgba(0,0,0,0.5);
+  display: flex; justify-content: flex-end;
+}
+.ud-panel {
+  width: 100%; max-width: 480px; height: 100%;
+  background: #0d0f18; border-left: 1px solid #1e2130;
+  display: flex; flex-direction: column;
+  box-shadow: -8px 0 40px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+.ud-header {
+  display: flex; align-items: center; gap: 14px;
+  padding: 20px 24px; border-bottom: 1px solid #1e2130; flex-shrink: 0;
+  background: #0a0c14;
+}
+.ud-avatar {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg,#22c55e,#06b6d4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 900; color: #0a0c14;
+}
+.ud-header-info { flex: 1; min-width: 0; }
+.ud-name { font-size: 15px; font-weight: 800; color: #fff; }
+.ud-email { font-size: 12px; color: #6b7280; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ud-close {
+  width: 30px; height: 30px; border-radius: 50%; border: 1px solid #374151;
+  background: rgba(255,255,255,0.05); color: #9ca3af; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0;
+}
+.ud-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.ud-loading, .ud-error { padding: 40px 24px; text-align: center; color: #6b7280; font-size: 13px; }
+.ud-error { color: #ef4444; }
+.ud-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+
+.ud-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.ud-badge {
+  font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
+  border: 1px solid; letter-spacing: 0.04em;
+}
+
+.ud-stats-row {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+}
+.ud-stat {
+  background: #11131a; border: 1px solid #1e2130; border-radius: 10px;
+  padding: 12px; text-align: center;
+}
+.ud-stat-val { font-size: 22px; font-weight: 900; color: #fff; }
+.ud-stat-label { font-size: 11px; color: #6b7280; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+.ud-section { display: flex; flex-direction: column; gap: 8px; }
+.ud-section-title { font-size: 11px; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.12em; }
+
+.ud-timeline { background: #11131a; border: 1px solid #1e2130; border-radius: 10px; overflow: hidden; }
+.ud-timeline-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 14px; border-bottom: 1px solid #1a1c26;
+}
+.ud-timeline-row:last-child { border-bottom: none; }
+.ud-tl-label { font-size: 12px; color: #6b7280; }
+.ud-tl-val { font-size: 12px; color: #e5e7eb; font-weight: 500; }
+
+.ud-league-list { display: flex; flex-direction: column; gap: 6px; }
+.ud-league-row {
+  display: flex; align-items: center; gap: 10px;
+  background: #11131a; border: 1px solid #1e2130; border-radius: 10px; padding: 10px 12px;
+}
+.ud-league-sport { font-size: 18px; flex-shrink: 0; }
+.ud-league-info { flex: 1; min-width: 0; }
+.ud-league-name { font-size: 13px; font-weight: 600; color: #e5e7eb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ud-league-meta { font-size: 11px; color: #6b7280; margin-top: 2px; }
+.ud-league-type { font-size: 11px; color: #4b5563; flex-shrink: 0; }
+.ud-empty { font-size: 13px; color: #374151; font-style: italic; padding: 8px 0; }
+
+/* Slide-in transition */
+.ud-slide-enter-active { transition: transform 0.25s cubic-bezier(0.34,1.1,0.64,1); }
+.ud-slide-leave-active { transition: transform 0.2s ease; }
+.ud-slide-enter-from, .ud-slide-leave-to { transform: translateX(100%); }
 </style>
 </head>
 <body bgcolor="#05060a" style="margin:0;padding:0;background-color:#05060a !important;background:#05060a !important;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
