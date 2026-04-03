@@ -137,57 +137,7 @@
         </div>
       </section>
 
-      <!-- ── KPI Detail Modal ── -->
-      <Teleport to="body">
-        <div v-if="kpiDetail.show" class="kpi-modal-backdrop" @click.self="kpiDetail.show = false">
-          <div class="kpi-modal">
-            <div class="kpi-modal-header">
-              <div>
-                <div class="kpi-modal-title">{{ kpiDetail.title }}</div>
-                <div class="kpi-modal-count">{{ kpiDetail.rows.length }} users</div>
-              </div>
-              <div class="kpi-modal-actions">
-                <input v-model="kpiDetail.search" class="kpi-modal-search" placeholder="🔍 Search name or email…" />
-                <button @click="downloadKpiCsv" class="btn-action btn-csv">⬇ Download CSV</button>
-                <button @click="kpiDetail.show = false" class="kpi-modal-close">✕</button>
-              </div>
-            </div>
-            <div v-if="kpiDetail.loading" class="kpi-modal-loading">Loading…</div>
-            <div v-else-if="kpiDetail.rows.length === 0" class="kpi-modal-empty">No users in this group.</div>
-            <div v-else class="kpi-modal-table-wrap">
-              <table class="kpi-modal-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Status</th>
-                    <th>Joined</th>
-                    <th>Trial Expires</th>
-                    <th>Plan</th>
-                    <th>Leagues</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="u in kpiDetailFiltered" :key="u.id">
-                    <td class="font-medium text-white">{{ u.full_name || '—' }}</td>
-                    <td style="color:#9ca3af;">{{ u.email }}</td>
-                    <td>
-                      <span class="kpi-badge"
-                        :style="u.status_color ? `background:${u.status_color}22;color:${u.status_color};border-color:${u.status_color}44` : ''">
-                        {{ u.status }}
-                      </span>
-                    </td>
-                    <td style="color:#6b7280;font-size:12px;">{{ u.joined }}</td>
-                    <td style="color:#6b7280;font-size:12px;">{{ u.trial_expires || '—' }}</td>
-                    <td style="color:#9ca3af;font-size:12px;">{{ u.plan || '—' }}</td>
-                    <td style="color:#6b7280;font-size:12px;text-align:center;">{{ u.league_count ?? '—' }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </Teleport>
+      <!-- KPI Detail Modal rendered at root level below -->
 
       <!-- ══════════════════════════════════════
            CHARTS
@@ -482,6 +432,83 @@
 
     </template>
   </div>
+  <!-- ── KPI Detail Modal ── -->
+  <Teleport to="body">
+  <div v-if="kpiDetail.show"
+    style="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;"
+    @click.self="kpiDetail.show = false">
+    <div style="background:#0d0f18;border:1px solid #1e2130;border-radius:16px;width:100%;max-width:960px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,0.6);overflow:hidden;">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid #1e2130;flex-shrink:0;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-size:16px;font-weight:800;color:#fff;">{{ kpiDetail.title }}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:2px;">{{ kpiDetailFiltered.length }} users</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <input v-model="kpiDetail.search"
+            style="padding:7px 14px;border-radius:8px;border:1px solid #374151;background:#11131a;color:#e5e7eb;font-size:13px;width:220px;"
+            placeholder="🔍 Search name or email…" />
+          <button @click="downloadKpiCsv"
+            style="padding:8px 16px;background:#22c55e;color:#0a0c14;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
+            ⬇ Download CSV
+          </button>
+          <button @click="kpiDetail.show = false"
+            style="width:30px;height:30px;border-radius:50%;border:1px solid #374151;background:rgba(255,255,255,0.05);color:#9ca3af;cursor:pointer;font-size:13px;">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div v-if="kpiDetail.loading" style="padding:48px;text-align:center;color:#6b7280;font-size:14px;">
+        Loading…
+      </div>
+
+      <!-- Empty -->
+      <div v-else-if="kpiDetailFiltered.length === 0" style="padding:48px;text-align:center;color:#4b5563;font-style:italic;font-size:14px;">
+        No users in this group.
+      </div>
+
+      <!-- Table -->
+      <div v-else style="overflow-y:auto;flex:1;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#0a0c14;border-bottom:1px solid #1e2130;">
+              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;position:sticky;top:0;background:#0a0c14;">Name</th>
+              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;position:sticky;top:0;background:#0a0c14;">Email</th>
+              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;position:sticky;top:0;background:#0a0c14;">Status</th>
+              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;position:sticky;top:0;background:#0a0c14;">Joined</th>
+              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;position:sticky;top:0;background:#0a0c14;">Trial Expires</th>
+              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;position:sticky;top:0;background:#0a0c14;">Plan</th>
+              <th style="padding:10px 16px;text-align:center;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;position:sticky;top:0;background:#0a0c14;">Leagues</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="u in kpiDetailFiltered" :key="u.id"
+              style="border-bottom:1px solid #0f1017;"
+              onmouseover="this.style.background='rgba(255,255,255,0.02)'"
+              onmouseout="this.style.background=''">
+              <td style="padding:11px 16px;color:#fff;font-weight:600;">{{ u.full_name || '—' }}</td>
+              <td style="padding:11px 16px;color:#9ca3af;">{{ u.email }}</td>
+              <td style="padding:11px 16px;">
+                <span :style="`display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${u.status_color || '#22c55e'}22;color:${u.status_color || '#22c55e'};border:1px solid ${u.status_color || '#22c55e'}44`">
+                  {{ u.status }}
+                </span>
+              </td>
+              <td style="padding:11px 16px;color:#6b7280;font-size:12px;">{{ u.joined }}</td>
+              <td style="padding:11px 16px;color:#6b7280;font-size:12px;">{{ u.trial_expires || '—' }}</td>
+              <td style="padding:11px 16px;color:#9ca3af;font-size:12px;">{{ u.plan || '—' }}</td>
+              <td style="padding:11px 16px;color:#6b7280;font-size:12px;text-align:center;">{{ u.league_count ?? '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+  </Teleport>
+
 </template>
 
 <script setup lang="ts">
