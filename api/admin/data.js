@@ -57,7 +57,7 @@ export default async function handler(req, res) {
 
       const { data: allPasses, error: lpErr } = await admin
         .from('league_passes')
-        .select('id, league_id, active, expires_at, created_at, purchased_by')
+        .select('id, league_id, active, expires_at, created_at')
         .order('created_at', { ascending: false })
 
       const { data: allIndividualSubs } = await admin
@@ -92,11 +92,8 @@ export default async function handler(req, res) {
       const activeMonthly = activeIndSubs.filter(s => s.tier === 'individual_monthly')
       const activeAnnual  = activeIndSubs.filter(s => s.tier === 'individual_annual')
 
-      // Users with any active paid plan (individual OR league pass)
-      const paidUserIds = new Set([
-        ...activeIndSubs.map(s => s.user_id),
-        ...activePasses.map(p => p.purchased_by).filter(Boolean),
-      ])
+      // Users with any active paid plan (individual subs only — league_passes has no user_id)
+      const paidUserIds = new Set(activeIndSubs.map(s => s.user_id))
       const PAID_TIERS = new Set(['individual_monthly', 'individual_annual', 'premium', 'pro', 'admin'])
 
       // ── New KPI counts ────────────────────────────────────────────────────────
@@ -145,7 +142,7 @@ export default async function handler(req, res) {
           totalPasses,
           individualMonthly: activeMonthly.length,
           individualAnnual: activeAnnual.length,
-          leaguePasses: activePasses.length,
+          leaguePasses: activePasses.length,  // count of active league passes (not unique buyers — no user_id in table)
           newFreeTrial,
           newIndividualMonthly,
           newIndividualAnnual,
@@ -255,16 +252,14 @@ export default async function handler(req, res) {
 
       const { data: leaguePasses } = await admin
         .from('league_passes')
-        .select('purchased_by, league_id, league_name, platform, expires_at, active')
+        .select('league_id, active, expires_at, created_at')
         .eq('active', true)
 
       const activeIndSubs = (indSubs || []).filter(s => new Date(s.current_period_end) > now)
       const activeLeaguePasses = (leaguePasses || []).filter(p => new Date(p.expires_at) > now)
 
-      const paidUserIds = new Set([
-        ...activeIndSubs.map(s => s.user_id),
-        ...activeLeaguePasses.map(p => p.purchased_by).filter(Boolean),
-      ])
+      // league_passes has no user_id column — only individual_subscriptions links to users
+      const paidUserIds = new Set(activeIndSubs.map(s => s.user_id))
 
       const subByUser = {}
       activeIndSubs.forEach(s => { subByUser[s.user_id] = s.tier })
@@ -322,8 +317,9 @@ export default async function handler(req, res) {
           .map(p => formatUser(p))
 
       } else if (type === 'total_passes') {
-        const paidIds = [...paidUserIds]
-        rows = allProfiles.filter(p => paidUserIds.has(p.id) || PAID_TIERS.has(p.subscription_tier)).map(p => formatUser(p))
+        rows = allProfiles
+          .filter(p => paidUserIds.has(p.id) || PAID_TIERS.has(p.subscription_tier) || p.stripe_customer_id)
+          .map(p => formatUser(p))
 
       } else if (type === 'individual_monthly') {
         const ids = new Set(activeIndSubs.filter(s => s.tier === 'individual_monthly').map(s => s.user_id))
@@ -334,8 +330,12 @@ export default async function handler(req, res) {
         rows = allProfiles.filter(p => ids.has(p.id)).map(p => formatUser(p, { plan: 'Individual Annual', status: 'Active', status_color: '#8b5cf6' }))
 
       } else if (type === 'league_passes') {
-        const ids = new Set(activeLeaguePasses.map(p => p.purchased_by).filter(Boolean))
-        rows = allProfiles.filter(p => ids.has(p.id)).map(p => formatUser(p, { plan: 'League Pass', status: 'Active', status_color: '#f97316' }))
+        // league_passes has no user_id — show all users who have stripe_customer_id
+        // and are not on individual plans (they purchased a league pass)
+        const indUserIds = new Set(activeIndSubs.map(s => s.user_id))
+        rows = allProfiles
+          .filter(p => p.stripe_customer_id && !indUserIds.has(p.id))
+          .map(p => formatUser(p, { plan: 'League Pass', status: 'Active', status_color: '#f97316' }))
 
       } else if (type === 'expired') {
         rows = allProfiles
