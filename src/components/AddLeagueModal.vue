@@ -100,21 +100,40 @@
             <label class="block text-sm font-medium text-dark-textMuted mb-2">
               Sleeper Username
             </label>
-            <input
-              v-model="username"
-              type="text"
-              placeholder="Enter your Sleeper username"
-              class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-dark-text"
-              @keyup.enter="searchSleeperLeagues"
-            />
-            
+
+            <!-- If a Sleeper account is connected, lock to that username -->
+            <template v-if="platformsStore.getConnection('sleeper')">
+              <div class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border text-dark-text flex items-center justify-between">
+                <span class="font-medium">{{ platformsStore.getConnection('sleeper')?.platform_username }}</span>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold">Connected</span>
+              </div>
+              <p class="text-xs text-dark-textMuted mt-1.5">
+                Searching leagues for your connected Sleeper account.
+                <button @click="$router.push('/settings')" class="text-primary underline ml-1">Switch account in Settings.</button>
+              </p>
+            </template>
+
+            <!-- No Sleeper account connected — free text input -->
+            <template v-else>
+              <input
+                v-model="username"
+                type="text"
+                placeholder="Enter your Sleeper username"
+                class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-dark-text"
+                @keyup.enter="searchSleeperLeagues"
+              />
+              <p class="text-xs text-dark-textMuted mt-1.5">
+                Connect your Sleeper account in Settings to lock it to your profile.
+              </p>
+            </template>
+
             <div v-if="errorMessage" class="text-red-400 text-sm mt-2">
               {{ errorMessage }}
             </div>
             
             <button
               @click="searchSleeperLeagues"
-              :disabled="!username.trim() || loading"
+              :disabled="(!username.trim() && !platformsStore.getConnection('sleeper')) || loading"
               class="w-full mt-4 px-4 py-3 rounded-xl bg-primary text-gray-900 font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               <span v-if="loading">Searching...</span>
@@ -1437,6 +1456,11 @@ const espnHockeyLeagues = computed(() => espnExtensionLeagues.value.filter(l => 
 // ============================================================
 
 async function searchSleeperLeagues() {
+  // Use connected Sleeper account username if available, otherwise use typed username
+  const sleeperConnection = platformsStore.getConnection('sleeper')
+  if (sleeperConnection?.platform_username) {
+    username.value = sleeperConnection.platform_username
+  }
   if (!username.value.trim()) return
   
   loading.value = true
