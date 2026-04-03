@@ -1091,16 +1091,20 @@ const helperDismissed = ref(false)
 const forceNoLeaguesTest = computed(() => route.query.forceNoLeagues === 'true')
 const showLeagueHelper = computed(() => {
   if (!authStore.isAuthenticated) return false
-  // Always show when user has no leagues — dismissed state is ignored
-  // so they can't accidentally close it and get stuck with nothing to do
+  if (helperDismissed.value && !forceNoLeaguesTest.value) return false
   const hasNoLeagues = !leagueStore.allLeagues || leagueStore.allLeagues.length === 0
   return hasNoLeagues || forceNoLeaguesTest.value
 })
 function dismissLeagueHelper() {
-  // Only dismiss for the current session — never persist to localStorage
-  // so the helper reappears every time the user has no leagues connected
   helperDismissed.value = true
 }
+
+// Reset dismissed state on every route change so tooltip reappears on new pages
+watch(() => route.path, () => {
+  if (!leagueStore.allLeagues || leagueStore.allLeagues.length === 0) {
+    helperDismissed.value = false
+  }
+})
 // ─────────────────────────────────────────────────────────────────────────
 const { isOnActiveTrial, isTrialExpired, trialDaysRemaining, isPaid } = useFeatureAccess()
 const showMobileMenu = ref(false)
