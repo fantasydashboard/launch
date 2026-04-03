@@ -751,12 +751,15 @@ const userDetail = ref<any>(null)
 const userDetailLoading = ref(false)
 
 async function openUserDetail(user: any) {
+  console.log('[admin] openUserDetail called for:', user.id, user.email)
   userDetailLoading.value = true
   userDetail.value = { ...user, _loading: true }
   try {
     const data = await callAdmin({ action: 'user_detail', user_id: user.id })
+    console.log('[admin] user_detail response:', data)
     userDetail.value = { ...user, ...data, _loading: false }
   } catch (e: any) {
+    console.error('[admin] user_detail error:', e)
     userDetail.value = { ...user, _error: e.message, _loading: false }
   } finally {
     userDetailLoading.value = false

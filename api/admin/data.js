@@ -348,6 +348,7 @@ export default async function handler(req, res) {
     }
 
     if (action === 'user_detail') {
+      console.log('[user_detail] Fetching for user_id:', req.body.user_id)
       const { user_id } = req.body
       if (!user_id) return res.status(400).json({ error: 'user_id required' })
 
@@ -358,8 +359,15 @@ export default async function handler(req, res) {
         .eq('id', user_id)
         .single()
 
-      // Auth user (for last_sign_in_at)
-      const { data: { user: authUser } } = await admin.auth.admin.getUserById(user_id)
+      // Auth user (for last_sign_in_at) — wrapped in try/catch since admin.auth.admin
+      // may not be available depending on Supabase client version
+      let authUser = null
+      try {
+        const authRes = await admin.auth.admin.getUserById(user_id)
+        authUser = authRes?.data?.user || null
+      } catch (e) {
+        console.warn('[user_detail] Could not fetch auth user:', e.message)
+      }
 
       // Connected leagues
       const { data: leagues } = await admin
