@@ -100,40 +100,21 @@
             <label class="block text-sm font-medium text-dark-textMuted mb-2">
               Sleeper Username
             </label>
-
-            <!-- If a Sleeper account is connected, lock to that username -->
-            <template v-if="platformsStore.getConnection('sleeper')">
-              <div class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border text-dark-text flex items-center justify-between">
-                <span class="font-medium">{{ platformsStore.getConnection('sleeper')?.platform_username }}</span>
-                <span class="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold">Connected</span>
-              </div>
-              <p class="text-xs text-dark-textMuted mt-1.5">
-                Searching leagues for your connected Sleeper account.
-                <button @click="$router.push('/settings')" class="text-primary underline ml-1">Switch account in Settings.</button>
-              </p>
-            </template>
-
-            <!-- No Sleeper account connected — free text input -->
-            <template v-else>
-              <input
-                v-model="username"
-                type="text"
-                placeholder="Enter your Sleeper username"
-                class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-dark-text"
-                @keyup.enter="searchSleeperLeagues"
-              />
-              <p class="text-xs text-dark-textMuted mt-1.5">
-                Connect your Sleeper account in Settings to lock it to your profile.
-              </p>
-            </template>
-
+            <input
+              v-model="username"
+              type="text"
+              placeholder="Enter your Sleeper username"
+              class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-dark-text"
+              @keyup.enter="searchSleeperLeagues"
+            />
+            
             <div v-if="errorMessage" class="text-red-400 text-sm mt-2">
               {{ errorMessage }}
             </div>
             
             <button
               @click="searchSleeperLeagues"
-              :disabled="(!username.trim() && !platformsStore.getConnection('sleeper')) || loading"
+              :disabled="!username.trim() || loading"
               class="w-full mt-4 px-4 py-3 rounded-xl bg-primary text-gray-900 font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               <span v-if="loading">Searching...</span>
@@ -1270,8 +1251,8 @@ async function initEspnFlow() {
 
   espnExtensionChecking.value = true
   try {
-    // Small delay so Chrome MV3 service worker has time to wake before first ping
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // MV3 service workers need up to 1s to wake from sleep — 800ms is safe
+    await new Promise(resolve => setTimeout(resolve, 800))
     espnExtensionInstalled.value = await isExtensionInstalled()
   } finally {
     espnExtensionChecking.value = false
@@ -1303,21 +1284,46 @@ async function loadEspnLeaguesFromExtension() {
   espnLeaguesError.value = ''
   espnExtensionLeagues.value = []
 
-  try {
-    // Get cookies from the extension — this is all we need
-    // We can't auto-fetch all leagues via the proxy (ESPN mUserLeagues requires
-    // browser-session auth that doesn't transfer through server-side proxy calls).
-    // Instead, we grab the cookies here, store them, and pre-fill the credential
-    // step so the user only needs to enter their League ID.
-    console.log('[ESPN Modal] Getting cookies from extension...')
-    const cookieResult = await getEspnCookiesFromExtension()
+  // Chrome MV3 service workers go to sleep when idle and can take 1-2 seconds
+  // to wake up. We retry up to 3 times with increasing delays to handle this.
+  const MAX_RETRIES = 3
+  const RETRY_DELAYS = [500, 1000, 2000] // ms between retries
 
-    if (cookieResult.error === 'extension_not_installed') {
-      espnExtensionInstalled.value = false
+  let cookieResult: any = null
+  let lastError = ''
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`[ESPN Modal] Retry ${attempt}/${MAX_RETRIES - 1} — waiting ${RETRY_DELAYS[attempt - 1]}ms for service worker...`)
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS[attempt - 1]))
+      }
+
+      console.log(`[ESPN Modal] Getting cookies from extension (attempt ${attempt + 1})...`)
+      cookieResult = await getEspnCookiesFromExtension()
+
+      if (cookieResult.error === 'extension_not_installed') {
+        espnExtensionInstalled.value = false
+        return
+      }
+
+      // Got a valid response — break out of retry loop
+      if (cookieResult.espn_s2 || cookieResult.swid || cookieResult.error) break
+
+    } catch (err: any) {
+      lastError = err.message || 'Unknown error'
+      console.warn(`[ESPN Modal] Attempt ${attempt + 1} failed: ${lastError}`)
+      // If not last attempt, continue retrying
+      if (attempt < MAX_RETRIES - 1) continue
+      // Last attempt failed
+      espnLeaguesError.value = 'Extension took too long to respond. Please click "Retry" or add your league ID manually.'
+      espnLoadingLeagues.value = false
       return
     }
+  }
 
-    if (!cookieResult.espn_s2 || !cookieResult.swid) {
+  try {
+    if (!cookieResult?.espn_s2 || !cookieResult?.swid) {
       espnLeaguesError.value = 'not_logged_in'
       return
     }
@@ -1456,11 +1462,6 @@ const espnHockeyLeagues = computed(() => espnExtensionLeagues.value.filter(l => 
 // ============================================================
 
 async function searchSleeperLeagues() {
-  // Use connected Sleeper account username if available, otherwise use typed username
-  const sleeperConnection = platformsStore.getConnection('sleeper')
-  if (sleeperConnection?.platform_username) {
-    username.value = sleeperConnection.platform_username
-  }
   if (!username.value.trim()) return
   
   loading.value = true
