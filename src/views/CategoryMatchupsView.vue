@@ -469,7 +469,7 @@ import { useRouter } from 'vue-router'
 
 const leagueStore = useLeagueStore()
 const router = useRouter()
-const { hasLeagueAccess, canExpand } = useFeatureAccess()
+const { hasLeagueAccess, canExpand, canDownload} = useFeatureAccess()
 
 function goToPricing() {
   const params = new URLSearchParams()
@@ -2584,6 +2584,11 @@ function runCategoryMonteCarloWithCumulative(
 }
 
 async function downloadMatchupAnalysis() {
+  if (!canDownload.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+
   if (!selectedMatchup.value) return
   isDownloading.value = true
   
@@ -2600,6 +2605,11 @@ async function downloadMatchupAnalysis() {
 }
 
 async function downloadCategoryBreakdown() {
+  if (!canDownload.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+
   if (!selectedMatchup.value) return
   isDownloadingCategories.value = true
   
@@ -2616,6 +2626,11 @@ async function downloadCategoryBreakdown() {
 }
 
 async function downloadAllMatchups() {
+  if (!canDownload.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+
   if (!matchups.value.length) return
   isDownloadingAll.value = true
   

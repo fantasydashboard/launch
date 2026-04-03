@@ -607,7 +607,7 @@ import { useRouter } from 'vue-router'
 
 const leagueStore = useLeagueStore()
 const router = useRouter()
-const { hasLeagueAccess, canExpand } = useFeatureAccess()
+const { hasLeagueAccess, canExpand, canDownload} = useFeatureAccess()
 
 function goToPricing() {
   const params = new URLSearchParams()
@@ -2114,6 +2114,11 @@ async function refreshData() {
 }
 
 async function downloadAllMatchups() {
+  if (!canDownload.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+
   if (!matchups.value.length) return
   isDownloadingAll.value = true
   
@@ -2135,6 +2140,11 @@ async function downloadAllMatchups() {
 }
 
 async function downloadWinProbability() {
+  if (!canDownload.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+
   if (!selectedMatchup.value) return
   isDownloading.value = true
   
@@ -2463,6 +2473,11 @@ const _blobToDataUrl2 = (blob: Blob): Promise<string> => new Promise((resolve) =
 }
 
 async function downloadComparison() {
+  if (!canDownload.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+
   if (!selectedMatchup.value) return
   isDownloadingComparison.value = true
   

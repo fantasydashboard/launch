@@ -88,7 +88,7 @@
             <div class="flex items-center gap-2 flex-shrink-0">
               <!-- Share: League Pass only -->
               <button
-                v-if="hasLeagueAccess"
+                v-if="canExpand"
                 @click="downloadRankings"
                 :disabled="isGeneratingDownload"
                 class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all disabled:opacity-50"
@@ -176,7 +176,7 @@
                 <tr 
                   v-for="team in sortedPowerRankings" 
                   :key="team.team_key"
-                  @click="canExpand || team.rank <= 3 ? openTeamModal(team) : null"
+                  @click="hasLeagueAccess || team.rank <= 3 ? openTeamModal(team) : null"
                   class="border-b border-dark-border/50 transition-colors"
                   :class="{ 
                     'bg-yellow-500/10 ring-2 ring-yellow-500/50 ring-inset': team.is_my_team && (hasLeagueAccess || team.rank <= 3),
@@ -254,22 +254,6 @@
           </div>
 
           <!-- Early upgrade CTA — right after top 3 rows -->
-          <div v-if="!hasLeagueAccess && sortedPowerRankings.length > 3" class="early-gate-banner" style="margin: 12px 0 0;">
-            <div class="early-gate-inner">
-              <div class="early-gate-left">
-                <span class="early-gate-icon">⚡</span>
-                <div>
-                  <div class="early-gate-headline">{{ sortedPowerRankings.length - 3 }} more teams are locked</div>
-                  <div class="early-gate-sub">Plus trend charts, rankings insights &amp; share graphics</div>
-                </div>
-              </div>
-              <button class="gate-cta-btn" @click="goToPricing">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                GET LEAGUE PASS
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -623,22 +607,6 @@
       </div>
 
       <!-- Bottom CTA for category leagues (no extra sections below) -->
-      <div v-if="!hasLeagueAccess && sortedPowerRankings.length > 3" class="early-gate-banner" style="margin-top: 8px;">
-        <div class="early-gate-inner">
-          <div class="early-gate-left">
-            <span class="early-gate-icon">🏆</span>
-            <div>
-              <div class="early-gate-headline">Unlock the full dashboard</div>
-              <div class="early-gate-sub">Trend charts, rankings insights, shareable graphics &amp; more</div>
-            </div>
-          </div>
-          <button class="gate-cta-btn" @click="goToPricing">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-            GET LEAGUE PASS
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </button>
-        </div>
-      </div>
 
     </template>
 
@@ -856,7 +824,7 @@ import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const leagueStore = useLeagueStore()
 const router = useRouter()
-const { hasLeagueAccess, canExpand } = useFeatureAccess()
+const { hasLeagueAccess, canExpand, canDownload} = useFeatureAccess()
 
 function goToPricing() {
   const params = new URLSearchParams()
@@ -880,7 +848,7 @@ const loadingProgress = ref({
 const selectedWeek = ref('')
 const powerRankings = ref<any[]>([])
 const gatedPowerRankings = computed(() =>
-  hasLeagueAccess.value ? powerRankings.value : powerRankings.value.slice(0, 3)
+  canExpand.value ? powerRankings.value : powerRankings.value.slice(0, 3)
 )
 const displayCategories = ref<any[]>([])
 const totalWeeksLoaded = ref(0)
@@ -1152,7 +1120,11 @@ function applySettings() {
 }
 
 // Download/Share functionality
-async function downloadRankings() {
+async function downloadRankings() {  if (!canDownload.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+
   isGeneratingDownload.value = true
   
   try {
@@ -1945,7 +1917,7 @@ const sortedPowerRankings = computed(() => {
 })
 
 const gatedSortedPowerRankings = computed(() =>
-  hasLeagueAccess.value ? sortedPowerRankings.value : sortedPowerRankings.value.slice(0, 3)
+  canExpand.value ? sortedPowerRankings.value : sortedPowerRankings.value.slice(0, 3)
 )
 
 // Sort power rankings table
@@ -2942,75 +2914,4 @@ onMounted(async () => {
   transition: filter 0.2s, opacity 0.2s;
 }
 
-/* ── Early gate banner ── */
-.early-gate-banner {
-  position: relative;
-  z-index: 10;
-  padding: 4px 0 20px;
-}
-.early-gate-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-  background: linear-gradient(135deg, #0f1118 0%, #0c0f1c 100%);
-  border: 1px solid rgba(234,179,8,0.35);
-  border-left: 3px solid #eab308;
-  border-radius: 12px;
-  padding: 16px 20px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(234,179,8,0.08);
-}
-.early-gate-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.early-gate-icon {
-  font-size: 1.4rem;
-  filter: drop-shadow(0 0 8px rgba(234,179,8,0.6));
-}
-.early-gate-headline {
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: #fff;
-  margin-bottom: 2px;
-  font-family: 'Barlow Condensed', sans-serif;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-.early-gate-sub {
-  font-size: 0.75rem;
-  color: #6b7280;
-}
-
-/* ── Shared CTA button ── */
-.gate-cta-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
-  color: #0a0c14;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.9rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s;
-  box-shadow: 0 2px 12px rgba(234,179,8,0.3);
-  flex-shrink: 0;
-}
-.gate-cta-btn:hover {
-  background: linear-gradient(135deg, #fbbf24 0%, #eab308 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(234,179,8,0.45);
-}
-.gate-cta-btn:active {
-  transform: translateY(0);
-}
 </style>

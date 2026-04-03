@@ -235,22 +235,6 @@
         </div>
       </div>
       <!-- Gate banner after round 3 -->
-      <div v-if="!hasLeagueAccess && totalRounds > 3" class="early-gate-banner" style="margin-top: 12px;">
-          <div class="early-gate-inner">
-            <div class="early-gate-left">
-              <span class="early-gate-icon">⚡</span>
-              <div>
-                <div class="early-gate-headline">{{ totalRounds - 3 }} more rounds are locked</div>
-                <div class="early-gate-sub">Unlock player grades, steals &amp; busts, and full analysis</div>
-              </div>
-            </div>
-            <button class="gate-cta-btn" @click="goToPricing">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-              GET LEAGUE PASS
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            </button>
-          </div>
-        </div>
     </template>
     <template v-else-if="activeTab === 'grades'">
       <!-- Grading Methodology Explainer -->
@@ -391,7 +375,7 @@
           :key="team.team_key"
           class="card cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all relative"
           :class="{ 'draft-blur-row': !hasLeagueAccess && idx >= 4 }"
-          @click="(!canExpand && idx >= 4) ? null : openTeamModal(team)"
+          @click="(!hasLeagueAccess && idx >= 4) ? null : openTeamModal(team)"
         >
           <!-- Rank Badge -->
           <div 
@@ -446,22 +430,6 @@
         </div>
       </div>
           <!-- Team grades gate banner -->
-          <div v-if="!hasLeagueAccess && teamGrades.length > 4" class="early-gate-banner" style="margin: 12px 0 4px;">
-            <div class="early-gate-inner">
-              <div class="early-gate-left">
-                <span class="early-gate-icon">🎯</span>
-                <div>
-                  <div class="early-gate-headline">{{ teamGrades.length - 4 }} more teams locked</div>
-                  <div class="early-gate-sub">See every team's full draft grade and breakdown</div>
-                </div>
-              </div>
-              <button class="gate-cta-btn" @click="goToPricing">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                GET LEAGUE PASS
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </button>
-            </div>
-          </div>
 
       <!-- Individual Player Grades -->
       <div class="card mt-6">
@@ -627,7 +595,7 @@
                   <p class="text-sm text-dark-textMuted">Best value relative to draft position</p>
                 </div>
               </div>
-              <button v-if="hasLeagueAccess" @click="downloadStealsImage" :disabled="isDownloadingSteals" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50" :style="stealsToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'">
+              <button v-if="canExpand" @click="downloadStealsImage" :disabled="isDownloadingSteals" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50" :style="stealsToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'">
                 <svg v-if="!isDownloadingSteals && stealsToast !== 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
                 <svg v-else-if="isDownloadingSteals" class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                 <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
@@ -673,22 +641,6 @@
             </div>
           </div>
           <!-- Steals gate banner -->
-          <div v-if="!hasLeagueAccess && topSteals.length > 3" class="early-gate-banner" style="margin: 8px 16px 16px;">
-            <div class="early-gate-inner">
-              <div class="early-gate-left">
-                <span class="early-gate-icon">🔥</span>
-                <div>
-                  <div class="early-gate-headline">{{ topSteals.length - 3 }} more steals locked</div>
-                  <div class="early-gate-sub">See every steal, bust, and deep analysis</div>
-                </div>
-              </div>
-              <button class="gate-cta-btn" @click="goToPricing">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                GET LEAGUE PASS
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </button>
-            </div>
-          </div>
         </div>
 
         <div class="card">
@@ -701,7 +653,7 @@
                   <p class="text-sm text-dark-textMuted">Underperformed relative to draft position</p>
                 </div>
               </div>
-              <button v-if="hasLeagueAccess" @click="downloadBustsImage" :disabled="isDownloadingBusts" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50" :style="bustsToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'">
+              <button v-if="canExpand" @click="downloadBustsImage" :disabled="isDownloadingBusts" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50" :style="bustsToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'">
                 <svg v-if="isDownloadingBusts" class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                 <svg v-else-if="bustsToast === 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                 <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
@@ -747,27 +699,11 @@
             </div>
           </div>
           <!-- Busts gate banner -->
-          <div v-if="!hasLeagueAccess && topReaches.length > 3" class="early-gate-banner" style="margin: 8px 16px 16px;">
-            <div class="early-gate-inner">
-              <div class="early-gate-left">
-                <span class="early-gate-icon">💀</span>
-                <div>
-                  <div class="early-gate-headline">{{ topReaches.length - 3 }} more busts locked</div>
-                  <div class="early-gate-sub">See every draft bust in your league</div>
-                </div>
-              </div>
-              <button class="gate-cta-btn" @click="goToPricing">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                GET LEAGUE PASS
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
       <!-- Position Breakdown — gated -->
-      <LeagueGate wrap :locked="!hasLeagueAccess" label="Position Breakdown">
+      <LeagueGate wrap :locked="!canExpand" label="Position Breakdown">
       <div class="card mt-6">
         <div class="card-header">
           <h3 class="text-lg font-bold text-dark-text">📊 Position Breakdown</h3>
@@ -842,39 +778,7 @@
             </div>
           </div>
           <!-- Round analysis gate banner -->
-          <div v-if="!hasLeagueAccess && roundAnalysis.length > 3" class="early-gate-banner" style="margin: 8px 0 4px;">
-            <div class="early-gate-inner">
-              <div class="early-gate-left">
-                <span class="early-gate-icon">🎯</span>
-                <div>
-                  <div class="early-gate-headline">{{ roundAnalysis.length - 3 }} more rounds locked</div>
-                  <div class="early-gate-sub">See the full round-by-round hit rate analysis</div>
-                </div>
-              </div>
-              <button class="gate-cta-btn" @click="goToPricing">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                GET LEAGUE PASS
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </button>
-            </div>
-          </div>
           <!-- Actual value gate banner -->
-          <div v-if="!hasLeagueAccess && actualValueRankings.length > 3" class="early-gate-banner" style="margin: 8px 16px 16px;">
-            <div class="early-gate-inner">
-              <div class="early-gate-left">
-                <span class="early-gate-icon">🏆</span>
-                <div>
-                  <div class="early-gate-headline">{{ actualValueRankings.length - 3 }} more picks locked</div>
-                  <div class="early-gate-sub">See the full season value ranking for every draft pick</div>
-                </div>
-              </div>
-              <button class="gate-cta-btn" @click="goToPricing">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                GET LEAGUE PASS
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </template>
@@ -975,7 +879,7 @@
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <button v-if="hasLeagueAccess" @click="downloadTeamImage" :disabled="isDownloadingTeam" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50" :style="shareToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'">
+              <button v-if="canExpand" @click="downloadTeamImage" :disabled="isDownloadingTeam" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50" :style="shareToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'">
                 <svg v-if="isDownloadingTeam" class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 <svg v-else-if="shareToast === 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                 <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
@@ -1182,7 +1086,7 @@ import {
 
 const router = useRouter()
 const leagueStore = useLeagueStore()
-const { hasLeagueAccess, canExpand } = useFeatureAccess()
+const { hasLeagueAccess, canExpand, canDownload } = useFeatureAccess()
 
 function goToPricing() {
   const params = new URLSearchParams()
@@ -1192,7 +1096,7 @@ function goToPricing() {
 }
 
 // Gated computeds
-const gatedRounds = computed(() => hasLeagueAccess.value ? totalRounds.value : Math.min(totalRounds.value, 3))
+const gatedRounds = computed(() => canExpand.value ? totalRounds.value : Math.min(totalRounds.value, 3))
 const authStore = useAuthStore()
 
 // Effective league key - use the actually loaded league (might be previous season)
@@ -1818,7 +1722,11 @@ function getLeagueName(): string {
 }
 
 // Download Team Image
-async function downloadTeamImage() {
+async function downloadTeamImage() {  if (!canDownload.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+
   if (!selectedTeamData.value) return
   isDownloadingTeam.value = true
   try {
@@ -1852,7 +1760,11 @@ async function downloadTeamImage() {
 }
 
 // Download Steals Image
-async function downloadStealsImage() {
+async function downloadStealsImage() {  if (!canDownload.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+
   isDownloadingSteals.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
@@ -1970,7 +1882,11 @@ async function downloadStealsImage() {
 }
 
 // Download Busts Image
-async function downloadBustsImage() {
+async function downloadBustsImage() {  if (!canDownload.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+
   isDownloadingBusts.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
@@ -2815,66 +2731,4 @@ onMounted(() => {
   transition: filter 0.2s;
 }
 
-/* ── Draft gate banner ── */
-.early-gate-banner {
-  position: relative;
-  z-index: 10;
-}
-.early-gate-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-  background: linear-gradient(135deg, #0f1118 0%, #0c0f1c 100%);
-  border: 1px solid rgba(234,179,8,0.35);
-  border-left: 3px solid #eab308;
-  border-radius: 12px;
-  padding: 14px 18px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-}
-.early-gate-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.early-gate-icon {
-  font-size: 1.3rem;
-  filter: drop-shadow(0 0 8px rgba(234,179,8,0.6));
-}
-.early-gate-headline {
-  font-size: 0.9rem;
-  font-weight: 800;
-  color: #fff;
-  margin-bottom: 2px;
-  font-family: 'Barlow Condensed', sans-serif;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-.early-gate-sub { font-size: 0.74rem; color: #6b7280; }
-.gate-cta-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 18px;
-  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
-  color: #0a0c14;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.88rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s;
-  box-shadow: 0 2px 12px rgba(234,179,8,0.3);
-  flex-shrink: 0;
-}
-.gate-cta-btn:hover {
-  background: linear-gradient(135deg, #fbbf24 0%, #eab308 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(234,179,8,0.45);
-}
 </style>

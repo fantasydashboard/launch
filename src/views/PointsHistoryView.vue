@@ -243,22 +243,6 @@
           </table>
           </div><!-- end overflow-x-auto -->
           <!-- Gate banner -->
-          <div v-if="!hasLeagueAccess && filteredCareerStats.length > 3" class="early-gate-banner" style="margin: 8px 0 4px;">
-            <div class="early-gate-inner">
-              <div class="early-gate-left">
-                <span class="early-gate-icon">📊</span>
-                <div>
-                  <div class="early-gate-headline">More data locked</div>
-                  <div class="early-gate-sub">See every team's career statistics</div>
-                </div>
-              </div>
-              <button class="gate-cta-btn" @click="goToPricing">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                GET LEAGUE PASS
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -334,22 +318,6 @@
           </table>
           </div><!-- end overflow-x-auto -->
           <!-- Gate banner -->
-          <div v-if="!hasLeagueAccess && seasonRecords.length > 1" class="early-gate-banner" style="margin: 8px 0 4px;">
-            <div class="early-gate-inner">
-              <div class="early-gate-left">
-                <span class="early-gate-icon">📅</span>
-                <div>
-                  <div class="early-gate-headline">More data locked</div>
-                  <div class="early-gate-sub">See every season's stats and champion</div>
-                </div>
-              </div>
-              <button class="gate-cta-btn" @click="goToPricing">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                GET LEAGUE PASS
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
       </template>
@@ -888,22 +856,6 @@
               </div>
             </div>
           <!-- Gate banner -->
-          <div v-if="!hasLeagueAccess && allTimeHallOfFame.length > 1" class="early-gate-banner" style="margin: 8px 0 4px;">
-            <div class="early-gate-inner">
-              <div class="early-gate-left">
-                <span class="early-gate-icon">🏅</span>
-                <div>
-                  <div class="early-gate-headline">More data locked</div>
-                  <div class="early-gate-sub">See every Hall of Fame achievement</div>
-                </div>
-              </div>
-              <button class="gate-cta-btn" @click="goToPricing">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                GET LEAGUE PASS
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </button>
-            </div>
-          </div>
 
             <!-- Hall of Shame -->
             <div class="mb-8">
@@ -942,22 +894,6 @@
                 </div>
               </div>
           <!-- Gate banner -->
-          <div v-if="!hasLeagueAccess && allTimeHallOfShame.length > 1" class="early-gate-banner" style="margin: 8px 0 4px;">
-            <div class="early-gate-inner">
-              <div class="early-gate-left">
-                <span class="early-gate-icon">💩</span>
-                <div>
-                  <div class="early-gate-headline">More data locked</div>
-                  <div class="early-gate-sub">See every Hall of Shame achievement</div>
-                </div>
-              </div>
-              <button class="gate-cta-btn" @click="goToPricing">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                GET LEAGUE PASS
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </button>
-            </div>
-          </div>
             </div>
           </div>
 
@@ -1038,22 +974,6 @@
                 </div>
               </div>
           <!-- Gate banner -->
-          <div v-if="!hasLeagueAccess && seasonHallOfShame.length > 1" class="early-gate-banner" style="margin: 8px 0 4px;">
-            <div class="early-gate-inner">
-              <div class="early-gate-left">
-                <span class="early-gate-icon">💩</span>
-                <div>
-                  <div class="early-gate-headline">More data locked</div>
-                  <div class="early-gate-sub">See all season hall of shame entries</div>
-                </div>
-              </div>
-              <button class="gate-cta-btn" @click="goToPricing">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                GET LEAGUE PASS
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </button>
-            </div>
-          </div>
             </div>
           </div>
 
@@ -1304,22 +1224,6 @@
                 </div>
               </div>
           <!-- Gate banner -->
-          <div v-if="!hasLeagueAccess && filteredLegacyScores.length > 3" class="early-gate-banner" style="margin: 8px 0 4px;">
-            <div class="early-gate-inner">
-              <div class="early-gate-left">
-                <span class="early-gate-icon">👑</span>
-                <div>
-                  <div class="early-gate-headline">More data locked</div>
-                  <div class="early-gate-sub">See every team's legacy score and history</div>
-                </div>
-              </div>
-              <button class="gate-cta-btn" @click="goToPricing">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                GET LEAGUE PASS
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </button>
-            </div>
-          </div>
               
               <div v-if="filteredLegacyScores.length === 0" class="p-8 text-center text-dark-textMuted">
                 No legacy data available. Load historical data to see legacy scores.
@@ -2262,7 +2166,7 @@ import VueApexCharts from 'vue3-apexcharts'
 const apexchart = VueApexCharts
 
 const leagueStore = useLeagueStore()
-const { hasLeagueAccess, canExpand } = useFeatureAccess()
+const { hasLeagueAccess, canExpand, canDownload} = useFeatureAccess()
 const router = useRouter()
 function goToPricing() {
   const params = new URLSearchParams()
@@ -3507,7 +3411,6 @@ const legacyMobileChartOptions = computed(() => {
   }
 })
 
-
 const sHofIdx = ref(0)     // Season HoF carousel
 const sHosIdx = ref(0)     // Season HoS carousel
 const weeklyIdx = ref(0)   // Weekly awards carousel
@@ -3888,7 +3791,11 @@ const isDownloadingTeamLegacy = ref(false)
 const shareToast = ref<'idle'|'success'|'error'>('idle')
 
 // Download Legacy Leaderboard (top 10)
-async function downloadLegacyLeaderboard() {
+async function downloadLegacyLeaderboard() {  if (!canDownload.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+
   isDownloadingLegacy.value = true
   
   try {
@@ -6146,7 +6053,11 @@ async function downloadWeeklyAwardRankings(awardTitle: string, type: 'best' | 'w
   }
 }
 
-async function downloadCareerStats() {
+async function downloadCareerStats() {  if (!canDownload.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+
   isDownloadingCareerStats.value = true
   try {
     // Get league name from saved leagues or yahooLeague
@@ -6350,7 +6261,11 @@ async function downloadCareerStats() {
   }
 }
 
-async function downloadSeasonHistory() {
+async function downloadSeasonHistory() {  if (!canDownload.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+
   if (!seasonTableRef.value) return
   isDownloadingSeasonHistory.value = true
   try {
@@ -6449,7 +6364,11 @@ async function downloadSeasonHistory() {
   }
 }
 
-async function downloadHeadToHead() {
+async function downloadHeadToHead() {  if (!canDownload.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+
   isDownloadingH2H.value = true
   try {
     const leagueName = leagueDisplayName.value
@@ -6667,7 +6586,11 @@ async function downloadHeadToHead() {
 }
 
 // Download Team Comparison Image
-async function downloadComparison() {
+async function downloadComparison() {  if (!canDownload.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+
   if (!compareTeam1Data.value || !compareTeam2Data.value || !compareData.value) return
   isDownloadingComparison.value = true
   
@@ -7721,32 +7644,5 @@ onMounted(() => {
   opacity: 0.4;
   transition: filter 0.2s;
 }
-.early-gate-banner { position: relative; z-index: 10; }
-.early-gate-inner {
-  display: flex; align-items: center; justify-content: space-between;
-  flex-wrap: wrap; gap: 16px;
-  background: linear-gradient(135deg, #0f1118 0%, #0c0f1c 100%);
-  border: 1px solid rgba(234,179,8,0.35); border-left: 3px solid #eab308;
-  border-radius: 12px; padding: 14px 18px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-}
-.early-gate-left { display: flex; align-items: center; gap: 12px; }
-.early-gate-icon { font-size: 1.3rem; filter: drop-shadow(0 0 8px rgba(234,179,8,0.6)); }
-.early-gate-headline {
-  font-size: 0.9rem; font-weight: 800; color: #fff; margin-bottom: 2px;
-  font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.03em; text-transform: uppercase;
-}
-.early-gate-sub { font-size: 0.74rem; color: #6b7280; }
-.gate-cta-btn {
-  display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px;
-  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
-  color: #0a0c14; font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.88rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase;
-  border: none; border-radius: 8px; cursor: pointer; white-space: nowrap;
-  transition: all 0.15s; box-shadow: 0 2px 12px rgba(234,179,8,0.3); flex-shrink: 0;
-}
-.gate-cta-btn:hover {
-  background: linear-gradient(135deg, #fbbf24 0%, #eab308 100%);
-  transform: translateY(-1px); box-shadow: 0 4px 20px rgba(234,179,8,0.45);
-}
+
 </style>
