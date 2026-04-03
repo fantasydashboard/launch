@@ -72,44 +72,123 @@
           <span class="filter-badge">{{ activeFilterLabel }}</span>
         </div>
         <div class="kpi-grid">
-          <div class="kpi-card kpi-accent-cyan">
+
+          <!-- Total Users -->
+          <div class="kpi-card kpi-accent-cyan kpi-clickable" @click="openKpiDetail('total_users')">
             <div class="kpi-icon">👤</div>
             <div class="kpi-val">{{ fmt(kpis.totalUsers) }}</div>
             <div class="kpi-label">Total Users</div>
-            <div v-if="activeFilter !== 'all'" class="kpi-new">+{{ fmt(kpis.newUsers) }} new</div>
+            <div class="kpi-click-hint">Click to view list →</div>
           </div>
-          <div class="kpi-card kpi-accent-gold">
+
+          <!-- Free Trial (active, no pass) -->
+          <div class="kpi-card kpi-accent-green kpi-clickable" @click="openKpiDetail('free_trial')">
+            <div class="kpi-icon">⏳</div>
+            <div class="kpi-val">{{ fmt(kpis.freeTrial) }}</div>
+            <div class="kpi-label">Free Trial</div>
+            <div class="kpi-sub">Active trial · no paid plan</div>
+            <div class="kpi-click-hint">Click to view list →</div>
+          </div>
+
+          <!-- Total Passes -->
+          <div class="kpi-card kpi-accent-gold kpi-clickable" @click="openKpiDetail('total_passes')">
             <div class="kpi-icon">🎟️</div>
-            <div class="kpi-val">{{ fmt(kpis.activePasses) }}</div>
-            <div class="kpi-label">Active League Passes</div>
-            <div class="kpi-sub">{{ fmt(kpis.activePassUsers) }} unique users</div>
-          </div>
-          <div class="kpi-card kpi-accent-red">
-            <div class="kpi-icon">🔓</div>
-            <div class="kpi-val">{{ fmt(kpis.noPassUsers) }}</div>
-            <div class="kpi-label">Users — No Pass</div>
-            <div class="kpi-sub">{{ noPassPct }}% of total</div>
-          </div>
-          <div class="kpi-card kpi-accent-orange">
-            <div class="kpi-icon">⏰</div>
-            <div class="kpi-val">{{ fmt(kpis.expiringUsers) }}</div>
-            <div class="kpi-label">Expiring ≤ 30 Days</div>
-            <div class="kpi-sub">{{ fmt(kpis.expiringPasses) }} passes</div>
-          </div>
-          <div class="kpi-card kpi-accent-green">
-            <div class="kpi-icon">📋</div>
             <div class="kpi-val">{{ fmt(kpis.totalPasses) }}</div>
-            <div class="kpi-label">Total Passes (All Time)</div>
-            <div v-if="activeFilter !== 'all'" class="kpi-new">+{{ fmt(kpis.newPasses) }} new</div>
+            <div class="kpi-label">Total Passes</div>
+            <div class="kpi-sub">All paid plans combined</div>
+            <div class="kpi-click-hint">Click to view list →</div>
           </div>
-          <div class="kpi-card kpi-accent-purple">
-            <div class="kpi-icon">⭐</div>
-            <div class="kpi-val">{{ fmt(kpis.multiPassUsers) }}</div>
-            <div class="kpi-label">Users with 2+ Passes</div>
-            <div class="kpi-sub">multi-league customers</div>
+
+          <!-- Individual Monthly -->
+          <div class="kpi-card kpi-accent-cyan kpi-clickable" @click="openKpiDetail('individual_monthly')">
+            <div class="kpi-icon">📅</div>
+            <div class="kpi-val">{{ fmt(kpis.individualMonthly) }}</div>
+            <div class="kpi-label">Individual — Monthly</div>
+            <div class="kpi-sub">Active subscriptions</div>
+            <div class="kpi-click-hint">Click to view list →</div>
           </div>
+
+          <!-- Individual Annual -->
+          <div class="kpi-card kpi-accent-purple kpi-clickable" @click="openKpiDetail('individual_annual')">
+            <div class="kpi-icon">📆</div>
+            <div class="kpi-val">{{ fmt(kpis.individualAnnual) }}</div>
+            <div class="kpi-label">Individual — Annual</div>
+            <div class="kpi-sub">Active subscriptions</div>
+            <div class="kpi-click-hint">Click to view list →</div>
+          </div>
+
+          <!-- League Passes -->
+          <div class="kpi-card kpi-accent-orange kpi-clickable" @click="openKpiDetail('league_passes')">
+            <div class="kpi-icon">🏆</div>
+            <div class="kpi-val">{{ fmt(kpis.leaguePasses) }}</div>
+            <div class="kpi-label">League Passes</div>
+            <div class="kpi-sub">Active league passes</div>
+            <div class="kpi-click-hint">Click to view list →</div>
+          </div>
+
+          <!-- Expired (trial done, no pass) -->
+          <div class="kpi-card kpi-accent-red kpi-clickable" @click="openKpiDetail('expired')">
+            <div class="kpi-icon">🔒</div>
+            <div class="kpi-val">{{ fmt(kpis.expired) }}</div>
+            <div class="kpi-label">Expired</div>
+            <div class="kpi-sub">Trial ended · no paid plan</div>
+            <div class="kpi-click-hint">Click to view list →</div>
+          </div>
+
         </div>
       </section>
+
+      <!-- ── KPI Detail Modal ── -->
+      <Teleport to="body">
+        <div v-if="kpiDetail.show" class="kpi-modal-backdrop" @click.self="kpiDetail.show = false">
+          <div class="kpi-modal">
+            <div class="kpi-modal-header">
+              <div>
+                <div class="kpi-modal-title">{{ kpiDetail.title }}</div>
+                <div class="kpi-modal-count">{{ kpiDetail.rows.length }} users</div>
+              </div>
+              <div class="kpi-modal-actions">
+                <input v-model="kpiDetail.search" class="kpi-modal-search" placeholder="🔍 Search name or email…" />
+                <button @click="downloadKpiCsv" class="btn-action btn-csv">⬇ Download CSV</button>
+                <button @click="kpiDetail.show = false" class="kpi-modal-close">✕</button>
+              </div>
+            </div>
+            <div v-if="kpiDetail.loading" class="kpi-modal-loading">Loading…</div>
+            <div v-else-if="kpiDetail.rows.length === 0" class="kpi-modal-empty">No users in this group.</div>
+            <div v-else class="kpi-modal-table-wrap">
+              <table class="kpi-modal-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Joined</th>
+                    <th>Trial Expires</th>
+                    <th>Plan</th>
+                    <th>Leagues</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="u in kpiDetailFiltered" :key="u.id">
+                    <td class="font-medium text-white">{{ u.full_name || '—' }}</td>
+                    <td style="color:#9ca3af;">{{ u.email }}</td>
+                    <td>
+                      <span class="kpi-badge"
+                        :style="u.status_color ? `background:${u.status_color}22;color:${u.status_color};border-color:${u.status_color}44` : ''">
+                        {{ u.status }}
+                      </span>
+                    </td>
+                    <td style="color:#6b7280;font-size:12px;">{{ u.joined }}</td>
+                    <td style="color:#6b7280;font-size:12px;">{{ u.trial_expires || '—' }}</td>
+                    <td style="color:#9ca3af;font-size:12px;">{{ u.plan || '—' }}</td>
+                    <td style="color:#6b7280;font-size:12px;text-align:center;">{{ u.league_count ?? '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </Teleport>
 
       <!-- ══════════════════════════════════════
            CHARTS
@@ -469,12 +548,83 @@ const segSearch = ref('')
 
 const kpis = ref({
   totalUsers: 0, newUsers: 0,
-  totalPasses: 0, newPasses: 0,
+  freeTrial: 0,
+  totalPasses: 0,
+  individualMonthly: 0,
+  individualAnnual: 0,
+  leaguePasses: 0,
+  expired: 0,
+  // legacy kept for charts
   activePasses: 0, activePassUsers: 0,
   noPassUsers: 0,
   expiringPasses: 0, expiringUsers: 0,
   multiPassUsers: 0,
 })
+
+// ── KPI Detail Modal state ────────────────────────────────────────────────────
+const kpiDetail = ref({
+  show: false,
+  loading: false,
+  title: '',
+  type: '',
+  rows: [] as any[],
+  search: '',
+})
+
+const kpiDetailFiltered = computed(() => {
+  const q = kpiDetail.value.search.toLowerCase()
+  if (!q) return kpiDetail.value.rows
+  return kpiDetail.value.rows.filter(u =>
+    (u.full_name || '').toLowerCase().includes(q) ||
+    (u.email || '').toLowerCase().includes(q)
+  )
+})
+
+const KPI_TITLES: Record<string, string> = {
+  total_users:        'All Users',
+  free_trial:         'Free Trial — Active (No Paid Plan)',
+  total_passes:       'All Paid Plans',
+  individual_monthly: 'Individual — Monthly Subscribers',
+  individual_annual:  'Individual — Annual Subscribers',
+  league_passes:      'Active League Passes',
+  expired:            'Expired Trial — No Paid Plan',
+}
+
+async function openKpiDetail(type: string) {
+  kpiDetail.value = { show: true, loading: true, title: KPI_TITLES[type] || type, type, rows: [], search: '' }
+  try {
+    const data = await callAdmin({ action: 'kpi_detail', type })
+    kpiDetail.value.rows = data.rows
+  } catch (e: any) {
+    apiError.value = e.message
+    kpiDetail.value.show = false
+  } finally {
+    kpiDetail.value.loading = false
+  }
+}
+
+function downloadKpiCsv() {
+  const rows = kpiDetailFiltered.value
+  if (!rows.length) return
+  const headers = ['Name', 'Email', 'Status', 'Joined', 'Trial Expires', 'Plan', 'Leagues']
+  const csvRows = [
+    headers.join(','),
+    ...rows.map(u => [
+      `"${u.full_name || ''}"`,
+      `"${u.email || ''}"`,
+      `"${u.status || ''}"`,
+      `"${u.joined || ''}"`,
+      `"${u.trial_expires || ''}"`,
+      `"${u.plan || ''}"`,
+      u.league_count ?? '',
+    ].join(','))
+  ]
+  const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `ufd_${kpiDetail.value.type}_${new Date().toISOString().slice(0,10)}.csv`
+  a.click()
+}
 const signupsByDay = ref<{date:string,count:number}[]>([])
 const passesByDay = ref<{date:string,count:number}[]>([])
 const segRows = ref<any[]>([])
@@ -743,6 +893,61 @@ function buildEmailHtml({ subject, previewText, overline, banner, headline, body
     html, body { background-color: #05060a !important; }
     table { background-color: #05060a !important; }
   }
+
+
+/* ── Clickable KPI cards ── */
+.kpi-clickable { cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+.kpi-clickable:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+.kpi-click-hint { font-size: 10px; color: #374151; margin-top: 6px; letter-spacing: 0.04em; }
+
+/* ── KPI Detail Modal ── */
+.kpi-modal-backdrop {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.kpi-modal {
+  background: #0d0f18; border: 1px solid #1e2130; border-radius: 16px;
+  width: 100%; max-width: 900px; max-height: 80vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+.kpi-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; gap: 12px; flex-wrap: wrap;
+  border-bottom: 1px solid #1e2130; flex-shrink: 0;
+}
+.kpi-modal-title { font-size: 15px; font-weight: 800; color: #fff; }
+.kpi-modal-count { font-size: 12px; color: #6b7280; margin-top: 2px; }
+.kpi-modal-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.kpi-modal-search {
+  padding: 6px 12px; border-radius: 8px; border: 1px solid #374151;
+  background: #11131a; color: #e5e7eb; font-size: 12px; width: 200px;
+}
+.kpi-modal-search:focus { outline: none; border-color: #22c55e; }
+.kpi-modal-close {
+  width: 28px; height: 28px; border-radius: 50%; border: 1px solid #374151;
+  background: rgba(255,255,255,0.05); color: #9ca3af; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 12px;
+}
+.kpi-modal-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.kpi-modal-loading { padding: 40px; text-align: center; color: #6b7280; }
+.kpi-modal-empty { padding: 40px; text-align: center; color: #4b5563; font-style: italic; }
+.kpi-modal-table-wrap { overflow-y: auto; flex: 1; }
+.kpi-modal-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.kpi-modal-table th {
+  position: sticky; top: 0; background: #0a0c14; padding: 10px 14px;
+  text-align: left; font-size: 11px; font-weight: 700; color: #6b7280;
+  letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 1px solid #1e2130;
+}
+.kpi-modal-table td { padding: 10px 14px; border-bottom: 1px solid #11131a; }
+.kpi-modal-table tr:hover td { background: rgba(255,255,255,0.02); }
+.kpi-badge {
+  display: inline-block; font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: 20px; border: 1px solid;
+  background: rgba(34,197,94,0.1); color: #22c55e; border-color: rgba(34,197,94,0.3);
+}
 </style>
 </head>
 <body bgcolor="#05060a" style="margin:0;padding:0;background-color:#05060a !important;background:#05060a !important;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
