@@ -313,6 +313,23 @@
         <!-- Controls -->
         <div class="campaign-controls-wrap">
           <div class="campaign-controls">
+
+            <!-- ── Template Selector ── -->
+            <div class="ctrl-group">
+              <label class="ctrl-label">📋 Load a Template</label>
+              <div class="template-picker">
+                <select v-model="selectedTemplate" class="ctrl-input" @change="applyTemplate">
+                  <option value="">— Select a template —</option>
+                  <option v-for="t in EMAIL_TEMPLATES" :key="t.id" :value="t.id">{{ t.name }}</option>
+                </select>
+                <div v-if="selectedTemplate" class="template-badge">
+                  <span>{{ EMAIL_TEMPLATES.find(t => t.id === selectedTemplate)?.name }}</span>
+                  <button @click="selectedTemplate = ''" class="template-clear">✕ Clear</button>
+                </div>
+              </div>
+            </div>
+            <div class="template-divider"></div>
+
             <div class="ctrl-group">
               <label class="ctrl-label">Subject Line</label>
               <input v-model="emailSubject" class="ctrl-input" placeholder="Your league deserves better analytics" />
@@ -1060,6 +1077,54 @@ const passChartOpts = computed(() => ({
 
 // ── Email Campaign ────────────────────────────────────────────────────────────
 const activeCampaign = ref('nopass')
+// ── Email Templates ──────────────────────────────────────────────────────────
+const selectedTemplate = ref('')
+
+const EMAIL_TEMPLATES = [
+  {
+    id: 'no_leagues',
+    name: '👀 No Leagues Connected',
+    subject: 'You signed up but never connected a league 👀',
+    preview: 'It takes about 60 seconds. Here is exactly how to do it.',
+    overline: 'YOU ARE ONE STEP AWAY',
+    banner: '⚾ Baseball season is here. Your league is waiting — connect in 60 seconds.',
+    headline: 'Your account is ready. Your league is not connected yet.',
+    body: `Hey — you created an Ultimate Fantasy Dashboard account but never connected a league.
+
+That means you have not seen any of it yet. No power rankings. No win probability. No shareable graphics for your group chat.
+
+It takes about 60 seconds. Here is how:
+
+1. Log in and click "Add League" in the top right
+2. Choose your platform — ESPN, Yahoo, or Sleeper
+3. Follow the prompts to connect your league
+
+That is it. Your full dashboard loads automatically.
+
+You are in your free trial right now — full access, no credit card needed. Do not let it run out before you even see what the app does.`,
+    image: '',
+    body2: '',
+    cta: 'CONNECT MY LEAGUE NOW →',
+    ctaUrl: 'https://ultimatefantasydashboard.com',
+  },
+]
+
+function applyTemplate() {
+  const t = EMAIL_TEMPLATES.find(t => t.id === selectedTemplate.value)
+  if (!t) return
+  emailSubject.value   = t.subject
+  emailPreview.value   = t.preview
+  emailOverline.value  = t.overline
+  emailBanner.value    = t.banner
+  emailHeadline.value  = t.headline
+  emailBody.value      = t.body
+  emailImage.value     = t.image
+  emailBody2.value     = t.body2
+  emailCta.value       = t.cta
+  emailCtaUrl.value    = t.ctaUrl
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 const emailSubject = ref("You're one step away from unlocking your league")
 const emailPreview = ref('Power rankings, win probability, draft grades, league history — all waiting for you.')
 const emailHeadline = ref("One step to keep your league talking all season.")
@@ -1273,6 +1338,23 @@ function buildEmailHtml({ subject, previewText, overline, banner, headline, body
 .ud-slide-enter-active { transition: transform 0.25s cubic-bezier(0.34,1.1,0.64,1); }
 .ud-slide-leave-active { transition: transform 0.2s ease; }
 .ud-slide-enter-from, .ud-slide-leave-to { transform: translateX(100%); }
+
+/* ── Email Template Picker ── */
+.template-picker { display: flex; flex-direction: column; gap: 8px; }
+.template-badge {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-radius: 8px;
+  background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25);
+  font-size: 12px; color: #22c55e; font-weight: 600;
+}
+.template-clear {
+  background: none; border: none; color: #6b7280; font-size: 11px;
+  cursor: pointer; padding: 0;
+}
+.template-clear:hover { color: #ef4444; }
+.template-divider {
+  border: none; border-top: 1px solid #1e2130; margin: 4px 0 8px;
+}
 </style>
 </head>
 <body bgcolor="#05060a" style="margin:0;padding:0;background-color:#05060a !important;background:#05060a !important;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
