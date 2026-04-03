@@ -78,7 +78,7 @@
             <div class="kpi-icon">👤</div>
             <div class="kpi-val">{{ fmt(kpis.totalUsers) }}</div>
             <div class="kpi-label">Total Users</div>
-            <div class="kpi-click-hint">Click to view list →</div>
+            <div v-if="activeFilter !== 'all'" class="kpi-new">+{{ fmt(kpis.newUsers) }} new</div>
           </div>
 
           <!-- Free Trial (active, no pass) -->
@@ -87,7 +87,7 @@
             <div class="kpi-val">{{ fmt(kpis.freeTrial) }}</div>
             <div class="kpi-label">Free Trial</div>
             <div class="kpi-sub">Active trial · no paid plan</div>
-            <div class="kpi-click-hint">Click to view list →</div>
+            <div v-if="activeFilter !== 'all'" class="kpi-new">+{{ fmt(kpis.newFreeTrial) }} new</div>
           </div>
 
           <!-- Total Passes -->
@@ -96,7 +96,7 @@
             <div class="kpi-val">{{ fmt(kpis.totalPasses) }}</div>
             <div class="kpi-label">Total Passes</div>
             <div class="kpi-sub">All paid plans combined</div>
-            <div class="kpi-click-hint">Click to view list →</div>
+            <div v-if="activeFilter !== 'all'" class="kpi-new">+{{ fmt(kpis.newPasses) }} new</div>
           </div>
 
           <!-- Individual Monthly -->
@@ -105,7 +105,7 @@
             <div class="kpi-val">{{ fmt(kpis.individualMonthly) }}</div>
             <div class="kpi-label">Individual — Monthly</div>
             <div class="kpi-sub">Active subscriptions</div>
-            <div class="kpi-click-hint">Click to view list →</div>
+            <div v-if="activeFilter !== 'all'" class="kpi-new">+{{ fmt(kpis.newIndividualMonthly) }} new</div>
           </div>
 
           <!-- Individual Annual -->
@@ -114,7 +114,7 @@
             <div class="kpi-val">{{ fmt(kpis.individualAnnual) }}</div>
             <div class="kpi-label">Individual — Annual</div>
             <div class="kpi-sub">Active subscriptions</div>
-            <div class="kpi-click-hint">Click to view list →</div>
+            <div v-if="activeFilter !== 'all'" class="kpi-new">+{{ fmt(kpis.newIndividualAnnual) }} new</div>
           </div>
 
           <!-- League Passes -->
@@ -123,7 +123,7 @@
             <div class="kpi-val">{{ fmt(kpis.leaguePasses) }}</div>
             <div class="kpi-label">League Passes</div>
             <div class="kpi-sub">Active league passes</div>
-            <div class="kpi-click-hint">Click to view list →</div>
+            <div v-if="activeFilter !== 'all'" class="kpi-new">+{{ fmt(kpis.newLeaguePasses) }} new</div>
           </div>
 
           <!-- Expired (trial done, no pass) -->
@@ -132,7 +132,6 @@
             <div class="kpi-val">{{ fmt(kpis.expired) }}</div>
             <div class="kpi-label">Expired</div>
             <div class="kpi-sub">Trial ended · no paid plan</div>
-            <div class="kpi-click-hint">Click to view list →</div>
           </div>
 
         </div>
@@ -548,11 +547,11 @@ const segSearch = ref('')
 
 const kpis = ref({
   totalUsers: 0, newUsers: 0,
-  freeTrial: 0,
-  totalPasses: 0,
-  individualMonthly: 0,
-  individualAnnual: 0,
-  leaguePasses: 0,
+  freeTrial: 0, newFreeTrial: 0,
+  totalPasses: 0, newPasses: 0,
+  individualMonthly: 0, newIndividualMonthly: 0,
+  individualAnnual: 0, newIndividualAnnual: 0,
+  leaguePasses: 0, newLeaguePasses: 0,
   expired: 0,
   // legacy kept for charts
   activePasses: 0, activePassUsers: 0,
@@ -898,7 +897,7 @@ function buildEmailHtml({ subject, previewText, overline, banner, headline, body
 /* ── Clickable KPI cards ── */
 .kpi-clickable { cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
 .kpi-clickable:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
-.kpi-click-hint { font-size: 10px; color: #374151; margin-top: 6px; letter-spacing: 0.04em; }
+
 
 /* ── KPI Detail Modal ── */
 .kpi-modal-backdrop {
