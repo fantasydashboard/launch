@@ -321,6 +321,13 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Privacy / Legal bar -->
+    <div style="background:#080a10;border-top:1px solid #0f1017;padding:14px 24px;display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap;">
+      <span style="font-size:12px;color:#374151;">© {{ new Date().getFullYear() }} Ultimate Fantasy Dashboard</span>
+      <router-link to="/privacy" style="font-size:12px;color:#374151;text-decoration:none;" @mouseenter="$event.target.style.color='#22c55e'" @mouseleave="$event.target.style.color='#374151'">Privacy Policy</router-link>
+      <a href="mailto:support@ultimatefantasydashboard.com" style="font-size:12px;color:#374151;text-decoration:none;" @mouseenter="$event.target.style.color='#22c55e'" @mouseleave="$event.target.style.color='#374151'">Contact</a>
+    </div>
   </footer>
 </template>
 
