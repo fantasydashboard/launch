@@ -35,8 +35,14 @@
       </button>
     </div>
 
-    <!-- ── Access Denied ── -->
-    <div v-if="!isAdmin" class="access-denied">
+    <!-- ── Auth still loading — wait before showing denied ── -->
+    <div v-if="!authStore.initialized || authStore.loading" class="access-denied">
+      <div style="width:32px;height:32px;border:3px solid #1e2130;border-top-color:#22c55e;border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 16px;"></div>
+      <p style="color:#6b7280;font-size:14px;">Loading...</p>
+    </div>
+
+    <!-- ── Access Denied — only show once auth is confirmed loaded ── -->
+    <div v-else-if="!isAdmin" class="access-denied">
       <div class="ad-icon">🔒</div>
       <h2>Admin Access Required</h2>
       <p>This page is only accessible to administrators.</p>
