@@ -1437,18 +1437,33 @@ export const useLeagueStore = defineStore('league', () => {
         const fallbackIsActive = league.status?.isActive ?? true
         const completedWeeks = !fallbackIsActive ? regularSeasonWeeks : Math.min(fallbackCurrentWeek - 1, regularSeasonWeeks)
 
-        // Check if Week 1 actually has any decided matchups
-        // If all are UNDECIDED (or no weeks completed), trust ESPN's 0-0-0
+        // Scoring-period guard: ESPN can advance currentMatchupPeriod before all game
+        // scores for the previous period are finalized.  latestScoringPeriod is the last
+        // day ESPN has fully processed, so we require it to be >= the expected last scoring
+        // period of each matchup week before trusting that week's results.
+        const latestScoringPeriod = league.status?.latestScoringPeriod || 0
+        const finalScoringPeriod = league.status?.finalScoringPeriod || regularSeasonWeeks * 7
+        const scoringPeriodsPerWeek = regularSeasonWeeks > 0
+          ? Math.round(finalScoringPeriod / regularSeasonWeeks)
+          : 7
+        const weekScoringIsComplete = (week: number) =>
+          !fallbackIsActive || latestScoringPeriod >= week * scoringPeriodsPerWeek
+
+        // Check if Week 1 actually has any decided matchups AND scoring is done
+        // If all are UNDECIDED or scoring hasn't caught up, trust ESPN's 0-0-0
         let hasAnyDecidedMatchup = false
-        if (completedWeeks >= 1) {
+        if (completedWeeks >= 1 && weekScoringIsComplete(1)) {
           try {
             const week1Matchups = await espnService.getMatchups(sport, espnLeagueId, season, 1, false)
             hasAnyDecidedMatchup = week1Matchups.some(m => m.winner && m.winner !== 'UNDECIDED')
             console.log('[ESPN FALLBACK] Week 1 check: hasDecidedMatchup =', hasAnyDecidedMatchup,
+              '| latestScoringPeriod:', latestScoringPeriod, '| required:', scoringPeriodsPerWeek,
               '| winners:', week1Matchups.map(m => m.winner).join(', '))
           } catch (e) {
             console.warn('[ESPN FALLBACK] Could not check Week 1 matchups:', e)
           }
+        } else if (completedWeeks >= 1) {
+          console.log('[ESPN FALLBACK] Week 1 scoring not yet finalized (latestScoringPeriod:', latestScoringPeriod, '< required:', scoringPeriodsPerWeek, ') — trusting ESPN 0-0-0')
         }
 
         if (!hasAnyDecidedMatchup) {
@@ -1470,6 +1485,12 @@ export const useLeagueStore = defineStore('league', () => {
           try {
             const matchups = await espnService.getMatchups(sport, espnLeagueId, season, week, true)
             console.log(`[ESPN FALLBACK] Week ${week}: Got ${matchups.length} matchups`)
+
+            // Skip weeks where scoring hasn't caught up yet
+            if (!weekScoringIsComplete(week)) {
+              console.log(`[ESPN FALLBACK] Week ${week}: latestScoringPeriod (${latestScoringPeriod}) < ${week * scoringPeriodsPerWeek} — not finalized, skipping`)
+              continue
+            }
 
             // Skip weeks where all matchups are still UNDECIDED (extended week)
             const allUndecided = matchups.length > 0 && matchups.every(m => m.winner === 'UNDECIDED' || !m.winner)

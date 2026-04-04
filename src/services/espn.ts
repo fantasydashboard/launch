@@ -1223,8 +1223,21 @@ export class EspnFantasyService {
       const isSeasonActive = league.status?.isActive ?? true
       // For completed seasons, all regular season weeks are completed
       const completedWeeks = !isSeasonActive ? regularSeasonWeeks : Math.min(currentWeek - 1, regularSeasonWeeks)
-      
-      console.log('[ESPN calculateStandingsFromMatchupHistory] currentWeek:', currentWeek, 'completedWeeks:', completedWeeks)
+
+      // Scoring period guard: ESPN can advance currentMatchupPeriod before all scores
+      // for the previous period are finalized (e.g. late game tallies the next morning).
+      // latestScoringPeriod tracks the last day ESPN has fully processed, so we use it
+      // to verify a week is truly done before counting its results.
+      const latestScoringPeriod = league.status?.latestScoringPeriod || 0
+      const finalScoringPeriod = league.status?.finalScoringPeriod || regularSeasonWeeks * 7
+      const scoringPeriodsPerWeek = regularSeasonWeeks > 0
+        ? Math.round(finalScoringPeriod / regularSeasonWeeks)
+        : 7
+      const weekIsScoringComplete = (week: number) =>
+        !isSeasonActive || latestScoringPeriod >= week * scoringPeriodsPerWeek
+
+      console.log('[ESPN calculateStandingsFromMatchupHistory] currentWeek:', currentWeek, 'completedWeeks:', completedWeeks,
+        'latestScoringPeriod:', latestScoringPeriod, 'scoringPeriodsPerWeek:', scoringPeriodsPerWeek)
       
       if (completedWeeks < 1) {
         console.log('[ESPN calculateStandingsFromMatchupHistory] No completed weeks yet')
@@ -1239,6 +1252,14 @@ export class EspnFantasyService {
         try {
           // Force refresh to ensure we get per-category data
           const matchups = await this.getMatchups(sport, leagueId, season, week, true)
+
+          // Skip weeks where scoring hasn't fully caught up yet.
+          // currentMatchupPeriod can advance before all scores are finalized (late game
+          // tallies), so we require latestScoringPeriod to confirm the week is done.
+          if (!weekIsScoringComplete(week)) {
+            console.log(`[ESPN calculateStandings] Week ${week}: latestScoringPeriod (${latestScoringPeriod}) < ${week * scoringPeriodsPerWeek} — scoring not finalized, skipping`)
+            continue
+          }
 
           // Skip extended weeks still in progress
           const allUndecided = matchups.length > 0 && matchups.every(m => m.winner === 'UNDECIDED' || !m.winner)
@@ -4183,11 +4204,39 @@ export class EspnFantasyService {
     const regularSeasonWeeks = league.settings?.regularSeasonMatchupPeriodCount || 25
     const isSeasonActive = league.status?.isActive ?? true
     const completedWeeks = !isSeasonActive ? regularSeasonWeeks : Math.min(currentWeek - 1, regularSeasonWeeks)
+
+    // Scoring period guard — ESPN can advance currentMatchupPeriod before all game
+    // scores for the previous period are finalized (late-game tallies the next morning,
+    // etc.).  latestScoringPeriod is the last day ESPN has fully processed; we use it
+    // to confirm each week is truly done before counting its results.
+    const latestScoringPeriod = league.status?.latestScoringPeriod || 0
+    const finalScoringPeriod = league.status?.finalScoringPeriod || regularSeasonWeeks * 7
+    const scoringPeriodsPerWeek = regularSeasonWeeks > 0
+      ? Math.round(finalScoringPeriod / regularSeasonWeeks)
+      : 7
+    const weekIsScoringComplete = (week: number) =>
+      !isSeasonActive || latestScoringPeriod >= week * scoringPeriodsPerWeek
+
+    console.log('[ESPN getCategoryStatsBreakdown] latestScoringPeriod:', latestScoringPeriod,
+      'scoringPeriodsPerWeek:', scoringPeriodsPerWeek, 'completedWeeks:', completedWeeks)
     
     // Before computing, verify that at least one week has officially decided matchups.
-    // If ESPN shows 0-0-0 in their standings AND Week 1 matchups are all UNDECIDED,
-    // the week is extended/in-progress — return zeros immediately.
+    // If Week 1 scoring hasn't finished yet, or all matchups are UNDECIDED, return zeros.
     if (completedWeeks >= 1) {
+      // First check: has scoring period caught up for week 1?
+      if (!weekIsScoringComplete(1)) {
+        console.log('[ESPN getCategoryStatsBreakdown] Week 1 scoring not yet finalized (latestScoringPeriod:', latestScoringPeriod, '< required:', scoringPeriodsPerWeek, ') — returning empty results')
+        return {
+          categories: [],
+          teamCategoryWins: new Map(),
+          teamCategoryLosses: new Map(),
+          teamCategoryTies: new Map(),
+          teamTotalCategoryWins: new Map(),
+          teamTotalCategoryLosses: new Map(),
+          hasRealStatValues: false,
+        }
+      }
+      // Second check: are week 1 matchups all UNDECIDED (extended week)?
       const week1Check = await this.getMatchups(sport, leagueId, season, 1)
       const allUndecided = week1Check.length > 0 && week1Check.every(m => m.winner === 'UNDECIDED' || !m.winner)
       if (allUndecided) {
@@ -4219,6 +4268,13 @@ export class EspnFantasyService {
       try {
         // The cache will auto-refresh if it detects stale data missing per-category results
         const weekMatchups = await this.getMatchups(sport, leagueId, season, week)
+
+        // Skip weeks where scoring hasn't fully caught up yet
+        if (!weekIsScoringComplete(week)) {
+          console.log(`[ESPN getCategoryStatsBreakdown] Week ${week}: latestScoringPeriod (${latestScoringPeriod}) < ${week * scoringPeriodsPerWeek} — scoring not finalized, skipping`)
+          weeksProcessed--
+          continue
+        }
 
         // Skip weeks where all matchups are UNDECIDED — extended week still in progress
         const allUndecided = weekMatchups.length > 0 && weekMatchups.every(m => m.winner === 'UNDECIDED' || !m.winner)
