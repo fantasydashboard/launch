@@ -320,21 +320,42 @@
         <div class="campaign-controls-wrap">
           <div class="campaign-controls">
 
-            <!-- ── Template Selector ── -->
+            <!-- ── HTML Template Library ── -->
             <div class="ctrl-group">
-              <label class="ctrl-label">📋 Load a Template</label>
-              <div class="template-picker">
-                <select v-model="selectedTemplate" class="ctrl-input" @change="applyTemplate">
-                  <option value="">— Select a template —</option>
-                  <option v-for="t in EMAIL_TEMPLATES" :key="t.id" :value="t.id">{{ t.name }}</option>
+              <label class="ctrl-label">📬 Ready-Made Email Templates</label>
+              <div class="tpl-library">
+                <!-- Series selector -->
+                <select v-model="selectedSeries" class="ctrl-input" @change="selectedHtmlTemplate = ''">
+                  <option value="">— Select a series —</option>
+                  <option v-for="s in EMAIL_SERIES" :key="s.id" :value="s.id">{{ s.label }}</option>
                 </select>
-                <div v-if="selectedTemplate" class="template-badge">
-                  <span>{{ EMAIL_TEMPLATES.find(t => t.id === selectedTemplate)?.name }}</span>
-                  <button @click="selectedTemplate = ''" class="template-clear">✕ Clear</button>
+
+                <!-- Email picker within series -->
+                <select v-if="selectedSeries" v-model="selectedHtmlTemplate" class="ctrl-input">
+                  <option value="">— Select an email —</option>
+                  <option v-for="t in EMAIL_SERIES.find(s => s.id === selectedSeries)?.emails || []" :key="t.id" :value="t.id">
+                    {{ t.name }}
+                  </option>
+                </select>
+
+                <!-- Copy HTML button -->
+                <div v-if="selectedHtmlTemplate" class="tpl-action-row">
+                  <div class="tpl-meta">
+                    <div class="tpl-subject">{{ currentHtmlTemplate?.subject }}</div>
+                    <div class="tpl-preview-text">{{ currentHtmlTemplate?.preview }}</div>
+                  </div>
+                  <button class="tpl-copy-btn" @click="copyTemplateHtml">
+                    <span v-if="htmlCopied2">✓ Copied!</span>
+                    <span v-else>Copy HTML</span>
+                  </button>
                 </div>
               </div>
             </div>
-            <div class="template-divider"></div>
+            <div class="template-divider" style="margin-top:4px;"></div>
+
+            <!-- ── Custom / Override composer ── -->
+            <div class="tpl-composer-label">✏️ Or compose a custom email</div>
+            <div class="template-divider" style="margin:4px 0 8px;"></div>
 
             <div class="ctrl-group">
               <label class="ctrl-label">Subject Line</label>
@@ -1084,50 +1105,56 @@ const passChartOpts = computed(() => ({
 // ── Email Campaign ────────────────────────────────────────────────────────────
 const activeCampaign = ref('nopass')
 // ── Email Templates ──────────────────────────────────────────────────────────
-const selectedTemplate = ref('')
+// ── HTML Email Template Library ──────────────────────────────────────────────
+const selectedSeries  = ref('')
+const selectedHtmlTemplate = ref('')
+const htmlCopied2 = ref(false)
 
-const EMAIL_TEMPLATES = [
+const NO_LEAGUES_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#05060a;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#05060a;"><tr><td align="center" style="padding:24px 16px;"><table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#0a0c14;border:1px solid #1e2130;border-radius:12px;overflow:hidden;"><tr><td style="background:#0a0c14;border-bottom:2px solid #22c55e;padding:16px 28px;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td><img src="https://ultimatefantasydashboard.com/UFD_V8.png" height="34" alt="Ultimate Fantasy Dashboard" style="display:block;"></td><td align="right" style="font-size:11px;color:#374151;">ultimatefantasydashboard.com</td></tr></table></td></tr><tr><td style="background:linear-gradient(90deg,#0a1f0f,#0c1824);border-bottom:1px solid rgba(34,197,94,0.2);padding:11px 28px;text-align:center;font-size:12px;color:#86efac;letter-spacing:0.03em;">⚾ Baseball season is here. Your league is waiting — connect in 60 seconds.</td></tr><tr><td style="padding:36px 32px 28px;background:#0a0c14;"><p style="font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#22c55e;margin:0 0 10px;">YOU ARE ONE STEP AWAY</p><h1 style="font-size:27px;font-weight:900;color:#fff;line-height:1.1;letter-spacing:-0.02em;margin:0 0 18px;">Your account is ready. Your league is not connected yet.</h1><p style="font-size:14px;color:#9ca3af;line-height:1.75;margin:0 0 16px;">Hey — you created an Ultimate Fantasy Dashboard account but never connected a league. That means <strong style="color:#e5e7eb;">you have not seen any of it yet.</strong> No power rankings. No win probability. No shareable graphics for your group chat.</p><p style="font-size:14px;color:#9ca3af;line-height:1.75;margin:0 0 18px;">It takes about 60 seconds. Here is how:</p><table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;"><tr><td style="padding:10px 14px;background:#11131a;border:1px solid #1e2130;border-radius:10px;margin-bottom:8px;display:block;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td width="26" style="text-align:center;"><div style="width:22px;height:22px;border-radius:50%;background:#22c55e;color:#0a0c14;font-size:11px;font-weight:900;text-align:center;line-height:22px;display:inline-block;">1</div></td><td style="padding-left:10px;font-size:13px;color:#d1d5db;">Log in and click <strong style="color:#fff;">"Add League"</strong> in the top right</td></tr></table></td></tr><tr><td height="8"></td></tr><tr><td style="padding:10px 14px;background:#11131a;border:1px solid #1e2130;border-radius:10px;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td width="26" style="text-align:center;"><div style="width:22px;height:22px;border-radius:50%;background:#22c55e;color:#0a0c14;font-size:11px;font-weight:900;text-align:center;line-height:22px;display:inline-block;">2</div></td><td style="padding-left:10px;font-size:13px;color:#d1d5db;">Choose your platform — <strong style="color:#fff;">ESPN, Yahoo, or Sleeper</strong></td></tr></table></td></tr><tr><td height="8"></td></tr><tr><td style="padding:10px 14px;background:#11131a;border:1px solid #1e2130;border-radius:10px;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td width="26" style="text-align:center;"><div style="width:22px;height:22px;border-radius:50%;background:#22c55e;color:#0a0c14;font-size:11px;font-weight:900;text-align:center;line-height:22px;display:inline-block;">3</div></td><td style="padding-left:10px;font-size:13px;color:#d1d5db;">Follow the prompts — <strong style="color:#fff;">your full dashboard loads automatically</strong></td></tr></table></td></tr></table><hr style="border:none;border-top:1px solid #1e2130;margin:22px 0;"><p style="font-size:13px;color:#6b7280;font-style:italic;margin:0 0 24px;">You are in your free trial right now — full access, no credit card needed. Do not let it run out before you even see what the app does.</p><div style="text-align:center;margin:0 0 8px;"><a href="https://ultimatefantasydashboard.com" style="display:inline-block;background:#22c55e;color:#0a0c14;font-size:14px;font-weight:800;letter-spacing:0.05em;padding:14px 36px;border-radius:10px;text-decoration:none;">CONNECT MY LEAGUE NOW →</a></div><p style="font-size:11px;color:#374151;text-align:center;margin:0;">Takes about 60 seconds · ESPN, Yahoo &amp; Sleeper supported</p></td></tr><tr><td style="background:#080a10;padding:14px 28px;border-top:1px solid #1e2130;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td><img src="https://ultimatefantasydashboard.com/UFD_V8.png" height="20" alt="UFD" style="display:block;"></td><td align="right" style="font-size:11px;color:#374151;">ultimatefantasydashboard.com &nbsp;·&nbsp; <a href="{{unsubscribe_url}}" style="color:#374151;text-decoration:none;">Unsubscribe</a></td></tr></table></td></tr></table></td></tr></table></body></html>`
+
+const FREE_TRIAL_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#05060a;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#05060a;"><tr><td align="center" style="padding:24px 16px;"><table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#0a0c14;border:1px solid #1e2130;border-radius:12px;overflow:hidden;"><tr><td style="background:#0a0c14;border-bottom:2px solid #22c55e;padding:16px 28px;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td><img src="https://ultimatefantasydashboard.com/UFD_V8.png" height="34" alt="Ultimate Fantasy Dashboard" style="display:block;"></td><td align="right" style="font-size:11px;color:#374151;">ultimatefantasydashboard.com</td></tr></table></td></tr><tr><td style="background:linear-gradient(90deg,#0a1f0f,#0c1824);border-bottom:1px solid rgba(34,197,94,0.2);padding:11px 28px;text-align:center;font-size:12px;color:#86efac;">🆕 New: connect your league for free and get 7 days of full access — no credit card required.</td></tr><tr><td style="padding:36px 32px 28px;background:#0a0c14;"><p style="font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#22c55e;margin:0 0 10px;">YOUR FREE TRIAL IS WAITING</p><h1 style="font-size:27px;font-weight:900;color:#fff;line-height:1.1;letter-spacing:-0.02em;margin:0 0 18px;">Full access. Free. 7 days. No card required.</h1><p style="font-size:14px;color:#9ca3af;line-height:1.75;margin:0 0 16px;">Hey — we made a change and wanted to make sure you knew about it. When you created your account, <strong style="color:#e5e7eb;">we did not have a free trial. Now we do.</strong> And yours is already waiting for you.</p><div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:14px 18px;margin:20px 0;"><table cellpadding="0" cellspacing="0"><tr><td style="font-size:32px;font-weight:900;color:#22c55e;line-height:1;padding-right:14px;">7</td><td style="font-size:13px;color:#9ca3af;line-height:1.45;"><strong style="color:#e5e7eb;">days of full access, completely free</strong><br>Starts the moment you connect your first league. No credit card. No catch.</td></tr></table></div><table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr><td width="48%" valign="top" style="padding-right:6px;"><div style="background:#11131a;border:1px solid #1e2130;border-radius:10px;padding:14px;margin-bottom:10px;"><div style="font-size:18px;margin-bottom:5px;">🏆</div><div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;">Power Rankings</div><div style="font-size:11px;color:#6b7280;">Weekly algorithm + trend graph</div></div><div style="background:#11131a;border:1px solid #1e2130;border-radius:10px;padding:14px;"><div style="font-size:18px;margin-bottom:5px;">📜</div><div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;">League History</div><div style="font-size:11px;color:#6b7280;">Career stats + H2H records</div></div></td><td width="4%"></td><td width="48%" valign="top" style="padding-left:6px;"><div style="background:#11131a;border:1px solid #1e2130;border-radius:10px;padding:14px;margin-bottom:10px;"><div style="font-size:18px;margin-bottom:5px;">⚡</div><div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;">Win Probability</div><div style="font-size:11px;color:#6b7280;">Live day-by-day matchup odds</div></div><div style="background:#11131a;border:1px solid #1e2130;border-radius:10px;padding:14px;"><div style="font-size:18px;margin-bottom:5px;">📲</div><div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;">Shareable Graphics</div><div style="font-size:11px;color:#6b7280;">Drop them in your group chat</div></div></td></tr></table><hr style="border:none;border-top:1px solid #1e2130;margin:22px 0;"><p style="font-size:13px;color:#6b7280;margin:0 0 24px;">You can connect as many leagues as you want — <strong style="color:#e5e7eb;">ESPN, Yahoo, and Sleeper</strong> all supported. Takes about 60 seconds. Your account is already created.</p><div style="text-align:center;margin:0 0 8px;"><a href="https://ultimatefantasydashboard.com" style="display:inline-block;background:#22c55e;color:#0a0c14;font-size:14px;font-weight:800;letter-spacing:0.05em;padding:14px 36px;border-radius:10px;text-decoration:none;">START MY FREE TRIAL →</a></div><p style="font-size:11px;color:#374151;text-align:center;margin:0;">7 days free · No credit card · Cancel anytime</p></td></tr><tr><td style="background:#080a10;padding:14px 28px;border-top:1px solid #1e2130;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td><img src="https://ultimatefantasydashboard.com/UFD_V8.png" height="20" alt="UFD" style="display:block;"></td><td align="right" style="font-size:11px;color:#374151;">ultimatefantasydashboard.com &nbsp;·&nbsp; <a href="{{unsubscribe_url}}" style="color:#374151;text-decoration:none;">Unsubscribe</a></td></tr></table></td></tr></table></td></tr></table></body></html>`
+
+const POWER_RANKINGS_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#05060a;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#05060a;"><tr><td align="center" style="padding:24px 16px;"><table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#0a0c14;border:1px solid #1e2130;border-radius:12px;overflow:hidden;"><tr><td style="background:#0a0c14;border-bottom:2px solid #22c55e;padding:16px 28px;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td><img src="https://ultimatefantasydashboard.com/UFD_V8.png" height="34" alt="Ultimate Fantasy Dashboard" style="display:block;"></td><td align="right" style="font-size:11px;color:#374151;">ultimatefantasydashboard.com</td></tr></table></td></tr><tr><td style="background:linear-gradient(90deg,#0a1f0f,#0c1824);border-bottom:1px solid rgba(34,197,94,0.2);padding:11px 28px;text-align:center;font-size:12px;color:#86efac;letter-spacing:0.03em;">🏆 Welcome to your trial — let's show you what UFD can do</td></tr><tr><td style="padding:36px 32px 28px;background:#0a0c14;"><p style="font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#22c55e;margin:0 0 10px;">POWER RANKINGS</p><h1 style="font-size:27px;font-weight:900;color:#fff;line-height:1.1;letter-spacing:-0.02em;margin:0 0 18px;">Who's actually the best team in your league right now?</h1><p style="font-size:14px;color:#9ca3af;line-height:1.75;margin:0 0 16px;">Standings lie. A 3-4 team can be outperforming a 5-2 team every single week. <strong style="color:#e5e7eb;">UFD Power Rankings cut through the noise</strong> — combining your record, total points, all-play record, recent form, and consistency into one score that tells the real story.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#11131a;border:1px solid #1e2130;border-radius:12px;overflow:hidden;margin:20px 0;"><tr><td style="background:#0a0c14;border-bottom:1px solid #1e2130;padding:10px 16px;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td style="font-size:11px;font-weight:700;color:#4b5563;letter-spacing:0.1em;text-transform:uppercase;">⚡ Power Rankings — This Week</td><td align="right" style="font-size:11px;font-weight:700;color:#4b5563;">SCORE</td></tr></table></td></tr><tr><td style="padding:10px 16px;border-bottom:1px solid #0f1017;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td width="28" style="font-size:11px;font-weight:700;color:#eab308;text-align:center;">1</td><td style="padding:0 12px;"><div style="font-size:13px;font-weight:600;color:#e5e7eb;margin-bottom:4px;">Your Team</div><div style="height:4px;border-radius:2px;background:#1e2130;"><div style="width:92%;height:4px;background:linear-gradient(90deg,#22c55e,#16a34a);border-radius:2px;"></div></div></td><td align="right" style="font-size:12px;font-weight:700;color:#22c55e;padding-right:8px;">87.4</td><td style="font-size:10px;color:#22c55e;">▲2</td></tr></table></td></tr><tr><td style="padding:10px 16px;border-bottom:1px solid #0f1017;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td width="28" style="font-size:11px;font-weight:700;color:#eab308;text-align:center;">2</td><td style="padding:0 12px;"><div style="font-size:13px;font-weight:600;color:#e5e7eb;margin-bottom:4px;">Top Rival</div><div style="height:4px;border-radius:2px;background:#1e2130;"><div style="width:78%;height:4px;background:linear-gradient(90deg,#eab308,#ca8a04);border-radius:2px;"></div></div></td><td align="right" style="font-size:12px;font-weight:700;color:#eab308;padding-right:8px;">74.1</td><td style="font-size:10px;color:#ef4444;">▼1</td></tr></table></td></tr><tr><td style="padding:10px 16px;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td width="28" style="font-size:11px;font-weight:700;color:#9ca3af;text-align:center;">3</td><td style="padding:0 12px;"><div style="font-size:13px;font-weight:600;color:#e5e7eb;margin-bottom:4px;">Third Place</div><div style="height:4px;border-radius:2px;background:#1e2130;"><div style="width:65%;height:4px;background:linear-gradient(90deg,#eab308,#ca8a04);border-radius:2px;"></div></div></td><td align="right" style="font-size:12px;font-weight:700;color:#9ca3af;padding-right:8px;">62.8</td><td style="font-size:10px;color:#6b7280;">—</td></tr></table></td></tr></table><hr style="border:none;border-top:1px solid #1e2130;margin:22px 0;"><p style="font-size:13px;font-weight:700;color:#fff;margin:0 0 8px;">What goes into the score?</p><div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.25);border-radius:10px;padding:14px 16px;margin:0 0 20px;font-size:12px;color:#9ca3af;line-height:1.7;"><strong style="color:#a78bfa;">Win-Loss Record (32%)</strong> · Your actual record is the foundation.<br><strong style="color:#a78bfa;">Total Points Scored (21%)</strong> · How much are you actually putting up?<br><strong style="color:#a78bfa;">All-Play Record (19%)</strong> · If you played every team, where would you rank?<br><strong style="color:#a78bfa;">Recent Form — Last 3 (16%)</strong> · Are you heating up or cooling down?<br><strong style="color:#a78bfa;">Consistency (13%)</strong> · Boom-or-bust vs steady every week.</div><table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;"><tr><td width="48%" valign="top" style="padding-right:6px;"><div style="background:#11131a;border:1px solid #1e2130;border-radius:10px;padding:14px;margin-bottom:10px;"><div style="font-size:20px;margin-bottom:6px;">🎛️</div><div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;">Customize the Formula</div><div style="font-size:11px;color:#6b7280;line-height:1.5;">Adjust the weights to rank teams your way.</div></div><div style="background:#11131a;border:1px solid #1e2130;border-radius:10px;padding:14px;"><div style="font-size:20px;margin-bottom:6px;">🔍</div><div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;">Team Deep Dive</div><div style="font-size:11px;color:#6b7280;line-height:1.5;">Click any team to see what's driving their score.</div></div></td><td width="4%"></td><td width="48%" valign="top" style="padding-left:6px;"><div style="background:#11131a;border:1px solid #1e2130;border-radius:10px;padding:14px;margin-bottom:10px;"><div style="font-size:20px;margin-bottom:6px;">📈</div><div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;">Trend Graph</div><div style="font-size:11px;color:#6b7280;line-height:1.5;">Watch every team's ranking move week by week.</div></div><div style="background:#11131a;border:1px solid #1e2130;border-radius:10px;padding:14px;"><div style="font-size:20px;margin-bottom:6px;">📅</div><div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;">Any Week</div><div style="font-size:11px;color:#6b7280;line-height:1.5;">View rankings from any point in the season.</div></div></td></tr></table><div style="background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.25);border-radius:10px;padding:16px 18px;margin:0 0 20px;"><span style="font-size:22px;">📲</span>&nbsp;&nbsp;<span style="font-size:13px;color:#9ca3af;line-height:1.6;"><strong style="color:#06b6d4;">Drop it in your group chat.</strong> Hit Share on the rankings page to download a graphic ready to send. Nothing starts a league argument faster.</span></div><hr style="border:none;border-top:1px solid #1e2130;margin:22px 0;"><p style="font-size:13px;color:#6b7280;font-style:italic;margin:0 0 24px;">You have full access right now during your free trial. Power Rankings update every week automatically.</p><div style="text-align:center;margin:0 0 8px;"><a href="https://ultimatefantasydashboard.com" style="display:inline-block;background:#22c55e;color:#0a0c14;font-size:14px;font-weight:800;letter-spacing:0.05em;padding:14px 36px;border-radius:10px;text-decoration:none;">VIEW MY POWER RANKINGS →</a></div><p style="font-size:11px;color:#374151;text-align:center;margin:0;">ESPN · Yahoo · Sleeper · All leagues supported</p></td></tr><tr><td style="background:#080a10;padding:14px 28px;border-top:1px solid #1e2130;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td><img src="https://ultimatefantasydashboard.com/UFD_V8.png" height="20" alt="UFD" style="display:block;"></td><td align="right" style="font-size:11px;color:#374151;">ultimatefantasydashboard.com &nbsp;·&nbsp; <a href="{{unsubscribe_url}}" style="color:#374151;text-decoration:none;">Unsubscribe</a></td></tr></table></td></tr></table></td></tr></table></body></html>`
+
+const EMAIL_SERIES = [
   {
-    id: 'no_leagues',
-    name: '👀 No Leagues Connected',
-    subject: 'You signed up but never connected a league 👀',
-    preview: 'It takes about 60 seconds. Here is exactly how to do it.',
-    overline: 'YOU ARE ONE STEP AWAY',
-    banner: '⚾ Baseball season is here. Your league is waiting — connect in 60 seconds.',
-    headline: 'Your account is ready. Your league is not connected yet.',
-    body: `Hey — you created an Ultimate Fantasy Dashboard account but never connected a league.
-
-That means you have not seen any of it yet. No power rankings. No win probability. No shareable graphics for your group chat.
-
-It takes about 60 seconds. Here is how:
-
-1. Log in and click "Add League" in the top right
-2. Choose your platform — ESPN, Yahoo, or Sleeper
-3. Follow the prompts to connect your league
-
-That is it. Your full dashboard loads automatically.
-
-You are in your free trial right now — full access, no credit card needed. Do not let it run out before you even see what the app does.`,
-    image: '',
-    body2: '',
-    cta: 'CONNECT MY LEAGUE NOW →',
-    ctaUrl: 'https://ultimatefantasydashboard.com',
+    id: 'onboarding',
+    label: '📬 Onboarding — No League Connected',
+    emails: [
+      { id: 'no_leagues', name: '👀 No Leagues Connected', subject: 'You signed up but never connected a league 👀', preview: 'It takes about 60 seconds. Here is exactly how to do it.', html: NO_LEAGUES_HTML },
+      { id: 'free_trial_invite', name: '🎁 Free Trial Invite (pre-trial users)', subject: 'We just gave you 7 days of full access — for free 🎁', preview: 'Connect as many leagues as you want. No credit card. No catch.', html: FREE_TRIAL_HTML },
+    ]
+  },
+  {
+    id: 'trial_series',
+    label: '🏆 Free Trial Education Series',
+    emails: [
+      { id: 'trial_power_rankings', name: 'Email 1 — Power Rankings', subject: "Your power rankings are ready — here's how to read them 🏆", preview: "Who's actually winning your league? It's not always who you think.", html: POWER_RANKINGS_HTML },
+    ]
   },
 ]
 
+const currentHtmlTemplate = computed(() => {
+  for (const series of EMAIL_SERIES) {
+    const found = series.emails.find(e => e.id === selectedHtmlTemplate.value)
+    if (found) return found
+  }
+  return null
+})
+
+function copyTemplateHtml() {
+  const t = currentHtmlTemplate.value
+  if (!t?.html) return
+  navigator.clipboard.writeText(t.html).then(() => {
+    htmlCopied2.value = true
+    setTimeout(() => { htmlCopied2.value = false }, 2500)
+  })
+}
+
+// Legacy template selector (kept for custom composer)
+const selectedTemplate = ref('')
 function applyTemplate() {
-  const t = EMAIL_TEMPLATES.find(t => t.id === selectedTemplate.value)
-  if (!t) return
-  emailSubject.value   = t.subject
-  emailPreview.value   = t.preview
-  emailOverline.value  = t.overline
-  emailBanner.value    = t.banner
-  emailHeadline.value  = t.headline
-  emailBody.value      = t.body
-  emailImage.value     = t.image
-  emailBody2.value     = t.body2
-  emailCta.value       = t.cta
-  emailCtaUrl.value    = t.ctaUrl
+  // Legacy — kept for custom composer if needed
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1353,14 +1380,29 @@ function buildEmailHtml({ subject, previewText, overline, banner, headline, body
   background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25);
   font-size: 12px; color: #22c55e; font-weight: 600;
 }
-.template-clear {
-  background: none; border: none; color: #6b7280; font-size: 11px;
-  cursor: pointer; padding: 0;
-}
+.template-clear { background: none; border: none; color: #6b7280; font-size: 11px; cursor: pointer; padding: 0; }
 .template-clear:hover { color: #ef4444; }
-.template-divider {
-  border: none; border-top: 1px solid #1e2130; margin: 4px 0 8px;
+.template-divider { border: none; border-top: 1px solid #1e2130; margin: 4px 0 8px; }
+
+/* ── HTML Template Library ── */
+.tpl-library { display: flex; flex-direction: column; gap: 8px; }
+.tpl-action-row {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; padding: 12px 14px;
+  background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.2);
+  border-radius: 10px;
 }
+.tpl-meta { flex: 1; min-width: 0; }
+.tpl-subject { font-size: 13px; font-weight: 600; color: #e5e7eb; margin-bottom: 3px; }
+.tpl-preview-text { font-size: 11px; color: #6b7280; }
+.tpl-copy-btn {
+  padding: 8px 18px; background: #22c55e; color: #0a0c14;
+  font-size: 12px; font-weight: 800; letter-spacing: 0.04em;
+  border: none; border-radius: 8px; cursor: pointer; flex-shrink: 0;
+  transition: background 0.15s;
+}
+.tpl-copy-btn:hover { background: #16a34a; }
+.tpl-composer-label { font-size: 11px; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 8px; }
 </style>
 </head>
 <body bgcolor="#05060a" style="margin:0;padding:0;background-color:#05060a !important;background:#05060a !important;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
