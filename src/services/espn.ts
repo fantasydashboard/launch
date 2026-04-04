@@ -1241,15 +1241,13 @@ export class EspnFantasyService {
           const matchups = await this.getMatchups(sport, leagueId, season, week, true)
 
           // Only count a week when EVERY non-bye matchup has an officially decided winner.
-          // The old "allUndecided" guard was too loose — ESPN can return live/preliminary
-          // winners (HOME, AWAY, TIE) for in-progress matchups, so a single live result
-          // would cause the whole week to be processed prematurely.
-          // Requiring ALL non-bye matchups to be decided is the conservative correct check.
+          // ESPN can return live/preliminary winners for in-progress matchups, so
+          // "not all UNDECIDED" is too loose — we need all to be decided.
           const nonByeMatchups = matchups.filter(m => m.awayTeamId)
           const allDecided = nonByeMatchups.length > 0 &&
             nonByeMatchups.every(m => m.winner && m.winner !== 'UNDECIDED')
           if (!allDecided) {
-            console.log(`[ESPN calculateStandings] Week ${week}: not all matchups officially decided — skipping (in-progress or extended week)`)
+            console.log(`[ESPN calculateStandings] Week ${week}: not all matchups officially decided — skipping`)
             continue
           }
           
@@ -4191,9 +4189,8 @@ export class EspnFantasyService {
     const completedWeeks = !isSeasonActive ? regularSeasonWeeks : Math.min(currentWeek - 1, regularSeasonWeeks)
     
     // Before computing, verify that at least one week has officially decided matchups.
-    // We require ALL non-bye matchups to be decided (not just checking if all are UNDECIDED)
-    // because ESPN can return live/preliminary winners for in-progress matchups, meaning
-    // "not all UNDECIDED" doesn't mean the week is officially over.
+    // If ESPN shows 0-0-0 in their standings AND Week 1 matchups are all UNDECIDED,
+    // the week is extended/in-progress — return zeros immediately.
     if (completedWeeks >= 1) {
       const week1Check = await this.getMatchups(sport, leagueId, season, 1)
       const nonByeWeek1 = week1Check.filter(m => m.awayTeamId)
@@ -4229,12 +4226,10 @@ export class EspnFantasyService {
         // The cache will auto-refresh if it detects stale data missing per-category results
         const weekMatchups = await this.getMatchups(sport, leagueId, season, week)
 
-        // Only count this week when ALL non-bye matchups have officially decided winners.
-        // ESPN can return live winners (HOME/AWAY/TIE) for in-progress matchups, so
-        // "not all UNDECIDED" is not a safe guard — we need all to be decided.
-        const nonByeWeekMatchups = weekMatchups.filter(m => m.awayTeamId)
-        const weekAllDecided = nonByeWeekMatchups.length > 0 &&
-          nonByeWeekMatchups.every(m => m.winner && m.winner !== 'UNDECIDED')
+        // Only count this week when ALL non-bye matchups have officially decided winners
+        const nonByeWeek = weekMatchups.filter(m => m.awayTeamId)
+        const weekAllDecided = nonByeWeek.length > 0 &&
+          nonByeWeek.every(m => m.winner && m.winner !== 'UNDECIDED')
         if (!weekAllDecided) {
           console.log(`[ESPN getCategoryStatsBreakdown] Week ${week}: not all matchups officially decided — skipping`)
           weeksProcessed--
@@ -4378,7 +4373,23 @@ export class EspnFantasyService {
     }
     
     // Only use real per-category data if we got it for most weeks
-    // Otherwise, fall back to ROTO calculation from season totals
+    // Otherwise, fall back to ROTO calculation from season totals.
+    // IMPORTANT: Never run ROTO when completedWeeks === 0 — that means no week has
+    // officially concluded yet and valuesByStat only reflects live in-progress stats.
+    // Doing ROTO on live data produces premature standings at the start of the season.
+    if (!trustRealData && completedWeeks === 0) {
+      console.log('[ESPN getCategoryStatsBreakdown] completedWeeks = 0 — skipping ROTO fallback, no officially completed weeks yet')
+      return {
+        categories,
+        teamCategoryWins: new Map(),
+        teamCategoryLosses: new Map(),
+        teamCategoryTies: new Map(),
+        teamTotalCategoryWins: new Map(),
+        teamTotalCategoryLosses: new Map(),
+        hasRealStatValues: false,
+      }
+    }
+
     if (!trustRealData) {
       // Clear any partial per-category data that was accumulated from incomplete weeks
       teamCategoryWins.clear()
