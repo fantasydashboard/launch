@@ -21,9 +21,11 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/stores/auth'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const error = ref<string | null>(null)
 
 onMounted(async () => {
@@ -33,17 +35,29 @@ onMounted(async () => {
 
     if (code) {
       // Exchange PKCE code for session
-      const { error: exchangeError } = await supabase!.auth.exchangeCodeForSession(code)
+      const { data, error: exchangeError } = await supabase!.auth.exchangeCodeForSession(code)
       if (exchangeError) {
         console.error('[AuthCallback] Code exchange failed:', exchangeError)
         error.value = exchangeError.message
         return
       }
+
+      // Manually sync the session into the auth store so isAuthenticated
+      // is true before we navigate — don't rely on onAuthStateChange timing
+      if (data?.session) {
+        await authStore.initialize()
+      }
+    } else {
+      // No code — might be a hash-based session (older Supabase flow)
+      // Try getting the session directly
+      const { data } = await supabase!.auth.getSession()
+      if (data?.session) {
+        await authStore.initialize()
+      }
     }
 
-    // Wait briefly for onAuthStateChange to fire and update the store,
-    // then navigate via router (no hard reload — keeps store state)
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // Navigate to home — auth store is now populated so landing page
+    // will correctly show the authenticated view
     router.replace('/')
   } catch (err: any) {
     console.error('[AuthCallback] Unexpected error:', err)
