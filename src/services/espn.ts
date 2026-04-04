@@ -4184,6 +4184,26 @@ export class EspnFantasyService {
     const isSeasonActive = league.status?.isActive ?? true
     const completedWeeks = !isSeasonActive ? regularSeasonWeeks : Math.min(currentWeek - 1, regularSeasonWeeks)
     
+    // Before computing, verify that at least one week has officially decided matchups.
+    // If ESPN shows 0-0-0 in their standings AND Week 1 matchups are all UNDECIDED,
+    // the week is extended/in-progress — return zeros immediately.
+    if (completedWeeks >= 1) {
+      const week1Check = await this.getMatchups(sport, leagueId, season, 1)
+      const allUndecided = week1Check.length > 0 && week1Check.every(m => m.winner === 'UNDECIDED' || !m.winner)
+      if (allUndecided) {
+        console.log('[ESPN getCategoryStatsBreakdown] Week 1 all UNDECIDED — returning empty results (extended week)')
+        return {
+          categories: [],
+          teamCategoryWins: new Map(),
+          teamCategoryLosses: new Map(),
+          teamCategoryTies: new Map(),
+          teamTotalCategoryWins: new Map(),
+          teamTotalCategoryLosses: new Map(),
+          hasRealStatValues: false,
+        }
+      }
+    }
+
     console.log('[ESPN getCategoryStatsBreakdown] Fetching', completedWeeks, 'weeks of matchups')
     
     // Fetch all completed matchups and aggregate category wins

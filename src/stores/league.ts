@@ -1422,25 +1422,41 @@ export const useLeagueStore = defineStore('league', () => {
       // FALLBACK: If category league still has all zero records, calculate directly from matchups
       // This uses the same approach as Power Rankings which works correctly
       if (isCategoryLeague && espnTeams.every(t => t.wins === 0 && t.losses === 0)) {
-        console.log('[ESPN FALLBACK] getStandings returned all zeros, calculating from weekly matchups...')
-        
+        // ESPN's official standings show 0-0-0 for all teams.
+        // This is the correct answer when:
+        //   (a) The season just started and no week has officially completed
+        //   (b) The first week is extended (matchup period rolled over but week isn't settled)
+        //
+        // In both cases, we trust ESPN's official standing of 0-0-0.
+        // We verify by checking matchups — if Week 1 matchups are all UNDECIDED,
+        // the week is genuinely in progress and we must show zeros.
+        // If some matchups DO have decided winners, we fall through to compute.
+
         const fallbackCurrentWeek = league.status?.currentMatchupPeriod || 1
         const regularSeasonWeeks = league.settings?.regularSeasonMatchupPeriodCount || 25
         const fallbackIsActive = league.status?.isActive ?? true
-        // For completed seasons, use all regular season weeks
         const completedWeeks = !fallbackIsActive ? regularSeasonWeeks : Math.min(fallbackCurrentWeek - 1, regularSeasonWeeks)
-        
-        // ── Extended week guard ────────────────────────────────────────────
-        // If completedWeeks is 0, ESPN's 0-0-0 IS the correct answer.
-        // This happens when the first week is extended into the next scoring
-        // period — ESPN correctly shows 0-0-0 and we should respect that
-        // instead of computing partial wins from in-progress matchup data.
-        if (completedWeeks < 1) {
-          console.log('[ESPN FALLBACK] No completed weeks yet — keeping ESPN official 0-0-0 standings (extended week in progress)')
-          // Skip the fallback entirely — zero standings are correct
+
+        // Check if Week 1 actually has any decided matchups
+        // If all are UNDECIDED (or no weeks completed), trust ESPN's 0-0-0
+        let hasAnyDecidedMatchup = false
+        if (completedWeeks >= 1) {
+          try {
+            const week1Matchups = await espnService.getMatchups(sport, espnLeagueId, season, 1, false)
+            hasAnyDecidedMatchup = week1Matchups.some(m => m.winner && m.winner !== 'UNDECIDED')
+            console.log('[ESPN FALLBACK] Week 1 check: hasDecidedMatchup =', hasAnyDecidedMatchup,
+              '| winners:', week1Matchups.map(m => m.winner).join(', '))
+          } catch (e) {
+            console.warn('[ESPN FALLBACK] Could not check Week 1 matchups:', e)
+          }
+        }
+
+        if (!hasAnyDecidedMatchup) {
+          console.log('[ESPN FALLBACK] No officially decided matchups found — trusting ESPN 0-0-0 standings (week in progress or not started)')
+          // Keep espnTeams as-is with 0-0-0 — do NOT compute from matchups
         } else {
-        // ─────────────────────────────────────────────────────────────────
         
+        console.log('[ESPN FALLBACK] getStandings returned all zeros but matchups have decided results, calculating from weekly matchups...')
         console.log('[ESPN FALLBACK] Will process', completedWeeks, 'completed weeks')
         
         // Initialize team stats
