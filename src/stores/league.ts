@@ -1430,6 +1430,17 @@ export const useLeagueStore = defineStore('league', () => {
         // For completed seasons, use all regular season weeks
         const completedWeeks = !fallbackIsActive ? regularSeasonWeeks : Math.min(fallbackCurrentWeek - 1, regularSeasonWeeks)
         
+        // ── Extended week guard ────────────────────────────────────────────
+        // If completedWeeks is 0, ESPN's 0-0-0 IS the correct answer.
+        // This happens when the first week is extended into the next scoring
+        // period — ESPN correctly shows 0-0-0 and we should respect that
+        // instead of computing partial wins from in-progress matchup data.
+        if (completedWeeks < 1) {
+          console.log('[ESPN FALLBACK] No completed weeks yet — keeping ESPN official 0-0-0 standings (extended week in progress)')
+          // Skip the fallback entirely — zero standings are correct
+        } else {
+        // ─────────────────────────────────────────────────────────────────
+        
         console.log('[ESPN FALLBACK] Will process', completedWeeks, 'completed weeks')
         
         // Initialize team stats
@@ -1443,6 +1454,13 @@ export const useLeagueStore = defineStore('league', () => {
           try {
             const matchups = await espnService.getMatchups(sport, espnLeagueId, season, week, true)
             console.log(`[ESPN FALLBACK] Week ${week}: Got ${matchups.length} matchups`)
+
+            // Skip weeks where all matchups are still UNDECIDED (extended week)
+            const allUndecided = matchups.length > 0 && matchups.every(m => m.winner === 'UNDECIDED' || !m.winner)
+            if (allUndecided) {
+              console.log(`[ESPN FALLBACK] Week ${week}: all UNDECIDED — skipping extended week`)
+              continue
+            }
             
             for (const matchup of matchups) {
               if (!matchup.awayTeamId) continue
@@ -1514,6 +1532,7 @@ export const useLeagueStore = defineStore('league', () => {
         })
         
         console.log('[ESPN FALLBACK] Calculation complete')
+        } // end else (completedWeeks >= 1)
       }
       
       // Get user's team ID for highlighting
