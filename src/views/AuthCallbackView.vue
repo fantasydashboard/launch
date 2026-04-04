@@ -26,52 +26,35 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 const router = useRouter()
 const error = ref<string | null>(null)
 
-onMounted(async () => {
-  try {
-    const urlParams = new URLSearchParams(window.location.search)
-    const code = urlParams.get('code')
+onMounted(() => {
+  // Supabase automatically detects and exchanges the code when detectSessionInUrl=true.
+  // We just need to wait for onAuthStateChange to fire with SIGNED_IN,
+  // then hard-redirect so the full app reinitializes with the stored session.
 
-    if (code) {
-      console.log('[AuthCallback] Exchanging PKCE code...')
+  console.log('[AuthCallback] Waiting for Supabase to process auth callback...')
 
-      // Use a direct fetch bypassing the proxy entirely for this critical step
-      // The proxy interferes with session storage during the code exchange
-      const { data, error: exchangeError } = await supabase!.auth.exchangeCodeForSession(code)
+  // Safety timeout — if nothing happens in 8 seconds, show error
+  const timeout = setTimeout(() => {
+    console.error('[AuthCallback] Timed out waiting for session')
+    error.value = 'Sign in timed out. Please try again.'
+  }, 8000)
 
-      if (exchangeError) {
-        console.error('[AuthCallback] Code exchange failed:', exchangeError)
-        error.value = exchangeError.message
-        return
-      }
+  const { data: { subscription } } = supabase!.auth.onAuthStateChange((event, session) => {
+    console.log('[AuthCallback] Auth state changed:', event, session?.user?.email)
 
-      console.log('[AuthCallback] Exchange result — session:', !!data?.session, 'user:', data?.session?.user?.email)
-
-      if (data?.session) {
-        // Hard redirect instead of router navigation — forces a full page reload
-        // so Supabase can properly reinitialize from the stored session in localStorage
-        // without the proxy interfering with the getSession() call
-        console.log('[AuthCallback] Session obtained, doing hard redirect to /')
-        window.location.href = '/'
-        return
-      }
-    }
-
-    // No code or no session — check for hash fragment (implicit flow fallback)
-    const hash = window.location.hash
-    if (hash && hash.includes('access_token')) {
-      console.log('[AuthCallback] Hash-based session detected, hard redirecting')
+    if (event === 'SIGNED_IN' && session) {
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+      console.log('[AuthCallback] SIGNED_IN confirmed — hard redirecting to /')
+      // Hard redirect forces full reinit so getSession() finds the stored session
       window.location.href = '/'
-      return
     }
 
-    // Nothing worked — go home anyway
-    console.warn('[AuthCallback] No session obtained, redirecting home')
-    router.replace('/')
-
-  } catch (err: any) {
-    console.error('[AuthCallback] Unexpected error:', err)
-    error.value = err.message || 'Authentication failed'
-    setTimeout(() => router.replace('/'), 2000)
-  }
+    if (event === 'SIGNED_OUT') {
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+      error.value = 'Sign in failed. Please try again.'
+    }
+  })
 })
 </script>
