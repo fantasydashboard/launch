@@ -62,7 +62,27 @@ function rewriteUrl(input: string | URL | Request): string | Request {
  * Custom fetch that routes all Supabase requests through /api/supabase/*
  * in production to bypass Safari ITP.
  */
+// Auth endpoints must bypass the proxy — proxying them breaks session persistence
+// because cookies/localStorage tokens get set on the wrong origin
+const AUTH_PASSTHROUGH_PATHS = [
+  '/auth/v1/',
+  '/auth/token',
+  '/auth/logout',
+  '/auth/user',
+]
+
+function isAuthRequest(input: string | URL | Request): boolean {
+  const url = typeof input === 'string' ? input
+    : input instanceof URL ? input.href
+    : (input as Request).url
+  return AUTH_PASSTHROUGH_PATHS.some(path => url.includes(path))
+}
+
 const proxyFetch: typeof fetch = (input, init) => {
+  // Skip proxy for auth requests — must go direct to preserve sessions
+  if (isAuthRequest(input as string | URL | Request)) {
+    return fetch(input as Parameters<typeof fetch>[0], init)
+  }
   const rewritten = rewriteUrl(input as string | URL | Request)
   return fetch(rewritten as Parameters<typeof fetch>[0], init)
 }
