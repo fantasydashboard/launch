@@ -64,6 +64,20 @@
         </div>
       </div>
 
+      <!-- Week In Progress Banner -->
+      <div v-else-if="!isLoading && availableWeeks.length === 0"
+        class="rounded-xl p-5 flex items-start gap-4"
+        style="background:rgba(234,179,8,0.07);border:1px solid rgba(234,179,8,0.3);">
+        <div class="text-2xl flex-shrink-0">⏳</div>
+        <div>
+          <p class="font-bold text-white mb-1">Week 1 is still in progress</p>
+          <p class="text-sm" style="color:#9ca3af;">
+            Power Rankings will appear here once Week 1 is officially complete on your platform.
+            Some leagues extend short weeks — check back once your platform records the final results.
+          </p>
+        </div>
+      </div>
+
       <!-- Power Rankings Table -->
       <div class="card">
         <div class="card-header">

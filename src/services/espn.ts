@@ -1239,6 +1239,13 @@ export class EspnFantasyService {
         try {
           // Force refresh to ensure we get per-category data
           const matchups = await this.getMatchups(sport, leagueId, season, week, true)
+
+          // Skip extended weeks still in progress
+          const allUndecided = matchups.length > 0 && matchups.every(m => m.winner === 'UNDECIDED' || !m.winner)
+          if (allUndecided) {
+            console.log(`[ESPN calculateStandings] Week ${week}: all UNDECIDED — skipping extended week`)
+            continue
+          }
           
           for (const matchup of matchups) {
             if (!matchup.awayTeamId) continue // Skip bye weeks
@@ -4192,10 +4199,12 @@ export class EspnFantasyService {
       try {
         // The cache will auto-refresh if it detects stale data missing per-category results
         const weekMatchups = await this.getMatchups(sport, leagueId, season, week)
-        
-        // DEBUG: Log first matchup of first week to see full stat structure
-        if (week === 1 && weekMatchups.length > 0) {
-          console.log('[ESPN getCategoryStatsBreakdown] Week 1 first matchup full structure:', JSON.stringify(weekMatchups[0], null, 2))
+
+        // Skip weeks where all matchups are UNDECIDED — extended week still in progress
+        const allUndecided = weekMatchups.length > 0 && weekMatchups.every(m => m.winner === 'UNDECIDED' || !m.winner)
+        if (allUndecided) {
+          console.log(`[ESPN getCategoryStatsBreakdown] Week ${week}: all UNDECIDED — skipping extended week`)
+          continue
         }
         
         for (const matchup of weekMatchups) {

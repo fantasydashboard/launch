@@ -34,6 +34,20 @@
     <!-- Loading State -->
     <LoadingSpinner v-if="loading" size="lg" :message="loadingMessage" />
 
+    <!-- Week In Progress Banner -->
+    <div v-else-if="noCompletedWeeks"
+      class="rounded-xl p-5 flex items-start gap-4"
+      style="background:rgba(234,179,8,0.07);border:1px solid rgba(234,179,8,0.3);">
+      <div class="text-2xl flex-shrink-0">⏳</div>
+      <div>
+        <p class="font-bold text-white mb-1">Week 1 is still in progress</p>
+        <p class="text-sm" style="color:#9ca3af;">
+          Season stats and standings will appear here once Week 1 is officially complete on your platform.
+          Some leagues extend short weeks — check back once your platform records the final results.
+        </p>
+      </div>
+    </div>
+
     <!-- Main Content -->
     <template v-else>
       <!-- ESPN Data Access Warning -->
@@ -652,6 +666,14 @@ const statusClass = computed(() => {
   }
 })
 
+const noCompletedWeeks = computed(() => {
+  if (loading.value) return false
+  // No completed weeks if all standings have zero wins/losses/category wins
+  // and the season is currently active (not offseason)
+  const allZero = standings.value.every(s => s.wins === 0 && s.losses === 0 && (!s.categoryWins || s.categoryWins === 0))
+  return allZero && standings.value.length > 0
+})
+
 const currentWeek = computed(() => {
   return leagueStore.currentLeague?.settings?.leg || 1
 })
@@ -1120,10 +1142,30 @@ async function fetchRawData(): Promise<any> {
               
               // Get current week
               const week = currentWeek.value
-              // Include current week in calculation (it might have matchups in progress)
-              const completedWeeks = Math.max(1, week)
+              // Only count COMPLETED weeks — currentWeek is in progress
+              // Extended weeks (where platform extends a short week into the next period)
+              // will be caught by the UNDECIDED check in getCategoryStatsBreakdown
+              const completedWeeks = Math.max(0, week - 1)
               
-              console.log('[UnifiedSeasonView] Current week:', week, 'Processing weeks 1 through:', completedWeeks)
+              console.log('[UnifiedSeasonView] Current week:', week, 'Processing completed weeks 1 through:', completedWeeks)
+              
+              // No completed weeks yet — week 1 still in progress
+              if (completedWeeks === 0) {
+                console.log('[UnifiedSeasonView] No completed weeks yet, returning empty standings')
+                return {
+                  preTransformed: true,
+                  isCategoryLeague: true,
+                  teams: leagueStore.yahooTeams.map((team: any) => ({
+                    ...team,
+                    wins: 0,
+                    losses: 0,
+                    ties: 0,
+                    category_wins: 0,
+                    category_losses: 0,
+                  })),
+                  matchups: []
+                }
+              }
               
               // Track matchup wins/losses and category totals for each team
               const teamStats = new Map<string, {
