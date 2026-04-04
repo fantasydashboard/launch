@@ -42,22 +42,34 @@ onMounted(async () => {
         return
       }
 
-      // Manually sync the session into the auth store so isAuthenticated
-      // is true before we navigate — don't rely on onAuthStateChange timing
       if (data?.session) {
-        await authStore.initialize()
+        // Directly populate the auth store from the session we just got
+        // Don't call initialize() again — it will re-run getSession() through
+        // the proxy and may not find the session that was just set
+        authStore.session.value = data.session
+        authStore.user.value = data.session.user
+
+        // Fetch the profile directly using the user ID we have
+        const { data: profileData } = await supabase!
+          .from('profiles')
+          .select('*')
+          .eq('id', data.session.user.id)
+          .single()
+
+        if (profileData) {
+          authStore.profile.value = profileData
+        }
+
+        authStore.initialized.value = true
+        authStore.loading.value = false
+
+        console.log('[AuthCallback] Auth store populated, navigating home')
       }
     } else {
-      // No code — might be a hash-based session (older Supabase flow)
-      // Try getting the session directly
-      const { data } = await supabase!.auth.getSession()
-      if (data?.session) {
-        await authStore.initialize()
-      }
+      // No PKCE code — fall back to initialize
+      await authStore.initialize()
     }
 
-    // Navigate to home — auth store is now populated so landing page
-    // will correctly show the authenticated view
     router.replace('/')
   } catch (err: any) {
     console.error('[AuthCallback] Unexpected error:', err)
