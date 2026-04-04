@@ -26,35 +26,40 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 const router = useRouter()
 const error = ref<string | null>(null)
 
-onMounted(() => {
-  // Supabase automatically detects and exchanges the code when detectSessionInUrl=true.
-  // We just need to wait for onAuthStateChange to fire with SIGNED_IN,
-  // then hard-redirect so the full app reinitializes with the stored session.
+onMounted(async () => {
+  console.log('[AuthCallback] Processing auth callback...')
+  console.log('[AuthCallback] URL hash:', window.location.hash ? 'present' : 'none')
+  console.log('[AuthCallback] URL code:', new URLSearchParams(window.location.search).get('code') ? 'present' : 'none')
 
-  console.log('[AuthCallback] Waiting for Supabase to process auth callback...')
+  // With implicit flow, Supabase detects the access_token in the URL hash
+  // automatically via detectSessionInUrl. Give it a moment to process,
+  // then check if we have a session and redirect.
 
-  // Safety timeout — if nothing happens in 8 seconds, show error
-  const timeout = setTimeout(() => {
-    console.error('[AuthCallback] Timed out waiting for session')
-    error.value = 'Sign in timed out. Please try again.'
-  }, 8000)
+  // Wait for Supabase to parse the hash and store the session
+  await new Promise(resolve => setTimeout(resolve, 1000))
 
-  const { data: { subscription } } = supabase!.auth.onAuthStateChange((event, session) => {
-    console.log('[AuthCallback] Auth state changed:', event, session?.user?.email)
+  const { data: { session } } = await supabase!.auth.getSession()
+  console.log('[AuthCallback] Session after wait:', session ? session.user?.email : 'none')
 
-    if (event === 'SIGNED_IN' && session) {
-      clearTimeout(timeout)
+  if (session) {
+    console.log('[AuthCallback] Session found — hard redirecting to /')
+    window.location.href = '/'
+  } else {
+    // Listen a bit longer in case it's still processing
+    const { data: { subscription } } = supabase!.auth.onAuthStateChange((event, sess) => {
+      console.log('[AuthCallback] Auth event:', event)
+      if (event === 'SIGNED_IN' && sess) {
+        subscription.unsubscribe()
+        window.location.href = '/'
+      }
+    })
+
+    // Final timeout
+    setTimeout(() => {
       subscription.unsubscribe()
-      console.log('[AuthCallback] SIGNED_IN confirmed — hard redirecting to /')
-      // Hard redirect forces full reinit so getSession() finds the stored session
-      window.location.href = '/'
-    }
-
-    if (event === 'SIGNED_OUT') {
-      clearTimeout(timeout)
-      subscription.unsubscribe()
-      error.value = 'Sign in failed. Please try again.'
-    }
-  })
+      console.error('[AuthCallback] No session after 6s — showing error')
+      error.value = 'Sign in timed out. Please try again.'
+    }, 6000)
+  }
 })
 </script>

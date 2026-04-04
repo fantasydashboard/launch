@@ -94,6 +94,7 @@ export const supabase =
           autoRefreshToken: true,
           persistSession: true,
           detectSessionInUrl: true,
+          flowType: 'implicit',  // Tokens arrive in URL hash — no code exchange needed, proxy-safe
         },
         global: {
           fetch: proxyFetch,
