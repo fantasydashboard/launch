@@ -6965,6 +6965,15 @@ async function loadHistoricalData() {
               const weekMatchups = isCurrentSeason
                 ? await espnService.getMatchups(sport, espnLeagueId, season, week)
                 : await espnService.getHistoricalMatchups(sport, espnLeagueId, season, week)
+
+              // Skip extended weeks still in progress (all UNDECIDED)
+              if (isCurrentSeason && weekMatchups && weekMatchups.length > 0) {
+                const allUndecided = weekMatchups.every((m: any) => m.winner === 'UNDECIDED' || !m.winner)
+                if (allUndecided) {
+                  console.log(`[PointsHistory ESPN] Week ${week}: all UNDECIDED — skipping extended week`)
+                  break
+                }
+              }
               
               if (weekMatchups && weekMatchups.length > 0) {
                 consecutiveFailures = 0

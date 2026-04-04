@@ -3758,32 +3758,45 @@ export class EspnFantasyService {
   }
 
   private determineWinner(match: any): EspnMatchup['winner'] {
-    // Method 1: Check if ESPN provides a direct winner field
+    // Method 1: ESPN's direct winner field is the most reliable — always trust it first
     if (match.winner) {
       const winner = match.winner.toString().toUpperCase()
       if (winner === 'HOME') return 'HOME'
       if (winner === 'AWAY') return 'AWAY'
       if (winner === 'TIE') return 'TIE'
-      // UNDECIDED or unknown values
+      if (winner === 'UNDECIDED') return 'UNDECIDED'
     }
+
+    // Method 2: cumulativeScore — only use when matchup is definitively finished.
+    // ESPN populates cumulativeScore.wins during in-progress matchups too (e.g. extended
+    // first weeks), so we must NOT use this unless ESPN has already decided a winner.
+    // Since Method 1 already returned if a winner was decided, reaching here means
+    // ESPN says UNDECIDED or no winner field — treat as in progress.
     
-    // Method 2: Use cumulativeScore wins for category leagues
-    const homeWins = match.home?.cumulativeScore?.wins || match.home?.totalWins
-    const awayWins = match.away?.cumulativeScore?.wins || match.away?.totalWins
-    if (homeWins !== undefined && awayWins !== undefined) {
-      if (homeWins > awayWins) return 'HOME'
-      if (awayWins > homeWins) return 'AWAY'
-      if (homeWins === awayWins && homeWins > 0) return 'TIE'
-    }
-    
-    // Method 3: Use totalPoints (points leagues, or category wins stored as points)
+    // Method 3: totalPoints for points leagues — but only if both sides have scored
+    // AND the matchup looks complete (non-zero scores on both sides suggest in-progress)
+    // For category leagues, skip this to avoid false results mid-week
     const homeScore = match.home?.totalPoints || 0
     const awayScore = match.away?.totalPoints || 0
-    
+
+    // If both sides have zero, definitely undecided
     if (homeScore === 0 && awayScore === 0) return 'UNDECIDED'
-    if (homeScore > awayScore) return 'HOME'
-    if (awayScore > homeScore) return 'AWAY'
-    return 'TIE'
+
+    // Check if this looks like a points league matchup that is complete
+    // For category leagues totalPoints is often 0 so this won't fire incorrectly
+    if (homeScore > 0 || awayScore > 0) {
+      // Only use points to determine winner if ESPN hasn't given us cumulativeScore
+      // (which would indicate a category league with an in-progress matchup)
+      const hasCumulativeScore = match.home?.cumulativeScore !== undefined
+      if (!hasCumulativeScore) {
+        if (homeScore > awayScore) return 'HOME'
+        if (awayScore > homeScore) return 'AWAY'
+        return 'TIE'
+      }
+    }
+
+    // Default: undecided — ESPN hasn't settled this matchup yet
+    return 'UNDECIDED'
   }
 
   private flattenStats(stats: Record<string, number>): Record<string, number> {

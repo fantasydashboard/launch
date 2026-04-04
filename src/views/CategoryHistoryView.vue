@@ -6268,6 +6268,15 @@ async function loadEspnHistoricalData(leagueKey: string) {
             const weekMatchups = isCurrentSeason
               ? await espnService.getMatchups(espnSport, leagueId, year, week, false)
               : await espnService.getHistoricalMatchups(espnSport, leagueId, year, week)
+
+            // Skip extended weeks still in progress (all UNDECIDED)
+            if (isCurrentSeason && weekMatchups && weekMatchups.length > 0) {
+              const allUndecided = weekMatchups.every((m: any) => m.winner === 'UNDECIDED' || !m.winner)
+              if (allUndecided) {
+                console.log(`[${vf} ESPN] Week ${week}: all UNDECIDED — skipping extended week`)
+                break // Stop processing further weeks for this season
+              }
+            }
             
             if (weekMatchups && weekMatchups.length > 0) {
               // Transform ESPN matchups to match expected format

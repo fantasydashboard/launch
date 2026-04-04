@@ -2886,6 +2886,14 @@ async function calculatePowerRankingsForWeek(throughWeek: number): Promise<Power
         if (!allMatchups.value.has(w)) {
           try {
             const espnMatchups = await espnService.getMatchups(espnSport, espnLeagueId, season, w)
+
+            // Skip extended weeks that are still in progress
+            const allUndecided = espnMatchups.length > 0 && espnMatchups.every(m => m.winner === 'UNDECIDED' || !m.winner)
+            if (allUndecided) {
+              console.log(`[Points Power Rankings ESPN] Week ${w}: all UNDECIDED — skipping extended week`)
+              continue
+            }
+
             // Convert ESPN matchup format to Yahoo format
             const convertedMatchups = espnMatchups.map(m => {
               const homeTeam = teams.find(t => t.team_id === m.homeTeamId?.toString())

@@ -2367,19 +2367,19 @@ async function loadPowerRankings() {
           const matchups = await espnService.getMatchups(espnSport, espnLeagueId, espnSeason, week, true)
           
           console.log(`[Power Rankings ESPN] Week ${week}: ${matchups.length} matchups`)
-          
-          // Debug first week extensively
-          if (week === 1 && matchups.length > 0) {
-            console.log('[Power Rankings ESPN] Week 1 first matchup FULL:', matchups[0])
-            console.log('[Power Rankings ESPN] Week 1 first matchup:', {
-              homeTeamId: matchups[0].homeTeamId,
-              awayTeamId: matchups[0].awayTeamId,
-              homeKey: `espn_${matchups[0].homeTeamId}`,
-              hasHomePerCategoryResults: !!matchups[0].homePerCategoryResults,
-              homePerCategoryResultsKeys: matchups[0].homePerCategoryResults ? Object.keys(matchups[0].homePerCategoryResults) : [],
-              homePerCategoryResults: matchups[0].homePerCategoryResults
-            })
+
+          // ── Extended week guard ────────────────────────────────────────────
+          // Some leagues extend short weeks (e.g. a Thursday start extends into
+          // the following week). ESPN bumps currentMatchupPeriod before the
+          // matchup is actually settled. Skip any week where all matchups are
+          // still UNDECIDED — those aren't complete yet regardless of what
+          // the current period number says.
+          const allUndecided = matchups.length > 0 && matchups.every(m => m.winner === 'UNDECIDED' || !m.winner)
+          if (allUndecided) {
+            console.log(`[Power Rankings ESPN] Week ${week}: all matchups UNDECIDED — skipping (extended week in progress)`)
+            continue
           }
+          // ─────────────────────────────────────────────────────────────────
           
           for (const matchup of matchups) {
             if (!matchup.awayTeamId) continue // Skip bye weeks
