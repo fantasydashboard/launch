@@ -1701,13 +1701,21 @@
               :fill="i===0?'#93c5fd':'#6b7280'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.reason }}</text>
 
-            <!-- Own% right side -->
-            <text x="530" :y="100+i*109+42" text-anchor="end" font-size="11" font-weight="700"
+            <!-- Ownership — ESPN + Yahoo stacked right side -->
+            <text x="530" :y="100+i*109+26" text-anchor="end" font-size="10" font-weight="700"
               fill="#4b5563" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ESPN OWN</text>
-            <text x="530" :y="100+i*109+68" text-anchor="end"
-              :font-size="i===0?'26':'22'" font-weight="900"
+            <text x="530" :y="100+i*109+48" text-anchor="end"
+              :font-size="i===0?'22':'19'" font-weight="900"
               :fill="p.ownPct<=25?'#4ade80':p.ownPct<=40?'#facc15':'#9ca3af'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.ownPct }}%</text>
+            <text x="530" :y="100+i*109+66" text-anchor="end" font-size="10" font-weight="700"
+              fill="#4b5563" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">YAHOO OWN</text>
+            <text x="530" :y="100+i*109+88" text-anchor="end"
+              :font-size="i===0?'22':'19'" font-weight="900"
+              :fill="p.ownYahooPct<0?'#374151':p.ownYahooPct<=25?'#4ade80':p.ownYahooPct<=40?'#facc15':'#9ca3af'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
+              {{ p.ownYahooPct >= 0 ? p.ownYahooPct + '%' : '—' }}
+            </text>
           </g>
 
           <!-- Empty state -->
@@ -1791,12 +1799,20 @@
               :fill="i===0?'#c4b5fd':'#6b7280'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.reason }}</text>
 
-            <text x="530" :y="100+i*109+42" text-anchor="end" font-size="11" font-weight="700"
+            <text x="530" :y="100+i*109+26" text-anchor="end" font-size="10" font-weight="700"
               fill="#4b5563" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ESPN OWN</text>
-            <text x="530" :y="100+i*109+68" text-anchor="end"
-              :font-size="i===0?'26':'22'" font-weight="900"
+            <text x="530" :y="100+i*109+48" text-anchor="end"
+              :font-size="i===0?'22':'19'" font-weight="900"
               :fill="p.ownPct<=25?'#4ade80':p.ownPct<=40?'#facc15':'#9ca3af'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.ownPct }}%</text>
+            <text x="530" :y="100+i*109+66" text-anchor="end" font-size="10" font-weight="700"
+              fill="#4b5563" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">YAHOO OWN</text>
+            <text x="530" :y="100+i*109+88" text-anchor="end"
+              :font-size="i===0?'22':'19'" font-weight="900"
+              :fill="p.ownYahooPct<0?'#374151':p.ownYahooPct<=25?'#4ade80':p.ownYahooPct<=40?'#facc15':'#9ca3af'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
+              {{ p.ownYahooPct >= 0 ? p.ownYahooPct + '%' : '—' }}
+            </text>
           </g>
 
           <text v-if="!wwTopSP.length" x="270" y="310" text-anchor="middle"
@@ -1878,12 +1894,20 @@
               :fill="i===0?'#fdba74':'#6b7280'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.reason }}</text>
 
-            <text x="530" :y="100+i*109+42" text-anchor="end" font-size="11" font-weight="700"
+            <text x="530" :y="100+i*109+26" text-anchor="end" font-size="10" font-weight="700"
               fill="#4b5563" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ESPN OWN</text>
-            <text x="530" :y="100+i*109+68" text-anchor="end"
-              :font-size="i===0?'26':'22'" font-weight="900"
+            <text x="530" :y="100+i*109+48" text-anchor="end"
+              :font-size="i===0?'22':'19'" font-weight="900"
               :fill="p.ownPct<=25?'#4ade80':p.ownPct<=40?'#facc15':'#9ca3af'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.ownPct }}%</text>
+            <text x="530" :y="100+i*109+66" text-anchor="end" font-size="10" font-weight="700"
+              fill="#4b5563" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">YAHOO OWN</text>
+            <text x="530" :y="100+i*109+88" text-anchor="end"
+              :font-size="i===0?'22':'19'" font-weight="900"
+              :fill="p.ownYahooPct<0?'#374151':p.ownYahooPct<=25?'#4ade80':p.ownYahooPct<=40?'#facc15':'#9ca3af'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
+              {{ p.ownYahooPct >= 0 ? p.ownYahooPct + '%' : '—' }}
+            </text>
           </g>
 
           <text v-if="!wwTopRP.length" x="270" y="310" text-anchor="middle"
@@ -4803,6 +4827,7 @@ interface WwPlayer {
   position: string
   headshot: string
   ownPct: number        // ESPN ownership %
+  ownYahooPct: number   // Yahoo ownership % (-1 = unknown)
   pts7: number          // fantasy pts last 7 days
   statLine: string      // human-readable stat summary
   reason: string        // tag shown on graphic
@@ -4970,30 +4995,97 @@ async function wwFetchDayStats(dateStr: string, accMap: Map<string, any>) {
   } catch { /* skip bad dates */ }
 }
 
-// Fetch ESPN Fantasy baseball ownership data (public endpoint, no auth)
+// Fetch ESPN Fantasy baseball ownership via Vercel proxy (avoids CORS)
 async function wwFetchOwnership(): Promise<Map<string, number>> {
   const ownerMap = new Map<string, number>()
   try {
-    // ESPN Fantasy public players endpoint — returns ownership % without auth
-    const url = `https://fantasy.espn.com/apis/v3/games/flb/seasons/2026/players?view=players_wl&scoringPeriodId=1`
-    const res = await fetch(url, {
-      headers: { 'X-Fantasy-Platform': 'kona-PROD' }
-    })
-    if (!res.ok) throw new Error(`ESPN Fantasy API: ${res.status}`)
+    const season = new Date().getFullYear()
+    const res = await fetch(`/api/espn-players?season=${season}`)
+    if (!res.ok) throw new Error(`ESPN proxy ${res.status}`)
     const data = await res.json()
 
+    // Response is an array of player objects
     const players: any[] = Array.isArray(data) ? data : (data.players || [])
     for (const p of players) {
       const id = String(p.id || p.playerId || '')
-      const pct = p.ownership?.percentOwned ?? p.percentOwned ?? p.onTeamPercent ?? null
-      if (id && pct !== null) ownerMap.set(id, Math.round(pct * 10) / 10)
+      // ESPN returns percentOwned as 0-100 float or 0-1 decimal — normalize
+      let pct = p.ownership?.percentOwned ?? p.percentOwned ?? p.onTeamPercent ?? null
+      if (pct === null) continue
+      if (pct <= 1.01) pct = pct * 100  // convert 0-1 to 0-100
+      ownerMap.set(id, Math.round(pct * 10) / 10)
     }
-    wwStatus.value = `✓ Loaded ${ownerMap.size} ESPN ownership records`
+    wwStatus.value = `✓ ESPN: ${ownerMap.size} ownership records`
   } catch (e: any) {
-    // Graceful fallback: ownership will show as unknown
-    wwStatus.value = `ℹ️ ESPN ownership unavailable (CORS) — using estimated %`
+    wwStatus.value = `ℹ️ ESPN ownership proxy error: ${e.message}`
   }
   return ownerMap
+}
+
+// Fetch Yahoo Fantasy baseball ownership via existing Supabase edge function proxy
+// Uses same pattern as yahoo.ts — no extra auth setup needed if user has Yahoo connected
+async function wwFetchYahooOwnership(): Promise<Map<string, number>> {
+  const yahooMap = new Map<string, number>() // keyed by player name (lowercase)
+  try {
+    // Get Supabase access token from localStorage (same pattern as yahoo.ts)
+    const storageKey = 'sb-ergxtydfgffqgkddclvr-auth-token'
+    const stored = localStorage.getItem(storageKey)
+    if (!stored) throw new Error('No session')
+    const parsed = JSON.parse(stored)
+    const accessToken = parsed?.access_token
+    if (!accessToken) throw new Error('No access token')
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ergxtydfgffqgkddclvr.supabase.co'
+    const proxyUrl = `${supabaseUrl}/functions/v1/yahoo-api`
+
+    // Fetch top 250 most-owned MLB players with ownership data
+    // Fetches in two batches of 125 to cover full population
+    const endpoints = [
+      '/players;game_codes=mlb;sort=OR;sort_type=overall;start=0;count=125;out=ownership?format=json',
+      '/players;game_codes=mlb;sort=OR;sort_type=overall;start=125;count=125;out=ownership?format=json',
+    ]
+
+    for (const endpoint of endpoints) {
+      const res = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ endpoint }),
+      })
+      if (!res.ok) break
+      const data = await res.json()
+
+      // Parse Yahoo's deeply nested player response
+      const fc = data?.fantasy_content
+      const playersObj = fc?.players
+      if (!playersObj) continue
+
+      const count = playersObj?.count || 0
+      for (let i = 0; i < count; i++) {
+        const playerWrapper = playersObj[i]?.player
+        if (!playerWrapper) continue
+
+        // Player info is in first array element, ownership in second
+        const infoArr: any[] = playerWrapper[0] || []
+        const metaObj: any = playerWrapper[1] || {}
+
+        const nameObj = infoArr.find((x: any) => x?.name)?.name
+        const fullName = nameObj?.full?.toLowerCase() || ''
+        if (!fullName) continue
+
+        const pct = metaObj?.ownership?.ownership_percentages?.percent_owned?.value
+        if (pct !== undefined && pct !== null) {
+          yahooMap.set(fullName, Math.round(parseFloat(pct) * 10) / 10)
+        }
+      }
+    }
+    wwStatus.value += ` · Yahoo: ${yahooMap.size} records`
+  } catch (e: any) {
+    // Non-fatal — Yahoo just won't show if not connected or token expired
+    wwStatus.value += ` · Yahoo: not connected`
+  }
+  return yahooMap
 }
 
 // Fetch today's probable pitchers from MLB Stats API
@@ -5096,8 +5188,11 @@ async function loadWwData() {
 
     wwStatus.value = `Found ${accMap.size} players — fetching ownership…`
 
-    // 3. Fetch ESPN Fantasy ownership
-    const ownerMap = await wwFetchOwnership()
+    // 3. Fetch ESPN Fantasy ownership (via Vercel proxy) + Yahoo ownership in parallel
+    const [ownerMap, yahooMap] = await Promise.all([
+      wwFetchOwnership(),
+      wwFetchYahooOwnership(),
+    ])
 
     // 4. Fetch today's probable pitchers
     const probableNames = await wwFetchProbablePitchers(dateStr)
@@ -5121,6 +5216,9 @@ async function loadWwData() {
 
       if (ownPct > maxOwn) continue // skip over-owned players
 
+      // Yahoo ownership — matched by name (lowercase)
+      const ownYahooPct = yahooMap.get(p.name.toLowerCase()) ?? -1
+
       const reason = wwBuildReason(p, probableNames, wwMode.value)
       const statLine = wwBuildStatLine7(p.n, p.isPit)
 
@@ -5131,6 +5229,7 @@ async function loadWwData() {
         position: p.position,
         headshot: p.headshot,
         ownPct,
+        ownYahooPct,
         pts7: p.pts7,
         statLine,
         reason,
