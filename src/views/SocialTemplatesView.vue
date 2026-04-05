@@ -5048,22 +5048,29 @@ async function wwFetchYahooOwnership(): Promise<Map<string, number>> {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ergxtydfgffqgkddclvr.supabase.co'
     const proxyUrl = `${supabaseUrl}/functions/v1/yahoo-api`
 
-    const endpoints = [
-      '/players;game_codes=mlb;sort=OR;sort_type=overall;start=0;count=125;out=ownership?format=json',
-      '/players;game_codes=mlb;sort=OR;sort_type=overall;start=125;count=125;out=ownership?format=json',
+    // Try endpoint formats from simplest to most complex
+    // 406 means the edge function rejected the format — strip optional params first
+    const endpointAttempts = [
+      '/players;game_codes=mlb;start=0;count=125;out=ownership?format=json',
+      '/players;game_codes=mlb;count=125;out=ownership?format=json',
+      '/players;game_keys=mlb;count=125;out=ownership?format=json',
     ]
 
-    for (const endpoint of endpoints) {
+    let fetched = false
+    for (const endpoint of endpointAttempts) {
+      if (fetched) break
       const res = await fetch(proxyUrl, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ endpoint }),
       })
-      if (!res.ok) { wwStatus.value += ` · Yahoo: proxy ${res.status}`; break }
+      if (!res.ok) {
+        wwStatus.value += ` · Yahoo ${res.status}`
+        continue
+      }
       const data = await res.json()
-
       const playersObj = data?.fantasy_content?.players
-      if (!playersObj) { wwStatus.value += ` · Yahoo: unexpected response`; continue }
+      if (!playersObj) continue
 
       const count = playersObj?.count || 0
       for (let i = 0; i < count; i++) {
@@ -5071,18 +5078,17 @@ async function wwFetchYahooOwnership(): Promise<Map<string, number>> {
         if (!playerWrapper) continue
         const infoArr: any[] = Array.isArray(playerWrapper[0]) ? playerWrapper[0] : []
         const metaObj: any = playerWrapper[1] || {}
-
         const nameObj = infoArr.find((x: any) => x?.name)?.name
         const fullName = (nameObj?.full || '').toLowerCase().trim()
         if (!fullName) continue
-
         const pct = metaObj?.ownership?.ownership_percentages?.percent_owned?.value
         if (pct !== undefined && pct !== null) {
           yahooMap.set(fullName, Math.round(parseFloat(String(pct)) * 10) / 10)
         }
       }
+      if (yahooMap.size > 0) fetched = true
     }
-    wwStatus.value += ` · Yahoo: ${yahooMap.size > 0 ? yahooMap.size + ' players' : 'no data'}`
+    wwStatus.value += ` · Yahoo: ${yahooMap.size > 0 ? yahooMap.size + ' players' : 'no data (check connection)'}`
   } catch (e: any) {
     wwStatus.value += ` · Yahoo: ${e.message}`
   }
