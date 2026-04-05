@@ -1,5 +1,27 @@
-// api/espn-players.ts — Vercel serverless proxy for ESPN Fantasy baseball ownership
-// No @vercel/node dependency needed — uses plain handler signature
+// api/espn-players.ts
+// Uses Node https module instead of fetch — works in all Node.js versions on Vercel
+import https from 'https'
+
+function httpsGet(url: string, headers: Record<string, string>): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const options = new URL(url)
+    const req = https.request(
+      {
+        hostname: options.hostname,
+        path: options.pathname + options.search,
+        method: 'GET',
+        headers: { ...headers, host: options.hostname },
+      },
+      (res) => {
+        let body = ''
+        res.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        res.on('end', () => resolve(body))
+      }
+    )
+    req.on('error', reject)
+    req.end()
+  })
+}
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'GET') {
@@ -8,15 +30,6 @@ export default async function handler(req: any, res: any) {
   }
 
   const season = req.query?.season || new Date().getFullYear().toString()
-
-  // Try multiple endpoint formats — ESPN changes these occasionally
-  const attempts = [
-    `https://fantasy.espn.com/apis/v3/games/flb/seasons/${season}/players?view=players_wl`,
-    `https://fantasy.espn.com/apis/v3/games/flb/seasons/${season}/players?view=kona_player_info`,
-    // Fallback to previous season if current isn't set up yet (happens early in season)
-    `https://fantasy.espn.com/apis/v3/games/flb/seasons/${parseInt(season as string) - 1}/players?view=players_wl`,
-  ]
-
   const headers: Record<string, string> = {
     'Accept': 'application/json',
     'X-Fantasy-Platform': 'kona-PROD',
@@ -26,22 +39,19 @@ export default async function handler(req: any, res: any) {
     'Referer': 'https://fantasy.espn.com/baseball/players',
   }
 
+  const urls = [
+    `https://fantasy.espn.com/apis/v3/games/flb/seasons/${season}/players?view=players_wl`,
+    `https://fantasy.espn.com/apis/v3/games/flb/seasons/${parseInt(season) - 1}/players?view=players_wl`,
+  ]
+
   const errors: string[] = []
 
-  for (const url of attempts) {
+  for (const url of urls) {
     try {
-      const response = await fetch(url, { headers })
-      if (!response.ok) {
-        errors.push(`${url}: HTTP ${response.status}`)
-        continue
-      }
-      const data = await response.json()
-      // Validate we got actual player data
+      const body = await httpsGet(url, headers)
+      const data = JSON.parse(body)
       const players = Array.isArray(data) ? data : (data.players || [])
-      if (!players.length) {
-        errors.push(`${url}: empty players array`)
-        continue
-      }
+      if (!players.length) { errors.push(`${url}: empty`); continue }
 
       res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=7200')
       res.setHeader('Access-Control-Allow-Origin', '*')
@@ -52,10 +62,5 @@ export default async function handler(req: any, res: any) {
     }
   }
 
-  // All attempts failed
-  res.status(500).json({
-    error: 'All ESPN endpoint attempts failed',
-    attempts: errors,
-    season,
-  })
+  res.status(500).json({ error: 'ESPN fetch failed', attempts: errors })
 }

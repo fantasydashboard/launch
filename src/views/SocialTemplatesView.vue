@@ -5036,59 +5036,84 @@ async function wwFetchOwnership(): Promise<{ byId: Map<string,number>, byName: M
 // Fetch Yahoo Fantasy baseball ownership via existing Supabase edge function proxy
 // Uses same pattern as yahoo.ts — no extra auth setup needed if user has Yahoo connected
 async function wwFetchYahooOwnership(): Promise<Map<string, number>> {
-  const yahooMap = new Map<string, number>() // keyed by player name (lowercase)
+  const yahooMap = new Map<string, number>()
   try {
     const storageKey = 'sb-ergxtydfgffqgkddclvr-auth-token'
     const stored = localStorage.getItem(storageKey)
     if (!stored) throw new Error('No session')
-    const parsed = JSON.parse(stored)
-    const accessToken = parsed?.access_token
-    if (!accessToken) throw new Error('No access token')
+    const accessToken = JSON.parse(stored)?.access_token
+    if (!accessToken) throw new Error('No token')
 
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ergxtydfgffqgkddclvr.supabase.co'
     const proxyUrl = `${supabaseUrl}/functions/v1/yahoo-api`
 
-    // Try endpoint formats from simplest to most complex
-    // 406 means the edge function rejected the format — strip optional params first
-    const endpointAttempts = [
-      '/players;game_codes=mlb;start=0;count=125;out=ownership?format=json',
-      '/players;game_codes=mlb;count=125;out=ownership?format=json',
-      '/players;game_keys=mlb;count=125;out=ownership?format=json',
-    ]
-
-    let fetched = false
-    for (const endpoint of endpointAttempts) {
-      if (fetched) break
-      const res = await fetch(proxyUrl, {
+    const call = async (endpoint: string) => {
+      const r = await fetch(proxyUrl, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ endpoint }),
       })
-      if (!res.ok) {
-        wwStatus.value += ` · Yahoo ${res.status}`
-        continue
-      }
-      const data = await res.json()
-      const playersObj = data?.fantasy_content?.players
-      if (!playersObj) continue
+      if (!r.ok) throw new Error(`Yahoo edge fn ${r.status} for ${endpoint}`)
+      return r.json()
+    }
 
-      const count = playersObj?.count || 0
-      for (let i = 0; i < count; i++) {
-        const playerWrapper = playersObj[i]?.player
-        if (!playerWrapper) continue
-        const infoArr: any[] = Array.isArray(playerWrapper[0]) ? playerWrapper[0] : []
-        const metaObj: any = playerWrapper[1] || {}
-        const nameObj = infoArr.find((x: any) => x?.name)?.name
-        const fullName = (nameObj?.full || '').toLowerCase().trim()
-        if (!fullName) continue
-        const pct = metaObj?.ownership?.ownership_percentages?.percent_owned?.value
-        if (pct !== undefined && pct !== null) {
-          yahooMap.set(fullName, Math.round(parseFloat(String(pct)) * 10) / 10)
+    // Step 1: get user's Yahoo MLB leagues to obtain a league key
+    // This endpoint pattern is known to work with the edge function
+    const leaguesData = await call('/users;use_login=1/games;game_codes=mlb/leagues?format=json')
+    const games = leaguesData?.fantasy_content?.users?.[0]?.user?.[1]?.games
+    let leagueKey = ''
+
+    if (games) {
+      const gameCount = games.count || 0
+      outer: for (let g = 0; g < gameCount; g++) {
+        const game = games[g]?.game
+        if (!game) continue
+        const leagues = game[1]?.leagues
+        if (!leagues) continue
+        for (let l = 0; l < (leagues.count || 0); l++) {
+          const lk = leagues[l]?.league?.[0]?.league_key
+          if (lk) { leagueKey = lk; break outer }
         }
       }
-      if (yahooMap.size > 0) fetched = true
     }
-    wwStatus.value += ` · Yahoo: ${yahooMap.size > 0 ? yahooMap.size + ' players' : 'no data (check connection)'}`
+
+    if (!leagueKey) throw new Error('No Yahoo MLB league found — connect a Yahoo baseball league first')
+
+    // Step 2: fetch available players sorted by ownership % within the league
+    // status=A = all available (free agents + waivers), sort=OR = ownership rank
+    // The edge function supports league-scoped player endpoints
+    const batches = [
+      `/league/${leagueKey}/players;status=A;sort=OR;count=150;start=0;out=ownership?format=json`,
+      `/league/${leagueKey}/players;status=A;sort=OR;count=150;start=150;out=ownership?format=json`,
+    ]
+
+    for (const endpoint of batches) {
+      try {
+        const data = await call(endpoint)
+        // League player list lives at fantasy_content.league[1].players
+        const leagueArr = data?.fantasy_content?.league
+        const playersObj = Array.isArray(leagueArr)
+          ? leagueArr.find((x: any) => x?.players)?.players
+          : leagueArr?.[1]?.players
+
+        if (!playersObj) continue
+        const count = playersObj?.count || 0
+        for (let i = 0; i < count; i++) {
+          const pw = playersObj[i]?.player
+          if (!pw) continue
+          const infoArr: any[] = Array.isArray(pw[0]) ? pw[0] : []
+          const metaObj: any = pw[1] || {}
+          const fullName = (infoArr.find((x: any) => x?.name)?.name?.full || '').toLowerCase().trim()
+          if (!fullName) continue
+          const pct = metaObj?.ownership?.ownership_percentages?.percent_owned?.value
+          if (pct !== undefined && pct !== null) {
+            yahooMap.set(fullName, Math.round(parseFloat(String(pct)) * 10) / 10)
+          }
+        }
+      } catch { break }
+    }
+
+    wwStatus.value += ` · Yahoo: ${yahooMap.size > 0 ? yahooMap.size + ' players' : 'no ownership data returned'}`
   } catch (e: any) {
     wwStatus.value += ` · Yahoo: ${e.message}`
   }
@@ -5207,7 +5232,7 @@ async function loadWwData() {
     const hasYahooData = yahooMap.size > 0
 
     if (!hasEspnData && !hasYahooData) {
-      wwError.value = 'No ownership data available. ESPN proxy may not be deployed yet, and Yahoo may not be connected. Deploy api/espn-players.ts first.'
+      wwError.value = 'No ownership data available. Make sure you have a Yahoo baseball league connected in the app — the tool uses your Yahoo league to pull ownership %.'
       return
     }
 
