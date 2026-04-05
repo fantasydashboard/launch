@@ -846,21 +846,99 @@ const winProbability = computed(() => {
     return { team1: 50, team2: 50 }
   }
   
-  // For all platforms (ESPN, Yahoo, Sleeper), use Monte Carlo simulation
   const jsDay = new Date().getDay()
   const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1
-  
-  // For extended matchups, calculate actual days remaining to matchup end
   const weekNum = parseInt(selectedWeek.value)
   const matchupDates = getMatchupDates(weekNum)
-  const actualDaysRemaining = matchupDates 
-    ? getMatchupDaysRemaining(weekNum)
-    : Math.max(0, 6 - currentDayIndex)
-  
-  const mcResult = getMonteCarloWinProbability(selectedMatchup.value, currentDayIndex, false, actualDaysRemaining)
+
+  // Days remaining AFTER today (full future days, not counting today)
+  const fullDaysRemaining = matchupDates
+    ? Math.max(0, getMatchupDaysRemaining(weekNum) - 1)
+    : Math.max(0, 5 - currentDayIndex)
+
+  const team1Current = team1.points || 0
+  const team2Current = team2.points || 0
+
+  // Today's remaining points: projected - current, floored at 0
+  // projected_points is the platform's own projection for the full week
+  const team1Projected = team1.projected_points || 0
+  const team2Projected = team2.projected_points || 0
+  const team1TodayRemaining = Math.max(0, team1Projected - team1Current)
+  const team2TodayRemaining = Math.max(0, team2Projected - team2Current)
+
+  // Get historical daily averages for full future days
+  const team1Stats = calculateTeamDailyStats(team1.team_key || '')
+  const team2Stats = calculateTeamDailyStats(team2.team_key || '')
+  const team1AvgDaily = team1Stats.avgDaily > 0 ? team1Stats.avgDaily : 15
+  const team2AvgDaily = team2Stats.avgDaily > 0 ? team2Stats.avgDaily : 15
+  const team1StdDev = team1Stats.stdDev > 0 ? team1Stats.stdDev : team1AvgDaily * 0.2
+  const team2StdDev = team2Stats.stdDev > 0 ? team2Stats.stdDev : team2AvgDaily * 0.2
+
+  // If there's meaningful remaining action today (projection indicates points still to score)
+  // treat it as a partial day by adding today's expected remaining to current score
+  // and running Monte Carlo for full future days only
+  const hasTodayRemaining = (team1TodayRemaining + team2TodayRemaining) > 2
+
+  let effectiveTeam1 = team1Current
+  let effectiveTeam2 = team2Current
+  let effectiveDaysRemaining = fullDaysRemaining
+
+  if (hasTodayRemaining) {
+    // Absorb today's remaining into the simulation as a half-step:
+    // Add projected remaining to current, use stdDev scaled to ~40% of a full day
+    const team1TodayStd = team1StdDev * 0.4
+    const team2TodayStd = team2StdDev * 0.4
+    // We do one mini-sim for today's remaining, then hand off to full-day sim
+    const todaySim = runMonteCarloSimulation(
+      team1Current, team2Current,
+      team1TodayRemaining, team1TodayStd,
+      team2TodayRemaining, team2TodayStd,
+      1, // one remaining "day" = today's remaining games
+      10000
+    )
+    // If there are also future full days, blend; otherwise just return today sim
+    if (fullDaysRemaining === 0) {
+      return {
+        team1: clampWinProb(todaySim.team1WinPct, false),
+        team2: clampWinProb(todaySim.team2WinPct, false),
+      }
+    }
+    effectiveTeam1 = team1Current + team1TodayRemaining
+    effectiveTeam2 = team2Current + team2TodayRemaining
+    effectiveDaysRemaining = fullDaysRemaining
+  } else if (fullDaysRemaining === 0) {
+    // Last day, no projected remaining — matchup is essentially decided
+    // But still use a small variance to avoid locking to 99.9/0.1 mid-day
+    const currentHour = new Date().getHours()
+    if (currentHour < 20) {
+      // Before 8pm: still some games likely; add a small variance buffer
+      const smallSim = runMonteCarloSimulation(
+        team1Current, team2Current,
+        team1AvgDaily * 0.15, team1StdDev * 0.5,
+        team2AvgDaily * 0.15, team2StdDev * 0.5,
+        1, 10000
+      )
+      return {
+        team1: clampWinProb(smallSim.team1WinPct, false),
+        team2: clampWinProb(smallSim.team2WinPct, false),
+      }
+    }
+    // After 8pm Sunday: trust the score
+    if (team1Current > team2Current) return { team1: 99.9, team2: 0.1 }
+    if (team2Current > team1Current) return { team1: 0.1, team2: 99.9 }
+    return { team1: 50, team2: 50 }
+  }
+
+  const mcResult = runMonteCarloSimulation(
+    effectiveTeam1, effectiveTeam2,
+    team1AvgDaily, team1StdDev,
+    team2AvgDaily, team2StdDev,
+    effectiveDaysRemaining,
+    10000
+  )
   return {
-    team1: clampWinProb(mcResult.team1, false),
-    team2: clampWinProb(mcResult.team2, false)
+    team1: clampWinProb(mcResult.team1WinPct, false),
+    team2: clampWinProb(mcResult.team2WinPct, false),
   }
 })
 
