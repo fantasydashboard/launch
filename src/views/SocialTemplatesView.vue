@@ -4999,37 +4999,57 @@ async function wwFetchDayStats(dateStr: string, accMap: Map<string, any>) {
 async function wwFetchOwnership(): Promise<{ byId: Map<string,number>, byName: Map<string,number> }> {
   const byId   = new Map<string, number>()
   const byName = new Map<string, number>()
-  try {
-    const season = new Date().getFullYear()
-    const res = await fetch(`/api/espn-players?season=${season}`)
-    if (!res.ok) throw new Error(`ESPN proxy ${res.status}`)
-    const data = await res.json()
 
-    const players: any[] = Array.isArray(data) ? data : (data.players || [])
-    if (!players.length) throw new Error('Empty ESPN response')
-
+  // Helper: parse ESPN player array into our maps
+  function ingestEspnPlayers(players: any[]) {
     for (const p of players) {
       const id = String(p.id || p.playerId || '')
       let pct = p.ownership?.percentOwned ?? p.percentOwned ?? p.onTeamPercent ?? null
       if (pct === null) continue
-      if (pct <= 1.01) pct = pct * 100  // normalize 0-1 → 0-100
+      if (pct <= 1.01) pct = pct * 100
       pct = Math.round(pct * 10) / 10
-
       if (id) byId.set(id, pct)
-
-      // Build name map — ESPN stores fullName in several possible locations
-      const fullName = (
-        p.fullName ||
-        p.playerPoolEntry?.player?.fullName ||
-        p.player?.fullName ||
-        ''
-      ).toLowerCase().trim()
-      if (fullName) byName.set(fullName, pct)
+      const name = (p.fullName || p.playerPoolEntry?.player?.fullName || p.player?.fullName || '').toLowerCase().trim()
+      if (name) byName.set(name, pct)
     }
-    wwStatus.value = `✓ ESPN: ${byId.size} by ID, ${byName.size} by name`
-  } catch (e: any) {
-    wwStatus.value = `⚠️ ESPN: ${e.message}`
   }
+
+  // Attempt 1: ESPN Fantasy API direct from browser (no proxy, same CORS domain as scoreboard)
+  // site.api.espn.com works in browser — try the fantasy sub-path first
+  const directUrls = [
+    `https://site.api.espn.com/apis/fantasy/v2/games/flb/seasons/${new Date().getFullYear()}/players?scoringPeriodId=1&limit=1500`,
+    `https://site.api.espn.com/apis/fantasy/v2/games/flb/players?scoringPeriodId=1&limit=1500`,
+  ]
+  for (const url of directUrls) {
+    try {
+      const res = await fetch(url)
+      if (!res.ok) continue
+      const data = await res.json()
+      const players: any[] = Array.isArray(data) ? data : (data.players || data.athletes || [])
+      if (players.length) {
+        ingestEspnPlayers(players)
+        wwStatus.value = `✓ ESPN: ${byId.size} players (direct)`
+        return { byId, byName }
+      }
+    } catch { /* try next */ }
+  }
+
+  // Attempt 2: Vercel proxy (may be blocked by ESPN, but try anyway)
+  try {
+    const season = new Date().getFullYear()
+    const res = await fetch(`/api/espn-players?season=${season}`)
+    if (res.ok) {
+      const data = await res.json()
+      const players: any[] = Array.isArray(data) ? data : (data.players || [])
+      if (players.length) {
+        ingestEspnPlayers(players)
+        wwStatus.value = `✓ ESPN: ${byId.size} players (proxy)`
+        return { byId, byName }
+      }
+    }
+  } catch { /* fall through */ }
+
+  wwStatus.value = `⚠️ ESPN: unavailable — Yahoo only`
   return { byId, byName }
 }
 
@@ -5079,25 +5099,54 @@ async function wwFetchYahooOwnership(): Promise<Map<string, number>> {
 
     if (!leagueKey) throw new Error('No Yahoo MLB league found — connect a Yahoo baseball league first')
 
-    // Step 2: fetch available players sorted by ownership % within the league
-    // status=A = all available (free agents + waivers), sort=OR = ownership rank
-    // The edge function supports league-scoped player endpoints
-    const batches = [
-      `/league/${leagueKey}/players;status=A;sort=OR;count=150;start=0;out=ownership?format=json`,
-      `/league/${leagueKey}/players;status=A;sort=OR;count=150;start=150;out=ownership?format=json`,
+    // Helper: extract players object from any Yahoo league response shape
+    function extractPlayersObj(data: any): any {
+      const fc = data?.fantasy_content
+      const league = fc?.league
+      if (!league) return null
+      // Shape A: league is array [info, {players:{...}}]
+      if (Array.isArray(league)) {
+        for (const item of league) {
+          if (item?.players) return item.players
+        }
+      }
+      // Shape B: league is object with players key
+      if (league?.players) return league.players
+      // Shape C: direct players at fantasy_content level
+      if (fc?.players) return fc.players
+      return null
+    }
+
+    // Helper: extract ownership % from player meta object — try every known Yahoo path
+    function extractPct(metaObj: any): number | null {
+      const v =
+        metaObj?.ownership?.ownership_percentages?.percent_owned?.value ??
+        metaObj?.ownership?.percent_owned?.value ??
+        metaObj?.percent_owned?.value ??
+        metaObj?.ownership?.percentage_owned ??
+        null
+      if (v === null || v === undefined) return null
+      return Math.round(parseFloat(String(v)) * 10) / 10
+    }
+
+    // Step 2: fetch available players sorted by ownership within the league
+    // Try multiple status codes — Yahoo accepts FA (free agents), W (waivers), A (available)
+    const endpointAttempts = [
+      `/league/${leagueKey}/players;status=A;sort=OR;count=200;start=0;out=ownership?format=json`,
+      `/league/${leagueKey}/players;status=FA;sort=OR;count=200;start=0;out=ownership?format=json`,
+      `/league/${leagueKey}/players;sort=OR;count=200;start=0;out=ownership?format=json`,
+      `/league/${leagueKey}/players;status=A;count=200;out=ownership?format=json`,
     ]
 
-    for (const endpoint of batches) {
+    for (const endpoint of endpointAttempts) {
+      if (yahooMap.size > 0) break
       try {
         const data = await call(endpoint)
-        // League player list lives at fantasy_content.league[1].players
-        const leagueArr = data?.fantasy_content?.league
-        const playersObj = Array.isArray(leagueArr)
-          ? leagueArr.find((x: any) => x?.players)?.players
-          : leagueArr?.[1]?.players
+        const playersObj = extractPlayersObj(data)
+        if (!playersObj) { wwStatus.value += ` [no players at ${endpoint.slice(0,40)}]`; continue }
 
-        if (!playersObj) continue
         const count = playersObj?.count || 0
+        let parsed = 0
         for (let i = 0; i < count; i++) {
           const pw = playersObj[i]?.player
           if (!pw) continue
@@ -5105,15 +5154,14 @@ async function wwFetchYahooOwnership(): Promise<Map<string, number>> {
           const metaObj: any = pw[1] || {}
           const fullName = (infoArr.find((x: any) => x?.name)?.name?.full || '').toLowerCase().trim()
           if (!fullName) continue
-          const pct = metaObj?.ownership?.ownership_percentages?.percent_owned?.value
-          if (pct !== undefined && pct !== null) {
-            yahooMap.set(fullName, Math.round(parseFloat(String(pct)) * 10) / 10)
-          }
+          const pct = extractPct(metaObj)
+          if (pct !== null) { yahooMap.set(fullName, pct); parsed++ }
         }
-      } catch { break }
+        if (parsed === 0) wwStatus.value += ` [0 pct in ${endpoint.slice(0,40)}]`
+      } catch (e: any) { wwStatus.value += ` [err: ${e.message}]` }
     }
 
-    wwStatus.value += ` · Yahoo: ${yahooMap.size > 0 ? yahooMap.size + ' players' : 'no ownership data returned'}`
+    wwStatus.value += ` · Yahoo: ${yahooMap.size > 0 ? yahooMap.size + ' players' : 'no ownership % in response'}`
   } catch (e: any) {
     wwStatus.value += ` · Yahoo: ${e.message}`
   }
