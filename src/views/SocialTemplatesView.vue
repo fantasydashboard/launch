@@ -4996,29 +4996,41 @@ async function wwFetchDayStats(dateStr: string, accMap: Map<string, any>) {
 }
 
 // Fetch ESPN Fantasy baseball ownership via Vercel proxy (avoids CORS)
-async function wwFetchOwnership(): Promise<Map<string, number>> {
-  const ownerMap = new Map<string, number>()
+async function wwFetchOwnership(): Promise<{ byId: Map<string,number>, byName: Map<string,number> }> {
+  const byId   = new Map<string, number>()
+  const byName = new Map<string, number>()
   try {
     const season = new Date().getFullYear()
     const res = await fetch(`/api/espn-players?season=${season}`)
     if (!res.ok) throw new Error(`ESPN proxy ${res.status}`)
     const data = await res.json()
 
-    // Response is an array of player objects
     const players: any[] = Array.isArray(data) ? data : (data.players || [])
+    if (!players.length) throw new Error('Empty ESPN response')
+
     for (const p of players) {
       const id = String(p.id || p.playerId || '')
-      // ESPN returns percentOwned as 0-100 float or 0-1 decimal — normalize
       let pct = p.ownership?.percentOwned ?? p.percentOwned ?? p.onTeamPercent ?? null
       if (pct === null) continue
-      if (pct <= 1.01) pct = pct * 100  // convert 0-1 to 0-100
-      ownerMap.set(id, Math.round(pct * 10) / 10)
+      if (pct <= 1.01) pct = pct * 100  // normalize 0-1 → 0-100
+      pct = Math.round(pct * 10) / 10
+
+      if (id) byId.set(id, pct)
+
+      // Build name map — ESPN stores fullName in several possible locations
+      const fullName = (
+        p.fullName ||
+        p.playerPoolEntry?.player?.fullName ||
+        p.player?.fullName ||
+        ''
+      ).toLowerCase().trim()
+      if (fullName) byName.set(fullName, pct)
     }
-    wwStatus.value = `✓ ESPN: ${ownerMap.size} ownership records`
+    wwStatus.value = `✓ ESPN: ${byId.size} by ID, ${byName.size} by name`
   } catch (e: any) {
-    wwStatus.value = `ℹ️ ESPN ownership proxy error: ${e.message}`
+    wwStatus.value = `⚠️ ESPN: ${e.message}`
   }
-  return ownerMap
+  return { byId, byName }
 }
 
 // Fetch Yahoo Fantasy baseball ownership via existing Supabase edge function proxy
@@ -5026,7 +5038,6 @@ async function wwFetchOwnership(): Promise<Map<string, number>> {
 async function wwFetchYahooOwnership(): Promise<Map<string, number>> {
   const yahooMap = new Map<string, number>() // keyed by player name (lowercase)
   try {
-    // Get Supabase access token from localStorage (same pattern as yahoo.ts)
     const storageKey = 'sb-ergxtydfgffqgkddclvr-auth-token'
     const stored = localStorage.getItem(storageKey)
     if (!stored) throw new Error('No session')
@@ -5037,8 +5048,6 @@ async function wwFetchYahooOwnership(): Promise<Map<string, number>> {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ergxtydfgffqgkddclvr.supabase.co'
     const proxyUrl = `${supabaseUrl}/functions/v1/yahoo-api`
 
-    // Fetch top 250 most-owned MLB players with ownership data
-    // Fetches in two batches of 125 to cover full population
     const endpoints = [
       '/players;game_codes=mlb;sort=OR;sort_type=overall;start=0;count=125;out=ownership?format=json',
       '/players;game_codes=mlb;sort=OR;sort_type=overall;start=125;count=125;out=ownership?format=json',
@@ -5047,43 +5056,35 @@ async function wwFetchYahooOwnership(): Promise<Map<string, number>> {
     for (const endpoint of endpoints) {
       const res = await fetch(proxyUrl, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ endpoint }),
       })
-      if (!res.ok) break
+      if (!res.ok) { wwStatus.value += ` · Yahoo: proxy ${res.status}`; break }
       const data = await res.json()
 
-      // Parse Yahoo's deeply nested player response
-      const fc = data?.fantasy_content
-      const playersObj = fc?.players
-      if (!playersObj) continue
+      const playersObj = data?.fantasy_content?.players
+      if (!playersObj) { wwStatus.value += ` · Yahoo: unexpected response`; continue }
 
       const count = playersObj?.count || 0
       for (let i = 0; i < count; i++) {
         const playerWrapper = playersObj[i]?.player
         if (!playerWrapper) continue
-
-        // Player info is in first array element, ownership in second
-        const infoArr: any[] = playerWrapper[0] || []
+        const infoArr: any[] = Array.isArray(playerWrapper[0]) ? playerWrapper[0] : []
         const metaObj: any = playerWrapper[1] || {}
 
         const nameObj = infoArr.find((x: any) => x?.name)?.name
-        const fullName = nameObj?.full?.toLowerCase() || ''
+        const fullName = (nameObj?.full || '').toLowerCase().trim()
         if (!fullName) continue
 
         const pct = metaObj?.ownership?.ownership_percentages?.percent_owned?.value
         if (pct !== undefined && pct !== null) {
-          yahooMap.set(fullName, Math.round(parseFloat(pct) * 10) / 10)
+          yahooMap.set(fullName, Math.round(parseFloat(String(pct)) * 10) / 10)
         }
       }
     }
-    wwStatus.value += ` · Yahoo: ${yahooMap.size} records`
+    wwStatus.value += ` · Yahoo: ${yahooMap.size > 0 ? yahooMap.size + ' players' : 'no data'}`
   } catch (e: any) {
-    // Non-fatal — Yahoo just won't show if not connected or token expired
-    wwStatus.value += ` · Yahoo: not connected`
+    wwStatus.value += ` · Yahoo: ${e.message}`
   }
   return yahooMap
 }
@@ -5188,11 +5189,21 @@ async function loadWwData() {
 
     wwStatus.value = `Found ${accMap.size} players — fetching ownership…`
 
-    // 3. Fetch ESPN Fantasy ownership (via Vercel proxy) + Yahoo ownership in parallel
-    const [ownerMap, yahooMap] = await Promise.all([
+    // 3. Fetch ESPN + Yahoo ownership in parallel
+    const [espnOwn, yahooMap] = await Promise.all([
       wwFetchOwnership(),
       wwFetchYahooOwnership(),
     ])
+
+    const espnById   = espnOwn.byId
+    const espnByName = espnOwn.byName
+    const hasEspnData = espnById.size > 0 || espnByName.size > 0
+    const hasYahooData = yahooMap.size > 0
+
+    if (!hasEspnData && !hasYahooData) {
+      wwError.value = 'No ownership data available. ESPN proxy may not be deployed yet, and Yahoo may not be connected. Deploy api/espn-players.ts first.'
+      return
+    }
 
     // 4. Fetch today's probable pitchers
     const probableNames = await wwFetchProbablePitchers(dateStr)
@@ -5201,23 +5212,23 @@ async function loadWwData() {
     // 5. Merge ownership into player map
     const players: WwPlayer[] = []
     for (const [pid, p] of accMap) {
-      // Try to find ESPN ownership by pid (same ESPN ID)
-      let ownPct = ownerMap.get(pid) ?? null
+      const nameLower = p.name.toLowerCase().trim()
 
-      // If we didn't get ownership from API, estimate based on stats as fallback
-      if (ownPct === null) {
-        // Default: use a rough estimate — highly productive players tend to be more owned
-        // SPs are generally higher owned; set a plausible default
-        if (p.isPit && p.position === 'SP') ownPct = Math.min(95, 30 + p.pts7 * 2)
-        else if (p.isPit) ownPct = Math.min(80, 15 + p.pts7 * 1.5)
-        else ownPct = Math.min(90, 20 + p.pts7 * 1.5)
-        ownPct = Math.round(ownPct)
+      // Try ESPN: ID first, then name
+      let ownPct: number | null = espnById.get(pid) ?? espnByName.get(nameLower) ?? null
+
+      // Try Yahoo if ESPN missed
+      const ownYahooPct = yahooMap.get(nameLower) ?? -1
+
+      // If ESPN missed but Yahoo has it, use Yahoo as ESPN fallback
+      if (ownPct === null && ownYahooPct >= 0) {
+        ownPct = ownYahooPct
       }
 
-      if (ownPct > maxOwn) continue // skip over-owned players
-
-      // Yahoo ownership — matched by name (lowercase)
-      const ownYahooPct = yahooMap.get(p.name.toLowerCase()) ?? -1
+      // NO fallback estimates — skip any player we can't verify
+      // This prevents 99%-owned stars from slipping through with fake low %
+      if (ownPct === null) continue
+      if (ownPct >= maxOwn) continue // strict < maxOwn filter
 
       const reason = wwBuildReason(p, probableNames, wwMode.value)
       const statLine = wwBuildStatLine7(p.n, p.isPit)
@@ -5273,7 +5284,9 @@ async function loadWwData() {
     wwStatus.value = `✓ ${total} picks — ${batters.length} Batters · ${spList.length} SP · ${rpList.length} RP (ESPN own < ${maxOwn}%)`
 
     if (total === 0) {
-      wwError.value = `No low-owned players found. Try increasing max own% or loading a date with more MLB games.`
+      wwError.value = hasEspnData
+        ? `No players found under ${maxOwn}% ownership. Try raising max own% or check that the date has MLB games.`
+        : `Ownership data loaded from Yahoo only. Try raising max own% if results are empty.`
     }
 
   } catch (e: any) {
