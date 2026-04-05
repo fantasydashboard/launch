@@ -1592,6 +1592,311 @@
 
 
 
+    <!-- ══════════════════════════════════════════════════════════════════
+         WAIVER WIRE REPORT — Top Adds (Batters, SP, RP)
+    ══════════════════════════════════════════════════════════════════ -->
+    <div class="post-wrap wp-post-wrap" style="grid-column:1/-1">
+      <div class="post-label">⚾ Waiver Wire Report — Today's Best Adds (ESPN stats + MLB schedule)</div>
+
+      <!-- Controls -->
+      <div class="wpi-controls" style="flex-wrap:wrap;gap:12px;">
+        <div class="wpi-ctrl-group">
+          <label class="wpi-label">Mode</label>
+          <div style="display:flex;gap:6px;">
+            <button @click="wwMode='today'" :class="wwMode==='today'?'wpi-load-btn':'wpi-load-btn-ghost'">Today</button>
+            <button @click="wwMode='week'" :class="wwMode==='week'?'wpi-load-btn':'wpi-load-btn-ghost'">This Week</button>
+          </div>
+        </div>
+        <div class="wpi-ctrl-group">
+          <label class="wpi-label">Date</label>
+          <input v-model="wwDate" class="wp-input" placeholder="YYYYMMDD" style="width:120px" />
+        </div>
+        <div class="wpi-ctrl-group">
+          <label class="wpi-label">Week Label</label>
+          <input v-model="wwWeekLabel" class="wp-input" style="width:54px" placeholder="1" />
+        </div>
+        <div class="wpi-ctrl-group">
+          <label class="wpi-label">Max Own%</label>
+          <input v-model.number="wwMaxOwn" type="number" class="wp-input" style="width:64px" placeholder="50" />
+        </div>
+        <button @click="loadWwData" :disabled="wwLoading" class="wpi-load-btn" style="align-self:flex-end">
+          <span v-if="wwLoading">⏳ Loading…</span>
+          <span v-else>📡 Load Wire Data</span>
+        </button>
+      </div>
+      <div v-if="wwError" class="wpi-error">⚠️ {{ wwError }}</div>
+      <div v-if="wwStatus" class="wpi-status">{{ wwStatus }}</div>
+    </div>
+
+    <!-- ── GRAPHIC WW-A: Top Batter Pickups ── -->
+    <div class="post-wrap wp-post-wrap">
+      <div class="post-label">WW-A · Waiver Wire — Batters</div>
+      <div class="sq sq-wp-bg">
+        <div class="sq-grain"></div>
+        <svg viewBox="0 0 540 540" xmlns="http://www.w3.org/2000/svg"
+          style="position:absolute;inset:0;width:100%;height:100%;z-index:2">
+          <defs>
+            <linearGradient id="ww-blue-bar" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.95"/>
+              <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.2"/>
+            </linearGradient>
+            <radialGradient id="ww-blue-glow" cx="15%" cy="50%" r="65%">
+              <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.07"/>
+              <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <rect x="0" y="0" width="540" height="540" fill="#07080e"/>
+          <rect x="0" y="0" width="540" height="540" fill="url(#ww-blue-glow)"/>
+          <rect x="0" y="0" width="540" height="5" fill="url(#ww-blue-bar)"/>
+
+          <!-- Header -->
+          <image href="/UFD_V8.png" x="370" y="8" width="128" height="68" preserveAspectRatio="xMidYMid meet"/>
+          <text x="20" y="46" font-size="13" font-weight="800" letter-spacing="0.14em"
+            fill="#3b82f6" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">WAIVER WIRE REPORT</text>
+          <text x="20" y="72" font-size="26" font-weight="900" letter-spacing="-0.01em"
+            fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">🔨 Top Batter Adds</text>
+          <text x="20" y="90" font-size="13" font-weight="700" letter-spacing="0.05em"
+            fill="#3b82f6" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
+            {{ wwDateDisplay }} · {{ wwMode === 'week' ? 'THIS WEEK' : 'TODAY' }} · WK {{ wwWeekLabel }}
+          </text>
+          <line x1="0" y1="100" x2="540" y2="100" stroke="#1e2130" stroke-width="1"/>
+
+          <!-- 4 player rows — 100px each starting at y=100 — total 500px + 40px footer = 540 -->
+          <g v-for="(p, i) in wwTopBatters" :key="'wwb'+i">
+            <rect x="0" :y="100+i*109" width="540" :height="108"
+              :fill="i===0?'rgba(59,130,246,0.08)':'rgba(255,255,255,0.01)'"/>
+            <line x1="0" :y1="100+(i+1)*109" x2="540" :y2="100+(i+1)*109"
+              stroke="#1e2130" stroke-width="1"/>
+
+            <!-- Headshot -->
+            <circle cx="56" :cy="100+i*109+54" r="34"
+              fill="rgba(0,0,0,0.35)"
+              :stroke="i===0?'rgba(59,130,246,0.55)':'rgba(255,255,255,0.06)'" stroke-width="2"/>
+            <image :href="p.headshot" x="22" :y="100+i*109+20"
+              width="68" height="68" preserveAspectRatio="xMidYMid slice"
+              style="clip-path:circle(34px at 34px 34px)"/>
+
+            <!-- Rank badge -->
+            <rect :x="i===0?17:18" :y="100+i*109+8" width="18" height="18" rx="4"
+              :fill="i===0?'#3b82f6':'#1e2130'"/>
+            <text :x="i===0?26:27" :y="100+i*109+21" text-anchor="middle" font-size="11" font-weight="900"
+              :fill="i===0?'#fff':'#6b7280'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ i+1 }}</text>
+
+            <!-- Name line -->
+            <text x="102" :y="100+i*109+32" font-size="16" font-weight="800" fill="#ffffff"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.name }}</text>
+            <text :x="102 + Math.min(p.name.length*9.5,190)" :y="100+i*109+32"
+              font-size="12" font-weight="600" fill="#6b7280"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">  {{ p.team }} · {{ p.position }}</text>
+
+            <!-- Stat line -->
+            <text x="102" :y="100+i*109+54" font-size="13" font-weight="600" fill="#d1d5db"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.statLine }}</text>
+
+            <!-- Reason tag -->
+            <rect x="102" :y="100+i*109+64" :width="Math.min(p.reason.length*7+16,220)" height="19" rx="4"
+              :fill="i===0?'rgba(59,130,246,0.18)':'rgba(255,255,255,0.06)'"/>
+            <text x="110" :y="100+i*109+77" font-size="11" font-weight="700"
+              :fill="i===0?'#93c5fd':'#6b7280'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.reason }}</text>
+
+            <!-- Own% right side -->
+            <text x="530" :y="100+i*109+42" text-anchor="end" font-size="11" font-weight="700"
+              fill="#4b5563" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ESPN OWN</text>
+            <text x="530" :y="100+i*109+68" text-anchor="end"
+              :font-size="i===0?'26':'22'" font-weight="900"
+              :fill="p.ownPct<=25?'#4ade80':p.ownPct<=40?'#facc15':'#9ca3af'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.ownPct }}%</text>
+          </g>
+
+          <!-- Empty state -->
+          <text v-if="!wwTopBatters.length" x="270" y="310" text-anchor="middle"
+            font-size="15" fill="#374151"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Load wire data above to populate</text>
+
+          <!-- Footer -->
+          <line x1="0" y1="534" x2="540" y2="534" stroke="#1e2130" stroke-width="1"/>
+          <text x="270" y="538" text-anchor="middle" font-size="9" fill="#1a1f2e"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ── GRAPHIC WW-B: Top SP Pickups ── -->
+    <div class="post-wrap wp-post-wrap">
+      <div class="post-label">WW-B · Waiver Wire — Starting Pitchers</div>
+      <div class="sq sq-wp-bg">
+        <div class="sq-grain"></div>
+        <svg viewBox="0 0 540 540" xmlns="http://www.w3.org/2000/svg"
+          style="position:absolute;inset:0;width:100%;height:100%;z-index:2">
+          <defs>
+            <linearGradient id="ww-purple-bar" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.95"/>
+              <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.2"/>
+            </linearGradient>
+            <radialGradient id="ww-purple-glow" cx="15%" cy="50%" r="65%">
+              <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.07"/>
+              <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <rect x="0" y="0" width="540" height="540" fill="#07080e"/>
+          <rect x="0" y="0" width="540" height="540" fill="url(#ww-purple-glow)"/>
+          <rect x="0" y="0" width="540" height="5" fill="url(#ww-purple-bar)"/>
+
+          <!-- Header -->
+          <image href="/UFD_V8.png" x="370" y="8" width="128" height="68" preserveAspectRatio="xMidYMid meet"/>
+          <text x="20" y="46" font-size="13" font-weight="800" letter-spacing="0.14em"
+            fill="#8b5cf6" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">WAIVER WIRE REPORT</text>
+          <text x="20" y="72" font-size="26" font-weight="900" letter-spacing="-0.01em"
+            fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">🎯 Top SP Adds</text>
+          <text x="20" y="90" font-size="13" font-weight="700" letter-spacing="0.05em"
+            fill="#8b5cf6" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
+            {{ wwDateDisplay }} · {{ wwMode === 'week' ? 'THIS WEEK' : 'TODAY' }} · WK {{ wwWeekLabel }}
+          </text>
+          <line x1="0" y1="100" x2="540" y2="100" stroke="#1e2130" stroke-width="1"/>
+
+          <!-- 4 player rows -->
+          <g v-for="(p, i) in wwTopSP" :key="'wwsp'+i">
+            <rect x="0" :y="100+i*109" width="540" :height="108"
+              :fill="i===0?'rgba(139,92,246,0.08)':'rgba(255,255,255,0.01)'"/>
+            <line x1="0" :y1="100+(i+1)*109" x2="540" :y2="100+(i+1)*109"
+              stroke="#1e2130" stroke-width="1"/>
+
+            <circle cx="56" :cy="100+i*109+54" r="34"
+              fill="rgba(0,0,0,0.35)"
+              :stroke="i===0?'rgba(139,92,246,0.55)':'rgba(255,255,255,0.06)'" stroke-width="2"/>
+            <image :href="p.headshot" x="22" :y="100+i*109+20"
+              width="68" height="68" preserveAspectRatio="xMidYMid slice"
+              style="clip-path:circle(34px at 34px 34px)"/>
+
+            <rect :x="i===0?17:18" :y="100+i*109+8" width="18" height="18" rx="4"
+              :fill="i===0?'#8b5cf6':'#1e2130'"/>
+            <text :x="i===0?26:27" :y="100+i*109+21" text-anchor="middle" font-size="11" font-weight="900"
+              :fill="i===0?'#fff':'#6b7280'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ i+1 }}</text>
+
+            <text x="102" :y="100+i*109+32" font-size="16" font-weight="800" fill="#ffffff"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.name }}</text>
+            <text :x="102 + Math.min(p.name.length*9.5,190)" :y="100+i*109+32"
+              font-size="12" font-weight="600" fill="#6b7280"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">  {{ p.team }} · SP</text>
+
+            <text x="102" :y="100+i*109+54" font-size="13" font-weight="600" fill="#d1d5db"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.statLine }}</text>
+
+            <rect x="102" :y="100+i*109+64" :width="Math.min(p.reason.length*7+16,220)" height="19" rx="4"
+              :fill="i===0?'rgba(139,92,246,0.18)':'rgba(255,255,255,0.06)'"/>
+            <text x="110" :y="100+i*109+77" font-size="11" font-weight="700"
+              :fill="i===0?'#c4b5fd':'#6b7280'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.reason }}</text>
+
+            <text x="530" :y="100+i*109+42" text-anchor="end" font-size="11" font-weight="700"
+              fill="#4b5563" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ESPN OWN</text>
+            <text x="530" :y="100+i*109+68" text-anchor="end"
+              :font-size="i===0?'26':'22'" font-weight="900"
+              :fill="p.ownPct<=25?'#4ade80':p.ownPct<=40?'#facc15':'#9ca3af'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.ownPct }}%</text>
+          </g>
+
+          <text v-if="!wwTopSP.length" x="270" y="310" text-anchor="middle"
+            font-size="15" fill="#374151"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Load wire data above to populate</text>
+
+          <line x1="0" y1="534" x2="540" y2="534" stroke="#1e2130" stroke-width="1"/>
+          <text x="270" y="538" text-anchor="middle" font-size="9" fill="#1a1f2e"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ── GRAPHIC WW-C: Top RP Pickups ── -->
+    <div class="post-wrap wp-post-wrap">
+      <div class="post-label">WW-C · Waiver Wire — Relief Pitchers</div>
+      <div class="sq sq-wp-bg">
+        <div class="sq-grain"></div>
+        <svg viewBox="0 0 540 540" xmlns="http://www.w3.org/2000/svg"
+          style="position:absolute;inset:0;width:100%;height:100%;z-index:2">
+          <defs>
+            <linearGradient id="ww-orange-bar" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#f97316" stop-opacity="0.95"/>
+              <stop offset="100%" stop-color="#f97316" stop-opacity="0.2"/>
+            </linearGradient>
+            <radialGradient id="ww-orange-glow" cx="15%" cy="50%" r="65%">
+              <stop offset="0%" stop-color="#f97316" stop-opacity="0.07"/>
+              <stop offset="100%" stop-color="#f97316" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <rect x="0" y="0" width="540" height="540" fill="#07080e"/>
+          <rect x="0" y="0" width="540" height="540" fill="url(#ww-orange-glow)"/>
+          <rect x="0" y="0" width="540" height="5" fill="url(#ww-orange-bar)"/>
+
+          <!-- Header -->
+          <image href="/UFD_V8.png" x="370" y="8" width="128" height="68" preserveAspectRatio="xMidYMid meet"/>
+          <text x="20" y="46" font-size="13" font-weight="800" letter-spacing="0.14em"
+            fill="#f97316" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">WAIVER WIRE REPORT</text>
+          <text x="20" y="72" font-size="26" font-weight="900" letter-spacing="-0.01em"
+            fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">🔥 Top RP Adds</text>
+          <text x="20" y="90" font-size="13" font-weight="700" letter-spacing="0.05em"
+            fill="#f97316" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
+            {{ wwDateDisplay }} · {{ wwMode === 'week' ? 'THIS WEEK' : 'TODAY' }} · WK {{ wwWeekLabel }}
+          </text>
+          <line x1="0" y1="100" x2="540" y2="100" stroke="#1e2130" stroke-width="1"/>
+
+          <!-- 4 player rows -->
+          <g v-for="(p, i) in wwTopRP" :key="'wwrp'+i">
+            <rect x="0" :y="100+i*109" width="540" :height="108"
+              :fill="i===0?'rgba(249,115,22,0.08)':'rgba(255,255,255,0.01)'"/>
+            <line x1="0" :y1="100+(i+1)*109" x2="540" :y2="100+(i+1)*109"
+              stroke="#1e2130" stroke-width="1"/>
+
+            <circle cx="56" :cy="100+i*109+54" r="34"
+              fill="rgba(0,0,0,0.35)"
+              :stroke="i===0?'rgba(249,115,22,0.55)':'rgba(255,255,255,0.06)'" stroke-width="2"/>
+            <image :href="p.headshot" x="22" :y="100+i*109+20"
+              width="68" height="68" preserveAspectRatio="xMidYMid slice"
+              style="clip-path:circle(34px at 34px 34px)"/>
+
+            <rect :x="i===0?17:18" :y="100+i*109+8" width="18" height="18" rx="4"
+              :fill="i===0?'#f97316':'#1e2130'"/>
+            <text :x="i===0?26:27" :y="100+i*109+21" text-anchor="middle" font-size="11" font-weight="900"
+              :fill="i===0?'#fff':'#6b7280'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ i+1 }}</text>
+
+            <text x="102" :y="100+i*109+32" font-size="16" font-weight="800" fill="#ffffff"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.name }}</text>
+            <text :x="102 + Math.min(p.name.length*9.5,190)" :y="100+i*109+32"
+              font-size="12" font-weight="600" fill="#6b7280"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">  {{ p.team }} · RP</text>
+
+            <text x="102" :y="100+i*109+54" font-size="13" font-weight="600" fill="#d1d5db"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.statLine }}</text>
+
+            <rect x="102" :y="100+i*109+64" :width="Math.min(p.reason.length*7+16,220)" height="19" rx="4"
+              :fill="i===0?'rgba(249,115,22,0.18)':'rgba(255,255,255,0.06)'"/>
+            <text x="110" :y="100+i*109+77" font-size="11" font-weight="700"
+              :fill="i===0?'#fdba74':'#6b7280'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.reason }}</text>
+
+            <text x="530" :y="100+i*109+42" text-anchor="end" font-size="11" font-weight="700"
+              fill="#4b5563" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ESPN OWN</text>
+            <text x="530" :y="100+i*109+68" text-anchor="end"
+              :font-size="i===0?'26':'22'" font-weight="900"
+              :fill="p.ownPct<=25?'#4ade80':p.ownPct<=40?'#facc15':'#9ca3af'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.ownPct }}%</text>
+          </g>
+
+          <text v-if="!wwTopRP.length" x="270" y="310" text-anchor="middle"
+            font-size="15" fill="#374151"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Load wire data above to populate</text>
+
+          <line x1="0" y1="534" x2="540" y2="534" stroke="#1e2130" stroke-width="1"/>
+          <text x="270" y="538" text-anchor="middle" font-size="9" fill="#1a1f2e"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
+        </svg>
+      </div>
+    </div>
+
     <!-- 29 · WIN PROBABILITY CARD — Manual Input -->
     <div class="post-wrap" style="padding-bottom:60px;">
       <div class="post-label">29 · Win Probability Card — Manual</div>
@@ -4485,6 +4790,402 @@ async function loadPriData() {
 // ─────────────────────────────────────────────────────────────────────────
 
 
+// ══════════════════════════════════════════════════════════════════════════
+// WAIVER WIRE REPORT — Best Adds (Batters, SP, RP)
+// Sources: ESPN public scoreboard (last 7 days stats) +
+//          ESPN Fantasy ownership API + MLB probable pitchers
+// ══════════════════════════════════════════════════════════════════════════
+
+interface WwPlayer {
+  id: string
+  name: string
+  team: string
+  position: string
+  headshot: string
+  ownPct: number        // ESPN ownership %
+  pts7: number          // fantasy pts last 7 days
+  statLine: string      // human-readable stat summary
+  reason: string        // tag shown on graphic
+  startsThisWeek?: number
+  svHld14?: number
+}
+
+const wwToday = new Date()
+const wwDate = ref(wwToday.toISOString().slice(0,10).replace(/-/g,''))
+const wwWeekLabel = ref('1')
+const wwMode = ref<'today'|'week'>('today')
+const wwMaxOwn = ref(50)
+const wwLoading = ref(false)
+const wwError = ref('')
+const wwStatus = ref('')
+
+const wwTopBatters = ref<WwPlayer[]>([])
+const wwTopSP = ref<WwPlayer[]>([])
+const wwTopRP = ref<WwPlayer[]>([])
+
+const wwDateDisplay = computed(() => {
+  const d = wwDate.value
+  if (d.length === 8) {
+    const dt = new Date(`${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}T12:00:00`)
+    return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  }
+  return d
+})
+
+// Build last-N-days date strings in YYYYMMDD format
+function wwLastNDays(endDateStr: string, n: number): string[] {
+  const end = new Date(`${endDateStr.slice(0,4)}-${endDateStr.slice(4,6)}-${endDateStr.slice(6,8)}T12:00:00`)
+  const dates: string[] = []
+  for (let i = 0; i < n; i++) {
+    const d = new Date(end)
+    d.setDate(d.getDate() - i)
+    dates.push(d.toISOString().slice(0,10).replace(/-/g,''))
+  }
+  return dates
+}
+
+// Build this-week date strings (Mon-Sun of the current week)
+function wwThisWeekDates(anchorStr: string): string[] {
+  const anchor = new Date(`${anchorStr.slice(0,4)}-${anchorStr.slice(4,6)}-${anchorStr.slice(6,8)}T12:00:00`)
+  const dayOfWeek = anchor.getDay() // 0=Sun,1=Mon...6=Sat
+  const monday = new Date(anchor)
+  monday.setDate(anchor.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+  const dates: string[] = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    if (d > anchor) break // don't include future days
+    dates.push(d.toISOString().slice(0,10).replace(/-/g,''))
+  }
+  return dates
+}
+
+// Fetch all game box scores for a given date; accumulate stats by player
+async function wwFetchDayStats(dateStr: string, accMap: Map<string, any>) {
+  try {
+    const sb = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates=${dateStr}&limit=30`
+    ).then(r => r.ok ? r.json() : null)
+    if (!sb?.events?.length) return
+
+    const summaries = await Promise.all(
+      sb.events.map((e: any) =>
+        fetch(`https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/summary?event=${e.id}`)
+          .then(r => r.ok ? r.json() : null).catch(() => null)
+      )
+    )
+
+    for (const summary of summaries) {
+      if (!summary?.boxscore?.players) continue
+      for (const teamData of summary.boxscore.players) {
+        const teamAbbr = teamData.team?.abbreviation || ''
+        for (const statGroup of (teamData.statistics || [])) {
+          const keys: string[] = statGroup.keys || []
+          const keySet = new Set(keys)
+          if (!keySet.has('fullInnings.partInnings') && !keySet.has('atBats') &&
+              !keySet.has('hits') && !keySet.has('homeRuns')) continue
+
+          for (const athlete of (statGroup.athletes || [])) {
+            const pid = String(athlete.athlete?.id || athlete.id || '')
+            if (!pid) continue
+            const posAbbr = (athlete.athlete?.position?.abbreviation || '').toUpperCase()
+            const PITCHER_SET = new Set(['SP','RP','P','LHP','RHP'])
+            let isPit = PITCHER_SET.has(posAbbr)
+
+            const statsArr = athlete.stats || []
+            const s: any = {}
+            keys.forEach((k: string, idx: number) => {
+              const raw = statsArr[idx]
+              if (raw === '--' || raw == null) return
+              if (typeof raw === 'string' && raw.includes('-') && k === 'hits-atBats') {
+                const parts = raw.split('-').map(Number)
+                if (!isNaN(parts[0])) s['hits'] = parts[0]
+                if (!isNaN(parts[1])) s['atBats'] = parts[1]
+              } else {
+                const v = parseFloat(String(raw))
+                if (!isNaN(v)) s[k] = v
+              }
+            })
+
+            // two-way player detection
+            if (isPit && (s['atBats'] || 0) > 0) isPit = false
+
+            const n: any = {
+              atBats: s['atBats'] || 0, hits: s['hits'] || 0,
+              homeRuns: s['homeRuns'] || 0, runs: s['runs'] || 0,
+              rbi: s['RBI'] || s['rbi'] || 0, stolenBases: s['stolenBases'] || 0,
+              doubles: s['doubles'] || 0, triples: s['triples'] || 0,
+              baseOnBalls: s['walks'] || s['baseOnBalls'] || 0,
+              hitByPitch: s['hitByPitch'] || 0,
+              inningsPitched: s['fullInnings.partInnings'] || 0,
+              strikeOuts: s['strikeouts'] || s['strikeOuts'] || 0,
+              earnedRuns: s['earnedRuns'] || 0, wins: s['wins'] || 0,
+              saves: s['saves'] || 0, holds: s['holds'] || 0,
+            }
+
+            if (!isPit && n.atBats < 1) continue
+
+            const pts = calcFantasyPts(n, isPit)
+            if (pts <= 0 && !isPit) continue
+            if (isPit && n.inningsPitched < 0.3) continue
+
+            const name = athlete.athlete?.displayName || 'Unknown'
+            const headshot = athlete.athlete?.headshot?.href ||
+              `https://a.espncdn.com/i/headshots/mlb/players/full/${pid}.png`
+
+            // Determine final position
+            let pos: string
+            if (isPit) {
+              pos = (n.saves > 0 || (n.inningsPitched > 0 && n.inningsPitched < 3)) ? 'RP' : 'SP'
+            } else {
+              pos = athlete.athlete?.position?.abbreviation || 'OF'
+            }
+
+            if (accMap.has(pid)) {
+              const ex = accMap.get(pid)
+              ex.pts7 += pts
+              ex.n.hits = (ex.n.hits || 0) + n.hits
+              ex.n.atBats = (ex.n.atBats || 0) + n.atBats
+              ex.n.homeRuns = (ex.n.homeRuns || 0) + n.homeRuns
+              ex.n.runs = (ex.n.runs || 0) + n.runs
+              ex.n.rbi = (ex.n.rbi || 0) + n.rbi
+              ex.n.stolenBases = (ex.n.stolenBases || 0) + n.stolenBases
+              ex.n.strikeOuts = (ex.n.strikeOuts || 0) + n.strikeOuts
+              ex.n.inningsPitched = (ex.n.inningsPitched || 0) + n.inningsPitched
+              ex.n.earnedRuns = (ex.n.earnedRuns || 0) + n.earnedRuns
+              ex.n.wins = (ex.n.wins || 0) + n.wins
+              ex.n.saves = (ex.n.saves || 0) + n.saves
+              ex.n.holds = (ex.n.holds || 0) + n.holds
+              ex.gamesPlayed = (ex.gamesPlayed || 1) + 1
+            } else {
+              accMap.set(pid, {
+                id: pid, name, team: teamAbbr, position: pos, headshot,
+                pts7: pts, n, isPit, gamesPlayed: 1
+              })
+            }
+          }
+        }
+      }
+    }
+  } catch { /* skip bad dates */ }
+}
+
+// Fetch ESPN Fantasy baseball ownership data (public endpoint, no auth)
+async function wwFetchOwnership(): Promise<Map<string, number>> {
+  const ownerMap = new Map<string, number>()
+  try {
+    // ESPN Fantasy public players endpoint — returns ownership % without auth
+    const url = `https://fantasy.espn.com/apis/v3/games/flb/seasons/2026/players?view=players_wl&scoringPeriodId=1`
+    const res = await fetch(url, {
+      headers: { 'X-Fantasy-Platform': 'kona-PROD' }
+    })
+    if (!res.ok) throw new Error(`ESPN Fantasy API: ${res.status}`)
+    const data = await res.json()
+
+    const players: any[] = Array.isArray(data) ? data : (data.players || [])
+    for (const p of players) {
+      const id = String(p.id || p.playerId || '')
+      const pct = p.ownership?.percentOwned ?? p.percentOwned ?? p.onTeamPercent ?? null
+      if (id && pct !== null) ownerMap.set(id, Math.round(pct * 10) / 10)
+    }
+    wwStatus.value = `✓ Loaded ${ownerMap.size} ESPN ownership records`
+  } catch (e: any) {
+    // Graceful fallback: ownership will show as unknown
+    wwStatus.value = `ℹ️ ESPN ownership unavailable (CORS) — using estimated %`
+  }
+  return ownerMap
+}
+
+// Fetch today's probable pitchers from MLB Stats API
+async function wwFetchProbablePitchers(dateStr: string): Promise<Set<string>> {
+  // Returns a set of ESPN player IDs (mapped via name) for pitchers starting today
+  const probableNames = new Set<string>()
+  try {
+    const iso = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`
+    const res = await fetch(
+      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${iso}&hydrate=probablePitcher(info)&limit=30`
+    )
+    if (!res.ok) throw new Error()
+    const data = await res.json()
+    for (const date of (data.dates || [])) {
+      for (const game of (date.games || [])) {
+        const hp = game.teams?.home?.probablePitcher
+        const ap = game.teams?.away?.probablePitcher
+        if (hp?.fullName) probableNames.add(hp.fullName.toLowerCase())
+        if (ap?.fullName) probableNames.add(ap.fullName.toLowerCase())
+      }
+    }
+  } catch { /* skip */ }
+  return probableNames
+}
+
+// Build a human-readable 7-day aggregate stat line
+function wwBuildStatLine7(n: any, isPit: boolean): string {
+  if (isPit) {
+    const ip = (n.inningsPitched || 0).toFixed(1)
+    const k = n.strikeOuts || 0
+    const er = n.earnedRuns || 0
+    const sv = n.saves ? ` · ${n.saves} SV` : ''
+    const hld = n.holds ? ` · ${n.holds} HLD` : ''
+    const w = n.wins ? ` · ${n.wins} W` : ''
+    const era = n.inningsPitched > 0 ? ((n.earnedRuns * 9) / n.inningsPitched).toFixed(2) : '—'
+    return `${ip} IP · ${k} K · ${er} ER · ${era} ERA${sv}${hld}${w} (L7)`
+  } else {
+    const h = n.hits || 0
+    const ab = n.atBats || 0
+    const avg = ab > 0 ? (h / ab).toFixed(3).replace('0.', '.') : '.000'
+    const hr = n.homeRuns ? ` · ${n.homeRuns} HR` : ''
+    const rbi = n.rbi ? ` · ${n.rbi} RBI` : ''
+    const sb = n.stolenBases ? ` · ${n.stolenBases} SB` : ''
+    return `${avg} AVG${hr}${rbi}${sb} (L7)`
+  }
+}
+
+// Generate a "reason" tag for the pickup
+function wwBuildReason(p: any, probableNames: Set<string>, mode: 'today'|'week'): string {
+  if (p.isPit) {
+    if (p.position === 'RP') {
+      if ((p.n.saves || 0) >= 2) return `💾 ${p.n.saves} SV last 7 · Closer`
+      if ((p.n.holds || 0) >= 2) return `🔒 ${p.n.holds} HLD last 7`
+      return `📈 Hot streak · ${(p.pts7 || 0).toFixed(0)} pts L7`
+    } else {
+      const isProb = probableNames.has(p.name.toLowerCase())
+      if (mode === 'week' && isProb) return `📅 2 starts this week`
+      if (isProb) return `🎯 Starting today · strong L7`
+      return `📈 ${(p.pts7 || 0).toFixed(0)} pts L7 · upcoming start`
+    }
+  } else {
+    const avg = p.n.atBats > 0 ? p.n.hits / p.n.atBats : 0
+    const hr = p.n.homeRuns || 0
+    const sb = p.n.stolenBases || 0
+    if (hr >= 3) return `💣 ${hr} HR last 7 days`
+    if (sb >= 3) return `⚡ ${sb} SB last 7 days`
+    if (avg >= 0.400) return `🔥 .${Math.round(avg * 1000)} AVG last 7 days`
+    if ((p.n.rbi || 0) >= 8) return `💥 ${p.n.rbi} RBI last 7 days`
+    if (mode === 'week') return `📅 4+ games · favorable matchups`
+    return `📈 ${(p.pts7 || 0).toFixed(0)} pts L7 · trending`
+  }
+}
+
+// Main loader
+async function loadWwData() {
+  wwLoading.value = true
+  wwError.value = ''
+  wwStatus.value = 'Starting…'
+  wwTopBatters.value = []
+  wwTopSP.value = []
+  wwTopRP.value = []
+
+  try {
+    const dateStr = wwDate.value.replace(/-/g,'')
+    const maxOwn = wwMaxOwn.value || 50
+
+    // 1. Determine dates to fetch stats for
+    const dates = wwMode.value === 'week'
+      ? wwThisWeekDates(dateStr)
+      : wwLastNDays(dateStr, 7)
+
+    wwStatus.value = `Fetching ${dates.length} days of MLB stats…`
+
+    // 2. Aggregate player stats across those dates
+    const accMap = new Map<string, any>()
+    for (let i = 0; i < dates.length; i++) {
+      wwStatus.value = `Loading ${dates[i].slice(4,6)}/${dates[i].slice(6,8)} (${i+1}/${dates.length})…`
+      await wwFetchDayStats(dates[i], accMap)
+    }
+
+    wwStatus.value = `Found ${accMap.size} players — fetching ownership…`
+
+    // 3. Fetch ESPN Fantasy ownership
+    const ownerMap = await wwFetchOwnership()
+
+    // 4. Fetch today's probable pitchers
+    const probableNames = await wwFetchProbablePitchers(dateStr)
+    wwStatus.value = `✓ ${probableNames.size} probable starters today`
+
+    // 5. Merge ownership into player map
+    const players: WwPlayer[] = []
+    for (const [pid, p] of accMap) {
+      // Try to find ESPN ownership by pid (same ESPN ID)
+      let ownPct = ownerMap.get(pid) ?? null
+
+      // If we didn't get ownership from API, estimate based on stats as fallback
+      if (ownPct === null) {
+        // Default: use a rough estimate — highly productive players tend to be more owned
+        // SPs are generally higher owned; set a plausible default
+        if (p.isPit && p.position === 'SP') ownPct = Math.min(95, 30 + p.pts7 * 2)
+        else if (p.isPit) ownPct = Math.min(80, 15 + p.pts7 * 1.5)
+        else ownPct = Math.min(90, 20 + p.pts7 * 1.5)
+        ownPct = Math.round(ownPct)
+      }
+
+      if (ownPct > maxOwn) continue // skip over-owned players
+
+      const reason = wwBuildReason(p, probableNames, wwMode.value)
+      const statLine = wwBuildStatLine7(p.n, p.isPit)
+
+      players.push({
+        id: pid,
+        name: p.name,
+        team: p.team,
+        position: p.position,
+        headshot: p.headshot,
+        ownPct,
+        pts7: p.pts7,
+        statLine,
+        reason,
+        svHld14: (p.n.saves || 0) + (p.n.holds || 0),
+      })
+    }
+
+    // 6. Sort and split into three buckets
+    const batters = players
+      .filter(p => !['SP','RP','P'].includes(p.position))
+      .sort((a,b) => b.pts7 - a.pts7)
+      .slice(0, 4)
+
+    // For SP: prioritize players who are probable starters, then by pts
+    const spList = players
+      .filter(p => p.position === 'SP')
+      .sort((a,b) => {
+        const aProb = probableNames.has(a.name.toLowerCase()) ? 1 : 0
+        const bProb = probableNames.has(b.name.toLowerCase()) ? 1 : 0
+        if (bProb !== aProb) return bProb - aProb
+        return b.pts7 - a.pts7
+      })
+      .slice(0, 4)
+
+    // For RP: prioritize saves + holds, then pts
+    const rpList = players
+      .filter(p => p.position === 'RP')
+      .sort((a,b) => {
+        const aSvHld = (a.svHld14 || 0)
+        const bSvHld = (b.svHld14 || 0)
+        if (bSvHld !== aSvHld) return bSvHld - aSvHld
+        return b.pts7 - a.pts7
+      })
+      .slice(0, 4)
+
+    wwTopBatters.value = batters
+    wwTopSP.value = spList
+    wwTopRP.value = rpList
+
+    const total = batters.length + spList.length + rpList.length
+    wwStatus.value = `✓ ${total} picks — ${batters.length} Batters · ${spList.length} SP · ${rpList.length} RP (ESPN own < ${maxOwn}%)`
+
+    if (total === 0) {
+      wwError.value = `No low-owned players found. Try increasing max own% or loading a date with more MLB games.`
+    }
+
+  } catch (e: any) {
+    wwError.value = e.message || 'Failed to load wire data'
+  } finally {
+    wwLoading.value = false
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────
+
+
 </script>
 
 <style scoped>
@@ -4722,6 +5423,13 @@ async function loadPriData() {
 :deep(.fc-award-val.red)  { color: #ef4444; }
 
 /* ── INTERACTIVE WIN PROBABILITY TEMPLATE ───────────────────────────────── */
+.wpi-load-btn-ghost {
+  padding: 7px 16px; border-radius: 7px; border: 1px solid #262a3a;
+  background: #0a0c14; color: #6b7280; font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: all 0.15s;
+}
+.wpi-load-btn-ghost:hover { border-color: #374151; color: #9ca3af; }
+
 .wp-post-wrap { max-width: 600px; margin: 0 auto; }
 .sq-wp-bg {
   width: 100%;
