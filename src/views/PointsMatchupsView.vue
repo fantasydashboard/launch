@@ -960,12 +960,39 @@ const probabilityHistory = computed(() => {
     
     let team1Cumulative: number
     let team2Cumulative: number
-    
+
+    // ── Check for a real snapshot for this day first ──────────────────────
+    // Snapshots store actual scores at end of each day → deterministic, never changes
+    const snapshotForDay = matchupSnapshots.value.find(
+      (s: any) => s.day_of_week === (priorDays + day)
+    )
+
+    if (snapshotForDay) {
+      // REAL DATA: use saved snapshot scores + win prob directly
+      const clampedT1 = clampWinProb(snapshotForDay.team1_win_prob, false)
+      const clampedT2 = clampWinProb(snapshotForDay.team2_win_prob, false)
+      history.push({
+        day: chartDayLabels[day] || days[day % 7],
+        team1: Math.round(clampedT1 * 10) / 10,
+        team2: Math.round(clampedT2 * 10) / 10,
+        isFuture: false,
+        isReal: true,
+        isMonteCarlo: false,
+        points: {
+          team1: Math.round(snapshotForDay.team1_points * 10) / 10,
+          team2: Math.round(snapshotForDay.team2_points * 10) / 10,
+        }
+      })
+      continue
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     if (isCompleted) {
       team1Cumulative = team1FinalPoints * matchupFraction
       team2Cumulative = team2FinalPoints * matchupFraction
     } else {
-      // Pro-rate current score back to this completed day
+      // No snapshot yet for this past day — estimate using pro-rated current score.
+      // This is only a fallback for the current live week before snapshots were taken.
       const dayFraction = cumulativeWeights[day] / cumulativeWeights[Math.max(0, lastCompletedDayIndex)]
       team1Cumulative = team1FinalPoints * dayFraction
       team2Cumulative = team2FinalPoints * dayFraction
