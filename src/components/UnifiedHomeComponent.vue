@@ -143,6 +143,9 @@
               </svg>
               <span class="text-dark-textMuted">Select <span class="text-yellow-400">team</span> for details</span>
             </div>
+            <p v-if="!isPointsLeague && hasRealPerCategoryData" class="text-xs text-dark-textMuted mt-1 italic">
+              Category columns show how many times each team won that stat category across all completed weeks.
+            </p>
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
             <button 
@@ -235,7 +238,6 @@
                 >
                   <div class="flex flex-col items-center">
                     <span class="text-[10px]">{{ cat.display_name }}</span>
-                    <span v-if="idx === 0 && sortColumn !== 'cat_' + cat.stat_id" class="text-[8px] text-dark-textMuted italic">(wins)</span>
                     <span v-if="sortColumn === 'cat_' + cat.stat_id" class="text-[8px] text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </div>
                 </th>
