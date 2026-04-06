@@ -1,5 +1,9 @@
 <template>
   <div class="overflow-x-auto">
+    <!-- Category league note -->
+    <p class="text-xs text-dark-textMuted mb-3 italic">
+      Numbers represent category wins — how many times each team won that stat category across all completed weeks.
+    </p>
     <table class="w-full text-sm">
       <thead>
         <tr class="border-b border-dark-border/50">
@@ -10,9 +14,9 @@
             v-for="cat in categories" 
             :key="cat.stat_id"
             class="text-center py-3 px-2 text-dark-textMuted font-medium whitespace-nowrap"
-            :title="cat.display_name || cat.name"
+            :title="cat.name || cat.display_name"
           >
-            {{ cat.abbrev || cat.name?.substring(0, 3) || cat.stat_id }}
+            {{ cat.display_name || cat.abbrev || cat.name?.substring(0, 4) || cat.stat_id }}
           </th>
           <!-- Totals -->
           <th class="text-center py-3 px-2 text-dark-textMuted font-medium border-l border-dark-border/30">Total</th>
