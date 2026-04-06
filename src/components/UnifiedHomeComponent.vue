@@ -3064,7 +3064,7 @@ function formatLeaderValue(value: number) {
 }
 
 // Distribute total category wins proportionally across categories
-function distributeCategoryWins() {
+async function distributeCategoryWins() {
   const catWins = new Map<string, Record<string, number>>()
 
   // Initialize all teams with zero wins per category
@@ -3072,42 +3072,46 @@ function distributeCategoryWins() {
     catWins.set(team.team_key, {})
   }
 
-  // Use real stat_winners data from Yahoo matchups
-  const yahooMatchups = leagueStore.yahooMatchups || []
-  let hasRealStatWinners = false
-
-  // Debug: log first matchup structure
-  if (yahooMatchups.length > 0) {
-    const sample = yahooMatchups[0]
-    console.log('[distributeCategoryWins] Sample matchup keys:', Object.keys(sample))
-    console.log('[distributeCategoryWins] stat_winners count:', sample.stat_winners?.length ?? 'none')
-    console.log('[distributeCategoryWins] teams[0]?.team_key:', sample.teams?.[0]?.team_key)
-    console.log('[distributeCategoryWins] team1?.team_key:', sample.team1?.team_key)
-    if (sample.stat_winners?.[0]) console.log('[distributeCategoryWins] First stat_winner:', JSON.stringify(sample.stat_winners[0]))
+  // For Yahoo category leagues, fetch all completed weeks and aggregate stat_winners
+  // leagueStore.yahooMatchups only has the current (in-progress) week
+  const leagueKey = leagueStore.activeLeagueId
+  if (!leagueKey || !leagueKey.includes('.l.')) {
+    teamCategoryWins.value = catWins
+    return
   }
 
-  for (const matchup of yahooMatchups) {
-    if (!matchup.stat_winners?.length) continue
-    hasRealStatWinners = true
+  const yahooLeagueArr = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+  const currWeek = parseInt(yahooLeagueArr?.current_week) || currentWeek.value || 1
+  const completedWeeks = Math.max(0, currWeek - 1)
 
-    const t1Key = matchup.teams?.[0]?.team_key || matchup.team1?.team_key
-    const t2Key = matchup.teams?.[1]?.team_key || matchup.team2?.team_key
-    if (!t1Key || !t2Key) continue
+  if (completedWeeks === 0) {
+    teamCategoryWins.value = catWins
+    return
+  }
 
-    for (const sw of matchup.stat_winners) {
-      const statId = String(sw.stat_id)
-      if (sw.is_tied === true || sw.is_tied === '1') continue
+  try {
+    for (let week = 1; week <= completedWeeks; week++) {
+      const weekMatchups = await yahooService.getCategoryMatchups(leagueKey, week)
+      for (const matchup of weekMatchups) {
+        if (!matchup.stat_winners?.length) continue
+        const t1Key = matchup.teams?.[0]?.team_key
+        const t2Key = matchup.teams?.[1]?.team_key
+        if (!t1Key || !t2Key) continue
 
-      if (sw.winner_team_key === t1Key) {
-        const w = catWins.get(t1Key) || {}
-        w[statId] = (w[statId] || 0) + 1
-        catWins.set(t1Key, w)
-      } else if (sw.winner_team_key === t2Key) {
-        const w = catWins.get(t2Key) || {}
-        w[statId] = (w[statId] || 0) + 1
-        catWins.set(t2Key, w)
+        for (const sw of matchup.stat_winners) {
+          if (sw.is_tied === true || sw.is_tied === '1') continue
+          const statId = String(sw.stat_id)
+          const winnerKey = sw.winner_team_key
+          if (!winnerKey) continue
+
+          const w = catWins.get(winnerKey) || {}
+          w[statId] = (w[statId] || 0) + 1
+          catWins.set(winnerKey, w)
+        }
       }
     }
+  } catch (e) {
+    console.warn('[distributeCategoryWins] Error fetching Yahoo category matchups:', e)
   }
 
   teamCategoryWins.value = catWins
@@ -5251,7 +5255,7 @@ async function loadAllData() {
     
     // Distribute category wins proportionally
     if (!isPointsLeague.value && displayCategories.value.length > 0) {
-      distributeCategoryWins()
+      await distributeCategoryWins()
     }
     
     isLoading.value = false
@@ -5909,7 +5913,7 @@ async function loadEspnData() {
         console.error('[ESPN] Error fetching category breakdown:', error)
         // Fall back to distribution method
         if (displayCategories.value.length > 0) {
-          distributeCategoryWins()
+          await distributeCategoryWins()
         }
       }
     }
