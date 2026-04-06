@@ -498,7 +498,7 @@ async function purchaseLeaguePass() {
   checkoutTarget.value = 'league'
 
   if (!contextLeagueId.value || !contextPlatform.value) {
-    checkoutError.value = 'Please go to your dashboard and navigate here from your league so we can identify it.'
+    checkoutError.value = 'To buy a League Pass, go to your dashboard, open the league you want to unlock, then come back to this page — we need to know which league to activate it for.'
     return
   }
 
@@ -549,6 +549,12 @@ async function purchaseIndividual() {
   try {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
     const plan = billingCycle.value === 'annual' ? 'individual_annual' : 'individual_monthly'
+    // Pass league context if available — server may use it for metadata tagging
+    const body: Record<string, string> = { plan }
+    if (contextLeagueId.value) body.league_id = contextLeagueId.value
+    if (contextPlatform.value) body.platform = contextPlatform.value
+    if (contextSport.value) body.sport = contextSport.value
+
     const res = await fetch(`${supabaseUrl}/functions/v1/create-checkout-session`, {
       method: 'POST',
       headers: {
@@ -556,7 +562,7 @@ async function purchaseIndividual() {
         'Authorization': `Bearer ${session.access_token}`,
         'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ plan }),
+      body: JSON.stringify(body),
     })
     const data = await res.json()
     if (!res.ok) {
