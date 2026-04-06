@@ -3066,42 +3066,40 @@ function formatLeaderValue(value: number) {
 // Distribute total category wins proportionally across categories
 function distributeCategoryWins() {
   const catWins = new Map<string, Record<string, number>>()
-  
-  // If week 1 is still in progress, no weeks are complete — show all zeros.
-  // Avoids showing estimated/distributed wins before a single week is final.
-  const yahooLeagueArr = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
-  const currWeek = parseInt(yahooLeagueArr?.current_week) || currentWeek.value || 1
-  const seasonDone = isSeasonComplete.value
-  const hasCompletedWeeks = seasonDone || currWeek > 1
-  
+
+  // Initialize all teams with zero wins per category
   for (const team of leagueStore.yahooTeams) {
-    const wins: Record<string, number> = {}
-    // Use 0 wins if no weeks are complete yet (week 1 still in progress)
-    const totalWins = hasCompletedWeeks ? (team.wins || 0) : 0
-    const numCats = displayCategories.value.length || 1
-    
-    // Distribute wins across categories with some variance
-    const basePerCat = Math.floor(totalWins / numCats)
-    let remaining = totalWins - (basePerCat * numCats)
-    
-    for (let i = 0; i < displayCategories.value.length; i++) {
-      const cat = displayCategories.value[i]
-      // Add variance based on team position in standings (only when we have real data)
-      const variance = hasCompletedWeeks ? Math.floor(Math.random() * 3) - 1 : 0
-      let catWinsForTeam = basePerCat + variance
-      
-      // Distribute remaining wins to first few categories
-      if (remaining > 0) {
-        catWinsForTeam++
-        remaining--
-      }
-      
-      wins[cat.stat_id] = Math.max(0, catWinsForTeam)
-    }
-    
-    catWins.set(team.team_key, wins)
+    catWins.set(team.team_key, {})
   }
-  
+
+  // Use real stat_winners data from Yahoo matchups
+  const yahooMatchups = leagueStore.yahooMatchups || []
+  let hasRealStatWinners = false
+
+  for (const matchup of yahooMatchups) {
+    if (!matchup.stat_winners?.length) continue
+    hasRealStatWinners = true
+
+    const t1Key = matchup.teams?.[0]?.team_key || matchup.team1?.team_key
+    const t2Key = matchup.teams?.[1]?.team_key || matchup.team2?.team_key
+    if (!t1Key || !t2Key) continue
+
+    for (const sw of matchup.stat_winners) {
+      const statId = String(sw.stat_id)
+      if (sw.is_tied === true || sw.is_tied === '1') continue
+
+      if (sw.winner_team_key === t1Key) {
+        const w = catWins.get(t1Key) || {}
+        w[statId] = (w[statId] || 0) + 1
+        catWins.set(t1Key, w)
+      } else if (sw.winner_team_key === t2Key) {
+        const w = catWins.get(t2Key) || {}
+        w[statId] = (w[statId] || 0) + 1
+        catWins.set(t2Key, w)
+      }
+    }
+  }
+
   teamCategoryWins.value = catWins
 }
 
