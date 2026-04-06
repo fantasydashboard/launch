@@ -1084,11 +1084,138 @@ async function fetchRawData(): Promise<any> {
       )
       
       if (hasCategoryData || isCat) {
+        // ── Build per-category wins for every team from stat_winners ──────────
+        // stat_winners on each matchup has: { stat_id, winner_team_key, is_tied }
+        // We iterate all completed matchup weeks and accumulate wins per stat per team.
+
+        // Step 1: Collect all stat_ids used and build per-team breakdown
+        const perCategoryWinsMap = new Map<string, Record<string, number>>()   // teamId → {statId → wins}
+        const perCategoryLossesMap = new Map<string, Record<string, number>>()
+        const foundStatIds = new Set<string>()
+
+        for (const m of yahooMatchups) {
+          if (!m.stat_winners?.length) continue
+          const team1 = m.teams?.[0]
+          const team2 = m.teams?.[1]
+          const team1Key = team1?.team_key || team1?.team_id
+          const team2Key = team2?.team_key || team2?.team_id
+          if (!team1Key || !team2Key) continue
+
+          // Ensure maps exist for both teams
+          if (!perCategoryWinsMap.has(team1Key)) {
+            perCategoryWinsMap.set(team1Key, {})
+            perCategoryLossesMap.set(team1Key, {})
+          }
+          if (!perCategoryWinsMap.has(team2Key)) {
+            perCategoryWinsMap.set(team2Key, {})
+            perCategoryLossesMap.set(team2Key, {})
+          }
+
+          for (const sw of m.stat_winners) {
+            const statId = String(sw.stat_id)
+            foundStatIds.add(statId)
+            const t1Wins = perCategoryWinsMap.get(team1Key)!
+            const t1Losses = perCategoryLossesMap.get(team1Key)!
+            const t2Wins = perCategoryWinsMap.get(team2Key)!
+            const t2Losses = perCategoryLossesMap.get(team2Key)!
+
+            if (sw.is_tied === true || sw.is_tied === '1') {
+              // tie — no wins or losses credited
+            } else if (sw.winner_team_key === team1Key) {
+              t1Wins[statId] = (t1Wins[statId] || 0) + 1
+              t2Losses[statId] = (t2Losses[statId] || 0) + 1
+            } else if (sw.winner_team_key === team2Key) {
+              t2Wins[statId] = (t2Wins[statId] || 0) + 1
+              t1Losses[statId] = (t1Losses[statId] || 0) + 1
+            }
+          }
+        }
+
+        // Step 2: Fetch stat category names from Yahoo settings if not already set
+        if (statCategories.value.length === 0 && foundStatIds.size > 0) {
+          try {
+            const leagueKey = leagueStore.activeLeagueId || ''
+            if (leagueKey) {
+              const { yahooService } = await import('@/services/yahoo')
+              const settings = await yahooService.getLeagueSettings(leagueKey)
+              const rawCats: any[] = settings?.stat_categories || []
+
+              // Build a stat_id → display info map from Yahoo settings
+              const settingsMap = new Map<string, { name: string; display_name: string }>()
+              for (const cat of rawCats) {
+                const s = cat?.stat || cat
+                const sid = String(s?.stat_id ?? '')
+                if (!sid) continue
+                settingsMap.set(sid, {
+                  name: s?.display_name || s?.name || `Stat ${sid}`,
+                  display_name: s?.abbr || s?.display_name || s?.name || `S${sid}`
+                })
+              }
+
+              // Build ordered statCategories matching the order from settings,
+              // filtered to only stat_ids we actually found in matchup data
+              const ordered: any[] = []
+              for (const cat of rawCats) {
+                const s = cat?.stat || cat
+                const sid = String(s?.stat_id ?? '')
+                if (sid && foundStatIds.has(sid)) {
+                  ordered.push({
+                    stat_id: sid,
+                    name: s?.display_name || s?.name || `Stat ${sid}`,
+                    display_name: s?.abbr || s?.display_name || s?.name || `S${sid}`
+                  })
+                }
+              }
+
+              // Fall back: include any stat_ids from matchups not in settings
+              for (const sid of foundStatIds) {
+                if (!ordered.some(c => c.stat_id === sid)) {
+                  ordered.push({ stat_id: sid, name: `Stat ${sid}`, display_name: `S${sid}` })
+                }
+              }
+
+              if (ordered.length > 0) statCategories.value = ordered
+            }
+          } catch (e) {
+            // Fall back to raw stat IDs if settings fetch fails
+            statCategories.value = [...foundStatIds].map(sid => ({
+              stat_id: sid, name: `Stat ${sid}`, display_name: `S${sid}`
+            }))
+          }
+        }
+
+        // Step 3: Attach per-category data to teams and rebuild categoryStandingsData
+        const enrichedTeams = yahooTeams.map((team: any) => {
+          // Yahoo team_id is the numeric part; team_key is like "458.l.12345.t.1"
+          // perCategoryWinsMap is keyed by team_key OR team_id — try both
+          const byKey = perCategoryWinsMap.get(team.team_key) || perCategoryWinsMap.get(team.team_id) || {}
+          const byKeyLoss = perCategoryLossesMap.get(team.team_key) || perCategoryLossesMap.get(team.team_id) || {}
+          return {
+            ...team,
+            per_category_wins: byKey,
+            per_category_losses: byKeyLoss
+          }
+        })
+
+        // Rebuild categoryStandingsData with per-category wins
+        categoryStandingsData.value = enrichedTeams.map((team: any) => ({
+          team: {
+            teamId: team.team_id || team.team_key,
+            name: team.name,
+            avatar: team.logo_url || team.logo || team.avatar,
+            owner: team.manager_nickname || team.owner_name || ''
+          },
+          categoryWins: team.category_wins || 0,
+          categoryLosses: team.category_losses || 0,
+          perCategoryWins: team.per_category_wins || {},
+          perCategoryLosses: team.per_category_losses || {}
+        }))
+
         return {
           preTransformed: true,
           isCategoryLeague: true,
           matchups: yahooMatchups,
-          teams: yahooTeams
+          teams: enrichedTeams
         }
       }
       

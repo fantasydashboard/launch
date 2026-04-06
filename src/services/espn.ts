@@ -4262,23 +4262,25 @@ export class EspnFantasyService {
             hasRealStatValues = true
             weekHasRealData = true
             
-            // Discover active category stat IDs from perCategoryResults (first time only)
-            // homePerCategoryResults only contains stats with WIN/LOSS/TIE results (true categories)
-            // scoreByStat contains ALL stats including ones with result:null (not categories)
+            // Discover any category stat IDs present in perCategoryResults that weren't
+            // in scoringItems (edge case: ESPN sometimes has extra cats in matchup data).
+            // We NEVER shrink the categories list — only expand it.
             if (!activeStatIds) {
-              const perCatKeys = Object.keys(matchup.homePerCategoryResults)
-              if (perCatKeys.length > 0) {
-                activeStatIds = new Set(perCatKeys)
-                const beforeCount = categories.length
-                const filteredCategories = categories.filter(c => activeStatIds!.has(c.stat_id))
-                if (filteredCategories.length > 0 && filteredCategories.length < beforeCount) {
-                  categories.length = 0
-                  categories.push(...filteredCategories)
-                  categoryStatIds.length = 0
-                  categoryStatIds.push(...filteredCategories.map(c => c.stat_id))
-                  console.log(`[ESPN getCategoryStatsBreakdown] Filtered categories from ${beforeCount} to ${categories.length} using perCategoryResults:`, categories.map(c => c.display_name))
+              activeStatIds = new Set(Object.keys(matchup.homePerCategoryResults))
+              // Add any perCategoryResults stat IDs not already in categories
+              for (const statId of activeStatIds) {
+                if (!categories.some(c => c.stat_id === statId)) {
+                  const statInfo = statNames[parseInt(statId)] || { name: `Stat ${statId}`, display: `S${statId}` }
+                  categories.push({
+                    stat_id: statId,
+                    name: statInfo.name,
+                    display_name: statInfo.display,
+                    is_negative: statInfo.isNegative
+                  })
+                  categoryStatIds.push(statId)
                 }
               }
+              console.log(`[ESPN getCategoryStatsBreakdown] Active categories (${categories.length}):`, categories.map(c => c.display_name))
             }
             
             // Process home team per-category results
