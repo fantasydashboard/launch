@@ -1,99 +1,155 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')!
-const STRIPE_PRICE_ID = Deno.env.get('STRIPE_PRICE_ID')!
-const SITE_URL = Deno.env.get('SITE_URL') || 'https://www.ultimatefantasydashboard.com'
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-    )
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // ── Auth ──────────────────────────────────────────────────────────────────
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    // Verify the JWT and get the user
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
     }
 
-    const { league_id, platform, sport, league_name } = await req.json()
-    if (!league_id || !platform) {
-      return new Response(JSON.stringify({ error: 'Missing required fields: league_id, platform' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    // ── Parse body ────────────────────────────────────────────────────────────
+    const body = await req.json()
+    const { plan, league_id, platform, sport, league_name } = body
+
+    if (!plan) {
+      return new Response(JSON.stringify({ error: 'Missing required field: plan' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
     }
 
-    // Check if already has an active unexpired pass
-    const now = new Date().toISOString()
-    const { data: existing } = await supabase
-      .from('league_passes')
-      .select('id, expires_at')
-      .eq('league_id', league_id)
-      .eq('active', true)
-      .gt('expires_at', now)
-      .maybeSingle()
-
-    if (existing) {
-      return new Response(JSON.stringify({ error: 'This league already has an active League Pass.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    // league_pass requires league context; individual plans do not
+    if (plan === 'league_pass' && (!league_id || !platform)) {
+      return new Response(JSON.stringify({ error: 'League Pass requires league_id and platform' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
     }
 
-    // expires_at = 365 days from now
-    const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+    // ── Stripe setup ──────────────────────────────────────────────────────────
+    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY')!
+    const stripe = new Stripe(stripeKey, { apiVersion: '2024-06-20' })
 
-    const stripePayload = {
-      mode: 'payment',
-      line_items: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
-      success_url: `${SITE_URL}/pricing?success=1&league=${encodeURIComponent(league_id)}&platform=${encodeURIComponent(platform)}&sport=${encodeURIComponent(sport || '')}`,
-      cancel_url: `${SITE_URL}/pricing?league=${encodeURIComponent(league_id)}&platform=${encodeURIComponent(platform)}`,
-      metadata: {
-        league_id,
-        platform,
-        sport: sport || '',
-        league_name: league_name || '',
-        purchased_by_user_id: user.id,
-        expires_at: expiresAt,
-      },
-      ...(user.email ? { customer_email: user.email } : {}),
+    const appUrl = Deno.env.get('APP_URL') || 'https://ultimatefantasydashboard.com'
+
+    // ── Get or create Stripe customer ─────────────────────────────────────────
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('stripe_customer_id, email')
+      .eq('id', user.id)
+      .single()
+
+    let customerId = profile?.stripe_customer_id
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email || profile?.email || '',
+        metadata: { supabase_user_id: user.id }
+      })
+      customerId = customer.id
+      await supabase.from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id)
     }
 
-    const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${STRIPE_SECRET_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(flattenForStripe(stripePayload)).toString(),
+    // ── Build checkout session based on plan ──────────────────────────────────
+    let sessionParams: Stripe.Checkout.SessionCreateParams
+
+    if (plan === 'league_pass') {
+      // Check for duplicate league pass
+      const { data: existingPass } = await supabase
+        .from('league_passes')
+        .select('id')
+        .eq('league_id', league_id)
+        .eq('active', true)
+        .gte('expires_at', new Date().toISOString())
+        .single()
+
+      if (existingPass) {
+        return new Response(JSON.stringify({ error: 'This league already has an active League Pass!' }), {
+          status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      const priceId = Deno.env.get('STRIPE_LEAGUE_PASS_PRICE_ID')!
+      sessionParams = {
+        customer: customerId,
+        mode: 'payment',
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: `${appUrl}/pricing?success=1&plan=league_pass&league=${league_id}&platform=${platform}`,
+        cancel_url: `${appUrl}/pricing?cancelled=1`,
+        metadata: {
+          plan: 'league_pass',
+          user_id: user.id,
+          league_id,
+          platform,
+          sport: sport || '',
+          league_name: league_name || league_id,
+        }
+      }
+    } else if (plan === 'individual_monthly') {
+      const priceId = Deno.env.get('STRIPE_INDIVIDUAL_MONTHLY_PRICE_ID')!
+      sessionParams = {
+        customer: customerId,
+        mode: 'subscription',
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: `${appUrl}/pricing?success=1&plan=individual_monthly`,
+        cancel_url: `${appUrl}/pricing?cancelled=1`,
+        metadata: {
+          plan: 'individual_monthly',
+          user_id: user.id,
+        }
+      }
+    } else if (plan === 'individual_annual') {
+      const priceId = Deno.env.get('STRIPE_INDIVIDUAL_ANNUAL_PRICE_ID')!
+      sessionParams = {
+        customer: customerId,
+        mode: 'subscription',
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: `${appUrl}/pricing?success=1&plan=individual_annual`,
+        cancel_url: `${appUrl}/pricing?cancelled=1`,
+        metadata: {
+          plan: 'individual_annual',
+          user_id: user.id,
+        }
+      }
+    } else {
+      return new Response(JSON.stringify({ error: `Unknown plan: ${plan}` }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams)
+
+    return new Response(JSON.stringify({ url: session.url }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 
-    const session = await stripeRes.json()
-    if (!stripeRes.ok) {
-      console.error('Stripe error:', session)
-      return new Response(JSON.stringify({ error: session.error?.message || 'Stripe error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    }
-
-    return new Response(JSON.stringify({ url: session.url }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-  } catch (err) {
-    console.error('Unexpected error:', err)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  } catch (err: any) {
+    console.error('[create-checkout-session] Error:', err)
+    return new Response(JSON.stringify({ error: err.message || 'Internal server error' }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
   }
 })
-
-function flattenForStripe(obj: Record<string, any>, prefix = ''): Record<string, string> {
-  const result: Record<string, string> = {}
-  for (const [key, value] of Object.entries(obj)) {
-    const fullKey = prefix ? `${prefix}[${key}]` : key
-    if (Array.isArray(value)) {
-      value.forEach((item, i) => {
-        if (typeof item === 'object') Object.assign(result, flattenForStripe(item, `${fullKey}[${i}]`))
-        else result[`${fullKey}[${i}]`] = String(item)
-      })
-    } else if (typeof value === 'object' && value !== null) {
-      Object.assign(result, flattenForStripe(value, fullKey))
-    } else if (value !== undefined && value !== null) {
-      result[fullKey] = String(value)
-    }
-  }
-  return result
-}
