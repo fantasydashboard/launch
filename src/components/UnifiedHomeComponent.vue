@@ -475,7 +475,7 @@
         </div>
         <div v-else class="text-center py-12 text-dark-textMuted">
           <p>Not enough data to show standings over time</p>
-          <p class="text-sm mt-1">Chart will appear after matchup data loads</p>
+          <p class="text-sm mt-1">Chart will appear once at least 2 weeks have been completed</p>
         </div>
       </div>
     </div>
@@ -3106,7 +3106,10 @@ function distributeCategoryWins() {
 // Build standings chart from weekly data
 function buildChart() {
   const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
-  if (weeks.length === 0) return
+  if (weeks.length < 2) {
+    chartSeries.value = []
+    return
+  }
   
   const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1', '#14B8A6', '#F43F5E']
   
