@@ -172,9 +172,13 @@
             class="w-full py-4 rounded-xl font-black text-base transition-all transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
             style="background: linear-gradient(135deg, #22c55e, #16a34a); color: #0a0c14; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 4px 20px rgba(34,197,94,0.3);">
             <span v-if="checkingOut && checkoutTarget === 'individual'">Redirecting…</span>
-            <span v-else>Try it for Free</span>
+            <span v-else-if="isLoggedIn">Go to Dashboard</span>
+            <span v-else>Get Started Free</span>
           </button>
-          <p class="text-center text-xs mt-3" style="color: #4b5563;">No credit card required · cancel anytime</p>
+          <p class="text-center text-xs mt-3" style="color: #4b5563;">
+            <span v-if="isLoggedIn">Access all your leagues and stats now</span>
+            <span v-else>No credit card required · 7-day free trial</span>
+          </p>
         </div>
 
         <!-- LEAGUE PASS -->
@@ -230,9 +234,13 @@
             class="w-full py-4 rounded-xl font-black text-base transition-all transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
             style="background: linear-gradient(135deg, #eab308, #ca8a04); color: #0a0c14; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 4px 20px rgba(234,179,8,0.25);">
             <span v-if="checkingOut && checkoutTarget === 'league'">Redirecting…</span>
-            <span v-else>Try it for Free</span>
+            <span v-else-if="isLoggedIn">Get League Pass</span>
+            <span v-else>Get Started Free</span>
           </button>
-          <p class="text-center text-xs mt-3" style="color: #4b5563;">No credit card required · buy the pass after your trial</p>
+          <p class="text-center text-xs mt-3" style="color: #4b5563;">
+            <span v-if="isLoggedIn">One-time payment · your whole league gets access</span>
+            <span v-else>No credit card required · buy the pass after your trial</span>
+          </p>
 
           <!-- Scope note -->
           <div class="mt-4 p-3 rounded-lg flex items-start gap-2"
@@ -357,6 +365,7 @@ const router = useRouter()
 const route = useRoute()
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
+const isLoggedIn = computed(() => !!authStore.user)
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const billingCycle = ref<'monthly' | 'annual'>('annual')
@@ -445,7 +454,7 @@ const faqs = [
   },
   {
     question: 'Do I need a credit card for the free trial?',
-    answer: 'No. Your 7-day free trial starts the moment you create an account — no card, no commitment. At the end of your trial you can choose a plan or stay on the free tier.'
+    answer: 'No credit card required. Your 7-day free trial starts automatically the moment you create an account — no card, no commitment. At the end of your trial you can choose a plan or stay on the free tier.'
   },
   {
     question: 'What happens after 7 days?',
