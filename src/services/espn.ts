@@ -4293,6 +4293,42 @@ export class EspnFantasyService {
               categoryStatIds.length = 0
               categoryStatIds.push(...filtered.map(c => c.stat_id))
 
+              // Sort into ESPN's standard display order: batting stats first, then pitching
+              // This matches the order shown on ESPN's scoreboard page
+              const espnBaseballDisplayOrder = [
+                '0',  // AB
+                '1',  // H
+                '32', // R
+                '33', // HR
+                '34', // TB
+                '23', // RBI
+                '5',  // SB
+                '8',  // OPS
+                '20', // FC
+                '21', // FPCT
+                '18', // G
+                '53', // GS
+                '41', // IP
+                '43', // K
+                '67', // BF
+                '35', // W
+                '47', // ERA
+                '83', // OBA
+                '48', // WHIP
+                '71', // SVHD
+              ]
+              // For baseball, sort by preferred display order; unknown IDs go at end
+              if (sport === 'baseball') {
+                categories.sort((a, b) => {
+                  const ai = espnBaseballDisplayOrder.indexOf(a.stat_id)
+                  const bi = espnBaseballDisplayOrder.indexOf(b.stat_id)
+                  if (ai === -1 && bi === -1) return 0
+                  if (ai === -1) return 1
+                  if (bi === -1) return -1
+                  return ai - bi
+                })
+              }
+
               console.log(`[ESPN getCategoryStatsBreakdown] Active categories (${categories.length}):`, categories.map(c => c.display_name))
             }
             
