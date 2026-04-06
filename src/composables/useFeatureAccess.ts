@@ -107,29 +107,30 @@ export function useFeatureAccess() {
       }
 
       // ── Individual subscription check ─────────────────────────────────────
-      // Check both the tier column (set by webhook) AND the subscriptions table directly.
-      // The table-direct check handles webhook delay — user paid but profile tier not yet updated.
+      // Primary signal: profile.subscription_tier set by Stripe webhook
+      // Secondary signal: individual_subscriptions table (also check status=trialing for Stripe trial period)
       const hasIndividualTier = ['individual_monthly', 'individual_annual', 'premium', 'pro'].includes(tier)
 
-      // Always check the subscriptions table, not just when tier says so
-      const now = new Date().toISOString()
-      const { data: subData } = await supabase
-        .from('individual_subscriptions')
-        .select('id, status, tier, current_period_end')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .gt('current_period_end', now)
-        .limit(1)
-        .maybeSingle()
-
-      if (subData) {
+      if (hasIndividualTier) {
+        // Profile tier is set — trust it. Webhook already confirmed payment.
         hasRealIndividualAccess.value = true
-        individualSubscription.value = subData
-        console.log('[FeatureAccess] Individual subscription active ✓')
-      } else if (hasIndividualTier) {
-        // Tier column says paid but subscription expired/not found — log warning
-        console.warn('[FeatureAccess] Individual tier set but no active subscription found')
-        hasRealIndividualAccess.value = false
+        console.log('[FeatureAccess] Individual subscription active via tier:', tier)
+      } else {
+        // Tier not set yet (webhook delay) — check subscriptions table directly
+        const nowStr = new Date().toISOString()
+        const { data: subData } = await supabase
+          .from('individual_subscriptions')
+          .select('id, status, tier, current_period_end')
+          .eq('user_id', userId)
+          .in('status', ['active', 'trialing'])  // include trialing — Stripe sometimes starts here
+          .limit(1)
+          .maybeSingle()
+
+        if (subData) {
+          hasRealIndividualAccess.value = true
+          individualSubscription.value = subData
+          console.log('[FeatureAccess] Individual subscription active via table:', subData.status)
+        }
       }
 
       // ── League Pass check ─────────────────────────────────────────────────
