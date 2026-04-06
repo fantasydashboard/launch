@@ -3430,9 +3430,6 @@ export class EspnFantasyService {
           if (match.home?.cumulativeScore?.scoreByStat) {
             const scoreByStat = match.home.cumulativeScore.scoreByStat
             console.log('[ESPN parseMatchups] Found scoreByStat for home team, processing', Object.keys(scoreByStat).length, 'stats')
-            // DIAGNOSTIC: log all stat IDs and their result values so we can see which have null results
-            const allStatEntries = Object.entries(scoreByStat).map(([id, d]: any) => `${id}:${d?.result ?? 'null'}`)
-            console.log('[ESPN parseMatchups] DIAGNOSTIC scoreByStat stat IDs and results:', allStatEntries.join(', '))
             for (const [statId, statData] of Object.entries(scoreByStat)) {
               const data = statData as { result: string | null; score: number }
               if (data.result === 'WIN') {
@@ -3955,8 +3952,6 @@ export class EspnFantasyService {
     // ESPN stores these in scoringItems array
     const scoringItems = scoringSettings?.scoringItems || []
     console.log('[ESPN getCategoryStatsBreakdown] Scoring items count:', scoringItems.length)
-    // DIAGNOSTIC: show exact stat IDs from scoringItems
-    console.log('[ESPN getCategoryStatsBreakdown] DIAGNOSTIC scoringItems stat IDs:', scoringItems.map((i: any) => i.statId ?? i.id).join(', '))
     
     // Map ESPN stat IDs to names - Baseball (comprehensive list)
     const espnBaseballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
@@ -3969,33 +3964,33 @@ export class EspnFantasyService {
       5: { name: 'Stolen Bases', display: 'SB' },
       6: { name: 'Walks (Batting)', display: 'BB' },
       7: { name: 'Strikeouts (Batting)', display: 'K', isNegative: true },
-      8: { name: 'Batting Average', display: 'AVG' },
+      8: { name: 'OPS', display: 'OPS' },
       9: { name: 'On Base Percentage', display: 'OBP' },
       10: { name: 'Slugging Percentage', display: 'SLG' },
-      11: { name: 'OPS', display: 'OPS' },
+      11: { name: 'Batting Average', display: 'AVG' },
       12: { name: 'Grounded Into DP', display: 'GIDP', isNegative: true },
       13: { name: 'Singles', display: '1B' },
       14: { name: 'Doubles', display: '2B' },
       15: { name: 'Triples', display: '3B' },
-      16: { name: 'Total Bases', display: 'TB' },
-      17: { name: 'Games Played', display: 'G' },
-      18: { name: 'Plate Appearances', display: 'PA' },
-      19: { name: 'Extra Base Hits', display: 'XBH' },
-      20: { name: 'Hit By Pitch', display: 'HBP' },
-      21: { name: 'Intentional Walks', display: 'IBB' },
+      16: { name: 'Extra Base Hits', display: 'XBH' },
+      17: { name: 'Plate Appearances', display: 'PA' },
+      18: { name: 'Games', display: 'G' },
+      19: { name: 'Total Bases', display: 'TB' },
+      20: { name: "Fielder's Choice", display: 'FC' },
+      21: { name: 'Fielding Percentage', display: 'FPCT' },
       22: { name: 'Sac Bunts', display: 'SAC' },
-      23: { name: 'Sacrifice Flies', display: 'SF' },
+      23: { name: 'RBI', display: 'RBI' },
       24: { name: 'Errors', display: 'E', isNegative: true },
-      25: { name: 'Fielder\'s Choice', display: 'FC' },
-      26: { name: 'Fielding Percentage', display: 'FPCT' },
+      25: { name: 'Hit By Pitch', display: 'HBP' },
+      26: { name: 'Intentional Walks', display: 'IBB' },
       27: { name: 'Outfield Assists', display: 'OFAST' },
       28: { name: 'Double Plays Turned', display: 'DP' },
       29: { name: 'Putouts', display: 'PO' },
       30: { name: 'Assists', display: 'A' },
       31: { name: 'Total Chances', display: 'TC' },
-      32: { name: 'Caught Stealing', display: 'CS', isNegative: true },
-      33: { name: 'Stolen Base Percentage', display: 'SB%' },
-      34: { name: 'Net Stolen Bases', display: 'NSB' },
+      32: { name: 'Runs', display: 'R' },
+      33: { name: 'Home Runs', display: 'HR' },
+      34: { name: 'Total Bases', display: 'TB' },
       // Pitching stats
       35: { name: 'Wins', display: 'W' },
       36: { name: 'Losses', display: 'L', isNegative: true },
@@ -4003,19 +3998,19 @@ export class EspnFantasyService {
       38: { name: 'Holds', display: 'HD' },
       39: { name: 'Innings Pitched', display: 'IP' },
       40: { name: 'Earned Runs', display: 'ER', isNegative: true },
-      41: { name: 'Hits Allowed', display: 'HA', isNegative: true },
-      42: { name: 'Walks Allowed', display: 'BBI', isNegative: true },
-      43: { name: 'Strikeouts (Pitching)', display: 'Ks' },
+      41: { name: 'Innings Pitched', display: 'IP' },
+      42: { name: 'Earned Runs', display: 'ER', isNegative: true },
+      43: { name: 'Strikeouts (Pitching)', display: 'K' },
       44: { name: 'Complete Games', display: 'CG' },
       45: { name: 'Shutouts', display: 'SHO' },
       46: { name: 'No Hitters', display: 'NH' },
       47: { name: 'ERA', display: 'ERA', isNegative: true },
       48: { name: 'WHIP', display: 'WHIP', isNegative: true },
-      49: { name: 'Opponent Batting Avg', display: 'OBA', isNegative: true },
+      49: { name: 'Hits Allowed', display: 'HA', isNegative: true },
       50: { name: 'Runs Allowed', display: 'RA', isNegative: true },
       51: { name: 'Home Runs Allowed', display: 'HRA', isNegative: true },
-      52: { name: 'Batters Faced', display: 'BF' },
-      53: { name: 'Quality Starts', display: 'QS' },
+      52: { name: 'Walks Allowed', display: 'BBI', isNegative: true },
+      53: { name: 'Games Started', display: 'GS' },
       54: { name: 'Pitches Thrown', display: 'PC' },
       55: { name: 'Pickoffs', display: 'PKO' },
       56: { name: 'Wild Pitches', display: 'WP', isNegative: true },
@@ -4025,11 +4020,11 @@ export class EspnFantasyService {
       60: { name: 'Save Opportunities', display: 'SVO' },
       61: { name: 'Inherited Runners Scored', display: 'IRS', isNegative: true },
       62: { name: 'Strikeout to Walk Ratio', display: 'K/BB' },
-      63: { name: 'Games Started', display: 'GS' },
+      63: { name: 'Quality Starts', display: 'QS' },
       64: { name: 'Hit Batters', display: 'HB', isNegative: true },
       65: { name: 'Balks', display: 'BK', isNegative: true },
       66: { name: 'Ground Outs', display: 'GO' },
-      67: { name: 'Fly Outs', display: 'AO' },
+      67: { name: 'Batters Faced', display: 'BF' },
       68: { name: 'K/9', display: 'K/9' },
       69: { name: 'BB/9', display: 'BB/9', isNegative: true },
       70: { name: 'H/9', display: 'H/9', isNegative: true },
@@ -4045,7 +4040,7 @@ export class EspnFantasyService {
       80: { name: 'WAR (Pitching)', display: 'WAR' },
       81: { name: 'wOBA', display: 'wOBA' },
       82: { name: 'wRC+', display: 'wRC+' },
-      83: { name: 'Perfect Games', display: 'PG' },
+      83: { name: 'Opponent Batting Avg', display: 'OBA', isNegative: true },
       99: { name: 'Games Pitched', display: 'GP' }
     }
     
