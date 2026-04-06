@@ -3430,6 +3430,9 @@ export class EspnFantasyService {
           if (match.home?.cumulativeScore?.scoreByStat) {
             const scoreByStat = match.home.cumulativeScore.scoreByStat
             console.log('[ESPN parseMatchups] Found scoreByStat for home team, processing', Object.keys(scoreByStat).length, 'stats')
+            // DIAGNOSTIC: log all stat IDs and their result values so we can see which have null results
+            const allStatEntries = Object.entries(scoreByStat).map(([id, d]: any) => `${id}:${d?.result ?? 'null'}`)
+            console.log('[ESPN parseMatchups] DIAGNOSTIC scoreByStat stat IDs and results:', allStatEntries.join(', '))
             for (const [statId, statData] of Object.entries(scoreByStat)) {
               const data = statData as { result: string | null; score: number }
               if (data.result === 'WIN') {
@@ -3952,6 +3955,8 @@ export class EspnFantasyService {
     // ESPN stores these in scoringItems array
     const scoringItems = scoringSettings?.scoringItems || []
     console.log('[ESPN getCategoryStatsBreakdown] Scoring items count:', scoringItems.length)
+    // DIAGNOSTIC: show exact stat IDs from scoringItems
+    console.log('[ESPN getCategoryStatsBreakdown] DIAGNOSTIC scoringItems stat IDs:', scoringItems.map((i: any) => i.statId ?? i.id).join(', '))
     
     // Map ESPN stat IDs to names - Baseball (comprehensive list)
     const espnBaseballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
