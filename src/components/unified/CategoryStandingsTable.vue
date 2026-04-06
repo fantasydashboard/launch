@@ -225,3 +225,4 @@ function truncateName(name: string): string {
   return name.substring(0, 14) + '…'
 }
 </script>
+
