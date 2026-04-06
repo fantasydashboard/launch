@@ -3076,6 +3076,16 @@ function distributeCategoryWins() {
   const yahooMatchups = leagueStore.yahooMatchups || []
   let hasRealStatWinners = false
 
+  // Debug: log first matchup structure
+  if (yahooMatchups.length > 0) {
+    const sample = yahooMatchups[0]
+    console.log('[distributeCategoryWins] Sample matchup keys:', Object.keys(sample))
+    console.log('[distributeCategoryWins] stat_winners count:', sample.stat_winners?.length ?? 'none')
+    console.log('[distributeCategoryWins] teams[0]?.team_key:', sample.teams?.[0]?.team_key)
+    console.log('[distributeCategoryWins] team1?.team_key:', sample.team1?.team_key)
+    if (sample.stat_winners?.[0]) console.log('[distributeCategoryWins] First stat_winner:', JSON.stringify(sample.stat_winners[0]))
+  }
+
   for (const matchup of yahooMatchups) {
     if (!matchup.stat_winners?.length) continue
     hasRealStatWinners = true
