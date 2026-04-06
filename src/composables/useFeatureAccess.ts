@@ -107,30 +107,29 @@ export function useFeatureAccess() {
       }
 
       // ── Individual subscription check ─────────────────────────────────────
-      // Check both the tier column (set by webhook) and the subscriptions table
+      // Check both the tier column (set by webhook) AND the subscriptions table directly.
+      // The table-direct check handles webhook delay — user paid but profile tier not yet updated.
       const hasIndividualTier = ['individual_monthly', 'individual_annual', 'premium', 'pro'].includes(tier)
 
-      if (hasIndividualTier && !isAdmin.value) {
-        // Verify it's still active in the subscriptions table
-        const now = new Date().toISOString()
-        const { data: subData } = await supabase
-          .from('individual_subscriptions')
-          .select('id, status, tier, current_period_end')
-          .eq('user_id', userId)
-          .eq('status', 'active')
-          .gt('current_period_end', now)
-          .limit(1)
-          .maybeSingle()
+      // Always check the subscriptions table, not just when tier says so
+      const now = new Date().toISOString()
+      const { data: subData } = await supabase
+        .from('individual_subscriptions')
+        .select('id, status, tier, current_period_end')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .gt('current_period_end', now)
+        .limit(1)
+        .maybeSingle()
 
-        if (subData) {
-          hasRealIndividualAccess.value = true
-          individualSubscription.value = subData
-          console.log('[FeatureAccess] Individual subscription active ✓')
-        } else if (hasIndividualTier) {
-          // Tier column says paid but subscription expired — grant grace, log warning
-          console.warn('[FeatureAccess] Individual tier set but no active subscription found')
-          hasRealIndividualAccess.value = false
-        }
+      if (subData) {
+        hasRealIndividualAccess.value = true
+        individualSubscription.value = subData
+        console.log('[FeatureAccess] Individual subscription active ✓')
+      } else if (hasIndividualTier) {
+        // Tier column says paid but subscription expired/not found — log warning
+        console.warn('[FeatureAccess] Individual tier set but no active subscription found')
+        hasRealIndividualAccess.value = false
       }
 
       // ── League Pass check ─────────────────────────────────────────────────
