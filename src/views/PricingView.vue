@@ -355,7 +355,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
@@ -369,6 +369,7 @@ const isLoggedIn = computed(() => !!authStore.user)
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const billingCycle = ref<'monthly' | 'annual'>('annual')
+watch(billingCycle, () => { checkoutError.value = null; checkoutTarget.value = '' })
 const teamCount = ref(10)
 const openFaq = ref<number | null>(null)
 const purchaseSuccess = ref(false)
@@ -386,6 +387,10 @@ onMounted(() => {
   contextPlatform.value = (route.query.platform as string) || leagueStore.activePlatform || ''
   contextSport.value = (route.query.sport as string) || leagueStore.activeSport || ''
   purchasePlan.value = (route.query.plan as string) || ''
+
+  // Clear any stale checkout error state
+  checkoutError.value = null
+  checkoutTarget.value = ''
 
   if (route.query.success === '1') {
     purchaseSuccess.value = true
@@ -549,12 +554,7 @@ async function purchaseIndividual() {
   try {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
     const plan = billingCycle.value === 'annual' ? 'individual_annual' : 'individual_monthly'
-    // Pass league context if available — server may use it for metadata tagging
-    const body: Record<string, string> = { plan }
-    if (contextLeagueId.value) body.league_id = contextLeagueId.value
-    if (contextPlatform.value) body.platform = contextPlatform.value
-    if (contextSport.value) body.sport = contextSport.value
-
+    // Only send plan — do NOT send league_id/platform, server uses those to pick league pass product
     const res = await fetch(`${supabaseUrl}/functions/v1/create-checkout-session`, {
       method: 'POST',
       headers: {
@@ -562,7 +562,7 @@ async function purchaseIndividual() {
         'Authorization': `Bearer ${session.access_token}`,
         'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ plan }),
     })
     const data = await res.json()
     if (!res.ok) {
