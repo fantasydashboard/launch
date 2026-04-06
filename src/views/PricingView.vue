@@ -172,11 +172,11 @@
             class="w-full py-4 rounded-xl font-black text-base transition-all transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
             style="background: linear-gradient(135deg, #22c55e, #16a34a); color: #0a0c14; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 4px 20px rgba(34,197,94,0.3);">
             <span v-if="checkingOut && checkoutTarget === 'individual'">Redirecting…</span>
-            <span v-else-if="isLoggedIn">Go to Dashboard</span>
+            <span v-else-if="isLoggedIn">{{ billingCycle === 'annual' ? 'Get Annual Plan' : 'Get Monthly Plan' }}</span>
             <span v-else>Get Started Free</span>
           </button>
           <p class="text-center text-xs mt-3" style="color: #4b5563;">
-            <span v-if="isLoggedIn">Access all your leagues and stats now</span>
+            <span v-if="isLoggedIn">{{ billingCycle === 'annual' ? 'Billed $49/year · cancel anytime' : 'Billed monthly · cancel anytime' }}</span>
             <span v-else>No credit card required · 7-day free trial</span>
           </p>
         </div>
@@ -234,11 +234,11 @@
             class="w-full py-4 rounded-xl font-black text-base transition-all transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
             style="background: linear-gradient(135deg, #eab308, #ca8a04); color: #0a0c14; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 4px 20px rgba(234,179,8,0.25);">
             <span v-if="checkingOut && checkoutTarget === 'league'">Redirecting…</span>
-            <span v-else-if="isLoggedIn">Get League Pass</span>
+            <span v-else-if="isLoggedIn">Buy League Pass — $29</span>
             <span v-else>Get Started Free</span>
           </button>
           <p class="text-center text-xs mt-3" style="color: #4b5563;">
-            <span v-if="isLoggedIn">One-time payment · your whole league gets access</span>
+            <span v-if="isLoggedIn">One-time payment · your whole league gets access instantly</span>
             <span v-else>No credit card required · buy the pass after your trial</span>
           </p>
 
@@ -478,15 +478,19 @@ const faqs = [
 function goToDashboard() { router.push('/') }
 
 async function startTrial(target: 'individual' | 'league') {
-  // If not logged in, send to sign up
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) {
-    router.push('/auth?intent=trial')
+    // Not logged in — send to sign up, trial starts automatically on account creation
+    router.push('/auth?intent=signup')
     return
   }
 
-  // Already on trial or paid — go to dashboard
-  router.push('/')
+  // Logged in — go straight to Stripe checkout for the selected plan
+  if (target === 'individual') {
+    await purchaseIndividual()
+  } else {
+    await purchaseLeaguePass()
+  }
 }
 
 async function purchaseLeaguePass() {
