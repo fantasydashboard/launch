@@ -4262,24 +4262,37 @@ export class EspnFantasyService {
             hasRealStatValues = true
             weekHasRealData = true
             
-            // Discover any category stat IDs present in perCategoryResults that weren't
-            // in scoringItems (edge case: ESPN sometimes has extra cats in matchup data).
-            // We NEVER shrink the categories list — only expand it.
+            // The ground truth for active H2H categories is homePerCategoryResults —
+            // ESPN only includes real scoring categories there. scoringItems (used to
+            // build the initial categories list) can contain extra stats (e.g. AVG, PA,
+            // HBP, IBB) that have a weight in the scoring settings but are NOT actual
+            // H2H categories. On first discovery we FILTER categories to activeStatIds,
+            // then add any ids from real matchup data not already present.
             if (!activeStatIds) {
               activeStatIds = new Set(Object.keys(matchup.homePerCategoryResults))
-              // Add any perCategoryResults stat IDs not already in categories
+
+              // Filter to only active categories, preserving scoringItems order
+              const filtered = categories.filter(c => activeStatIds!.has(c.stat_id))
+
+              // Add any real matchup stat IDs not already covered
               for (const statId of activeStatIds) {
-                if (!categories.some(c => c.stat_id === statId)) {
+                if (!filtered.some(c => c.stat_id === statId)) {
                   const statInfo = statNames[parseInt(statId)] || { name: `Stat ${statId}`, display: `S${statId}` }
-                  categories.push({
+                  filtered.push({
                     stat_id: statId,
                     name: statInfo.name,
                     display_name: statInfo.display,
                     is_negative: statInfo.isNegative
                   })
-                  categoryStatIds.push(statId)
                 }
               }
+
+              // Replace categories in-place so downstream references stay valid
+              categories.length = 0
+              categories.push(...filtered)
+              categoryStatIds.length = 0
+              categoryStatIds.push(...filtered.map(c => c.stat_id))
+
               console.log(`[ESPN getCategoryStatsBreakdown] Active categories (${categories.length}):`, categories.map(c => c.display_name))
             }
             
