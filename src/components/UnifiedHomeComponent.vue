@@ -1414,7 +1414,7 @@ const displayCategories = computed(() => {
   return statCategories.value.filter(cat => {
     if (cat.is_only_display_stat === '1' || cat.is_only_display_stat === 1) return false
     return true
-  }).slice(0, 12)
+  })
 })
 
 // Flag to indicate if we have real per-category breakdown (Yahoo always has it, ESPN only if stat values were found)
