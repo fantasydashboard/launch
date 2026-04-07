@@ -4744,6 +4744,9 @@ async function loadAllMatchups() {
   const startWeek = parseInt(yahooLeagueArr?.start_week) || 1
   const currWeek = parseInt(yahooLeagueArr?.current_week) || currentWeek.value || maxWeek
   const endWeek = isSeasonComplete.value ? maxWeek : Math.min(currWeek, maxWeek)
+  // Yahoo's current_week is the IN-PROGRESS week — only weeks strictly before it are
+  // completed and should appear in the standings-over-time chart.
+  const lastCompletedWeek = isSeasonComplete.value ? maxWeek : Math.max(0, currWeek - 1)
   
   console.log(`[Yahoo] Loading matchups for weeks ${startWeek}-${endWeek}, isSeasonComplete: ${isSeasonComplete.value}, isPointsLeague: ${isPointsLeague.value}`)
   
@@ -4878,8 +4881,12 @@ async function loadAllMatchups() {
           })
           
           weekStandings.forEach((t, idx) => (t as any).rank = idx + 1)
-          standings.set(week, weekStandings)
-          
+          // Only add completed weeks to the standings-over-time chart.
+          // Yahoo's current_week is in-progress, so weeks > lastCompletedWeek aren't real yet.
+          if (week <= lastCompletedWeek) {
+            standings.set(week, weekStandings)
+          }
+
           // Always store the most recent matchups that have data
           // (not just the last week, in case playoffs/offseason has no matchups)
           if (matchups.length > 0) {
@@ -5028,8 +5035,12 @@ async function loadAllMatchups() {
           })
           
           weekStandings.forEach((t, idx) => (t as any).rank = idx + 1)
-          standings.set(week, weekStandings)
-          
+          // Only add completed weeks to the standings-over-time chart.
+          // Yahoo's current_week is in-progress, so weeks > lastCompletedWeek aren't real yet.
+          if (week <= lastCompletedWeek) {
+            standings.set(week, weekStandings)
+          }
+
           if (week === endWeek) {
             displayMatchups.value = matchups
           }
