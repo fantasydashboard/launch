@@ -335,7 +335,10 @@
               <p class="text-center text-xs text-dark-textMuted mt-1">{{ catPrMobileChartLabel }}</p>
             </div>
           </div>
-          <div v-else class="text-center py-12 text-dark-textMuted">Not enough data for chart</div>
+          <div v-else class="text-center py-12 text-dark-textMuted">
+            <p>Not enough data to show power rankings over time</p>
+            <p class="text-sm mt-1">Chart will appear once at least 2 weeks have been completed</p>
+          </div>
         </div>
       </div>
       </div>
@@ -1371,6 +1374,14 @@ async function downloadRankings() {  if (!canDownload.value) {
     
     // Create trend chart with team logos at endpoints
     const trendChartContainer = container.querySelector('#trend-chart-container')
+    if (trendChartContainer && chartWeeks.value.length < 2) {
+      (trendChartContainer as HTMLElement).innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 20px;">
+          <p style="color: #9ca3af; font-size: 14px; margin: 0 0 6px 0; font-weight: 600;">Not enough data to show power rankings over time</p>
+          <p style="color: #6b7280; font-size: 12px; margin: 0;">Chart will appear once at least 2 weeks have been completed</p>
+        </div>
+      `
+    }
     if (trendChartContainer && chartWeeks.value.length >= 2) {
       const ApexCharts = (await import('apexcharts')).default
       

@@ -1654,7 +1654,16 @@ async function downloadStandings() {
     
     // Create trend chart
     const trendChartContainer = container.querySelector('#standings-trend-chart')
-    if (trendChartContainer && chartSeries.value.length > 0) {
+    const standingsWeeksCount = Array.from(weeklyStandings.value.keys()).length
+    if (trendChartContainer && (chartSeries.value.length === 0 || standingsWeeksCount < 2)) {
+      (trendChartContainer as HTMLElement).innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 20px;">
+          <p style="color: #9ca3af; font-size: 14px; margin: 0 0 6px 0; font-weight: 600;">Not enough data to show standings over time</p>
+          <p style="color: #6b7280; font-size: 12px; margin: 0;">Chart will appear once at least 2 weeks have been completed</p>
+        </div>
+      `
+    }
+    if (trendChartContainer && chartSeries.value.length > 0 && standingsWeeksCount >= 2) {
       const ApexCharts = (await import('apexcharts')).default
       
       const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
