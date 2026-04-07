@@ -464,13 +464,7 @@
       <template v-if="adminTab === 'social'">
       <section class="section">
         <div class="section-label">📸 Social Templates</div>
-        <div class="social-iframe-wrap">
-          <iframe
-            src="/socialtemplates?embed=true"
-            class="social-iframe"
-            title="Social Templates"
-          ></iframe>
-        </div>
+        <SocialTemplatesView :embed-mode="true" />
       </section>
       </template><!-- end social tab -->
 
@@ -689,6 +683,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { supabase } from '@/lib/supabase'
 import VueApexCharts from 'vue3-apexcharts'
+import SocialTemplatesView from '@/views/SocialTemplatesView.vue'
 
 const apexchart = VueApexCharts
 
