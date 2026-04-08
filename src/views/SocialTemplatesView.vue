@@ -11,870 +11,37 @@
 
     <!-- ── Type Tabs ── -->
     <div class="type-tabs">
-      <button @click="activeType='square'" :class="['type-tab', activeType==='square'?'type-tab-active':'']">
-        <span>▪</span> Square Posts
-      </button>
-      <button @click="activeType='fb'" :class="['type-tab', activeType==='fb'?'type-tab-active':'']">
-        <span>📘</span> FB Cover
+      <button @click="activeType='static'" :class="['type-tab', activeType==='static'?'type-tab-active':'']">
+        <span>🖼️</span> Static
       </button>
       <button @click="activeType='interactive'" :class="['type-tab', activeType==='interactive'?'type-tab-active':'']">
         <span>🎯</span> Interactive
       </button>
-      <button @click="activeType='stories'" :class="['type-tab', activeType==='stories'?'type-tab-active':'']">
-        <span>📱</span> Stories
-      </button>
-      <button @click="activeType='paidads'" :class="['type-tab', activeType==='paidads'?'type-tab-active':'']">
-        <span>📣</span> Paid Ads
-      </button>
     </div>
 
-    <!-- FB COVER TAB -->
-    <template v-if="activeType === 'fb'">
-    <!-- ════════════════════════════════════
-         FACEBOOK BANNER  851 × 315
-    ════════════════════════════════════ -->
-    <div class="section-label">📘 Facebook Page Banner — Screenshot the card below</div>
-    <div class="banner-stage">
-      <div class="fb-banner">
-        <div class="fb-grid"></div>
-        <div class="fb-glow-1"></div>
-        <div class="fb-glow-2"></div>
-        <div class="fb-grain"></div>
-        <div class="fb-topline"></div>
-
-        <div class="fb-left">
-          <img src="/UFD_V8.png" alt="UFD" class="fb-logo" />
-          <div class="fb-headline">Level up your<br/>fantasy baseball<br/><span class="fb-gold">all season.</span></div>
-          <div class="fb-sub">Power rankings · Win probability · Draft grades · League history</div>
-          <div class="fb-platforms">
-            <img src="/espn-logo.svg" alt="ESPN" class="fb-plat-img" />
-            <img src="/yahoo-fantasy.svg" alt="Yahoo" class="fb-plat-img" />
-          </div>
-        </div>
-
-        <div class="fb-cards-area">
-          <div class="fb-card fb-card-1">
-            <div class="fbc-head"><span class="fbc-badge">UFD</span><span class="fbc-title">⚡ Power Rankings</span><span class="fbc-wk">WK 14</span></div>
-            <div class="fbc-row fbc-gold"><span class="fbc-rk gold">1</span><span class="fbc-icon" v-html="teamIcons['Diamond Kings']"></span><span class="fbc-name">Diamond Kings</span><span class="fbc-pts gold">124.8</span><span class="fbc-chg up">▲2</span></div>
-            <div class="fbc-row"><span class="fbc-rk">2</span><span class="fbc-icon" v-html="teamIcons['Sign Stealers']"></span><span class="fbc-name">Sign Stealers</span><span class="fbc-pts">116.2</span><span class="fbc-chg up">▲1</span></div>
-            <div class="fbc-row"><span class="fbc-rk">3</span><span class="fbc-icon" v-html="teamIcons['Roto Renegades']"></span><span class="fbc-name">Roto Renegades</span><span class="fbc-pts">108.4</span><span class="fbc-chg dn">▼1</span></div>
-            <div class="fbc-row"><span class="fbc-rk">4</span><span class="fbc-icon" v-html="teamIcons['The Sluggers']"></span><span class="fbc-name">The Sluggers</span><span class="fbc-pts">101.9</span><span class="fbc-chg dn">▼2</span></div>
-            <div class="fbc-wm">ultimatefantasydashboard.com</div>
-          </div>
-          <div class="fb-card fb-card-2">
-            <div class="fbc-head"><span class="fbc-badge">UFD</span><span class="fbc-title">⚔️ Matchup Analysis</span><span class="fbc-wk live">● LIVE</span></div>
-            <div class="fbc-matchup">
-              <div class="fbc-team"><span class="fbc-avatar-icon" v-html="teamIcons['Diamond Kings']"></span><div class="fbc-tname">Diamond Kings</div><div class="fbc-score gold">124.8</div></div>
-              <div class="fbc-vs">VS</div>
-              <div class="fbc-team"><span class="fbc-avatar-icon" v-html="teamIcons['Sign Stealers']"></span><div class="fbc-tname">Sign Stealers</div><div class="fbc-score">104.1</div></div>
-            </div>
-            <div class="fbc-prob-wrap">
-              <div class="fbc-prob-labels"><span class="gold">74% win prob</span><span>26%</span></div>
-              <div class="fbc-prob-bar"><div class="fbc-prob-fill" style="width:74%"></div></div>
-              <div class="fbc-prob-sub">Monte Carlo · 10,000 simulations</div>
-            </div>
-            <div class="fbc-wm">ultimatefantasydashboard.com</div>
-          </div>
-          <div class="fb-card fb-card-3">
-            <div class="fbc-head"><span class="fbc-badge">UFD</span><span class="fbc-title">🏆 Legacy Standings</span><span class="fbc-wk">ALL TIME</span></div>
-            <div class="fbc-row fbc-gold"><span class="fbc-rk gold">1</span><span class="fbc-icon" v-html="teamIcons['Diamond Kings']"></span><span class="fbc-name">Diamond Kings</span><span class="fbc-pts gold">1,912</span></div>
-            <div class="fbc-row"><span class="fbc-rk">2</span><span class="fbc-icon" v-html="teamIcons['Sign Stealers']"></span><span class="fbc-name">Sign Stealers</span><span class="fbc-pts">1,748</span></div>
-            <div class="fbc-row"><span class="fbc-rk">3</span><span class="fbc-icon" v-html="teamIcons['Roto Renegades']"></span><span class="fbc-name">Roto Renegades</span><span class="fbc-pts">1,531</span></div>
-            <div class="fbc-row"><span class="fbc-rk">4</span><span class="fbc-icon" v-html="teamIcons['The Sluggers']"></span><span class="fbc-name">The Sluggers</span><span class="fbc-pts">1,304</span></div>
-            <div class="fbc-wm">ultimatefantasydashboard.com</div>
-          </div>
-        </div>
-      </div>
+    <!-- ══════════════════════════════════════ STATIC TAB ══ -->
+    <template v-if="activeType === 'static'">
+    <div class="section-label">🖼️ Static Templates</div>
+    <div style="padding:48px 24px;text-align:center;color:#6b7280;background:#0d0f18;border:1px dashed #1f2937;border-radius:12px;margin-top:16px;">
+      <div style="font-size:32px;margin-bottom:8px;">🚧</div>
+      <div style="font-size:14px;font-weight:600;color:#9ca3af;">Static graphics coming soon</div>
+      <div style="font-size:12px;margin-top:6px;">Pre-made graphics you can download for social posts.</div>
     </div>
+    </template>
 
-    </template><!-- end fb tab -->
-
-    <!-- SQUARE TAB -->
-    <template v-if="activeType === 'square'">
-    <div class="section-label">📸 Social Post Graphics — Screenshot each individually</div>
-    <div class="posts-grid">
-
-      <!-- 1 · MAIN BRAND -->
-      <div class="post-wrap">
-        <div class="post-label">1 · Main Brand</div>
-        <div class="sq sq-dark">
-          <div class="sq-grain"></div><div class="sq-topline"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-eyebrow">Fantasy Baseball Analytics</div>
-            <div class="sq-hl" style="font-size:64px">Keep your<br/>league <span class="gold">talking.</span><br/>All season.</div>
-            <div class="sq-body">Power rankings · Win probability<br/>Draft grades · League history</div>
-            <div class="fan-wrap" style="margin-top:20px">
-              <FanCards />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 2 · LAUNCH SPECIAL -->
-      <div class="post-wrap">
-        <div class="post-label">2 · Launch Special</div>
-        <div class="sq sq-green">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#22c55e,transparent)"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-launch-badge">🚀 LAUNCH SPECIAL</div>
-            <div class="sq-hl" style="font-size:60px;margin-top:10px">The whole<br/>season.<br/><span style="color:#22c55e">Only $5.</span></div>
-            <div class="sq-launch-card">
-              <div class="sq-launch-line"><span>⚡ Weekly Power Rankings</span><span class="chk">✓</span></div>
-              <div class="sq-launch-line"><span>⚔️ Live Win Probability</span><span class="chk">✓</span></div>
-              <div class="sq-launch-line"><span>📋 Draft Grades All Season</span><span class="chk">✓</span></div>
-              <div class="sq-launch-line"><span>🏆 Full League History</span><span class="chk">✓</span></div>
-            </div>
-            <div class="sq-launch-price-row">
-              <span class="sq-was">Regular $19</span>
-              <span class="sq-now" style="color:#22c55e">$5 today</span>
-            </div>
-            <div class="sq-cta-pill" style="background:rgba(34,197,94,0.12);border-color:rgba(34,197,94,0.4);color:#22c55e">Grab the launch price →</div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 3 · LAUNCH SPECIAL 2 -->
-      <div class="post-wrap">
-        <div class="post-label">3 · Launch Special — Urgency</div>
-        <div class="sq sq-dark">
-          <div class="sq-grain"></div><div class="sq-topline"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-eyebrow" style="color:#eab308">⏳ Limited Launch Pricing</div>
-            <div class="sq-hl" style="font-size:56px;margin-top:6px">Your entire<br/>fantasy season<br/>for <span class="gold">$5.</span></div>
-            <div class="sq-price-hero">
-              <span class="ph-label">Launch Price</span>
-              <span class="ph-price">$5</span>
-              <span class="ph-season">/ season</span>
-            </div>
-            <div class="sq-body" style="margin-top:10px;font-size:14px">ESPN · Yahoo<br/>Points · Roto · H2H Category</div>
-            <div class="fan-wrap" style="margin-top:16px">
-              <FanCards variant="compact" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 4 · POWER RANKINGS -->
-      <div class="post-wrap">
-        <div class="post-label">4 · Power Rankings</div>
-        <div class="sq sq-dark">
-          <div class="sq-grain"></div><div class="sq-topline"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner">
-            <div class="sq-eyebrow">⚡ Weekly Power Rankings</div>
-            <div class="sq-hl" style="font-size:56px">Standings<br/>lie.<br/><span class="gold">Power<br/>rankings<br/>don't.</span></div>
-            <div class="fan-wrap" style="margin-top:auto">
-              <FanCards variant="pr" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 5 · WIN PROBABILITY -->
-      <div class="post-wrap">
-        <div class="post-label">5 · Win Probability</div>
-        <div class="sq sq-cyan">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#06b6d4,transparent)"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-eyebrow" style="color:#06b6d4">⚔️ Live Matchup Analysis</div>
-            <div class="sq-hl" style="font-size:50px">You're not<br/>winning until<br/>it says <span style="color:#06b6d4">100%.</span></div>
-            <div class="fan-wrap" style="margin-top:18px">
-              <FanCards variant="wp" />
-            </div>
-            <div class="sq-body" style="color:#4b5563;margin-top:10px;font-size:13px">Post this at halftime. Watch the chaos.</div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 6 · DRAFT GRADES -->
-      <div class="post-wrap">
-        <div class="post-label">6 · Draft Grades</div>
-        <div class="sq sq-purple">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#8b5cf6,transparent)"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner">
-            <div class="sq-eyebrow" style="color:#a78bfa">📋 Draft Analysis</div>
-            <div class="sq-hl" style="font-size:52px">Everyone<br/>thinks they<br/>drafted well.<br/><span style="color:#a78bfa">Grades<br/>disagree.</span></div>
-            <div class="fan-wrap" style="margin-top:auto">
-              <FanCards variant="draft" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 7 · ESPN · BASEBALL — POWER RANKINGS -->
-      <div class="post-wrap">
-        <div class="post-label">7 · ESPN · Baseball — Power Rankings</div>
-        <div class="sq sq-red">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#ef4444,transparent)"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-plat-sport-header">
-              <img src="/espn-logo.svg" class="sq-plat-logo" alt="ESPN" /><span class="sq-sport-tag baseball">⚾ Fantasy Baseball</span>
-            </div>
-            <div class="sq-hl" style="font-size:50px;margin-top:10px">Your ESPN<br/>baseball league<br/>has more data<br/>than you<br/><span style="color:#f87171">ever knew.</span></div>
-            <div class="fan-wrap" style="margin-top:16px">
-              <FanCards variant="pr" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 8 · ESPN + YAHOO · POINTS & CATEGORY -->
-      <div class="post-wrap">
-        <div class="post-label">8 · ESPN + Yahoo · Points &amp; Category</div>
-        <div class="sq sq-blue">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#3b82f6,transparent)"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-plat-sport-header">
-              <img src="/espn-logo.svg" class="sq-plat-logo" alt="ESPN" />
-              <img src="/yahoo-fantasy.svg" class="sq-plat-logo" alt="Yahoo" style="margin-left:4px" />
-              <span class="sq-sport-tag baseball" style="margin-left:6px">⚾ Fantasy Baseball</span>
-            </div>
-            <div class="sq-hl" style="font-size:42px;margin-top:10px">ESPN. Yahoo.<br/>Points leagues.<br/>Roto leagues.<br/>Category leagues.<br/><span style="color:#60a5fa">All of it.</span></div>
-            <div class="fan-wrap" style="margin-top:14px">
-              <FanCards variant="bball" />
-            </div>
-            <div class="sq-body" style="font-size:12px;margin-top:8px;color:#374151">Works for both platforms · All league types</div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 9 · YAHOO · BASEBALL — HISTORY -->
-      <div class="post-wrap">
-        <div class="post-label">9 · Yahoo · Baseball — History</div>
-        <div class="sq sq-purple">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#a78bfa,transparent)"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-plat-sport-header">
-              <img src="/yahoo-fantasy.svg" class="sq-plat-logo" alt="Yahoo" /><span class="sq-sport-tag baseball">⚾ Fantasy Baseball</span>
-            </div>
-            <div class="sq-hl" style="font-size:50px;margin-top:10px">8 seasons of<br/>your Yahoo<br/>baseball league.<br/><span style="color:#a78bfa">One screen.</span></div>
-            <div class="fan-wrap" style="margin-top:16px">
-              <FanCards variant="history" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 10 · ESPN · BASEBALL — ANALYTICS -->
-      <div class="post-wrap">
-        <div class="post-label">10 · ESPN · Baseball — Analytics</div>
-        <div class="sq sq-blue">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#3b82f6,transparent)"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-plat-sport-header">
-              <img src="/espn-logo.svg" class="sq-plat-logo" alt="ESPN" /><span class="sq-sport-tag baseball">⚾ Fantasy Baseball</span>
-            </div>
-            <div class="sq-hl" style="font-size:50px;margin-top:10px">Fantasy<br/>baseball<br/>analytics<br/>that actually<br/><span style="color:#60a5fa">slap.</span></div>
-            <div class="fan-wrap" style="margin-top:16px">
-              <FanCards variant="baseball" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 11 · DRAFT DAY BASEBALL -->
-      <div class="post-wrap">
-        <div class="post-label">11 · Draft Day Baseball</div>
-        <div class="sq sq-purple">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#8b5cf6,transparent)"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-plat-sport-header">
-              <img src="/espn-logo.svg" class="sq-plat-logo" alt="ESPN" />
-              <img src="/yahoo-fantasy.svg" class="sq-plat-logo" alt="Yahoo" style="margin-left:4px" />
-              <span class="sq-sport-tag baseball" style="margin-left:6px">⚾ Fantasy Baseball</span>
-            </div>
-            <div class="sq-hl" style="font-size:50px;margin-top:10px">Draft day<br/>is where<br/>seasons are<br/>won. Or<br/><span style="color:#a78bfa">wasted.</span></div>
-            <div class="fan-wrap" style="margin-top:16px">
-              <FanCards variant="draft" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 12 · ROTO POWER RANKINGS -->
-      <div class="post-wrap">
-        <div class="post-label">12 · Roto Power Rankings</div>
-        <div class="sq sq-dark">
-          <div class="sq-grain"></div><div class="sq-topline"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-plat-sport-header">
-              <img src="/espn-logo.svg" class="sq-plat-logo" alt="ESPN" />
-              <img src="/yahoo-fantasy.svg" class="sq-plat-logo" alt="Yahoo" style="margin-left:4px" />
-              <span class="sq-sport-tag baseball" style="margin-left:6px">⚾ Fantasy Baseball</span>
-            </div>
-            <div class="sq-hl" style="font-size:50px;margin-top:10px">Roto leagues<br/>deserve real<br/><span class="gold">power<br/>rankings.</span></div>
-            <div class="fan-wrap" style="margin-top:16px">
-              <FanCards variant="baseball" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 13 · YAHOO · BASEBALL — ROTO -->
-      <div class="post-wrap">
-        <div class="post-label">13 · Yahoo · Baseball — Roto</div>
-        <div class="sq sq-purple">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#a78bfa,transparent)"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-plat-sport-header">
-              <img src="/yahoo-fantasy.svg" class="sq-plat-logo" alt="Yahoo" /><span class="sq-sport-tag baseball">⚾ Fantasy Baseball</span>
-            </div>
-            <div class="sq-hl" style="font-size:50px;margin-top:10px">Track every<br/>category.<br/>Climb every<br/><span style="color:#a78bfa">roto column.</span></div>
-            <div class="fan-wrap" style="margin-top:16px">
-              <FanCards variant="baseball" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 14 · CATEGORY LEAGUE EDGE -->
-      <div class="post-wrap">
-        <div class="post-label">14 · Category League Edge</div>
-        <div class="sq sq-orange">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#f97316,transparent)"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-plat-sport-header">
-              <img src="/espn-logo.svg" class="sq-plat-logo" alt="ESPN" />
-              <img src="/yahoo-fantasy.svg" class="sq-plat-logo" alt="Yahoo" style="margin-left:4px" />
-              <span class="sq-sport-tag baseball" style="margin-left:6px">⚾ Fantasy Baseball</span>
-            </div>
-            <div class="sq-hl" style="font-size:50px;margin-top:10px">Win more<br/>categories.<br/>Stop leaving<br/><span style="color:#f97316">stats on<br/>the bench.</span></div>
-            <div class="fan-wrap" style="margin-top:16px">
-              <FanCards variant="bball" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 15 · LEAGUE HISTORY -->
-      <div class="post-wrap">
-        <div class="post-label">15 · League History</div>
-        <div class="sq sq-dark">
-          <div class="sq-grain"></div><div class="sq-topline"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-eyebrow">🏆 All-Time Records</div>
-            <div class="sq-hl" style="font-size:52px">Your group<br/>chat has<br/><span class="gold">receipts.</span><br/>It just doesn't<br/>know it yet.</div>
-            <div class="fan-wrap" style="margin-top:16px">
-              <FanCards variant="history" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 16 · COMMISSIONER -->
-      <div class="post-wrap">
-        <div class="post-label">16 · Commissioner</div>
-        <div class="sq sq-dark">
-          <div class="sq-grain"></div><div class="sq-topline"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-eyebrow">For Commissioners</div>
-            <div class="sq-hl" style="font-size:52px">Your league<br/>dies after<br/>the All-Star<br/>break.<br/><span class="gold">Fix that.</span></div>
-            <div class="fan-wrap" style="margin-top:16px">
-              <FanCards variant="compact" />
-            </div>
-            <div class="sq-cta-pill" style="margin-top:14px">Free to try →</div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 17 · TRASH TALK -->
-      <div class="post-wrap">
-        <div class="post-label">17 · Trash Talk</div>
-        <div class="sq sq-fire">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#ef4444,transparent)"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-hl" style="font-size:68px;line-height:0.92">Stop<br/>arguing.<br/><span style="color:#ef4444">Post the<br/>receipts.</span></div>
-            <div class="fan-wrap" style="margin-top:20px">
-              <FanCards variant="h2h" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 18 · FREE CTA -->
-      <div class="post-wrap">
-        <div class="post-label">18 · Free CTA</div>
-        <div class="sq sq-dark">
-          <div class="sq-grain"></div><div class="sq-topline"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-hl" style="font-size:56px">Your league<br/>deserves<br/><span class="gold">better<br/>content.</span></div>
-            <div class="fan-wrap" style="margin-top:14px">
-              <FanCards variant="compact" />
-            </div>
-            <div class="sq-plats" style="margin-top:16px">
-              <img src="/espn-logo.svg" class="sq-plat-inline" alt="ESPN" />
-              <img src="/yahoo-fantasy.svg" class="sq-plat-inline" alt="Yahoo" />
-            </div>
-            <div class="sq-cta-pill" style="margin-top:14px;font-size:15px;padding:13px 28px">Connect Your League Free →</div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-
-      <!-- ════════════════════════════════════
-           SHOWCASE CARDS — Cards-only + logo
-      ════════════════════════════════════ -->
-
-      <!-- 19 · Power Rankings Showcase — with text -->
-      <div class="post-wrap">
-        <div class="post-label">19 · Power Rankings — Card Showcase (with text)</div>
-        <div class="sq sq-showcase sq-sc-gold">
-          <div class="sq-grain"></div>
-          <div class="sq-topline"></div>
-          <div class="sc-logo-row">
-            <img src="/UFD_V8.png" class="sc-logo" alt="UFD" />
-          </div>
-          <div class="sc-fan-hero">
-            <div class="sc-fan-scale">
-              <FanCards variant="pr" />
-            </div>
-          </div>
-          <div class="sc-feature-word sc-word-gold">POWER RANKINGS</div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 20 · Power Rankings Showcase — clean (no text) -->
-      <div class="post-wrap">
-        <div class="post-label">20 · Power Rankings — Card Showcase (clean)</div>
-        <div class="sq sq-showcase sq-sc-gold">
-          <div class="sq-grain"></div>
-          <div class="sq-topline"></div>
-          <div class="sc-logo-row sc-logo-center">
-            <img src="/UFD_V8.png" class="sc-logo sc-logo-lg" alt="UFD" />
-          </div>
-          <div class="sc-fan-hero sc-fan-full">
-            <div class="sc-fan-scale sc-fan-scale-lg">
-              <FanCards variant="pr" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 21 · Matchup Showcase — with text -->
-      <div class="post-wrap">
-        <div class="post-label">21 · Matchup Analysis — Card Showcase (with text)</div>
-        <div class="sq sq-showcase sq-sc-cyan">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#06b6d4,transparent)"></div>
-          <div class="sc-logo-row">
-            <img src="/UFD_V8.png" class="sc-logo" alt="UFD" />
-          </div>
-          <div class="sc-fan-hero">
-            <div class="sc-fan-scale">
-              <FanCards variant="wp" />
-            </div>
-          </div>
-          <div class="sc-feature-word sc-word-cyan">MATCHUP ANALYSIS</div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 22 · Matchup Showcase — clean -->
-      <div class="post-wrap">
-        <div class="post-label">22 · Matchup Analysis — Card Showcase (clean)</div>
-        <div class="sq sq-showcase sq-sc-cyan">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#06b6d4,transparent)"></div>
-          <div class="sc-logo-row sc-logo-center">
-            <img src="/UFD_V8.png" class="sc-logo sc-logo-lg" alt="UFD" />
-          </div>
-          <div class="sc-fan-hero sc-fan-full">
-            <div class="sc-fan-scale sc-fan-scale-lg">
-              <FanCards variant="wp" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 23 · Draft Grades Showcase — with text -->
-      <div class="post-wrap">
-        <div class="post-label">23 · Draft Grades — Card Showcase (with text)</div>
-        <div class="sq sq-showcase sq-sc-purple">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#8b5cf6,transparent)"></div>
-          <div class="sc-logo-row">
-            <img src="/UFD_V8.png" class="sc-logo" alt="UFD" />
-          </div>
-          <div class="sc-fan-hero">
-            <div class="sc-fan-scale">
-              <FanCards variant="draft" />
-            </div>
-          </div>
-          <div class="sc-feature-word sc-word-purple">DRAFT GRADES</div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 24 · Draft Grades Showcase — clean -->
-      <div class="post-wrap">
-        <div class="post-label">24 · Draft Grades — Card Showcase (clean)</div>
-        <div class="sq sq-showcase sq-sc-purple">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#8b5cf6,transparent)"></div>
-          <div class="sc-logo-row sc-logo-center">
-            <img src="/UFD_V8.png" class="sc-logo sc-logo-lg" alt="UFD" />
-          </div>
-          <div class="sc-fan-hero sc-fan-full">
-            <div class="sc-fan-scale sc-fan-scale-lg">
-              <FanCards variant="draft" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 25 · League History Showcase — with text -->
-      <div class="post-wrap">
-        <div class="post-label">25 · League History — Card Showcase (with text)</div>
-        <div class="sq sq-showcase sq-sc-amber">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#f59e0b,transparent)"></div>
-          <div class="sc-logo-row">
-            <img src="/UFD_V8.png" class="sc-logo" alt="UFD" />
-          </div>
-          <div class="sc-fan-hero">
-            <div class="sc-fan-scale">
-              <FanCards variant="history" />
-            </div>
-          </div>
-          <div class="sc-feature-word sc-word-amber">LEAGUE HISTORY</div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 26 · League History Showcase — clean -->
-      <div class="post-wrap">
-        <div class="post-label">26 · League History — Card Showcase (clean)</div>
-        <div class="sq sq-showcase sq-sc-amber">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#f59e0b,transparent)"></div>
-          <div class="sc-logo-row sc-logo-center">
-            <img src="/UFD_V8.png" class="sc-logo sc-logo-lg" alt="UFD" />
-          </div>
-          <div class="sc-fan-hero sc-fan-full">
-            <div class="sc-fan-scale sc-fan-scale-lg">
-              <FanCards variant="history" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-
-    <!-- ═══════════════════════════════════════════════════
-         PHONE MOCKUP AD TEMPLATES — 30 & 31
-    ═══════════════════════════════════════════════════ -->
-    <div class="section-label" style="grid-column:1/-1;margin-top:32px;">📱 Phone Mockup Ad Templates</div>
-
-    <!-- ═══════════════════════════════════════════════════
-         PHONE MOCKUP AD TEMPLATES — 30 & 31
-    ═══════════════════════════════════════════════════ -->
-    <div class="section-label" style="grid-column:1/-1;margin-top:32px;">📱 Phone Mockup Ad Templates</div>
-
-    <!-- ══ TEMPLATE 30: Story — Text above, phone centred, cards pop out ══ -->
-    <div class="post-wrap" style="grid-column:1/-1;max-width:960px;">
-      <div class="post-label">30 · Phone Ad Story — Pop-Out Cards (1080×1920)</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-        <div>
-          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Headline</div>
-          <input v-model="ad30headline" placeholder="Know your league like never before." style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box;">
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Sub Text</div>
-          <input v-model="ad30sub" placeholder="Power rankings. Win probability. League history." style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box;">
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Button Text</div>
-          <input v-model="ad30btn" placeholder="Get League Pass →" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box;">
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-          <div>
-            <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Pop Left</div>
-            <select v-model="ad30card1" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:5px 6px;font-size:11px;">
-              <option v-for="c in adCardOptions" :key="c.id" :value="c.id">{{ c.label }}</option>
-            </select>
-          </div>
-          <div>
-            <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Phone Main</div>
-            <select v-model="ad30card2" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:5px 6px;font-size:11px;">
-              <option v-for="c in adCardOptions" :key="c.id" :value="c.id">{{ c.label }}</option>
-            </select>
-          </div>
-          <div>
-            <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Pop Right</div>
-            <select v-model="ad30card3" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:5px 6px;font-size:11px;">
-              <option v-for="c in adCardOptions" :key="c.id" :value="c.id">{{ c.label }}</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- 1080×1920 story scaled 28.125% → 304×540 display -->
-      <div style="width:304px;height:540px;overflow:hidden;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
-      <div style="width:1080px;height:1920px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
-
-        <!-- BG -->
-        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 80%,rgba(234,179,8,0.15) 0%,transparent 55%);"></div>
-        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 10%,rgba(6,182,212,0.06) 0%,transparent 40%);"></div>
-        <!-- Gold top bar -->
-        <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
-
-        <!-- TEXT BLOCK — top area, above phone, clear of IG profile overlay (top 220px safe) -->
-        <div style="position:absolute;top:240px;left:80px;right:80px;">
-          <div style="display:flex;align-items:center;gap:20px;margin-bottom:44px;">
-            <img src="/UFD_V8.png" style="height:100px;width:auto;">
-            <div>
-              <div style="font-size:28px;font-weight:800;color:#eab308;letter-spacing:0.12em;text-transform:uppercase;">Ultimate Fantasy</div>
-              <div style="font-size:28px;font-weight:800;color:#fff;letter-spacing:0.12em;text-transform:uppercase;">Dashboard</div>
-            </div>
-          </div>
-          <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:1.0;letter-spacing:-0.025em;margin-bottom:24px;">{{ ad30headline || 'Know your league like never before.' }}</div>
-          <div style="font-size:32px;color:#9ca3af;line-height:1.5;margin-bottom:56px;">{{ ad30sub || 'Power rankings. Win probability. League history.' }}</div>
-          <div style="display:inline-flex;">
-            <div style="background:linear-gradient(135deg,#eab308,#ca8a04);color:#0a0c14;font-size:36px;font-weight:900;padding:28px 60px;border-radius:18px;letter-spacing:0.01em;">
-              {{ ad30btn || 'Get League Pass →' }}
-            </div>
-          </div>
-        </div>
-
-        <!-- PHONE — lower half, centred, tilted left -->
-        <div style="position:absolute;bottom:220px;left:50%;transform:translateX(-50%);width:920px;height:960px;display:flex;align-items:center;justify-content:center;">
-          <!-- Pop card FAR LEFT — top -->
-          <div style="position:absolute;left:-20px;top:30px;width:270px;z-index:20;filter:drop-shadow(0 20px 50px rgba(0,0,0,0.7));">
-            <div v-html="renderAdCard(ad30card1)" style="border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);box-shadow:0 24px 80px rgba(0,0,0,0.6);"></div>
-          </div>
-          <!-- Pop card LEFT — bottom (2nd left card like Monarch) -->
-          <div style="position:absolute;left:-20px;bottom:60px;width:270px;z-index:20;filter:drop-shadow(0 20px 50px rgba(0,0,0,0.7));">
-            <div v-html="renderAdCard(ad30card3==='history'?'draft':'history')" style="border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);box-shadow:0 24px 80px rgba(0,0,0,0.6);"></div>
-          </div>
-          <!-- Pop card RIGHT — mid -->
-          <div style="position:absolute;right:-20px;bottom:120px;width:270px;z-index:20;filter:drop-shadow(0 20px 50px rgba(0,0,0,0.7));">
-            <div v-html="renderAdCard(ad30card3)" style="border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);box-shadow:0 24px 80px rgba(0,0,0,0.6);"></div>
-          </div>
-          <!-- Phone body -->
-          <div style="position:relative;z-index:10;transform:perspective(1600px) rotateY(8deg) rotateX(-2deg) rotate(-3deg);filter:drop-shadow(0 80px 160px rgba(0,0,0,0.9));">
-            <div style="width:340px;height:740px;background:#0a0d14;border-radius:48px;border:2.5px solid rgba(255,255,255,0.14);overflow:hidden;position:relative;">
-              <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:116px;height:28px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div>
-              <div style="position:absolute;top:10px;left:20px;right:20px;display:flex;justify-content:space-between;z-index:11;">
-                <span style="font-size:11px;color:#6b7280;font-weight:600;">9:41</span>
-                <div style="width:14px;height:7px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
-              </div>
-              <div style="position:absolute;top:36px;left:0;right:0;bottom:0;background:#0d1117;padding:9px 11px;display:flex;flex-direction:column;gap:8px;overflow:hidden;">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
-                  <img src="/UFD_V8.png" style="height:16px;width:auto;">
-                  <span style="font-size:8px;color:#eab308;font-weight:700;letter-spacing:0.04em;">FANTASY BASEBALL</span>
-                </div>
-                <div v-html="renderAdCard(ad30card2)" style="border-radius:9px;overflow:hidden;flex-shrink:0;"></div>
-                <div v-html="renderAdCard(ad30card2==='powerrankings'?'winprob':'powerrankings')" style="border-radius:9px;overflow:hidden;flex-shrink:0;"></div>
-                <div v-html="renderAdCard(ad30card2==='matchup'?'season':'matchup')" style="border-radius:9px;overflow:hidden;flex-shrink:0;"></div>
-                <div v-html="renderAdCard('history')" style="border-radius:9px;overflow:hidden;flex-shrink:0;opacity:0.7;"></div>
-              </div>
-              <div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:80px;height:3.5px;background:rgba(255,255,255,0.18);border-radius:2px;"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Watermark -->
-        <div style="position:absolute;bottom:240px;left:0;right:0;text-align:center;">
-          <div style="font-size:20px;color:#1e2130;letter-spacing:0.06em;">ultimatefantasydashboard.com</div>
-        </div>
-        <!-- Bottom gold bar -->
-        <div style="position:absolute;bottom:0;left:0;right:0;height:5px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
-      </div>
-      </div>
-    </div>
-
-    <!-- ══ TEMPLATE 31: Square — Hero headline left, phone right ══ -->
-    <div class="post-wrap" style="grid-column:1/-1;max-width:960px;margin-top:32px;">
-      <div class="post-label">31 · Phone Ad Square — Hero Headline (1080×1080)</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-        <div>
-          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Big Headline (white)</div>
-          <input v-model="ad31headline" placeholder="See your whole league" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box;">
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Accent Line (gold)</div>
-          <input v-model="ad31accent" placeholder="in one place." style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box;">
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Body Text</div>
-          <input v-model="ad31body" placeholder="and know exactly where you stand." style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box;">
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Button Text</div>
-          <input v-model="ad31btn" placeholder="Get League Pass →" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box;">
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Phone Card (Top)</div>
-          <select v-model="ad31card1" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;">
-            <option v-for="c in adCardOptions" :key="c.id" :value="c.id">{{ c.label }}</option>
-          </select>
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Phone Card (Bottom)</div>
-          <select v-model="ad31card2" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;">
-            <option v-for="c in adCardOptions" :key="c.id" :value="c.id">{{ c.label }}</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- 1080×1080 scaled 50% -->
-      <div style="width:540px;height:540px;overflow:hidden;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
-      <div style="width:1080px;height:1080px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
-        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 60%,rgba(234,179,8,0.1) 0%,transparent 55%);"></div>
-
-        <!-- Phone — tilted RIGHT -->
-        <div style="position:absolute;right:-40px;top:-20px;bottom:-20px;width:580px;display:flex;align-items:center;justify-content:center;">
-          <div style="position:absolute;width:340px;height:720px;border-radius:46px;background:radial-gradient(ellipse,rgba(234,179,8,0.1) 0%,transparent 70%);transform:perspective(1400px) rotateY(-12deg) rotateX(2deg) rotate(4deg);pointer-events:none;"></div>
-          <div style="width:340px;height:720px;background:#0a0d14;border-radius:46px;border:2px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;transform:perspective(1400px) rotateY(-12deg) rotateX(2deg) rotate(4deg);filter:drop-shadow(0 60px 140px rgba(0,0,0,0.9));">
-            <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:28px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div>
-            <div style="position:absolute;top:10px;left:20px;right:20px;display:flex;justify-content:space-between;z-index:11;">
-              <span style="font-size:11px;color:#6b7280;font-weight:600;">9:41</span>
-              <div style="width:14px;height:7px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
-            </div>
-            <div style="position:absolute;top:38px;left:0;right:0;bottom:0;background:#0d1117;padding:10px 12px;display:flex;flex-direction:column;gap:8px;overflow:hidden;">
-              <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.06);">
-                <img src="/UFD_V8.png" style="height:18px;width:auto;">
-                <span style="font-size:9px;color:#eab308;font-weight:700;letter-spacing:0.05em;">FANTASY BASEBALL</span>
-              </div>
-              <div v-html="renderAdCard(ad31card1)" style="border-radius:10px;overflow:hidden;"></div>
-              <div v-html="renderAdCard(ad31card2)" style="border-radius:10px;overflow:hidden;"></div>
-              <div v-html="renderAdCard(ad31card1==='season'||ad31card2==='season'?'draft':'season')" style="border-radius:10px;overflow:hidden;opacity:0.65;"></div>
-              <div v-html="renderAdCard(ad31card1==='prtrendchart'||ad31card2==='prtrendchart'?'matchupgraph':'prtrendchart')" style="border-radius:10px;overflow:hidden;opacity:0.45;"></div>
-            </div>
-            <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:90px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
-          </div>
-        </div>
-
-        <!-- LEFT text -->
-        <div style="position:absolute;left:64px;top:80px;width:520px;bottom:200px;display:flex;flex-direction:column;justify-content:center;">
-          <div style="margin-bottom:32px;"><img src="/UFD_V8.png" style="height:90px;width:auto;"></div>
-          <div style="font-size:88px;font-weight:900;color:#ffffff;line-height:0.92;letter-spacing:-0.04em;margin-bottom:4px;">{{ ad31headline || 'See your whole league' }}</div>
-          <div style="font-size:88px;font-weight:900;color:#eab308;line-height:0.92;letter-spacing:-0.04em;margin-bottom:36px;">{{ ad31accent || 'in one place.' }}</div>
-          <div style="font-size:24px;color:#9ca3af;line-height:1.5;margin-bottom:44px;max-width:420px;">{{ ad31body || 'and know exactly where you stand.' }}</div>
-          <div>
-            <div style="display:inline-flex;background:linear-gradient(135deg,#eab308,#ca8a04);color:#0a0c14;font-size:26px;font-weight:900;padding:22px 44px;border-radius:14px;letter-spacing:0.01em;">
-              {{ ad31btn || 'Get League Pass →' }}
-            </div>
-          </div>
-          <div style="font-size:14px;color:#374151;margin-top:28px;letter-spacing:0.04em;">ultimatefantasydashboard.com</div>
-        </div>
-        <div style="position:absolute;bottom:0;left:0;right:0;height:180px;background:linear-gradient(transparent,rgba(8,10,16,0.6));"></div>
-      </div>
-      </div>
-    </div>
-
-    <!-- ══ TEMPLATE 31b: Story — Hero headline, phone below ══ -->
-    <div class="post-wrap" style="grid-column:1/-1;max-width:960px;margin-top:32px;">
-      <div class="post-label">31b · Phone Ad Story — Hero Headline (1080×1920) — same inputs as 31 above</div>
-
-      <!-- 1080×1920 scaled 28.125% → 304×540 -->
-      <div style="width:304px;height:540px;overflow:hidden;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
-      <div style="width:1080px;height:1920px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
-        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 40% 30%,rgba(234,179,8,0.12) 0%,transparent 50%);"></div>
-        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 60% 90%,rgba(6,182,212,0.06) 0%,transparent 45%);"></div>
-        <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
-
-        <!-- TEXT — top section (below 220px IG profile safe zone) -->
-        <div style="position:absolute;top:240px;left:80px;right:80px;">
-          <div style="margin-bottom:40px;"><img src="/UFD_V8.png" style="height:110px;width:auto;"></div>
-          <div style="font-size:120px;font-weight:900;color:#ffffff;line-height:0.9;letter-spacing:-0.04em;margin-bottom:8px;">{{ ad31headline || 'See your whole league' }}</div>
-          <div style="font-size:120px;font-weight:900;color:#eab308;line-height:0.9;letter-spacing:-0.04em;margin-bottom:48px;">{{ ad31accent || 'in one place.' }}</div>
-          <div style="font-size:34px;color:#9ca3af;line-height:1.5;margin-bottom:50px;">{{ ad31body || 'and know exactly where you stand.' }}</div>
-          <div style="display:inline-flex;">
-            <div style="background:linear-gradient(135deg,#eab308,#ca8a04);color:#0a0c14;font-size:38px;font-weight:900;padding:28px 64px;border-radius:20px;letter-spacing:0.01em;">
-              {{ ad31btn || 'Get League Pass →' }}
-            </div>
-          </div>
-        </div>
-
-        <!-- PHONE — bottom third, below button, centred, tilted right -->
-        <div style="position:absolute;bottom:180px;left:50%;transform:translateX(-50%);width:900px;height:760px;display:flex;align-items:center;justify-content:center;">
-          <div style="position:absolute;width:360px;height:740px;border-radius:48px;background:radial-gradient(ellipse,rgba(234,179,8,0.1) 0%,transparent 70%);transform:perspective(1600px) rotateY(-10deg) rotateX(2deg) rotate(3deg);pointer-events:none;"></div>
-          <div style="width:360px;height:740px;background:#0a0d14;border-radius:48px;border:2.5px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;transform:perspective(1600px) rotateY(-10deg) rotateX(2deg) rotate(3deg);filter:drop-shadow(0 80px 180px rgba(0,0,0,0.95));">
-            <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:126px;height:30px;background:#080a10;border-radius:0 0 20px 20px;z-index:10;"></div>
-            <div style="position:absolute;top:11px;left:22px;right:22px;display:flex;justify-content:space-between;z-index:11;">
-              <span style="font-size:12px;color:#6b7280;font-weight:600;">9:41</span>
-              <div style="width:15px;height:8px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
-            </div>
-            <div style="position:absolute;top:40px;left:0;right:0;bottom:0;background:#0d1117;padding:11px 13px;display:flex;flex-direction:column;gap:9px;overflow:hidden;">
-              <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.06);">
-                <img src="/UFD_V8.png" style="height:19px;width:auto;">
-                <span style="font-size:9px;color:#eab308;font-weight:700;letter-spacing:0.05em;">FANTASY BASEBALL</span>
-              </div>
-              <div v-html="renderAdCard(ad31card1)" style="border-radius:10px;overflow:hidden;"></div>
-              <div v-html="renderAdCard(ad31card2)" style="border-radius:10px;overflow:hidden;"></div>
-              <div v-html="renderAdCard(ad31card1==='season'||ad31card2==='season'?'draft':'season')" style="border-radius:10px;overflow:hidden;opacity:0.65;"></div>
-              <div v-html="renderAdCard(ad31card1==='prtrendchart'||ad31card2==='prtrendchart'?'matchupgraph':'prtrendchart')" style="border-radius:10px;overflow:hidden;opacity:0.45;"></div>
-            </div>
-            <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:96px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
-          </div>
-        </div>
-
-        <div style="position:absolute;bottom:230px;left:0;right:0;text-align:center;">
-          <div style="font-size:22px;color:#1e2130;letter-spacing:0.06em;">ultimatefantasydashboard.com</div>
-        </div>
-        <div style="position:absolute;bottom:0;left:0;right:0;height:5px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
-      </div>
-      </div>
-    </div>
-    <div style="height:20px;grid-column:1/-1;"></div>
-    </div><!-- end posts-grid -->
-    </template><!-- end square tab -->
-
-    <!-- INTERACTIVE TAB -->
+    <!-- ══════════════════════════════════════ INTERACTIVE TAB ══ -->
     <template v-if="activeType === 'interactive'">
     <div class="section-label">🎯 Interactive Templates — Customize then screenshot the card</div>
 
+    <!-- ── Item Selector ── -->
+    <div class="interactive-picker">
+      <label class="interactive-picker-label">Select template:</label>
+      <select v-model="selectedInteractiveItem" class="interactive-picker-select">
+        <option v-for="opt in interactiveItems" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+      </select>
+    </div>
+
+    <template v-if="selectedInteractiveItem === 'wp_daily'">
     <!-- 19 · DAILY WIN PROBABILITY TRACKER -->
     <div class="post-wrap wp-post-wrap">
       <div class="post-label">19 · Daily Win Probability — Matchup Tracker</div>
@@ -950,8 +117,13 @@
         </div>
       </div>
 
-      <!-- ── The screenshottable card ── -->
-      <div class="sq sq-wp-bg">
+      <!-- ── Three-size renders ── -->
+      <div class="three-size-row">
+
+      <!-- ── 1) SQUARE 540×540 ── -->
+      <div class="three-size-cell">
+        <div class="three-size-label">Square · 1080×1080</div>
+        <div class="sq sq-wp-bg" style="width:360px;height:360px;">
         <div class="sq-grain"></div>
 
         <!-- The entire card is one SVG for pixel-perfect layout -->
@@ -1144,9 +316,258 @@
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
 
         </svg>
-      </div>
+        </div>
+      </div><!-- end square cell -->
+
+      <!-- ── 2) HORIZONTAL 1200×630 ── -->
+      <div class="three-size-cell">
+        <div class="three-size-label">Horizontal · 1200×630</div>
+        <div class="sq sq-wp-bg" style="width:600px;height:315px;">
+        <div class="sq-grain"></div>
+        <svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg"
+          style="position:absolute;inset:0;width:100%;height:100%;z-index:2">
+
+          <!-- HEADER -->
+          <rect x="0" y="0" width="1200" height="72" fill="#0d1019"/>
+          <line x1="0" y1="72" x2="1200" y2="72" stroke="#1e2130" stroke-width="1"/>
+          <rect x="32" y="22" width="64" height="32" rx="6" fill="#09090f" stroke="#eab308" stroke-width="1.5"/>
+          <text x="64" y="44" text-anchor="middle" font-size="15" font-weight="900" fill="#eab308" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">UFD</text>
+          <circle cx="120" cy="38" r="13" fill="rgba(255,255,255,0.06)"/>
+          <text x="120" y="44" text-anchor="middle" font-size="17">⚾</text>
+          <text x="142" y="44" font-size="16" font-weight="600" fill="#e5e7eb" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpSportLabel }}</text>
+          <text x="1168" y="44" text-anchor="end" font-size="16" font-weight="700" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">WK {{ wpWeek }}</text>
+
+          <!-- TITLE BAR -->
+          <rect x="0" y="72" width="1200" height="56" fill="#0a0c14"/>
+          <line x1="0" y1="128" x2="1200" y2="128" stroke="#1e2130" stroke-width="1"/>
+          <rect x="32" y="84" width="34" height="34" rx="5" fill="rgba(239,68,68,0.15)"/>
+          <polyline points="36,112 44,99 52,104 60,90 64,94" fill="none" stroke="#f87171" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <text x="76" y="110" font-size="22" font-weight="900" letter-spacing="0.04em" fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">WIN PROBABILITY TREND</text>
+
+          <!-- CHART AREA -->
+          <rect x="0" y="128" width="800" height="442" fill="rgba(0,0,0,0.18)"/>
+          <line x1="800" y1="128" x2="800" y2="570" stroke="#1e2130" stroke-width="1"/>
+
+          <!-- Y-axis grid -->
+          <line :x1="WPH_CL" :y1="wpHY(100)" :x2="WPH_CR" :y2="wpHY(100)" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="4,4"/>
+          <text :x="WPH_CL - 8" :y="wpHY(100) + 5" text-anchor="end" font-size="12" fill="rgba(255,255,255,0.35)" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">100%</text>
+          <line :x1="WPH_CL" :y1="wpHY(50)" :x2="WPH_CR" :y2="wpHY(50)" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="4,4"/>
+          <text :x="WPH_CL - 8" :y="wpHY(50) + 5" text-anchor="end" font-size="12" fill="rgba(255,255,255,0.35)" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">50%</text>
+          <line :x1="WPH_CL" :y1="wpHY(0)" :x2="WPH_CR" :y2="wpHY(0)" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="4,4"/>
+          <text :x="WPH_CL - 8" :y="wpHY(0) + 5" text-anchor="end" font-size="12" fill="rgba(255,255,255,0.35)" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">0%</text>
+
+          <!-- Day x-axis labels -->
+          <text v-for="(d,i) in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']" :key="'hdx'+i"
+            :x="wpHX(i)" :y="WPH_CB + 22"
+            text-anchor="middle" font-size="14"
+            :font-weight="i===wpCurrentDay?'800':'400'"
+            :fill="i===wpCurrentDay?'#e5e7eb':i<wpCurrentDay?'rgba(255,255,255,0.35)':'rgba(255,255,255,0.18)'"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ d }}</text>
+          <rect :x="wpHX(wpCurrentDay)-22" :y="WPH_CB+30" width="44" height="16" rx="3" fill="rgba(6,182,212,0.12)"/>
+          <text :x="wpHX(wpCurrentDay)" :y="WPH_CB+42" text-anchor="middle" font-size="10" font-weight="800" fill="#06b6d4" letter-spacing="0.08em" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">TODAY</text>
+
+          <!-- AREA FILLS -->
+          <defs>
+            <clipPath id="chart-clip-h">
+              <rect :x="WPH_CL - 4" :y="WPH_CT - 12" :width="WPH_CR - WPH_CL + 8" :height="WPH_CH + 24"/>
+            </clipPath>
+            <linearGradient id="area1-grad-h" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.22"/>
+              <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.03"/>
+            </linearGradient>
+            <linearGradient id="area2-grad-h" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#f97316" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#f97316" stop-opacity="0.03"/>
+            </linearGradient>
+            <clipPath id="player-avatar-clip-h">
+              <circle cx="900" cy="380" r="32"/>
+            </clipPath>
+          </defs>
+
+          <path :d="wpHArea2Path" fill="url(#area2-grad-h)" clip-path="url(#chart-clip-h)"/>
+          <path :d="wpHArea1Path" fill="url(#area1-grad-h)" clip-path="url(#chart-clip-h)"/>
+          <path :d="wpHLine2Path" fill="none" stroke="#f97316" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" clip-path="url(#chart-clip-h)"/>
+          <path :d="wpHLine1Path" fill="none" stroke="#06b6d4" stroke-width="3.5" stroke-linecap="round" clip-path="url(#chart-clip-h)"/>
+
+          <!-- Data points -->
+          <g v-for="(pt,i) in wpHTeam2Visible" :key="'h2d'+i">
+            <circle :cx="pt.x" :cy="pt.y" r="9" fill="rgba(249,115,22,0.15)"/>
+            <circle :cx="pt.x" :cy="pt.y" r="6" fill="#f97316"/>
+            <circle :cx="pt.x" :cy="pt.y" r="2.5" fill="#0d1117"/>
+            <rect :x="pt.x - 26" :y="pt.y + 12" width="52" height="22" rx="4" fill="#f97316"/>
+            <text :x="pt.x" :y="pt.y + 28" text-anchor="middle" font-size="13.5" font-weight="800" fill="#0a0c14" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ pt.prob.toFixed(1) }}</text>
+          </g>
+          <g v-for="(pt,i) in wpHTeam1Visible" :key="'h1d'+i">
+            <circle :cx="pt.x" :cy="pt.y" r="9" fill="rgba(6,182,212,0.15)"/>
+            <circle :cx="pt.x" :cy="pt.y" r="6.5" fill="#06b6d4"/>
+            <circle :cx="pt.x" :cy="pt.y" r="2.5" fill="#0d1117"/>
+            <rect :x="pt.x - 26" :y="pt.y - 34" width="52" height="22" rx="4" fill="#06b6d4"/>
+            <text :x="pt.x" :y="pt.y - 18" text-anchor="middle" font-size="13.5" font-weight="800" fill="#0a0c14" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ pt.prob.toFixed(1) }}</text>
+          </g>
+
+          <!-- RIGHT INFO PANEL -->
+          <text x="830" y="170" font-size="11" font-weight="700" letter-spacing="0.12em" fill="#6b7280" text-transform="uppercase" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">CURRENT</text>
+
+          <!-- Team 1 row -->
+          <circle cx="846" cy="200" r="7" fill="#06b6d4"/>
+          <text x="860" y="205" font-size="14" font-weight="600" fill="#e5e7eb" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpTeam1 }}</text>
+          <text x="1168" y="205" text-anchor="end" font-size="22" font-weight="900" fill="#06b6d4" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpCurrentProb1.toFixed(1) }}%</text>
+
+          <!-- Team 2 row -->
+          <circle cx="846" cy="240" r="7" fill="#f97316"/>
+          <text x="860" y="245" font-size="14" font-weight="600" fill="#e5e7eb" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpTeam2 }}</text>
+          <text x="1168" y="245" text-anchor="end" font-size="22" font-weight="900" fill="#f97316" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpCurrentProb2.toFixed(1) }}%</text>
+
+          <line x1="830" y1="270" x2="1168" y2="270" stroke="#1e2130" stroke-width="1"/>
+
+          <!-- Player callout -->
+          <text x="830" y="305" font-size="11" font-weight="700" letter-spacing="0.12em" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">KEY PLAYER · {{ wpCurrentDayLabel }}</text>
+
+          <rect x="830" y="320" width="338" height="120" rx="10" fill="#0c1220" stroke="rgba(6,182,212,0.4)" stroke-width="1.2"/>
+          <circle cx="900" cy="380" r="32" fill="#0a1520" stroke="#06b6d4" stroke-width="2"/>
+          <image v-if="wpHeadshotUrl" :href="wpHeadshotUrl" x="868" y="348" width="64" height="64" clip-path="url(#player-avatar-clip-h)" preserveAspectRatio="xMidYMid slice"/>
+          <text v-if="!wpHeadshotUrl" x="900" y="388" text-anchor="middle" font-size="20" font-weight="900" fill="#06b6d4" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpPlayerInitials }}</text>
+
+          <circle cx="930" cy="358" r="14" :fill="wpDirection==='down'?'#ef4444':'#22c55e'"/>
+          <text x="930" y="365" text-anchor="middle" font-size="20" font-weight="900" fill="#fff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpDirection==='down'?'↓':'↑' }}</text>
+
+          <text x="950" y="370" font-size="18" font-weight="700" fill="#e5e7eb" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpPlayerName }}</text>
+          <text x="950" y="392" font-size="13" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpPlayerPos }} · {{ wpDirection==='down'?'hurt':'helped' }} win%</text>
+          <text x="950" y="412" font-size="13" fill="rgba(6,182,212,0.7)" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpCurrentDayLabel }} impact</text>
+
+          <!-- FOOTER -->
+          <rect x="0" y="570" width="1200" height="60" fill="rgba(0,0,0,0.25)"/>
+          <line x1="0" y1="570" x2="1200" y2="570" stroke="#1e2130" stroke-width="1"/>
+          <text x="32" y="608" font-size="13" fill="#1e2130" letter-spacing="0.06em" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
+        </svg>
+        </div>
+      </div><!-- end horizontal cell -->
+
+      <!-- ── 3) STORY 1080×1920 ── -->
+      <div class="three-size-cell">
+        <div class="three-size-label">Story · 1080×1920</div>
+        <div class="sq sq-wp-bg" style="width:270px;height:480px;">
+        <div class="sq-grain"></div>
+        <svg viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg"
+          style="position:absolute;inset:0;width:100%;height:100%;z-index:2">
+
+          <!-- HEADER -->
+          <rect x="0" y="0" width="1080" height="110" fill="#0d1019"/>
+          <line x1="0" y1="110" x2="1080" y2="110" stroke="#1e2130" stroke-width="1"/>
+          <rect x="40" y="36" width="92" height="44" rx="8" fill="#09090f" stroke="#eab308" stroke-width="2"/>
+          <text x="86" y="68" text-anchor="middle" font-size="21" font-weight="900" fill="#eab308" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">UFD</text>
+          <circle cx="160" cy="58" r="18" fill="rgba(255,255,255,0.06)"/>
+          <text x="160" y="66" text-anchor="middle" font-size="22">⚾</text>
+          <text x="190" y="66" font-size="22" font-weight="600" fill="#e5e7eb" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpSportLabel }}</text>
+          <text x="1040" y="66" text-anchor="end" font-size="22" font-weight="700" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">WK {{ wpWeek }}</text>
+
+          <!-- TITLE -->
+          <rect x="0" y="110" width="1080" height="90" fill="#0a0c14"/>
+          <line x1="0" y1="200" x2="1080" y2="200" stroke="#1e2130" stroke-width="1"/>
+          <rect x="40" y="130" width="50" height="50" rx="6" fill="rgba(239,68,68,0.15)"/>
+          <polyline points="46,170 58,150 70,158 82,138 88,144" fill="none" stroke="#f87171" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <text x="105" y="170" font-size="32" font-weight="900" letter-spacing="0.04em" fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">WIN PROBABILITY TREND</text>
+
+          <!-- TEAM-VS-TEAM BIG CARDS -->
+          <rect x="40" y="240" width="480" height="640" rx="20" fill="rgba(6,182,212,0.07)" stroke="rgba(6,182,212,0.35)" stroke-width="2"/>
+          <text x="280" y="305" text-anchor="middle" font-size="22" font-weight="700" fill="#06b6d4" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpTeam1 }}</text>
+          <text x="280" y="555" text-anchor="middle" font-size="160" font-weight="900" fill="#06b6d4" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpCurrentProb1.toFixed(0) }}</text>
+          <text x="280" y="630" text-anchor="middle" font-size="48" font-weight="700" fill="#06b6d4" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">% WIN</text>
+
+          <!-- VS -->
+          <text x="540" y="585" text-anchor="middle" font-size="40" font-weight="900" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">VS</text>
+
+          <rect x="560" y="240" width="480" height="640" rx="20" fill="rgba(249,115,22,0.07)" stroke="rgba(249,115,22,0.35)" stroke-width="2"/>
+          <text x="800" y="305" text-anchor="middle" font-size="22" font-weight="700" fill="#f97316" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpTeam2 }}</text>
+          <text x="800" y="555" text-anchor="middle" font-size="160" font-weight="900" fill="#f97316" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpCurrentProb2.toFixed(0) }}</text>
+          <text x="800" y="630" text-anchor="middle" font-size="48" font-weight="700" fill="#f97316" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">% WIN</text>
+
+          <!-- CHART AREA -->
+          <rect x="0" y="900" width="1080" height="610" fill="rgba(0,0,0,0.18)"/>
+
+          <!-- Y-axis grid -->
+          <line :x1="WPS_CL" :y1="wpSY(100)" :x2="WPS_CR" :y2="wpSY(100)" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" stroke-dasharray="6,6"/>
+          <text :x="WPS_CL - 12" :y="wpSY(100) + 8" text-anchor="end" font-size="20" fill="rgba(255,255,255,0.35)" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">100%</text>
+          <line :x1="WPS_CL" :y1="wpSY(50)" :x2="WPS_CR" :y2="wpSY(50)" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" stroke-dasharray="6,6"/>
+          <text :x="WPS_CL - 12" :y="wpSY(50) + 8" text-anchor="end" font-size="20" fill="rgba(255,255,255,0.35)" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">50%</text>
+          <line :x1="WPS_CL" :y1="wpSY(0)" :x2="WPS_CR" :y2="wpSY(0)" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" stroke-dasharray="6,6"/>
+          <text :x="WPS_CL - 12" :y="wpSY(0) + 8" text-anchor="end" font-size="20" fill="rgba(255,255,255,0.35)" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">0%</text>
+
+          <!-- Day x-axis labels -->
+          <text v-for="(d,i) in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']" :key="'sdx'+i"
+            :x="wpSX(i)" :y="WPS_CB + 38"
+            text-anchor="middle" font-size="22"
+            :font-weight="i===wpCurrentDay?'800':'400'"
+            :fill="i===wpCurrentDay?'#e5e7eb':i<wpCurrentDay?'rgba(255,255,255,0.35)':'rgba(255,255,255,0.18)'"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ d }}</text>
+          <rect :x="wpSX(wpCurrentDay)-36" :y="WPS_CB+50" width="72" height="26" rx="4" fill="rgba(6,182,212,0.12)"/>
+          <text :x="wpSX(wpCurrentDay)" :y="WPS_CB+68" text-anchor="middle" font-size="16" font-weight="800" fill="#06b6d4" letter-spacing="0.08em" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">TODAY</text>
+
+          <!-- AREA FILLS -->
+          <defs>
+            <clipPath id="chart-clip-s">
+              <rect :x="WPS_CL - 8" :y="WPS_CT - 16" :width="WPS_CR - WPS_CL + 16" :height="WPS_CH + 32"/>
+            </clipPath>
+            <linearGradient id="area1-grad-s" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.22"/>
+              <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.03"/>
+            </linearGradient>
+            <linearGradient id="area2-grad-s" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#f97316" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#f97316" stop-opacity="0.03"/>
+            </linearGradient>
+            <clipPath id="player-avatar-clip-s">
+              <circle cx="160" cy="1700" r="60"/>
+            </clipPath>
+          </defs>
+
+          <path :d="wpSArea2Path" fill="url(#area2-grad-s)" clip-path="url(#chart-clip-s)"/>
+          <path :d="wpSArea1Path" fill="url(#area1-grad-s)" clip-path="url(#chart-clip-s)"/>
+          <path :d="wpSLine2Path" fill="none" stroke="#f97316" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" clip-path="url(#chart-clip-s)"/>
+          <path :d="wpSLine1Path" fill="none" stroke="#06b6d4" stroke-width="6" stroke-linecap="round" clip-path="url(#chart-clip-s)"/>
+
+          <!-- Data points -->
+          <g v-for="(pt,i) in wpSTeam2Visible" :key="'s2d'+i">
+            <circle :cx="pt.x" :cy="pt.y" r="14" fill="rgba(249,115,22,0.15)"/>
+            <circle :cx="pt.x" :cy="pt.y" r="10" fill="#f97316"/>
+            <circle :cx="pt.x" :cy="pt.y" r="4" fill="#0d1117"/>
+            <rect :x="pt.x - 42" :y="pt.y + 18" width="84" height="34" rx="6" fill="#f97316"/>
+            <text :x="pt.x" :y="pt.y + 42" text-anchor="middle" font-size="22" font-weight="800" fill="#0a0c14" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ pt.prob.toFixed(1) }}</text>
+          </g>
+          <g v-for="(pt,i) in wpSTeam1Visible" :key="'s1d'+i">
+            <circle :cx="pt.x" :cy="pt.y" r="14" fill="rgba(6,182,212,0.15)"/>
+            <circle :cx="pt.x" :cy="pt.y" r="11" fill="#06b6d4"/>
+            <circle :cx="pt.x" :cy="pt.y" r="4" fill="#0d1117"/>
+            <rect :x="pt.x - 42" :y="pt.y - 56" width="84" height="34" rx="6" fill="#06b6d4"/>
+            <text :x="pt.x" :y="pt.y - 32" text-anchor="middle" font-size="22" font-weight="800" fill="#0a0c14" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ pt.prob.toFixed(1) }}</text>
+          </g>
+
+          <!-- PLAYER CALLOUT -->
+          <rect x="40" y="1620" width="1000" height="170" rx="14" fill="#0c1220" stroke="rgba(6,182,212,0.4)" stroke-width="2"/>
+          <circle cx="160" cy="1700" r="60" fill="#0a1520" stroke="#06b6d4" stroke-width="3"/>
+          <image v-if="wpHeadshotUrl" :href="wpHeadshotUrl" x="100" y="1640" width="120" height="120" clip-path="url(#player-avatar-clip-s)" preserveAspectRatio="xMidYMid slice"/>
+          <text v-if="!wpHeadshotUrl" x="160" y="1716" text-anchor="middle" font-size="40" font-weight="900" fill="#06b6d4" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpPlayerInitials }}</text>
+
+          <circle cx="208" cy="1660" r="26" :fill="wpDirection==='down'?'#ef4444':'#22c55e'"/>
+          <text x="208" y="1672" text-anchor="middle" font-size="36" font-weight="900" fill="#fff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpDirection==='down'?'↓':'↑' }}</text>
+
+          <text x="260" y="1685" font-size="36" font-weight="800" fill="#e5e7eb" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpPlayerName }}</text>
+          <text x="260" y="1722" font-size="22" fill="#6b7280" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpPlayerPos }} · {{ wpDirection==='down'?'hurt':'helped' }} win%</text>
+          <text x="260" y="1755" font-size="22" fill="rgba(6,182,212,0.7)" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpCurrentDayLabel }} impact</text>
+
+          <!-- FOOTER -->
+          <rect x="0" y="1830" width="1080" height="90" fill="rgba(0,0,0,0.25)"/>
+          <line x1="0" y1="1830" x2="1080" y2="1830" stroke="#1e2130" stroke-width="1"/>
+          <text x="540" y="1882" text-anchor="middle" font-size="22" fill="#1e2130" letter-spacing="0.06em" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
+        </svg>
+        </div>
+      </div><!-- end story cell -->
+
+      </div><!-- end three-size-row -->
     </div>
 
+    </template>
+    <template v-if="selectedInteractiveItem === 'pr'">
     <!-- 20 · POWER RANKINGS CARD — Manual Input -->
     <div class="post-wrap" style="padding-bottom:60px;">
       <div class="post-label">20 · Power Rankings Card — Manual</div>
@@ -1208,7 +629,12 @@
         </div>
       </div>
 
-      <!-- ── Screenshottable card ── -->
+      <!-- ── Three-size renders ── -->
+      <div class="three-size-row">
+
+      <!-- 1) SQUARE 1080×1080 -->
+      <div class="three-size-cell">
+        <div class="three-size-label">Square · 1080×1080</div>
       <div style="width:540px;background:#0f1117;border-radius:16px;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
         <!-- Gold top bar -->
         <div style="height:5px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
@@ -1289,12 +715,87 @@
         </div>
         <div style="height:4px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
       </div>
+      </div><!-- end square cell -->
+
+      <!-- 2) HORIZONTAL 1200×630 -->
+      <div class="three-size-cell">
+        <div class="three-size-label">Horizontal · 1200×630</div>
+        <div style="width:600px;height:315px;background:#0f1117;border-radius:16px;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;">
+          <div style="height:3px;background:linear-gradient(90deg,#eab308,#ca8a04);flex-shrink:0;"></div>
+          <!-- Header strip -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <img src="/UFD_V8.png" style="height:24px;width:auto;object-fit:contain;">
+              <span style="font-size:18px;font-weight:900;color:#fff;letter-spacing:0.04em;margin-left:6px;">⚡ POWER RANKINGS</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:9px;color:#6b7280;">{{ prSportEmoji }} {{ prSportLabel }}</span>
+              <span style="font-size:9px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">WEEK {{ prWeek }}</span>
+            </div>
+          </div>
+          <!-- Two-column team rows -->
+          <div style="flex:1;display:flex;min-height:0;">
+            <div v-for="col in [0, 1]" :key="'hcol'+col" style="flex:1;display:flex;flex-direction:column;border-right:1px solid rgba(255,255,255,0.04);">
+              <div v-for="(team, idx) in prTeams.slice(col*Math.ceil(prTeamCount/2), col*Math.ceil(prTeamCount/2)+Math.ceil(prTeamCount/2)).slice(0, prTeamCount-col*Math.ceil(prTeamCount/2))" :key="'h'+col+idx"
+                :style="{flex:1,minHeight:0,display:'flex',alignItems:'center',padding:'0 10px',background:(col*Math.ceil(prTeamCount/2)+idx)===0?'rgba(234,179,8,0.06)':((col*Math.ceil(prTeamCount/2)+idx)%2===0?'rgba(255,255,255,0.02)':'transparent'),borderBottom:'1px solid rgba(255,255,255,0.04)'}">
+                <div :style="{width:'20px',flexShrink:0,fontSize:'12px',fontWeight:'900',color:(col*Math.ceil(prTeamCount/2)+idx)===0?'#eab308':'#9ca3af',textAlign:'center'}">{{ col*Math.ceil(prTeamCount/2)+idx+1 }}</div>
+                <div style="width:14px;flex-shrink:0;font-size:9px;font-weight:800;text-align:center;" :style="{color:team.change>0?'#22c55e':team.change<0?'#ef4444':'#374151'}">{{team.change>0?'▲'+team.change:team.change<0?'▼'+Math.abs(team.change):'—'}}</div>
+                <img v-if="team.logo" :src="team.logo" style="width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-left:4px;" @error="($event.target as HTMLImageElement).style.display='none'">
+                <div v-else :style="{width:'22px',height:'22px',borderRadius:'50%',background:prTeamColor(col*Math.ceil(prTeamCount/2)+idx),flexShrink:0,marginLeft:'4px'}"></div>
+                <span :style="{flex:1,marginLeft:'6px',fontSize:'11px',fontWeight:(col*Math.ceil(prTeamCount/2)+idx)===0?'800':'600',color:'#d1d5db',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}">{{team.name||'Team '+(col*Math.ceil(prTeamCount/2)+idx+1)}}</span>
+                <span :style="{fontSize:'11px',fontWeight:'800',color:(col*Math.ceil(prTeamCount/2)+idx)===0?'#eab308':'#e5e7eb',width:'30px',textAlign:'right'}">{{(team.score||0).toFixed(1)}}</span>
+                <span style="width:30px;text-align:right;font-size:9px;color:#6b7280;">{{team.record||'—'}}</span>
+              </div>
+            </div>
+          </div>
+          <div style="padding:4px 14px;text-align:center;flex-shrink:0;">
+            <div style="font-size:8px;color:#374151;">ultimatefantasydashboard.com</div>
+          </div>
+          <div style="height:2px;background:linear-gradient(90deg,#eab308,#ca8a04);flex-shrink:0;"></div>
+        </div>
+      </div><!-- end horizontal cell -->
+
+      <!-- 3) STORY 1080×1920 -->
+      <div class="three-size-cell">
+        <div class="three-size-label">Story · 1080×1920</div>
+        <div style="width:270px;height:480px;background:#0f1117;border-radius:16px;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;">
+          <div style="height:3px;background:linear-gradient(90deg,#eab308,#ca8a04);flex-shrink:0;"></div>
+          <!-- Header -->
+          <div style="padding:10px 12px 6px;text-align:center;flex-shrink:0;">
+            <img src="/UFD_V8.png" style="height:22px;width:auto;object-fit:contain;display:block;margin:0 auto 4px;">
+            <div style="font-size:8px;color:#6b7280;">{{ prSportEmoji }} {{ prSportLabel }} · WK {{ prWeek }}</div>
+          </div>
+          <div style="text-align:center;padding:0 12px 8px;flex-shrink:0;">
+            <div style="font-size:18px;font-weight:900;color:#fff;letter-spacing:0.04em;">⚡ POWER RANKINGS</div>
+          </div>
+          <div style="height:1px;background:rgba(255,255,255,0.06);flex-shrink:0;"></div>
+          <!-- Team rows (vertical, all teams) -->
+          <div style="flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;">
+            <div v-for="(team, i) in prTeams.slice(0, prTeamCount)" :key="'s'+i"
+              :style="{flex:1,minHeight:0,display:'flex',alignItems:'center',padding:'0 10px',background:i===0?'rgba(234,179,8,0.08)':i%2===0?'rgba(255,255,255,0.02)':'transparent',borderBottom:'1px solid rgba(255,255,255,0.04)'}">
+              <div :style="{width:'18px',flexShrink:0,fontSize:'12px',fontWeight:'900',color:i===0?'#eab308':'#9ca3af',textAlign:'center'}">{{i+1}}</div>
+              <div style="width:14px;flex-shrink:0;font-size:9px;font-weight:800;text-align:center;" :style="{color:team.change>0?'#22c55e':team.change<0?'#ef4444':'#374151'}">{{team.change>0?'▲'+team.change:team.change<0?'▼'+Math.abs(team.change):'—'}}</div>
+              <img v-if="team.logo" :src="team.logo" style="width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-left:4px;" @error="($event.target as HTMLImageElement).style.display='none'">
+              <div v-else :style="{width:'22px',height:'22px',borderRadius:'50%',background:prTeamColor(i),flexShrink:0,marginLeft:'4px'}"></div>
+              <span :style="{flex:1,marginLeft:'6px',fontSize:'11px',fontWeight:i===0?'800':'600',color:'#d1d5db',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}">{{team.name||'Team '+(i+1)}}</span>
+              <span :style="{fontSize:'12px',fontWeight:'800',color:i===0?'#eab308':'#e5e7eb',marginLeft:'4px'}">{{(team.score||0).toFixed(1)}}</span>
+            </div>
+          </div>
+          <div style="padding:6px 12px;text-align:center;flex-shrink:0;">
+            <div style="font-size:8px;color:#374151;">ultimatefantasydashboard.com</div>
+          </div>
+          <div style="height:2px;background:linear-gradient(90deg,#eab308,#ca8a04);flex-shrink:0;"></div>
+        </div>
+      </div><!-- end story cell -->
+
+      </div><!-- end three-size-row -->
     </div>
 
     <!-- 20b · RANKING TRENDS — same inputs, separate screenshot -->
     <div class="post-wrap" style="padding-bottom:60px;margin-top:32px;">
       <div class="post-label">20b · Ranking Trends — uses same inputs above, screenshot separately</div>
 
+      <ThreeSizePreview>
       <div style="width:540px;background:#0f1117;border-radius:16px;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
         <div style="height:5px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
 
@@ -1360,6 +861,7 @@
         </div>
         <div style="height:4px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
       </div>
+      </ThreeSizePreview>
     </div>
 
 
@@ -1367,6 +869,8 @@
          WIN PROBABILITY IMPACT GRAPHICS
     ══════════════════════════════════════ -->
 
+    </template>
+    <template v-if="selectedInteractiveItem === 'wpi'">
     <!-- Controls shared by all 4 cards -->
     <div class="post-wrap wp-post-wrap" style="grid-column:1/-1">
       <div class="post-label">⚡ Win Probability Impact Graphics — pulls yesterday's MLB stats from ESPN</div>
@@ -1391,6 +895,7 @@
     <!-- ── GRAPHIC 27: Batters ── -->
     <div class="post-wrap wp-post-wrap">
       <div class="post-label">27 · Best Batters</div>
+      <ThreeSizePreview>
       <div class="sq sq-wp-bg">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 540 600" xmlns="http://www.w3.org/2000/svg"
@@ -1487,11 +992,13 @@
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
         </svg>
       </div>
+      </ThreeSizePreview>
     </div>
 
     <!-- ── GRAPHIC 28: Pitchers ── -->
     <div class="post-wrap wp-post-wrap">
       <div class="post-label">28 · Best Pitchers</div>
+      <ThreeSizePreview>
       <div class="sq sq-wp-bg">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 540 600" xmlns="http://www.w3.org/2000/svg"
@@ -1588,6 +1095,7 @@
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
         </svg>
       </div>
+      </ThreeSizePreview>
     </div>
 
 
@@ -1595,6 +1103,8 @@
     <!-- ══════════════════════════════════════════════════════════════════
          WAIVER WIRE REPORT — Top Adds (Batters, SP, RP)
     ══════════════════════════════════════════════════════════════════ -->
+    </template>
+    <template v-if="selectedInteractiveItem === 'ww'">
     <div class="post-wrap wp-post-wrap" style="grid-column:1/-1">
       <div class="post-label">⚾ Waiver Wire Report — Today's Best Adds (ESPN stats + MLB schedule)</div>
 
@@ -1631,6 +1141,7 @@
     <!-- ── GRAPHIC WW-A: Top Batter Pickups ── -->
     <div class="post-wrap wp-post-wrap">
       <div class="post-label">WW-A · Waiver Wire — Batters</div>
+      <ThreeSizePreview>
       <div class="sq sq-wp-bg">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 540 540" xmlns="http://www.w3.org/2000/svg"
@@ -1729,11 +1240,13 @@
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
         </svg>
       </div>
+      </ThreeSizePreview>
     </div>
 
     <!-- ── GRAPHIC WW-B: Top SP Pickups ── -->
     <div class="post-wrap wp-post-wrap">
       <div class="post-label">WW-B · Waiver Wire — Starting Pitchers</div>
+      <ThreeSizePreview>
       <div class="sq sq-wp-bg">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 540 540" xmlns="http://www.w3.org/2000/svg"
@@ -1824,11 +1337,13 @@
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
         </svg>
       </div>
+      </ThreeSizePreview>
     </div>
 
     <!-- ── GRAPHIC WW-C: Top RP Pickups ── -->
     <div class="post-wrap wp-post-wrap">
       <div class="post-label">WW-C · Waiver Wire — Relief Pitchers</div>
+      <ThreeSizePreview>
       <div class="sq sq-wp-bg">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 540 540" xmlns="http://www.w3.org/2000/svg"
@@ -1919,8 +1434,11 @@
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
         </svg>
       </div>
+      </ThreeSizePreview>
     </div>
 
+    </template>
+    <template v-if="selectedInteractiveItem === 'wp_card'">
     <!-- 29 · WIN PROBABILITY CARD — Manual Input -->
     <div class="post-wrap" style="padding-bottom:60px;">
       <div class="post-label">29 · Win Probability Card — Manual</div>
@@ -2081,6 +1599,7 @@
       <div style="margin-top:24px;">
         <div style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Version B · Feature Showcase</div>
       </div>
+      <ThreeSizePreview>
       <div style="width:540px;background:#0f1117;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
 
         <!-- FEATURE HEADER BAND -->
@@ -2176,12 +1695,15 @@
           <div style="font-size:10px;font-weight:700;color:#06b6d4;letter-spacing:0.06em;text-transform:uppercase;">Get your league's data →</div>
         </div>
       </div>
+      </ThreeSizePreview>
     </div>
 
 
     <!-- ══════════════════════════════════════════════════════════
          32 · MOST TRADED PLAYERS — Yahoo buzzindex live fetch
     ══════════════════════════════════════════════════════════ -->
+    </template>
+    <template v-if="selectedInteractiveItem === 'most_traded'">
     <div class="post-wrap wp-post-wrap">
       <div class="post-label">32 · Most Traded Players — Yahoo (Live)</div>
 
@@ -2256,6 +1778,7 @@
       </div>
 
       <!-- ── Screenshottable card ── -->
+      <ThreeSizePreview>
       <div class="sq sq-wp-bg" style="height:640px">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 540 640" xmlns="http://www.w3.org/2000/svg"
@@ -2348,6 +1871,7 @@
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
         </svg>
       </div>
+      </ThreeSizePreview>
     </div>
 
 
@@ -2355,6 +1879,8 @@
     <!-- ══════════════════════════════════════════════════════════
          34 · PLAYER RANKING IMPACT (PRI) — Weekly power ranking movement
     ══════════════════════════════════════════════════════════ -->
+    </template>
+    <template v-if="selectedInteractiveItem === 'ranking_impact'">
     <div class="post-wrap wp-post-wrap">
       <div class="post-label">34 · Player Ranking Impact — Who moved the needle this week</div>
 
@@ -2407,6 +1933,7 @@
       </div>
 
       <!-- ── Screenshottable card ── -->
+      <ThreeSizePreview>
       <div class="sq sq-wp-bg" style="height:620px;max-width:540px;">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 540 620" xmlns="http://www.w3.org/2000/svg"
@@ -2528,638 +2055,12 @@
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
         </svg>
       </div>
+      </ThreeSizePreview>
     </div>
 
 
+    </template>
     </template><!-- end interactive tab -->
-
-  <!-- ══════════════════════════════════════════════════════════
-       STORIES TAB  — 9:16 vertical format (1080 × 1920 → displayed at 540×960)
-       Safe zones: top 140px (profile info), bottom 220px (CTA/buttons)
-  ══════════════════════════════════════════════════════════ -->
-  <template v-if="activeType === 'stories'">
-    <div class="section-label">📱 Stories — 9:16 format · Screenshot each card below</div>
-    <div style="display:flex;flex-direction:column;gap:48px;padding:24px 0;">
-
-      <!-- ── SHARED DATA CONTROLS ── -->
-      <div style="background:#111827;border:1px solid #1f2937;border-radius:12px;padding:20px 24px;max-width:560px;">
-        <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px;">📅 Data Controls — shared with Interactive tab</div>
-        <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;">
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Date</div>
-            <input v-model="wpiDate" class="wp-input" placeholder="20260329" style="width:120px;">
-          </div>
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Week</div>
-            <input v-model="wpiWeekLabel" class="wp-input" style="width:60px;" placeholder="1">
-          </div>
-          <button @click="loadWpiData" :disabled="wpiLoading" class="wpi-load-btn">
-            <span v-if="wpiLoading">⏳ Loading…</span>
-            <span v-else>⚡ Load Data</span>
-          </button>
-        </div>
-        <div v-if="wpiError" style="color:#ef4444;font-size:12px;margin-top:8px;">⚠️ {{ wpiError }}</div>
-        <div v-if="wpiStatus" style="color:#22c55e;font-size:12px;margin-top:8px;">{{ wpiStatus }}</div>
-      </div>
-
-      <!-- ══ STORY 1: BEST BATTERS ══ -->
-      <div>
-        <div class="post-label">📱 Story · Best Batters</div>
-        <div style="width:540px;height:960px;background:#0d0f18;border-radius:16px;overflow:hidden;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;box-shadow:0 0 0 1px rgba(255,255,255,0.06);">
-          <!-- BG -->
-          <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% -10%,rgba(234,179,8,0.18) 0%,transparent 55%);pointer-events:none;"></div>
-          <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 105%,rgba(234,179,8,0.08) 0%,transparent 50%);pointer-events:none;"></div>
-          <!-- Top accent line -->
-          <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
-
-          <!-- Content — starts below safe zone -->
-          <div style="position:absolute;top:150px;left:0;right:0;bottom:220px;padding:0 32px;display:flex;flex-direction:column;">
-            <!-- Branding -->
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-              <img src="/UFD_V8.png" style="height:30px;width:auto;">
-              <span style="font-size:11px;color:#4b5563;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Ultimate Fantasy Dashboard</span>
-            </div>
-            <!-- Title -->
-            <div style="margin-bottom:24px;">
-              <div style="font-size:13px;font-weight:700;color:#eab308;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">⚾ Week {{ wpiWeekLabel }} · {{ wpiDateDisplay }}</div>
-              <div style="font-size:52px;font-weight:900;color:#fff;line-height:0.95;letter-spacing:-0.02em;">BEST</div>
-              <div style="font-size:52px;font-weight:900;color:#eab308;line-height:0.95;letter-spacing:-0.02em;">BATTERS</div>
-              <div style="font-size:13px;color:#6b7280;margin-top:10px;font-weight:500;">Fantasy win probability impact</div>
-            </div>
-
-            <!-- Player rows — flex:1 so they fill remaining space -->
-            <div v-if="wpiTopBatters.length" style="flex:1;display:flex;flex-direction:column;gap:10px;">
-              <div v-for="(p, i) in wpiTopBatters.slice(0,5)" :key="'sb'+i"
-                :style="{
-                  background: i===0 ? 'rgba(234,179,8,0.1)' : 'rgba(255,255,255,0.04)',
-                  border: i===0 ? '1px solid rgba(234,179,8,0.35)' : '1px solid rgba(255,255,255,0.07)',
-                  borderRadius:'14px', padding:'16px 18px', display:'flex', alignItems:'center', gap:'14px',
-                  flex:'1'
-                }">
-                <!-- Rank -->
-                <div :style="{
-                  width:'32px',height:'32px',borderRadius:'50%',flexShrink:0,
-                  background: i===0?'#eab308':'rgba(255,255,255,0.07)',
-                  display:'flex',alignItems:'center',justifyContent:'center'
-                }">
-                  <span :style="{fontSize:'14px',fontWeight:'900',color:i===0?'#0a0c14':'#9ca3af'}">#{{i+1}}</span>
-                </div>
-                <!-- Headshot -->
-                <img v-if="p.headshot" :src="p.headshot"
-                  style="width:60px;height:60px;border-radius:50%;object-fit:cover;flex-shrink:0;"
-                  :style="{border: i===0?'2.5px solid #eab308':'2px solid rgba(255,255,255,0.1)'}"
-                  @error="($event.target as HTMLImageElement).style.display='none'">
-                <div v-else :style="{width:'60px',height:'60px',borderRadius:'50%',flexShrink:0,background:i===0?'rgba(234,179,8,0.15)':'rgba(255,255,255,0.05)',border:i===0?'2px solid #eab308':'2px solid rgba(255,255,255,0.1)'}"></div>
-                <!-- Info -->
-                <div style="flex:1;min-width:0;">
-                  <div :style="{fontSize:'18px',fontWeight:'800',color:'#ffffff',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}">{{ p.name }}</div>
-                  <div style="font-size:13px;color:#9ca3af;margin-top:2px;font-weight:500;">{{ p.team }} · {{ p.position }}</div>
-                  <div style="font-size:12px;color:#ffffff;margin-top:3px;opacity:0.7;">{{ p.statLine }}</div>
-                </div>
-                <!-- WP -->
-                <div style="text-align:right;flex-shrink:0;">
-                  <div :style="{fontSize:'24px',fontWeight:'900',color:i===0?'#eab308':'#ffffff',lineHeight:'1'}">+{{ p.wpImpact.toFixed(1) }}%</div>
-                  <div style="font-size:10px;color:#6b7280;margin-top:3px;font-weight:500;">WP impact</div>
-                </div>
-              </div>
-            </div>
-            <div v-else style="flex:1;display:flex;align-items:center;justify-content:center;color:#374151;font-size:15px;">Load data above to populate</div>
-          </div>
-
-          <!-- Watermark — just above bottom safe zone -->
-          <div style="position:absolute;bottom:224px;left:0;right:0;text-align:center;">
-            <div style="font-size:11px;color:#1e2130;letter-spacing:0.06em;">ultimatefantasydashboard.com</div>
-          </div>
-          <!-- Bottom accent -->
-          <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
-        </div>
-      </div>
-
-      <!-- ══ STORY 2: BEST PITCHERS ══ -->
-      <div>
-        <div class="post-label">📱 Story · Best Pitchers</div>
-        <div style="width:540px;height:960px;background:#0d0f18;border-radius:16px;overflow:hidden;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;box-shadow:0 0 0 1px rgba(255,255,255,0.06);">
-          <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% -10%,rgba(6,182,212,0.18) 0%,transparent 55%);pointer-events:none;"></div>
-          <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 105%,rgba(6,182,212,0.08) 0%,transparent 50%);pointer-events:none;"></div>
-          <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#06b6d4,transparent);"></div>
-
-          <div style="position:absolute;top:150px;left:0;right:0;bottom:220px;padding:0 32px;display:flex;flex-direction:column;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-              <img src="/UFD_V8.png" style="height:30px;width:auto;">
-              <span style="font-size:11px;color:#4b5563;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Ultimate Fantasy Dashboard</span>
-            </div>
-            <div style="margin-bottom:24px;">
-              <div style="font-size:13px;font-weight:700;color:#06b6d4;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">⚾ Week {{ wpiWeekLabel }} · {{ wpiDateDisplay }}</div>
-              <div style="font-size:52px;font-weight:900;color:#fff;line-height:0.95;letter-spacing:-0.02em;">BEST</div>
-              <div style="font-size:52px;font-weight:900;color:#06b6d4;line-height:0.95;letter-spacing:-0.02em;">PITCHERS</div>
-              <div style="font-size:13px;color:#6b7280;margin-top:10px;font-weight:500;">Fantasy win probability impact</div>
-            </div>
-
-            <div v-if="wpiTopPitchers.length" style="flex:1;display:flex;flex-direction:column;gap:10px;">
-              <div v-for="(p, i) in wpiTopPitchers.slice(0,5)" :key="'sp'+i"
-                :style="{
-                  background: i===0 ? 'rgba(6,182,212,0.1)' : 'rgba(255,255,255,0.04)',
-                  border: i===0 ? '1px solid rgba(6,182,212,0.35)' : '1px solid rgba(255,255,255,0.07)',
-                  borderRadius:'14px', padding:'16px 18px', display:'flex', alignItems:'center', gap:'14px',
-                  flex:'1'
-                }">
-                <div :style="{
-                  width:'32px',height:'32px',borderRadius:'50%',flexShrink:0,
-                  background: i===0?'#06b6d4':'rgba(255,255,255,0.07)',
-                  display:'flex',alignItems:'center',justifyContent:'center'
-                }">
-                  <span :style="{fontSize:'14px',fontWeight:'900',color:i===0?'#0a0c14':'#9ca3af'}">#{{i+1}}</span>
-                </div>
-                <img v-if="p.headshot" :src="p.headshot"
-                  style="width:60px;height:60px;border-radius:50%;object-fit:cover;flex-shrink:0;"
-                  :style="{border: i===0?'2.5px solid #06b6d4':'2px solid rgba(255,255,255,0.1)'}"
-                  @error="($event.target as HTMLImageElement).style.display='none'">
-                <div v-else :style="{width:'60px',height:'60px',borderRadius:'50%',flexShrink:0,background:i===0?'rgba(6,182,212,0.12)':'rgba(255,255,255,0.05)',border:i===0?'2px solid #06b6d4':'2px solid rgba(255,255,255,0.1)'}"></div>
-                <div style="flex:1;min-width:0;">
-                  <div style="font-size:18px;font-weight:800;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ p.name }}</div>
-                  <div style="font-size:13px;color:#9ca3af;margin-top:2px;font-weight:500;">{{ p.team }} · {{ p.position }}</div>
-                  <div style="font-size:12px;color:#ffffff;margin-top:3px;opacity:0.7;">{{ p.statLine }}</div>
-                </div>
-                <div style="text-align:right;flex-shrink:0;">
-                  <div :style="{fontSize:'24px',fontWeight:'900',color:i===0?'#06b6d4':'#ffffff',lineHeight:'1'}">+{{ p.wpImpact.toFixed(1) }}%</div>
-                  <div style="font-size:10px;color:#6b7280;margin-top:3px;font-weight:500;">WP impact</div>
-                </div>
-              </div>
-            </div>
-            <div v-else style="flex:1;display:flex;align-items:center;justify-content:center;color:#374151;font-size:15px;">Load data above to populate</div>
-          </div>
-
-          <div style="position:absolute;bottom:224px;left:0;right:0;text-align:center;">
-            <div style="font-size:11px;color:#1e2130;letter-spacing:0.06em;">ultimatefantasydashboard.com</div>
-          </div>
-          <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#06b6d4,transparent);"></div>
-        </div>
-      </div>
-
-      <!-- ══ STORY 3: WIN PROBABILITY ══ -->
-      <div>
-        <div class="post-label">📱 Story · Win Probability — uses Graphic 29 inputs (Interactive tab)</div>
-        <div style="width:540px;height:960px;background:#0d0f18;border-radius:16px;overflow:hidden;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;box-shadow:0 0 0 1px rgba(255,255,255,0.06);">
-          <!-- Dual gradient bg -->
-          <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(6,182,212,0.14) 0%,transparent 45%,rgba(249,115,22,0.12) 100%);pointer-events:none;"></div>
-          <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#06b6d4,#f97316);"></div>
-
-          <!-- Content -->
-          <div style="position:absolute;top:150px;left:0;right:0;bottom:220px;padding:0 28px;display:flex;flex-direction:column;">
-            <!-- Header -->
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-              <img src="/UFD_V8.png" style="height:30px;width:auto;">
-              <span style="font-size:11px;color:#4b5563;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Ultimate Fantasy Dashboard</span>
-              <span style="margin-left:auto;font-size:12px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">{{ wplWeekLabel }}</span>
-            </div>
-
-            <!-- Title -->
-            <div style="text-align:center;margin-bottom:20px;padding-top:10px;">
-              <div style="font-size:42px;font-weight:900;color:#fff;line-height:1;letter-spacing:0.01em;">WIN PROBABILITY</div>
-              <div style="font-size:12px;color:#4b5563;margin-top:6px;font-weight:500;">Live probability based on current stats</div>
-            </div>
-
-            <!-- Team cards — bigger to fill space -->
-            <div style="display:flex;gap:14px;margin-bottom:18px;">
-              <!-- Team 1 -->
-              <div style="flex:1;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.3);border-radius:18px;padding:22px 14px;text-align:center;">
-                <img v-if="wplPresetTeams[0].logo" :src="wplPresetTeams[0].logo"
-                  style="width:80px;height:80px;border-radius:50%;border:3px solid #06b6d4;object-fit:cover;margin:0 auto 12px;display:block;"
-                  @error="($event.target as HTMLImageElement).style.display='none'">
-                <div v-else style="width:80px;height:80px;border-radius:50%;background:rgba(6,182,212,0.15);border:3px solid rgba(6,182,212,0.4);margin:0 auto 12px;"></div>
-                <div style="font-size:15px;font-weight:700;color:#06b6d4;margin-bottom:10px;word-break:break-word;line-height:1.2;">{{ wplPresetTeams[0].name || 'Team 1' }}</div>
-                <div style="font-size:52px;font-weight:900;color:#06b6d4;line-height:1;">{{ wplProb1.toFixed(1) }}%</div>
-              </div>
-              <!-- VS -->
-              <div style="display:flex;align-items:center;flex-shrink:0;padding:0 4px;">
-                <span style="font-size:20px;font-weight:900;color:#374151;">VS</span>
-              </div>
-              <!-- Team 2 -->
-              <div style="flex:1;background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.3);border-radius:18px;padding:22px 14px;text-align:center;">
-                <img v-if="wplPresetTeams[1].logo" :src="wplPresetTeams[1].logo"
-                  style="width:80px;height:80px;border-radius:50%;border:3px solid #f97316;object-fit:cover;margin:0 auto 12px;display:block;"
-                  @error="($event.target as HTMLImageElement).style.display='none'">
-                <div v-else style="width:80px;height:80px;border-radius:50%;background:rgba(249,115,22,0.12);border:3px solid rgba(249,115,22,0.4);margin:0 auto 12px;"></div>
-                <div style="font-size:15px;font-weight:700;color:#f97316;margin-bottom:10px;word-break:break-word;line-height:1.2;">{{ wplPresetTeams[1].name || 'Team 2' }}</div>
-                <div style="font-size:52px;font-weight:900;color:#f97316;line-height:1;">{{ wplProb2.toFixed(1) }}%</div>
-              </div>
-            </div>
-
-            <!-- Progress bar -->
-            <div style="height:14px;border-radius:8px;overflow:hidden;background:rgba(249,115,22,0.3);margin-bottom:22px;position:relative;">
-              <div :style="{position:'absolute',left:0,top:0,height:'100%',width:wplProb1+'%',background:'linear-gradient(90deg,#06b6d4,#0891b2)',borderRadius:'8px',transition:'width 0.3s'}"></div>
-            </div>
-
-            <!-- Chart — fills remaining space -->
-            <div style="flex:1;background:rgba(255,255,255,0.03);border-radius:14px;padding:14px 10px 10px;border:1px solid rgba(255,255,255,0.06);min-height:0;">
-              <div style="font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#4b5563;margin-bottom:8px;padding-left:4px;">📈 WIN PROBABILITY TREND</div>
-              <svg v-if="wplD1.length" viewBox="0 0 508 190" style="display:block;width:100%;height:calc(100% - 30px);" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="slg1s" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.35"/><stop offset="100%" stop-color="#06b6d4" stop-opacity="0.02"/>
-                  </linearGradient>
-                  <linearGradient id="slg2s" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#f97316" stop-opacity="0.35"/><stop offset="100%" stop-color="#f97316" stop-opacity="0.02"/>
-                  </linearGradient>
-                </defs>
-                <template v-for="pct in [0,25,50,75,100]" :key="pct">
-                  <line x1="42" :y1="storyWplY(pct)" x2="500" :y2="storyWplY(pct)"
-                    :stroke="pct===50?'#374151':'#1e2130'" :stroke-width="pct===50?1.5:1" stroke-dasharray="3 4"/>
-                  <text x="36" :y="storyWplY(pct)+4" text-anchor="end" font-size="9" :fill="pct===50?'#6b7280':'#374151'"
-                    font-family="Helvetica Neue,Arial,sans-serif">{{ pct }}%</text>
-                </template>
-                <path :d="storyFill1" fill="url(#slg1s)"/>
-                <path :d="storyFill2" fill="url(#slg2s)"/>
-                <path :d="storyLine1" fill="none" stroke="#06b6d4" stroke-width="2.5" stroke-linejoin="round"/>
-                <path :d="storyLine2" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linejoin="round"/>
-                <template v-for="(v,i) in wplD1" :key="'sv1s'+i">
-                  <rect :x="storyWplX(i)-16" :y="v>=wplD2[i]?storyWplY(v)-22:storyWplY(v)+6" width="32" height="15" rx="4" fill="#06b6d4" opacity="0.95"/>
-                  <text :x="storyWplX(i)" :y="v>=wplD2[i]?storyWplY(v)-10:storyWplY(v)+17" text-anchor="middle" font-size="9" font-weight="800" fill="#0a0c14" font-family="Helvetica Neue,Arial,sans-serif">{{ v }}</text>
-                  <circle :cx="storyWplX(i)" :cy="storyWplY(v)" r="4" fill="#06b6d4" stroke="#0d0f18" stroke-width="1.5"/>
-                </template>
-                <template v-for="(v,i) in wplD2" :key="'sv2s'+i">
-                  <rect :x="storyWplX(i)-16" :y="v>wplD1[i]?storyWplY(v)-22:storyWplY(v)+6" width="32" height="15" rx="4" fill="#f97316" opacity="0.95"/>
-                  <text :x="storyWplX(i)" :y="v>wplD1[i]?storyWplY(v)-10:storyWplY(v)+17" text-anchor="middle" font-size="9" font-weight="800" fill="#0a0c14" font-family="Helvetica Neue,Arial,sans-serif">{{ v }}</text>
-                  <circle :cx="storyWplX(i)" :cy="storyWplY(v)" r="4" fill="#f97316" stroke="#0d0f18" stroke-width="1.5"/>
-                </template>
-                <template v-for="(label,i) in wplLabels" :key="'sxls'+i">
-                  <text :x="storyWplX(i)" y="185" text-anchor="middle" font-size="11" font-weight="700" fill="#6b7280" font-family="Helvetica Neue,Arial,sans-serif">{{ label }}</text>
-                </template>
-              </svg>
-              <div v-else style="height:100%;display:flex;align-items:center;justify-content:center;color:#374151;font-size:13px;">Enter data in Interactive → Graphic 29</div>
-            </div>
-          </div>
-
-          <div style="position:absolute;bottom:224px;left:0;right:0;text-align:center;">
-            <div style="font-size:11px;color:#1e2130;letter-spacing:0.06em;">ultimatefantasydashboard.com</div>
-          </div>
-          <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#06b6d4,#f97316);"></div>
-        </div>
-      </div>
-
-    </div>
-  </template><!-- end stories tab -->
-
-  <!-- ══════════════════════════════════════════════════════════
-       PAID ADS TAB — "Has Entered the League Chat" Series
-  ══════════════════════════════════════════════════════════ -->
-  <template v-if="activeType === 'paidads'">
-    <div class="section-label">📣 Paid Ads — &ldquo;Entered the League Chat&rdquo; Series</div>
-    <div style="display:flex;flex-direction:column;gap:80px;padding:24px 0;">
-
-      <!-- ══ AD: POWER RANKINGS ══ -->
-      <div>
-        <div style="font-size:12px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">1 of 5 · POWER RANKINGS</div>
-        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Square + Story — screenshot each.</div>
-        <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap;">
-
-          <!-- SQUARE 1080×1080 → 540×540 -->
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Square · 1080×1080</div>
-            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
-            <div style="width:1080px;height:1080px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 55%,rgba(234,179,8,0.16) 0%,transparent 50%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 90% 90%,rgba(234,179,8,0.09) 0%,transparent 45%);"></div>
-              <div style="position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-              <div style="position:absolute;bottom:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-              <div style="position:absolute;left:72px;top:0;bottom:0;right:560px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="display:flex;align-items:center;gap:16px;margin-bottom:44px;flex-wrap:wrap;"><img src="/UFD_V8.png" style="height:72px;width:auto;display:block;"><span style="font-size:32px;color:#9ca3af;font-weight:700;">Fantasy Baseball</span></div>
-                <div style="font-size:82px;font-weight:900;color:#eab308;line-height:0.9;letter-spacing:-0.03em;margin-bottom:10px;">POWER RANKINGS</div>
-                <div style="font-size:66px;font-weight:900;color:#ffffff;line-height:0.95;letter-spacing:-0.03em;margin-bottom:36px;">HAVE ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:24px;color:#9ca3af;line-height:1.5;margin-bottom:44px;font-weight:400;max-width:400px;">Automatic weekly rankings so everyone knows who's actually good — and who's just lucky.</div>
-                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:22px;font-weight:900;padding:18px 32px;border-radius:12px;display:flex;align-items:center;gap:14px;">Connect Your League Free<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;flex-shrink:0;">→</div></div></div>
-                <div style="display:flex;align-items:center;gap:10px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:22px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:20px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:22px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
-              </div>
-              <div style="position:absolute;right:10px;top:10px;bottom:10px;width:600px;display:flex;align-items:center;justify-content:center;">
-                <div style="position:relative;transform:perspective(1400px) rotateY(-12deg) rotateX(3deg) rotate(3deg);filter:drop-shadow(0 60px 120px rgba(0,0,0,0.9));">
-                  <div style="position:absolute;inset:-50px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.25) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;border-radius:82px;"></div><div style="width:340px;height:660px;background:linear-gradient(160deg,#1e2535 0%,#0d1117 50%,#0a0d1a 100%);border-radius:42px;border:1.5px solid rgba(234,179,8,0.25);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 50px 100px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.08);"><div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:108px;height:24px;background:#080a10;border-radius:0 0 14px 14px;z-index:10;"></div><div style="position:absolute;top:8px;left:23px;right:23px;display:flex;justify-content:space-between;z-index:11;"><span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span><div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div></div><div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div><div style="position:absolute;top:31px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;"><div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;"><div style="display:flex;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div><div><div style="font-size:11px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:9px;color:#6b7280;">12 members</div></div></div><img src="/UFD_V8.png" style="height:13px;width:auto;"></div><div style="background:#131720;border:1px solid rgba(234,179,8,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:12px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:9px;">⚡ Power Rankings</div><div style="display:flex;align-items:center;gap:5px;padding:4px 5px;background:rgba(234,179,8,0.07);border-radius:5px;margin-bottom:2px;"><div style="width:16px;height:16px;border-radius:50%;background:#eab308;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:8px;font-weight:900;color:#0a0c14;">1</span></div><span style="font-size:9px;font-weight:700;color:#fff;flex:1;">The Aman-Ra Stars</span><span style="font-size:8px;color:#6b7280;">12-5</span><span style="font-size:9px;font-weight:800;color:#eab308;">75.2</span></div><div style="display:flex;align-items:center;gap:5px;padding:4px 5px;margin-bottom:2px;"><div style="width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:8px;font-weight:900;color:#9ca3af;">2</span></div><span style="font-size:9px;font-weight:600;color:#d1d5db;flex:1;">Mighty Mallards</span><span style="font-size:8px;color:#6b7280;">11-6</span><span style="font-size:9px;font-weight:700;color:#9ca3af;">72.7</span></div><div style="display:flex;align-items:center;gap:5px;padding:4px 5px;margin-bottom:2px;"><div style="width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:8px;font-weight:900;color:#9ca3af;">3</span></div><span style="font-size:9px;font-weight:600;color:#d1d5db;flex:1;">Scuttlebucs</span><span style="font-size:8px;color:#6b7280;">11-6</span><span style="font-size:9px;font-weight:700;color:#9ca3af;">66.9</span></div><div style="display:flex;align-items:center;gap:5px;padding:4px 5px;"><div style="width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:8px;font-weight:900;color:#6b7280;">4</span></div><span style="font-size:9px;font-weight:600;color:#9ca3af;flex:1;">Gridiron Man</span><span style="font-size:8px;color:#6b7280;">12-5</span><span style="font-size:9px;font-weight:700;color:#6b7280;">62.5</span></div></div><div style="background:#131720;border:1px solid rgba(234,179,8,0.15);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:7px;">📈 Rankings Trend</div><svg viewBox="0 0 220 65" style="width:100%;display:block;"><line x1="18" y1="8" x2="180" y2="8" stroke="rgba(255,255,255,0.05)" stroke-width="1"/><line x1="18" y1="28" x2="180" y2="28" stroke="rgba(255,255,255,0.05)" stroke-width="1"/><line x1="18" y1="48" x2="180" y2="48" stroke="rgba(255,255,255,0.05)" stroke-width="1"/><text x="2" y="11" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">#1</text><text x="2" y="31" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">#3</text><text x="2" y="51" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">#5</text><path d="M18,44 C55,36 90,20 118,12 C148,8 165,8 180,8" fill="none" stroke="#eab308" stroke-width="2.5" stroke-linecap="round"/><path d="M18,8 C55,8 90,10 118,18 C148,24 165,26 180,26" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/><path d="M18,26 C55,30 90,40 118,42 C148,44 165,44 180,44" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/><path d="M18,62 C55,60 90,60 118,62 C148,62 165,62 180,62" fill="none" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round" opacity="0.8"/><circle cx="180" cy="8" r="3.5" fill="#eab308"/><circle cx="180" cy="26" r="3.5" fill="#22c55e"/><circle cx="180" cy="44" r="3" fill="#3b82f6"/><circle cx="180" cy="62" r="3" fill="#ef4444"/><text x="185" y="11" font-size="7" font-weight="700" fill="#eab308" font-family="Arial">Stars</text><text x="185" y="29" font-size="7" font-weight="700" fill="#22c55e" font-family="Arial">Mallards</text><text x="185" y="47" font-size="7" font-weight="700" fill="#3b82f6" font-family="Arial">Bucs</text><text x="185" y="65" font-size="7" font-weight="700" fill="#ef4444" font-family="Arial">Man</text></svg></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">wait this can't be right 💀</div></div><div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><div style="background:#34c759;color:#fff;font-size:13px;font-weight:600;padding:10px 14px;border-radius:18px 18px 3px 18px;max-width:82%;line-height:1.4;">data doesn't lie bro 😂</div></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">how do I get this??</div></div></div><div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:95px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div></div>
-                </div>
-              </div>
-            </div>
-            </div>
-          </div>
-
-          <!-- STORY 1080×1920 → 304×540 -->
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Story · 1080×1920</div>
-            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
-            <div style="width:1080px;height:1920px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 25% 50%,rgba(234,179,8,0.18) 0%,transparent 55%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.10) 0%,transparent 50%);"></div>
-              <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-              <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-
-              <!-- HEADER: logo + Fantasy Baseball pinned to top -->
-              <div style="position:absolute;top:72px;left:72px;right:72px;display:flex;align-items:center;gap:24px;">
-                <img src="/UFD_V8.png" style="height:110px;width:auto;display:block;">
-                <span style="font-size:64px;color:#9ca3af;font-weight:700;letter-spacing:-0.01em;">Fantasy Baseball</span>
-              </div>
-
-              <!-- LEFT: text column, starts high, narrow to avoid phone overlap -->
-              <div style="position:absolute;top:260px;left:72px;width:480px;bottom:80px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="font-size:96px;font-weight:900;color:#eab308;line-height:0.86;letter-spacing:-0.03em;margin-bottom:14px;">POWER RANKINGS</div>
-                <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:0.90;letter-spacing:-0.03em;margin-bottom:40px;">HAVE ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:34px;color:#9ca3af;line-height:1.4;margin-bottom:44px;font-weight:400;">Automatic weekly rankings so everyone knows who's actually good — and who's just lucky.</div>
-                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:30px;font-weight:900;padding:20px 36px;border-radius:14px;display:flex;align-items:center;gap:14px;">Connect Your League<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;flex-shrink:0;">→</div></div></div>
-                <div style="display:flex;align-items:center;gap:12px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:28px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
-              </div>
-
-              <!-- RIGHT: phone column, right half, fully contained, slight tilt -->
-              <div style="position:absolute;top:100px;right:40px;bottom:100px;width:500px;display:flex;align-items:center;justify-content:center;">
-                <div style="position:relative;transform:perspective(1600px) rotateY(-8deg) rotateX(2deg) rotate(2deg);filter:drop-shadow(0 80px 160px rgba(0,0,0,0.9));">
-                  <div style="position:absolute;inset:-50px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.25) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;border-radius:94px;"></div><div style="width:440px;height:860px;background:linear-gradient(160deg,#1e2535 0%,#0d1117 50%,#0a0d1a 100%);border-radius:54px;border:1.5px solid rgba(234,179,8,0.25);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 50px 100px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.08);"><div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:140px;height:31px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div><div style="position:absolute;top:11px;left:30px;right:30px;display:flex;justify-content:space-between;z-index:11;"><span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span><div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div></div><div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div><div style="position:absolute;top:40px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;"><div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;"><div style="display:flex;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div><div><div style="font-size:11px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:9px;color:#6b7280;">12 members</div></div></div><img src="/UFD_V8.png" style="height:13px;width:auto;"></div><div style="background:#131720;border:1px solid rgba(234,179,8,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:12px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:9px;">⚡ Power Rankings</div><div style="display:flex;align-items:center;gap:5px;padding:4px 5px;background:rgba(234,179,8,0.07);border-radius:5px;margin-bottom:2px;"><div style="width:16px;height:16px;border-radius:50%;background:#eab308;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:8px;font-weight:900;color:#0a0c14;">1</span></div><span style="font-size:9px;font-weight:700;color:#fff;flex:1;">The Aman-Ra Stars</span><span style="font-size:8px;color:#6b7280;">12-5</span><span style="font-size:9px;font-weight:800;color:#eab308;">75.2</span></div><div style="display:flex;align-items:center;gap:5px;padding:4px 5px;margin-bottom:2px;"><div style="width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:8px;font-weight:900;color:#9ca3af;">2</span></div><span style="font-size:9px;font-weight:600;color:#d1d5db;flex:1;">Mighty Mallards</span><span style="font-size:8px;color:#6b7280;">11-6</span><span style="font-size:9px;font-weight:700;color:#9ca3af;">72.7</span></div><div style="display:flex;align-items:center;gap:5px;padding:4px 5px;margin-bottom:2px;"><div style="width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:8px;font-weight:900;color:#9ca3af;">3</span></div><span style="font-size:9px;font-weight:600;color:#d1d5db;flex:1;">Scuttlebucs</span><span style="font-size:8px;color:#6b7280;">11-6</span><span style="font-size:9px;font-weight:700;color:#9ca3af;">66.9</span></div><div style="display:flex;align-items:center;gap:5px;padding:4px 5px;"><div style="width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:8px;font-weight:900;color:#6b7280;">4</span></div><span style="font-size:9px;font-weight:600;color:#9ca3af;flex:1;">Gridiron Man</span><span style="font-size:8px;color:#6b7280;">12-5</span><span style="font-size:9px;font-weight:700;color:#6b7280;">62.5</span></div></div><div style="background:#131720;border:1px solid rgba(234,179,8,0.15);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:7px;">📈 Rankings Trend</div><svg viewBox="0 0 220 65" style="width:100%;display:block;"><line x1="18" y1="8" x2="180" y2="8" stroke="rgba(255,255,255,0.05)" stroke-width="1"/><line x1="18" y1="28" x2="180" y2="28" stroke="rgba(255,255,255,0.05)" stroke-width="1"/><line x1="18" y1="48" x2="180" y2="48" stroke="rgba(255,255,255,0.05)" stroke-width="1"/><text x="2" y="11" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">#1</text><text x="2" y="31" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">#3</text><text x="2" y="51" font-size="6" fill="rgba(255,255,255,0.2)" font-family="Arial">#5</text><path d="M18,44 C55,36 90,20 118,12 C148,8 165,8 180,8" fill="none" stroke="#eab308" stroke-width="2.5" stroke-linecap="round"/><path d="M18,8 C55,8 90,10 118,18 C148,24 165,26 180,26" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/><path d="M18,26 C55,30 90,40 118,42 C148,44 165,44 180,44" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/><path d="M18,62 C55,60 90,60 118,62 C148,62 165,62 180,62" fill="none" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round" opacity="0.8"/><circle cx="180" cy="8" r="3.5" fill="#eab308"/><circle cx="180" cy="26" r="3.5" fill="#22c55e"/><circle cx="180" cy="44" r="3" fill="#3b82f6"/><circle cx="180" cy="62" r="3" fill="#ef4444"/><text x="185" y="11" font-size="7" font-weight="700" fill="#eab308" font-family="Arial">Stars</text><text x="185" y="29" font-size="7" font-weight="700" fill="#22c55e" font-family="Arial">Mallards</text><text x="185" y="47" font-size="7" font-weight="700" fill="#3b82f6" font-family="Arial">Bucs</text><text x="185" y="65" font-size="7" font-weight="700" fill="#ef4444" font-family="Arial">Man</text></svg></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">wait this can't be right 💀</div></div><div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><div style="background:#34c759;color:#fff;font-size:13px;font-weight:600;padding:10px 14px;border-radius:18px 18px 3px 18px;max-width:82%;line-height:1.4;">data doesn't lie bro 😂</div></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">how do I get this??</div></div></div><div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:123px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div></div>
-                </div>
-              </div>
-            </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ══ AD: WIN PROBABILITY ══ -->
-      <div>
-        <div style="font-size:12px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">2 of 5 · WIN PROBABILITY</div>
-        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Square + Story — screenshot each.</div>
-        <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap;">
-
-          <!-- SQUARE 1080×1080 → 540×540 -->
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Square · 1080×1080</div>
-            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
-            <div style="width:1080px;height:1080px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 55%,rgba(234,179,8,0.16) 0%,transparent 50%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 90% 90%,rgba(234,179,8,0.09) 0%,transparent 45%);"></div>
-              <div style="position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-              <div style="position:absolute;bottom:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-              <div style="position:absolute;left:72px;top:0;bottom:0;right:560px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="display:flex;align-items:center;gap:16px;margin-bottom:44px;flex-wrap:wrap;"><img src="/UFD_V8.png" style="height:72px;width:auto;display:block;"><span style="font-size:32px;color:#9ca3af;font-weight:700;">Fantasy Baseball</span></div>
-                <div style="font-size:82px;font-weight:900;color:#eab308;line-height:0.9;letter-spacing:-0.03em;margin-bottom:10px;">WIN PROBABILITY</div>
-                <div style="font-size:66px;font-weight:900;color:#ffffff;line-height:0.95;letter-spacing:-0.03em;margin-bottom:36px;">HAS ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:24px;color:#9ca3af;line-height:1.5;margin-bottom:44px;font-weight:400;max-width:400px;">Daily odds on who wins your matchup. The drama builds all week.</div>
-                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:22px;font-weight:900;padding:18px 32px;border-radius:12px;display:flex;align-items:center;gap:14px;">Connect Your League Free<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;flex-shrink:0;">→</div></div></div>
-                <div style="display:flex;align-items:center;gap:10px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:22px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:20px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:22px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
-              </div>
-              <div style="position:absolute;right:10px;top:10px;bottom:10px;width:600px;display:flex;align-items:center;justify-content:center;">
-                <div style="position:relative;transform:perspective(1400px) rotateY(-12deg) rotateX(3deg) rotate(3deg);filter:drop-shadow(0 60px 120px rgba(0,0,0,0.9));">
-                  <div style="position:absolute;inset:-50px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.25) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;border-radius:82px;"></div><div style="width:340px;height:660px;background:linear-gradient(160deg,#1e2535 0%,#0d1117 50%,#0a0d1a 100%);border-radius:42px;border:1.5px solid rgba(234,179,8,0.25);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 50px 100px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.08);"><div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:108px;height:24px;background:#080a10;border-radius:0 0 14px 14px;z-index:10;"></div><div style="position:absolute;top:8px;left:23px;right:23px;display:flex;justify-content:space-between;z-index:11;"><span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span><div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div></div><div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div><div style="position:absolute;top:31px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;"><div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;"><div style="display:flex;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div><div><div style="font-size:11px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:9px;color:#6b7280;">12 members</div></div></div><img src="/UFD_V8.png" style="height:13px;width:auto;"></div><div style="background:#131720;border:1px solid rgba(6,182,212,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:12px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">🎲 Win Probability</div><div style="display:flex;gap:5px;margin-bottom:7px;"><div style="flex:1;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);border-radius:7px;padding:6px;text-align:center;"><div style="font-size:8px;color:#06b6d4;font-weight:700;">Swamp Pirates</div><div style="font-size:16px;font-weight:900;color:#06b6d4;">72%</div></div><div style="display:flex;align-items:center;font-size:8px;color:#374151;font-weight:700;">VS</div><div style="flex:1;background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:7px;padding:6px;text-align:center;"><div style="font-size:8px;color:#f97316;font-weight:700;">NC Pale Hose</div><div style="font-size:16px;font-weight:900;color:#f97316;">28%</div></div></div><div style="height:5px;border-radius:3px;background:rgba(249,115,22,0.3);position:relative;overflow:hidden;"><div style="position:absolute;left:0;top:0;height:100%;width:72%;background:linear-gradient(90deg,#06b6d4,#0891b2);border-radius:3px;"></div></div></div><div style="background:#131720;border:1px solid rgba(6,182,212,0.15);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">📊 Daily Trend</div><svg viewBox="0 0 220 80" style="width:100%;display:block;"><line x1="20" y1="8" x2="200" y2="8" stroke="#1e2130" stroke-width="1"/><line x1="20" y1="30" x2="200" y2="30" stroke="#374151" stroke-width="1" stroke-dasharray="3,3"/><line x1="20" y1="72" x2="200" y2="72" stroke="#1e2130" stroke-width="1"/><text x="2" y="33" font-size="6" fill="#6b7280" font-family="Arial">50%</text><path d="M20,28 C50,25 80,20 110,16 C140,12 165,9 200,8" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/><path d="M20,32 C50,35 80,40 110,44 C140,48 165,51 200,52" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round"/><rect x="12" y="21" width="18" height="11" rx="3" fill="#06b6d4"/><text x="21" y="29" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">58</text><rect x="90" y="9" width="20" height="11" rx="3" fill="#06b6d4"/><text x="100" y="17" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">64</text><rect x="180" y="2" width="20" height="11" rx="3" fill="#06b6d4"/><text x="190" y="10" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">72</text><rect x="12" y="28" width="18" height="11" rx="3" fill="#f97316"/><text x="21" y="36" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">42</text><circle cx="110" cy="44" r="3" fill="#f97316"/><rect x="99" y="48" width="22" height="11" rx="3" fill="#f97316"/><text x="110" y="56" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">36</text><rect x="180" y="45" width="20" height="11" rx="3" fill="#f97316"/><text x="190" y="53" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">28</text><text x="20" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Mon</text><text x="65" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Wed</text><text x="110" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Fri</text><text x="200" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Sun</text></svg></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">bro how are you 28% on Thursday 💀</div></div><div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><div style="background:#34c759;color:#fff;font-size:13px;font-weight:600;padding:10px 14px;border-radius:18px 18px 3px 18px;max-width:82%;line-height:1.4;">I came back. check Sunday 😤</div></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">need this for my league</div></div></div><div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:95px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div></div>
-                </div>
-              </div>
-            </div>
-            </div>
-          </div>
-
-          <!-- STORY 1080×1920 → 304×540 -->
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Story · 1080×1920</div>
-            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
-            <div style="width:1080px;height:1920px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 25% 50%,rgba(234,179,8,0.18) 0%,transparent 55%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.10) 0%,transparent 50%);"></div>
-              <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-              <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-
-              <!-- HEADER: logo + Fantasy Baseball pinned to top -->
-              <div style="position:absolute;top:72px;left:72px;right:72px;display:flex;align-items:center;gap:24px;">
-                <img src="/UFD_V8.png" style="height:110px;width:auto;display:block;">
-                <span style="font-size:64px;color:#9ca3af;font-weight:700;letter-spacing:-0.01em;">Fantasy Baseball</span>
-              </div>
-
-              <!-- LEFT: text column, starts high, narrow to avoid phone overlap -->
-              <div style="position:absolute;top:260px;left:72px;width:480px;bottom:80px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="font-size:96px;font-weight:900;color:#eab308;line-height:0.86;letter-spacing:-0.03em;margin-bottom:14px;">WIN PROBABILITY</div>
-                <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:0.90;letter-spacing:-0.03em;margin-bottom:40px;">HAS ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:34px;color:#9ca3af;line-height:1.4;margin-bottom:44px;font-weight:400;">Daily odds on who wins your matchup. The drama builds all week.</div>
-                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:30px;font-weight:900;padding:20px 36px;border-radius:14px;display:flex;align-items:center;gap:14px;">Connect Your League<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;flex-shrink:0;">→</div></div></div>
-                <div style="display:flex;align-items:center;gap:12px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:28px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
-              </div>
-
-              <!-- RIGHT: phone column, right half, fully contained, slight tilt -->
-              <div style="position:absolute;top:100px;right:40px;bottom:100px;width:500px;display:flex;align-items:center;justify-content:center;">
-                <div style="position:relative;transform:perspective(1600px) rotateY(-8deg) rotateX(2deg) rotate(2deg);filter:drop-shadow(0 80px 160px rgba(0,0,0,0.9));">
-                  <div style="position:absolute;inset:-50px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.25) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;border-radius:94px;"></div><div style="width:440px;height:860px;background:linear-gradient(160deg,#1e2535 0%,#0d1117 50%,#0a0d1a 100%);border-radius:54px;border:1.5px solid rgba(234,179,8,0.25);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 50px 100px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.08);"><div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:140px;height:31px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div><div style="position:absolute;top:11px;left:30px;right:30px;display:flex;justify-content:space-between;z-index:11;"><span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span><div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div></div><div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div><div style="position:absolute;top:40px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;"><div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;"><div style="display:flex;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div><div><div style="font-size:11px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:9px;color:#6b7280;">12 members</div></div></div><img src="/UFD_V8.png" style="height:13px;width:auto;"></div><div style="background:#131720;border:1px solid rgba(6,182,212,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:12px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">🎲 Win Probability</div><div style="display:flex;gap:5px;margin-bottom:7px;"><div style="flex:1;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);border-radius:7px;padding:6px;text-align:center;"><div style="font-size:8px;color:#06b6d4;font-weight:700;">Swamp Pirates</div><div style="font-size:16px;font-weight:900;color:#06b6d4;">72%</div></div><div style="display:flex;align-items:center;font-size:8px;color:#374151;font-weight:700;">VS</div><div style="flex:1;background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:7px;padding:6px;text-align:center;"><div style="font-size:8px;color:#f97316;font-weight:700;">NC Pale Hose</div><div style="font-size:16px;font-weight:900;color:#f97316;">28%</div></div></div><div style="height:5px;border-radius:3px;background:rgba(249,115,22,0.3);position:relative;overflow:hidden;"><div style="position:absolute;left:0;top:0;height:100%;width:72%;background:linear-gradient(90deg,#06b6d4,#0891b2);border-radius:3px;"></div></div></div><div style="background:#131720;border:1px solid rgba(6,182,212,0.15);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">📊 Daily Trend</div><svg viewBox="0 0 220 80" style="width:100%;display:block;"><line x1="20" y1="8" x2="200" y2="8" stroke="#1e2130" stroke-width="1"/><line x1="20" y1="30" x2="200" y2="30" stroke="#374151" stroke-width="1" stroke-dasharray="3,3"/><line x1="20" y1="72" x2="200" y2="72" stroke="#1e2130" stroke-width="1"/><text x="2" y="33" font-size="6" fill="#6b7280" font-family="Arial">50%</text><path d="M20,28 C50,25 80,20 110,16 C140,12 165,9 200,8" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/><path d="M20,32 C50,35 80,40 110,44 C140,48 165,51 200,52" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round"/><rect x="12" y="21" width="18" height="11" rx="3" fill="#06b6d4"/><text x="21" y="29" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">58</text><rect x="90" y="9" width="20" height="11" rx="3" fill="#06b6d4"/><text x="100" y="17" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">64</text><rect x="180" y="2" width="20" height="11" rx="3" fill="#06b6d4"/><text x="190" y="10" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">72</text><rect x="12" y="28" width="18" height="11" rx="3" fill="#f97316"/><text x="21" y="36" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">42</text><circle cx="110" cy="44" r="3" fill="#f97316"/><rect x="99" y="48" width="22" height="11" rx="3" fill="#f97316"/><text x="110" y="56" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">36</text><rect x="180" y="45" width="20" height="11" rx="3" fill="#f97316"/><text x="190" y="53" text-anchor="middle" font-size="6" font-weight="800" fill="#0a0c14" font-family="Arial">28</text><text x="20" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Mon</text><text x="65" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Wed</text><text x="110" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Fri</text><text x="200" y="79" text-anchor="middle" font-size="6" fill="#6b7280" font-family="Arial">Sun</text></svg></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">bro how are you 28% on Thursday 💀</div></div><div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><div style="background:#34c759;color:#fff;font-size:13px;font-weight:600;padding:10px 14px;border-radius:18px 18px 3px 18px;max-width:82%;line-height:1.4;">I came back. check Sunday 😤</div></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">need this for my league</div></div></div><div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:123px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div></div>
-                </div>
-              </div>
-            </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ══ AD: DRAFT GRADES ══ -->
-      <div>
-        <div style="font-size:12px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">3 of 5 · DRAFT GRADES</div>
-        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Square + Story — screenshot each.</div>
-        <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap;">
-
-          <!-- SQUARE 1080×1080 → 540×540 -->
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Square · 1080×1080</div>
-            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
-            <div style="width:1080px;height:1080px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 55%,rgba(234,179,8,0.16) 0%,transparent 50%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 90% 90%,rgba(234,179,8,0.09) 0%,transparent 45%);"></div>
-              <div style="position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-              <div style="position:absolute;bottom:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-              <div style="position:absolute;left:72px;top:0;bottom:0;right:560px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="display:flex;align-items:center;gap:16px;margin-bottom:44px;flex-wrap:wrap;"><img src="/UFD_V8.png" style="height:72px;width:auto;display:block;"><span style="font-size:32px;color:#9ca3af;font-weight:700;">Fantasy Baseball</span></div>
-                <div style="font-size:82px;font-weight:900;color:#eab308;line-height:0.9;letter-spacing:-0.03em;margin-bottom:10px;">DRAFT GRADES</div>
-                <div style="font-size:66px;font-weight:900;color:#ffffff;line-height:0.95;letter-spacing:-0.03em;margin-bottom:36px;">HAVE ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:24px;color:#9ca3af;line-height:1.5;margin-bottom:44px;font-weight:400;max-width:400px;">Every pick in your draft, graded. Find out who built a winner and who reached.</div>
-                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:22px;font-weight:900;padding:18px 32px;border-radius:12px;display:flex;align-items:center;gap:14px;">Connect Your League Free<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;flex-shrink:0;">→</div></div></div>
-                <div style="display:flex;align-items:center;gap:10px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:22px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:20px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:22px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
-              </div>
-              <div style="position:absolute;right:10px;top:10px;bottom:10px;width:600px;display:flex;align-items:center;justify-content:center;">
-                <div style="position:relative;transform:perspective(1400px) rotateY(-12deg) rotateX(3deg) rotate(3deg);filter:drop-shadow(0 60px 120px rgba(0,0,0,0.9));">
-                  <div style="position:absolute;inset:-50px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.25) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;border-radius:82px;"></div><div style="width:340px;height:660px;background:linear-gradient(160deg,#1e2535 0%,#0d1117 50%,#0a0d1a 100%);border-radius:42px;border:1.5px solid rgba(234,179,8,0.25);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 50px 100px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.08);"><div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:108px;height:24px;background:#080a10;border-radius:0 0 14px 14px;z-index:10;"></div><div style="position:absolute;top:8px;left:23px;right:23px;display:flex;justify-content:space-between;z-index:11;"><span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span><div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div></div><div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div><div style="position:absolute;top:31px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;"><div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;"><div style="display:flex;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div><div><div style="font-size:11px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:9px;color:#6b7280;">12 members</div></div></div><img src="/UFD_V8.png" style="height:13px;width:auto;"></div><div style="background:#131720;border:1px solid rgba(139,92,246,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:12px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:9px;">📋 Draft Board</div><div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:3px 8px;align-items:center;"><span style="font-size:7px;font-weight:700;color:#6b7280;">R1</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Freddie Freeman</span><span style="font-size:8px;color:#6b7280;">1B·LAD</span><span style="font-size:9px;font-weight:800;color:#22c55e;">A+</span><span style="font-size:7px;font-weight:700;color:#6b7280;">R2</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Shohei Ohtani</span><span style="font-size:8px;color:#6b7280;">DH·LAD</span><span style="font-size:9px;font-weight:800;color:#22c55e;">A</span><span style="font-size:7px;font-weight:700;color:#6b7280;">R3</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Paul Skenes</span><span style="font-size:8px;color:#6b7280;">SP·PIT</span><span style="font-size:9px;font-weight:800;color:#22c55e;">A-</span><span style="font-size:7px;font-weight:700;color:#6b7280;">R4</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Mookie Betts</span><span style="font-size:8px;color:#6b7280;">OF·LAD</span><span style="font-size:9px;font-weight:800;color:#eab308;">B+</span><span style="font-size:7px;font-weight:700;color:#6b7280;">R5</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Elly De La Cruz</span><span style="font-size:8px;color:#6b7280;">SS·CIN</span><span style="font-size:9px;font-weight:800;color:#eab308;">B</span><span style="font-size:7px;font-weight:700;color:#6b7280;">R6</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Spencer Strider</span><span style="font-size:8px;color:#6b7280;">SP·ATL</span><span style="font-size:9px;font-weight:800;color:#ef4444;">C+</span></div></div><div style="background:#131720;border:1px solid rgba(139,92,246,0.15);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:8px;">📊 Grade Breakdown</div><div style="display:flex;gap:6px;justify-content:space-between;"><div style="text-align:center;flex:1;"><div style="font-size:14px;font-weight:900;color:#22c55e;">A</div><div style="font-size:7px;color:#6b7280;">3 picks</div></div><div style="text-align:center;flex:1;"><div style="font-size:14px;font-weight:900;color:#eab308;">B</div><div style="font-size:7px;color:#6b7280;">5 picks</div></div><div style="text-align:center;flex:1;"><div style="font-size:14px;font-weight:900;color:#ef4444;">C</div><div style="font-size:7px;color:#6b7280;">4 picks</div></div><div style="text-align:center;flex:1;border-left:1px solid rgba(255,255,255,0.1);padding-left:6px;"><div style="font-size:14px;font-weight:900;color:#a78bfa;">B+</div><div style="font-size:7px;color:#6b7280;">overall</div></div></div></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">a C+?? Ohtani was a steal 😤</div></div><div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><div style="background:#34c759;color:#fff;font-size:13px;font-weight:600;padding:10px 14px;border-radius:18px 18px 3px 18px;max-width:82%;line-height:1.4;">the data says otherwise 💀</div></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">where do I get this??</div></div></div><div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:95px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div></div>
-                </div>
-              </div>
-            </div>
-            </div>
-          </div>
-
-          <!-- STORY 1080×1920 → 304×540 -->
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Story · 1080×1920</div>
-            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
-            <div style="width:1080px;height:1920px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 25% 50%,rgba(234,179,8,0.18) 0%,transparent 55%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.10) 0%,transparent 50%);"></div>
-              <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-              <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-
-              <!-- HEADER: logo + Fantasy Baseball pinned to top -->
-              <div style="position:absolute;top:72px;left:72px;right:72px;display:flex;align-items:center;gap:24px;">
-                <img src="/UFD_V8.png" style="height:110px;width:auto;display:block;">
-                <span style="font-size:64px;color:#9ca3af;font-weight:700;letter-spacing:-0.01em;">Fantasy Baseball</span>
-              </div>
-
-              <!-- LEFT: text column, starts high, narrow to avoid phone overlap -->
-              <div style="position:absolute;top:260px;left:72px;width:480px;bottom:80px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="font-size:96px;font-weight:900;color:#eab308;line-height:0.86;letter-spacing:-0.03em;margin-bottom:14px;">DRAFT GRADES</div>
-                <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:0.90;letter-spacing:-0.03em;margin-bottom:40px;">HAVE ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:34px;color:#9ca3af;line-height:1.4;margin-bottom:44px;font-weight:400;">Every pick in your draft, graded. Find out who built a winner and who reached.</div>
-                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:30px;font-weight:900;padding:20px 36px;border-radius:14px;display:flex;align-items:center;gap:14px;">Connect Your League<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;flex-shrink:0;">→</div></div></div>
-                <div style="display:flex;align-items:center;gap:12px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:28px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
-              </div>
-
-              <!-- RIGHT: phone column, right half, fully contained, slight tilt -->
-              <div style="position:absolute;top:100px;right:40px;bottom:100px;width:500px;display:flex;align-items:center;justify-content:center;">
-                <div style="position:relative;transform:perspective(1600px) rotateY(-8deg) rotateX(2deg) rotate(2deg);filter:drop-shadow(0 80px 160px rgba(0,0,0,0.9));">
-                  <div style="position:absolute;inset:-50px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.25) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;border-radius:94px;"></div><div style="width:440px;height:860px;background:linear-gradient(160deg,#1e2535 0%,#0d1117 50%,#0a0d1a 100%);border-radius:54px;border:1.5px solid rgba(234,179,8,0.25);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 50px 100px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.08);"><div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:140px;height:31px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div><div style="position:absolute;top:11px;left:30px;right:30px;display:flex;justify-content:space-between;z-index:11;"><span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span><div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div></div><div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div><div style="position:absolute;top:40px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;"><div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;"><div style="display:flex;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div><div><div style="font-size:11px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:9px;color:#6b7280;">12 members</div></div></div><img src="/UFD_V8.png" style="height:13px;width:auto;"></div><div style="background:#131720;border:1px solid rgba(139,92,246,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:12px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:9px;">📋 Draft Board</div><div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:3px 8px;align-items:center;"><span style="font-size:7px;font-weight:700;color:#6b7280;">R1</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Freddie Freeman</span><span style="font-size:8px;color:#6b7280;">1B·LAD</span><span style="font-size:9px;font-weight:800;color:#22c55e;">A+</span><span style="font-size:7px;font-weight:700;color:#6b7280;">R2</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Shohei Ohtani</span><span style="font-size:8px;color:#6b7280;">DH·LAD</span><span style="font-size:9px;font-weight:800;color:#22c55e;">A</span><span style="font-size:7px;font-weight:700;color:#6b7280;">R3</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Paul Skenes</span><span style="font-size:8px;color:#6b7280;">SP·PIT</span><span style="font-size:9px;font-weight:800;color:#22c55e;">A-</span><span style="font-size:7px;font-weight:700;color:#6b7280;">R4</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Mookie Betts</span><span style="font-size:8px;color:#6b7280;">OF·LAD</span><span style="font-size:9px;font-weight:800;color:#eab308;">B+</span><span style="font-size:7px;font-weight:700;color:#6b7280;">R5</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Elly De La Cruz</span><span style="font-size:8px;color:#6b7280;">SS·CIN</span><span style="font-size:9px;font-weight:800;color:#eab308;">B</span><span style="font-size:7px;font-weight:700;color:#6b7280;">R6</span><span style="font-size:9px;font-weight:700;color:#e5e7eb;">Spencer Strider</span><span style="font-size:8px;color:#6b7280;">SP·ATL</span><span style="font-size:9px;font-weight:800;color:#ef4444;">C+</span></div></div><div style="background:#131720;border:1px solid rgba(139,92,246,0.15);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:8px;">📊 Grade Breakdown</div><div style="display:flex;gap:6px;justify-content:space-between;"><div style="text-align:center;flex:1;"><div style="font-size:14px;font-weight:900;color:#22c55e;">A</div><div style="font-size:7px;color:#6b7280;">3 picks</div></div><div style="text-align:center;flex:1;"><div style="font-size:14px;font-weight:900;color:#eab308;">B</div><div style="font-size:7px;color:#6b7280;">5 picks</div></div><div style="text-align:center;flex:1;"><div style="font-size:14px;font-weight:900;color:#ef4444;">C</div><div style="font-size:7px;color:#6b7280;">4 picks</div></div><div style="text-align:center;flex:1;border-left:1px solid rgba(255,255,255,0.1);padding-left:6px;"><div style="font-size:14px;font-weight:900;color:#a78bfa;">B+</div><div style="font-size:7px;color:#6b7280;">overall</div></div></div></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">a C+?? Ohtani was a steal 😤</div></div><div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><div style="background:#34c759;color:#fff;font-size:13px;font-weight:600;padding:10px 14px;border-radius:18px 18px 3px 18px;max-width:82%;line-height:1.4;">the data says otherwise 💀</div></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">where do I get this??</div></div></div><div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:123px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div></div>
-                </div>
-              </div>
-            </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ══ AD: LEAGUE HISTORY ══ -->
-      <div>
-        <div style="font-size:12px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">4 of 5 · LEAGUE HISTORY</div>
-        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Square + Story — screenshot each.</div>
-        <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap;">
-
-          <!-- SQUARE 1080×1080 → 540×540 -->
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Square · 1080×1080</div>
-            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
-            <div style="width:1080px;height:1080px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 55%,rgba(234,179,8,0.16) 0%,transparent 50%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 90% 90%,rgba(234,179,8,0.09) 0%,transparent 45%);"></div>
-              <div style="position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-              <div style="position:absolute;bottom:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-              <div style="position:absolute;left:72px;top:0;bottom:0;right:560px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="display:flex;align-items:center;gap:16px;margin-bottom:44px;flex-wrap:wrap;"><img src="/UFD_V8.png" style="height:72px;width:auto;display:block;"><span style="font-size:32px;color:#9ca3af;font-weight:700;">Fantasy Baseball</span></div>
-                <div style="font-size:82px;font-weight:900;color:#eab308;line-height:0.9;letter-spacing:-0.03em;margin-bottom:10px;">LEAGUE HISTORY</div>
-                <div style="font-size:66px;font-weight:900;color:#ffffff;line-height:0.95;letter-spacing:-0.03em;margin-bottom:36px;">HAS ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:24px;color:#9ca3af;line-height:1.5;margin-bottom:44px;font-weight:400;max-width:400px;">Every champion, every award, every season — all in one place. The receipts are in.</div>
-                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:22px;font-weight:900;padding:18px 32px;border-radius:12px;display:flex;align-items:center;gap:14px;">Connect Your League Free<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;flex-shrink:0;">→</div></div></div>
-                <div style="display:flex;align-items:center;gap:10px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:22px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:20px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:22px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
-              </div>
-              <div style="position:absolute;right:10px;top:10px;bottom:10px;width:600px;display:flex;align-items:center;justify-content:center;">
-                <div style="position:relative;transform:perspective(1400px) rotateY(-12deg) rotateX(3deg) rotate(3deg);filter:drop-shadow(0 60px 120px rgba(0,0,0,0.9));">
-                  <div style="position:absolute;inset:-50px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.25) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;border-radius:82px;"></div><div style="width:340px;height:660px;background:linear-gradient(160deg,#1e2535 0%,#0d1117 50%,#0a0d1a 100%);border-radius:42px;border:1.5px solid rgba(234,179,8,0.25);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 50px 100px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.08);"><div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:108px;height:24px;background:#080a10;border-radius:0 0 14px 14px;z-index:10;"></div><div style="position:absolute;top:8px;left:23px;right:23px;display:flex;justify-content:space-between;z-index:11;"><span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span><div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div></div><div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div><div style="position:absolute;top:31px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;"><div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;"><div style="display:flex;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div><div><div style="font-size:11px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:9px;color:#6b7280;">12 members</div></div></div><img src="/UFD_V8.png" style="height:13px;width:auto;"></div><div style="background:#131720;border:1px solid rgba(234,179,8,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:12px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:9px;">🏆 League History</div><div style="display:flex;gap:6px;margin-bottom:8px;"><div style="flex:1;background:rgba(234,179,8,0.08);border-radius:7px;padding:7px;text-align:center;"><div style="font-size:14px;">🥇</div><div style="font-size:8px;font-weight:700;color:#eab308;margin-top:2px;">Champion</div><div style="font-size:8px;color:#9ca3af;">Swamp Pirates</div></div><div style="flex:1;background:rgba(255,255,255,0.04);border-radius:7px;padding:7px;text-align:center;"><div style="font-size:14px;">🥈</div><div style="font-size:8px;font-weight:700;color:#9ca3af;margin-top:2px;">Runner Up</div><div style="font-size:8px;color:#9ca3af;">NC Pale Hose</div></div></div></div><div style="background:#131720;border:1px solid rgba(234,179,8,0.15);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:8px;">📊 All-Time Leaderboard</div><div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:3px 6px;align-items:center;"><span style="font-size:8px;color:#eab308;font-weight:800;">1</span><span style="font-size:9px;color:#e5e7eb;font-weight:700;">Swamp Pirates</span><span style="font-size:7px;color:#eab308;">🏆×3</span><span style="font-size:8px;color:#6b7280;">68-28</span><span style="font-size:8px;color:#22c55e;font-weight:700;">71%</span><span style="font-size:8px;color:#9ca3af;font-weight:800;">2</span><span style="font-size:9px;color:#d1d5db;">Ctrl Alt DeLauter</span><span style="font-size:7px;color:#eab308;">🏆×2</span><span style="font-size:8px;color:#6b7280;">62-34</span><span style="font-size:8px;color:#22c55e;font-weight:700;">65%</span><span style="font-size:8px;color:#9ca3af;font-weight:800;">3</span><span style="font-size:9px;color:#d1d5db;">The Projection</span><span style="font-size:7px;color:#6b7280;">🏆×1</span><span style="font-size:8px;color:#6b7280;">58-38</span><span style="font-size:8px;color:#eab308;font-weight:700;">60%</span><span style="font-size:8px;color:#9ca3af;font-weight:800;">4</span><span style="font-size:9px;color:#d1d5db;">NC Pale Hose</span><span style="font-size:7px;color:#6b7280;">—</span><span style="font-size:8px;color:#6b7280;">51-45</span><span style="font-size:8px;color:#6b7280;">53%</span></div></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">the receipts go back 6 seasons 👀</div></div><div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><div style="background:#34c759;color:#fff;font-size:13px;font-weight:600;padding:10px 14px;border-radius:18px 18px 3px 18px;max-width:82%;line-height:1.4;">I've been winning this league for years</div></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">this is incredible, how??</div></div></div><div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:95px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div></div>
-                </div>
-              </div>
-            </div>
-            </div>
-          </div>
-
-          <!-- STORY 1080×1920 → 304×540 -->
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Story · 1080×1920</div>
-            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
-            <div style="width:1080px;height:1920px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 25% 50%,rgba(234,179,8,0.18) 0%,transparent 55%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.10) 0%,transparent 50%);"></div>
-              <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-              <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-
-              <!-- HEADER: logo + Fantasy Baseball pinned to top -->
-              <div style="position:absolute;top:72px;left:72px;right:72px;display:flex;align-items:center;gap:24px;">
-                <img src="/UFD_V8.png" style="height:110px;width:auto;display:block;">
-                <span style="font-size:64px;color:#9ca3af;font-weight:700;letter-spacing:-0.01em;">Fantasy Baseball</span>
-              </div>
-
-              <!-- LEFT: text column, starts high, narrow to avoid phone overlap -->
-              <div style="position:absolute;top:260px;left:72px;width:480px;bottom:80px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="font-size:96px;font-weight:900;color:#eab308;line-height:0.86;letter-spacing:-0.03em;margin-bottom:14px;">LEAGUE HISTORY</div>
-                <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:0.90;letter-spacing:-0.03em;margin-bottom:40px;">HAS ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:34px;color:#9ca3af;line-height:1.4;margin-bottom:44px;font-weight:400;">Every champion, every award, every season — all in one place. The receipts are in.</div>
-                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:30px;font-weight:900;padding:20px 36px;border-radius:14px;display:flex;align-items:center;gap:14px;">Connect Your League<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;flex-shrink:0;">→</div></div></div>
-                <div style="display:flex;align-items:center;gap:12px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:28px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
-              </div>
-
-              <!-- RIGHT: phone column, right half, fully contained, slight tilt -->
-              <div style="position:absolute;top:100px;right:40px;bottom:100px;width:500px;display:flex;align-items:center;justify-content:center;">
-                <div style="position:relative;transform:perspective(1600px) rotateY(-8deg) rotateX(2deg) rotate(2deg);filter:drop-shadow(0 80px 160px rgba(0,0,0,0.9));">
-                  <div style="position:absolute;inset:-50px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.25) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;border-radius:94px;"></div><div style="width:440px;height:860px;background:linear-gradient(160deg,#1e2535 0%,#0d1117 50%,#0a0d1a 100%);border-radius:54px;border:1.5px solid rgba(234,179,8,0.25);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 50px 100px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.08);"><div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:140px;height:31px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div><div style="position:absolute;top:11px;left:30px;right:30px;display:flex;justify-content:space-between;z-index:11;"><span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span><div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div></div><div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div><div style="position:absolute;top:40px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;"><div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;"><div style="display:flex;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div><div><div style="font-size:11px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:9px;color:#6b7280;">12 members</div></div></div><img src="/UFD_V8.png" style="height:13px;width:auto;"></div><div style="background:#131720;border:1px solid rgba(234,179,8,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:12px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:9px;">🏆 League History</div><div style="display:flex;gap:6px;margin-bottom:8px;"><div style="flex:1;background:rgba(234,179,8,0.08);border-radius:7px;padding:7px;text-align:center;"><div style="font-size:14px;">🥇</div><div style="font-size:8px;font-weight:700;color:#eab308;margin-top:2px;">Champion</div><div style="font-size:8px;color:#9ca3af;">Swamp Pirates</div></div><div style="flex:1;background:rgba(255,255,255,0.04);border-radius:7px;padding:7px;text-align:center;"><div style="font-size:14px;">🥈</div><div style="font-size:8px;font-weight:700;color:#9ca3af;margin-top:2px;">Runner Up</div><div style="font-size:8px;color:#9ca3af;">NC Pale Hose</div></div></div></div><div style="background:#131720;border:1px solid rgba(234,179,8,0.15);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:8px;">📊 All-Time Leaderboard</div><div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:3px 6px;align-items:center;"><span style="font-size:8px;color:#eab308;font-weight:800;">1</span><span style="font-size:9px;color:#e5e7eb;font-weight:700;">Swamp Pirates</span><span style="font-size:7px;color:#eab308;">🏆×3</span><span style="font-size:8px;color:#6b7280;">68-28</span><span style="font-size:8px;color:#22c55e;font-weight:700;">71%</span><span style="font-size:8px;color:#9ca3af;font-weight:800;">2</span><span style="font-size:9px;color:#d1d5db;">Ctrl Alt DeLauter</span><span style="font-size:7px;color:#eab308;">🏆×2</span><span style="font-size:8px;color:#6b7280;">62-34</span><span style="font-size:8px;color:#22c55e;font-weight:700;">65%</span><span style="font-size:8px;color:#9ca3af;font-weight:800;">3</span><span style="font-size:9px;color:#d1d5db;">The Projection</span><span style="font-size:7px;color:#6b7280;">🏆×1</span><span style="font-size:8px;color:#6b7280;">58-38</span><span style="font-size:8px;color:#eab308;font-weight:700;">60%</span><span style="font-size:8px;color:#9ca3af;font-weight:800;">4</span><span style="font-size:9px;color:#d1d5db;">NC Pale Hose</span><span style="font-size:7px;color:#6b7280;">—</span><span style="font-size:8px;color:#6b7280;">51-45</span><span style="font-size:8px;color:#6b7280;">53%</span></div></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">the receipts go back 6 seasons 👀</div></div><div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><div style="background:#34c759;color:#fff;font-size:13px;font-weight:600;padding:10px 14px;border-radius:18px 18px 3px 18px;max-width:82%;line-height:1.4;">I've been winning this league for years</div></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">this is incredible, how??</div></div></div><div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:123px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div></div>
-                </div>
-              </div>
-            </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ══ AD: HEAD-TO-HEAD RECORDS ══ -->
-      <div>
-        <div style="font-size:12px;font-weight:800;color:#eab308;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">5 of 5 · HEAD-TO-HEAD RECORDS</div>
-        <div style="font-size:11px;color:#4b5563;margin-bottom:20px;">Square + Story — screenshot each.</div>
-        <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap;">
-
-          <!-- SQUARE 1080×1080 → 540×540 -->
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Square · 1080×1080</div>
-            <div style="width:540px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
-            <div style="width:1080px;height:1080px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 55%,rgba(234,179,8,0.16) 0%,transparent 50%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 90% 90%,rgba(234,179,8,0.09) 0%,transparent 45%);"></div>
-              <div style="position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-              <div style="position:absolute;bottom:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-              <div style="position:absolute;left:72px;top:0;bottom:0;right:560px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="display:flex;align-items:center;gap:16px;margin-bottom:44px;flex-wrap:wrap;"><img src="/UFD_V8.png" style="height:72px;width:auto;display:block;"><span style="font-size:32px;color:#9ca3af;font-weight:700;">Fantasy Baseball</span></div>
-                <div style="font-size:82px;font-weight:900;color:#eab308;line-height:0.9;letter-spacing:-0.03em;margin-bottom:10px;">HEAD-TO-HEAD RECORDS</div>
-                <div style="font-size:66px;font-weight:900;color:#ffffff;line-height:0.95;letter-spacing:-0.03em;margin-bottom:36px;">HAVE ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:24px;color:#9ca3af;line-height:1.5;margin-bottom:44px;font-weight:400;max-width:400px;">Your all-time record against every team in your league. Some rivalries run deep.</div>
-                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:22px;font-weight:900;padding:18px 32px;border-radius:12px;display:flex;align-items:center;gap:14px;">Connect Your League Free<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;flex-shrink:0;">→</div></div></div>
-                <div style="display:flex;align-items:center;gap:10px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:22px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:20px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:22px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
-              </div>
-              <div style="position:absolute;right:10px;top:10px;bottom:10px;width:600px;display:flex;align-items:center;justify-content:center;">
-                <div style="position:relative;transform:perspective(1400px) rotateY(-12deg) rotateX(3deg) rotate(3deg);filter:drop-shadow(0 60px 120px rgba(0,0,0,0.9));">
-                  <div style="position:absolute;inset:-50px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.25) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;border-radius:82px;"></div><div style="width:340px;height:660px;background:linear-gradient(160deg,#1e2535 0%,#0d1117 50%,#0a0d1a 100%);border-radius:42px;border:1.5px solid rgba(234,179,8,0.25);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 50px 100px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.08);"><div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:108px;height:24px;background:#080a10;border-radius:0 0 14px 14px;z-index:10;"></div><div style="position:absolute;top:8px;left:23px;right:23px;display:flex;justify-content:space-between;z-index:11;"><span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span><div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div></div><div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div><div style="position:absolute;top:31px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;"><div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;"><div style="display:flex;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div><div><div style="font-size:11px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:9px;color:#6b7280;">12 members</div></div></div><img src="/UFD_V8.png" style="height:13px;width:auto;"></div><div style="background:#131720;border:1px solid rgba(249,115,22,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:12px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:9px;">⚔️ H2H Matrix</div><div style="display:grid;grid-template-columns:52px repeat(4,1fr);gap:2px;font-size:7px;"><div style="color:#4b5563;"></div><div style="text-align:center;color:#6b7280;font-weight:700;padding:2px;">Pirates</div><div style="text-align:center;color:#6b7280;font-weight:700;padding:2px;">Pale Hose</div><div style="text-align:center;color:#6b7280;font-weight:700;padding:2px;">Ctrl Alt</div><div style="text-align:center;color:#6b7280;font-weight:700;padding:2px;">Projection</div><div style="color:#e5e7eb;font-weight:700;font-size:8px;">Pirates</div><div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:3px;padding:3px;color:#4b5563;">—</div><div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">12-4</div><div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">9-7</div><div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">11-5</div><div style="color:#e5e7eb;font-weight:700;font-size:8px;">Pale Hose</div><div style="text-align:center;background:rgba(239,68,68,0.12);border-radius:3px;padding:3px;color:#ef4444;font-weight:800;">4-12</div><div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:3px;padding:3px;color:#4b5563;">—</div><div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">8-8</div><div style="text-align:center;background:rgba(239,68,68,0.12);border-radius:3px;padding:3px;color:#ef4444;font-weight:800;">6-10</div><div style="color:#e5e7eb;font-weight:700;font-size:8px;">Ctrl Alt</div><div style="text-align:center;background:rgba(239,68,68,0.12);border-radius:3px;padding:3px;color:#ef4444;font-weight:800;">7-9</div><div style="text-align:center;background:rgba(239,68,68,0.12);border-radius:3px;padding:3px;color:#ef4444;font-weight:800;">8-8</div><div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:3px;padding:3px;color:#4b5563;">—</div><div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">10-6</div></div></div><div style="background:#131720;border:1px solid rgba(249,115,22,0.15);border-radius:9px;padding:8px 11px;flex-shrink:0;"><div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:7px;">All-Time vs League</div><div style="display:flex;gap:4px;"><div style="flex:1;text-align:center;background:rgba(34,197,94,0.08);border-radius:6px;padding:5px;"><div style="font-size:13px;font-weight:900;color:#22c55e;">32-14</div><div style="font-size:7px;color:#6b7280;">your record</div></div><div style="flex:1;text-align:center;background:rgba(234,179,8,0.08);border-radius:6px;padding:5px;"><div style="font-size:13px;font-weight:900;color:#eab308;">70%</div><div style="font-size:7px;color:#6b7280;">win rate</div></div><div style="flex:1;text-align:center;background:rgba(249,115,22,0.08);border-radius:6px;padding:5px;"><div style="font-size:13px;font-weight:900;color:#f97316;">#1</div><div style="font-size:7px;color:#6b7280;">all-time rank</div></div></div></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">4-18 all time?? I'm done 💀</div></div><div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><div style="background:#34c759;color:#fff;font-size:13px;font-weight:600;padding:10px 14px;border-radius:18px 18px 3px 18px;max-width:82%;line-height:1.4;">some things you can't hide 😂</div></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">where do I find this??</div></div></div><div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:95px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div></div>
-                </div>
-              </div>
-            </div>
-            </div>
-          </div>
-
-          <!-- STORY 1080×1920 → 304×540 -->
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Story · 1080×1920</div>
-            <div style="width:304px;height:540px;overflow:hidden;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
-            <div style="width:1080px;height:1920px;background:#080c14;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 25% 50%,rgba(234,179,8,0.18) 0%,transparent 55%);"></div>
-              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 100%,rgba(234,179,8,0.10) 0%,transparent 50%);"></div>
-              <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-              <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
-
-              <!-- HEADER: logo + Fantasy Baseball pinned to top -->
-              <div style="position:absolute;top:72px;left:72px;right:72px;display:flex;align-items:center;gap:24px;">
-                <img src="/UFD_V8.png" style="height:110px;width:auto;display:block;">
-                <span style="font-size:64px;color:#9ca3af;font-weight:700;letter-spacing:-0.01em;">Fantasy Baseball</span>
-              </div>
-
-              <!-- LEFT: text column, starts high, narrow to avoid phone overlap -->
-              <div style="position:absolute;top:260px;left:72px;width:480px;bottom:80px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="font-size:96px;font-weight:900;color:#eab308;line-height:0.86;letter-spacing:-0.03em;margin-bottom:14px;">HEAD-TO-HEAD RECORDS</div>
-                <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:0.90;letter-spacing:-0.03em;margin-bottom:40px;">HAVE ENTERED THE LEAGUE CHAT.</div>
-                <div style="font-size:34px;color:#9ca3af;line-height:1.4;margin-bottom:44px;font-weight:400;">Your all-time record against every team in your league. Some rivalries run deep.</div>
-                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:30px;font-weight:900;padding:20px 36px;border-radius:14px;display:flex;align-items:center;gap:14px;">Connect Your League<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;flex-shrink:0;">→</div></div></div>
-                <div style="display:flex;align-items:center;gap:12px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:28px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
-              </div>
-
-              <!-- RIGHT: phone column, right half, fully contained, slight tilt -->
-              <div style="position:absolute;top:100px;right:40px;bottom:100px;width:500px;display:flex;align-items:center;justify-content:center;">
-                <div style="position:relative;transform:perspective(1600px) rotateY(-8deg) rotateX(2deg) rotate(2deg);filter:drop-shadow(0 80px 160px rgba(0,0,0,0.9));">
-                  <div style="position:absolute;inset:-50px;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.25) 0%,transparent 65%);filter:blur(30px);pointer-events:none;z-index:0;border-radius:94px;"></div><div style="width:440px;height:860px;background:linear-gradient(160deg,#1e2535 0%,#0d1117 50%,#0a0d1a 100%);border-radius:54px;border:1.5px solid rgba(234,179,8,0.25);overflow:hidden;position:relative;z-index:1;box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 50px 100px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.08);"><div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:140px;height:31px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div><div style="position:absolute;top:11px;left:30px;right:30px;display:flex;justify-content:space-between;z-index:11;"><span style="font-size:10px;color:#9ca3af;font-weight:600;">9:41</span><div style="width:13px;height:7px;border:1px solid #9ca3af;border-radius:2px;margin-top:1px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#9ca3af;border-radius:1px;"></div></div></div><div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#eab308,transparent);z-index:12;"></div><div style="position:absolute;top:40px;left:0;right:0;bottom:0;background:#0d1117;padding:9px;display:flex;flex-direction:column;gap:7px;overflow:hidden;"><div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;"><div style="display:flex;align-items:center;gap:5px;"><div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:9px;">👥</div><div><div style="font-size:11px;font-weight:700;color:#e5e7eb;">League Chat</div><div style="font-size:9px;color:#6b7280;">12 members</div></div></div><img src="/UFD_V8.png" style="height:13px;width:auto;"></div><div style="background:#131720;border:1px solid rgba(249,115,22,0.2);border-radius:9px;padding:9px 11px;flex-shrink:0;"><div style="font-size:12px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:9px;">⚔️ H2H Matrix</div><div style="display:grid;grid-template-columns:52px repeat(4,1fr);gap:2px;font-size:7px;"><div style="color:#4b5563;"></div><div style="text-align:center;color:#6b7280;font-weight:700;padding:2px;">Pirates</div><div style="text-align:center;color:#6b7280;font-weight:700;padding:2px;">Pale Hose</div><div style="text-align:center;color:#6b7280;font-weight:700;padding:2px;">Ctrl Alt</div><div style="text-align:center;color:#6b7280;font-weight:700;padding:2px;">Projection</div><div style="color:#e5e7eb;font-weight:700;font-size:8px;">Pirates</div><div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:3px;padding:3px;color:#4b5563;">—</div><div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">12-4</div><div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">9-7</div><div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">11-5</div><div style="color:#e5e7eb;font-weight:700;font-size:8px;">Pale Hose</div><div style="text-align:center;background:rgba(239,68,68,0.12);border-radius:3px;padding:3px;color:#ef4444;font-weight:800;">4-12</div><div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:3px;padding:3px;color:#4b5563;">—</div><div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">8-8</div><div style="text-align:center;background:rgba(239,68,68,0.12);border-radius:3px;padding:3px;color:#ef4444;font-weight:800;">6-10</div><div style="color:#e5e7eb;font-weight:700;font-size:8px;">Ctrl Alt</div><div style="text-align:center;background:rgba(239,68,68,0.12);border-radius:3px;padding:3px;color:#ef4444;font-weight:800;">7-9</div><div style="text-align:center;background:rgba(239,68,68,0.12);border-radius:3px;padding:3px;color:#ef4444;font-weight:800;">8-8</div><div style="text-align:center;background:rgba(255,255,255,0.04);border-radius:3px;padding:3px;color:#4b5563;">—</div><div style="text-align:center;background:rgba(34,197,94,0.12);border-radius:3px;padding:3px;color:#22c55e;font-weight:800;">10-6</div></div></div><div style="background:#131720;border:1px solid rgba(249,115,22,0.15);border-radius:9px;padding:8px 11px;flex-shrink:0;"><div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:7px;">All-Time vs League</div><div style="display:flex;gap:4px;"><div style="flex:1;text-align:center;background:rgba(34,197,94,0.08);border-radius:6px;padding:5px;"><div style="font-size:13px;font-weight:900;color:#22c55e;">32-14</div><div style="font-size:7px;color:#6b7280;">your record</div></div><div style="flex:1;text-align:center;background:rgba(234,179,8,0.08);border-radius:6px;padding:5px;"><div style="font-size:13px;font-weight:900;color:#eab308;">70%</div><div style="font-size:7px;color:#6b7280;">win rate</div></div><div style="flex:1;text-align:center;background:rgba(249,115,22,0.08);border-radius:6px;padding:5px;"><div style="font-size:13px;font-weight:900;color:#f97316;">#1</div><div style="font-size:7px;color:#6b7280;">all-time rank</div></div></div></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">4-18 all time?? I'm done 💀</div></div><div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><div style="background:#34c759;color:#fff;font-size:13px;font-weight:600;padding:10px 14px;border-radius:18px 18px 3px 18px;max-width:82%;line-height:1.4;">some things you can't hide 😂</div></div><div style="display:flex;justify-content:flex-start;margin-bottom:8px;"><div style="background:#e5e7eb;color:#111827;font-size:13px;font-weight:500;padding:10px 14px;border-radius:18px 18px 18px 3px;max-width:82%;line-height:1.4;">where do I find this??</div></div></div><div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:123px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"></div></div>
-                </div>
-              </div>
-            </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-    </div>
-  </template><!-- end paid ads tab -->
-
   </div>
 </template>
 
@@ -3175,7 +2076,54 @@ const isEmbed = computed(() => props.embedMode === true || route.query.embed ===
 const leagueStore = useLeagueStore()
 
 // ── Social template type tabs ──────────────────────────────────────────────
-const activeType = ref('square')
+const activeType = ref('interactive')
+
+// ── Reusable 3-size preview wrapper (Square / Horizontal / Story) ───────
+// Renders the same default-slot content three times in differently-framed
+// containers so a single card definition outputs all three social formats.
+// Cards inside use class="sq" which is `width:100%; aspect-ratio:1/1`, so we
+// must give each rendering an explicit width or the card collapses.
+const ThreeSizePreview = defineComponent({
+  setup(_, { slots }) {
+    return () => {
+      // Wrap slot content in a fixed-width container so `.sq` (width:100%) sizes correctly.
+      const card = (w: number) => h('div', { style: `width:${w}px;flex-shrink:0;` }, slots.default?.())
+      const labelStyle = 'font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;'
+      const cellStyle  = 'display:flex;flex-direction:column;gap:8px;'
+      const frameBase  = 'background:#0f1117;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;'
+      return h('div', { class: 'three-size-row' }, [
+        h('div', { style: cellStyle }, [
+          h('div', { style: labelStyle }, 'Square · 1080×1080'),
+          card(540)
+        ]),
+        h('div', { style: cellStyle }, [
+          h('div', { style: labelStyle }, 'Horizontal · 1200×630'),
+          h('div', { style: `${frameBase}width:600px;height:315px;` }, [
+            h('div', { style: 'transform:scale(0.55);transform-origin:center;' }, card(540))
+          ])
+        ]),
+        h('div', { style: cellStyle }, [
+          h('div', { style: labelStyle }, 'Story · 1080×1920'),
+          h('div', { style: `${frameBase}width:270px;height:480px;` }, [
+            h('div', { style: 'transform:scale(0.5);transform-origin:center;' }, card(540))
+          ])
+        ])
+      ])
+    }
+  }
+})
+
+// ── Interactive item picker ───────────────────────────────────────────────
+const interactiveItems = [
+  { id: 'wp_daily',       label: '19 · Daily Win Probability — Matchup Tracker' },
+  { id: 'pr',             label: '20 · Power Rankings Card' },
+  { id: 'wpi',            label: '⚡ Win Probability Impact (Best Batters & Pitchers)' },
+  { id: 'ww',             label: '⚾ Waiver Wire Report' },
+  { id: 'wp_card',        label: '29 · Win Probability Card' },
+  { id: 'most_traded',    label: '32 · Most Traded Players' },
+  { id: 'ranking_impact', label: '34 · Player Ranking Impact' },
+]
+const selectedInteractiveItem = ref('wp_daily')
 
 // ══════════════════════════════════════════════════════════════════════════
 // WP IMPACT GRAPHICS — Daily top performers from ESPN public scoreboard
@@ -3936,6 +2884,78 @@ const wpArea2Path = computed(() => {
   const line = smoothBezier(pts.map(p => ({ x: p.x, y: p.y })))
   return `${line} L ${pts[pts.length-1].x},${WP_CB} L ${pts[0].x},${WP_CB} Z`
 })
+
+// ════════════════════════════════════════════════════════════════════════
+// HORIZONTAL (1200×630) — Chart on left ~800px, info panel on right ~400px
+// ════════════════════════════════════════════════════════════════════════
+const WPH_CL = 80           // chart left
+const WPH_CR = 760          // chart right
+const WPH_CT = 188          // chart top (100%)
+const WPH_CB = 540          // chart bottom (0%)
+const WPH_CH = WPH_CB - WPH_CT
+const WPH_XS = (WPH_CR - WPH_CL) / 6  // 6 intervals across 7 days
+
+function wpHX(i: number): number { return WPH_CL + i * WPH_XS }
+function wpHY(p: number): number { return WPH_CB - (p / 100) * WPH_CH }
+
+const wpHTeam1Points = computed(() =>
+  wpRawProbs1.value.map((p, i) => ({ x: wpHX(i), y: wpHY(p), prob: p }))
+)
+const wpHTeam2Points = computed(() =>
+  wpRawProbs1.value.map((p, i) => { const p2 = 100 - p; return { x: wpHX(i), y: wpHY(p2), prob: p2 } })
+)
+const wpHTeam1Visible = computed(() => wpHTeam1Points.value.slice(0, wpCurrentDay.value + 1))
+const wpHTeam2Visible = computed(() => wpHTeam2Points.value.slice(0, wpCurrentDay.value + 1))
+const wpHLine1Path = computed(() => smoothBezier(wpHTeam1Visible.value.map(p => ({ x: p.x, y: p.y }))))
+const wpHLine2Path = computed(() => smoothBezier(wpHTeam2Visible.value.map(p => ({ x: p.x, y: p.y }))))
+const wpHArea1Path = computed(() => {
+  const pts = wpHTeam1Visible.value
+  if (!pts.length) return ''
+  return `${wpHLine1Path.value} L ${pts[pts.length-1].x},${WPH_CB} L ${pts[0].x},${WPH_CB} Z`
+})
+const wpHArea2Path = computed(() => {
+  const pts = wpHTeam2Visible.value
+  if (!pts.length) return ''
+  return `${wpHLine2Path.value} L ${pts[pts.length-1].x},${WPH_CB} L ${pts[0].x},${WPH_CB} Z`
+})
+
+// ════════════════════════════════════════════════════════════════════════
+// STORY (1080×1920) — Vertical: header, team-vs-team, big chart, callout, footer
+// ════════════════════════════════════════════════════════════════════════
+const WPS_CL = 90           // chart left
+const WPS_CR = 990          // chart right
+const WPS_CT = 920          // chart top (100%)
+const WPS_CB = 1480         // chart bottom (0%)
+const WPS_CH = WPS_CB - WPS_CT
+const WPS_XS = (WPS_CR - WPS_CL) / 6
+
+function wpSX(i: number): number { return WPS_CL + i * WPS_XS }
+function wpSY(p: number): number { return WPS_CB - (p / 100) * WPS_CH }
+
+const wpSTeam1Points = computed(() =>
+  wpRawProbs1.value.map((p, i) => ({ x: wpSX(i), y: wpSY(p), prob: p }))
+)
+const wpSTeam2Points = computed(() =>
+  wpRawProbs1.value.map((p, i) => { const p2 = 100 - p; return { x: wpSX(i), y: wpSY(p2), prob: p2 } })
+)
+const wpSTeam1Visible = computed(() => wpSTeam1Points.value.slice(0, wpCurrentDay.value + 1))
+const wpSTeam2Visible = computed(() => wpSTeam2Points.value.slice(0, wpCurrentDay.value + 1))
+const wpSLine1Path = computed(() => smoothBezier(wpSTeam1Visible.value.map(p => ({ x: p.x, y: p.y }))))
+const wpSLine2Path = computed(() => smoothBezier(wpSTeam2Visible.value.map(p => ({ x: p.x, y: p.y }))))
+const wpSArea1Path = computed(() => {
+  const pts = wpSTeam1Visible.value
+  if (!pts.length) return ''
+  return `${wpSLine1Path.value} L ${pts[pts.length-1].x},${WPS_CB} L ${pts[0].x},${WPS_CB} Z`
+})
+const wpSArea2Path = computed(() => {
+  const pts = wpSTeam2Visible.value
+  if (!pts.length) return ''
+  return `${wpSLine2Path.value} L ${pts[pts.length-1].x},${WPS_CB} L ${pts[0].x},${WPS_CB} Z`
+})
+
+// Current win % for each team (used in story big-card display)
+const wpCurrentProb1 = computed(() => wpRawProbs1.value[wpCurrentDay.value] ?? 50)
+const wpCurrentProb2 = computed(() => 100 - wpCurrentProb1.value)
 
 
 // ── Ad template state (30 & 31) ────────────────────────────────────────────
@@ -5792,6 +4812,76 @@ async function loadWwData() {
 }
 .type-tab:hover { color: #9ca3af; }
 .type-tab-active { color: #e5e7eb; border-bottom-color: #eab308; }
+
+.interactive-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 40px 4px;
+}
+.interactive-picker-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+.interactive-picker-select {
+  background: #0d0f18;
+  color: #e5e7eb;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  min-width: 320px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.interactive-picker-select:hover { border-color: #374151; }
+.interactive-picker-select:focus { border-color: #eab308; }
+
+.three-size-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+  padding: 16px 0;
+}
+.three-size-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.three-size-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+.three-size-coming-soon {
+  background: #0d0f18;
+  border: 1px dashed #1f2937;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.three-size-coming-soon-icon {
+  font-size: 28px;
+  opacity: 0.7;
+}
+.three-size-coming-soon-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4b5563;
+  letter-spacing: 0.04em;
+}
 
 /* ── WPI Controls ── */
 .wpi-controls {
