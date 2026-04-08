@@ -1290,6 +1290,95 @@
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
         </svg>
       </div>
+
+      <!-- ─── CUSTOM STORY 1080×1920 — fills full canvas, big rows, IG safe zones ─── -->
+      <template #story>
+        <svg viewBox="0 0 1080 1920" width="270" height="480"
+          style="display:block;background:#07080e;"
+          xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="wpi-gold-s" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#eab308" stop-opacity="0.95"/>
+              <stop offset="100%" stop-color="#eab308" stop-opacity="0.2"/>
+            </linearGradient>
+            <radialGradient id="wpi-gold-glow-s" cx="20%" cy="50%" r="65%">
+              <stop offset="0%" stop-color="#eab308" stop-opacity="0.10"/>
+              <stop offset="100%" stop-color="#eab308" stop-opacity="0"/>
+            </radialGradient>
+            <clipPath id="wpi-batters-story-clip-0"><circle cx="160" cy="475" r="110"/></clipPath>
+            <clipPath id="wpi-batters-story-clip-1"><circle cx="160" cy="755" r="110"/></clipPath>
+            <clipPath id="wpi-batters-story-clip-2"><circle cx="160" cy="1035" r="110"/></clipPath>
+            <clipPath id="wpi-batters-story-clip-3"><circle cx="160" cy="1315" r="110"/></clipPath>
+            <clipPath id="wpi-batters-story-clip-4"><circle cx="160" cy="1595" r="110"/></clipPath>
+          </defs>
+
+          <rect x="0" y="0" width="1080" height="1920" fill="#07080e"/>
+          <rect x="0" y="0" width="1080" height="1920" fill="url(#wpi-gold-glow-s)"/>
+
+          <!-- TITLE SECTION (y=180-340) — top 180px is IG safe zone -->
+          <rect x="60" y="190" width="80" height="6" fill="url(#wpi-gold-s)"/>
+          <text x="60" y="280" font-size="92" font-weight="900" letter-spacing="-0.02em"
+            fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Best Batters</text>
+          <text x="60" y="328" font-size="32" font-weight="700" letter-spacing="0.06em"
+            fill="#eab308" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
+            {{ wpiDateDisplay }} · WK {{ wpiWeekLabel }}
+          </text>
+          <line x1="60" y1="356" x2="1020" y2="356" stroke="#1e2130" stroke-width="2"/>
+
+          <!-- 5 PLAYER ROWS (y=365-1745, each row 276px tall) -->
+          <g v-for="(p, i) in wpiTopBatters.slice(0,5)" :key="'bsRow'+i">
+            <!-- Row bg -->
+            <rect x="0" :y="365 + i*276" width="1080" :height="270"
+              :fill="i===0?'rgba(234,179,8,0.10)':'rgba(255,255,255,0.012)'"/>
+            <line x1="0" :y1="365 + (i+1)*276 - 6" x2="1080" :y2="365 + (i+1)*276 - 6"
+              stroke="#1e2130" stroke-width="1.5"/>
+
+            <!-- Headshot circle -->
+            <circle cx="160" :cy="365 + i*276 + 110" r="105"
+              fill="rgba(0,0,0,0.4)"
+              :stroke="i===0?'rgba(234,179,8,0.6)':'rgba(255,255,255,0.10)'" stroke-width="4"/>
+            <image v-if="p.headshot" :href="p.headshot"
+              x="55" :y="365 + i*276 + 5" width="210" height="210"
+              :clip-path="`url(#wpi-batters-story-clip-${i})`"
+              preserveAspectRatio="xMidYMid slice"/>
+
+            <!-- Rank #N — top-left of text block -->
+            <text x="305" :y="365 + i*276 + 56" font-size="30" font-weight="900"
+              :fill="i===0?'#eab308':'#4b5563'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">#{{ i+1 }}</text>
+
+            <!-- Player name (constrained to fit in left zone) -->
+            <text x="305" :y="365 + i*276 + 125" font-size="48" font-weight="900"
+              fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif"
+              textLength="430" lengthAdjust="spacingAndGlyphs">{{ p.name }}</text>
+
+            <!-- Team · Position -->
+            <text x="305" :y="365 + i*276 + 168" font-size="28" font-weight="600"
+              fill="#9ca3af" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.team }} · {{ p.position }}</text>
+
+            <!-- Stat line -->
+            <text x="305" :y="365 + i*276 + 212" font-size="26" font-weight="600"
+              fill="#e5e7eb" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.statLine }}</text>
+
+            <!-- WP impact — hero number, right side -->
+            <text x="1020" :y="365 + i*276 + 145" text-anchor="end"
+              :font-size="i===0 ? 92 : 78" font-weight="900"
+              :fill="i===0?'#eab308':'#9ca3af'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">+{{ p.wpImpact.toFixed(1) }}%</text>
+
+            <!-- "win prob change" subtitle under WP -->
+            <text x="1020" :y="365 + i*276 + 185" text-anchor="end" font-size="22" font-weight="600"
+              :fill="i===0?'#fef3c7':'#4b5563'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">win prob change</text>
+          </g>
+
+          <!-- Empty state -->
+          <text v-if="!wpiTopBatters.length" x="540" y="1100" text-anchor="middle"
+            font-size="36" fill="#374151"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Load yesterday's data above</text>
+        </svg>
+      </template>
+
       </ThreeSizePreview>
     </div>
 
@@ -1393,6 +1482,94 @@
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
         </svg>
       </div>
+
+      <!-- ─── CUSTOM STORY 1080×1920 — fills full canvas, big rows, IG safe zones ─── -->
+      <template #story>
+        <svg viewBox="0 0 1080 1920" width="270" height="480"
+          style="display:block;background:#07080e;"
+          xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="wpi-cyan-s" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.95"/>
+              <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.2"/>
+            </linearGradient>
+            <radialGradient id="wpi-cyan-glow-s" cx="20%" cy="50%" r="65%">
+              <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.10"/>
+              <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+            </radialGradient>
+            <clipPath id="wpi-pitchers-story-clip-0"><circle cx="160" cy="475" r="110"/></clipPath>
+            <clipPath id="wpi-pitchers-story-clip-1"><circle cx="160" cy="755" r="110"/></clipPath>
+            <clipPath id="wpi-pitchers-story-clip-2"><circle cx="160" cy="1035" r="110"/></clipPath>
+            <clipPath id="wpi-pitchers-story-clip-3"><circle cx="160" cy="1315" r="110"/></clipPath>
+            <clipPath id="wpi-pitchers-story-clip-4"><circle cx="160" cy="1595" r="110"/></clipPath>
+          </defs>
+
+          <rect x="0" y="0" width="1080" height="1920" fill="#07080e"/>
+          <rect x="0" y="0" width="1080" height="1920" fill="url(#wpi-cyan-glow-s)"/>
+
+          <!-- TITLE SECTION (y=180-340) — top 180px is IG safe zone -->
+          <rect x="60" y="190" width="80" height="6" fill="url(#wpi-cyan-s)"/>
+          <text x="60" y="280" font-size="92" font-weight="900" letter-spacing="-0.02em"
+            fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Best Pitchers</text>
+          <text x="60" y="328" font-size="32" font-weight="700" letter-spacing="0.06em"
+            fill="#06b6d4" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
+            {{ wpiDateDisplay }} · WK {{ wpiWeekLabel }}
+          </text>
+          <line x1="60" y1="356" x2="1020" y2="356" stroke="#1e2130" stroke-width="2"/>
+
+          <!-- 5 PLAYER ROWS (y=365-1745, each row 276px tall) -->
+          <g v-for="(p, i) in wpiTopPitchers.slice(0,5)" :key="'psRow'+i">
+            <!-- Row bg -->
+            <rect x="0" :y="365 + i*276" width="1080" :height="270"
+              :fill="i===0?'rgba(6,182,212,0.10)':'rgba(255,255,255,0.012)'"/>
+            <line x1="0" :y1="365 + (i+1)*276 - 6" x2="1080" :y2="365 + (i+1)*276 - 6"
+              stroke="#1e2130" stroke-width="1.5"/>
+
+            <!-- Headshot circle -->
+            <circle cx="160" :cy="365 + i*276 + 110" r="105"
+              fill="rgba(0,0,0,0.4)"
+              :stroke="i===0?'rgba(6,182,212,0.6)':'rgba(255,255,255,0.10)'" stroke-width="4"/>
+            <image v-if="p.headshot" :href="p.headshot"
+              x="55" :y="365 + i*276 + 5" width="210" height="210"
+              :clip-path="`url(#wpi-pitchers-story-clip-${i})`"
+              preserveAspectRatio="xMidYMid slice"/>
+
+            <!-- Rank #N -->
+            <text x="305" :y="365 + i*276 + 56" font-size="30" font-weight="900"
+              :fill="i===0?'#06b6d4':'#4b5563'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">#{{ i+1 }}</text>
+
+            <!-- Player name (constrained to fit in left zone) -->
+            <text x="305" :y="365 + i*276 + 125" font-size="48" font-weight="900"
+              fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif"
+              textLength="430" lengthAdjust="spacingAndGlyphs">{{ p.name }}</text>
+
+            <!-- Team · Position -->
+            <text x="305" :y="365 + i*276 + 168" font-size="28" font-weight="600"
+              fill="#9ca3af" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.team }} · {{ p.position }}</text>
+
+            <!-- Stat line -->
+            <text x="305" :y="365 + i*276 + 212" font-size="26" font-weight="600"
+              fill="#e5e7eb" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.statLine }}</text>
+
+            <!-- WP impact — hero number -->
+            <text x="1020" :y="365 + i*276 + 145" text-anchor="end"
+              :font-size="i===0 ? 92 : 78" font-weight="900"
+              :fill="i===0?'#06b6d4':'#9ca3af'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">+{{ p.wpImpact.toFixed(1) }}%</text>
+
+            <text x="1020" :y="365 + i*276 + 185" text-anchor="end" font-size="22" font-weight="600"
+              :fill="i===0?'#cffafe':'#4b5563'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">win prob change</text>
+          </g>
+
+          <!-- Empty state -->
+          <text v-if="!wpiTopPitchers.length" x="540" y="1100" text-anchor="middle"
+            font-size="36" fill="#374151"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Load yesterday's data above</text>
+        </svg>
+      </template>
+
       </ThreeSizePreview>
     </div>
 
@@ -2380,14 +2557,14 @@ const activeType = ref('interactive')
 async function downloadCardFromButton(ev: MouseEvent, targetW: number, targetH: number, fileName: string) {
   const button = ev.currentTarget as HTMLElement
   // Walk up to the .three-size-cell, then find the card element inside it.
-  // The card is the LAST direct child div (after the header/label row).
+  // The card is the LAST direct child that isn't the header row — could be a
+  // <div>, an <svg>, or any other element depending on the slot content.
   const cell = button.closest('.three-size-cell') as HTMLElement | null
   if (!cell) return
-  // The card is the last direct child div that isn't the header row.
-  const cards = Array.from(cell.children).filter(
-    el => el.tagName === 'DIV' && !el.classList.contains('three-size-cell-header')
+  const candidates = Array.from(cell.children).filter(
+    el => !el.classList.contains('three-size-cell-header')
   ) as HTMLElement[]
-  const target = cards[cards.length - 1]
+  const target = candidates[candidates.length - 1]
   if (!target) return
 
   const orig = button.textContent
@@ -2422,6 +2599,14 @@ async function downloadCardFromButton(ev: MouseEvent, targetW: number, targetH: 
 // containers so a single card definition outputs all three social formats.
 // Cards inside use class="sq" which is `width:100%; aspect-ratio:1/1`, so we
 // must give each rendering an explicit width or the card collapses.
+//
+// Items can override individual size cells by passing named slots:
+//   <template #square>...custom square...</template>
+//   <template #horizontal>...custom horizontal...</template>
+//   <template #story>...custom story...</template>
+// When a named slot is provided, its content replaces the default scaled
+// rendering for that cell — useful when an item needs a purpose-built
+// layout instead of the centered/scaled square fallback.
 const ThreeSizePreview = defineComponent({
   props: {
     name: { type: String, default: 'social-graphic' },
@@ -2439,22 +2624,34 @@ const ThreeSizePreview = defineComponent({
           onClick: (ev: MouseEvent) => downloadCardFromButton(ev, w, hpx, `${props.name}-${suffix}`)
         }, '⬇ PNG'),
       ])
+      // Always wrap slot output in a div so the download function (which targets
+      // the cell's last HTMLElement child) reliably finds the target.
+      const wrap = (children: any) => h('div', { style: 'flex-shrink:0;line-height:0;' }, children)
+      const squareCell = slots.square
+        ? wrap(slots.square())
+        : card(540)
+      const horizontalCell = slots.horizontal
+        ? wrap(slots.horizontal())
+        : h('div', { style: `${frameBase}width:600px;height:315px;` }, [
+            h('div', { style: 'transform:scale(0.55);transform-origin:center;' }, card(540))
+          ])
+      const storyCell = slots.story
+        ? wrap(slots.story())
+        : h('div', { style: `${frameBase}width:270px;height:480px;` }, [
+            h('div', { style: 'transform:scale(0.5);transform-origin:center;' }, card(540))
+          ])
       return h('div', { class: 'three-size-row' }, [
         h('div', { class: 'three-size-cell', style: cellStyle }, [
           header('Square · 1080×1080', 1080, 1080, 'square'),
-          card(540)
+          squareCell
         ]),
         h('div', { class: 'three-size-cell', style: cellStyle }, [
           header('Horizontal · 1200×630', 1200, 630, 'horizontal'),
-          h('div', { style: `${frameBase}width:600px;height:315px;` }, [
-            h('div', { style: 'transform:scale(0.55);transform-origin:center;' }, card(540))
-          ])
+          horizontalCell
         ]),
         h('div', { class: 'three-size-cell', style: cellStyle }, [
           header('Story · 1080×1920', 1080, 1920, 'story'),
-          h('div', { style: `${frameBase}width:270px;height:480px;` }, [
-            h('div', { style: 'transform:scale(0.5);transform-origin:center;' }, card(540))
-          ])
+          storyCell
         ])
       ])
     }
