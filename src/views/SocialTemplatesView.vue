@@ -22,11 +22,311 @@
     <!-- ══════════════════════════════════════ STATIC TAB ══ -->
     <template v-if="activeType === 'static'">
     <div class="section-label">🖼️ Static Templates</div>
-    <div style="padding:48px 24px;text-align:center;color:#6b7280;background:#0d0f18;border:1px dashed #1f2937;border-radius:12px;margin-top:16px;">
-      <div style="font-size:32px;margin-bottom:8px;">🚧</div>
-      <div style="font-size:14px;font-weight:600;color:#9ca3af;">Static graphics coming soon</div>
-      <div style="font-size:12px;margin-top:6px;">Pre-made graphics you can download for social posts.</div>
+
+    <!-- ── Item Selector ── -->
+    <div class="interactive-picker">
+      <label class="interactive-picker-label">Select template:</label>
+      <select v-model="selectedStaticItem" class="interactive-picker-select">
+        <option v-for="opt in staticItems" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+      </select>
     </div>
+
+    <!-- Power Rankings — General -->
+    <template v-if="selectedStaticItem === 'pr_general'">
+    <div class="post-wrap" style="max-width:none;">
+      <div class="post-label">Power Rankings — General</div>
+      <div class="three-size-row">
+
+      <!-- ─── 1) SQUARE 1080×1080 (preview 540×540) ─── -->
+      <div class="three-size-cell">
+        <div class="three-size-label">Square · 1080×1080</div>
+        <div class="pr-general-card">
+          <!-- Subtle grain/texture overlay -->
+          <div class="pr-general-grain"></div>
+          <!-- Two-column layout: text on left, phone on right -->
+          <div class="pr-general-inner">
+            <!-- LEFT: Headline + CTA -->
+            <div class="pr-general-text">
+              <h1 class="pr-general-h1">
+                <span class="pr-general-h1-white">Power</span><br>
+                <span class="pr-general-h1-white">Rankings</span><br>
+                <span class="pr-general-h1-yellow">In Your</span><br>
+                <span class="pr-general-h1-yellow">League Chat</span>
+              </h1>
+              <p class="pr-general-sub">Customized to<br>fit your league.</p>
+              <div class="pr-general-cta">
+                <span class="pr-general-cta-text">Connect Your League</span>
+                <span class="pr-general-cta-arrow">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+                </span>
+              </div>
+              <div class="pr-general-foot1">Works with Sleeper, Yahoo &amp; ESPN</div>
+              <div class="pr-general-foot2">Football · Baseball · Basketball · Hockey</div>
+            </div>
+
+            <!-- RIGHT: Phone mockup -->
+            <div class="pr-general-phone-wrap">
+              <div class="pr-general-phone">
+                <div class="pr-general-phone-screen-wrap">
+                <!-- Dynamic Island -->
+                <div class="pr-general-phone-notch"></div>
+                <!-- Status bar -->
+                <div class="pr-general-phone-status">
+                  <span>11:56</span>
+                  <span class="pr-general-phone-status-r">●●● 📶 🔋</span>
+                </div>
+                <!-- Power Rankings header inside phone -->
+                <div class="pr-general-phone-screen">
+                  <div class="pr-general-phone-eyebrow">LEVEL UP YOUR LEAGUE WITH</div>
+                  <div class="pr-general-phone-title-row">
+                    <div class="pr-general-phone-title">POWER RANKINGS</div>
+                    <img src="/UFD_V8.png" class="pr-general-phone-logo" alt="UFD">
+                  </div>
+                  <!-- Team rows -->
+                  <div class="pr-general-phone-rows">
+                    <div v-for="(t, i) in prGeneralTeams" :key="'prg'+i" class="pr-general-phone-row" :class="{'is-first': i === 0}">
+                      <div class="pr-general-phone-rank">#{{ i + 1 }}</div>
+                      <div class="pr-general-phone-icon" :style="{ background: t.color }">{{ t.icon }}</div>
+                      <div class="pr-general-phone-name">{{ t.name }}</div>
+                      <div class="pr-general-phone-score">{{ t.pts }} pts avg</div>
+                      <div class="pr-general-phone-move" :class="t.move > 0 ? 'up' : t.move < 0 ? 'down' : 'flat'">
+                        <span v-if="t.move > 0">▲</span>
+                        <span v-else-if="t.move < 0">▼</span>
+                        <span v-else>—</span>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Trend chart — mirrors the site's RankingTrends chart -->
+                  <div class="pr-general-phone-trend-label">RANKINGS TREND</div>
+                  <svg viewBox="0 0 320 110" class="pr-general-phone-trend" preserveAspectRatio="xMidYMid meet">
+                    <!-- Horizontal grid lines: every other rank gets a dashed line -->
+                    <line v-for="r in [1,3,5,7]" :key="'g'+r" x1="20" :y1="8 + (r-1) * 11" x2="280" :y2="8 + (r-1) * 11" stroke="#1e2130" stroke-width="0.5" stroke-dasharray="2 3"/>
+                    <!-- Rank labels: every other rank -->
+                    <text v-for="r in [1,3,5,7]" :key="'rl'+r" x="16" :y="11 + (r-1) * 11" text-anchor="end" font-size="5" font-weight="600" fill="#4b5563">#{{ r }}</text>
+                    <!-- Trend lines — every week (Wk 5/6/7/8) has unique ranks 1–8, no overlaps.
+                         x positions: Wk 5 = 20, Wk 6 = 107, Wk 7 = 193, Wk 8 = 280
+                         y per rank: 8 + (rank-1) * 11   →  #1=8 #2=19 #3=30 #4=41 #5=52 #6=63 #7=74 #8=85
+                         Wk 5: Roto1 Crazy2 Caught3 Full4 Bench5 Dinger6 Midnight7 Exit8
+                         Wk 6: Roto1 Crazy2 Caught3 Full4 Dinger5 Bench6 Midnight7 Exit8
+                         Wk 7: Roto1 Crazy2 Caught3 Full4 Dinger5 Bench6 Exit7    Midnight8
+                         Wk 8: Crazy1 Roto2 Caught3 Dinger4 Full5 Bench6 Exit7    Midnight8 -->
+                    <!-- Crazy Eights (yellow): 2 → 2 → 2 → 1 -->
+                    <path d="M 20,19 C 60,19 100,19 130,19 C 170,19 200,19 220,19 C 240,19 260,15 280,8" fill="none" stroke="#eab308" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- Roto Rooters (cyan): 1 → 1 → 1 → 2 -->
+                    <path d="M 20,8 C 60,8 100,8 130,8 C 170,8 200,8 220,8 C 240,8 260,12 280,19" fill="none" stroke="#06b6d4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- Caught Looking (purple): 3 → 3 → 3 → 3 -->
+                    <path d="M 20,30 C 100,30 200,30 280,30" fill="none" stroke="#a855f7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- Full Count (red): 4 → 4 → 4 → 5 -->
+                    <path d="M 20,41 C 100,41 200,41 230,41 C 250,41 270,48 280,52" fill="none" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- Dinger Party (green): 6 → 5 → 5 → 4 -->
+                    <path d="M 20,63 C 50,63 75,57 107,52 C 150,52 180,52 220,52 C 240,52 260,46 280,41" fill="none" stroke="#22c55e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- Benchwarmers (pink): 5 → 6 → 6 → 6 -->
+                    <path d="M 20,52 C 50,52 75,57 107,63 C 150,63 200,63 280,63" fill="none" stroke="#ec4899" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- Exit Velocity (orange): 8 → 8 → 7 → 7 -->
+                    <path d="M 20,85 C 60,85 100,85 130,85 C 160,85 180,79 193,74 C 220,74 250,74 280,74" fill="none" stroke="#f97316" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- Midnight Lineup (blue): 7 → 7 → 8 → 8 -->
+                    <path d="M 20,74 C 60,74 100,74 130,74 C 160,74 180,80 193,85 C 220,85 250,85 280,85" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+
+                    <!-- End-point round logo badges, ordered by Wk 8 rank.
+                         Each is a circle filled with team color + emoji icon centered. -->
+                    <!-- #1 Crazy Eights -->
+                    <circle cx="296" cy="8"  r="6" fill="#eab308" stroke="#0a0c14" stroke-width="1"/>
+                    <text x="296" y="10.5" text-anchor="middle" font-size="6">🐢</text>
+                    <!-- #2 Roto Rooters -->
+                    <circle cx="296" cy="19" r="6" fill="#06b6d4" stroke="#0a0c14" stroke-width="1"/>
+                    <text x="296" y="21.5" text-anchor="middle" font-size="6">🌱</text>
+                    <!-- #3 Caught Looking -->
+                    <circle cx="296" cy="30" r="6" fill="#a855f7" stroke="#0a0c14" stroke-width="1"/>
+                    <text x="296" y="32.5" text-anchor="middle" font-size="6">⚾</text>
+                    <!-- #4 Dinger Party -->
+                    <circle cx="296" cy="41" r="6" fill="#22c55e" stroke="#0a0c14" stroke-width="1"/>
+                    <text x="296" y="43.5" text-anchor="middle" font-size="6">🎉</text>
+                    <!-- #5 Full Count -->
+                    <circle cx="296" cy="52" r="6" fill="#ef4444" stroke="#0a0c14" stroke-width="1"/>
+                    <text x="296" y="54.5" text-anchor="middle" font-size="6">🔴</text>
+                    <!-- #6 Benchwarmers -->
+                    <circle cx="296" cy="63" r="6" fill="#ec4899" stroke="#0a0c14" stroke-width="1"/>
+                    <text x="296" y="65.5" text-anchor="middle" font-size="6">🪑</text>
+                    <!-- #7 Exit Velocity -->
+                    <circle cx="296" cy="74" r="6" fill="#f97316" stroke="#0a0c14" stroke-width="1"/>
+                    <text x="296" y="76.5" text-anchor="middle" font-size="6">💨</text>
+                    <!-- #8 Midnight Lineup -->
+                    <circle cx="296" cy="85" r="6" fill="#3b82f6" stroke="#0a0c14" stroke-width="1"/>
+                    <text x="296" y="87.5" text-anchor="middle" font-size="6">🌙</text>
+
+                    <!-- Week labels -->
+                    <text x="22" y="105" font-size="5" font-weight="600" fill="#4b5563">Wk 5</text>
+                    <text x="108" y="105" font-size="5" font-weight="600" fill="#4b5563">Wk 6</text>
+                    <text x="195" y="105" font-size="5" font-weight="600" fill="#4b5563">Wk 7</text>
+                    <text x="288" y="105" font-size="5" font-weight="600" fill="#4b5563">Wk 8</text>
+                  </svg>
+                </div>
+                </div><!-- end pr-general-phone-screen-wrap -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- end square cell -->
+
+      <!-- ─── 2) HORIZONTAL 1200×630 (preview 600×315) ─── -->
+      <div class="three-size-cell">
+        <div class="three-size-label">Horizontal · 1200×630</div>
+        <div class="pr-general-card pr-general-card--h">
+          <div class="pr-general-grain"></div>
+          <div class="pr-general-inner pr-general-inner--h">
+            <div class="pr-general-text pr-general-text--h">
+              <h1 class="pr-general-h1 pr-general-h1--h">
+                <span class="pr-general-h1-white">Power Rankings</span><br>
+                <span class="pr-general-h1-yellow">In Your League Chat</span>
+              </h1>
+              <p class="pr-general-sub pr-general-sub--h">Customized to fit your league.</p>
+              <div class="pr-general-cta pr-general-cta--h">
+                <span class="pr-general-cta-text">Connect Your League</span>
+                <span class="pr-general-cta-arrow">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+                </span>
+              </div>
+              <div class="pr-general-foot1">Works with Sleeper, Yahoo &amp; ESPN</div>
+              <div class="pr-general-foot2">Football · Baseball · Basketball · Hockey</div>
+            </div>
+            <div class="pr-general-phone-wrap pr-general-phone-wrap--h">
+              <div class="pr-general-phone pr-general-phone--h">
+                <div class="pr-general-phone-screen-wrap">
+                  <div class="pr-general-phone-notch"></div>
+                  <div class="pr-general-phone-status"><span>11:56</span><span class="pr-general-phone-status-r">●●● 📶 🔋</span></div>
+                  <div class="pr-general-phone-screen">
+                    <div class="pr-general-phone-eyebrow">LEVEL UP YOUR LEAGUE WITH</div>
+                    <div class="pr-general-phone-title-row">
+                      <div class="pr-general-phone-title">POWER RANKINGS</div>
+                      <img src="/UFD_V8.png" class="pr-general-phone-logo" alt="UFD">
+                    </div>
+                    <div class="pr-general-phone-rows">
+                      <div v-for="(t, i) in prGeneralTeams" :key="'prgh'+i" class="pr-general-phone-row" :class="{'is-first': i === 0}">
+                        <div class="pr-general-phone-rank">#{{ i + 1 }}</div>
+                        <div class="pr-general-phone-icon" :style="{ background: t.color }">{{ t.icon }}</div>
+                        <div class="pr-general-phone-name">{{ t.name }}</div>
+                        <div class="pr-general-phone-score">{{ t.pts }} pts avg</div>
+                        <div class="pr-general-phone-move" :class="t.move > 0 ? 'up' : t.move < 0 ? 'down' : 'flat'">
+                          <span v-if="t.move > 0">▲</span><span v-else-if="t.move < 0">▼</span><span v-else>—</span>
+                        </div>
+                      </div>
+                    </div>
+                    <!-- Trend chart -->
+                    <div class="pr-general-phone-trend-label">RANKINGS TREND</div>
+                    <svg viewBox="0 0 320 110" class="pr-general-phone-trend" preserveAspectRatio="xMidYMid meet">
+                      <line v-for="r in [1,3,5,7]" :key="'gh'+r" x1="20" :y1="8 + (r-1) * 11" x2="280" :y2="8 + (r-1) * 11" stroke="#1e2130" stroke-width="0.5" stroke-dasharray="2 3"/>
+                      <text v-for="r in [1,3,5,7]" :key="'rlh'+r" x="16" :y="11 + (r-1) * 11" text-anchor="end" font-size="5" font-weight="600" fill="#4b5563">#{{ r }}</text>
+                      <path d="M 20,19 C 60,19 100,19 130,19 C 170,19 200,19 220,19 C 240,19 260,15 280,8" fill="none" stroke="#eab308" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M 20,8 C 60,8 100,8 130,8 C 170,8 200,8 220,8 C 240,8 260,12 280,19" fill="none" stroke="#06b6d4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M 20,30 C 100,30 200,30 280,30" fill="none" stroke="#a855f7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M 20,41 C 100,41 200,41 230,41 C 250,41 270,48 280,52" fill="none" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M 20,63 C 50,63 75,57 107,52 C 150,52 180,52 220,52 C 240,52 260,46 280,41" fill="none" stroke="#22c55e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M 20,52 C 50,52 75,57 107,63 C 150,63 200,63 280,63" fill="none" stroke="#ec4899" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M 20,85 C 60,85 100,85 130,85 C 160,85 180,79 193,74 C 220,74 250,74 280,74" fill="none" stroke="#f97316" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M 20,74 C 60,74 100,74 130,74 C 160,74 180,80 193,85 C 220,85 250,85 280,85" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <circle cx="296" cy="8"  r="6" fill="#eab308" stroke="#0a0c14" stroke-width="1"/><text x="296" y="10.5" text-anchor="middle" font-size="6">🐢</text>
+                      <circle cx="296" cy="19" r="6" fill="#06b6d4" stroke="#0a0c14" stroke-width="1"/><text x="296" y="21.5" text-anchor="middle" font-size="6">🌱</text>
+                      <circle cx="296" cy="30" r="6" fill="#a855f7" stroke="#0a0c14" stroke-width="1"/><text x="296" y="32.5" text-anchor="middle" font-size="6">⚾</text>
+                      <circle cx="296" cy="41" r="6" fill="#22c55e" stroke="#0a0c14" stroke-width="1"/><text x="296" y="43.5" text-anchor="middle" font-size="6">🎉</text>
+                      <circle cx="296" cy="52" r="6" fill="#ef4444" stroke="#0a0c14" stroke-width="1"/><text x="296" y="54.5" text-anchor="middle" font-size="6">🔴</text>
+                      <circle cx="296" cy="63" r="6" fill="#ec4899" stroke="#0a0c14" stroke-width="1"/><text x="296" y="65.5" text-anchor="middle" font-size="6">🪑</text>
+                      <circle cx="296" cy="74" r="6" fill="#f97316" stroke="#0a0c14" stroke-width="1"/><text x="296" y="76.5" text-anchor="middle" font-size="6">💨</text>
+                      <circle cx="296" cy="85" r="6" fill="#3b82f6" stroke="#0a0c14" stroke-width="1"/><text x="296" y="87.5" text-anchor="middle" font-size="6">🌙</text>
+                      <text x="22" y="105" font-size="5" font-weight="600" fill="#4b5563">Wk 5</text>
+                      <text x="108" y="105" font-size="5" font-weight="600" fill="#4b5563">Wk 6</text>
+                      <text x="195" y="105" font-size="5" font-weight="600" fill="#4b5563">Wk 7</text>
+                      <text x="288" y="105" font-size="5" font-weight="600" fill="#4b5563">Wk 8</text>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- end horizontal cell -->
+
+      <!-- ─── 3) STORY 1080×1920 (preview 270×480) ─── -->
+      <div class="three-size-cell">
+        <div class="three-size-label">Story · 1080×1920</div>
+        <div class="pr-general-card pr-general-card--s">
+          <div class="pr-general-grain"></div>
+          <div class="pr-general-inner pr-general-inner--s">
+            <div class="pr-general-text pr-general-text--s">
+              <h1 class="pr-general-h1 pr-general-h1--s">
+                <span class="pr-general-h1-white">Power</span><br>
+                <span class="pr-general-h1-white">Rankings</span><br>
+                <span class="pr-general-h1-yellow">In Your</span><br>
+                <span class="pr-general-h1-yellow">League Chat</span>
+              </h1>
+              <p class="pr-general-sub pr-general-sub--s">Customized to fit your league.</p>
+              <div class="pr-general-cta pr-general-cta--s">
+                <span class="pr-general-cta-text">Connect Your League</span>
+                <span class="pr-general-cta-arrow">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+                </span>
+              </div>
+              <div class="pr-general-foot1">Works with Sleeper, Yahoo &amp; ESPN</div>
+              <div class="pr-general-foot2">Football · Baseball · Basketball · Hockey</div>
+            </div>
+            <div class="pr-general-phone-wrap pr-general-phone-wrap--s">
+              <div class="pr-general-phone pr-general-phone--s">
+                <div class="pr-general-phone-screen-wrap">
+                  <div class="pr-general-phone-notch"></div>
+                  <div class="pr-general-phone-status"><span>11:56</span><span class="pr-general-phone-status-r">●●● 📶 🔋</span></div>
+                  <div class="pr-general-phone-screen">
+                    <div class="pr-general-phone-eyebrow">LEVEL UP YOUR LEAGUE WITH</div>
+                    <div class="pr-general-phone-title-row">
+                      <div class="pr-general-phone-title">POWER RANKINGS</div>
+                      <img src="/UFD_V8.png" class="pr-general-phone-logo" alt="UFD">
+                    </div>
+                    <div class="pr-general-phone-rows">
+                      <div v-for="(t, i) in prGeneralTeams" :key="'prgs'+i" class="pr-general-phone-row" :class="{'is-first': i === 0}">
+                        <div class="pr-general-phone-rank">#{{ i + 1 }}</div>
+                        <div class="pr-general-phone-icon" :style="{ background: t.color }">{{ t.icon }}</div>
+                        <div class="pr-general-phone-name">{{ t.name }}</div>
+                        <div class="pr-general-phone-score">{{ t.pts }} pts avg</div>
+                        <div class="pr-general-phone-move" :class="t.move > 0 ? 'up' : t.move < 0 ? 'down' : 'flat'">
+                          <span v-if="t.move > 0">▲</span><span v-else-if="t.move < 0">▼</span><span v-else>—</span>
+                        </div>
+                      </div>
+                    </div>
+                    <!-- Trend chart -->
+                    <div class="pr-general-phone-trend-label">RANKINGS TREND</div>
+                    <svg viewBox="0 0 320 110" class="pr-general-phone-trend" preserveAspectRatio="xMidYMid meet">
+                      <line v-for="r in [1,3,5,7]" :key="'gs'+r" x1="20" :y1="8 + (r-1) * 11" x2="280" :y2="8 + (r-1) * 11" stroke="#1e2130" stroke-width="0.5" stroke-dasharray="2 3"/>
+                      <text v-for="r in [1,3,5,7]" :key="'rls'+r" x="16" :y="11 + (r-1) * 11" text-anchor="end" font-size="5" font-weight="600" fill="#4b5563">#{{ r }}</text>
+                      <path d="M 20,19 C 60,19 100,19 130,19 C 170,19 200,19 220,19 C 240,19 260,15 280,8" fill="none" stroke="#eab308" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M 20,8 C 60,8 100,8 130,8 C 170,8 200,8 220,8 C 240,8 260,12 280,19" fill="none" stroke="#06b6d4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M 20,30 C 100,30 200,30 280,30" fill="none" stroke="#a855f7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M 20,41 C 100,41 200,41 230,41 C 250,41 270,48 280,52" fill="none" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M 20,63 C 50,63 75,57 107,52 C 150,52 180,52 220,52 C 240,52 260,46 280,41" fill="none" stroke="#22c55e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M 20,52 C 50,52 75,57 107,63 C 150,63 200,63 280,63" fill="none" stroke="#ec4899" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M 20,85 C 60,85 100,85 130,85 C 160,85 180,79 193,74 C 220,74 250,74 280,74" fill="none" stroke="#f97316" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M 20,74 C 60,74 100,74 130,74 C 160,74 180,80 193,85 C 220,85 250,85 280,85" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                      <circle cx="296" cy="8"  r="6" fill="#eab308" stroke="#0a0c14" stroke-width="1"/><text x="296" y="10.5" text-anchor="middle" font-size="6">🐢</text>
+                      <circle cx="296" cy="19" r="6" fill="#06b6d4" stroke="#0a0c14" stroke-width="1"/><text x="296" y="21.5" text-anchor="middle" font-size="6">🌱</text>
+                      <circle cx="296" cy="30" r="6" fill="#a855f7" stroke="#0a0c14" stroke-width="1"/><text x="296" y="32.5" text-anchor="middle" font-size="6">⚾</text>
+                      <circle cx="296" cy="41" r="6" fill="#22c55e" stroke="#0a0c14" stroke-width="1"/><text x="296" y="43.5" text-anchor="middle" font-size="6">🎉</text>
+                      <circle cx="296" cy="52" r="6" fill="#ef4444" stroke="#0a0c14" stroke-width="1"/><text x="296" y="54.5" text-anchor="middle" font-size="6">🔴</text>
+                      <circle cx="296" cy="63" r="6" fill="#ec4899" stroke="#0a0c14" stroke-width="1"/><text x="296" y="65.5" text-anchor="middle" font-size="6">🪑</text>
+                      <circle cx="296" cy="74" r="6" fill="#f97316" stroke="#0a0c14" stroke-width="1"/><text x="296" y="76.5" text-anchor="middle" font-size="6">💨</text>
+                      <circle cx="296" cy="85" r="6" fill="#3b82f6" stroke="#0a0c14" stroke-width="1"/><text x="296" y="87.5" text-anchor="middle" font-size="6">🌙</text>
+                      <text x="22" y="105" font-size="5" font-weight="600" fill="#4b5563">Wk 5</text>
+                      <text x="108" y="105" font-size="5" font-weight="600" fill="#4b5563">Wk 6</text>
+                      <text x="195" y="105" font-size="5" font-weight="600" fill="#4b5563">Wk 7</text>
+                      <text x="288" y="105" font-size="5" font-weight="600" fill="#4b5563">Wk 8</text>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- end story cell -->
+
+      </div><!-- end three-size-row -->
+    </div>
+    </template>
     </template>
 
     <!-- ══════════════════════════════════════ INTERACTIVE TAB ══ -->
@@ -2124,6 +2424,25 @@ const interactiveItems = [
   { id: 'ranking_impact', label: '34 · Player Ranking Impact' },
 ]
 const selectedInteractiveItem = ref('wp_daily')
+
+// ── Static item picker ────────────────────────────────────────────────────
+const staticItems = [
+  { id: 'pr_general', label: 'Power Rankings — General' },
+]
+const selectedStaticItem = ref('pr_general')
+
+// Static "Power Rankings — General" sample data shown inside the phone mockup
+// `move` is the rank change vs. previous week:  positive = climbed, negative = fell, 0 = flat
+const prGeneralTeams = [
+  { name: 'Crazy Eights',     icon: '🐢', color: '#eab308', pts: '78.0', move:  1 },
+  { name: 'The Roto Rooters', icon: '🌱', color: '#06b6d4', pts: '74.0', move: -1 },
+  { name: 'Caught Looking',   icon: '⚾', color: '#a855f7', pts: '71.5', move:  0 },
+  { name: 'Dinger Party',     icon: '🎉', color: '#22c55e', pts: '69.9', move:  2 },
+  { name: 'Full Count',       icon: '🔴', color: '#ef4444', pts: '68.0', move: -1 },
+  { name: 'The Benchwarmers', icon: '🪑', color: '#ec4899', pts: '66.4', move: -1 },
+  { name: 'Exit Velocity',    icon: '💨', color: '#f97316', pts: '64.8', move:  1 },
+  { name: 'Midnight Lineup',  icon: '🌙', color: '#3b82f6', pts: '63.2', move: -1 },
+]
 
 // ══════════════════════════════════════════════════════════════════════════
 // WP IMPACT GRAPHICS — Daily top performers from ESPN public scoreboard
@@ -4882,6 +5201,420 @@ async function loadWwData() {
   color: #4b5563;
   letter-spacing: 0.04em;
 }
+
+/* ────────────────────────────────────────────────────────────────────────
+   STATIC · Power Rankings — General  (square 1080×1080 native @ 540×540)
+   Card itself square corners. Phone keeps realistic rounded corners.
+   ──────────────────────────────────────────────────────────────────────── */
+.pr-general-card {
+  width: 540px;
+  height: 540px;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 55% at 100% 0%, rgba(234,179,8,0.18) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 0% 100%, rgba(234,179,8,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 100% 80% at 50% 50%, #0f1219 0%, #0a0c14 60%, #05060a 100%);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  box-shadow: 0 0 0 1px #1e2130, 0 20px 60px rgba(0,0,0,0.7);
+}
+/* Subtle dot-grid overlay matching the site's UI accents */
+.pr-general-grain {
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(234,179,8,0.08) 1px, transparent 1px);
+  background-size: 22px 22px;
+  pointer-events: none;
+  opacity: 0.55;
+  mask-image: radial-gradient(ellipse 100% 80% at 50% 50%, #000 30%, transparent 90%);
+}
+/* Top hairline accent — like site headers */
+.pr-general-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(234,179,8,0.6) 30%, rgba(234,179,8,0.9) 50%, rgba(234,179,8,0.6) 70%, transparent 100%);
+  z-index: 2;
+}
+.pr-general-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  padding: 30px 26px;
+  box-sizing: border-box;
+  gap: 8px;
+}
+.pr-general-text {
+  flex: 0 0 270px;
+  display: flex;
+  flex-direction: column;
+}
+.pr-general-h1 {
+  margin: 0 0 16px;
+  font-size: 50px;
+  font-weight: 900;
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+}
+.pr-general-h1-white  { color: #f5f5e8; }
+.pr-general-h1-yellow { color: #eab308; }
+.pr-general-sub {
+  margin: 0 0 18px;
+  font-size: 17px;
+  font-weight: 500;
+  color: #f5f5e8;
+  line-height: 1.25;
+}
+.pr-general-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+  background: #eab308;
+  color: #0a0c14;
+  font-size: 15px;
+  font-weight: 800;
+  align-self: flex-start;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 18px rgba(234,179,8,0.25);
+}
+.pr-general-cta-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #0a0c14;
+  color: #eab308;
+}
+.pr-general-cta-arrow svg {
+  display: block;
+}
+.pr-general-foot1 {
+  font-size: 12px;
+  font-weight: 800;
+  color: #f5f5e8;
+  margin-bottom: 3px;
+}
+.pr-general-foot2 {
+  font-size: 12px;
+  font-weight: 700;
+  color: #eab308;
+}
+
+/* Phone mockup — realistic iPhone-style body */
+.pr-general-phone-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+  padding-right: 4px;
+}
+/* Outer titanium frame */
+.pr-general-phone {
+  width: 210px;
+  height: 430px;
+  background: linear-gradient(135deg, #2a2d36 0%, #1a1c24 25%, #0e1018 50%, #1a1c24 75%, #2a2d36 100%);
+  border-radius: 32px;
+  position: relative;
+  padding: 5px;
+  box-sizing: border-box;
+  box-shadow:
+    0 26px 50px rgba(0,0,0,0.75),
+    0 10px 20px rgba(0,0,0,0.5),
+    inset 0 0 0 1px rgba(255,255,255,0.08),
+    inset 0 1px 2px rgba(255,255,255,0.12);
+}
+/* Side buttons */
+.pr-general-phone::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 78px;
+  width: 3px;
+  height: 28px;
+  background: linear-gradient(180deg, #1a1c24 0%, #2a2d36 50%, #1a1c24 100%);
+  border-radius: 2px 0 0 2px;
+  box-shadow: 0 60px 0 #2a2d36, 0 60px 0 1px #1a1c24, 0 100px 0 #2a2d36;
+}
+.pr-general-phone::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  top: 110px;
+  width: 3px;
+  height: 50px;
+  background: linear-gradient(180deg, #1a1c24 0%, #2a2d36 50%, #1a1c24 100%);
+  border-radius: 0 2px 2px 0;
+}
+/* Inner screen */
+.pr-general-phone-screen-wrap {
+  width: 100%;
+  height: 100%;
+  background: #050608;
+  border-radius: 27px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.6);
+}
+/* Dynamic Island */
+.pr-general-phone-notch {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 72px;
+  height: 18px;
+  background: #000;
+  border-radius: 12px;
+  z-index: 4;
+  box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.05);
+}
+.pr-general-phone-status {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 18px 4px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #d1d5db;
+}
+.pr-general-phone-status-r { font-size: 8px; letter-spacing: 0.5px; }
+.pr-general-phone-screen {
+  padding: 4px 10px 0;
+}
+.pr-general-phone-eyebrow {
+  font-size: 7px;
+  font-weight: 600;
+  color: #6b7280;
+  letter-spacing: 0.08em;
+  text-align: center;
+  margin-bottom: 2px;
+}
+.pr-general-phone-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.pr-general-phone-title {
+  font-size: 13px;
+  font-weight: 900;
+  color: #eab308;
+  letter-spacing: 0.03em;
+}
+.pr-general-phone-logo {
+  height: 14px;
+  width: auto;
+  object-fit: contain;
+}
+.pr-general-phone-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.pr-general-phone-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 9px;
+}
+.pr-general-phone-row.is-first {
+  background: rgba(234,179,8,0.06);
+}
+.pr-general-phone-rank {
+  width: 14px;
+  font-size: 8px;
+  font-weight: 800;
+  color: #6b7280;
+  text-align: right;
+}
+.pr-general-phone-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,0.12);
+}
+.pr-general-phone-name {
+  flex: 1;
+  font-size: 9px;
+  font-weight: 700;
+  color: #f5f5e8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pr-general-phone-score {
+  font-size: 8px;
+  color: #9ca3af;
+}
+.pr-general-phone-move {
+  font-size: 9px;
+  font-weight: 800;
+  width: 14px;
+  text-align: center;
+  line-height: 1;
+}
+.pr-general-phone-move.up   { color: #22c55e; }
+.pr-general-phone-move.down { color: #ef4444; }
+.pr-general-phone-move.flat { color: #4b5563; }
+.pr-general-phone-trend-label {
+  font-size: 7px;
+  font-weight: 700;
+  color: #6b7280;
+  letter-spacing: 0.05em;
+  text-align: center;
+  margin: 6px 0 2px;
+}
+.pr-general-phone-trend {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ── Horizontal variant (1200×630 → preview 600×315) ─────────────── */
+.pr-general-card--h {
+  width: 600px !important;
+  height: 315px !important;
+}
+.pr-general-inner--h {
+  padding: 20px 24px;
+  align-items: center;
+  gap: 16px;
+}
+.pr-general-text--h {
+  flex: 1;
+  min-width: 0;
+}
+.pr-general-h1--h {
+  font-size: 30px;
+  margin-bottom: 8px;
+}
+.pr-general-sub--h {
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.pr-general-cta--h {
+  padding: 9px 14px;
+  font-size: 12px;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.pr-general-cta--h .pr-general-cta-arrow {
+  width: 20px;
+  height: 20px;
+}
+.pr-general-cta--h .pr-general-cta-arrow svg {
+  width: 11px;
+  height: 11px;
+}
+.pr-general-card--h .pr-general-foot1 { font-size: 10px; margin-bottom: 2px; }
+.pr-general-card--h .pr-general-foot2 { font-size: 10px; }
+.pr-general-phone-wrap--h {
+  flex: 0 0 auto;
+}
+.pr-general-phone--h {
+  width: 145px;
+  height: 285px;
+  border-radius: 22px;
+  padding: 4px;
+}
+.pr-general-phone--h .pr-general-phone-screen-wrap { border-radius: 19px; }
+.pr-general-phone--h .pr-general-phone-notch { width: 50px; height: 13px; top: 6px; border-radius: 8px; }
+.pr-general-phone--h .pr-general-phone-status { padding: 6px 12px 2px; font-size: 6px; }
+.pr-general-phone--h .pr-general-phone-status-r { font-size: 5px; }
+.pr-general-phone--h .pr-general-phone-screen { padding: 2px 7px 0; }
+.pr-general-phone--h .pr-general-phone-eyebrow { font-size: 5px; margin-bottom: 1px; }
+.pr-general-phone--h .pr-general-phone-title-row { gap: 4px; margin-bottom: 4px; }
+.pr-general-phone--h .pr-general-phone-title { font-size: 9px; }
+.pr-general-phone--h .pr-general-phone-logo { height: 10px; }
+.pr-general-phone--h .pr-general-phone-row { padding: 2px 2px; gap: 4px; }
+.pr-general-phone--h .pr-general-phone-rank { width: 10px; font-size: 6px; }
+.pr-general-phone--h .pr-general-phone-icon { width: 11px; height: 11px; font-size: 6px; }
+.pr-general-phone--h .pr-general-phone-name { font-size: 6px; }
+.pr-general-phone--h .pr-general-phone-score { font-size: 5px; }
+.pr-general-phone--h .pr-general-phone-move { font-size: 6px; width: 10px; }
+
+/* ── Story variant (1080×1920 → preview 540×960 — same scale as square) ─────────────── */
+.pr-general-card--s {
+  width: 540px !important;
+  height: 960px !important;
+}
+.pr-general-inner--s {
+  flex-direction: column;
+  padding: 50px 40px 30px;
+  gap: 0;
+  align-items: stretch;
+}
+.pr-general-text--s {
+  flex: 0 0 auto;
+  width: 100%;
+  align-items: flex-start;
+}
+.pr-general-h1--s {
+  font-size: 64px;
+  margin-bottom: 22px;
+}
+.pr-general-sub--s {
+  font-size: 22px;
+  margin-bottom: 24px;
+}
+.pr-general-cta--s {
+  padding: 16px 22px;
+  font-size: 18px;
+  margin-bottom: 22px;
+  gap: 18px;
+}
+.pr-general-cta--s .pr-general-cta-arrow {
+  width: 30px;
+  height: 30px;
+}
+.pr-general-cta--s .pr-general-cta-arrow svg {
+  width: 18px;
+  height: 18px;
+}
+.pr-general-card--s .pr-general-foot1 { font-size: 16px; margin-bottom: 4px; }
+.pr-general-card--s .pr-general-foot2 { font-size: 16px; }
+.pr-general-phone-wrap--s {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 28px;
+  padding-right: 0;
+}
+.pr-general-phone--s {
+  width: 280px;
+  height: 540px;
+  border-radius: 38px;
+  padding: 6px;
+}
+.pr-general-phone--s .pr-general-phone-screen-wrap { border-radius: 33px; }
+.pr-general-phone--s .pr-general-phone-notch { width: 96px; height: 22px; top: 10px; border-radius: 14px; }
+.pr-general-phone--s .pr-general-phone-status { padding: 10px 22px 4px; font-size: 11px; }
+.pr-general-phone--s .pr-general-phone-status-r { font-size: 10px; }
+.pr-general-phone--s .pr-general-phone-screen { padding: 6px 14px 0; }
+.pr-general-phone--s .pr-general-phone-eyebrow { font-size: 9px; margin-bottom: 3px; }
+.pr-general-phone--s .pr-general-phone-title-row { gap: 8px; margin-bottom: 8px; }
+.pr-general-phone--s .pr-general-phone-title { font-size: 17px; }
+.pr-general-phone--s .pr-general-phone-logo { height: 18px; }
+.pr-general-phone--s .pr-general-phone-row { padding: 5px 4px; gap: 6px; }
+.pr-general-phone--s .pr-general-phone-rank { width: 18px; font-size: 11px; }
+.pr-general-phone--s .pr-general-phone-icon { width: 20px; height: 20px; font-size: 11px; }
+.pr-general-phone--s .pr-general-phone-name { font-size: 11px; }
+.pr-general-phone--s .pr-general-phone-score { font-size: 10px; }
+.pr-general-phone--s .pr-general-phone-move { font-size: 12px; width: 14px; }
 
 /* ── WPI Controls ── */
 .wpi-controls {
