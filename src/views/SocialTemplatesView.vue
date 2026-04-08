@@ -349,14 +349,6 @@
       <!-- ── Controls panel (outside the screenshottable card) ── -->
       <div class="wp-controls">
         <div class="wp-ctrl-row">
-          <div class="wp-ctrl-group">
-            <label>Your Team (cyan)</label>
-            <input v-model="wpTeam1" class="wp-input" placeholder="Mahomes Magic" />
-          </div>
-          <div class="wp-ctrl-group">
-            <label>Opponent (orange)</label>
-            <input v-model="wpTeam2" class="wp-input" placeholder="The Algorithm" />
-          </div>
           <div class="wp-ctrl-group wp-ctrl-sm">
             <label>Week</label>
             <input v-model="wpWeek" class="wp-input" style="width:64px" placeholder="14" />
@@ -464,9 +456,9 @@
           <text x="52" y="81" font-size="17" font-weight="900" letter-spacing="0.04em"
             fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">WIN PROBABILITY TREND</text>
 
-          <!-- ═══ CHART AREA (y=98 to y=456) ═══ -->
+          <!-- ═══ CHART AREA (y=98 to y=400) — compressed to make room for big player callout ═══ -->
           <!-- Chart bg subtle -->
-          <rect x="0" y="98" width="540" height="358" fill="rgba(0,0,0,0.18)"/>
+          <rect x="0" y="98" width="540" height="302" fill="rgba(0,0,0,0.18)"/>
 
           <!-- Y-axis grid lines (dashed) -->
           <!-- 100% at y=118 -->
@@ -475,37 +467,37 @@
           <text x="54" y="122" text-anchor="end" font-size="10" fill="rgba(255,255,255,0.35)"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">100%</text>
 
-          <!-- 50% at y=277 -->
-          <line x1="58" y1="277" x2="526" y2="277" stroke="rgba(255,255,255,0.12)"
+          <!-- 50% at y=240 -->
+          <line x1="58" y1="240" x2="526" y2="240" stroke="rgba(255,255,255,0.12)"
             stroke-width="1" stroke-dasharray="4,4"/>
-          <text x="54" y="281" text-anchor="end" font-size="10" fill="rgba(255,255,255,0.35)"
+          <text x="54" y="244" text-anchor="end" font-size="10" fill="rgba(255,255,255,0.35)"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">50%</text>
 
-          <!-- 0% at y=436 -->
-          <line x1="58" y1="436" x2="526" y2="436" stroke="rgba(255,255,255,0.12)"
+          <!-- 0% at y=362 -->
+          <line x1="58" y1="362" x2="526" y2="362" stroke="rgba(255,255,255,0.12)"
             stroke-width="1" stroke-dasharray="4,4"/>
-          <text x="54" y="440" text-anchor="end" font-size="10" fill="rgba(255,255,255,0.35)"
+          <text x="54" y="366" text-anchor="end" font-size="10" fill="rgba(255,255,255,0.35)"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">0%</text>
 
           <!-- Day x-axis labels -->
           <text v-for="(d,i) in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']" :key="'dx'+i"
-            :x="58 + i*78" y="455"
+            :x="58 + i*78" y="380"
             text-anchor="middle" font-size="11.5"
             :font-weight="i===wpCurrentDay?'800':'400'"
             :fill="i===wpCurrentDay?'#e5e7eb':i<wpCurrentDay?'rgba(255,255,255,0.35)':'rgba(255,255,255,0.18)'"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ d }}</text>
 
           <!-- TODAY marker under current day -->
-          <rect :x="58+wpCurrentDay*78-16" y="459" width="32" height="14" rx="3"
+          <rect :x="58+wpCurrentDay*78-16" y="384" width="32" height="13" rx="3"
             fill="rgba(6,182,212,0.12)" />
-          <text :x="58+wpCurrentDay*78" y="470" text-anchor="middle"
+          <text :x="58+wpCurrentDay*78" y="394" text-anchor="middle"
             font-size="8" font-weight="800" fill="#06b6d4" letter-spacing="0.08em"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">TODAY</text>
 
           <!-- ── AREA FILLS (clipped to chart) ── -->
           <defs>
             <clipPath id="chart-clip">
-              <rect x="56" y="108" width="472" height="330"/>
+              <rect x="56" y="108" width="472" height="256"/>
             </clipPath>
             <linearGradient id="area1-grad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.22"/>
@@ -515,9 +507,9 @@
               <stop offset="0%" stop-color="#f97316" stop-opacity="0.18"/>
               <stop offset="100%" stop-color="#f97316" stop-opacity="0.03"/>
             </linearGradient>
-            <!-- Circular clip for player headshot -->
+            <!-- Circular clip for player headshot (large callout, center at x=68 y=470, radius 38) -->
             <clipPath id="player-avatar-clip">
-              <circle cx="418" cy="399" r="17"/>
+              <circle cx="68" cy="470" r="38"/>
             </clipPath>
           </defs>
 
@@ -534,85 +526,64 @@
           <path :d="wpLine1Path" fill="none" stroke="#06b6d4" stroke-width="2.6"
             stroke-linecap="round" clip-path="url(#chart-clip)"/>
 
-          <!-- ── DATA POINTS & VALUE BADGES ── -->
-          <!-- Team 2 dots + labels — badge always BELOW dot -->
-          <!-- NOTE: using pre-sliced wpTeam2Visible — v-if on same element as v-for breaks in Vue 3 -->
-          <g v-for="(pt,i) in wpTeam2Visible" :key="'t2d'+i">
-            <circle :cx="pt.x" :cy="pt.y" r="7" fill="rgba(249,115,22,0.15)"/>
-            <circle :cx="pt.x" :cy="pt.y" r="4.5" fill="#f97316"/>
-            <circle :cx="pt.x" :cy="pt.y" r="2" fill="#0d1117"/>
-            <!-- filled orange badge BELOW -->
-            <rect :x="pt.x - 21" :y="pt.y + 9" width="42" height="19" rx="4" fill="#f97316"/>
-            <text :x="pt.x" :y="pt.y + 23" text-anchor="middle" font-size="11.5" font-weight="800"
-              fill="#0a0c14" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ pt.prob.toFixed(1) }}</text>
+          <!-- ── DATA POINTS & VALUE BADGES ──
+               One pair per visible day, ordered so the lower-% badge is drawn first
+               and the higher-% badge is drawn second (on top). This guarantees the
+               higher % is always readable when lines cross and badges overlap. -->
+          <g v-for="(pair, di) in wpBadgePairs" :key="'pair'+di">
+            <g v-for="(b, j) in pair" :key="'b'+di+'_'+j">
+              <!-- Glow halo + dot ring + center dot -->
+              <circle :cx="b.x" :cy="b.y" r="7" :fill="b.color === '#06b6d4' ? 'rgba(6,182,212,0.15)' : 'rgba(249,115,22,0.15)'"/>
+              <circle :cx="b.x" :cy="b.y" :r="b.color === '#06b6d4' ? 5 : 4.5" :fill="b.color"/>
+              <circle :cx="b.x" :cy="b.y" r="2" fill="#0d1117"/>
+              <!-- Filled badge — cyan ABOVE the dot, orange BELOW -->
+              <rect :x="b.x - 21" :y="b.below ? b.y + 9 : b.y - 28" width="42" height="19" rx="4" :fill="b.color"/>
+              <text :x="b.x" :y="b.below ? b.y + 23 : b.y - 14"
+                text-anchor="middle" font-size="11.5" font-weight="800"
+                fill="#0a0c14" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ b.prob.toFixed(1) }}</text>
+            </g>
           </g>
 
-          <!-- Team 1 dots + labels — badge always ABOVE dot -->
-          <g v-for="(pt,i) in wpTeam1Visible" :key="'t1d'+i">
-            <circle :cx="pt.x" :cy="pt.y" r="7" fill="rgba(6,182,212,0.15)"/>
-            <circle :cx="pt.x" :cy="pt.y" r="5" fill="#06b6d4"/>
-            <circle :cx="pt.x" :cy="pt.y" r="2" fill="#0d1117"/>
-            <!-- filled cyan badge ABOVE -->
-            <rect :x="pt.x - 21" :y="pt.y - 28" width="42" height="19" rx="4" fill="#06b6d4"/>
-            <text :x="pt.x" :y="pt.y - 14" text-anchor="middle" font-size="11.5" font-weight="800"
-              fill="#0a0c14" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ pt.prob.toFixed(1) }}</text>
-          </g>
+          <!-- ═══ LARGE PLAYER CALLOUT STRIP — full-width bottom panel ═══
+               Lives below the chart (y ≥ 405) so it never overlaps any data point. -->
+          <rect x="0" y="405" width="540" height="135" fill="#0c1220"/>
+          <line x1="0" y1="405" x2="540" y2="405" stroke="rgba(6,182,212,0.35)" stroke-width="1.5"/>
 
-          <!-- ═══ PLAYER CALLOUT (corner badge) ═══ -->
-          <!-- Connector line from last team1 point to callout -->
-          <line :x1="wpTeam1Points[wpCurrentDay]?.x" :y1="wpTeam1Points[wpCurrentDay]?.y"
-            x2="450" y2="395"
-            stroke="rgba(6,182,212,0.3)" stroke-width="1" stroke-dasharray="3,3"/>
-
-          <!-- Callout card -->
-          <rect x="390" y="370" width="136" height="58" rx="8"
-            fill="#0c1220" stroke="rgba(6,182,212,0.4)" stroke-width="1.2"/>
-
-          <!-- Player avatar circle — headshot if URL provided, else initials -->
-          <circle cx="418" cy="399" r="17" fill="#0a1520" stroke="#06b6d4" stroke-width="1.5"/>
-          <!-- Headshot image (clipped to circle) -->
+          <!-- Player avatar — large circle, left side -->
+          <circle cx="68" cy="470" r="38" fill="#0a1520" stroke="#06b6d4" stroke-width="2.5"/>
           <image v-if="wpHeadshotUrl" :href="wpHeadshotUrl"
-            x="401" y="382" width="34" height="34"
+            x="30" y="432" width="76" height="76"
             clip-path="url(#player-avatar-clip)"
             preserveAspectRatio="xMidYMid slice"/>
-          <!-- Fallback initials when no headshot -->
-          <text v-if="!wpHeadshotUrl" x="418" y="404" text-anchor="middle" font-size="11" font-weight="900"
+          <text v-if="!wpHeadshotUrl" x="68" y="478" text-anchor="middle" font-size="22" font-weight="900"
             fill="#06b6d4" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpPlayerInitials }}</text>
 
-          <!-- Down/Up arrow badge -->
-          <circle :cx="432" cy="386" r="8"
-            :fill="wpDirection==='down'?'#ef4444':'#22c55e'"/>
-          <text x="432" y="390" text-anchor="middle" font-size="11" font-weight="900"
-            :fill="wpDirection==='down'?'#fff':'#fff'"
-            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpDirection==='down'?'↓':'↑' }}</text>
+          <!-- Up/down arrow badge overlapping the avatar bottom-right -->
+          <circle cx="98" cy="498" r="14"
+            :fill="wpDirection==='down'?'#ef4444':'#22c55e'"
+            stroke="#0c1220" stroke-width="2.5"/>
+          <text x="98" y="504" text-anchor="middle" font-size="18" font-weight="900"
+            fill="#fff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpDirection==='down'?'↓':'↑' }}</text>
 
-          <!-- Player name -->
-          <text x="448" y="393" font-size="10" font-weight="700" fill="#e5e7eb"
+          <!-- Player name + meta — middle column -->
+          <text x="125" y="450" font-size="22" font-weight="900" fill="#ffffff"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpPlayerName }}</text>
-          <text x="448" y="406" font-size="9" fill="#6b7280"
-            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpPlayerPos }} · {{ wpDirection==='down'?'hurt':'helped' }} win%</text>
-          <text x="448" y="419" font-size="9" fill="rgba(6,182,212,0.7)"
+          <text x="125" y="473" font-size="13" font-weight="600" fill="#9ca3af"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpPlayerPos }} &#xB7; {{ wpDirection==='down'?'hurt':'helped' }} your win %</text>
+          <text x="125" y="495" font-size="13" font-weight="700" :fill="wpDirection==='down'?'#f87171':'#86efac'"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpCurrentDayLabel }} impact</text>
 
-          <!-- ═══ LEGEND ═══ -->
-          <rect x="0" y="481" width="540" height="36" fill="rgba(0,0,0,0.25)"/>
-          <line x1="0" y1="481" x2="540" y2="481" stroke="#1e2130" stroke-width="1"/>
-
-          <!-- Team 1 legend -->
-          <circle cx="68" cy="499" r="5" fill="#06b6d4"/>
-          <text x="78" y="504" font-size="12" font-weight="600" fill="#9ca3af"
+          <!-- Team legend — bottom of callout strip -->
+          <circle cx="20" cy="525" r="5" fill="#06b6d4"/>
+          <text x="32" y="530" font-size="11" font-weight="600" fill="#9ca3af"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpTeam1 }}</text>
 
-          <!-- Separator -->
-          <circle cx="215" cy="499" r="2" fill="#374151"/>
-
-          <!-- Team 2 legend -->
-          <circle cx="228" cy="499" r="5" fill="#f97316"/>
-          <text x="238" y="504" font-size="12" font-weight="600" fill="#9ca3af"
+          <circle cx="180" cy="525" r="5" fill="#f97316"/>
+          <text x="192" y="530" font-size="11" font-weight="600" fill="#9ca3af"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpTeam2 }}</text>
 
-          <!-- URL watermark -->
-          <text x="20" y="525" font-size="10" fill="#1e2130" letter-spacing="0.05em"
+          <!-- URL watermark — far right -->
+          <text x="520" y="530" text-anchor="end" font-size="10" fill="#1e2130" letter-spacing="0.05em"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
 
         </svg>
@@ -2856,12 +2827,12 @@ function parseAthleteRow(
 // Chart layout constants (within 540x540 SVG card)
 const WP_CL = 58   // chart left x
 const WP_CT = 118  // chart top y (100%)
-const WP_CB = 436  // chart bottom y (0%)
-const WP_CH = WP_CB - WP_CT  // 318px chart height
+const WP_CB = 362  // chart bottom y (0%) — chart compressed to leave room for large player callout
+const WP_CH = WP_CB - WP_CT  // 244px chart height
 const WP_XS = 78   // x spacing per day (7 days, 6 intervals, 468/6=78)
 
-const wpTeam1 = ref('Mahomes Magic')
-const wpTeam2 = ref('The Algorithm')
+const wpTeam1 = ref('Your Team')
+const wpTeam2 = ref("Rival's Team")
 const wpWeek = ref('11')
 const wpSportLabel = ref('NFL Fantasy · PPR')
 const wpPlayerName = ref('Logan Webb')
@@ -2959,6 +2930,28 @@ const wpTeam2Points = computed(() => {
 // Pre-sliced to wpCurrentDay so v-for never needs v-if (Vue 3: v-if > v-for priority breaks it)
 const wpTeam1Visible = computed(() => wpTeam1Points.value.slice(0, wpCurrentDay.value + 1))
 const wpTeam2Visible = computed(() => wpTeam2Points.value.slice(0, wpCurrentDay.value + 1))
+
+// Per-day badge pairs:
+//   • The team with the HIGHER % each day gets its badge ABOVE its dot.
+//   • The team with the LOWER % gets its badge BELOW its dot.
+//   • The higher-% badge is also drawn second so it sits on top in z-order.
+// This way, when the lines cross and the leader changes, the badges flip
+// sides correctly and the leader is always the upper, more prominent badge.
+type WpBadge = { x: number; y: number; prob: number; color: string; below: boolean }
+const wpBadgePairs = computed((): WpBadge[][] => {
+  const pairs: WpBadge[][] = []
+  const t1 = wpTeam1Visible.value
+  const t2 = wpTeam2Visible.value
+  const n = Math.min(t1.length, t2.length)
+  for (let i = 0; i < n; i++) {
+    const t1Higher = t1[i].prob >= t2[i].prob
+    const a: WpBadge = { x: t1[i].x, y: t1[i].y, prob: t1[i].prob, color: '#06b6d4', below: !t1Higher }
+    const b: WpBadge = { x: t2[i].x, y: t2[i].y, prob: t2[i].prob, color: '#f97316', below:  t1Higher }
+    // Higher-% badge drawn second so it sits on top when overlapping.
+    pairs.push(t1Higher ? [b, a] : [a, b])
+  }
+  return pairs
+})
 
 // ── Interactive Power Rankings Template state ──────────────────────────────
 const prSportLabel = ref('Baseball · H2H Points')
