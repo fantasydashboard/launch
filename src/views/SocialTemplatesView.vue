@@ -39,7 +39,10 @@
 
       <!-- ─── 1) SQUARE 1080×1080 (preview 540×540) ─── -->
       <div class="three-size-cell">
-        <div class="three-size-label">Square · 1080×1080</div>
+        <div class="three-size-cell-header">
+          <div class="three-size-label">Square · 1080×1080</div>
+          <button class="three-size-download" @click="downloadCardFromButton($event, 1080, 1080, 'daily-win-probability-square')">⬇ PNG</button>
+        </div>
         <div class="pr-general-card">
           <!-- Subtle grain/texture overlay -->
           <div class="pr-general-grain"></div>
@@ -170,7 +173,10 @@
 
       <!-- ─── 2) HORIZONTAL 1200×630 (preview 600×315) ─── -->
       <div class="three-size-cell">
-        <div class="three-size-label">Horizontal · 1200×630</div>
+        <div class="three-size-cell-header">
+          <div class="three-size-label">Horizontal · 1200×630</div>
+          <button class="three-size-download" @click="downloadCardFromButton($event, 1200, 630, 'daily-win-probability-horizontal')">⬇ PNG</button>
+        </div>
         <div class="pr-general-card pr-general-card--h">
           <div class="pr-general-grain"></div>
           <div class="pr-general-inner pr-general-inner--h">
@@ -247,7 +253,10 @@
 
       <!-- ─── 3) STORY 1080×1920 (preview 270×480) ─── -->
       <div class="three-size-cell">
-        <div class="three-size-label">Story · 1080×1920</div>
+        <div class="three-size-cell-header">
+          <div class="three-size-label">Story · 1080×1920</div>
+          <button class="three-size-download" @click="downloadCardFromButton($event, 1080, 1920, 'daily-win-probability-story')">⬇ PNG</button>
+        </div>
         <div class="pr-general-card pr-general-card--s">
           <div class="pr-general-grain"></div>
           <div class="pr-general-inner pr-general-inner--s">
@@ -414,7 +423,10 @@
 
       <!-- ── 1) SQUARE 540×540 ── -->
       <div class="three-size-cell">
-        <div class="three-size-label">Square · 1080×1080</div>
+        <div class="three-size-cell-header">
+          <div class="three-size-label">Square · 1080×1080</div>
+          <button class="three-size-download" @click="downloadCardFromButton($event, 1080, 1080, 'power-rankings-card-square')">⬇ PNG</button>
+        </div>
         <div class="sq sq-wp-bg" style="width:360px;height:360px;">
         <div class="sq-grain"></div>
 
@@ -592,7 +604,10 @@
 
       <!-- ── 2) HORIZONTAL 1200×630 ── -->
       <div class="three-size-cell">
-        <div class="three-size-label">Horizontal · 1200×630</div>
+        <div class="three-size-cell-header">
+          <div class="three-size-label">Horizontal · 1200×630</div>
+          <button class="three-size-download" @click="downloadCardFromButton($event, 1200, 630, 'power-rankings-card-horizontal')">⬇ PNG</button>
+        </div>
         <div class="sq sq-wp-bg" style="width:600px;height:315px;">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg"
@@ -716,7 +731,10 @@
 
       <!-- ── 3) STORY 1080×1920 ── -->
       <div class="three-size-cell">
-        <div class="three-size-label">Story · 1080×1920</div>
+        <div class="three-size-cell-header">
+          <div class="three-size-label">Story · 1080×1920</div>
+          <button class="three-size-download" @click="downloadCardFromButton($event, 1080, 1920, 'power-rankings-card-story')">⬇ PNG</button>
+        </div>
         <div class="sq sq-wp-bg" style="width:270px;height:480px;">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg"
@@ -905,7 +923,10 @@
 
       <!-- 1) SQUARE 1080×1080 -->
       <div class="three-size-cell">
-        <div class="three-size-label">Square · 1080×1080</div>
+        <div class="three-size-cell-header">
+          <div class="three-size-label">Square · 1080×1080</div>
+          <button class="three-size-download" @click="downloadCardFromButton($event, 1080, 1080, 'pr-general-square')">⬇ PNG</button>
+        </div>
       <div style="width:540px;background:#0f1117;border-radius:16px;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
         <!-- Gold top bar -->
         <div style="height:5px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
@@ -990,7 +1011,10 @@
 
       <!-- 2) HORIZONTAL 1200×630 -->
       <div class="three-size-cell">
-        <div class="three-size-label">Horizontal · 1200×630</div>
+        <div class="three-size-cell-header">
+          <div class="three-size-label">Horizontal · 1200×630</div>
+          <button class="three-size-download" @click="downloadCardFromButton($event, 1200, 630, 'pr-general-horizontal')">⬇ PNG</button>
+        </div>
         <div style="width:600px;height:315px;background:#0f1117;border-radius:16px;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;">
           <div style="height:3px;background:linear-gradient(90deg,#eab308,#ca8a04);flex-shrink:0;"></div>
           <!-- Header strip -->
@@ -1028,7 +1052,10 @@
 
       <!-- 3) STORY 1080×1920 -->
       <div class="three-size-cell">
-        <div class="three-size-label">Story · 1080×1920</div>
+        <div class="three-size-cell-header">
+          <div class="three-size-label">Story · 1080×1920</div>
+          <button class="three-size-download" @click="downloadCardFromButton($event, 1080, 1920, 'pr-general-story')">⬇ PNG</button>
+        </div>
         <div style="width:270px;height:480px;background:#0f1117;border-radius:16px;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;">
           <div style="height:3px;background:linear-gradient(90deg,#eab308,#ca8a04);flex-shrink:0;"></div>
           <!-- Header -->
@@ -1066,7 +1093,7 @@
     <div class="post-wrap" style="padding-bottom:60px;margin-top:32px;">
       <div class="post-label">20b · Ranking Trends — uses same inputs above, screenshot separately</div>
 
-      <ThreeSizePreview>
+      <ThreeSizePreview name="ranking-trends">
       <div style="width:540px;background:#0f1117;border-radius:16px;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
         <div style="height:5px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
 
@@ -1166,7 +1193,7 @@
     <!-- ── GRAPHIC 27: Batters ── -->
     <div class="post-wrap wp-post-wrap">
       <div class="post-label">27 · Best Batters</div>
-      <ThreeSizePreview>
+      <ThreeSizePreview name="best-batters">
       <div class="sq sq-wp-bg">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 540 600" xmlns="http://www.w3.org/2000/svg"
@@ -1269,7 +1296,7 @@
     <!-- ── GRAPHIC 28: Pitchers ── -->
     <div class="post-wrap wp-post-wrap">
       <div class="post-label">28 · Best Pitchers</div>
-      <ThreeSizePreview>
+      <ThreeSizePreview name="best-pitchers">
       <div class="sq sq-wp-bg">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 540 600" xmlns="http://www.w3.org/2000/svg"
@@ -1412,7 +1439,7 @@
     <!-- ── GRAPHIC WW-A: Top Batter Pickups ── -->
     <div class="post-wrap wp-post-wrap">
       <div class="post-label">WW-A · Waiver Wire — Batters</div>
-      <ThreeSizePreview>
+      <ThreeSizePreview name="waiver-wire-batters">
       <div class="sq sq-wp-bg">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 540 540" xmlns="http://www.w3.org/2000/svg"
@@ -1517,7 +1544,7 @@
     <!-- ── GRAPHIC WW-B: Top SP Pickups ── -->
     <div class="post-wrap wp-post-wrap">
       <div class="post-label">WW-B · Waiver Wire — Starting Pitchers</div>
-      <ThreeSizePreview>
+      <ThreeSizePreview name="waiver-wire-sp">
       <div class="sq sq-wp-bg">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 540 540" xmlns="http://www.w3.org/2000/svg"
@@ -1614,7 +1641,7 @@
     <!-- ── GRAPHIC WW-C: Top RP Pickups ── -->
     <div class="post-wrap wp-post-wrap">
       <div class="post-label">WW-C · Waiver Wire — Relief Pitchers</div>
-      <ThreeSizePreview>
+      <ThreeSizePreview name="waiver-wire-rp">
       <div class="sq sq-wp-bg">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 540 540" xmlns="http://www.w3.org/2000/svg"
@@ -1870,7 +1897,7 @@
       <div style="margin-top:24px;">
         <div style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Version B · Feature Showcase</div>
       </div>
-      <ThreeSizePreview>
+      <ThreeSizePreview name="win-prob-card-b">
       <div style="width:540px;background:#0f1117;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
 
         <!-- FEATURE HEADER BAND -->
@@ -2049,7 +2076,7 @@
       </div>
 
       <!-- ── Screenshottable card ── -->
-      <ThreeSizePreview>
+      <ThreeSizePreview name="most-traded">
       <div class="sq sq-wp-bg" style="height:640px">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 540 640" xmlns="http://www.w3.org/2000/svg"
@@ -2204,7 +2231,7 @@
       </div>
 
       <!-- ── Screenshottable card ── -->
-      <ThreeSizePreview>
+      <ThreeSizePreview name="player-ranking-impact">
       <div class="sq sq-wp-bg" style="height:620px;max-width:540px;">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 540 620" xmlns="http://www.w3.org/2000/svg"
@@ -2349,32 +2376,82 @@ const leagueStore = useLeagueStore()
 // ── Social template type tabs ──────────────────────────────────────────────
 const activeType = ref('interactive')
 
+// ── Card download (uses html-to-image — first-pass reliability test) ───
+async function downloadCardFromButton(ev: MouseEvent, targetW: number, targetH: number, fileName: string) {
+  const button = ev.currentTarget as HTMLElement
+  // Walk up to the .three-size-cell, then find the card element inside it.
+  // The card is the LAST direct child div (after the header/label row).
+  const cell = button.closest('.three-size-cell') as HTMLElement | null
+  if (!cell) return
+  // The card is the last direct child div that isn't the header row.
+  const cards = Array.from(cell.children).filter(
+    el => el.tagName === 'DIV' && !el.classList.contains('three-size-cell-header')
+  ) as HTMLElement[]
+  const target = cards[cards.length - 1]
+  if (!target) return
+
+  const orig = button.textContent
+  button.textContent = '⏳…'
+  ;(button as HTMLButtonElement).disabled = true
+  try {
+    const { toPng } = await import('html-to-image')
+    const rect = target.getBoundingClientRect()
+    const pixelRatio = Math.max(targetW / rect.width, targetH / rect.height)
+    const dataUrl = await toPng(target, {
+      pixelRatio,
+      cacheBust: true,
+      backgroundColor: '#0a0c14',
+      width: rect.width,
+      height: rect.height,
+    })
+    const a = document.createElement('a')
+    a.href = dataUrl
+    a.download = `${fileName}.png`
+    a.click()
+  } catch (e) {
+    console.error('[downloadCard] failed:', e)
+    alert('Download failed — check console. (External images may need CORS.)')
+  } finally {
+    button.textContent = orig
+    ;(button as HTMLButtonElement).disabled = false
+  }
+}
+
 // ── Reusable 3-size preview wrapper (Square / Horizontal / Story) ───────
 // Renders the same default-slot content three times in differently-framed
 // containers so a single card definition outputs all three social formats.
 // Cards inside use class="sq" which is `width:100%; aspect-ratio:1/1`, so we
 // must give each rendering an explicit width or the card collapses.
 const ThreeSizePreview = defineComponent({
-  setup(_, { slots }) {
+  props: {
+    name: { type: String, default: 'social-graphic' },
+  },
+  setup(props, { slots }) {
     return () => {
       // Wrap slot content in a fixed-width container so `.sq` (width:100%) sizes correctly.
       const card = (w: number) => h('div', { style: `width:${w}px;flex-shrink:0;` }, slots.default?.())
-      const labelStyle = 'font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;'
       const cellStyle  = 'display:flex;flex-direction:column;gap:8px;'
       const frameBase  = 'background:#0f1117;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;'
+      const header = (label: string, w: number, hpx: number, suffix: string) => h('div', { class: 'three-size-cell-header' }, [
+        h('div', { class: 'three-size-label' }, label),
+        h('button', {
+          class: 'three-size-download',
+          onClick: (ev: MouseEvent) => downloadCardFromButton(ev, w, hpx, `${props.name}-${suffix}`)
+        }, '⬇ PNG'),
+      ])
       return h('div', { class: 'three-size-row' }, [
-        h('div', { style: cellStyle }, [
-          h('div', { style: labelStyle }, 'Square · 1080×1080'),
+        h('div', { class: 'three-size-cell', style: cellStyle }, [
+          header('Square · 1080×1080', 1080, 1080, 'square'),
           card(540)
         ]),
-        h('div', { style: cellStyle }, [
-          h('div', { style: labelStyle }, 'Horizontal · 1200×630'),
+        h('div', { class: 'three-size-cell', style: cellStyle }, [
+          header('Horizontal · 1200×630', 1200, 630, 'horizontal'),
           h('div', { style: `${frameBase}width:600px;height:315px;` }, [
             h('div', { style: 'transform:scale(0.55);transform-origin:center;' }, card(540))
           ])
         ]),
-        h('div', { style: cellStyle }, [
-          h('div', { style: labelStyle }, 'Story · 1080×1920'),
+        h('div', { class: 'three-size-cell', style: cellStyle }, [
+          header('Story · 1080×1920', 1080, 1920, 'story'),
           h('div', { style: `${frameBase}width:270px;height:480px;` }, [
             h('div', { style: 'transform:scale(0.5);transform-origin:center;' }, card(540))
           ])
@@ -5173,6 +5250,34 @@ async function loadWwData() {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #6b7280;
+}
+.three-size-cell-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.three-size-download {
+  background: rgba(234, 179, 8, 0.1);
+  color: #eab308;
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.three-size-download:hover {
+  background: rgba(234, 179, 8, 0.2);
+  border-color: #eab308;
+}
+.three-size-download:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
 .three-size-coming-soon {
   background: #0d0f18;
