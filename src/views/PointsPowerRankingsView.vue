@@ -892,8 +892,8 @@
           <div class="p-6">
             <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Factor Weights</h4>
             <div class="space-y-4">
-              <div 
-                v-for="factor in powerRankingFactors" 
+              <div
+                v-for="factor in visiblePowerRankingFactors"
                 :key="factor.id"
                 class="bg-dark-border/30 rounded-xl p-4"
               >
@@ -1422,7 +1422,7 @@ const powerRankingFactors = ref<PowerRankingFactorConfig[]>([
   { id: 'recentForm', name: 'Recent Form (Last 3)', description: 'Average points over last 3 weeks', enabled: true, weight: 15, icon: '🔥', color: '#a855f7' },
   { id: 'consistency', name: 'Consistency', description: 'Lower variance = more reliable', enabled: true, weight: 12, icon: '🎯', color: '#ec4899' },
   { id: 'pointsAgainst', name: 'Points Against (Luck)', description: 'Lower PA can indicate schedule luck', enabled: false, weight: 5, icon: '🍀', color: '#10b981' },
-  { id: 'outlook', name: 'Outlook (Forward Look)', description: '70% projected starting lineup over next 3 weeks + 30% remaining strength of schedule. NFL only for now.', enabled: true, weight: 18, icon: '🔭', color: '#06b6d4' }
+  { id: 'outlook', name: 'Outlook (Forward Look)', description: '70% projected team strength (next 3 weeks for football, rest-of-season for baseball) + 30% upcoming-schedule difficulty. ESPN football, ESPN baseball, and Yahoo points leagues.', enabled: true, weight: 18, icon: '🔭', color: '#06b6d4' }
 ])
 
 const powerRankingPresets = [
@@ -1508,6 +1508,23 @@ const currentSport = computed(() => {
   const saved = leagueStore.savedLeagues.find(l => l.league_id === leagueStore.activeLeagueId)
   return saved?.sport || 'football'
 })
+
+// Outlook factor is only meaningful when we can compute real projections.
+// Currently supported:
+//   - ESPN football (matchup-projection path)
+//   - ESPN baseball (player-projection path)
+//   - Yahoo any sport (Yahoo's getMatchups returns team_projected_points)
+// Hidden for ESPN basketball/hockey points (no implementation yet).
+const outlookSupported = computed(() => {
+  const platform = leagueStore.activePlatform
+  const sport = currentSport.value
+  if (platform === 'yahoo') return true
+  if (platform === 'espn' && (sport === 'football' || sport === 'baseball')) return true
+  return false
+})
+const visiblePowerRankingFactors = computed(() =>
+  powerRankingFactors.value.filter(f => f.id !== 'outlook' || outlookSupported.value)
+)
 
 // Dynamic position list based on current sport
 const sportPositions = computed(() => {
@@ -1615,7 +1632,7 @@ const historicalWeeks = computed(() => {
 })
 
 const currentFormulaDisplay = computed(() => {
-  const enabled = powerRankingFactors.value.filter(f => f.enabled && f.weight > 0)
+  const enabled = powerRankingFactors.value.filter(f => f.enabled && f.weight > 0 && (f.id !== 'outlook' || outlookSupported.value))
   if (enabled.length === 0) return 'No factors enabled'
   
   const total = enabled.reduce((sum, f) => sum + f.weight, 0)
@@ -1774,9 +1791,9 @@ const sortedPositionStrength = computed(() => {
 // Team detail factors for modal
 const teamDetailFactors = computed(() => {
   if (!selectedTeamDetail.value) return []
-  
+
   const team = selectedTeamDetail.value
-  const enabled = powerRankingFactors.value.filter(f => f.enabled)
+  const enabled = powerRankingFactors.value.filter(f => f.enabled && (f.id !== 'outlook' || outlookSupported.value))
   const totalWeight = enabled.reduce((sum, f) => sum + f.weight, 0)
   
   return enabled.map(factor => {
@@ -1809,6 +1826,11 @@ const teamDetailFactors = computed(() => {
         const minPA = Math.min(...powerRankings.value.map(t => t.pointsAgainst))
         const range = maxPA - minPA
         score = range > 0 ? ((maxPA - team.pointsAgainst) / range) * 100 : 50
+        break
+      case 'outlook':
+        // Forward-looking score, precomputed by computeOutlookScores and
+        // attached to the team object during loadPowerRankings.
+        score = team.outlookScore ?? 50
         break
     }
     
@@ -2268,7 +2290,7 @@ function resetFactors() {
     { id: 'recentForm', name: 'Recent Form (Last 3)', description: 'Average points over last 3 weeks', enabled: true, weight: 15, icon: '🔥', color: '#a855f7' },
     { id: 'consistency', name: 'Consistency', description: 'Lower variance = more reliable', enabled: true, weight: 12, icon: '🎯', color: '#ec4899' },
     { id: 'pointsAgainst', name: 'Points Against (Luck)', description: 'Lower PA can indicate schedule luck', enabled: false, weight: 5, icon: '🍀', color: '#10b981' },
-    { id: 'outlook', name: 'Outlook (Forward Look)', description: '70% projected starting lineup over next 3 weeks + 30% remaining strength of schedule. NFL only for now.', enabled: true, weight: 18, icon: '🔭', color: '#06b6d4' }
+    { id: 'outlook', name: 'Outlook (Forward Look)', description: '70% projected team strength (next 3 weeks for football, rest-of-season for baseball) + 30% upcoming-schedule difficulty. ESPN football, ESPN baseball, and Yahoo points leagues.', enabled: true, weight: 18, icon: '🔭', color: '#06b6d4' }
   ]
   recalculatePowerRankings()
 }
@@ -2813,7 +2835,7 @@ async function downloadRankings() {
 }
 
 function calculatePowerScore(team: any, allTeams: any[]): number {
-  const enabled = powerRankingFactors.value.filter(f => f.enabled)
+  const enabled = powerRankingFactors.value.filter(f => f.enabled && (f.id !== 'outlook' || outlookSupported.value))
   const totalWeight = enabled.reduce((sum, f) => sum + f.weight, 0)
   if (totalWeight === 0) return 0
   
@@ -3081,40 +3103,34 @@ async function calculatePowerRankingsForWeek(throughWeek: number): Promise<Power
 // ════════════════════════════════════════════════════════════════════════
 // OUTLOOK FACTOR — Forward-looking projection score
 // 70% projected starting lineup over next 3 weeks + 30% remaining SOS
-// ESPN football leagues only for v1; other leagues get neutral 50.
+//
+// Three platform/sport branches:
+//   1. ESPN football: pre-game matchup projections (totalProjectedPointsLive)
+//   2. ESPN baseball: sum of starters' season projectedPoints (matchup endpoint
+//      doesn't ship pre-game projections for baseball)
+//   3. Yahoo (any sport): pre-game matchup projections (team_projected_points)
+// Anything else returns neutral 50.
 // ════════════════════════════════════════════════════════════════════════
 async function computeOutlookScores(
   throughWeek: number,
   rankings: PowerRankingData[]
 ): Promise<Map<string, { score: number; projAvg: number; oppAvg: number }>> {
   const out = new Map<string, { score: number; projAvg: number; oppAvg: number }>()
-
-  // Only ESPN football for v1. Other leagues / sports get a neutral 50.
-  if (leagueStore.activePlatform !== 'espn' || currentSport.value !== 'football') {
+  const neutral = () => {
     rankings.forEach(t => out.set(t.team_key, { score: 50, projAvg: 0, oppAvg: 0 }))
     return out
   }
 
+  const platform = leagueStore.activePlatform
+  const sport = currentSport.value
   const leagueKey = effectiveLeagueKey.value || leagueStore.activeLeagueId || ''
-  const parts = leagueKey.split('_')
-  const espnLeagueId = parts[2]
-  const season = parseInt(parts[3]) || new Date().getFullYear()
-  if (!espnLeagueId) {
-    rankings.forEach(t => out.set(t.team_key, { score: 50, projAvg: 0, oppAvg: 0 }))
-    return out
-  }
+  if (!leagueKey) return neutral()
 
-  // Forward window: throughWeek+1 .. throughWeek+3 (clamped to season end if known)
+  // Forward window: next 3 weeks
   const windowStart = throughWeek + 1
   const windowEnd = throughWeek + 3
-  const weeksToFetch: number[] = []
-  for (let w = windowStart; w <= windowEnd; w++) weeksToFetch.push(w)
-  if (weeksToFetch.length === 0) {
-    rankings.forEach(t => out.set(t.team_key, { score: 50, projAvg: 0, oppAvg: 0 }))
-    return out
-  }
 
-  // Per-team rolling totals
+  // Per-team rolling totals (shared across all branches)
   const projTotals = new Map<string, number>()
   const projCounts = new Map<string, number>()
   const oppTotals = new Map<string, number>()
@@ -3124,43 +3140,166 @@ async function computeOutlookScores(
     oppTotals.set(t.team_key,  0); oppCounts.set(t.team_key,  0)
   })
 
-  // Fetch each future week's matchups (cached after the first call)
-  for (const week of weeksToFetch) {
-    try {
-      let matchups = allMatchups.value.get(week)
-      if (!matchups) {
-        matchups = await espnService.getMatchups('football', espnLeagueId, season, week, false)
-        if (matchups && matchups.length > 0) allMatchups.value.set(week, matchups)
-      }
-      if (!matchups || matchups.length === 0) continue
+  // ── BRANCH 1: ESPN football — pre-game matchup projections ──────────────
+  if (platform === 'espn' && sport === 'football') {
+    const parts = leagueKey.split('_')
+    const espnLeagueId = parts[2]
+    const season = parseInt(parts[3]) || new Date().getFullYear()
+    if (!espnLeagueId) return neutral()
 
-      // Each matchup has homeProjectedPoints / awayProjectedPoints from ESPN
-      // Team key format must match leagueStore.yahooTeams: espn_<leagueId>_<season>_<teamId>
-      for (const m of matchups) {
-        const homeKey = `espn_${espnLeagueId}_${season}_${m.homeTeamId}`
-        const awayKey = `espn_${espnLeagueId}_${season}_${m.awayTeamId}`
-        const homeProj = m.homeProjectedPoints || 0
-        const awayProj = m.awayProjectedPoints || 0
-        if (homeProj > 0) {
-          projTotals.set(homeKey, (projTotals.get(homeKey) || 0) + homeProj)
-          projCounts.set(homeKey, (projCounts.get(homeKey) || 0) + 1)
-          // Opponent (away) is what home faces — track for SOS
-          oppTotals.set(homeKey, (oppTotals.get(homeKey) || 0) + awayProj)
-          oppCounts.set(homeKey, (oppCounts.get(homeKey) || 0) + 1)
+    for (let week = windowStart; week <= windowEnd; week++) {
+      try {
+        let matchups = allMatchups.value.get(week)
+        if (!matchups) {
+          matchups = await espnService.getMatchups('football', espnLeagueId, season, week, false)
+          if (matchups && matchups.length > 0) allMatchups.value.set(week, matchups)
         }
-        if (awayProj > 0) {
-          projTotals.set(awayKey, (projTotals.get(awayKey) || 0) + awayProj)
-          projCounts.set(awayKey, (projCounts.get(awayKey) || 0) + 1)
-          oppTotals.set(awayKey, (oppTotals.get(awayKey) || 0) + homeProj)
-          oppCounts.set(awayKey, (oppCounts.get(awayKey) || 0) + 1)
+        if (!matchups || matchups.length === 0) continue
+        for (const m of matchups) {
+          const homeKey = `espn_${espnLeagueId}_${season}_${m.homeTeamId}`
+          const awayKey = `espn_${espnLeagueId}_${season}_${m.awayTeamId}`
+          const homeProj = m.homeProjectedPoints || 0
+          const awayProj = m.awayProjectedPoints || 0
+          if (homeProj > 0) {
+            projTotals.set(homeKey, (projTotals.get(homeKey) || 0) + homeProj)
+            projCounts.set(homeKey, (projCounts.get(homeKey) || 0) + 1)
+            oppTotals.set(homeKey, (oppTotals.get(homeKey) || 0) + awayProj)
+            oppCounts.set(homeKey, (oppCounts.get(homeKey) || 0) + 1)
+          }
+          if (awayProj > 0) {
+            projTotals.set(awayKey, (projTotals.get(awayKey) || 0) + awayProj)
+            projCounts.set(awayKey, (projCounts.get(awayKey) || 0) + 1)
+            oppTotals.set(awayKey, (oppTotals.get(awayKey) || 0) + homeProj)
+            oppCounts.set(awayKey, (oppCounts.get(awayKey) || 0) + 1)
+          }
         }
+      } catch (err) {
+        console.warn(`[Outlook] ESPN football week ${week} fetch failed:`, err)
       }
-    } catch (err) {
-      console.warn(`[Outlook] Failed to fetch week ${week} matchups:`, err)
     }
   }
 
-  // Build per-team averages
+  // ── BRANCH 2: ESPN baseball — sum starters' season projectedPoints ──────
+  // ESPN baseball matchups don't ship pre-game projections, so we pull each
+  // team's current roster and sum the season-long projection of each active
+  // starter. The 3-week schedule window still informs rSOS via the matchup
+  // pairings (just not the projection numbers themselves).
+  else if (platform === 'espn' && sport === 'baseball') {
+    const parts = leagueKey.split('_')
+    const espnLeagueId = parts[2]
+    const season = parseInt(parts[3]) || new Date().getFullYear()
+    if (!espnLeagueId) return neutral()
+
+    // Bench / IL / IL+ / NA baseball lineup slot IDs — exclude from "starters"
+    const INACTIVE_SLOTS = new Set([16, 17, 18, 19])
+
+    // 1. Compute each team's projected strength = sum of starters' projectedPoints
+    const teamStrength = new Map<string, number>()
+    try {
+      const teams = await espnService.getTeamsWithRosters('baseball', espnLeagueId, season)
+      for (const t of teams) {
+        if (!t.roster) continue
+        const teamKey = `espn_${espnLeagueId}_${season}_${t.id}`
+        let sum = 0
+        for (const player of t.roster) {
+          if (INACTIVE_SLOTS.has(player.lineupSlotId)) continue
+          sum += player.projectedPoints || 0
+        }
+        teamStrength.set(teamKey, sum)
+      }
+    } catch (err) {
+      console.warn('[Outlook] ESPN baseball roster fetch failed:', err)
+      return neutral()
+    }
+    if (teamStrength.size === 0) return neutral()
+
+    // 2. Walk upcoming matchups to build schedule — assign each team the
+    // strength of its opponents over the next 3 weeks for rSOS.
+    for (let week = windowStart; week <= windowEnd; week++) {
+      try {
+        let matchups = allMatchups.value.get(week)
+        if (!matchups) {
+          matchups = await espnService.getMatchups('baseball', espnLeagueId, season, week, false)
+          if (matchups && matchups.length > 0) allMatchups.value.set(week, matchups)
+        }
+        if (!matchups || matchups.length === 0) continue
+        for (const m of matchups) {
+          if (!m.awayTeamId) continue
+          const homeKey = `espn_${espnLeagueId}_${season}_${m.homeTeamId}`
+          const awayKey = `espn_${espnLeagueId}_${season}_${m.awayTeamId}`
+          const homeStr = teamStrength.get(homeKey) ?? 0
+          const awayStr = teamStrength.get(awayKey) ?? 0
+          // Own strength is the team's static value, recorded once per matchup
+          // so projAvg ends up == teamStrength after averaging.
+          projTotals.set(homeKey, (projTotals.get(homeKey) || 0) + homeStr)
+          projCounts.set(homeKey, (projCounts.get(homeKey) || 0) + 1)
+          oppTotals.set(homeKey, (oppTotals.get(homeKey) || 0) + awayStr)
+          oppCounts.set(homeKey, (oppCounts.get(homeKey) || 0) + 1)
+          projTotals.set(awayKey, (projTotals.get(awayKey) || 0) + awayStr)
+          projCounts.set(awayKey, (projCounts.get(awayKey) || 0) + 1)
+          oppTotals.set(awayKey, (oppTotals.get(awayKey) || 0) + homeStr)
+          oppCounts.set(awayKey, (oppCounts.get(awayKey) || 0) + 1)
+        }
+      } catch (err) {
+        console.warn(`[Outlook] ESPN baseball week ${week} fetch failed:`, err)
+      }
+    }
+
+    // If no upcoming matchups (e.g., ESPN doesn't expose them yet for the
+    // week range), still emit projections so the factor is meaningful — fall
+    // back to teamStrength alone with neutral schedule.
+    if (![...projCounts.values()].some(c => c > 0)) {
+      console.log('[Outlook] ESPN baseball: no upcoming matchups in window — using projections without rSOS')
+      for (const [key, strength] of teamStrength) {
+        projTotals.set(key, strength)
+        projCounts.set(key, 1)
+        oppTotals.set(key, 0)
+        oppCounts.set(key, 0)
+      }
+    }
+  }
+
+  // ── BRANCH 3: Yahoo — pre-game matchup projections ──────────────────────
+  // Yahoo's getMatchups already parses team_projected_points for each team,
+  // populated for any week including future weeks during an active season.
+  else if (platform === 'yahoo') {
+    for (let week = windowStart; week <= windowEnd; week++) {
+      try {
+        const matchups = await yahooService.getMatchups(leagueKey, week)
+        if (!matchups || matchups.length === 0) continue
+        for (const m of matchups) {
+          if (!m.teams || m.teams.length < 2) continue
+          const home = m.teams[0]
+          const away = m.teams[1]
+          const homeKey = home.team_key
+          const awayKey = away.team_key
+          const homeProj = home.projected_points || 0
+          const awayProj = away.projected_points || 0
+          if (homeProj > 0 && homeKey) {
+            projTotals.set(homeKey, (projTotals.get(homeKey) || 0) + homeProj)
+            projCounts.set(homeKey, (projCounts.get(homeKey) || 0) + 1)
+            oppTotals.set(homeKey, (oppTotals.get(homeKey) || 0) + awayProj)
+            oppCounts.set(homeKey, (oppCounts.get(homeKey) || 0) + 1)
+          }
+          if (awayProj > 0 && awayKey) {
+            projTotals.set(awayKey, (projTotals.get(awayKey) || 0) + awayProj)
+            projCounts.set(awayKey, (projCounts.get(awayKey) || 0) + 1)
+            oppTotals.set(awayKey, (oppTotals.get(awayKey) || 0) + homeProj)
+            oppCounts.set(awayKey, (oppCounts.get(awayKey) || 0) + 1)
+          }
+        }
+      } catch (err) {
+        console.warn(`[Outlook] Yahoo week ${week} fetch failed:`, err)
+      }
+    }
+  }
+
+  // Unsupported platform/sport
+  else {
+    return neutral()
+  }
+
+  // ── Shared normalization + 70/30 blend ──────────────────────────────────
   const projAvgs: Array<{ key: string; projAvg: number; oppAvg: number }> = []
   rankings.forEach(t => {
     const pCount = projCounts.get(t.team_key) || 0
@@ -3170,38 +3309,31 @@ async function computeOutlookScores(
     projAvgs.push({ key: t.team_key, projAvg, oppAvg })
   })
 
-  // If no projection data came back at all, return neutral 50 across the board
   const anyData = projAvgs.some(p => p.projAvg > 0)
   if (!anyData) {
-    console.warn('[Outlook] No projection data returned for the next 3 weeks — falling back to neutral 50')
-    rankings.forEach(t => out.set(t.team_key, { score: 50, projAvg: 0, oppAvg: 0 }))
-    return out
+    console.warn(`[Outlook] No projection data returned for ${platform} ${sport} weeks ${windowStart}-${windowEnd} — falling back to neutral 50`)
+    return neutral()
   }
 
-  // Normalize own projection to 0-100 (max in league = 100)
   const maxProj = Math.max(...projAvgs.map(p => p.projAvg))
   const minProj = Math.min(...projAvgs.filter(p => p.projAvg > 0).map(p => p.projAvg))
-  // Normalize opponent projection too — INVERT (lower opponent = better = higher score)
   const maxOpp = Math.max(...projAvgs.map(p => p.oppAvg))
   const minOpp = Math.min(...projAvgs.filter(p => p.oppAvg > 0).map(p => p.oppAvg))
 
   for (const p of projAvgs) {
-    // Own-strength component: 0-100, scaled between league min and max
     let ownComponent = 50
     if (maxProj > minProj && p.projAvg > 0) {
       ownComponent = ((p.projAvg - minProj) / (maxProj - minProj)) * 100
     }
-    // Schedule component: 0-100, INVERTED (easy schedule = high score)
     let schedComponent = 50
     if (maxOpp > minOpp && p.oppAvg > 0) {
       schedComponent = ((maxOpp - p.oppAvg) / (maxOpp - minOpp)) * 100
     }
-    // 70% own, 30% schedule
     const score = ownComponent * 0.7 + schedComponent * 0.3
     out.set(p.key, { score, projAvg: p.projAvg, oppAvg: p.oppAvg })
   }
 
-  console.log(`[Outlook] Computed outlook scores for ${out.size} teams over weeks ${windowStart}-${windowEnd}`)
+  console.log(`[Outlook] Computed ${platform} ${sport} outlook for ${out.size} teams over weeks ${windowStart}-${windowEnd}`)
   return out
 }
 

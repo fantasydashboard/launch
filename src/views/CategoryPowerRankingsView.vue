@@ -689,7 +689,7 @@
             
             <div class="space-y-3">
               <div 
-                v-for="factor in powerFactors" 
+                v-for="factor in visiblePowerFactors"
                 :key="factor.id"
                 class="bg-dark-border/20 rounded-xl p-4"
               >
@@ -775,41 +775,86 @@
         @click.self="showTeamModal = false"
       >
         <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
-        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-dark-border">
-          <div class="px-6 py-4 border-b border-dark-border flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <img :src="selectedTeam.logo_url || defaultAvatar" class="w-10 h-10 rounded-full" @error="handleImageError" />
+        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-dark-border">
+          <!-- Header -->
+          <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <img :src="selectedTeam.logo_url || defaultAvatar" class="w-12 h-12 rounded-full ring-2 ring-primary object-cover" @error="handleImageError" />
               <div>
-                <h3 class="text-lg font-bold text-dark-text">{{ selectedTeam.name }}</h3>
-                <p class="text-sm text-dark-textMuted">Category Breakdown</p>
+                <h3 class="text-xl font-bold text-dark-text">{{ selectedTeam.name }}</h3>
+                <p class="text-sm text-dark-textMuted">Power Rank #{{ powerRankings.indexOf(selectedTeam) + 1 }}</p>
               </div>
             </div>
-            <button @click="showTeamModal = false" class="p-2 rounded-lg hover:bg-dark-border/50">
+            <button @click="showTeamModal = false" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
               <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          <div class="p-6">
-            <div class="grid grid-cols-2 gap-4 mb-6">
-              <div class="text-center p-3 bg-dark-card rounded-lg">
-                <div class="text-2xl font-black" :class="getPowerScoreTextClass(selectedTeam.powerScore)">{{ selectedTeam.powerScore.toFixed(1) }}</div>
+
+          <!-- Stats Overview -->
+          <div class="p-6 border-b border-dark-border">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                <div class="text-2xl font-black text-yellow-400">{{ selectedTeam.powerScore.toFixed(1) }}</div>
                 <div class="text-xs text-dark-textMuted">Power Score</div>
               </div>
-              <div class="text-center p-3 bg-dark-card rounded-lg">
+              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
                 <div class="text-2xl font-black text-dark-text">{{ selectedTeam.totalCatWins }}-{{ selectedTeam.totalCatLosses }}</div>
                 <div class="text-xs text-dark-textMuted">Cat W-L</div>
               </div>
+              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                <div class="text-2xl font-black text-dark-text">{{ selectedTeam.dominantCategories }}</div>
+                <div class="text-xs text-dark-textMuted">Dominant Cats</div>
+              </div>
+              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                <div class="text-2xl font-black text-dark-text">{{ (selectedTeam.avgCatsWonPerWeek || 0).toFixed(1) }}</div>
+                <div class="text-xs text-dark-textMuted">Avg Cats/Wk</div>
+              </div>
             </div>
+          </div>
+
+          <!-- Factor Breakdown -->
+          <div class="p-6 border-b border-dark-border">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Power Score Breakdown</h4>
+            <div class="space-y-3">
+              <div
+                v-for="factor in teamDetailFactors"
+                :key="factor.id"
+                class="flex items-center gap-3"
+              >
+                <span class="text-lg w-8">{{ factor.icon }}</span>
+                <div class="flex-1">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-sm text-dark-text">{{ factor.name }}</span>
+                    <span class="text-sm text-dark-textMuted">{{ factor.weight }}</span>
+                  </div>
+                  <div class="h-2 bg-dark-border rounded-full overflow-hidden">
+                    <div
+                      class="h-full rounded-full transition-all duration-500"
+                      :style="{ width: `${factor.score}%`, backgroundColor: factor.color }"
+                    ></div>
+                  </div>
+                </div>
+                <div class="w-16 text-right">
+                  <span class="text-sm font-bold" :style="{ color: factor.color }">{{ factor.score.toFixed(1) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Per-Category Wins -->
+          <div class="p-6">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Category Wins</h4>
             <div class="space-y-2">
-              <div 
-                v-for="cat in displayCategories" 
+              <div
+                v-for="cat in displayCategories"
                 :key="cat.stat_id"
                 class="flex items-center gap-2"
               >
                 <span class="w-12 text-xs text-dark-textMuted">{{ cat.display_name }}</span>
                 <div class="flex-1 h-3 bg-dark-border rounded-full overflow-hidden">
-                  <div 
+                  <div
                     class="h-full rounded-full"
                     :class="getCategoryBarClass(selectedTeam.categoryRanks[cat.stat_id])"
                     :style="{ width: `${(selectedTeam.categoryWins[cat.stat_id] || 0) / maxCategoryWins * 100}%` }"
@@ -853,6 +898,25 @@ const authStore = useAuthStore()
 
 // Platform detection
 const isEspn = computed(() => leagueStore.activePlatform === 'espn')
+
+// Current sport detection (mirrors the points view pattern)
+const currentSport = computed(() => {
+  const saved = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
+  return saved?.sport || 'baseball'
+})
+
+// Outlook factor supports baseball categories on both ESPN and Yahoo.
+// ESPN uses player-level season projections (rest-of-season strength).
+// Yahoo uses each team's season-cumulative cat stats as the strength proxy
+// because Yahoo's stats API doesn't expose per-player projections.
+// Other sports/platforms return neutral 50, so we hide the toggle for them.
+const outlookSupported = computed(() => {
+  if (currentSport.value !== 'baseball') return false
+  return isEspn.value || leagueStore.activePlatform === 'yahoo'
+})
+const visiblePowerFactors = computed(() =>
+  powerFactors.value.filter((f: any) => f.id !== 'outlook' || outlookSupported.value)
+)
 
 // State
 const isLoading = ref(false)
@@ -1012,7 +1076,7 @@ const powerFactors = ref([
   {
     id: 'outlook',
     name: 'Outlook (Forward Look)',
-    description: '70% projected category strength of starting roster over next 3 weeks + 30% remaining strength of schedule. ESPN baseball only for now.',
+    description: '70% projected category strength (rest-of-season for ESPN, season-to-date for Yahoo) + 30% upcoming-schedule difficulty. Baseball only for now.',
     enabled: true,
     weight: 15,
     icon: '🔭',
@@ -1126,11 +1190,13 @@ const isGeneratingDownload = ref(false)
 const shareToast = ref<'idle'|'success'|'error'>('idle')
 
 const totalWeight = computed(() => {
-  return powerFactors.value.filter(f => f.enabled).reduce((sum, f) => sum + f.weight, 0)
+  return powerFactors.value
+    .filter(f => f.enabled && (f.id !== 'outlook' || outlookSupported.value))
+    .reduce((sum, f) => sum + f.weight, 0)
 })
 
 const currentFormulaDisplay = computed(() => {
-  const enabledFactors = powerFactors.value.filter(f => f.enabled && f.weight > 0)
+  const enabledFactors = powerFactors.value.filter(f => f.enabled && f.weight > 0 && (f.id !== 'outlook' || outlookSupported.value))
   if (enabledFactors.length === 0) return 'No factors enabled'
   
   const total = enabledFactors.reduce((sum, f) => sum + f.weight, 0)
@@ -1139,6 +1205,52 @@ const currentFormulaDisplay = computed(() => {
     const pct = Math.round((f.weight / total) * 100)
     return `${f.icon} ${f.name}: ${pct}%`
   }).join(' • ')
+})
+
+// Per-factor breakdown for the team detail modal — mirrors the points view's
+// teamDetailFactors so the category modal can show how each enabled factor
+// contributed to the selected team's power score.
+const teamDetailFactors = computed(() => {
+  if (!selectedTeam.value) return []
+  const team = selectedTeam.value
+  const enabled = powerFactors.value.filter((f: any) =>
+    f.enabled && f.weight > 0 && (f.id !== 'outlook' || outlookSupported.value)
+  )
+  const totalW = enabled.reduce((sum: number, f: any) => sum + f.weight, 0)
+  if (totalW === 0) return []
+
+  // League-wide max values for normalization (match calculatePowerScores)
+  const all = powerRankings.value
+  const maxCatWinPct = Math.max(...all.map((t: any) => t.catWinPct), 0.01)
+  const maxDominant = Math.max(...all.map((t: any) => t.dominantCategories), 1)
+  const maxAvgCats = Math.max(...all.map((t: any) => t.avgCatsWonPerWeek), 1)
+  const maxWeak = Math.max(...all.map((t: any) => t.weakCategories), 1)
+
+  return enabled.map((factor: any) => {
+    const normalizedWeight = Math.round(factor.weight / totalW * 100)
+    let score = 0
+    switch (factor.id) {
+      case 'catWinPct':
+        score = (team.catWinPct / maxCatWinPct) * 100
+        break
+      case 'dominantCategories':
+        score = (team.dominantCategories / maxDominant) * 100
+        break
+      case 'categoryBalance':
+        score = team.categoryBalance || 0
+        break
+      case 'weakCategories':
+        score = ((maxWeak - team.weakCategories) / Math.max(maxWeak, 1)) * 100
+        break
+      case 'avgCatsPerWeek':
+        score = (team.avgCatsWonPerWeek / maxAvgCats) * 100
+        break
+      case 'outlook':
+        score = team.outlookScore ?? 50
+        break
+    }
+    return { ...factor, weight: `${normalizedWeight}%`, score: Math.max(0, Math.min(100, score)) }
+  })
 })
 
 function applyPreset(preset: any) {
@@ -1168,7 +1280,7 @@ function onFactorChange() {
 function rescorePowerRankings() {
   if (!powerRankings.value || powerRankings.value.length === 0) return
 
-  const enabledFactors = powerFactors.value.filter((f: any) => f.enabled && f.weight > 0)
+  const enabledFactors = powerFactors.value.filter((f: any) => f.enabled && f.weight > 0 && (f.id !== 'outlook' || outlookSupported.value))
   const totalWeight = enabledFactors.reduce((sum: number, f: any) => sum + f.weight, 0)
   if (totalWeight === 0 || enabledFactors.length === 0) return
 
@@ -2697,29 +2809,37 @@ async function loadPowerRankings() {
         if (displayCategories.value.length === 0 && espnSport === 'baseball') {
           const sampleTeam = espnTeamsForStats.find(t => t.valuesByStat && Object.keys(t.valuesByStat).length > 0)
           if (sampleTeam?.valuesByStat) {
-            // Known H2H baseball stat IDs (matches ESPN's standard display order
-            // for category leagues — see espn.ts:getCategoryStatsBreakdown).
+            // Known H2H baseball stat IDs. Conservative list of categories
+            // commonly used in ESPN H2H baseball leagues. Add new IDs here as
+            // we discover league configurations that use them.
             const knownH2HBaseballStats: Array<{ id: string; name: string; display: string; isNegative?: boolean }> = [
+              // Batting
               { id: '1',  name: 'Hits',                display: 'H' },
               { id: '32', name: 'Runs',                display: 'R' },
               { id: '33', name: 'Home Runs',           display: 'HR' },
               { id: '34', name: 'Total Bases',         display: 'TB' },
               { id: '23', name: 'RBI',                 display: 'RBI' },
               { id: '5',  name: 'Stolen Bases',        display: 'SB' },
+              { id: '6',  name: 'Walks (Batting)',     display: 'BB' },
               { id: '8',  name: 'OPS',                 display: 'OPS' },
               { id: '10', name: 'Slugging Pct',        display: 'SLG' },
               { id: '11', name: 'Batting Average',     display: 'AVG' },
               { id: '17', name: 'On Base Pct',         display: 'OBP' },
+              { id: '25', name: 'Hit By Pitch',        display: 'HBP' },
+              // Pitching
               { id: '53', name: 'Quality Starts',      display: 'QS' },
               { id: '41', name: 'Innings Pitched',     display: 'IP' },
               { id: '43', name: 'Strikeouts',          display: 'K' },
               { id: '35', name: 'Wins',                display: 'W' },
               { id: '37', name: 'Saves',               display: 'SV' },
+              { id: '38', name: 'Holds',               display: 'HD' },
               { id: '47', name: 'ERA',                 display: 'ERA', isNegative: true },
               { id: '48', name: 'WHIP',                display: 'WHIP', isNegative: true },
               { id: '71', name: 'Saves + Holds',       display: 'SVHD' },
               { id: '68', name: 'K/9',                 display: 'K/9' },
               { id: '69', name: 'BB/9',                display: 'BB/9', isNegative: true },
+              { id: '40', name: 'Earned Runs',         display: 'ER',   isNegative: true },
+              { id: '51', name: 'Home Runs Allowed',   display: 'HRA',  isNegative: true },
             ]
             const valKeys = new Set(Object.keys(sampleTeam.valuesByStat))
             const derived = knownH2HBaseballStats
@@ -2748,7 +2868,7 @@ async function loadPowerRankings() {
     // Stamps outlookScore / outlookOwn / outlookSched onto each entry in
     // teamStats so the final calculatePowerScores call can read them.
     const outlookFactor = powerFactors.value.find((f: any) => f.id === 'outlook')
-    if (outlookFactor?.enabled && isEspn.value) {
+    if (outlookFactor?.enabled && outlookSupported.value) {
       try {
         loadingMessage.value = 'Computing Outlook (next 3 weeks)...'
         const teamKeys = [...teamStats.keys()]
@@ -2896,11 +3016,35 @@ function calculatePowerScores(teamStats: Map<string, any>, currentWeek: number):
     }
     team.dominantCategories = dominant
     team.weakCategories = weak
-    team.categoryBalance = calculateCategoryBalance(team.categoryWins)
+
+    // Category balance:
+    //   - Yahoo / ESPN-with-scoreByStat: variance of category H2H wins
+    //   - ESPN with valuesByStat overlay: variance of per-category ranks
+    //     (categoryWins is empty in this case, so the original metric is 0)
+    if (anyTeamHasValuesByStat) {
+      // Lower rank variance = more balanced. Convert to 0-100 score where 100
+      // means "every category has the same rank" and 0 means "max possible
+      // spread between best and worst category."
+      const ranks = displayCategories.value
+        .map(c => team.categoryRanks[c.stat_id])
+        .filter(r => typeof r === 'number')
+      if (ranks.length > 0) {
+        const meanRank = ranks.reduce((a, b) => a + b, 0) / ranks.length
+        const variance = ranks.reduce((sum, r) => sum + Math.pow(r - meanRank, 2), 0) / ranks.length
+        const stdDev = Math.sqrt(variance)
+        // Max possible stdDev for ranks 1..numTeams ≈ (numTeams - 1) / 2
+        const maxStdDev = Math.max(1, (numTeams - 1) / 2)
+        team.categoryBalance = Math.max(0, Math.min(100, 100 - (stdDev / maxStdDev) * 100))
+      } else {
+        team.categoryBalance = 50
+      }
+    } else {
+      team.categoryBalance = calculateCategoryBalance(team.categoryWins)
+    }
   }
   
   // Get enabled factors and calculate normalized weights
-  const enabledFactors = powerFactors.value.filter(f => f.enabled && f.weight > 0)
+  const enabledFactors = powerFactors.value.filter(f => f.enabled && f.weight > 0 && (f.id !== 'outlook' || outlookSupported.value))
   const totalWeight = enabledFactors.reduce((sum, f) => sum + f.weight, 0)
   
   if (totalWeight === 0 || enabledFactors.length === 0) {
@@ -2963,9 +3107,15 @@ function calculatePowerScores(teamStats: Map<string, any>, currentWeek: number):
 
 // ════════════════════════════════════════════════════════════════════════
 // CATEGORY OUTLOOK FACTOR — Forward-looking projection score
-// 70% projected category strength (own roster, next 3 weeks) +
-// 30% schedule difficulty (avg upcoming opponents' projected strength)
-// ESPN baseball only for v1; other leagues/sports return neutral 50.
+// 70% projected/current category strength (own roster) +
+// 30% schedule difficulty (avg upcoming opponents' strength)
+//
+// Platform branches:
+//   - ESPN baseball: sum starters' season-projected per-category stats
+//   - Yahoo baseball: each team's season-cumulative per-category stats
+//                     (Yahoo doesn't expose player-level projections via the
+//                      stats API, so we use season-to-date as the strength
+//                      proxy. Schedule difficulty piece is still forward-looking.)
 // ════════════════════════════════════════════════════════════════════════
 async function computeCategoryOutlookScores(
   throughWeek: number,
@@ -2980,47 +3130,73 @@ async function computeCategoryOutlookScores(
     return out
   }
 
-  // V1: ESPN baseball only.
-  if (!isEspn.value || espnSport !== 'baseball' || !espnLeagueId) {
-    return neutral()
-  }
+  // Baseball only for v1 (any platform).
+  if (currentSport.value !== 'baseball') return neutral()
   if (displayCategories.value.length === 0) return neutral()
 
-  // ── 1. Fetch each team's roster with per-stat projections ──────────────
-  let teamsWithProj
-  try {
-    teamsWithProj = await espnService.getTeamsWithProjectedStats('baseball', espnLeagueId, espnSeason)
-  } catch (e) {
-    console.warn('[Outlook] Failed to fetch projected stats:', e)
-    return neutral()
-  }
-  if (!teamsWithProj || teamsWithProj.length === 0) return neutral()
-
-  // Bench / IL / IL+ / NA lineup slot IDs (baseball) — exclude from "starters"
-  const INACTIVE_SLOTS = new Set([16, 17, 18, 19])
-
-  // ── 2. Sum projected stats per category for each team's active roster ──
-  // teamProjectionTotals: team_key → category stat_id → total projected stat value
+  // ── 1. Build per-team per-category totals (platform-specific) ──────────
+  // teamProjectionTotals: team_key → category stat_id → projected/current value
   const teamProjectionTotals = new Map<string, Record<string, number>>()
-  for (const team of teamsWithProj) {
-    const teamKey = `espn_${espnLeagueId}_${espnSeason}_${team.id}`
-    const totals: Record<string, number> = {}
-    for (const cat of displayCategories.value) {
-      totals[cat.stat_id] = 0
+
+  if (isEspn.value) {
+    if (!espnLeagueId) return neutral()
+    let teamsWithProj
+    try {
+      teamsWithProj = await espnService.getTeamsWithProjectedStats('baseball', espnLeagueId, espnSeason)
+    } catch (e) {
+      console.warn('[Outlook] Failed to fetch ESPN projected stats:', e)
+      return neutral()
     }
-    if (team.roster) {
-      for (const player of team.roster) {
-        if (INACTIVE_SLOTS.has(player.lineupSlotId)) continue
-        const pStats = player.projectedStats || {}
-        for (const cat of displayCategories.value) {
-          const v = pStats[cat.stat_id]
-          if (typeof v === 'number' && !isNaN(v)) {
-            totals[cat.stat_id] += v
+    if (!teamsWithProj || teamsWithProj.length === 0) return neutral()
+
+    // Bench / IL / IL+ / NA lineup slot IDs (baseball) — exclude from "starters"
+    const INACTIVE_SLOTS = new Set([16, 17, 18, 19])
+
+    for (const team of teamsWithProj) {
+      const teamKey = `espn_${espnLeagueId}_${espnSeason}_${team.id}`
+      const totals: Record<string, number> = {}
+      for (const cat of displayCategories.value) totals[cat.stat_id] = 0
+      if (team.roster) {
+        for (const player of team.roster) {
+          if (INACTIVE_SLOTS.has(player.lineupSlotId)) continue
+          const pStats = player.projectedStats || {}
+          for (const cat of displayCategories.value) {
+            const v = pStats[cat.stat_id]
+            if (typeof v === 'number' && !isNaN(v)) {
+              totals[cat.stat_id] += v
+            }
           }
         }
       }
+      teamProjectionTotals.set(teamKey, totals)
     }
-    teamProjectionTotals.set(teamKey, totals)
+  } else if (leagueStore.activePlatform === 'yahoo') {
+    // Yahoo: fetch each team's season-cumulative stats. Yahoo doesn't expose
+    // player-level projections via the stats API, so season-to-date stats
+    // serve as the proxy for "team strength."
+    try {
+      await Promise.all(
+        leagueStore.yahooTeams.map(async (t: any) => {
+          if (!t.team_key) return
+          try {
+            const stats = await yahooService.getTeamSeasonStats(t.team_key)
+            const totals: Record<string, number> = {}
+            for (const cat of displayCategories.value) {
+              totals[cat.stat_id] = stats[cat.stat_id] ?? 0
+            }
+            teamProjectionTotals.set(t.team_key, totals)
+          } catch (e) {
+            console.warn(`[Outlook] Failed to fetch Yahoo season stats for ${t.team_key}:`, e)
+          }
+        })
+      )
+    } catch (e) {
+      console.warn('[Outlook] Yahoo season stats fetch failed:', e)
+      return neutral()
+    }
+    if (teamProjectionTotals.size === 0) return neutral()
+  } else {
+    return neutral()
   }
 
   // ── 3. Per-category min/max across the league for normalization ────────
@@ -3076,19 +3252,40 @@ async function computeCategoryOutlookScores(
 
   for (let week = windowStart; week <= windowEnd; week++) {
     try {
-      const matchups = await espnService.getMatchups('baseball', espnLeagueId, espnSeason, week, false)
-      if (!matchups || matchups.length === 0) continue
-      for (const m of matchups) {
-        if (!m.awayTeamId) continue
-        const homeKey = `espn_${espnLeagueId}_${espnSeason}_${m.homeTeamId}`
-        const awayKey = `espn_${espnLeagueId}_${espnSeason}_${m.awayTeamId}`
-        const homeOwn = ownStrengthByKey.get(homeKey)
-        const awayOwn = ownStrengthByKey.get(awayKey)
-        if (typeof homeOwn === 'number' && typeof awayOwn === 'number') {
-          oppStrengthSum.set(homeKey, (oppStrengthSum.get(homeKey) || 0) + awayOwn)
-          oppStrengthCount.set(homeKey, (oppStrengthCount.get(homeKey) || 0) + 1)
-          oppStrengthSum.set(awayKey, (oppStrengthSum.get(awayKey) || 0) + homeOwn)
-          oppStrengthCount.set(awayKey, (oppStrengthCount.get(awayKey) || 0) + 1)
+      if (isEspn.value) {
+        const matchups = await espnService.getMatchups('baseball', espnLeagueId, espnSeason, week, false)
+        if (!matchups || matchups.length === 0) continue
+        for (const m of matchups) {
+          if (!m.awayTeamId) continue
+          const homeKey = `espn_${espnLeagueId}_${espnSeason}_${m.homeTeamId}`
+          const awayKey = `espn_${espnLeagueId}_${espnSeason}_${m.awayTeamId}`
+          const homeOwn = ownStrengthByKey.get(homeKey)
+          const awayOwn = ownStrengthByKey.get(awayKey)
+          if (typeof homeOwn === 'number' && typeof awayOwn === 'number') {
+            oppStrengthSum.set(homeKey, (oppStrengthSum.get(homeKey) || 0) + awayOwn)
+            oppStrengthCount.set(homeKey, (oppStrengthCount.get(homeKey) || 0) + 1)
+            oppStrengthSum.set(awayKey, (oppStrengthSum.get(awayKey) || 0) + homeOwn)
+            oppStrengthCount.set(awayKey, (oppStrengthCount.get(awayKey) || 0) + 1)
+          }
+        }
+      } else if (leagueStore.activePlatform === 'yahoo') {
+        const leagueKey = effectiveLeagueKey.value || leagueStore.activeLeagueId || ''
+        if (!leagueKey) continue
+        const matchups = await yahooService.getMatchups(leagueKey, week)
+        if (!matchups || matchups.length === 0) continue
+        for (const m of matchups) {
+          if (!m.teams || m.teams.length < 2) continue
+          const homeKey = m.teams[0]?.team_key
+          const awayKey = m.teams[1]?.team_key
+          if (!homeKey || !awayKey) continue
+          const homeOwn = ownStrengthByKey.get(homeKey)
+          const awayOwn = ownStrengthByKey.get(awayKey)
+          if (typeof homeOwn === 'number' && typeof awayOwn === 'number') {
+            oppStrengthSum.set(homeKey, (oppStrengthSum.get(homeKey) || 0) + awayOwn)
+            oppStrengthCount.set(homeKey, (oppStrengthCount.get(homeKey) || 0) + 1)
+            oppStrengthSum.set(awayKey, (oppStrengthSum.get(awayKey) || 0) + homeOwn)
+            oppStrengthCount.set(awayKey, (oppStrengthCount.get(awayKey) || 0) + 1)
+          }
         }
       }
     } catch (err) {

@@ -1618,6 +1618,36 @@ export class YahooFantasyService {
    * Get a team's stats for a specific date (e.g., "2026-02-10")
    * Returns stats map like { "60": "123", "7": "45", ... }
    */
+  /**
+   * Get a team's season-cumulative stats keyed by stat_id.
+   * Used by the category Power Rankings "Outlook" factor for Yahoo leagues.
+   * Returns numeric values (parsed from the string-format Yahoo returns).
+   */
+  async getTeamSeasonStats(teamKey: string): Promise<Record<string, number>> {
+    const cacheKey = 'yahoo_team_season_stats'
+    const cached = cache.get<Record<string, number>>(cacheKey, teamKey)
+    if (cached) {
+      return cached
+    }
+
+    const data = await this.apiRequest(
+      `/team/${teamKey}/stats;type=season?format=json`
+    )
+
+    const stats: Record<string, number> = {}
+    const teamStats = data.fantasy_content?.team?.[1]?.team_stats?.stats || []
+    for (const statWrapper of teamStats) {
+      if (statWrapper?.stat) {
+        const id = String(statWrapper.stat.stat_id)
+        const v = parseFloat(statWrapper.stat.value || '0')
+        if (!isNaN(v)) stats[id] = v
+      }
+    }
+
+    cache.set(cacheKey, stats, CACHE_TTL.STANDINGS, teamKey)
+    return stats
+  }
+
   async getTeamDailyStats(teamKey: string, date: string): Promise<Record<string, string>> {
     const cacheKey = 'yahoo_daily_stats'
     const cached = cache.get<Record<string, string>>(cacheKey, teamKey, date)
