@@ -1008,6 +1008,15 @@ const powerFactors = ref([
     weight: 10,
     icon: '📊',
     color: '#a855f7'
+  },
+  {
+    id: 'outlook',
+    name: 'Outlook (Forward Look)',
+    description: '70% projected category strength of starting roster over next 3 weeks + 30% remaining strength of schedule. ESPN baseball only for now.',
+    enabled: true,
+    weight: 15,
+    icon: '🔭',
+    color: '#06b6d4'
   }
 ])
 
@@ -1018,11 +1027,12 @@ const powerPresets = [
     description: 'Default balanced approach',
     icon: '⚖️',
     factors: {
-      catWinPct: { enabled: true, weight: 35 },
-      dominantCategories: { enabled: true, weight: 25 },
-      categoryBalance: { enabled: true, weight: 15 },
-      weakCategories: { enabled: true, weight: 15 },
-      avgCatsPerWeek: { enabled: true, weight: 10 }
+      catWinPct: { enabled: true, weight: 30 },
+      dominantCategories: { enabled: true, weight: 23 },
+      categoryBalance: { enabled: true, weight: 14 },
+      weakCategories: { enabled: true, weight: 14 },
+      avgCatsPerWeek: { enabled: true, weight: 9 },
+      outlook: { enabled: true, weight: 10 }
     }
   },
   {
@@ -1031,11 +1041,12 @@ const powerPresets = [
     description: 'Rewards owning specific categories',
     icon: '💪',
     factors: {
-      catWinPct: { enabled: true, weight: 25 },
-      dominantCategories: { enabled: true, weight: 45 },
+      catWinPct: { enabled: true, weight: 23 },
+      dominantCategories: { enabled: true, weight: 42 },
       categoryBalance: { enabled: false, weight: 0 },
       weakCategories: { enabled: true, weight: 20 },
-      avgCatsPerWeek: { enabled: true, weight: 10 }
+      avgCatsPerWeek: { enabled: true, weight: 10 },
+      outlook: { enabled: true, weight: 5 }
     }
   },
   {
@@ -1044,11 +1055,12 @@ const powerPresets = [
     description: 'Favors balanced production',
     icon: '🎯',
     factors: {
-      catWinPct: { enabled: true, weight: 25 },
-      dominantCategories: { enabled: true, weight: 15 },
-      categoryBalance: { enabled: true, weight: 40 },
-      weakCategories: { enabled: true, weight: 15 },
-      avgCatsPerWeek: { enabled: true, weight: 5 }
+      catWinPct: { enabled: true, weight: 22 },
+      dominantCategories: { enabled: true, weight: 13 },
+      categoryBalance: { enabled: true, weight: 38 },
+      weakCategories: { enabled: true, weight: 14 },
+      avgCatsPerWeek: { enabled: true, weight: 3 },
+      outlook: { enabled: true, weight: 10 }
     }
   },
   {
@@ -1057,11 +1069,12 @@ const powerPresets = [
     description: 'Pure category win rate',
     icon: '🏆',
     factors: {
-      catWinPct: { enabled: true, weight: 60 },
-      dominantCategories: { enabled: true, weight: 15 },
+      catWinPct: { enabled: true, weight: 57 },
+      dominantCategories: { enabled: true, weight: 14 },
       categoryBalance: { enabled: true, weight: 10 },
-      weakCategories: { enabled: true, weight: 10 },
-      avgCatsPerWeek: { enabled: true, weight: 5 }
+      weakCategories: { enabled: true, weight: 9 },
+      avgCatsPerWeek: { enabled: true, weight: 5 },
+      outlook: { enabled: true, weight: 5 }
     }
   },
   {
@@ -1070,11 +1083,12 @@ const powerPresets = [
     description: 'Heavy penalty for weak categories',
     icon: '🛡️',
     factors: {
-      catWinPct: { enabled: true, weight: 30 },
-      dominantCategories: { enabled: true, weight: 15 },
-      categoryBalance: { enabled: true, weight: 15 },
-      weakCategories: { enabled: true, weight: 35 },
-      avgCatsPerWeek: { enabled: true, weight: 5 }
+      catWinPct: { enabled: true, weight: 28 },
+      dominantCategories: { enabled: true, weight: 14 },
+      categoryBalance: { enabled: true, weight: 14 },
+      weakCategories: { enabled: true, weight: 34 },
+      avgCatsPerWeek: { enabled: true, weight: 5 },
+      outlook: { enabled: true, weight: 5 }
     }
   },
   {
@@ -1087,7 +1101,22 @@ const powerPresets = [
       dominantCategories: { enabled: false, weight: 0 },
       categoryBalance: { enabled: false, weight: 0 },
       weakCategories: { enabled: false, weight: 0 },
-      avgCatsPerWeek: { enabled: false, weight: 0 }
+      avgCatsPerWeek: { enabled: false, weight: 0 },
+      outlook: { enabled: false, weight: 0 }
+    }
+  },
+  {
+    id: 'forwardLook',
+    name: 'Forward Look',
+    description: 'Lean into projected strength + remaining schedule',
+    icon: '🔭',
+    factors: {
+      catWinPct: { enabled: true, weight: 25 },
+      dominantCategories: { enabled: true, weight: 15 },
+      categoryBalance: { enabled: true, weight: 10 },
+      weakCategories: { enabled: true, weight: 12 },
+      avgCatsPerWeek: { enabled: true, weight: 8 },
+      outlook: { enabled: true, weight: 30 }
     }
   }
 ]
@@ -1121,10 +1150,69 @@ function applyPreset(preset: any) {
       factor.weight = presetFactor.weight
     }
   })
+  // Live re-score using the new factor weights — no refetch needed.
+  rescorePowerRankings()
 }
 
 function onFactorChange() {
   currentPresetId.value = ''
+  // Live re-score on slider/toggle changes, matching the points view UX.
+  rescorePowerRankings()
+}
+
+// Lightweight re-score: recomputes powerScore for each team in
+// powerRankings.value using the current powerFactors weights, then re-sorts.
+// Does NOT refetch matchups — all the per-team metrics already live on the
+// existing rankings objects (categoryWins, dominantCategories, weakCategories,
+// categoryBalance, catWinPct, avgCatsWonPerWeek, outlookScore).
+function rescorePowerRankings() {
+  if (!powerRankings.value || powerRankings.value.length === 0) return
+
+  const enabledFactors = powerFactors.value.filter((f: any) => f.enabled && f.weight > 0)
+  const totalWeight = enabledFactors.reduce((sum: number, f: any) => sum + f.weight, 0)
+  if (totalWeight === 0 || enabledFactors.length === 0) return
+
+  const rankings = powerRankings.value
+  const maxCatWinPct = Math.max(...rankings.map((t: any) => t.catWinPct), 0.01)
+  const maxDominant = Math.max(...rankings.map((t: any) => t.dominantCategories), 1)
+  const maxAvgCats = Math.max(...rankings.map((t: any) => t.avgCatsWonPerWeek), 1)
+  const maxWeak = Math.max(...rankings.map((t: any) => t.weakCategories), 1)
+
+  for (const team of rankings) {
+    let score = 0
+    for (const factor of enabledFactors) {
+      const normalizedWeight = factor.weight / totalWeight
+      let componentScore = 0
+      switch (factor.id) {
+        case 'catWinPct':
+          componentScore = (team.catWinPct / maxCatWinPct) * 100
+          break
+        case 'dominantCategories':
+          componentScore = (team.dominantCategories / maxDominant) * 100
+          break
+        case 'categoryBalance':
+          componentScore = team.categoryBalance
+          break
+        case 'weakCategories':
+          componentScore = ((maxWeak - team.weakCategories) / Math.max(maxWeak, 1)) * 100
+          break
+        case 'avgCatsPerWeek':
+          componentScore = (team.avgCatsWonPerWeek / maxAvgCats) * 100
+          break
+        case 'outlook':
+          componentScore = team.outlookScore ?? 50
+          break
+      }
+      score += componentScore * normalizedWeight
+    }
+    team.powerScore = Math.max(0, Math.min(100, score))
+  }
+
+  // Re-sort and reassign rank
+  rankings.sort((a: any, b: any) => b.powerScore - a.powerScore)
+  rankings.forEach((team: any, idx: number) => { team.rank = idx + 1 })
+  // Trigger reactivity by reassigning the array reference
+  powerRankings.value = [...rankings]
 }
 
 function resetFactors() {
@@ -2569,7 +2657,121 @@ async function loadPowerRankings() {
         console.log(`  ${stats.name}: W=${stats.totalCatWins}, L=${stats.totalCatLosses}, T=${stats.totalCatTies}`)
       }
     }
-    
+
+    // ── ESPN season-cumulative valuesByStat overlay ────────────────────────
+    // ESPN's per-matchup `cumulativeScore.scoreByStat` field is unreliable
+    // across leagues (sometimes empty, sometimes missing entirely). When that
+    // happens, the per-week loop above only populates totals, leaving
+    // `categoryWins[stat_id]` empty per stat — which collapses dominantCategories,
+    // weakCategories, and categoryRanks to zero/uniform values.
+    //
+    // Fix: fetch teams once and grab `team.valuesByStat` (season-aggregated raw
+    // stat values per category, e.g. total HR, total RBI, ERA, etc.). These are
+    // the ground truth for "who is best at each category" and are what powers
+    // ESPN's own roto-style standings. We attach them onto each teamStats entry
+    // and the scoring code below will sort by valuesByStat when present.
+    if (isEspn.value && espnLeagueId) {
+      try {
+        loadingMessage.value = 'Loading per-category stat values...'
+        const espnTeamsForStats = await espnService.getTeams(espnSport, espnLeagueId, espnSeason)
+        let injected = 0
+        for (const t of espnTeamsForStats) {
+          if (!t.valuesByStat || Object.keys(t.valuesByStat).length === 0) continue
+          const teamKey = `espn_${espnLeagueId}_${espnSeason}_${t.id}`
+          const stats = teamStats.get(teamKey)
+          if (stats) {
+            stats.valuesByStat = { ...t.valuesByStat }
+            injected++
+          }
+        }
+        console.log(`[Power Rankings ESPN] Overlaid valuesByStat for ${injected}/${espnTeamsForStats.length} teams`)
+
+        // ── displayCategories fallback ─────────────────────────────────────
+        // For some ESPN leagues, getScoringSettings returns 0 scoring items
+        // (the league type doesn't expose scoring settings via that endpoint).
+        // When that happens, displayCategories is empty and EVERYTHING that
+        // depends on per-category iteration (rank assignment, dominant/weak
+        // counts, the per-category bars on the team modal) silently produces
+        // zeros. Derive the category list from the valuesByStat keys we just
+        // fetched, intersected with a known list of H2H baseball stat IDs.
+        if (displayCategories.value.length === 0 && espnSport === 'baseball') {
+          const sampleTeam = espnTeamsForStats.find(t => t.valuesByStat && Object.keys(t.valuesByStat).length > 0)
+          if (sampleTeam?.valuesByStat) {
+            // Known H2H baseball stat IDs (matches ESPN's standard display order
+            // for category leagues — see espn.ts:getCategoryStatsBreakdown).
+            const knownH2HBaseballStats: Array<{ id: string; name: string; display: string; isNegative?: boolean }> = [
+              { id: '1',  name: 'Hits',                display: 'H' },
+              { id: '32', name: 'Runs',                display: 'R' },
+              { id: '33', name: 'Home Runs',           display: 'HR' },
+              { id: '34', name: 'Total Bases',         display: 'TB' },
+              { id: '23', name: 'RBI',                 display: 'RBI' },
+              { id: '5',  name: 'Stolen Bases',        display: 'SB' },
+              { id: '8',  name: 'OPS',                 display: 'OPS' },
+              { id: '10', name: 'Slugging Pct',        display: 'SLG' },
+              { id: '11', name: 'Batting Average',     display: 'AVG' },
+              { id: '17', name: 'On Base Pct',         display: 'OBP' },
+              { id: '53', name: 'Quality Starts',      display: 'QS' },
+              { id: '41', name: 'Innings Pitched',     display: 'IP' },
+              { id: '43', name: 'Strikeouts',          display: 'K' },
+              { id: '35', name: 'Wins',                display: 'W' },
+              { id: '37', name: 'Saves',               display: 'SV' },
+              { id: '47', name: 'ERA',                 display: 'ERA', isNegative: true },
+              { id: '48', name: 'WHIP',                display: 'WHIP', isNegative: true },
+              { id: '71', name: 'Saves + Holds',       display: 'SVHD' },
+              { id: '68', name: 'K/9',                 display: 'K/9' },
+              { id: '69', name: 'BB/9',                display: 'BB/9', isNegative: true },
+            ]
+            const valKeys = new Set(Object.keys(sampleTeam.valuesByStat))
+            const derived = knownH2HBaseballStats
+              .filter(s => valKeys.has(s.id))
+              .map(s => ({
+                stat_id: s.id,
+                name: s.name,
+                display_name: s.display,
+                is_negative: s.isNegative
+              }))
+            if (derived.length > 0) {
+              displayCategories.value = derived
+              console.log(`[Power Rankings ESPN] Fell back to valuesByStat-derived categories: ${derived.length} found`, derived.map(d => d.display_name))
+            } else {
+              console.warn('[Power Rankings ESPN] No known H2H baseball stat IDs found in valuesByStat — categories will remain empty')
+            }
+          }
+        }
+
+      } catch (e) {
+        console.warn('[Power Rankings ESPN] Failed to load team valuesByStat:', e)
+      }
+    }
+
+    // Compute Outlook (forward-looking) scores if the factor is enabled.
+    // Stamps outlookScore / outlookOwn / outlookSched onto each entry in
+    // teamStats so the final calculatePowerScores call can read them.
+    const outlookFactor = powerFactors.value.find((f: any) => f.id === 'outlook')
+    if (outlookFactor?.enabled && isEspn.value) {
+      try {
+        loadingMessage.value = 'Computing Outlook (next 3 weeks)...'
+        const teamKeys = [...teamStats.keys()]
+        const outlookMap = await computeCategoryOutlookScores(
+          throughWeek,
+          teamKeys,
+          espnLeagueId,
+          espnSeason,
+          espnSport
+        )
+        for (const [key, stats] of teamStats) {
+          const o = outlookMap.get(key)
+          if (o) {
+            stats.outlookScore = o.score
+            stats.outlookOwn = o.ownStrength
+            stats.outlookSched = o.schedStrength
+          }
+        }
+      } catch (e) {
+        console.warn('[Outlook] Failed to compute category outlook scores:', e)
+      }
+    }
+
     // Calculate final rankings
     loadingMessage.value = 'Calculating final rankings...'
     loadingProgress.value = { currentStep: 'Calculating power scores...', week: throughWeek, maxWeek: throughWeek }
@@ -2642,18 +2844,46 @@ function calculatePowerScores(teamStats: Map<string, any>, currentWeek: number):
       dominantCategories: 0,
       weakCategories: 0,
       categoryRanks: {},
-      categoryBalance: 0
+      categoryBalance: 0,
+      valuesByStat: stats.valuesByStat,         // ESPN season-cumulative raw stat values (when available)
+      outlookScore: stats.outlookScore,         // forward-looking score (set by computeCategoryOutlookScores)
+      outlookOwn: stats.outlookOwn,             // own-strength component (debug)
+      outlookSched: stats.outlookSched          // schedule-strength component (debug)
     })
   }
   
-  // Calculate category ranks for each category
+  // Calculate category ranks for each category.
+  // PREFERRED source: team.valuesByStat (ESPN season-cumulative raw stat values).
+  // FALLBACK source: team.categoryWins (per-category H2H win counts — works for
+  // Yahoo via stat_winners and for ESPN leagues that DO surface per-matchup
+  // results in cumulativeScore.scoreByStat).
+  // The preferred source is needed because many ESPN leagues don't populate
+  // per-matchup category results, leaving categoryWins empty per stat.
+  const anyTeamHasValuesByStat = rankings.some(t =>
+    t.valuesByStat && Object.keys(t.valuesByStat).length > 0
+  )
   for (const cat of displayCategories.value) {
-    const sorted = [...rankings].sort((a, b) => 
-      (b.categoryWins[cat.stat_id] || 0) - (a.categoryWins[cat.stat_id] || 0)
-    )
-    sorted.forEach((team, idx) => {
-      team.categoryRanks[cat.stat_id] = idx + 1
-    })
+    if (anyTeamHasValuesByStat) {
+      // Sort by raw stat value. For "negative-good" cats (ERA, WHIP, K against,
+      // GIDP, etc.) lower is better, so flip the comparison.
+      const isNegative = !!cat.is_negative
+      const sorted = [...rankings].sort((a, b) => {
+        const av = a.valuesByStat?.[cat.stat_id] ?? (isNegative ? Infinity : -Infinity)
+        const bv = b.valuesByStat?.[cat.stat_id] ?? (isNegative ? Infinity : -Infinity)
+        return isNegative ? av - bv : bv - av
+      })
+      sorted.forEach((team, idx) => {
+        team.categoryRanks[cat.stat_id] = idx + 1
+      })
+    } else {
+      // Yahoo / ESPN-with-scoreByStat path
+      const sorted = [...rankings].sort((a, b) =>
+        (b.categoryWins[cat.stat_id] || 0) - (a.categoryWins[cat.stat_id] || 0)
+      )
+      sorted.forEach((team, idx) => {
+        team.categoryRanks[cat.stat_id] = idx + 1
+      })
+    }
   }
   
   // Count dominant/weak categories and calculate balance
@@ -2709,8 +2939,15 @@ function calculatePowerScores(teamStats: Map<string, any>, currentWeek: number):
           case 'avgCatsPerWeek':
             componentScore = (team.avgCatsWonPerWeek / maxAvgCats) * 100
             break
+          case 'outlook':
+            // Forward-looking score, precomputed in computeCategoryOutlookScores
+            // and attached to the team object before scoring. Falls back to
+            // neutral 50 for historical-week chart calculations and for
+            // leagues/sports where outlook isn't available.
+            componentScore = team.outlookScore ?? 50
+            break
         }
-        
+
         score += componentScore * normalizedWeight
       }
       
@@ -2720,8 +2957,169 @@ function calculatePowerScores(teamStats: Map<string, any>, currentWeek: number):
   
   // Sort by power score
   rankings.sort((a, b) => b.powerScore - a.powerScore)
-  
+
   return rankings
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// CATEGORY OUTLOOK FACTOR — Forward-looking projection score
+// 70% projected category strength (own roster, next 3 weeks) +
+// 30% schedule difficulty (avg upcoming opponents' projected strength)
+// ESPN baseball only for v1; other leagues/sports return neutral 50.
+// ════════════════════════════════════════════════════════════════════════
+async function computeCategoryOutlookScores(
+  throughWeek: number,
+  teamKeys: string[],
+  espnLeagueId: string | number,
+  espnSeason: number,
+  espnSport: string
+): Promise<Map<string, { score: number; ownStrength: number; schedStrength: number }>> {
+  const out = new Map<string, { score: number; ownStrength: number; schedStrength: number }>()
+  const neutral = () => {
+    teamKeys.forEach(k => out.set(k, { score: 50, ownStrength: 50, schedStrength: 50 }))
+    return out
+  }
+
+  // V1: ESPN baseball only.
+  if (!isEspn.value || espnSport !== 'baseball' || !espnLeagueId) {
+    return neutral()
+  }
+  if (displayCategories.value.length === 0) return neutral()
+
+  // ── 1. Fetch each team's roster with per-stat projections ──────────────
+  let teamsWithProj
+  try {
+    teamsWithProj = await espnService.getTeamsWithProjectedStats('baseball', espnLeagueId, espnSeason)
+  } catch (e) {
+    console.warn('[Outlook] Failed to fetch projected stats:', e)
+    return neutral()
+  }
+  if (!teamsWithProj || teamsWithProj.length === 0) return neutral()
+
+  // Bench / IL / IL+ / NA lineup slot IDs (baseball) — exclude from "starters"
+  const INACTIVE_SLOTS = new Set([16, 17, 18, 19])
+
+  // ── 2. Sum projected stats per category for each team's active roster ──
+  // teamProjectionTotals: team_key → category stat_id → total projected stat value
+  const teamProjectionTotals = new Map<string, Record<string, number>>()
+  for (const team of teamsWithProj) {
+    const teamKey = `espn_${espnLeagueId}_${espnSeason}_${team.id}`
+    const totals: Record<string, number> = {}
+    for (const cat of displayCategories.value) {
+      totals[cat.stat_id] = 0
+    }
+    if (team.roster) {
+      for (const player of team.roster) {
+        if (INACTIVE_SLOTS.has(player.lineupSlotId)) continue
+        const pStats = player.projectedStats || {}
+        for (const cat of displayCategories.value) {
+          const v = pStats[cat.stat_id]
+          if (typeof v === 'number' && !isNaN(v)) {
+            totals[cat.stat_id] += v
+          }
+        }
+      }
+    }
+    teamProjectionTotals.set(teamKey, totals)
+  }
+
+  // ── 3. Per-category min/max across the league for normalization ────────
+  const categoryMinMax: Record<string, { min: number; max: number; isNegative: boolean }> = {}
+  for (const cat of displayCategories.value) {
+    let min = Infinity, max = -Infinity
+    for (const totals of teamProjectionTotals.values()) {
+      const v = totals[cat.stat_id] || 0
+      if (v < min) min = v
+      if (v > max) max = v
+    }
+    if (min === Infinity) { min = 0; max = 0 }
+    categoryMinMax[cat.stat_id] = { min, max, isNegative: !!cat.is_negative }
+  }
+
+  // Bail out if literally no projection data came back
+  const anyProjData = Object.values(categoryMinMax).some(c => c.max > 0)
+  if (!anyProjData) {
+    console.warn('[Outlook] No projection data returned for any category — falling back to neutral 50')
+    return neutral()
+  }
+
+  // ── 4. Own-strength score per team (avg of normalized per-category) ────
+  const ownStrengthByKey = new Map<string, number>()
+  for (const teamKey of teamKeys) {
+    const totals = teamProjectionTotals.get(teamKey)
+    if (!totals) {
+      ownStrengthByKey.set(teamKey, 50)
+      continue
+    }
+    let sum = 0
+    let count = 0
+    for (const cat of displayCategories.value) {
+      const { min, max, isNegative } = categoryMinMax[cat.stat_id]
+      if (max <= min) continue
+      const v = totals[cat.stat_id] || 0
+      // For negative-good categories (ERA, WHIP), invert: lower = better
+      const normalized = isNegative
+        ? ((max - v) / (max - min)) * 100
+        : ((v - min) / (max - min)) * 100
+      sum += normalized
+      count++
+    }
+    ownStrengthByKey.set(teamKey, count > 0 ? sum / count : 50)
+  }
+
+  // ── 5. Schedule strength: average upcoming opponents' own-strength ─────
+  const windowStart = throughWeek + 1
+  const windowEnd = throughWeek + 3
+  const oppStrengthSum = new Map<string, number>()
+  const oppStrengthCount = new Map<string, number>()
+  teamKeys.forEach(k => { oppStrengthSum.set(k, 0); oppStrengthCount.set(k, 0) })
+
+  for (let week = windowStart; week <= windowEnd; week++) {
+    try {
+      const matchups = await espnService.getMatchups('baseball', espnLeagueId, espnSeason, week, false)
+      if (!matchups || matchups.length === 0) continue
+      for (const m of matchups) {
+        if (!m.awayTeamId) continue
+        const homeKey = `espn_${espnLeagueId}_${espnSeason}_${m.homeTeamId}`
+        const awayKey = `espn_${espnLeagueId}_${espnSeason}_${m.awayTeamId}`
+        const homeOwn = ownStrengthByKey.get(homeKey)
+        const awayOwn = ownStrengthByKey.get(awayKey)
+        if (typeof homeOwn === 'number' && typeof awayOwn === 'number') {
+          oppStrengthSum.set(homeKey, (oppStrengthSum.get(homeKey) || 0) + awayOwn)
+          oppStrengthCount.set(homeKey, (oppStrengthCount.get(homeKey) || 0) + 1)
+          oppStrengthSum.set(awayKey, (oppStrengthSum.get(awayKey) || 0) + homeOwn)
+          oppStrengthCount.set(awayKey, (oppStrengthCount.get(awayKey) || 0) + 1)
+        }
+      }
+    } catch (err) {
+      console.warn(`[Outlook] Failed to fetch week ${week} matchups:`, err)
+    }
+  }
+
+  // Normalize avg opponent strength → schedule component (lower opp = higher score)
+  const oppAvgs = teamKeys.map(k => {
+    const c = oppStrengthCount.get(k) || 0
+    return { key: k, oppAvg: c > 0 ? (oppStrengthSum.get(k) || 0) / c : 50 }
+  })
+  const validOpp = oppAvgs.filter(o => (oppStrengthCount.get(o.key) || 0) > 0)
+  const maxOpp = validOpp.length ? Math.max(...validOpp.map(o => o.oppAvg)) : 100
+  const minOpp = validOpp.length ? Math.min(...validOpp.map(o => o.oppAvg)) : 0
+
+  // ── 6. 70/30 blend ─────────────────────────────────────────────────────
+  for (const teamKey of teamKeys) {
+    const ownStrength = ownStrengthByKey.get(teamKey) ?? 50
+    const oppCount = oppStrengthCount.get(teamKey) || 0
+    const oppAvg = oppCount > 0 ? (oppStrengthSum.get(teamKey) || 0) / oppCount : 50
+    let schedStrength = 50
+    if (maxOpp > minOpp && oppCount > 0) {
+      schedStrength = ((maxOpp - oppAvg) / (maxOpp - minOpp)) * 100
+    }
+    const score = ownStrength * 0.7 + schedStrength * 0.3
+    out.set(teamKey, { score, ownStrength, schedStrength })
+  }
+
+  console.log(`[Outlook] Computed category outlook for ${out.size} teams over weeks ${windowStart}-${windowEnd}`)
+  return out
 }
 
 function buildChart() {

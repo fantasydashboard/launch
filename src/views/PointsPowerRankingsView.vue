@@ -1421,14 +1421,16 @@ const powerRankingFactors = ref<PowerRankingFactorConfig[]>([
   { id: 'allPlay', name: 'All-Play Record', description: 'Record if you played every team every week', enabled: true, weight: 18, icon: '⚔️', color: '#3b82f6' },
   { id: 'recentForm', name: 'Recent Form (Last 3)', description: 'Average points over last 3 weeks', enabled: true, weight: 15, icon: '🔥', color: '#a855f7' },
   { id: 'consistency', name: 'Consistency', description: 'Lower variance = more reliable', enabled: true, weight: 12, icon: '🎯', color: '#ec4899' },
-  { id: 'pointsAgainst', name: 'Points Against (Luck)', description: 'Lower PA can indicate schedule luck', enabled: false, weight: 5, icon: '🍀', color: '#10b981' }
+  { id: 'pointsAgainst', name: 'Points Against (Luck)', description: 'Lower PA can indicate schedule luck', enabled: false, weight: 5, icon: '🍀', color: '#10b981' },
+  { id: 'outlook', name: 'Outlook (Forward Look)', description: '70% projected starting lineup over next 3 weeks + 30% remaining strength of schedule. NFL only for now.', enabled: true, weight: 18, icon: '🔭', color: '#06b6d4' }
 ])
 
 const powerRankingPresets = [
-  { id: 'balanced', name: 'Balanced', icon: '⚖️', factors: { record: 30, pointsFor: 20, allPlay: 18, recentForm: 15, consistency: 12, pointsAgainst: 5 } },
-  { id: 'winsMatter', name: 'Wins Matter', icon: '🏆', factors: { record: 50, pointsFor: 15, allPlay: 15, recentForm: 10, consistency: 10, pointsAgainst: 0 } },
-  { id: 'trueStrength', name: 'True Strength', icon: '💪', factors: { record: 15, pointsFor: 30, allPlay: 30, recentForm: 10, consistency: 10, pointsAgainst: 5 } },
-  { id: 'hotHand', name: 'Hot Hand', icon: '🔥', factors: { record: 20, pointsFor: 15, allPlay: 10, recentForm: 40, consistency: 10, pointsAgainst: 5 } }
+  { id: 'balanced', name: 'Balanced', icon: '⚖️', factors: { record: 28, pointsFor: 18, allPlay: 16, recentForm: 14, consistency: 10, pointsAgainst: 4, outlook: 10 } },
+  { id: 'winsMatter', name: 'Wins Matter', icon: '🏆', factors: { record: 48, pointsFor: 14, allPlay: 14, recentForm: 9, consistency: 10, pointsAgainst: 0, outlook: 5 } },
+  { id: 'trueStrength', name: 'True Strength', icon: '💪', factors: { record: 13, pointsFor: 27, allPlay: 27, recentForm: 9, consistency: 9, pointsAgainst: 5, outlook: 10 } },
+  { id: 'hotHand', name: 'Hot Hand', icon: '🔥', factors: { record: 18, pointsFor: 13, allPlay: 9, recentForm: 36, consistency: 9, pointsAgainst: 3, outlook: 12 } },
+  { id: 'forwardLook', name: 'Forward Look', icon: '🔭', factors: { record: 22, pointsFor: 16, allPlay: 14, recentForm: 14, consistency: 8, pointsAgainst: 0, outlook: 26 } }
 ]
 
 // Baseball positions
@@ -1535,6 +1537,9 @@ interface PowerRankingData {
   weekCount: number
   change: number
   prevRank: number
+  outlookScore?: number       // 0-100 forward-looking score (Outlook factor)
+  outlookProjAvg?: number     // Avg projected points for own team (next 3 weeks)
+  outlookOppAvg?: number      // Avg projected points for opponents (rSOS)
 }
 
 interface PowerRankingFactorConfig {
@@ -2262,7 +2267,8 @@ function resetFactors() {
     { id: 'allPlay', name: 'All-Play Record', description: 'Record if you played every team every week', enabled: true, weight: 18, icon: '⚔️', color: '#3b82f6' },
     { id: 'recentForm', name: 'Recent Form (Last 3)', description: 'Average points over last 3 weeks', enabled: true, weight: 15, icon: '🔥', color: '#a855f7' },
     { id: 'consistency', name: 'Consistency', description: 'Lower variance = more reliable', enabled: true, weight: 12, icon: '🎯', color: '#ec4899' },
-    { id: 'pointsAgainst', name: 'Points Against (Luck)', description: 'Lower PA can indicate schedule luck', enabled: false, weight: 5, icon: '🍀', color: '#10b981' }
+    { id: 'pointsAgainst', name: 'Points Against (Luck)', description: 'Lower PA can indicate schedule luck', enabled: false, weight: 5, icon: '🍀', color: '#10b981' },
+    { id: 'outlook', name: 'Outlook (Forward Look)', description: '70% projected starting lineup over next 3 weeks + 30% remaining strength of schedule. NFL only for now.', enabled: true, weight: 18, icon: '🔭', color: '#06b6d4' }
   ]
   recalculatePowerRankings()
 }
@@ -2845,6 +2851,11 @@ function calculatePowerScore(team: any, allTeams: any[]): number {
         const range = maxPA - minPA
         componentScore = range > 0 ? ((maxPA - team.pointsAgainst) / range) * 100 : 50
         break
+      case 'outlook':
+        // Outlook is precomputed in calculatePowerRankingsForWeek before scoring.
+        // Falls back to neutral 50 when projection data isn't available.
+        componentScore = team.outlookScore ?? 50
+        break
     }
     
     score += componentScore * normalizedWeight
@@ -3036,16 +3047,162 @@ async function calculatePowerRankingsForWeek(throughWeek: number): Promise<Power
       prevRank: 0
     })
   })
-  
+
+  // Compute Outlook (forward-looking) scores if the factor is enabled.
+  // Done in parallel/async because it requires fetching future-week matchups.
+  const outlookFactor = powerRankingFactors.value.find(f => f.id === 'outlook')
+  if (outlookFactor?.enabled) {
+    try {
+      const outlookMap = await computeOutlookScores(throughWeek, rankings)
+      rankings.forEach(team => {
+        const o = outlookMap.get(team.team_key)
+        if (o) {
+          team.outlookScore = o.score
+          team.outlookProjAvg = o.projAvg
+          team.outlookOppAvg = o.oppAvg
+        }
+      })
+    } catch (e) {
+      console.warn('[Outlook] Failed to compute outlook scores:', e)
+    }
+  }
+
   // Calculate power scores
   rankings.forEach(team => {
     team.powerScore = calculatePowerScore(team, rankings)
   })
-  
+
   // Sort by power score
   rankings.sort((a, b) => b.powerScore - a.powerScore)
-  
+
   return rankings
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// OUTLOOK FACTOR — Forward-looking projection score
+// 70% projected starting lineup over next 3 weeks + 30% remaining SOS
+// ESPN football leagues only for v1; other leagues get neutral 50.
+// ════════════════════════════════════════════════════════════════════════
+async function computeOutlookScores(
+  throughWeek: number,
+  rankings: PowerRankingData[]
+): Promise<Map<string, { score: number; projAvg: number; oppAvg: number }>> {
+  const out = new Map<string, { score: number; projAvg: number; oppAvg: number }>()
+
+  // Only ESPN football for v1. Other leagues / sports get a neutral 50.
+  if (leagueStore.activePlatform !== 'espn' || currentSport.value !== 'football') {
+    rankings.forEach(t => out.set(t.team_key, { score: 50, projAvg: 0, oppAvg: 0 }))
+    return out
+  }
+
+  const leagueKey = effectiveLeagueKey.value || leagueStore.activeLeagueId || ''
+  const parts = leagueKey.split('_')
+  const espnLeagueId = parts[2]
+  const season = parseInt(parts[3]) || new Date().getFullYear()
+  if (!espnLeagueId) {
+    rankings.forEach(t => out.set(t.team_key, { score: 50, projAvg: 0, oppAvg: 0 }))
+    return out
+  }
+
+  // Forward window: throughWeek+1 .. throughWeek+3 (clamped to season end if known)
+  const windowStart = throughWeek + 1
+  const windowEnd = throughWeek + 3
+  const weeksToFetch: number[] = []
+  for (let w = windowStart; w <= windowEnd; w++) weeksToFetch.push(w)
+  if (weeksToFetch.length === 0) {
+    rankings.forEach(t => out.set(t.team_key, { score: 50, projAvg: 0, oppAvg: 0 }))
+    return out
+  }
+
+  // Per-team rolling totals
+  const projTotals = new Map<string, number>()
+  const projCounts = new Map<string, number>()
+  const oppTotals = new Map<string, number>()
+  const oppCounts = new Map<string, number>()
+  rankings.forEach(t => {
+    projTotals.set(t.team_key, 0); projCounts.set(t.team_key, 0)
+    oppTotals.set(t.team_key,  0); oppCounts.set(t.team_key,  0)
+  })
+
+  // Fetch each future week's matchups (cached after the first call)
+  for (const week of weeksToFetch) {
+    try {
+      let matchups = allMatchups.value.get(week)
+      if (!matchups) {
+        matchups = await espnService.getMatchups('football', espnLeagueId, season, week, false)
+        if (matchups && matchups.length > 0) allMatchups.value.set(week, matchups)
+      }
+      if (!matchups || matchups.length === 0) continue
+
+      // Each matchup has homeProjectedPoints / awayProjectedPoints from ESPN
+      // Team key format must match leagueStore.yahooTeams: espn_<leagueId>_<season>_<teamId>
+      for (const m of matchups) {
+        const homeKey = `espn_${espnLeagueId}_${season}_${m.homeTeamId}`
+        const awayKey = `espn_${espnLeagueId}_${season}_${m.awayTeamId}`
+        const homeProj = m.homeProjectedPoints || 0
+        const awayProj = m.awayProjectedPoints || 0
+        if (homeProj > 0) {
+          projTotals.set(homeKey, (projTotals.get(homeKey) || 0) + homeProj)
+          projCounts.set(homeKey, (projCounts.get(homeKey) || 0) + 1)
+          // Opponent (away) is what home faces — track for SOS
+          oppTotals.set(homeKey, (oppTotals.get(homeKey) || 0) + awayProj)
+          oppCounts.set(homeKey, (oppCounts.get(homeKey) || 0) + 1)
+        }
+        if (awayProj > 0) {
+          projTotals.set(awayKey, (projTotals.get(awayKey) || 0) + awayProj)
+          projCounts.set(awayKey, (projCounts.get(awayKey) || 0) + 1)
+          oppTotals.set(awayKey, (oppTotals.get(awayKey) || 0) + homeProj)
+          oppCounts.set(awayKey, (oppCounts.get(awayKey) || 0) + 1)
+        }
+      }
+    } catch (err) {
+      console.warn(`[Outlook] Failed to fetch week ${week} matchups:`, err)
+    }
+  }
+
+  // Build per-team averages
+  const projAvgs: Array<{ key: string; projAvg: number; oppAvg: number }> = []
+  rankings.forEach(t => {
+    const pCount = projCounts.get(t.team_key) || 0
+    const oCount = oppCounts.get(t.team_key) || 0
+    const projAvg = pCount > 0 ? (projTotals.get(t.team_key) || 0) / pCount : 0
+    const oppAvg  = oCount > 0 ? (oppTotals.get(t.team_key)  || 0) / oCount : 0
+    projAvgs.push({ key: t.team_key, projAvg, oppAvg })
+  })
+
+  // If no projection data came back at all, return neutral 50 across the board
+  const anyData = projAvgs.some(p => p.projAvg > 0)
+  if (!anyData) {
+    console.warn('[Outlook] No projection data returned for the next 3 weeks — falling back to neutral 50')
+    rankings.forEach(t => out.set(t.team_key, { score: 50, projAvg: 0, oppAvg: 0 }))
+    return out
+  }
+
+  // Normalize own projection to 0-100 (max in league = 100)
+  const maxProj = Math.max(...projAvgs.map(p => p.projAvg))
+  const minProj = Math.min(...projAvgs.filter(p => p.projAvg > 0).map(p => p.projAvg))
+  // Normalize opponent projection too — INVERT (lower opponent = better = higher score)
+  const maxOpp = Math.max(...projAvgs.map(p => p.oppAvg))
+  const minOpp = Math.min(...projAvgs.filter(p => p.oppAvg > 0).map(p => p.oppAvg))
+
+  for (const p of projAvgs) {
+    // Own-strength component: 0-100, scaled between league min and max
+    let ownComponent = 50
+    if (maxProj > minProj && p.projAvg > 0) {
+      ownComponent = ((p.projAvg - minProj) / (maxProj - minProj)) * 100
+    }
+    // Schedule component: 0-100, INVERTED (easy schedule = high score)
+    let schedComponent = 50
+    if (maxOpp > minOpp && p.oppAvg > 0) {
+      schedComponent = ((maxOpp - p.oppAvg) / (maxOpp - minOpp)) * 100
+    }
+    // 70% own, 30% schedule
+    const score = ownComponent * 0.7 + schedComponent * 0.3
+    out.set(p.key, { score, projAvg: p.projAvg, oppAvg: p.oppAvg })
+  }
+
+  console.log(`[Outlook] Computed outlook scores for ${out.size} teams over weeks ${windowStart}-${windowEnd}`)
+  return out
 }
 
 async function loadPowerRankings() {

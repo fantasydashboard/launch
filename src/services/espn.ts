@@ -262,6 +262,7 @@ export interface EspnPlayer {
   percentOwned: number
   percentStarted: number
   stats: Record<string, number>
+  projectedStats?: Record<string, number>  // Per-stat projections (used by category outlook)
 }
 
 export interface EspnMatchup {
@@ -879,11 +880,61 @@ export class EspnFantasyService {
     try {
       const views = [ESPN_VIEWS.TEAM, ESPN_VIEWS.ROSTER]
       const data = await this.apiRequest(sport, leagueId, season, views, week)
-      
+
       return this.parseTeamsWithRosters(data, sport)
     } catch (error) {
       console.error('Error fetching ESPN teams with rosters:', error)
       throw error
+    }
+  }
+
+  /**
+   * Get teams with rosters that include per-stat PROJECTIONS for each player.
+   * Used by the category Power Rankings "Outlook" factor.
+   * Adds a kona_player_info filter to ensure projection split (statSourceId=1) is in the response.
+   */
+  async getTeamsWithProjectedStats(
+    sport: Sport,
+    leagueId: string | number,
+    season: number
+  ): Promise<EspnTeam[]> {
+    const cacheKey = `espn_teams_proj_${sport}_${leagueId}_${season}`
+    const cached = cache.get<EspnTeam[]>('espn_teams_proj', cacheKey)
+    if (cached && Array.isArray(cached) && cached.length > 0) {
+      console.log('[ESPN getTeamsWithProjectedStats] Cache HIT')
+      return cached
+    }
+
+    try {
+      // Use TEAM + ROSTER + PLAYER_INFO views together with a stat filter that
+      // forces ESPN to return both actual (sourceId=0) and projected (sourceId=1)
+      // season-total splits (splitTypeId=0) for every rostered player.
+      const views = [ESPN_VIEWS.TEAM, ESPN_VIEWS.ROSTER, ESPN_VIEWS.PLAYER_INFO]
+      const filterObj = {
+        players: {
+          filterStatsForCurrentSeasonOnly: { value: true },
+          filterStatsForSplitTypeIds: { value: [0] },        // 0 = full season
+          filterStatsForSourceIds: { value: [0, 1] },         // 0 = actual, 1 = projected
+          filterStatsForSeasonId: { value: season }
+        }
+      }
+
+      const data = await this.apiRequestWithFilter(sport, leagueId, season, views, filterObj)
+      const teams = this.parseTeamsWithRosters(data, sport)
+
+      if (teams.length > 0) {
+        cache.set('espn_teams_proj', teams, CACHE_TTL.STANDINGS, cacheKey)
+      }
+      console.log(`[ESPN getTeamsWithProjectedStats] Loaded ${teams.length} teams with projected stats`)
+      return teams
+    } catch (error) {
+      console.error('[ESPN getTeamsWithProjectedStats] Error:', error)
+      // Fallback: return regular rosters so caller can still attempt — projectedStats will be empty
+      try {
+        return await this.getTeamsWithRosters(sport, leagueId, season)
+      } catch {
+        return []
+      }
     }
   }
 
@@ -3298,7 +3349,8 @@ export class EspnFantasyService {
       actualPoints: seasonStats.appliedTotal || 0,
       percentOwned: playerPoolEntry.player?.ownership?.percentOwned || 0,
       percentStarted: playerPoolEntry.player?.ownership?.percentStarted || 0,
-      stats: this.flattenStats(seasonStats.stats || {})
+      stats: this.flattenStats(seasonStats.stats || {}),
+      projectedStats: this.flattenStats(projectedStats.stats || {})
     }
   }
 
