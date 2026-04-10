@@ -87,6 +87,23 @@ export function useFeatureAccess() {
         await supabase.rpc('start_trial_if_new')
         // Reload profile to get the new trial dates
         await authStore.loadProfile?.()
+
+        // Send welcome email immediately (fire and forget)
+        try {
+          const session = await supabase.auth.getSession()
+          if (session.data.session) {
+            fetch('/api/admin/send-trial-emails', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session.data.session.access_token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ welcome_only: true })
+            }).catch(() => {}) // non-critical — cron will catch up
+          }
+        } catch (e) {
+          // non-critical — cron will catch up
+        }
       }
 
       const expiresAt = profile?.trial_expires_at

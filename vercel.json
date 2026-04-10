@@ -1,4 +1,8 @@
 {
+  "crons": [{
+    "path": "/api/admin/send-trial-emails",
+    "schedule": "0 14 * * *"
+  }],
   "rewrites": [
     {
       "source": "/api/supabase/(.*)",
