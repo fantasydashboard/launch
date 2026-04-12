@@ -49,15 +49,14 @@
       <!-- Trial / Expiry banner — hidden for active individual subscribers -->
       <Teleport to="body">
         <!-- Active trial (not paid yet) -->
-        <div v-if="isOnActiveTrial && !isActivePaidUser"
-          style="position:fixed;top:0;left:0;right:0;z-index:9999;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:6px 16px;background:linear-gradient(90deg,#0f2d1a,#0a1f12);border-bottom:1px solid rgba(34,197,94,0.25);">
+        <div v-if="isOnActiveTrial && !isActivePaidUser" class="trial-top-banner trial-top-banner--active">
           <span style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:10px;height:10px;flex-shrink:0;">
             <span style="position:absolute;width:10px;height:10px;border-radius:50%;background:#22c55e;opacity:0.4;animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></span>
             <span style="position:relative;width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;"></span>
           </span>
           <span style="font-size:12px;color:#22c55e;font-weight:800;">Full access unlocked · {{ trialDaysRemaining }} day{{ trialDaysRemaining === 1 ? '' : 's' }} remaining</span>
-          <span style="font-size:12px;color:#6b7280;">—</span>
-          <span style="font-size:12px;color:#9ca3af;">Download graphics, expand everything, no limits.</span>
+          <span class="trial-top-banner-sep" style="font-size:12px;color:#6b7280;">—</span>
+          <span class="trial-top-banner-desc" style="font-size:12px;color:#9ca3af;">Download graphics, expand everything, no limits.</span>
           <button @click="$router.push('/pricing')"
             style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;padding:4px 12px;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;background:#eab308;color:#0a0c14;">
             Upgrade now →
@@ -65,11 +64,10 @@
         </div>
 
         <!-- Subscription lapsed (had a plan, now expired — not on trial either) -->
-        <div v-else-if="isTrialExpired && !isActivePaidUser && !isOnActiveTrial"
-          style="position:fixed;top:0;left:0;right:0;z-index:9999;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:6px 16px;background:linear-gradient(90deg,#2d0f0f,#1f0a0a);border-bottom:1px solid rgba(239,68,68,0.25);">
+        <div v-else-if="isTrialExpired && !isActivePaidUser && !isOnActiveTrial" class="trial-top-banner trial-top-banner--expired">
           <span style="font-size:12px;color:#ef4444;font-weight:800;">⚠️ Your access has ended</span>
-          <span style="font-size:12px;color:#6b7280;">—</span>
-          <span style="font-size:12px;color:#9ca3af;">Subscribe to restore full access.</span>
+          <span class="trial-top-banner-sep" style="font-size:12px;color:#6b7280;">—</span>
+          <span class="trial-top-banner-desc" style="font-size:12px;color:#9ca3af;">Subscribe to restore full access.</span>
           <button @click="$router.push('/pricing')"
             style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;padding:4px 12px;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;background:#ef4444;color:#fff;">
             See plans →
@@ -1624,4 +1622,32 @@ watch(() => route.path, () => {
 .helper-pop-leave-active { transition: all 0.15s ease-in; }
 .helper-pop-enter-from { opacity: 0; transform: scale(0.9) translateY(-8px); }
 .helper-pop-leave-to { opacity: 0; transform: scale(0.95) translateY(-4px); }
+</style>
+
+<style>
+/* Trial banner — global (not scoped) because it's Teleported to body */
+.trial-top-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; flex-wrap: wrap; padding: 6px 16px;
+}
+.trial-top-banner--active {
+  background: linear-gradient(90deg, #0f2d1a, #0a1f12);
+  border-bottom: 1px solid rgba(34, 197, 94, 0.25);
+}
+.trial-top-banner--expired {
+  background: linear-gradient(90deg, #2d0f0f, #1f0a0a);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.25);
+}
+@media (max-width: 640px) {
+  .trial-top-banner {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 6px 12px;
+  }
+  .trial-top-banner-desc,
+  .trial-top-banner-sep {
+    display: none;
+  }
+}
 </style>
