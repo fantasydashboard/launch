@@ -105,7 +105,7 @@
                 {{ isPointsLeague ? avgPointsFor.toFixed(1) : avgCategoryWins.toFixed(1) }}
               </div>
               <div class="text-xs text-dark-textMuted">
-                {{ isPointsLeague ? 'Avg Points/Week' : 'Avg Cat Wins/Week' }}
+                {{ isPointsLeague ? 'Avg Points/Week' : leagueType === 'roto' ? 'Avg Roto Pts' : 'Avg Cat Wins/Week' }}
               </div>
             </div>
           </div>
@@ -237,6 +237,7 @@
                     :categories="statCategories"
                     :my-team-id="myTeamId"
                     :playoff-teams="0"
+                    :league-type="leagueType"
                   />
                   <StandingsTable
                     v-else
@@ -257,6 +258,7 @@
                   :categories="statCategories"
                   :my-team-id="myTeamId"
                   :playoff-teams="playoffTeams"
+                  :league-type="leagueType"
                 />
                 <StandingsTable
                   v-else
@@ -571,7 +573,7 @@ const sport = computed((): SportType => {
 
 const leagueType = computed((): LeagueType => {
   const league = leagueStore.savedLeagues.find(l => l.league_id === leagueId.value)
-  
+
   // For ESPN leagues, also check currentLeague scoring_type as it's more up-to-date
   if (platform.value === 'espn') {
     const currentScoringType = leagueStore.currentLeague?.scoring_type
@@ -581,8 +583,20 @@ const leagueType = computed((): LeagueType => {
       return espnType
     }
   }
-  
-  return getLeagueType(league?.scoring_type)
+
+  // For Yahoo leagues, also check currentLeague scoring_type (more up-to-date than saved league)
+  if (platform.value === 'yahoo') {
+    const currentScoringType = leagueStore.currentLeague?.scoring_type
+    if (currentScoringType) {
+      const yahooType = getLeagueType(currentScoringType)
+      console.log('[UnifiedSeasonView] Yahoo league type from currentLeague:', currentScoringType, '->', yahooType)
+      return yahooType
+    }
+  }
+
+  const result = getLeagueType(league?.scoring_type)
+  console.log('[UnifiedSeasonView] leagueType from savedLeague:', league?.scoring_type, '->', result, '| leagueId:', leagueId.value)
+  return result
 })
 
 const sportConfig = computed(() => getSportConfig(sport.value))
@@ -591,14 +605,14 @@ const isPointsLeague = computed(() => {
   if (platform.value === 'espn') {
     // Check 1: currentLeague scoring_type
     const currentScoringType = leagueStore.currentLeague?.scoring_type
-    if (currentScoringType === 'head' || currentScoringType?.toLowerCase().includes('cat')) {
+    if (currentScoringType === 'head' || currentScoringType?.toLowerCase().includes('cat') || currentScoringType?.toLowerCase().includes('roto')) {
       console.log('[UnifiedSeasonView] ESPN isPointsLeague = false (currentLeague scoring_type:', currentScoringType, ')')
       return false
     }
-    
+
     // Check 2: savedLeague scoring_type
     const savedLeague = leagueStore.savedLeagues.find(l => l.league_id === leagueId.value)
-    if (savedLeague?.scoring_type === 'head' || savedLeague?.scoring_type?.toLowerCase().includes('cat')) {
+    if (savedLeague?.scoring_type === 'head' || savedLeague?.scoring_type?.toLowerCase().includes('cat') || savedLeague?.scoring_type?.toLowerCase().includes('roto')) {
       console.log('[UnifiedSeasonView] ESPN isPointsLeague = false (savedLeague scoring_type:', savedLeague.scoring_type, ')')
       return false
     }
@@ -668,6 +682,11 @@ const statusClass = computed(() => {
 
 const noCompletedWeeks = computed(() => {
   if (loading.value) return false
+  // Roto leagues don't have weekly wins/losses — check roto points instead
+  if (leagueType.value === 'roto') {
+    const allZero = standings.value.every(s => (s.pointsFor || 0) === 0)
+    return allZero && standings.value.length > 0
+  }
   // No completed weeks if all standings have zero wins/losses/category wins
   // and the season is currently active (not offseason)
   const allZero = standings.value.every(s => s.wins === 0 && s.losses === 0 && (!s.categoryWins || s.categoryWins === 0))
@@ -743,6 +762,13 @@ const avgPointsFor = computed(() => {
 
 const avgCategoryWins = computed(() => {
   if (standings.value.length === 0) return 0
+
+  // For roto, show average roto points (not per-week)
+  if (leagueType.value === 'roto') {
+    const total = standings.value.reduce((sum, s) => sum + (s.pointsFor || 0), 0)
+    return total / standings.value.length
+  }
+
   const total = standings.value.reduce((sum, s) => {
     if (s.categoryWins !== undefined) return sum + s.categoryWins
     return sum + (s.wins * 5)
@@ -1029,13 +1055,14 @@ function convertPreTransformedMatchups(matchupsData: any[], week: number, forceC
 
 function convertPreTransformedStandings(teamsData: any[]): UnifiedStandingsEntry[] {
   if (!teamsData || teamsData.length === 0) return []
-  
+
   return teamsData.map((team, idx) => {
+    const isRoto = team.is_roto === true
     const wins = team.wins || 0
     const losses = team.losses || 0
     const ties = team.ties || 0
     const totalGames = wins + losses + ties
-    
+
     return {
       team: {
         teamId: team.team_id?.toString() || String(idx),
@@ -1047,9 +1074,9 @@ function convertPreTransformedStandings(teamsData: any[]): UnifiedStandingsEntry
       wins,
       losses,
       ties,
-      pointsFor: team.points_for || 0,
+      pointsFor: isRoto ? (team.roto_points || team.points_for || 0) : (team.points_for || 0),
       pointsAgainst: team.points_against || 0,
-      winPercentage: totalGames > 0 ? wins / totalGames : 0,
+      winPercentage: isRoto ? 0 : (totalGames > 0 ? wins / totalGames : 0),
       streak: team.streak,
       categoryWins: team.category_wins,
       categoryLosses: team.category_losses
@@ -1063,6 +1090,7 @@ async function fetchRawData(): Promise<any> {
   console.log('[UnifiedSeasonView fetchRawData] Starting:', {
     platform: platform.value,
     isCat,
+    leagueType: leagueType.value,
     leagueId: leagueId.value
   })
   
@@ -1078,11 +1106,182 @@ async function fetchRawData(): Promise<any> {
     case 'yahoo':
       const yahooMatchups = leagueStore.yahooMatchups || []
       const yahooTeams = leagueStore.yahooStandings || leagueStore.yahooTeams || []
-      
-      const hasCategoryData = yahooMatchups.some(m => 
+
+      // ── ROTO LEAGUE HANDLING ──────────────────────────────────────────────
+      if (leagueType.value === 'roto') {
+        console.log('[UnifiedSeasonView] Roto league detected — computing rankings from season stats')
+
+        const leagueKey = leagueStore.activeLeagueId || ''
+        const { yahooService } = await import('@/services/yahoo')
+
+        // 1. Fetch league settings to get stat categories
+        const settings = await yahooService.getLeagueSettings(leagueKey)
+        const rawCats: any[] = settings?.stat_categories?.stats || settings?.stat_categories || []
+
+        // Build ordered stat categories (only scoring stats used in roto)
+        const rotoCats: any[] = []
+        // Stats where lower is better (standard baseball roto)
+        const lowerIsBetter = new Set<string>()
+
+        for (const cat of rawCats) {
+          const s = cat?.stat || cat
+          const sid = String(s?.stat_id ?? '')
+          if (!sid) continue
+
+          // Yahoo marks non-scoring display stats with is_only_display_stat
+          if (s?.is_only_display_stat === '1' || s?.is_only_display_stat === 1) continue
+
+          // Check if this stat has sort_order = '0' (lower is better) or '1' (higher is better)
+          if (s?.sort_order === '0' || s?.sort_order === 0) {
+            lowerIsBetter.add(sid)
+          }
+
+          rotoCats.push({
+            stat_id: sid,
+            name: s?.display_name || s?.name || `Stat ${sid}`,
+            display_name: s?.abbr || s?.display_name || s?.name || `S${sid}`
+          })
+        }
+
+        // Hardcode ERA/WHIP as lower-is-better for baseball if not already detected
+        // Yahoo stat IDs: ERA = 26, WHIP = 27
+        lowerIsBetter.add('26')
+        lowerIsBetter.add('27')
+
+        console.log('[Roto] Categories:', rotoCats.map(c => c.display_name), 'Lower is better:', [...lowerIsBetter])
+
+        if (rotoCats.length > 0) statCategories.value = rotoCats
+
+        // 2. Fetch season stats for each team
+        const teamSeasonStats: Record<string, Record<string, number>> = {}
+        for (const team of yahooTeams) {
+          const teamKey = team.team_key || team.team_id
+          try {
+            const stats = await yahooService.getTeamSeasonStats(teamKey)
+            teamSeasonStats[teamKey] = stats
+          } catch (e) {
+            console.warn(`[Roto] Failed to fetch stats for ${team.name}:`, e)
+            teamSeasonStats[teamKey] = {}
+          }
+        }
+
+        // 3. For each stat category, rank teams and assign ranking points
+        const numTeamsForRanking = yahooTeams.length
+        const perCategoryRankingPoints: Record<string, Record<string, number>> = {} // teamKey → {statId → points}
+
+        for (const team of yahooTeams) {
+          const tk = team.team_key || team.team_id
+          perCategoryRankingPoints[tk] = {}
+        }
+
+        for (const cat of rotoCats) {
+          const sid = cat.stat_id
+          const isLower = lowerIsBetter.has(sid)
+
+          // Collect team values for this stat
+          const teamValues = yahooTeams.map(team => {
+            const tk = team.team_key || team.team_id
+            const val = teamSeasonStats[tk]?.[sid] ?? 0
+            return { teamKey: tk, value: val }
+          })
+
+          // Sort: for lower-is-better, ascending; for higher-is-better, descending
+          teamValues.sort((a, b) => isLower ? (a.value - b.value) : (b.value - a.value))
+
+          // Assign ranking points: 1st place = numTeams, 2nd = numTeams-1, etc.
+          // Handle ties by averaging
+          let i = 0
+          while (i < teamValues.length) {
+            let j = i + 1
+            while (j < teamValues.length && teamValues[j].value === teamValues[i].value) {
+              j++
+            }
+            // Teams from index i to j-1 are tied
+            const tiedCount = j - i
+            const totalPoints = Array.from({ length: tiedCount }, (_, k) => numTeamsForRanking - (i + k)).reduce((a, b) => a + b, 0)
+            const avgPoints = totalPoints / tiedCount
+
+            for (let k = i; k < j; k++) {
+              perCategoryRankingPoints[teamValues[k].teamKey][sid] = avgPoints
+            }
+            i = j
+          }
+        }
+
+        // 4. Compute total roto points for each team
+        const totalRotoPoints: Record<string, number> = {}
+        for (const team of yahooTeams) {
+          const tk = team.team_key || team.team_id
+          let total = 0
+          for (const sid of Object.keys(perCategoryRankingPoints[tk] || {})) {
+            total += perCategoryRankingPoints[tk][sid]
+          }
+          totalRotoPoints[tk] = total
+        }
+
+        // Yahoo standings may already provide roto points in points_for — use that if available
+        // and it looks reasonable (non-zero). Otherwise use our computed values.
+        const yahooRotoPointsAvailable = yahooTeams.some(t => (t.points_for || 0) > 0)
+        if (yahooRotoPointsAvailable) {
+          console.log('[Roto] Yahoo provides roto points in standings — using Yahoo values for totals')
+          for (const team of yahooTeams) {
+            const tk = team.team_key || team.team_id
+            if (team.points_for > 0) {
+              totalRotoPoints[tk] = team.points_for
+            }
+          }
+        }
+
+        console.log('[Roto] Total roto points:', totalRotoPoints)
+
+        // 5. Build enriched teams sorted by roto points
+        const enrichedTeams = yahooTeams.map((team: any) => {
+          const tk = team.team_key || team.team_id
+          return {
+            ...team,
+            per_category_wins: perCategoryRankingPoints[tk] || {},
+            per_category_losses: {}, // Not used for roto
+            roto_points: totalRotoPoints[tk] || 0,
+            is_roto: true
+          }
+        }).sort((a: any, b: any) => (b.roto_points || 0) - (a.roto_points || 0))
+
+        // Assign ranks
+        enrichedTeams.forEach((t: any, idx: number) => { t.rank = idx + 1 })
+
+        // Compute max roto points for "pts back"
+        const maxRoto = enrichedTeams.length > 0 ? enrichedTeams[0].roto_points : 0
+
+        // Build categoryStandingsData
+        categoryStandingsData.value = enrichedTeams.map((team: any) => ({
+          team: {
+            teamId: team.team_id || team.team_key,
+            name: team.name,
+            avatar: team.logo_url || team.logo || team.avatar,
+            owner: team.manager_nickname || team.owner_name || ''
+          },
+          categoryWins: team.roto_points || 0,
+          categoryLosses: 0,
+          perCategoryWins: team.per_category_wins || {},
+          perCategoryLosses: {},
+          rotoPoints: team.roto_points || 0,
+          ptsBack: maxRoto - (team.roto_points || 0),
+          isRoto: true
+        }))
+
+        return {
+          preTransformed: true,
+          isCategoryLeague: true,
+          isRoto: true,
+          matchups: [],
+          teams: enrichedTeams
+        }
+      }
+
+      const hasCategoryData = yahooMatchups.some(m =>
         m.is_category_league || m.team1_wins !== undefined || m.teams?.[0]?.win_count !== undefined
       )
-      
+
       if (hasCategoryData || isCat) {
         // ── Build per-category wins for every team from stat_winners ──────────
         // stat_winners on each matchup has: { stat_id, winner_team_key, is_tied }
@@ -1387,6 +1586,19 @@ async function fetchRawData(): Promise<any> {
               
               // Set the category data for the CategoryStandingsTable component
               statCategories.value = categoryBreakdown.categories
+
+              const isEspnRoto = leagueType.value === 'roto'
+              // For ESPN roto, the category_wins values from getCategoryStatsBreakdown
+              // represent ranking points (already ROTO-computed). Use them as roto points.
+              if (isEspnRoto) {
+                // Sort by total ranking points (category_wins) descending for roto
+                teamsWithCategoryData.sort((a, b) => (b.category_wins || 0) - (a.category_wins || 0))
+                teamsWithCategoryData.forEach((team, idx) => { team.rank = idx + 1 })
+              }
+
+              const espnMaxRoto = isEspnRoto && teamsWithCategoryData.length > 0
+                ? (teamsWithCategoryData[0].category_wins || 0) : 0
+
               categoryStandingsData.value = teamsWithCategoryData.map(team => ({
                 team: {
                   teamId: team.team_id,
@@ -1397,7 +1609,12 @@ async function fetchRawData(): Promise<any> {
                 categoryWins: team.category_wins || 0,
                 categoryLosses: team.category_losses || 0,
                 perCategoryWins: team.per_category_wins || {},
-                perCategoryLosses: team.per_category_losses || {}
+                perCategoryLosses: team.per_category_losses || {},
+                ...(isEspnRoto ? {
+                  rotoPoints: team.category_wins || 0,
+                  ptsBack: espnMaxRoto - (team.category_wins || 0),
+                  isRoto: true
+                } : {})
               }))
               
               console.log('[UnifiedSeasonView] ESPN category data loaded:', {

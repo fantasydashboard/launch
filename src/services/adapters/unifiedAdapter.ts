@@ -391,14 +391,24 @@ export function normalizeYahooStandings(
       }
       
       // Add category-specific fields
-      if (leagueType === 'categories' || leagueType === 'roto') {
+      if (leagueType === 'categories') {
         const catWins = parseInt(standings.outcome_totals?.stat_wins || 0)
         const catLosses = parseInt(standings.outcome_totals?.stat_losses || 0)
         const catTies = parseInt(standings.outcome_totals?.stat_ties || 0)
-        
+
         entry.categoryWins = catWins
         entry.categoryLosses = catLosses
         entry.categoryTies = catTies
+      }
+
+      // For roto, pointsFor holds roto points — wins/losses are not meaningful
+      if (leagueType === 'roto') {
+        // Yahoo roto: outcome_totals may not have meaningful wins/losses
+        // pointsFor is the total roto points from Yahoo standings
+        entry.wins = 0
+        entry.losses = 0
+        entry.ties = 0
+        entry.winPercentage = 0
       }
       
       return entry

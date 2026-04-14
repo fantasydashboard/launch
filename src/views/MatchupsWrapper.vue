@@ -1,8 +1,11 @@
 <template>
-  <!-- H2H Category leagues (any platform, any sport) -->
-  <CategoryMatchups v-if="isCategoryLeague" />
-  
-  <!-- Points leagues (any platform, any sport) -->
+  <!-- Roto leagues: Category Race page -->
+  <RotoRace v-if="isRotoLeague" />
+
+  <!-- H2H Category leagues -->
+  <CategoryMatchups v-else-if="isCategoryLeague" />
+
+  <!-- Points leagues -->
   <PointsMatchups v-else />
 </template>
 
@@ -12,41 +15,46 @@ import { useLeagueStore } from '@/stores/league'
 
 const leagueStore = useLeagueStore()
 
-// Lazy load components - these work for ALL platforms (Sleeper, Yahoo, ESPN)
-const CategoryMatchups = defineAsyncComponent(() => 
+const RotoRace = defineAsyncComponent(() =>
+  import('@/views/RotoRaceView.vue')
+)
+
+const CategoryMatchups = defineAsyncComponent(() =>
   import('@/views/CategoryMatchupsView.vue')
 )
 
-const PointsMatchups = defineAsyncComponent(() => 
+const PointsMatchups = defineAsyncComponent(() =>
   import('@/views/PointsMatchupsView.vue')
 )
 
-// Detect if it's a category league based on scoring_type
+// Detect roto league
+const isRotoLeague = computed(() => {
+  const league = leagueStore.yahooLeague
+  if (Array.isArray(league) && league[0]) {
+    if (league[0].scoring_type?.toLowerCase().includes('roto')) return true
+  }
+  if (leagueStore.currentLeague?.scoring_type?.toLowerCase().includes('roto')) return true
+  const saved = leagueStore.savedLeagues.find(l => l.league_id === leagueStore.activeLeagueId)
+  if (saved?.scoring_type?.toLowerCase().includes('roto')) return true
+  return false
+})
+
+// Detect H2H category league
 const isCategoryLeague = computed(() => {
-  // Check yahooLeague (works for Yahoo, ESPN, and Sleeper after transformation)
+  if (isRotoLeague.value) return false
+
   const league = leagueStore.yahooLeague
   if (Array.isArray(league) && league[0]) {
     const st = (league[0].scoring_type || '').toLowerCase()
-    if (st === 'head' || st.includes('category') || st === 'headcategory' || st === 'h2h_category') {
-      return true
-    }
+    if (st === 'head' || st.includes('category') || st === 'headcategory' || st === 'h2h_category') return true
   }
-  
-  // Check currentLeague
   const st = (leagueStore.currentLeague?.scoring_type || '').toLowerCase()
-  if (st === 'head' || st.includes('category') || st === 'headcategory' || st === 'h2h_category') {
-    return true
-  }
-  
-  // Check saved leagues
+  if (st === 'head' || st.includes('category') || st === 'headcategory' || st === 'h2h_category') return true
   const saved = leagueStore.savedLeagues.find(l => l.league_id === leagueStore.activeLeagueId)
   if (saved) {
     const savedSt = (saved.scoring_type || '').toLowerCase()
-    if (savedSt === 'head' || savedSt.includes('category') || savedSt === 'headcategory' || savedSt === 'h2h_category') {
-      return true
-    }
+    if (savedSt === 'head' || savedSt.includes('category') || savedSt === 'headcategory' || savedSt === 'h2h_category') return true
   }
-  
   return false
 })
 </script>

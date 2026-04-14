@@ -48,83 +48,157 @@
         <span class="text-2xl">👑</span>League Leaders
       </h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Points League: Most Points / Category League: Best Cat Win % -->
-        <div 
-          @click="openLeaderModal(isPointsLeague ? 'mostPoints' : 'bestCatWinPct')"
-          class="group relative overflow-hidden rounded-xl bg-dark-card border border-yellow-500/20 hover:border-yellow-500/40 transition-all cursor-pointer"
-        >
-          <div class="absolute top-0 right-0 w-24 h-24 bg-yellow-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
-          <div class="relative p-5">
-            <div class="text-xs uppercase tracking-wider text-yellow-400 font-bold mb-3">
-              {{ isPointsLeague ? 'Most Points' : 'Best Category Win %' }}
-            </div>
-            <div class="flex items-center gap-3 mb-3">
-              <img 
-                :src="getLogoUrl(isPointsLeague ? leaders.mostPoints?.logo_url : leaders.bestCatWinPct?.logo_url)" 
-                class="w-12 h-12 rounded-full border-2 border-yellow-500/50 object-cover" 
-                @error="handleImageError" 
-              />
-              <div class="flex-1 min-w-0">
-                <div class="font-bold text-lg text-dark-text truncate">
-                  {{ isPointsLeague ? (leaders.mostPoints?.name || 'N/A') : (leaders.bestCatWinPct?.name || 'N/A') }}
-                </div>
-                <div class="text-sm text-dark-textMuted">
-                  {{ isPointsLeague 
-                    ? `${leaders.mostPoints?.wins || 0}-${leaders.mostPoints?.losses || 0}` 
-                    : `${leaders.bestCatWinPct?.totalCategoryWins || leaders.bestCatWinPct?.wins || 0}-${leaders.bestCatWinPct?.totalCategoryLosses || leaders.bestCatWinPct?.losses || 0}` }}
+        <!-- ROTO League Leaders -->
+        <template v-if="isRotoMode">
+          <!-- Most Categories Led -->
+          <div
+            @click="openLeaderModal('rotoCategoryLeader')"
+            class="group relative overflow-hidden rounded-xl bg-dark-card border border-green-500/20 hover:border-green-500/40 transition-all cursor-pointer"
+          >
+            <div class="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
+            <div class="relative p-5">
+              <div class="text-xs uppercase tracking-wider text-green-400 font-bold mb-3">
+                Most Categories Led
+              </div>
+              <div class="flex items-center gap-3 mb-3">
+                <img
+                  :src="getLogoUrl(rotoCategoryLeader?.logo_url)"
+                  class="w-12 h-12 rounded-full border-2 border-green-500/50 object-cover"
+                  @error="handleImageError"
+                />
+                <div class="flex-1 min-w-0">
+                  <div class="font-bold text-lg text-dark-text truncate">
+                    {{ rotoCategoryLeader?.name || 'N/A' }}
+                  </div>
+                  <div class="text-sm text-dark-textMuted">
+                    {{ (rotoPointsData[rotoCategoryLeader?.team_key] || 0).toFixed(1) }} roto pts
+                  </div>
                 </div>
               </div>
-            </div>
-            <div class="flex items-center justify-between">
-              <div class="text-2xl font-black text-yellow-400">
-                {{ isPointsLeague 
-                  ? (leaders.mostPoints?.points_for?.toFixed(1) || '0.0') 
-                  : getCatWinPct(leaders.bestCatWinPct) + '%' }}
+              <div class="flex items-center justify-between">
+                <div class="text-2xl font-black text-green-400">
+                  Leading {{ rotoCategoryLeader?.count || 0 }} of {{ statCategories.length }} categories
+                </div>
+                <div class="text-xs text-green-400/70 group-hover:text-green-400 transition-colors">Click for details →</div>
               </div>
-              <div class="text-xs text-yellow-400/70 group-hover:text-yellow-400 transition-colors">Click for details →</div>
             </div>
           </div>
-        </div>
-        
-        <!-- Points League: Best All-Play / Category League: Most Dominant Wins -->
-        <div 
-          @click="openLeaderModal(isPointsLeague ? 'bestAllPlay' : 'mostDominant')"
-          class="group relative overflow-hidden rounded-xl bg-dark-card border border-blue-500/20 hover:border-blue-500/40 transition-all cursor-pointer"
-        >
-          <div class="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
-          <div class="relative p-5">
-            <div class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-1">
-              {{ isPointsLeague ? 'Best All-Play' : 'Most Dominant Wins' }}
-            </div>
-            <div v-if="!isPointsLeague" class="text-[10px] text-dark-textMuted mb-2">Weeks with ≤2 category losses</div>
-            <div v-else class="mb-3"></div>
-            <div class="flex items-center gap-3 mb-3">
-              <img 
-                :src="getLogoUrl(isPointsLeague ? leaders.bestAllPlay?.logo_url : leaders.mostDominant?.logo_url)" 
-                class="w-12 h-12 rounded-full border-2 border-blue-500/50 object-cover" 
-                @error="handleImageError" 
-              />
-              <div class="flex-1 min-w-0">
-                <div class="font-bold text-lg text-dark-text truncate">
-                  {{ isPointsLeague ? (leaders.bestAllPlay?.name || 'N/A') : (leaders.mostDominant?.name || 'N/A') }}
-                </div>
-                <div class="text-sm text-dark-textMuted">
-                  {{ isPointsLeague 
-                    ? (leaders.bestAllPlay ? `${leaders.bestAllPlay.wins}-${leaders.bestAllPlay.losses}` : '') 
-                    : (leaders.mostDominant ? `${leaders.mostDominant.totalCategoryWins || leaders.mostDominant.wins || 0}-${leaders.mostDominant.totalCategoryLosses || leaders.mostDominant.losses || 0}` : '') }}
+
+          <!-- Most Balanced -->
+          <div
+            @click="openLeaderModal('rotoMostBalanced')"
+            class="group relative overflow-hidden rounded-xl bg-dark-card border border-yellow-500/20 hover:border-yellow-500/40 transition-all cursor-pointer"
+          >
+            <div class="absolute top-0 right-0 w-24 h-24 bg-yellow-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
+            <div class="relative p-5">
+              <div class="text-xs uppercase tracking-wider text-yellow-400 font-bold mb-3">
+                Most Balanced
+              </div>
+              <div class="flex items-center gap-3 mb-3">
+                <img
+                  :src="getLogoUrl(rotoMostBalanced?.logo_url)"
+                  class="w-12 h-12 rounded-full border-2 border-yellow-500/50 object-cover"
+                  @error="handleImageError"
+                />
+                <div class="flex-1 min-w-0">
+                  <div class="font-bold text-lg text-dark-text truncate">
+                    {{ rotoMostBalanced?.name || 'N/A' }}
+                  </div>
+                  <div class="text-sm text-dark-textMuted">
+                    {{ (rotoPointsData[rotoMostBalanced?.team_key] || 0).toFixed(1) }} roto pts
+                  </div>
                 </div>
               </div>
-            </div>
-            <div class="flex items-center justify-between">
-              <div class="text-2xl font-black text-blue-400">
-                {{ isPointsLeague 
-                  ? `${leaders.bestAllPlay?.all_play_wins || 0}-${leaders.bestAllPlay?.all_play_losses || 0}` 
-                  : `${teamDominantWins.get(leaders.mostDominant?.team_key) || 0} weeks` }}
+              <div class="flex items-center justify-between">
+                <div class="text-2xl font-black text-yellow-400">
+                  Worst rank: {{ rotoMostBalanced?.worstRankLabel || 'N/A' }}
+                </div>
+                <div class="text-xs text-yellow-400/70 group-hover:text-yellow-400 transition-colors">Click for details →</div>
               </div>
-              <div class="text-xs text-blue-400/70 group-hover:text-blue-400 transition-colors">Click for details →</div>
             </div>
           </div>
-        </div>
+        </template>
+
+        <!-- H2H League Leaders (Points or Category) -->
+        <template v-else>
+          <!-- Points League: Most Points / Category League: Best Cat Win % -->
+          <div
+            @click="openLeaderModal(isPointsLeague ? 'mostPoints' : 'bestCatWinPct')"
+            class="group relative overflow-hidden rounded-xl bg-dark-card border border-yellow-500/20 hover:border-yellow-500/40 transition-all cursor-pointer"
+          >
+            <div class="absolute top-0 right-0 w-24 h-24 bg-yellow-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
+            <div class="relative p-5">
+              <div class="text-xs uppercase tracking-wider text-yellow-400 font-bold mb-3">
+                {{ isPointsLeague ? 'Most Points' : 'Best Category Win %' }}
+              </div>
+              <div class="flex items-center gap-3 mb-3">
+                <img
+                  :src="getLogoUrl(isPointsLeague ? leaders.mostPoints?.logo_url : leaders.bestCatWinPct?.logo_url)"
+                  class="w-12 h-12 rounded-full border-2 border-yellow-500/50 object-cover"
+                  @error="handleImageError"
+                />
+                <div class="flex-1 min-w-0">
+                  <div class="font-bold text-lg text-dark-text truncate">
+                    {{ isPointsLeague ? (leaders.mostPoints?.name || 'N/A') : (leaders.bestCatWinPct?.name || 'N/A') }}
+                  </div>
+                  <div class="text-sm text-dark-textMuted">
+                    {{ isPointsLeague
+                      ? `${leaders.mostPoints?.wins || 0}-${leaders.mostPoints?.losses || 0}`
+                      : `${leaders.bestCatWinPct?.totalCategoryWins || leaders.bestCatWinPct?.wins || 0}-${leaders.bestCatWinPct?.totalCategoryLosses || leaders.bestCatWinPct?.losses || 0}` }}
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-2xl font-black text-yellow-400">
+                  {{ isPointsLeague
+                    ? (leaders.mostPoints?.points_for?.toFixed(1) || '0.0')
+                    : getCatWinPct(leaders.bestCatWinPct) + '%' }}
+                </div>
+                <div class="text-xs text-yellow-400/70 group-hover:text-yellow-400 transition-colors">Click for details →</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Points League: Best All-Play / Category League: Most Dominant Wins -->
+          <div
+            @click="openLeaderModal(isPointsLeague ? 'bestAllPlay' : 'mostDominant')"
+            class="group relative overflow-hidden rounded-xl bg-dark-card border border-blue-500/20 hover:border-blue-500/40 transition-all cursor-pointer"
+          >
+            <div class="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
+            <div class="relative p-5">
+              <div class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-1">
+                {{ isPointsLeague ? 'Best All-Play' : 'Most Dominant Wins' }}
+              </div>
+              <div v-if="!isPointsLeague" class="text-[10px] text-dark-textMuted mb-2">Weeks with ≤2 category losses</div>
+              <div v-else class="mb-3"></div>
+              <div class="flex items-center gap-3 mb-3">
+                <img
+                  :src="getLogoUrl(isPointsLeague ? leaders.bestAllPlay?.logo_url : leaders.mostDominant?.logo_url)"
+                  class="w-12 h-12 rounded-full border-2 border-blue-500/50 object-cover"
+                  @error="handleImageError"
+                />
+                <div class="flex-1 min-w-0">
+                  <div class="font-bold text-lg text-dark-text truncate">
+                    {{ isPointsLeague ? (leaders.bestAllPlay?.name || 'N/A') : (leaders.mostDominant?.name || 'N/A') }}
+                  </div>
+                  <div class="text-sm text-dark-textMuted">
+                    {{ isPointsLeague
+                      ? (leaders.bestAllPlay ? `${leaders.bestAllPlay.wins}-${leaders.bestAllPlay.losses}` : '')
+                      : (leaders.mostDominant ? `${leaders.mostDominant.totalCategoryWins || leaders.mostDominant.wins || 0}-${leaders.mostDominant.totalCategoryLosses || leaders.mostDominant.losses || 0}` : '') }}
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-2xl font-black text-blue-400">
+                  {{ isPointsLeague
+                    ? `${leaders.bestAllPlay?.all_play_wins || 0}-${leaders.bestAllPlay?.all_play_losses || 0}`
+                    : `${teamDominantWins.get(leaders.mostDominant?.team_key) || 0} weeks` }}
+                </div>
+                <div class="text-xs text-blue-400/70 group-hover:text-blue-400 transition-colors">Click for details →</div>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -144,7 +218,7 @@
               <span class="text-dark-textMuted">Select <span class="text-yellow-400">team</span> for details</span>
             </div>
             <p v-if="!isPointsLeague && hasRealPerCategoryData" class="text-xs text-dark-textMuted mt-1 italic">
-              Category columns show how many times each team won that stat category across all completed weeks.
+              {{ isRotoMode ? 'Category columns show ranking points (1st place = most points). Total Roto Pts is the sum across all categories.' : 'Category columns show how many times each team won that stat category across all completed weeks.' }}
             </p>
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
@@ -221,8 +295,11 @@
               </th>
 
 
-              <!-- W-L-T: only on page 0 (mobile), always on desktop -->
-              <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400 whitespace-nowrap" :class="standingsColumnPage > 0 ? 'hidden sm:table-cell' : ''" @click="setSortColumn('record')" title="Total Category W-L-T">
+              <!-- W-L-T or Roto Pts: only on page 0 (mobile), always on desktop -->
+              <th v-if="isRotoMode" class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400 whitespace-nowrap" :class="standingsColumnPage > 0 ? 'hidden sm:table-cell' : ''" @click="setSortColumn('pf')" title="Total Roto Points">
+                Roto Pts <span v-if="sortColumn === 'pf'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+              </th>
+              <th v-else class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400 whitespace-nowrap" :class="standingsColumnPage > 0 ? 'hidden sm:table-cell' : ''" @click="setSortColumn('record')" title="Total Category W-L-T">
                 W-L-T <span v-if="sortColumn === 'record'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
               </th>
               
@@ -310,14 +387,31 @@
               </td>
 
               <td class="py-3 px-3 text-center" :class="standingsColumnPage > 0 ? 'hidden sm:table-cell' : ''">
-                <span class="font-bold whitespace-nowrap" :class="getRecordClass(team)">
-                  {{ team.wins }}-{{ team.losses }}{{ team.ties > 0 ? `-${team.ties}` : '' }}
-                </span>
+                <template v-if="isRotoMode">
+                  <span class="font-bold text-green-400">{{ (rotoPointsData[team.team_key] || team.points_for || 0).toFixed(1) }}</span>
+                </template>
+                <template v-else>
+                  <span class="font-bold whitespace-nowrap" :class="getRecordClass(team)">
+                    {{ team.wins }}-{{ team.losses }}{{ team.ties > 0 ? `-${team.ties}` : '' }}
+                  </span>
+                </template>
               </td>
               
-              <template v-if="hasRealPerCategoryData">
-                <td 
-                  v-for="(cat, catIdx) in displayCategories" 
+              <template v-if="isRotoMode && statCategories.length > 0">
+                <td
+                  v-for="(cat, catIdx) in displayCategories"
+                  :key="cat.stat_id"
+                  class="py-3 px-2 text-center"
+                  :class="standingsColumnPage === 0 || Math.floor(catIdx / 4) + 1 !== standingsColumnPage ? 'hidden sm:table-cell' : ''"
+                >
+                  <span class="text-sm font-bold" :class="getRotoRankClass(perCategoryWinsData[team.team_key]?.[cat.stat_id] || 0)">
+                    {{ (perCategoryWinsData[team.team_key]?.[cat.stat_id] || 0) % 1 === 0 ? (perCategoryWinsData[team.team_key]?.[cat.stat_id] || 0) : (perCategoryWinsData[team.team_key]?.[cat.stat_id] || 0).toFixed(1) }}
+                  </span>
+                </td>
+              </template>
+              <template v-else-if="hasRealPerCategoryData">
+                <td
+                  v-for="(cat, catIdx) in displayCategories"
                   :key="cat.stat_id"
                   class="py-3 px-2 text-center"
                   :class="standingsColumnPage === 0 || Math.floor(catIdx / 4) + 1 !== standingsColumnPage ? 'hidden sm:table-cell' : ''"
@@ -734,24 +828,46 @@
           <!-- Top Stats Cards -->
           <div class="p-6 border-b border-dark-border">
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div class="bg-dark-border/20 rounded-xl p-4 text-center">
-                <div class="text-2xl font-black text-dark-text">{{ selectedTeamDetail?.wins }}-{{ selectedTeamDetail?.losses }}{{ selectedTeamDetail?.ties > 0 ? `-${selectedTeamDetail.ties}` : '' }}</div>
-                <div class="text-xs text-dark-textMuted mt-1">Record</div>
-              </div>
-              <div class="bg-dark-border/20 rounded-xl p-4 text-center">
-                <div class="flex items-center justify-center">
-                  <span class="text-2xl font-black text-yellow-400">#{{ selectedTeamDetail?.regularSeasonRank }}</span>
+              <template v-if="isRotoMode">
+                <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                  <div class="text-2xl font-black text-green-400">{{ (rotoPointsData[selectedTeamDetail?.team_key] || selectedTeamDetail?.points_for || 0).toFixed(1) }}</div>
+                  <div class="text-xs text-dark-textMuted mt-1">Roto Pts</div>
                 </div>
-                <div class="text-xs text-dark-textMuted mt-1">Rank</div>
-              </div>
-              <div class="bg-dark-border/20 rounded-xl p-4 text-center">
-                <div class="text-2xl font-black text-cyan-400">{{ selectedTeamDetail?.all_play_wins }}-{{ selectedTeamDetail?.all_play_losses }}</div>
-                <div class="text-xs text-dark-textMuted mt-1">All-Play</div>
-              </div>
-              <div class="bg-dark-border/20 rounded-xl p-4 text-center">
-                <div class="text-2xl font-black text-green-400">{{ isPointsLeague ? pointsLeagueTeamDetailStats.ppg : teamDetailAvgCatsPerWeek }}</div>
-                <div class="text-xs text-dark-textMuted mt-1">{{ isPointsLeague ? 'PPG' : 'Cats/Week' }}</div>
-              </div>
+                <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                  <div class="flex items-center justify-center">
+                    <span class="text-2xl font-black text-yellow-400">#{{ selectedTeamDetail?.regularSeasonRank }}</span>
+                  </div>
+                  <div class="text-xs text-dark-textMuted mt-1">Rank</div>
+                </div>
+                <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                  <div class="text-2xl font-black text-cyan-400">{{ (rotoMaxPoints - (rotoPointsData[selectedTeamDetail?.team_key] || 0)).toFixed(1) }}</div>
+                  <div class="text-xs text-dark-textMuted mt-1">Pts Back</div>
+                </div>
+                <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                  <div class="text-2xl font-black" :class="getRotoBalanceClass(selectedTeamDetail?.team_key)">{{ getRotoBalanceScore(selectedTeamDetail?.team_key) }}</div>
+                  <div class="text-xs text-dark-textMuted mt-1">Balance</div>
+                </div>
+              </template>
+              <template v-else>
+                <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                  <div class="text-2xl font-black text-dark-text">{{ selectedTeamDetail?.wins }}-{{ selectedTeamDetail?.losses }}{{ selectedTeamDetail?.ties > 0 ? `-${selectedTeamDetail.ties}` : '' }}</div>
+                  <div class="text-xs text-dark-textMuted mt-1">Record</div>
+                </div>
+                <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                  <div class="flex items-center justify-center">
+                    <span class="text-2xl font-black text-yellow-400">#{{ selectedTeamDetail?.regularSeasonRank }}</span>
+                  </div>
+                  <div class="text-xs text-dark-textMuted mt-1">Rank</div>
+                </div>
+                <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                  <div class="text-2xl font-black text-cyan-400">{{ selectedTeamDetail?.all_play_wins }}-{{ selectedTeamDetail?.all_play_losses }}</div>
+                  <div class="text-xs text-dark-textMuted mt-1">All-Play</div>
+                </div>
+                <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                  <div class="text-2xl font-black text-green-400">{{ isPointsLeague ? pointsLeagueTeamDetailStats.ppg : teamDetailAvgCatsPerWeek }}</div>
+                  <div class="text-xs text-dark-textMuted mt-1">{{ isPointsLeague ? 'PPG' : 'Cats/Week' }}</div>
+                </div>
+              </template>
             </div>
           </div>
           
@@ -821,6 +937,41 @@
             </div>
           </template>
           
+          <!-- Roto League: Category Rankings -->
+          <template v-else-if="isRotoMode">
+            <div class="p-6">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Category Rankings</h4>
+              <p class="text-xs text-dark-textMuted mb-4">Ranking points per category ({{ leagueStore.yahooTeams?.length || 12 }} = 1st place, 1 = last). Higher is better.</p>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div
+                  v-for="cat in statCategories"
+                  :key="cat.stat_id"
+                  class="bg-dark-border/20 rounded-xl p-3"
+                >
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs text-dark-textMuted font-medium">{{ cat.display_name }}</span>
+                    <span
+                      class="text-xs px-1.5 py-0.5 rounded font-bold"
+                      :class="getRotoRankBadgeClass(perCategoryWinsData[selectedTeamDetail?.team_key]?.[cat.stat_id] || 0)"
+                    >
+                      {{ formatRotoRankLabel(perCategoryWinsData[selectedTeamDetail?.team_key]?.[cat.stat_id] || 0) }}
+                    </span>
+                  </div>
+                  <div class="text-lg font-bold" :class="getRotoRankValueClass(perCategoryWinsData[selectedTeamDetail?.team_key]?.[cat.stat_id] || 0)">
+                    {{ formatRotoPoints(perCategoryWinsData[selectedTeamDetail?.team_key]?.[cat.stat_id] || 0) }} pts
+                  </div>
+                  <div class="h-1.5 bg-dark-border rounded-full overflow-hidden mt-2">
+                    <div
+                      class="h-full rounded-full transition-all"
+                      :class="getRotoRankBarClass(perCategoryWinsData[selectedTeamDetail?.team_key]?.[cat.stat_id] || 0)"
+                      :style="{ width: `${((perCategoryWinsData[selectedTeamDetail?.team_key]?.[cat.stat_id] || 0) / (leagueStore.yahooTeams?.length || 12)) * 100}%` }"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+
           <!-- Category League: Category Performance Chart -->
           <template v-else>
             <div class="p-6 border-b border-dark-border">
@@ -1181,6 +1332,10 @@ const teamCategoryWins = ref<Map<string, Record<string, number>>>(new Map())
 const teamTotalCategoryWins = ref<Map<string, number>>(new Map())
 const teamTotalCategoryLosses = ref<Map<string, number>>(new Map())
 const espnHasRealStatValues = ref(false) // Track if ESPN provided real per-category stat values
+const perCategoryWinsData = ref<Record<string, Record<string, number>>>({}) // For roto: per-category ranking points
+const rotoPointsData = ref<Record<string, number>>({}) // For roto: total roto points per team
+const rotoMaxPoints = ref(0) // For roto: highest roto point total
+const isRotoMode = ref(false) // Whether current league is roto
 const weeklyStandings = ref<Map<number, any[]>>(new Map())
 
 // ESPN calculated standings from getStandings() - has correct wins/losses for category leagues
@@ -1637,8 +1792,8 @@ const sortedTeams = computed(() => {
       aVal = a.all_play_wins / Math.max(1, a.all_play_wins + a.all_play_losses + (a.all_play_ties || 0))
       bVal = b.all_play_wins / Math.max(1, b.all_play_wins + b.all_play_losses + (b.all_play_ties || 0))
     } else if (sortColumn.value === 'pf') {
-      aVal = a.points_for || 0
-      bVal = b.points_for || 0
+      aVal = isRotoMode.value ? (rotoPointsData.value[a.team_key] || a.points_for || 0) : (a.points_for || 0)
+      bVal = isRotoMode.value ? (rotoPointsData.value[b.team_key] || b.points_for || 0) : (b.points_for || 0)
     } else if (sortColumn.value === 'pa') {
       aVal = a.points_against || 0
       bVal = b.points_against || 0
@@ -1800,6 +1955,58 @@ const leaders = computed(() => {
   }
 })
 
+// Roto League Leaders: Most Categories Led
+const rotoCategoryLeader = computed(() => {
+  if (!isRotoMode.value) return null
+  const teams = leagueStore.yahooTeams
+  if (!teams || teams.length === 0) return null
+  const numTeams = teams.length
+  let bestTeam: any = null
+  let bestCount = -1
+  for (const team of teams) {
+    const tk = team.team_key
+    let leadCount = 0
+    for (const [, pts] of Object.entries(perCategoryWinsData.value[tk] || {})) {
+      if (pts >= numTeams) leadCount++ // pts === numTeams means 1st place in that category
+    }
+    if (leadCount > bestCount) {
+      bestCount = leadCount
+      bestTeam = team
+    }
+  }
+  return bestTeam ? { ...bestTeam, count: bestCount } : null
+})
+
+// Roto League Leaders: Most Balanced (highest minimum ranking across all categories)
+const rotoMostBalanced = computed(() => {
+  if (!isRotoMode.value) return null
+  const teams = leagueStore.yahooTeams
+  if (!teams || teams.length === 0) return null
+  let bestTeam: any = null
+  let bestMin = -1
+  for (const team of teams) {
+    const tk = team.team_key
+    const rankings = Object.values(perCategoryWinsData.value[tk] || {})
+    if (rankings.length === 0) continue
+    const minRank = Math.min(...rankings)
+    if (minRank > bestMin) {
+      bestMin = minRank
+      bestTeam = team
+    }
+  }
+  // Generate ordinal label for worst rank
+  const worstRankLabel = bestMin > 0 ? getOrdinal(bestMin) : 'N/A'
+  return bestTeam ? { ...bestTeam, worstRank: bestMin, worstRankLabel } : null
+})
+
+// Helper: ordinal suffix (1st, 2nd, 3rd, etc.)
+function getOrdinal(n: number): string {
+  const rounded = Math.round(n)
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = rounded % 100
+  return rounded + (s[(v - 20) % 10] || s[v] || s[0])
+}
+
 // Leader Modal Data - Top 5 only
 const leaderModalData = computed(() => {
   const teams = teamsWithStats.value
@@ -1815,7 +2022,7 @@ const leaderModalData = computed(() => {
     }).map(t => ({ ...t, value: (t.wins || 0) / Math.max(1, (t.wins || 0) + (t.losses || 0)) * 100 }))
     maxValue = 100
   } else if (leaderModalType.value === 'hottest') {
-    // Hottest: points leagues = most points last 3 weeks, category leagues = most cat wins
+    // Hottest: points leagues = most points last 3 weeks, roto = most roto pts, category leagues = most cat wins
     if (isPointsLeague.value) {
       comparison = [...teams].sort((a, b) => {
         const aLast3 = last3WeeksPoints.value.get(a.team_key) || 0
@@ -1823,6 +2030,13 @@ const leaderModalData = computed(() => {
         return bLast3 - aLast3
       }).map(t => ({ ...t, value: last3WeeksPoints.value.get(t.team_key) || 0 }))
       maxValue = Math.max(...teams.map(t => last3WeeksPoints.value.get(t.team_key) || 0), 1)
+    } else if (isRotoMode.value) {
+      comparison = [...teams].sort((a, b) => {
+        const aRoto = rotoPointsData.value[a.team_key] || a.points_for || 0
+        const bRoto = rotoPointsData.value[b.team_key] || b.points_for || 0
+        return bRoto - aRoto
+      }).map(t => ({ ...t, value: rotoPointsData.value[t.team_key] || t.points_for || 0 }))
+      maxValue = Math.max(...teams.map(t => rotoPointsData.value[t.team_key] || t.points_for || 0), 1)
     } else {
       comparison = [...teams].sort((a, b) => {
         const aLast3 = last3WeeksWins.value.get(a.team_key) || 0
@@ -1832,7 +2046,7 @@ const leaderModalData = computed(() => {
       maxValue = Math.max(...teams.map(t => last3WeeksWins.value.get(t.team_key) || 0), 1)
     }
   } else if (leaderModalType.value === 'coldest') {
-    // Coldest: points leagues = fewest points last 3 weeks, category leagues = fewest cat wins
+    // Coldest: points leagues = fewest points last 3 weeks, roto = fewest roto pts, category leagues = fewest cat wins
     if (isPointsLeague.value) {
       comparison = [...teams].sort((a, b) => {
         const aLast3 = last3WeeksPoints.value.get(a.team_key) || 0
@@ -1840,6 +2054,13 @@ const leaderModalData = computed(() => {
         return aLast3 - bLast3
       }).map(t => ({ ...t, value: last3WeeksPoints.value.get(t.team_key) || 0 }))
       maxValue = Math.max(...teams.map(t => last3WeeksPoints.value.get(t.team_key) || 0), 1)
+    } else if (isRotoMode.value) {
+      comparison = [...teams].sort((a, b) => {
+        const aRoto = rotoPointsData.value[a.team_key] || a.points_for || 0
+        const bRoto = rotoPointsData.value[b.team_key] || b.points_for || 0
+        return aRoto - bRoto
+      }).map(t => ({ ...t, value: rotoPointsData.value[t.team_key] || t.points_for || 0 }))
+      maxValue = Math.max(...teams.map(t => rotoPointsData.value[t.team_key] || t.points_for || 0), 1)
     } else {
       comparison = [...teams].sort((a, b) => {
         const aLast3 = last3WeeksWins.value.get(a.team_key) || 0
@@ -1892,8 +2113,27 @@ const leaderModalData = computed(() => {
     // Fewest to most
     comparison = [...teams].sort((a, b) => (a.transactions || 0) - (b.transactions || 0)).map(t => ({ ...t, value: t.transactions || 0 }))
     maxValue = Math.max(...teams.map(t => t.transactions || 0), 1)
+  } else if (leaderModalType.value === 'rotoCategoryLeader') {
+    // Roto: most categories led (rank = numTeams)
+    const numTeams = leagueStore.yahooTeams.length
+    comparison = [...teams].map(t => {
+      let leadCount = 0
+      for (const [, pts] of Object.entries(perCategoryWinsData.value[t.team_key] || {})) {
+        if (pts >= numTeams) leadCount++
+      }
+      return { ...t, value: leadCount }
+    }).sort((a, b) => b.value - a.value)
+    maxValue = Math.max(...comparison.map(t => t.value), 1)
+  } else if (leaderModalType.value === 'rotoMostBalanced') {
+    // Roto: most balanced (highest minimum ranking)
+    comparison = [...teams].map(t => {
+      const rankings = Object.values(perCategoryWinsData.value[t.team_key] || {})
+      const minRank = rankings.length > 0 ? Math.min(...rankings) : 0
+      return { ...t, value: minRank }
+    }).sort((a, b) => b.value - a.value)
+    maxValue = Math.max(...comparison.map(t => t.value), 1)
   }
-  
+
   // Show all teams (no limit)
   return { comparison, maxValue, leader: comparison[0] }
 })
@@ -1910,46 +2150,52 @@ const leaderModalTitle = computed(() => {
   if (leaderModalType.value === 'coldest') return '❄️ Coldest Teams'
   if (leaderModalType.value === 'mostMoves') return '📈 Most Active Teams'
   if (leaderModalType.value === 'fewestMoves') return '🪨 Least Active Teams'
+  if (leaderModalType.value === 'rotoCategoryLeader') return '👑 Most Categories Led'
+  if (leaderModalType.value === 'rotoMostBalanced') return '⚖️ Most Balanced Teams'
   return ''
 })
 
 const leaderModalTextColor = computed(() => {
   if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return 'text-green-400'
-  if (leaderModalType.value === 'mostPoints' || leaderModalType.value === 'bestCatWinPct' || leaderModalType.value === 'hottest') return 'text-yellow-400'
+  if (leaderModalType.value === 'mostPoints' || leaderModalType.value === 'bestCatWinPct' || leaderModalType.value === 'hottest' || leaderModalType.value === 'rotoMostBalanced') return 'text-yellow-400'
   if (leaderModalType.value === 'mostDominant' || leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'text-blue-400'
   if (leaderModalType.value === 'unluckiest') return 'text-red-400'
   if (leaderModalType.value === 'coldest') return 'text-cyan-400'
   if (leaderModalType.value === 'fewestMoves') return 'text-purple-400'
+  if (leaderModalType.value === 'rotoCategoryLeader') return 'text-green-400'
   return 'text-blue-400'
 })
 
 const leaderModalBarColor = computed(() => {
   if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return 'bg-green-500'
-  if (leaderModalType.value === 'mostPoints' || leaderModalType.value === 'bestCatWinPct' || leaderModalType.value === 'hottest') return 'bg-yellow-500'
+  if (leaderModalType.value === 'mostPoints' || leaderModalType.value === 'bestCatWinPct' || leaderModalType.value === 'hottest' || leaderModalType.value === 'rotoMostBalanced') return 'bg-yellow-500'
   if (leaderModalType.value === 'mostDominant' || leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'bg-blue-500'
   if (leaderModalType.value === 'unluckiest') return 'bg-red-500'
   if (leaderModalType.value === 'coldest') return 'bg-cyan-500'
   if (leaderModalType.value === 'fewestMoves') return 'bg-purple-500'
+  if (leaderModalType.value === 'rotoCategoryLeader') return 'bg-green-500'
   return 'bg-blue-500'
 })
 
 const leaderModalRingColor = computed(() => {
   if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return 'ring-green-500'
-  if (leaderModalType.value === 'mostPoints' || leaderModalType.value === 'bestCatWinPct' || leaderModalType.value === 'hottest') return 'ring-yellow-500'
+  if (leaderModalType.value === 'mostPoints' || leaderModalType.value === 'bestCatWinPct' || leaderModalType.value === 'hottest' || leaderModalType.value === 'rotoMostBalanced') return 'ring-yellow-500'
   if (leaderModalType.value === 'mostDominant' || leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'ring-blue-500'
   if (leaderModalType.value === 'unluckiest') return 'ring-red-500'
   if (leaderModalType.value === 'coldest') return 'ring-cyan-500'
   if (leaderModalType.value === 'fewestMoves') return 'ring-purple-500'
+  if (leaderModalType.value === 'rotoCategoryLeader') return 'ring-green-500'
   return 'ring-blue-500'
 })
 
 const leaderModalGradient = computed(() => {
   if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return 'bg-gradient-to-r from-green-500/10 to-transparent'
-  if (leaderModalType.value === 'mostPoints' || leaderModalType.value === 'bestCatWinPct' || leaderModalType.value === 'hottest') return 'bg-gradient-to-r from-yellow-500/10 to-transparent'
+  if (leaderModalType.value === 'mostPoints' || leaderModalType.value === 'bestCatWinPct' || leaderModalType.value === 'hottest' || leaderModalType.value === 'rotoMostBalanced') return 'bg-gradient-to-r from-yellow-500/10 to-transparent'
   if (leaderModalType.value === 'mostDominant' || leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'bg-gradient-to-r from-blue-500/10 to-transparent'
   if (leaderModalType.value === 'unluckiest') return 'bg-gradient-to-r from-red-500/10 to-transparent'
   if (leaderModalType.value === 'coldest') return 'bg-gradient-to-r from-cyan-500/10 to-transparent'
   if (leaderModalType.value === 'fewestMoves') return 'bg-gradient-to-r from-purple-500/10 to-transparent'
+  if (leaderModalType.value === 'rotoCategoryLeader') return 'bg-gradient-to-r from-green-500/10 to-transparent'
   return 'bg-gradient-to-r from-blue-500/10 to-transparent'
 })
 
@@ -1961,6 +2207,9 @@ const leaderModalValue = computed(() => {
     if (isPointsLeague.value) {
       return `${(last3WeeksPoints.value.get(leader.team_key) || 0).toFixed(1)}`
     }
+    if (isRotoMode.value) {
+      return `${(rotoPointsData.value[leader.team_key] || leader.points_for || 0).toFixed(1)}`
+    }
     return `${last3WeeksWins.value.get(leader.team_key) || 0}`
   }
   if (leaderModalType.value === 'mostPoints') return leader.points_for?.toFixed(1) || '0'
@@ -1969,18 +2218,22 @@ const leaderModalValue = computed(() => {
   if (leaderModalType.value === 'bestAllPlay') return `${leader.all_play_wins || 0}-${leader.all_play_losses || 0}`
   if (leaderModalType.value === 'luckiest' || leaderModalType.value === 'unluckiest') return (leader.luckScore > 0 ? '+' : '') + (leader.luckScore || 0).toFixed(0)
   if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') return leader.transactions?.toString() || '0'
+  if (leaderModalType.value === 'rotoCategoryLeader') return `${leader.value || 0} categories`
+  if (leaderModalType.value === 'rotoMostBalanced') return getOrdinal(leader.value || 0)
   return `${leader.all_play_wins || 0}-${leader.all_play_losses || 0}`
 })
 
 const leaderModalUnit = computed(() => {
   if (leaderModalType.value === 'bestRecord') return 'Win %'
-  if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return isPointsLeague.value ? 'Points (Last 3)' : 'Cats (Last 3)'
+  if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return isPointsLeague.value ? 'Points (Last 3)' : isRotoMode.value ? 'Roto Points' : 'Cats (Last 3)'
   if (leaderModalType.value === 'mostPoints') return 'Total Points'
   if (leaderModalType.value === 'bestCatWinPct') return 'Category Win %'
   if (leaderModalType.value === 'mostDominant') return 'Dominant Weeks'
   if (leaderModalType.value === 'bestAllPlay') return 'All-Play Wins'
   if (leaderModalType.value === 'luckiest' || leaderModalType.value === 'unluckiest') return 'Luck Score'
   if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') return 'Transactions'
+  if (leaderModalType.value === 'rotoCategoryLeader') return 'Categories Led'
+  if (leaderModalType.value === 'rotoMostBalanced') return 'Worst Category Rank'
   return 'All-Play Record'
 })
 
@@ -2674,37 +2927,79 @@ const quickStats = computed(() => {
     ]
   }
   
-  // Category leagues: use wins
+  // Roto leagues: hottest/coldest = most/fewest total roto points
+  // TODO: Weekly roto point snapshots would make this more accurate (show last 3 weeks change).
+  // For now, use total roto points as the proxy since we skip matchup loading for roto leagues.
+  if (isRotoMode.value) {
+    const teamsWithRoto = teams.map(t => ({
+      ...t,
+      rotoPts: rotoPointsData.value[t.team_key] || t.points_for || 0,
+      // Check for points_change from Yahoo standings (weekly change)
+      ptsChange: (t as any).points_change ?? null
+    }))
+
+    // If points_change exists on any team, use it for hottest/coldest
+    const hasPointsChange = teamsWithRoto.some(t => t.ptsChange !== null && t.ptsChange !== undefined)
+
+    let hottest: typeof teamsWithRoto[0]
+    let coldest: typeof teamsWithRoto[0]
+    let hottestValue: string
+    let coldestValue: string
+
+    if (hasPointsChange) {
+      hottest = [...teamsWithRoto].sort((a, b) => (b.ptsChange || 0) - (a.ptsChange || 0))[0]
+      coldest = [...teamsWithRoto].sort((a, b) => (a.ptsChange || 0) - (b.ptsChange || 0))[0]
+      hottestValue = hottest ? `+${hottest.ptsChange} pts change` : '-'
+      coldestValue = coldest ? `${coldest.ptsChange} pts change` : '-'
+    } else {
+      hottest = [...teamsWithRoto].sort((a, b) => b.rotoPts - a.rotoPts)[0]
+      coldest = [...teamsWithRoto].sort((a, b) => a.rotoPts - b.rotoPts)[0]
+      hottestValue = hottest ? `${hottest.rotoPts.toFixed(1)} roto pts` : '-'
+      coldestValue = coldest ? `${coldest.rotoPts.toFixed(1)} roto pts` : '-'
+    }
+
+    const mostActive = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0]
+    const leastActive = [...teams].sort((a, b) => (a.transactions || 0) - (b.transactions || 0))[0]
+
+    return [
+      { icon: '🔥', label: 'Highest Roto Pts', team: hottest, value: hottestValue, valueClass: 'text-orange-400', type: 'hottest' },
+      { icon: '❄️', label: 'Fewest Roto Pts', team: coldest, value: coldestValue, valueClass: 'text-cyan-400', type: 'coldest' },
+      { icon: '📈', label: 'Most Moves', team: mostActive, value: mostActive?.transactions?.toString() || '0', valueClass: 'text-blue-400', type: 'mostMoves' },
+      { icon: '🪨', label: 'Fewest Moves', team: leastActive, value: leastActive?.transactions?.toString() || '0', valueClass: 'text-purple-400', type: 'fewestMoves' }
+    ]
+  }
+
+  // H2H Category leagues: use wins
   const teamsWithLast3 = teams.map(t => ({
     ...t,
     last3Wins: last3WeeksWins.value.get(t.team_key) || 0
   }))
-  
+
   // Debug log
   if (teams.length > 0) {
     console.log('[quickStats] Category league - teams count:', teams.length)
     console.log('[quickStats] last3WeeksWins map size:', last3WeeksWins.value.size)
     console.log('[quickStats] Sample team last3Wins values:', teamsWithLast3.slice(0, 3).map(t => ({ name: t.name, last3Wins: t.last3Wins })))
   }
-  
+
   const hottest = [...teamsWithLast3].sort((a, b) => b.last3Wins - a.last3Wins)[0]
   const coldest = [...teamsWithLast3].sort((a, b) => a.last3Wins - b.last3Wins)[0]
-  
+
   const hasWeeklyData = weeklyMatchupResults.value.size > 0
   const winsLabel = hasWeeklyData ? 'cat wins' : 'total cat'
-  
+
   console.log('[quickStats] RESULT - hottest:', hottest?.name, 'with', hottest?.last3Wins, winsLabel, '| coldest:', coldest?.name, 'with', coldest?.last3Wins, winsLabel)
-  
+
   const mostActive = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0]
   const leastActive = [...teams].sort((a, b) => (a.transactions || 0) - (b.transactions || 0))[0]
-  
+
   const stats = [
     { icon: '🔥', label: 'Hottest', team: hottest, value: hottest ? `${hottest.last3Wins} ${winsLabel}` : '-', valueClass: 'text-orange-400', type: 'hottest' },
     { icon: '❄️', label: 'Coldest', team: coldest, value: coldest ? `${coldest.last3Wins} ${winsLabel}` : '-', valueClass: 'text-cyan-400', type: 'coldest' },
     { icon: '📈', label: 'Most Moves', team: mostActive, value: mostActive?.transactions?.toString() || '0', valueClass: 'text-blue-400', type: 'mostMoves' },
     { icon: '🪨', label: 'Fewest Moves', team: leastActive, value: leastActive?.transactions?.toString() || '0', valueClass: 'text-purple-400', type: 'fewestMoves' }
   ]
-  
+
   return stats
 })
 
@@ -3017,6 +3312,69 @@ function getPointsAgainstClass(team: any) {
   return 'text-dark-textMuted'
 }
 
+function getRotoRankClass(points: number) {
+  const n = leagueStore.yahooTeams?.length || 12
+  if (points >= n - 1) return 'text-green-400' // top 2
+  if (points >= n - 3) return 'text-green-300' // top 4
+  if (points <= 2) return 'text-red-400' // bottom 2
+  if (points <= 4) return 'text-red-300' // bottom 4
+  return 'text-gray-300'
+}
+
+// Roto team detail modal helpers
+function getRotoBalanceScore(teamKey: string) {
+  const rankings = Object.values(perCategoryWinsData.value[teamKey] || {}) as number[]
+  if (rankings.length === 0) return '—'
+  const mean = rankings.reduce((a, b) => a + b, 0) / rankings.length
+  const variance = rankings.reduce((sum, r) => sum + (r - mean) ** 2, 0) / rankings.length
+  const stdDev = Math.sqrt(variance)
+  const n = leagueStore.yahooTeams?.length || 12
+  const maxStdDev = (n - 1) / 2
+  const score = Math.max(0, Math.round(100 - (stdDev / maxStdDev * 100)))
+  return score.toString()
+}
+function getRotoBalanceClass(teamKey: string) {
+  const score = parseInt(getRotoBalanceScore(teamKey))
+  if (isNaN(score)) return 'text-gray-400'
+  if (score >= 70) return 'text-green-400'
+  if (score >= 40) return 'text-yellow-400'
+  return 'text-red-400'
+}
+function getRotoRankBadgeClass(points: number) {
+  const n = leagueStore.yahooTeams?.length || 12
+  if (points >= n - 1) return 'bg-green-500/20 text-green-400'
+  if (points >= n - 3) return 'bg-green-500/10 text-green-300'
+  if (points <= 2) return 'bg-red-500/20 text-red-400'
+  if (points <= 4) return 'bg-red-500/10 text-red-300'
+  return 'bg-dark-border/30 text-dark-textMuted'
+}
+function getRotoRankValueClass(points: number) {
+  const n = leagueStore.yahooTeams?.length || 12
+  if (points >= n - 1) return 'text-green-400'
+  if (points >= n - 3) return 'text-green-300'
+  if (points <= 2) return 'text-red-400'
+  if (points <= 4) return 'text-red-300'
+  return 'text-dark-text'
+}
+function getRotoRankBarClass(points: number) {
+  const n = leagueStore.yahooTeams?.length || 12
+  if (points >= n - 1) return 'bg-green-500'
+  if (points >= n - 3) return 'bg-green-400'
+  if (points <= 2) return 'bg-red-500'
+  if (points <= 4) return 'bg-red-400'
+  return 'bg-yellow-500'
+}
+function formatRotoRankLabel(points: number) {
+  const n = leagueStore.yahooTeams?.length || 12
+  const rank = n - Math.round(points) + 1
+  if (rank <= 0 || rank > n) return `#${Math.round(points)}`
+  const suffix = rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th'
+  return `#${rank}${suffix}`
+}
+function formatRotoPoints(points: number) {
+  return points % 1 === 0 ? points.toString() : points.toFixed(1)
+}
+
 function getCategoryWinClass(wins: number, catId: string) {
   // Find the max and min values for this category across all teams
   const teams = teamsWithStats.value
@@ -3054,11 +3412,13 @@ function closeLeaderModal() { showLeaderModal.value = false }
 function formatLeaderValue(value: number) {
   if (leaderModalType.value === 'bestRecord') return value.toFixed(0) + '%'
   if (leaderModalType.value === 'bestCatWinPct') return value.toFixed(2) + '%'
-  if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return isPointsLeague.value ? value.toFixed(1) : Math.round(value).toString()
+  if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return isPointsLeague.value ? value.toFixed(1) : isRotoMode.value ? value.toFixed(1) : Math.round(value).toString()
   if (leaderModalType.value === 'mostCatWins' && !isPointsLeague.value) return value + ' wins'
   if (leaderModalType.value === 'mostCatWins' && isPointsLeague.value) return value.toFixed(1)
   if (leaderModalType.value === 'mostDominant') return value + ' weeks'
   if (leaderModalType.value === 'mostPoints' || leaderModalType.value === 'fewestPoints') return value.toFixed(2)
+  if (leaderModalType.value === 'rotoCategoryLeader') return Math.round(value).toString()
+  if (leaderModalType.value === 'rotoMostBalanced') return getOrdinal(value)
   // Default: cap at 2 decimal places
   return Number.isInteger(value) ? value.toString() : value.toFixed(2)
 }
@@ -3820,6 +4180,8 @@ async function downloadLeaderImage() {
       if (leaderModalType.value === 'coldest') return '#06b6d4' // cyan
       if (leaderModalType.value === 'mostMoves') return '#3b82f6' // blue
       if (leaderModalType.value === 'fewestMoves') return '#a855f7' // purple
+      if (leaderModalType.value === 'rotoCategoryLeader') return '#22c55e' // green
+      if (leaderModalType.value === 'rotoMostBalanced') return '#eab308' // yellow
       return '#eab308' // default yellow
     }
     const accentColor = getAccentColor()
@@ -3838,8 +4200,10 @@ async function downloadLeaderImage() {
       if (leaderModalType.value === 'bestCatWinPct') return 'Cat Win %'
       if (leaderModalType.value === 'mostDominant') return 'Dom. Weeks'
       if (leaderModalType.value === 'bestAllPlay') return 'All-Play Wins'
-      if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return isPointsLeague.value ? 'Points (Last 3)' : 'Cats (Last 3)'
+      if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return isPointsLeague.value ? 'Points (Last 3)' : isRotoMode.value ? 'Roto Points' : 'Cats (Last 3)'
       if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') return 'Moves'
+      if (leaderModalType.value === 'rotoCategoryLeader') return 'Categories Led'
+      if (leaderModalType.value === 'rotoMostBalanced') return 'Worst Rank'
       return ''
     }
     const valueUnit = getValueUnit()
@@ -4757,8 +5121,9 @@ async function loadAllMatchups() {
   }
   
   try {
-    // For category leagues, load actual matchup data per week
-    if (!isPointsLeague.value) {
+    // For category leagues (NOT roto), load actual matchup data per week
+    const isRotoLeague = (scoringType.value || '').toLowerCase().includes('roto')
+    if (!isPointsLeague.value && !isRotoLeague) {
       console.log('Category league detected - loading weekly matchup data')
       
       const standings = new Map<number, any[]>()
@@ -4907,7 +5272,116 @@ async function loadAllMatchups() {
       teamTotalCategoryLosses.value = cumulativeCatLosses
       
       console.log(`Loaded ${standings.size} weeks of category matchup data, displayMatchups: ${displayMatchups.value.length}`)
-      
+
+    } else if (isRotoLeague) {
+      // ── ROTO LEAGUE — no weekly matchups, compute from season stats ──
+      console.log('[Roto] Roto league detected — skipping matchup loading, computing from season stats')
+
+      const { yahooService } = await import('@/services/yahoo')
+      const leagueKey = leagueStore.activeLeagueId || ''
+
+      // Fetch league settings for stat categories
+      const settings = await yahooService.getLeagueSettings(leagueKey)
+      const rawCats: any[] = settings?.stat_categories?.stats || settings?.stat_categories || []
+
+      const rotoCats: any[] = []
+      const lowerIsBetter = new Set<string>()
+
+      for (const cat of rawCats) {
+        const s = cat?.stat || cat
+        const sid = String(s?.stat_id ?? '')
+        if (!sid) continue
+        if (s?.is_only_display_stat === '1' || s?.is_only_display_stat === 1) continue
+        if (s?.sort_order === '0' || s?.sort_order === 0) lowerIsBetter.add(sid)
+        rotoCats.push({
+          stat_id: sid,
+          name: s?.display_name || s?.name || `Stat ${sid}`,
+          display_name: s?.abbr || s?.display_name || s?.name || `S${sid}`
+        })
+      }
+      lowerIsBetter.add('26') // ERA
+      lowerIsBetter.add('27') // WHIP
+
+      if (rotoCats.length > 0) statCategories.value = rotoCats
+      console.log('[Roto] Categories:', rotoCats.map(c => c.display_name))
+
+      // Fetch season stats for each team
+      const teamSeasonStats: Record<string, Record<string, number>> = {}
+      for (const team of leagueStore.yahooTeams) {
+        const teamKey = team.team_key || team.team_id
+        try {
+          const stats = await yahooService.getTeamSeasonStats(teamKey)
+          teamSeasonStats[teamKey] = stats
+        } catch (e) {
+          console.warn(`[Roto] Failed to fetch stats for ${team.name}:`, e)
+          teamSeasonStats[teamKey] = {}
+        }
+      }
+
+      // Rank teams per category and assign ranking points
+      const numTeams = leagueStore.yahooTeams.length
+      const perCategoryRankingPoints: Record<string, Record<string, number>> = {}
+      for (const team of leagueStore.yahooTeams) {
+        perCategoryRankingPoints[team.team_key] = {}
+      }
+
+      for (const cat of rotoCats) {
+        const sid = cat.stat_id
+        const isLower = lowerIsBetter.has(sid)
+        const teamValues = leagueStore.yahooTeams.map(team => ({
+          teamKey: team.team_key,
+          value: teamSeasonStats[team.team_key]?.[sid] ?? 0
+        }))
+        teamValues.sort((a, b) => isLower ? (a.value - b.value) : (b.value - a.value))
+
+        let i = 0
+        while (i < teamValues.length) {
+          let j = i + 1
+          while (j < teamValues.length && teamValues[j].value === teamValues[i].value) j++
+          const tiedCount = j - i
+          const totalPoints = Array.from({ length: tiedCount }, (_, k) => numTeams - (i + k)).reduce((a, b) => a + b, 0)
+          const avgPoints = totalPoints / tiedCount
+          for (let k = i; k < j; k++) {
+            perCategoryRankingPoints[teamValues[k].teamKey][sid] = avgPoints
+          }
+          i = j
+        }
+      }
+
+      // Compute total roto points (use Yahoo's if available)
+      const totalRotoPoints: Record<string, number> = {}
+      for (const team of leagueStore.yahooTeams) {
+        const tk = team.team_key
+        let total = 0
+        for (const sid of Object.keys(perCategoryRankingPoints[tk] || {})) {
+          total += perCategoryRankingPoints[tk][sid]
+        }
+        totalRotoPoints[tk] = (team.points_for > 0) ? team.points_for : total
+      }
+      console.log('[Roto] Total roto points:', totalRotoPoints)
+
+      // Store roto data for the standings table
+      const maxRoto = Math.max(...Object.values(totalRotoPoints))
+
+      // Update teamTotalCategoryWins to hold roto ranking points per category
+      const rotoCatWins = new Map<string, number>()
+      for (const team of leagueStore.yahooTeams) {
+        rotoCatWins.set(team.team_key, totalRotoPoints[team.team_key] || 0)
+      }
+      teamTotalCategoryWins.value = rotoCatWins
+
+      // Store per-category ranking data for the standings table
+      perCategoryWinsData.value = perCategoryRankingPoints
+      rotoPointsData.value = totalRotoPoints
+      rotoMaxPoints.value = maxRoto
+      isRotoMode.value = true
+
+      console.log(`[Roto] Loaded roto standings for ${numTeams} teams`)
+
+      // Default sort by roto points for roto leagues
+      sortColumn.value = 'pf'
+      sortDirection.value = 'desc'
+
     } else {
       // For points leagues, load actual matchup data
       const standings = new Map<number, any[]>()

@@ -1132,15 +1132,24 @@ const espnCookieSaving = ref(false)
 const espnCookieError = ref('')
 const espnCookieSuccess = ref(false)
 
-const tabs = [
+const isRotoLeague = computed(() => {
+  const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+  if (yahooLeagueData?.scoring_type?.toLowerCase().includes('roto')) return true
+  if (leagueStore.currentLeague?.scoring_type?.toLowerCase().includes('roto')) return true
+  const saved = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
+  if (saved?.scoring_type?.toLowerCase().includes('roto')) return true
+  return false
+})
+
+const tabs = computed(() => [
   { name: 'Season', path: '/' },
   { name: 'Power Rankings', path: '/power-rankings' },
-  { name: 'Matchups', path: '/matchups' },
+  { name: isRotoLeague.value ? 'Roto Race' : 'Matchups', path: '/matchups' },
   { name: 'Draft', path: '/draft' },
   { name: 'History', path: '/history' },
   { name: 'Free Tools', path: '/free-tools' },
   { name: 'Ultimate Tools', path: '/ultimate-tools', isUltimate: true }
-]
+])
 
 // Available sports for grouping leagues
 const sportOrder = ['football', 'basketball', 'baseball', 'hockey']

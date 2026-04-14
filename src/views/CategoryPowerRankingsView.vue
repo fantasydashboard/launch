@@ -5,7 +5,7 @@
       <div>
         <h1 class="text-3xl font-bold text-dark-text mb-2">Category Power Rankings</h1>
         <p class="text-base text-dark-textMuted">
-          H2H Category rankings based on category dominance and balance
+          {{ isRoto ? 'Roto rankings based on category balance and standings' : 'H2H Category rankings based on category dominance and balance' }}
         </p>
       </div>
       <div class="flex items-center gap-3">
@@ -164,26 +164,50 @@
                   <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 2 ? 'hidden sm:table-cell' : ''" @click="sortPowerRankings('powerScore')">
                     Score <span v-if="sortColumn === 'powerScore'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
                   </th>
-                  <!-- Cat W-L-T: page 1 -->
-                  <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 1 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('catWins')">
-                    W-L-T <span v-if="sortColumn === 'catWins'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
-                  </th>
-                  <!-- Cat Win %: page 1 -->
-                  <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 1 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('catWinPct')">
-                    Win% <span v-if="sortColumn === 'catWinPct'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
-                  </th>
-                  <!-- Dominant: page 2 -->
-                  <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('dominant')">
-                    Dom <span v-if="sortColumn === 'dominant'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
-                  </th>
-                  <!-- Weak: page 2 -->
-                  <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('weak')">
-                    Weak <span v-if="sortColumn === 'weak'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
-                  </th>
-                  <!-- Avg/Week: page 2 -->
-                  <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('avgCats')">
-                    Avg/Wk <span v-if="sortColumn === 'avgCats'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
-                  </th>
+                  <template v-if="isRoto">
+                    <!-- Roto Pts: page 1 -->
+                    <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 1 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('rotoPoints')">
+                      Roto Pts <span v-if="sortColumn === 'rotoPoints'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
+                    </th>
+                    <!-- Pts Back: page 1 -->
+                    <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 1 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('ptsBack')">
+                      Back <span v-if="sortColumn === 'ptsBack'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
+                    </th>
+                    <!-- Led: page 2 -->
+                    <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('led')">
+                      Led <span v-if="sortColumn === 'led'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
+                    </th>
+                    <!-- Weak: page 2 -->
+                    <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('rotoWeak')">
+                      Weak <span v-if="sortColumn === 'rotoWeak'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
+                    </th>
+                    <!-- Balance: page 2 -->
+                    <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('balance')">
+                      Balance <span v-if="sortColumn === 'balance'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
+                    </th>
+                  </template>
+                  <template v-else>
+                    <!-- Cat W-L-T: page 1 -->
+                    <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 1 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('catWins')">
+                      W-L-T <span v-if="sortColumn === 'catWins'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
+                    </th>
+                    <!-- Cat Win %: page 1 -->
+                    <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 1 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('catWinPct')">
+                      Win% <span v-if="sortColumn === 'catWinPct'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
+                    </th>
+                    <!-- Dominant: page 2 -->
+                    <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('dominant')">
+                      Dom <span v-if="sortColumn === 'dominant'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
+                    </th>
+                    <!-- Weak: page 2 -->
+                    <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('weak')">
+                      Weak <span v-if="sortColumn === 'weak'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
+                    </th>
+                    <!-- Avg/Week: page 2 -->
+                    <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('avgCats')">
+                      Avg/Wk <span v-if="sortColumn === 'avgCats'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
+                    </th>
+                  </template>
                 </tr>
               </thead>
               <tbody>
@@ -242,26 +266,50 @@
                       <span class="font-bold text-sm" :class="getPowerScoreTextClass(team.powerScore)">{{ team.powerScore.toFixed(1) }}</span>
                     </div>
                   </td>
-                  <!-- W-L-T: page 1 -->
-                  <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 1 ? '' : 'hidden sm:table-cell'">
-                    <span class="font-medium text-dark-text text-sm whitespace-nowrap">{{ team.totalCatWins }}-{{ team.totalCatLosses }}-{{ team.totalCatTies }}</span>
-                  </td>
-                  <!-- Win%: page 1 -->
-                  <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 1 ? '' : 'hidden sm:table-cell'">
-                    <span class="font-bold text-sm" :class="getCatWinPctClass(team.catWinPct)">{{ (team.catWinPct * 100).toFixed(1) }}%</span>
-                  </td>
-                  <!-- Dominant: page 2 -->
-                  <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'">
-                    <span class="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">{{ team.dominantCategories }}</span>
-                  </td>
-                  <!-- Weak: page 2 -->
-                  <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'">
-                    <span class="px-2 py-1 rounded text-xs font-bold bg-red-500/20 text-red-400">{{ team.weakCategories }}</span>
-                  </td>
-                  <!-- Avg/Wk: page 2 -->
-                  <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'">
-                    <span class="font-medium text-sm" :class="getAvgCatsClass(team.avgCatsWonPerWeek)">{{ team.avgCatsWonPerWeek.toFixed(1) }}</span>
-                  </td>
+                  <template v-if="isRoto">
+                    <!-- Roto Pts: page 1 -->
+                    <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 1 ? '' : 'hidden sm:table-cell'">
+                      <span class="font-bold text-sm text-yellow-400">{{ team.rotoPoints || 0 }}</span>
+                    </td>
+                    <!-- Pts Back: page 1 -->
+                    <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 1 ? '' : 'hidden sm:table-cell'">
+                      <span class="font-medium text-sm" :class="(team.pointsBack || 0) === 0 ? 'text-green-400' : 'text-dark-textMuted'">{{ (team.pointsBack || 0) === 0 ? '-' : (team.pointsBack || 0).toFixed(1) }}</span>
+                    </td>
+                    <!-- Led: page 2 -->
+                    <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'">
+                      <span class="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">{{ team.categoriesLedCount || 0 }}</span>
+                    </td>
+                    <!-- Weak: page 2 -->
+                    <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'">
+                      <span class="px-2 py-1 rounded text-xs font-bold bg-red-500/20 text-red-400">{{ team.rotoWeakCount || 0 }}</span>
+                    </td>
+                    <!-- Balance: page 2 -->
+                    <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'">
+                      <span class="font-medium text-sm" :class="(team.categoryBalance || 0) >= 70 ? 'text-green-400' : (team.categoryBalance || 0) <= 40 ? 'text-red-400' : 'text-yellow-400'">{{ (team.categoryBalance || 0).toFixed(0) }}</span>
+                    </td>
+                  </template>
+                  <template v-else>
+                    <!-- W-L-T: page 1 -->
+                    <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 1 ? '' : 'hidden sm:table-cell'">
+                      <span class="font-medium text-dark-text text-sm whitespace-nowrap">{{ team.totalCatWins }}-{{ team.totalCatLosses }}-{{ team.totalCatTies }}</span>
+                    </td>
+                    <!-- Win%: page 1 -->
+                    <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 1 ? '' : 'hidden sm:table-cell'">
+                      <span class="font-bold text-sm" :class="getCatWinPctClass(team.catWinPct)">{{ (team.catWinPct * 100).toFixed(1) }}%</span>
+                    </td>
+                    <!-- Dominant: page 2 -->
+                    <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'">
+                      <span class="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">{{ team.dominantCategories }}</span>
+                    </td>
+                    <!-- Weak: page 2 -->
+                    <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'">
+                      <span class="px-2 py-1 rounded text-xs font-bold bg-red-500/20 text-red-400">{{ team.weakCategories }}</span>
+                    </td>
+                    <!-- Avg/Wk: page 2 -->
+                    <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'">
+                      <span class="font-medium text-sm" :class="getAvgCatsClass(team.avgCatsWonPerWeek)">{{ team.avgCatsWonPerWeek.toFixed(1) }}</span>
+                    </td>
+                  </template>
                 </tr>
               </tbody>
             </table>
@@ -661,7 +709,7 @@
             <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Quick Presets</h4>
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <button
-                v-for="preset in powerPresets"
+                v-for="preset in activePresets"
                 :key="preset.id"
                 @click="applyPreset(preset)"
                 class="p-3 rounded-xl border transition-colors text-left"
@@ -688,8 +736,8 @@
             </div>
             
             <div class="space-y-3">
-              <div 
-                v-for="factor in visiblePowerFactors"
+              <div
+                v-for="factor in activeVisibleFactors"
                 :key="factor.id"
                 class="bg-dark-border/20 rounded-xl p-4"
               >
@@ -799,18 +847,34 @@
                 <div class="text-2xl font-black text-yellow-400">{{ selectedTeam.powerScore.toFixed(1) }}</div>
                 <div class="text-xs text-dark-textMuted">Power Score</div>
               </div>
-              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
-                <div class="text-2xl font-black text-dark-text">{{ selectedTeam.totalCatWins }}-{{ selectedTeam.totalCatLosses }}</div>
-                <div class="text-xs text-dark-textMuted">Cat W-L</div>
-              </div>
-              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
-                <div class="text-2xl font-black text-dark-text">{{ selectedTeam.dominantCategories }}</div>
-                <div class="text-xs text-dark-textMuted">Dominant Cats</div>
-              </div>
-              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
-                <div class="text-2xl font-black text-dark-text">{{ (selectedTeam.avgCatsWonPerWeek || 0).toFixed(1) }}</div>
-                <div class="text-xs text-dark-textMuted">Avg Cats/Wk</div>
-              </div>
+              <template v-if="isRoto">
+                <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                  <div class="text-2xl font-black text-green-400">{{ (selectedTeam.rotoPoints || 0).toFixed(1) }}</div>
+                  <div class="text-xs text-dark-textMuted">Roto Pts</div>
+                </div>
+                <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                  <div class="text-2xl font-black text-dark-text">{{ selectedTeam.categoriesLed || 0 }}</div>
+                  <div class="text-xs text-dark-textMuted">Cats Led</div>
+                </div>
+                <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                  <div class="text-2xl font-black text-dark-text">{{ selectedTeam.weakCategoryCount || 0 }}</div>
+                  <div class="text-xs text-dark-textMuted">Weak Cats</div>
+                </div>
+              </template>
+              <template v-else>
+                <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                  <div class="text-2xl font-black text-dark-text">{{ selectedTeam.totalCatWins }}-{{ selectedTeam.totalCatLosses }}</div>
+                  <div class="text-xs text-dark-textMuted">Cat W-L</div>
+                </div>
+                <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                  <div class="text-2xl font-black text-dark-text">{{ selectedTeam.dominantCategories }}</div>
+                  <div class="text-xs text-dark-textMuted">Dominant Cats</div>
+                </div>
+                <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                  <div class="text-2xl font-black text-dark-text">{{ (selectedTeam.avgCatsWonPerWeek || 0).toFixed(1) }}</div>
+                  <div class="text-xs text-dark-textMuted">Avg Cats/Wk</div>
+                </div>
+              </template>
             </div>
           </div>
 
@@ -843,9 +907,14 @@
             </div>
           </div>
 
-          <!-- Per-Category Wins -->
+          <!-- Per-Category: Rankings (roto) or Wins (H2H) -->
           <div class="p-6">
-            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Category Wins</h4>
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">
+              {{ isRoto ? 'Category Rankings' : 'Category Wins' }}
+            </h4>
+            <p v-if="isRoto" class="text-xs text-dark-textMuted mb-3">
+              Ranking points per category ({{ leagueStore.yahooTeams?.length || 12 }} = 1st place, 1 = last)
+            </p>
             <div class="space-y-2">
               <div
                 v-for="cat in displayCategories"
@@ -855,12 +924,22 @@
                 <span class="w-12 text-xs text-dark-textMuted">{{ cat.display_name }}</span>
                 <div class="flex-1 h-3 bg-dark-border rounded-full overflow-hidden">
                   <div
+                    v-if="isRoto"
+                    class="h-full rounded-full"
+                    :class="getRotoBarClass(selectedTeam.perCategoryRankings?.[cat.stat_id] || 0)"
+                    :style="{ width: `${((selectedTeam.perCategoryRankings?.[cat.stat_id] || 0) / (leagueStore.yahooTeams?.length || 12)) * 100}%` }"
+                  ></div>
+                  <div
+                    v-else
                     class="h-full rounded-full"
                     :class="getCategoryBarClass(selectedTeam.categoryRanks[cat.stat_id])"
                     :style="{ width: `${(selectedTeam.categoryWins[cat.stat_id] || 0) / maxCategoryWins * 100}%` }"
                   ></div>
                 </div>
-                <span class="w-8 text-sm font-bold text-right" :class="getCategoryClass(selectedTeam.categoryRanks[cat.stat_id])">
+                <span v-if="isRoto" class="w-8 text-sm font-bold text-right" :class="getRotoValueClass(selectedTeam.perCategoryRankings?.[cat.stat_id] || 0)">
+                  {{ (selectedTeam.perCategoryRankings?.[cat.stat_id] || 0) % 1 === 0 ? (selectedTeam.perCategoryRankings?.[cat.stat_id] || 0) : (selectedTeam.perCategoryRankings?.[cat.stat_id] || 0).toFixed(1) }}
+                </span>
+                <span v-else class="w-8 text-sm font-bold text-right" :class="getCategoryClass(selectedTeam.categoryRanks[cat.stat_id])">
                   {{ selectedTeam.categoryWins[cat.stat_id] || 0 }}
                 </span>
               </div>
@@ -914,8 +993,22 @@ const outlookSupported = computed(() => {
   if (currentSport.value !== 'baseball') return false
   return isEspn.value || leagueStore.activePlatform === 'yahoo'
 })
+
+// Roto detection — scoring_type 'roto' for Yahoo, 'ROTO' for ESPN
+const scoringType = computed(() => {
+  const saved = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
+  return saved?.scoring_type || ''
+})
+const isRoto = computed(() => {
+  const st = (scoringType.value || '').toLowerCase()
+  return st.includes('roto')
+})
+
 const visiblePowerFactors = computed(() =>
   powerFactors.value.filter((f: any) => f.id !== 'outlook' || outlookSupported.value)
+)
+const visibleRotoPowerFactors = computed(() =>
+  rotoPowerFactors.value.filter((f: any) => f.id !== 'outlook' || outlookSupported.value)
 )
 
 // State
@@ -1084,6 +1177,64 @@ const powerFactors = ref([
   }
 ])
 
+// Power ranking factors for Roto leagues
+const rotoPowerFactors = ref([
+  {
+    id: 'rotoPoints',
+    name: 'Total Roto Points',
+    description: 'Where you stand in the overall roto standings right now',
+    enabled: true,
+    weight: 30,
+    icon: '🏆',
+    color: '#eab308'
+  },
+  {
+    id: 'categoryBalance',
+    name: 'Category Balance',
+    description: 'How balanced your ranking points are across all categories (no weak spots = higher)',
+    enabled: true,
+    weight: 20,
+    icon: '⚖️',
+    color: '#a855f7'
+  },
+  {
+    id: 'categoriesLed',
+    name: 'Categories Led',
+    description: 'How many categories you are ranked 1st or 2nd in',
+    enabled: true,
+    weight: 15,
+    icon: '💪',
+    color: '#f97316'
+  },
+  {
+    id: 'weakCategories',
+    name: 'Weak Category Penalty',
+    description: 'Penalty for categories where you rank in the bottom 3',
+    enabled: true,
+    weight: 10,
+    icon: '📉',
+    color: '#ef4444'
+  },
+  {
+    id: 'recentTrend',
+    name: 'Recent Trend',
+    description: 'Roto points gained or lost over recent weeks (momentum)',
+    enabled: true,
+    weight: 15,
+    icon: '📈',
+    color: '#22c55e'
+  },
+  {
+    id: 'outlook',
+    name: 'Outlook (Forward Look)',
+    description: 'Projected category strength for the rest of the season',
+    enabled: true,
+    weight: 10,
+    icon: '🔭',
+    color: '#06b6d4'
+  }
+])
+
 const powerPresets = [
   {
     id: 'balanced',
@@ -1185,22 +1336,114 @@ const powerPresets = [
   }
 ]
 
+const rotoPresets = [
+  {
+    id: 'balanced',
+    name: 'Balanced',
+    description: 'Default balanced approach',
+    icon: '⚖️',
+    factors: {
+      rotoPoints: { enabled: true, weight: 30 },
+      categoryBalance: { enabled: true, weight: 20 },
+      categoriesLed: { enabled: true, weight: 15 },
+      weakCategories: { enabled: true, weight: 10 },
+      recentTrend: { enabled: true, weight: 15 },
+      outlook: { enabled: true, weight: 10 }
+    }
+  },
+  {
+    id: 'standingsFirst',
+    name: 'Standings First',
+    description: 'Trusts the roto standings heavily',
+    icon: '🏆',
+    factors: {
+      rotoPoints: { enabled: true, weight: 55 },
+      categoryBalance: { enabled: true, weight: 10 },
+      categoriesLed: { enabled: true, weight: 10 },
+      weakCategories: { enabled: true, weight: 5 },
+      recentTrend: { enabled: true, weight: 15 },
+      outlook: { enabled: true, weight: 5 }
+    }
+  },
+  {
+    id: 'wellRounded',
+    name: 'Well-Rounded',
+    description: 'Rewards balance, penalizes weaknesses',
+    icon: '🎯',
+    factors: {
+      rotoPoints: { enabled: true, weight: 15 },
+      categoryBalance: { enabled: true, weight: 35 },
+      categoriesLed: { enabled: true, weight: 10 },
+      weakCategories: { enabled: true, weight: 25 },
+      recentTrend: { enabled: true, weight: 10 },
+      outlook: { enabled: true, weight: 5 }
+    }
+  },
+  {
+    id: 'momentum',
+    name: 'Momentum',
+    description: 'Who is rising the fastest',
+    icon: '🚀',
+    factors: {
+      rotoPoints: { enabled: true, weight: 20 },
+      categoryBalance: { enabled: true, weight: 10 },
+      categoriesLed: { enabled: true, weight: 10 },
+      weakCategories: { enabled: true, weight: 5 },
+      recentTrend: { enabled: true, weight: 40 },
+      outlook: { enabled: true, weight: 15 }
+    }
+  },
+  {
+    id: 'dominator',
+    name: 'Category Dominator',
+    description: 'Who owns the most categories',
+    icon: '💪',
+    factors: {
+      rotoPoints: { enabled: true, weight: 15 },
+      categoryBalance: { enabled: false, weight: 0 },
+      categoriesLed: { enabled: true, weight: 40 },
+      weakCategories: { enabled: true, weight: 20 },
+      recentTrend: { enabled: true, weight: 15 },
+      outlook: { enabled: true, weight: 10 }
+    }
+  },
+  {
+    id: 'forwardLook',
+    name: 'Forward Look',
+    description: 'Where are things headed',
+    icon: '🔭',
+    factors: {
+      rotoPoints: { enabled: true, weight: 15 },
+      categoryBalance: { enabled: true, weight: 10 },
+      categoriesLed: { enabled: true, weight: 10 },
+      weakCategories: { enabled: true, weight: 10 },
+      recentTrend: { enabled: true, weight: 25 },
+      outlook: { enabled: true, weight: 30 }
+    }
+  }
+]
+
+// Active factors/presets based on league mode (H2H vs Roto)
+const activeFactors = computed(() => isRoto.value ? rotoPowerFactors.value : powerFactors.value)
+const activePresets = computed(() => isRoto.value ? rotoPresets : powerPresets)
+const activeVisibleFactors = computed(() => isRoto.value ? visibleRotoPowerFactors.value : visiblePowerFactors.value)
+
 const currentPresetId = ref('balanced')
 const isGeneratingDownload = ref(false)
 const shareToast = ref<'idle'|'success'|'error'>('idle')
 
 const totalWeight = computed(() => {
-  return powerFactors.value
+  return activeFactors.value
     .filter(f => f.enabled && (f.id !== 'outlook' || outlookSupported.value))
     .reduce((sum, f) => sum + f.weight, 0)
 })
 
 const currentFormulaDisplay = computed(() => {
-  const enabledFactors = powerFactors.value.filter(f => f.enabled && f.weight > 0 && (f.id !== 'outlook' || outlookSupported.value))
+  const enabledFactors = activeFactors.value.filter(f => f.enabled && f.weight > 0 && (f.id !== 'outlook' || outlookSupported.value))
   if (enabledFactors.length === 0) return 'No factors enabled'
-  
+
   const total = enabledFactors.reduce((sum, f) => sum + f.weight, 0)
-  
+
   return 'Formula: ' + enabledFactors.map(f => {
     const pct = Math.round((f.weight / total) * 100)
     return `${f.icon} ${f.name}: ${pct}%`
@@ -1213,7 +1456,7 @@ const currentFormulaDisplay = computed(() => {
 const teamDetailFactors = computed(() => {
   if (!selectedTeam.value) return []
   const team = selectedTeam.value
-  const enabled = powerFactors.value.filter((f: any) =>
+  const enabled = activeFactors.value.filter((f: any) =>
     f.enabled && f.weight > 0 && (f.id !== 'outlook' || outlookSupported.value)
   )
   const totalW = enabled.reduce((sum: number, f: any) => sum + f.weight, 0)
@@ -1239,15 +1482,54 @@ const teamDetailFactors = computed(() => {
       case 'categoryBalance':
         score = team.categoryBalance || 0
         break
-      case 'weakCategories':
-        score = ((maxWeak - team.weakCategories) / Math.max(maxWeak, 1)) * 100
+      case 'weakCategories': {
+        if (isRoto.value) {
+          // Roto: weakCategories is a count — more weak = lower score
+          const rankings = team.perCategoryRankings || {}
+          let weakCount = 0
+          for (const pts of Object.values(rankings)) {
+            if ((pts as number) <= 3) weakCount++
+          }
+          const maxCats = Object.keys(rankings).length || 1
+          score = Math.max(0, 100 - (weakCount / maxCats * 100 * 2))
+        } else {
+          score = ((maxWeak - team.weakCategories) / Math.max(maxWeak, 1)) * 100
+        }
         break
+      }
       case 'avgCatsPerWeek':
         score = (team.avgCatsWonPerWeek / maxAvgCats) * 100
         break
       case 'outlook':
         score = team.outlookScore ?? 50
         break
+      // Roto-specific factors
+      case 'rotoPoints': {
+        const maxPts = Math.max(...all.map((t: any) => t.rotoPoints || 0))
+        const minPts = Math.min(...all.map((t: any) => t.rotoPoints || 0))
+        const range = maxPts - minPts || 1
+        score = ((team.rotoPoints || 0) - minPts) / range * 100
+        break
+      }
+      case 'categoriesLed': {
+        const numTeams = all.length
+        const rankings = team.perCategoryRankings || {}
+        let ledCount = 0
+        for (const pts of Object.values(rankings)) {
+          if ((pts as number) >= numTeams - 1) ledCount++
+        }
+        const maxCats = Object.keys(rankings).length || 1
+        score = (ledCount / maxCats) * 100
+        break
+      }
+      case 'recentTrend': {
+        const allChanges = all.map((t: any) => t.pointsChange || 0)
+        const maxChange = Math.max(...allChanges)
+        const minChange = Math.min(...allChanges)
+        const range = maxChange - minChange || 1
+        score = ((team.pointsChange || 0) - minChange) / range * 100
+        break
+      }
     }
     return { ...factor, weight: `${normalizedWeight}%`, score: Math.max(0, Math.min(100, score)) }
   })
@@ -1255,7 +1537,8 @@ const teamDetailFactors = computed(() => {
 
 function applyPreset(preset: any) {
   currentPresetId.value = preset.id
-  powerFactors.value.forEach(factor => {
+  const factors = isRoto.value ? rotoPowerFactors.value : powerFactors.value
+  factors.forEach(factor => {
     const presetFactor = preset.factors[factor.id]
     if (presetFactor) {
       factor.enabled = presetFactor.enabled
@@ -1273,51 +1556,119 @@ function onFactorChange() {
 }
 
 // Lightweight re-score: recomputes powerScore for each team in
-// powerRankings.value using the current powerFactors weights, then re-sorts.
+// powerRankings.value using the current factor weights, then re-sorts.
 // Does NOT refetch matchups — all the per-team metrics already live on the
-// existing rankings objects (categoryWins, dominantCategories, weakCategories,
-// categoryBalance, catWinPct, avgCatsWonPerWeek, outlookScore).
+// existing rankings objects.
 function rescorePowerRankings() {
   if (!powerRankings.value || powerRankings.value.length === 0) return
 
-  const enabledFactors = powerFactors.value.filter((f: any) => f.enabled && f.weight > 0 && (f.id !== 'outlook' || outlookSupported.value))
+  const enabledFactors = activeFactors.value.filter((f: any) => f.enabled && f.weight > 0 && (f.id !== 'outlook' || outlookSupported.value))
   const totalWeight = enabledFactors.reduce((sum: number, f: any) => sum + f.weight, 0)
   if (totalWeight === 0 || enabledFactors.length === 0) return
 
   const rankings = powerRankings.value
-  const maxCatWinPct = Math.max(...rankings.map((t: any) => t.catWinPct), 0.01)
-  const maxDominant = Math.max(...rankings.map((t: any) => t.dominantCategories), 1)
-  const maxAvgCats = Math.max(...rankings.map((t: any) => t.avgCatsWonPerWeek), 1)
-  const maxWeak = Math.max(...rankings.map((t: any) => t.weakCategories), 1)
 
-  for (const team of rankings) {
-    let score = 0
-    for (const factor of enabledFactors) {
-      const normalizedWeight = factor.weight / totalWeight
-      let componentScore = 0
-      switch (factor.id) {
-        case 'catWinPct':
-          componentScore = (team.catWinPct / maxCatWinPct) * 100
-          break
-        case 'dominantCategories':
-          componentScore = (team.dominantCategories / maxDominant) * 100
-          break
-        case 'categoryBalance':
-          componentScore = team.categoryBalance
-          break
-        case 'weakCategories':
-          componentScore = ((maxWeak - team.weakCategories) / Math.max(maxWeak, 1)) * 100
-          break
-        case 'avgCatsPerWeek':
-          componentScore = (team.avgCatsWonPerWeek / maxAvgCats) * 100
-          break
-        case 'outlook':
-          componentScore = team.outlookScore ?? 50
-          break
+  if (isRoto.value) {
+    // Roto re-score
+    for (const team of rankings) {
+      let score = 0
+      for (const factor of enabledFactors) {
+        const normalizedWeight = factor.weight / totalWeight
+        let componentScore = 0
+        switch (factor.id) {
+          case 'rotoPoints': {
+            const maxPts = Math.max(...rankings.map((t: any) => t.rotoPoints || 0))
+            const minPts = Math.min(...rankings.map((t: any) => t.rotoPoints || 0))
+            const range = maxPts - minPts || 1
+            componentScore = ((team.rotoPoints || 0) - minPts) / range * 100
+            break
+          }
+          case 'categoriesLed': {
+            const numTeams = rankings.length
+            const rk = team.perCategoryRankings || {}
+            let ledCount = 0
+            for (const pts of Object.values(rk)) {
+              if ((pts as number) >= numTeams - 1) ledCount++
+            }
+            const maxCats = Object.keys(rk).length || 1
+            componentScore = (ledCount / maxCats) * 100
+            break
+          }
+          case 'categoryBalance': {
+            const rk = Object.values(team.perCategoryRankings || {}) as number[]
+            if (rk.length > 0) {
+              const mean = rk.reduce((a, b) => a + b, 0) / rk.length
+              const variance = rk.reduce((sum, r) => sum + (r - mean) ** 2, 0) / rk.length
+              const stdDev = Math.sqrt(variance)
+              const maxStdDev = (rankings.length - 1) / 2
+              componentScore = Math.max(0, 100 - (stdDev / maxStdDev * 100))
+            } else {
+              componentScore = 50
+            }
+            break
+          }
+          case 'weakCategories': {
+            const rk = team.perCategoryRankings || {}
+            let weakCount = 0
+            for (const pts of Object.values(rk)) {
+              if ((pts as number) <= 3) weakCount++
+            }
+            const maxCats = Object.keys(rk).length || 1
+            componentScore = Math.max(0, 100 - (weakCount / maxCats * 100 * 2))
+            break
+          }
+          case 'recentTrend': {
+            const allChanges = rankings.map((t: any) => t.pointsChange || 0)
+            const maxChange = Math.max(...allChanges)
+            const minChange = Math.min(...allChanges)
+            const range = maxChange - minChange || 1
+            componentScore = ((team.pointsChange || 0) - minChange) / range * 100
+            break
+          }
+          case 'outlook':
+            componentScore = team.outlookScore ?? 50
+            break
+        }
+        score += componentScore * normalizedWeight
       }
-      score += componentScore * normalizedWeight
+      team.powerScore = Math.max(0, Math.min(100, score))
     }
-    team.powerScore = Math.max(0, Math.min(100, score))
+  } else {
+    // H2H re-score
+    const maxCatWinPct = Math.max(...rankings.map((t: any) => t.catWinPct), 0.01)
+    const maxDominant = Math.max(...rankings.map((t: any) => t.dominantCategories), 1)
+    const maxAvgCats = Math.max(...rankings.map((t: any) => t.avgCatsWonPerWeek), 1)
+    const maxWeak = Math.max(...rankings.map((t: any) => t.weakCategories), 1)
+
+    for (const team of rankings) {
+      let score = 0
+      for (const factor of enabledFactors) {
+        const normalizedWeight = factor.weight / totalWeight
+        let componentScore = 0
+        switch (factor.id) {
+          case 'catWinPct':
+            componentScore = (team.catWinPct / maxCatWinPct) * 100
+            break
+          case 'dominantCategories':
+            componentScore = (team.dominantCategories / maxDominant) * 100
+            break
+          case 'categoryBalance':
+            componentScore = team.categoryBalance
+            break
+          case 'weakCategories':
+            componentScore = ((maxWeak - team.weakCategories) / Math.max(maxWeak, 1)) * 100
+            break
+          case 'avgCatsPerWeek':
+            componentScore = (team.avgCatsWonPerWeek / maxAvgCats) * 100
+            break
+          case 'outlook':
+            componentScore = team.outlookScore ?? 50
+            break
+        }
+        score += componentScore * normalizedWeight
+      }
+      team.powerScore = Math.max(0, Math.min(100, score))
+    }
   }
 
   // Re-sort and reassign rank
@@ -1328,7 +1679,7 @@ function rescorePowerRankings() {
 }
 
 function resetFactors() {
-  applyPreset(powerPresets[0])
+  applyPreset(activePresets.value[0])
 }
 
 function applySettings() {
@@ -2126,6 +2477,27 @@ const sortedPowerRankings = computed(() => {
         aVal = a.totalCatWins || 0
         bVal = b.totalCatWins || 0
         break
+      // Roto-specific columns
+      case 'rotoPoints':
+        aVal = a.rotoPoints || 0
+        bVal = b.rotoPoints || 0
+        break
+      case 'ptsBack':
+        aVal = a.pointsBack || 0
+        bVal = b.pointsBack || 0
+        break
+      case 'led':
+        aVal = a.categoriesLedCount || 0
+        bVal = b.categoriesLedCount || 0
+        break
+      case 'rotoWeak':
+        aVal = a.rotoWeakCount || 0
+        bVal = b.rotoWeakCount || 0
+        break
+      case 'balance':
+        aVal = a.categoryBalance || 0
+        bVal = b.categoryBalance || 0
+        break
       default:
         aVal = a.powerScore || 0
         bVal = b.powerScore || 0
@@ -2199,6 +2571,22 @@ function getCategoryBarClass(rank: number) {
   if (rank <= 2) return 'bg-green-500'
   if (rank >= numTeams - 1) return 'bg-red-500'
   return 'bg-yellow-500'
+}
+function getRotoBarClass(points: number) {
+  const n = leagueStore.yahooTeams?.length || 12
+  if (points >= n - 1) return 'bg-green-500'
+  if (points >= n - 3) return 'bg-green-400'
+  if (points <= 2) return 'bg-red-500'
+  if (points <= 4) return 'bg-red-400'
+  return 'bg-yellow-500'
+}
+function getRotoValueClass(points: number) {
+  const n = leagueStore.yahooTeams?.length || 12
+  if (points >= n - 1) return 'text-green-400'
+  if (points >= n - 3) return 'text-green-300'
+  if (points <= 2) return 'text-red-400'
+  if (points <= 4) return 'text-red-300'
+  return 'text-gray-300'
 }
 function openTeamModal(team: any) { selectedTeam.value = team; showTeamModal.value = true }
 
@@ -2490,7 +2878,306 @@ async function loadPowerRankings() {
     }
     
     console.log('[Power Rankings] Categories loaded:', displayCategories.value.map(c => ({ id: c.stat_id, name: c.display_name })))
-    
+
+    // ── ROTO LEAGUE PATH ──────────────────────────────────────────────────
+    // Roto leagues don't have weekly matchups. Instead we derive power
+    // rankings from each team's roto standing points and per-category
+    // ranking points (computed from the teams' season-cumulative stats).
+    if (isRoto.value) {
+      loadingMessage.value = 'Computing Roto power rankings...'
+      loadingProgress.value = { currentStep: 'Building roto standings...', week: throughWeek, maxWeek: throughWeek }
+
+      // Fetch per-team season stats for each category so we can rank them
+      const teams = leagueStore.yahooTeams
+      const numTeams = teams.length
+
+      // Build per-category stat values from Yahoo standings (team.points_for = total roto points).
+      // For per-category ranking we need the raw stat values. Try to get them via
+      // the Yahoo standings endpoint (which already has points_for for total roto points).
+      // For per-category ranks, we use yahooService.getStandings which returns the
+      // season standings. If a team has valuesByStat, use that; otherwise approximate
+      // from the displayCategories + the standings API.
+
+      // Try fetching per-team season stats
+      let teamSeasonStats: Map<string, Record<string, number>> = new Map()
+      try {
+        const statsResp = await yahooService.getStandings(leagueKey)
+        // Yahoo standings don't directly expose per-category stat values in the
+        // standard standings endpoint. We'll compute rankings from whatever we have.
+        console.log('[Roto] Yahoo standings loaded:', statsResp.length, 'teams')
+      } catch (e) {
+        console.warn('[Roto] Failed to fetch standings:', e)
+      }
+
+      // Compute per-category rankings (roto points per category)
+      // In a roto league, each team gets ranking points per category:
+      //   Best team gets N points (N = number of teams), worst gets 1.
+      // We simulate this by ranking teams by points_for (total roto points)
+      // and using the team standings rank for overall position.
+
+      // For now, compute category balance and led/weak from the existing
+      // displayCategories if we have ESPN-style valuesByStat, otherwise
+      // use points_for as the single metric and derive what we can.
+
+      // Build team entries
+      const rotoRankings: any[] = []
+      const maxRotoPoints = Math.max(...teams.map((t: any) => t.points_for || 0), 1)
+      const firstPlacePoints = maxRotoPoints
+
+      for (const team of teams) {
+        const rotoPoints = team.points_for || 0
+        const pointsBack = firstPlacePoints - rotoPoints
+        const pointsChange = 0 // Would need historical data to compute
+
+        rotoRankings.push({
+          team_key: team.team_key,
+          name: team.name,
+          logo_url: team.logo_url,
+          is_my_team: team.is_my_team,
+          rotoPoints,
+          pointsBack,
+          pointsChange,
+          perCategoryRankings: {} as Record<string, number>,
+          categoriesLedCount: 0,
+          rotoWeakCount: 0,
+          categoryBalance: 50,
+          powerScore: 0,
+          change: 0,
+          prevRank: 0,
+          rank: 0,
+          // H2H compat fields (zeroed for roto)
+          categoryWins: {},
+          categoryLosses: {},
+          categoryTies: {},
+          totalCatWins: 0,
+          totalCatLosses: 0,
+          totalCatTies: 0,
+          catWinPct: 0,
+          avgCatsWonPerWeek: 0,
+          dominantCategories: 0,
+          weakCategories: 0,
+          categoryRanks: {},
+          outlookScore: 50,
+          valuesByStat: team.valuesByStat || {}
+        })
+      }
+
+      // Try to compute per-category rankings if we have valuesByStat or can
+      // derive from category stats. For Yahoo roto, try fetching team stats.
+      let hasPerCategoryData = rotoRankings.some(t =>
+        t.valuesByStat && Object.keys(t.valuesByStat).length > 0
+      )
+
+      // If ESPN roto, try to load valuesByStat
+      if (isEspn.value && !hasPerCategoryData) {
+        try {
+          let espnLeagueId: string | number = ''
+          let espnSeason = new Date().getFullYear()
+          let espnSport: string = 'baseball'
+          if (typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
+            const parts = leagueKey.split('_')
+            if (parts.length >= 4) {
+              espnSport = parts[1]
+              espnLeagueId = parts[2]
+              espnSeason = parseInt(parts[3]) || new Date().getFullYear()
+            }
+          }
+          const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
+          if (savedLeague?.espn_id) espnLeagueId = savedLeague.espn_id
+          if (savedLeague?.season) espnSeason = savedLeague.season
+          if (savedLeague?.sport) espnSport = savedLeague.sport
+
+          if (espnLeagueId) {
+            const espnTeams = await espnService.getTeams(espnSport as any, espnLeagueId, espnSeason)
+            for (const t of espnTeams) {
+              if (!t.valuesByStat || Object.keys(t.valuesByStat).length === 0) continue
+              const teamKey = `espn_${espnLeagueId}_${espnSeason}_${t.id}`
+              const entry = rotoRankings.find(r => r.team_key === teamKey)
+              if (entry) {
+                entry.valuesByStat = { ...t.valuesByStat }
+              }
+            }
+            hasPerCategoryData = rotoRankings.some(t =>
+              t.valuesByStat && Object.keys(t.valuesByStat).length > 0
+            )
+          }
+        } catch (e) {
+          console.warn('[Roto ESPN] Failed to load valuesByStat:', e)
+        }
+      }
+
+      // Compute per-category rankings
+      if (hasPerCategoryData && displayCategories.value.length > 0) {
+        for (const cat of displayCategories.value) {
+          const isNegative = !!cat.is_negative
+          const sorted = [...rotoRankings].sort((a, b) => {
+            const av = a.valuesByStat?.[cat.stat_id] ?? (isNegative ? Infinity : -Infinity)
+            const bv = b.valuesByStat?.[cat.stat_id] ?? (isNegative ? Infinity : -Infinity)
+            return isNegative ? av - bv : bv - av
+          })
+          // Award roto ranking points: best = numTeams, worst = 1
+          sorted.forEach((team, idx) => {
+            team.perCategoryRankings[cat.stat_id] = numTeams - idx
+          })
+        }
+      } else {
+        // No per-category data available — approximate from total roto points rank
+        const sorted = [...rotoRankings].sort((a, b) => b.rotoPoints - a.rotoPoints)
+        sorted.forEach((team, idx) => {
+          team.perCategoryRankings['_total'] = numTeams - idx
+        })
+      }
+
+      // Count categories led (top 2) and weak (bottom 3)
+      for (const team of rotoRankings) {
+        const rk = team.perCategoryRankings
+        let led = 0, weak = 0
+        for (const pts of Object.values(rk)) {
+          if ((pts as number) >= numTeams - 1) led++
+          if ((pts as number) <= 3) weak++
+        }
+        team.categoriesLedCount = led
+        team.rotoWeakCount = weak
+
+        // Category balance: std dev of ranking points
+        const vals = Object.values(rk) as number[]
+        if (vals.length > 1) {
+          const mean = vals.reduce((a, b) => a + b, 0) / vals.length
+          const variance = vals.reduce((sum, r) => sum + (r - mean) ** 2, 0) / vals.length
+          const stdDev = Math.sqrt(variance)
+          const maxStdDev = Math.max(1, (numTeams - 1) / 2)
+          team.categoryBalance = Math.max(0, Math.min(100, 100 - (stdDev / maxStdDev) * 100))
+        } else {
+          team.categoryBalance = 50
+        }
+      }
+
+      // Compute Outlook if supported
+      const outlookFactor = rotoPowerFactors.value.find((f: any) => f.id === 'outlook')
+      if (outlookFactor?.enabled && outlookSupported.value) {
+        try {
+          loadingMessage.value = 'Computing Outlook (next 3 weeks)...'
+          let espnLeagueId: string | number = ''
+          let espnSeason = new Date().getFullYear()
+          let espnSport: 'football' | 'baseball' | 'basketball' | 'hockey' = 'baseball'
+          if (isEspn.value && typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
+            const parts = leagueKey.split('_')
+            if (parts.length >= 4) {
+              espnSport = parts[1] as any
+              espnLeagueId = parts[2]
+              espnSeason = parseInt(parts[3]) || new Date().getFullYear()
+            }
+          }
+          const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
+          if (savedLeague?.espn_id) espnLeagueId = savedLeague.espn_id
+          if (savedLeague?.season) espnSeason = savedLeague.season
+          if (savedLeague?.sport) espnSport = savedLeague.sport as any
+
+          const teamKeys = rotoRankings.map(t => t.team_key)
+          const outlookMap = await computeCategoryOutlookScores(
+            throughWeek, teamKeys, espnLeagueId, espnSeason, espnSport
+          )
+          for (const team of rotoRankings) {
+            const o = outlookMap.get(team.team_key)
+            if (o) {
+              team.outlookScore = o.score
+            }
+          }
+        } catch (e) {
+          console.warn('[Roto Outlook] Failed:', e)
+        }
+      }
+
+      // Score each team using roto factors
+      const enabledFactors = rotoPowerFactors.value.filter((f: any) => f.enabled && f.weight > 0 && (f.id !== 'outlook' || outlookSupported.value))
+      const totalW = enabledFactors.reduce((sum: number, f: any) => sum + f.weight, 0)
+
+      if (totalW > 0) {
+        for (const team of rotoRankings) {
+          let score = 0
+          for (const factor of enabledFactors) {
+            const normalizedWeight = factor.weight / totalW
+            let componentScore = 0
+            switch (factor.id) {
+              case 'rotoPoints': {
+                const maxPts = Math.max(...rotoRankings.map(t => t.rotoPoints || 0))
+                const minPts = Math.min(...rotoRankings.map(t => t.rotoPoints || 0))
+                const range = maxPts - minPts || 1
+                componentScore = ((team.rotoPoints || 0) - minPts) / range * 100
+                break
+              }
+              case 'categoriesLed': {
+                const rk = team.perCategoryRankings || {}
+                let ledCount = 0
+                for (const pts of Object.values(rk)) {
+                  if ((pts as number) >= numTeams - 1) ledCount++
+                }
+                const maxCats = Object.keys(rk).length || 1
+                componentScore = (ledCount / maxCats) * 100
+                break
+              }
+              case 'categoryBalance': {
+                const rk = Object.values(team.perCategoryRankings || {}) as number[]
+                if (rk.length > 0) {
+                  const mean = rk.reduce((a, b) => a + b, 0) / rk.length
+                  const variance = rk.reduce((sum, r) => sum + (r - mean) ** 2, 0) / rk.length
+                  const stdDev = Math.sqrt(variance)
+                  const maxStdDev = (numTeams - 1) / 2
+                  componentScore = Math.max(0, 100 - (stdDev / maxStdDev * 100))
+                } else {
+                  componentScore = 50
+                }
+                break
+              }
+              case 'weakCategories': {
+                const rk = team.perCategoryRankings || {}
+                let weakCount = 0
+                for (const pts of Object.values(rk)) {
+                  if ((pts as number) <= 3) weakCount++
+                }
+                const maxCats = Object.keys(rk).length || 1
+                componentScore = Math.max(0, 100 - (weakCount / maxCats * 100 * 2))
+                break
+              }
+              case 'recentTrend': {
+                const allChanges = rotoRankings.map(t => t.pointsChange || 0)
+                const maxChange = Math.max(...allChanges)
+                const minChange = Math.min(...allChanges)
+                const range = maxChange - minChange || 1
+                componentScore = ((team.pointsChange || 0) - minChange) / range * 100
+                break
+              }
+              case 'outlook':
+                componentScore = team.outlookScore ?? 50
+                break
+            }
+            score += componentScore * normalizedWeight
+          }
+          team.powerScore = Math.max(0, Math.min(100, score))
+        }
+      } else {
+        // Fallback: use roto points directly
+        for (const team of rotoRankings) {
+          team.powerScore = (team.rotoPoints / Math.max(maxRotoPoints, 1)) * 100
+        }
+      }
+
+      // Sort and assign ranks
+      rotoRankings.sort((a, b) => b.powerScore - a.powerScore)
+      rotoRankings.forEach((team, idx) => { team.rank = idx + 1 })
+
+      console.log('=== ROTO POWER RANKINGS COMPLETE ===')
+      rotoRankings.slice(0, 3).forEach((t, i) => {
+        console.log(`#${i+1}: ${t.name} - Score: ${t.powerScore.toFixed(1)}, Roto Pts: ${t.rotoPoints}`)
+      })
+
+      powerRankings.value = rotoRankings
+      buildChart()
+      isLoading.value = false
+      return
+    }
+    // ── END ROTO PATH ─────────────────────────────────────────────────────
+
     // Initialize team stats - we'll track cumulative stats as we go through each week
     const teamStats = new Map<string, any>()
     for (const team of leagueStore.yahooTeams) {

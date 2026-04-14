@@ -147,7 +147,7 @@
             </div>
             <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               <div class="text-xs sm:text-sm text-dark-textMuted">
-                All-time regular season records (playoffs excluded)
+                {{ isRoto ? 'All-time roto standings history' : 'All-time regular season records (playoffs excluded)' }}
               </div>
               <!-- Toggle for current members only -->
               <label class="flex items-center gap-2 cursor-pointer">
@@ -207,7 +207,15 @@
           <div class="overflow-x-auto">
           <table ref="careerTableRef" class="w-full text-sm">
             <thead>
-              <tr class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
+              <tr v-if="isRoto" class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
+                <th class="py-3 px-3 font-semibold">Team</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="carStatPage > 0 ? 'hidden sm:table-cell' : ''" @click="sortBy('seasons')">Seasons</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="carStatPage > 0 ? 'hidden sm:table-cell' : ''" @click="sortBy('championships')">Champ</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="carStatPage > 0 ? 'hidden sm:table-cell' : ''" @click="sortBy('avg_finish')">Avg Finish</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="carStatPage === 1 ? '' : 'hidden sm:table-cell'" @click="sortBy('best_finish')">Best Finish</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="carStatPage === 1 ? '' : 'hidden sm:table-cell'" @click="sortBy('avg_roto_pts')">Avg Roto Pts</th>
+              </tr>
+              <tr v-else class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
                 <th class="py-3 px-3 font-semibold">Team</th>
                 <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="carStatPage > 0 ? 'hidden sm:table-cell' : ''" @click="sortBy('seasons')">Seasons</th>
                 <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="carStatPage > 0 ? 'hidden sm:table-cell' : ''" @click="sortBy('championships')">Champ</th>
@@ -234,10 +242,17 @@
                   <span v-if="stat.championships > 0" class="text-yellow-400 font-bold text-sm">🏆 {{ stat.championships }}</span>
                   <span v-else class="text-dark-textMuted">—</span>
                 </td>
-                <td class="text-center py-3 px-3 font-semibold text-sm" :class="[getRecordClass(stat, 'wins'), carStatPage > 0 ? 'hidden sm:table-cell' : '']">{{ stat.wins }}-{{ stat.losses }}</td>
-                <td class="text-center py-3 px-3 text-sm" :class="carStatPage === 1 ? '' : 'hidden sm:table-cell'"><span :class="getRecordClass(stat, 'win_pct')">{{ (stat.win_pct * 100).toFixed(1) }}%</span></td>
-                <td class="text-center py-3 px-3 text-sm" :class="[getRecordClass(stat, 'avg_ppw'), carStatPage === 1 ? '' : 'hidden sm:table-cell']">{{ stat.avg_ppw.toFixed(1) }}</td>
-                <td class="text-center py-3 px-3 text-sm" :class="[getRecordClass(stat, 'total_pf'), carStatPage === 1 ? '' : 'hidden sm:table-cell']">{{ stat.total_pf.toFixed(0) }}</td>
+                <template v-if="isRoto">
+                  <td class="text-center py-3 px-3 font-semibold text-sm text-dark-text" :class="carStatPage > 0 ? 'hidden sm:table-cell' : ''">{{ stat.avg_finish > 0 ? stat.avg_finish.toFixed(1) : '—' }}</td>
+                  <td class="text-center py-3 px-3 text-sm text-dark-text" :class="carStatPage === 1 ? '' : 'hidden sm:table-cell'">{{ stat.best_finish > 0 ? getOrdinal(stat.best_finish) : '—' }}</td>
+                  <td class="text-center py-3 px-3 text-sm text-dark-text" :class="carStatPage === 1 ? '' : 'hidden sm:table-cell'">{{ stat.avg_roto_pts > 0 ? stat.avg_roto_pts.toFixed(1) : '—' }}</td>
+                </template>
+                <template v-else>
+                  <td class="text-center py-3 px-3 font-semibold text-sm" :class="[getRecordClass(stat, 'wins'), carStatPage > 0 ? 'hidden sm:table-cell' : '']">{{ stat.wins }}-{{ stat.losses }}</td>
+                  <td class="text-center py-3 px-3 text-sm" :class="carStatPage === 1 ? '' : 'hidden sm:table-cell'"><span :class="getRecordClass(stat, 'win_pct')">{{ (stat.win_pct * 100).toFixed(1) }}%</span></td>
+                  <td class="text-center py-3 px-3 text-sm" :class="[getRecordClass(stat, 'avg_ppw'), carStatPage === 1 ? '' : 'hidden sm:table-cell']">{{ stat.avg_ppw.toFixed(1) }}</td>
+                  <td class="text-center py-3 px-3 text-sm" :class="[getRecordClass(stat, 'total_pf'), carStatPage === 1 ? '' : 'hidden sm:table-cell']">{{ stat.total_pf.toFixed(0) }}</td>
+                </template>
               </tr>
             </tbody>
           </table>
@@ -271,6 +286,7 @@
             </button>
           </div>
           <p class="card-subtitle mt-2">Historical performance by year</p>
+          <p v-if="isRoto" class="text-xs text-dark-textMuted mt-1">— indicates roto data is not available for that season</p>
         </div>
         <div class="card-body">
           <div class="sm:hidden flex items-center justify-center gap-3 py-2">
@@ -283,9 +299,15 @@
             <thead>
               <tr class="border-b border-dark-border">
                 <th class="text-left py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider">Season</th>
-                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">Avg PPW</th>
-                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">High Score</th>
-                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">Low Score</th>
+                <template v-if="isRoto">
+                  <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">Roto Pts</th>
+                  <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">Teams</th>
+                </template>
+                <template v-else>
+                  <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">Avg PPW</th>
+                  <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">High Score</th>
+                  <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">Low Score</th>
+                </template>
                 <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage === 1 ? '' : 'hidden sm:table-cell'">Trans</th>
                 <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage === 1 ? '' : 'hidden sm:table-cell'">Trades</th>
                 <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage === 2 ? '' : 'hidden sm:table-cell'">Champion</th>
@@ -296,15 +318,21 @@
                 :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
                 <td class="py-3 px-3 font-bold text-dark-text text-sm">{{ season.season }}</td>
-                <td class="text-center py-3 px-3 text-dark-text text-sm" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">{{ season.avg_ppw.toFixed(1) }}</td>
-                <td class="text-center py-3 px-3" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">
-                  <div class="text-green-400 font-semibold text-sm">{{ season.high_score.toFixed(1) }}</div>
-                  <div class="text-xs text-dark-textMuted">{{ season.high_scorer }}</div>
-                </td>
-                <td class="text-center py-3 px-3" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">
-                  <div class="text-red-400 font-semibold text-sm">{{ season.low_score.toFixed(1) }}</div>
-                  <div class="text-xs text-dark-textMuted">{{ season.low_scorer }}</div>
-                </td>
+                <template v-if="isRoto">
+                  <td class="text-center py-3 px-3 font-semibold text-sm" :class="[sbsPage > 0 ? 'hidden sm:table-cell' : '', (season.roto_pts || 0) > 0 ? 'text-green-400' : 'text-dark-textMuted']">{{ (season.roto_pts || 0) > 0 ? (season.roto_pts).toFixed(1) : '—' }}</td>
+                  <td class="text-center py-3 px-3 text-dark-text text-sm" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">{{ season.num_teams || '—' }}</td>
+                </template>
+                <template v-else>
+                  <td class="text-center py-3 px-3 text-dark-text text-sm" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">{{ season.avg_ppw.toFixed(1) }}</td>
+                  <td class="text-center py-3 px-3" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">
+                    <div class="text-green-400 font-semibold text-sm">{{ season.high_score.toFixed(1) }}</div>
+                    <div class="text-xs text-dark-textMuted">{{ season.high_scorer }}</div>
+                  </td>
+                  <td class="text-center py-3 px-3" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">
+                    <div class="text-red-400 font-semibold text-sm">{{ season.low_score.toFixed(1) }}</div>
+                    <div class="text-xs text-dark-textMuted">{{ season.low_scorer }}</div>
+                  </td>
+                </template>
                 <td class="text-center py-3 px-3 text-cyan-400 font-semibold text-sm" :class="sbsPage === 1 ? '' : 'hidden sm:table-cell'">{{ season.transaction_count }}</td>
                 <td class="text-center py-3 px-3 text-dark-text font-semibold text-sm" :class="sbsPage === 1 ? '' : 'hidden sm:table-cell'">{{ season.trade_count }}</td>
                 <td class="text-center py-3 px-3" :class="sbsPage === 2 ? '' : 'hidden sm:table-cell'">
@@ -332,7 +360,7 @@
             <span class="text-2xl">⚔️</span>
             <h2 class="card-title">Compare Teams</h2>
           </div>
-          <p class="card-subtitle mt-1">Select two teams to see their head-to-head history</p>
+          <p class="card-subtitle mt-1">{{ isRoto ? 'Select two teams to compare their season finishes' : 'Select two teams to see their head-to-head history' }}</p>
         </div>
         <div class="card-body">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -402,7 +430,33 @@
                 />
                 <div class="font-bold text-sm sm:text-xl text-dark-text mb-2 truncate">{{ compareTeam1Data?.team_name }}</div>
                 
-                <div class="space-y-2 text-left text-sm">
+                <div v-if="isRoto" class="space-y-2 text-left text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">🏆 Championships:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team1.championships }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Seasons:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team1.seasons }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Avg Finish:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team1.avgFinish > 0 ? compareData.team1.avgFinish.toFixed(1) : '—' }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Best Finish:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team1.bestFinish > 0 ? getOrdinal(compareData.team1.bestFinish) : '—' }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Avg Roto Pts:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team1.avgRotoPts > 0 ? compareData.team1.avgRotoPts.toFixed(1) : '—' }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Total Roto Pts:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team1.totalRotoPts > 0 ? compareData.team1.totalRotoPts.toLocaleString() : '—' }}</span>
+                  </div>
+                </div>
+                <div v-else class="space-y-2 text-left text-sm">
                   <div class="flex justify-between">
                     <span class="text-dark-textMuted">🏆 Championships:</span>
                     <span class="font-bold text-dark-text">{{ compareData.team1.championships }}</span>
@@ -433,39 +487,68 @@
               <!-- VS Section -->
               <div class="flex flex-col items-center justify-center p-6">
                 <div class="text-5xl font-black text-dark-textMuted mb-4">VS</div>
-                
-                <!-- Head-to-Head Record -->
-                <div class="text-center mb-4">
-                  <div class="text-sm text-dark-textMuted mb-2">Head-to-Head Record</div>
-                  <div class="flex items-center justify-center gap-3">
-                    <div class="text-center">
-                      <div class="text-3xl font-bold" :class="compareData.h2h.team1Wins > compareData.h2h.team2Wins ? 'text-green-400' : 'text-dark-textMuted'">
-                        {{ compareData.h2h.team1Wins }}
-                      </div>
-                    </div>
-                    <div class="text-2xl text-dark-textMuted">-</div>
-                    <div class="text-center">
-                      <div class="text-3xl font-bold" :class="compareData.h2h.team2Wins > compareData.h2h.team1Wins ? 'text-green-400' : 'text-dark-textMuted'">
-                        {{ compareData.h2h.team2Wins }}
-                      </div>
-                    </div>
-                  </div>
-                  <div v-if="compareData.h2h.ties > 0" class="text-xs text-dark-textMuted mt-1">
-                    {{ compareData.h2h.ties }} tie(s)
-                  </div>
-                </div>
 
-                <!-- Rivalry Stats -->
-                <div class="w-full space-y-2 text-sm">
-                  <div class="flex justify-between p-2 bg-dark-border/20 rounded">
-                    <span class="text-dark-textMuted">Total Meetings:</span>
-                    <span class="font-semibold text-dark-text">{{ compareData.h2h.totalGames }}</span>
+                <!-- Roto: Season Comparison -->
+                <template v-if="isRoto && rotoTapeComparison">
+                  <div class="text-center mb-4">
+                    <div class="text-sm text-dark-textMuted mb-2">Season Comparison</div>
+                    <div class="flex items-center justify-center gap-3">
+                      <div class="text-center">
+                        <div class="text-3xl font-bold" :class="rotoTapeComparison.team1Wins > rotoTapeComparison.team2Wins ? 'text-green-400' : 'text-dark-textMuted'">
+                          {{ rotoTapeComparison.team1Wins }}
+                        </div>
+                      </div>
+                      <div class="text-2xl text-dark-textMuted">-</div>
+                      <div class="text-center">
+                        <div class="text-3xl font-bold" :class="rotoTapeComparison.team2Wins > rotoTapeComparison.team1Wins ? 'text-green-400' : 'text-dark-textMuted'">
+                          {{ rotoTapeComparison.team2Wins }}
+                        </div>
+                      </div>
+                    </div>
+                    <div v-if="rotoTapeComparison.ties > 0" class="text-xs text-dark-textMuted mt-1">
+                      {{ rotoTapeComparison.ties }} tie(s)
+                    </div>
                   </div>
-                  <div v-if="compareData.h2h.totalGames > 0" class="flex justify-between p-2 bg-dark-border/20 rounded">
-                    <span class="text-dark-textMuted">Avg Margin:</span>
-                    <span class="font-semibold text-dark-text">{{ compareData.h2h.avgMargin.toFixed(1) }}</span>
+                  <div class="w-full space-y-2 text-sm">
+                    <div class="flex justify-between p-2 bg-dark-border/20 rounded">
+                      <span class="text-dark-textMuted">Seasons Together:</span>
+                      <span class="font-semibold text-dark-text">{{ rotoTapeComparison.seasonsTogether }}</span>
+                    </div>
                   </div>
-                </div>
+                </template>
+
+                <!-- H2H: Head-to-Head Record -->
+                <template v-else>
+                  <div class="text-center mb-4">
+                    <div class="text-sm text-dark-textMuted mb-2">Head-to-Head Record</div>
+                    <div class="flex items-center justify-center gap-3">
+                      <div class="text-center">
+                        <div class="text-3xl font-bold" :class="compareData.h2h.team1Wins > compareData.h2h.team2Wins ? 'text-green-400' : 'text-dark-textMuted'">
+                          {{ compareData.h2h.team1Wins }}
+                        </div>
+                      </div>
+                      <div class="text-2xl text-dark-textMuted">-</div>
+                      <div class="text-center">
+                        <div class="text-3xl font-bold" :class="compareData.h2h.team2Wins > compareData.h2h.team1Wins ? 'text-green-400' : 'text-dark-textMuted'">
+                          {{ compareData.h2h.team2Wins }}
+                        </div>
+                      </div>
+                    </div>
+                    <div v-if="compareData.h2h.ties > 0" class="text-xs text-dark-textMuted mt-1">
+                      {{ compareData.h2h.ties }} tie(s)
+                    </div>
+                  </div>
+                  <div class="w-full space-y-2 text-sm">
+                    <div class="flex justify-between p-2 bg-dark-border/20 rounded">
+                      <span class="text-dark-textMuted">Total Meetings:</span>
+                      <span class="font-semibold text-dark-text">{{ compareData.h2h.totalGames }}</span>
+                    </div>
+                    <div v-if="compareData.h2h.totalGames > 0" class="flex justify-between p-2 bg-dark-border/20 rounded">
+                      <span class="text-dark-textMuted">Avg Margin:</span>
+                      <span class="font-semibold text-dark-text">{{ compareData.h2h.avgMargin.toFixed(1) }}</span>
+                    </div>
+                  </div>
+                </template>
               </div>
 
               <!-- Team 2 Stats -->
@@ -478,7 +561,33 @@
                 />
                 <div class="font-bold text-sm sm:text-xl text-dark-text mb-2 truncate">{{ compareTeam2Data?.team_name }}</div>
                 
-                <div class="space-y-2 text-left text-sm">
+                <div v-if="isRoto" class="space-y-2 text-left text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">🏆 Championships:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team2.championships }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Seasons:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team2.seasons }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Avg Finish:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team2.avgFinish > 0 ? compareData.team2.avgFinish.toFixed(1) : '—' }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Best Finish:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team2.bestFinish > 0 ? getOrdinal(compareData.team2.bestFinish) : '—' }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Avg Roto Pts:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team2.avgRotoPts > 0 ? compareData.team2.avgRotoPts.toFixed(1) : '—' }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Total Roto Pts:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team2.totalRotoPts > 0 ? compareData.team2.totalRotoPts.toLocaleString() : '—' }}</span>
+                  </div>
+                </div>
+                <div v-else class="space-y-2 text-left text-sm">
                   <div class="flex justify-between">
                     <span class="text-dark-textMuted">🏆 Championships:</span>
                     <span class="font-bold text-dark-text">{{ compareData.team2.championships }}</span>
@@ -513,7 +622,15 @@
                 <div class="text-center p-3 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 rounded-xl border-2 border-cyan-500/30">
                   <img :src="compareTeam1Data?.logo_url || defaultAvatar" :alt="compareTeam1Data?.team_name" class="w-14 h-14 rounded-full mx-auto mb-2 border-4 border-cyan-500 object-cover" @error="handleImageError" />
                   <div class="font-bold text-sm text-dark-text mb-2 truncate">{{ compareTeam1Data?.team_name }}</div>
-                  <div class="space-y-1 text-left text-xs">
+                  <div v-if="isRoto" class="space-y-1 text-left text-xs">
+                    <div class="flex justify-between"><span class="text-dark-textMuted">🏆 Champ:</span><span class="font-bold text-dark-text">{{ compareData.team1.championships }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Seasons:</span><span class="font-bold text-dark-text">{{ compareData.team1.seasons }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Avg Fin:</span><span class="font-bold text-dark-text">{{ compareData.team1.avgFinish > 0 ? compareData.team1.avgFinish.toFixed(1) : '—' }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Best:</span><span class="font-bold text-dark-text">{{ compareData.team1.bestFinish > 0 ? getOrdinal(compareData.team1.bestFinish) : '—' }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Avg Roto:</span><span class="font-bold text-dark-text">{{ compareData.team1.avgRotoPts > 0 ? compareData.team1.avgRotoPts.toFixed(1) : '—' }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Tot Roto:</span><span class="font-bold text-dark-text">{{ compareData.team1.totalRotoPts > 0 ? compareData.team1.totalRotoPts.toLocaleString() : '—' }}</span></div>
+                  </div>
+                  <div v-else class="space-y-1 text-left text-xs">
                     <div class="flex justify-between"><span class="text-dark-textMuted">🏆 Champ:</span><span class="font-bold text-dark-text">{{ compareData.team1.championships }}</span></div>
                     <div class="flex justify-between"><span class="text-dark-textMuted">📈 Playoffs:</span><span class="font-bold text-dark-text">{{ compareData.team1.playoffAppearances }}</span></div>
                     <div class="flex justify-between"><span class="text-dark-textMuted">Record:</span><span class="font-bold text-dark-text">{{ compareData.team1.wins }}-{{ compareData.team1.losses }}</span></div>
@@ -526,7 +643,15 @@
                 <div class="text-center p-3 bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-xl border-2 border-orange-500/30">
                   <img :src="compareTeam2Data?.logo_url || defaultAvatar" :alt="compareTeam2Data?.team_name" class="w-14 h-14 rounded-full mx-auto mb-2 border-4 border-orange-500 object-cover" @error="handleImageError" />
                   <div class="font-bold text-sm text-dark-text mb-2 truncate">{{ compareTeam2Data?.team_name }}</div>
-                  <div class="space-y-1 text-left text-xs">
+                  <div v-if="isRoto" class="space-y-1 text-left text-xs">
+                    <div class="flex justify-between"><span class="text-dark-textMuted">🏆 Champ:</span><span class="font-bold text-dark-text">{{ compareData.team2.championships }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Seasons:</span><span class="font-bold text-dark-text">{{ compareData.team2.seasons }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Avg Fin:</span><span class="font-bold text-dark-text">{{ compareData.team2.avgFinish > 0 ? compareData.team2.avgFinish.toFixed(1) : '—' }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Best:</span><span class="font-bold text-dark-text">{{ compareData.team2.bestFinish > 0 ? getOrdinal(compareData.team2.bestFinish) : '—' }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Avg Roto:</span><span class="font-bold text-dark-text">{{ compareData.team2.avgRotoPts > 0 ? compareData.team2.avgRotoPts.toFixed(1) : '—' }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Tot Roto:</span><span class="font-bold text-dark-text">{{ compareData.team2.totalRotoPts > 0 ? compareData.team2.totalRotoPts.toLocaleString() : '—' }}</span></div>
+                  </div>
+                  <div v-else class="space-y-1 text-left text-xs">
                     <div class="flex justify-between"><span class="text-dark-textMuted">🏆 Champ:</span><span class="font-bold text-dark-text">{{ compareData.team2.championships }}</span></div>
                     <div class="flex justify-between"><span class="text-dark-textMuted">📈 Playoffs:</span><span class="font-bold text-dark-text">{{ compareData.team2.playoffAppearances }}</span></div>
                     <div class="flex justify-between"><span class="text-dark-textMuted">Record:</span><span class="font-bold text-dark-text">{{ compareData.team2.wins }}-{{ compareData.team2.losses }}</span></div>
@@ -539,17 +664,33 @@
               <!-- VS Record (full width below) -->
               <div class="flex flex-col items-center p-4 bg-dark-card/50 rounded-xl border border-dark-border/30">
                 <div class="text-4xl font-black text-dark-textMuted mb-3">VS</div>
-                <div class="text-sm text-dark-textMuted mb-2">Head-to-Head Record</div>
-                <div class="flex items-center justify-center gap-4 mb-3">
-                  <div class="text-3xl font-bold" :class="compareData.h2h.team1Wins > compareData.h2h.team2Wins ? 'text-green-400' : 'text-dark-textMuted'">{{ compareData.h2h.team1Wins }}</div>
-                  <div class="text-2xl text-dark-textMuted">-</div>
-                  <div class="text-3xl font-bold" :class="compareData.h2h.team2Wins > compareData.h2h.team1Wins ? 'text-green-400' : 'text-dark-textMuted'">{{ compareData.h2h.team2Wins }}</div>
-                </div>
-                <div v-if="compareData.h2h.ties > 0" class="text-xs text-dark-textMuted mb-2">{{ compareData.h2h.ties }} tie(s)</div>
-                <div class="w-full grid grid-cols-2 gap-2 text-sm">
-                  <div class="flex justify-between p-2 bg-dark-border/20 rounded"><span class="text-dark-textMuted">Meetings:</span><span class="font-semibold text-dark-text">{{ compareData.h2h.totalGames }}</span></div>
-                  <div v-if="compareData.h2h.totalGames > 0" class="flex justify-between p-2 bg-dark-border/20 rounded"><span class="text-dark-textMuted">Avg Margin:</span><span class="font-semibold text-dark-text">{{ compareData.h2h.avgMargin.toFixed(1) }}</span></div>
-                </div>
+                <!-- Roto mobile VS -->
+                <template v-if="isRoto && rotoTapeComparison">
+                  <div class="text-sm text-dark-textMuted mb-2">Season Comparison</div>
+                  <div class="flex items-center justify-center gap-4 mb-3">
+                    <div class="text-3xl font-bold" :class="rotoTapeComparison.team1Wins > rotoTapeComparison.team2Wins ? 'text-green-400' : 'text-dark-textMuted'">{{ rotoTapeComparison.team1Wins }}</div>
+                    <div class="text-2xl text-dark-textMuted">-</div>
+                    <div class="text-3xl font-bold" :class="rotoTapeComparison.team2Wins > rotoTapeComparison.team1Wins ? 'text-green-400' : 'text-dark-textMuted'">{{ rotoTapeComparison.team2Wins }}</div>
+                  </div>
+                  <div v-if="rotoTapeComparison.ties > 0" class="text-xs text-dark-textMuted mb-2">{{ rotoTapeComparison.ties }} tie(s)</div>
+                  <div class="w-full text-sm">
+                    <div class="flex justify-between p-2 bg-dark-border/20 rounded"><span class="text-dark-textMuted">Seasons Together:</span><span class="font-semibold text-dark-text">{{ rotoTapeComparison.seasonsTogether }}</span></div>
+                  </div>
+                </template>
+                <!-- H2H mobile VS -->
+                <template v-else>
+                  <div class="text-sm text-dark-textMuted mb-2">Head-to-Head Record</div>
+                  <div class="flex items-center justify-center gap-4 mb-3">
+                    <div class="text-3xl font-bold" :class="compareData.h2h.team1Wins > compareData.h2h.team2Wins ? 'text-green-400' : 'text-dark-textMuted'">{{ compareData.h2h.team1Wins }}</div>
+                    <div class="text-2xl text-dark-textMuted">-</div>
+                    <div class="text-3xl font-bold" :class="compareData.h2h.team2Wins > compareData.h2h.team1Wins ? 'text-green-400' : 'text-dark-textMuted'">{{ compareData.h2h.team2Wins }}</div>
+                  </div>
+                  <div v-if="compareData.h2h.ties > 0" class="text-xs text-dark-textMuted mb-2">{{ compareData.h2h.ties }} tie(s)</div>
+                  <div class="w-full grid grid-cols-2 gap-2 text-sm">
+                    <div class="flex justify-between p-2 bg-dark-border/20 rounded"><span class="text-dark-textMuted">Meetings:</span><span class="font-semibold text-dark-text">{{ compareData.h2h.totalGames }}</span></div>
+                    <div v-if="compareData.h2h.totalGames > 0" class="flex justify-between p-2 bg-dark-border/20 rounded"><span class="text-dark-textMuted">Avg Margin:</span><span class="font-semibold text-dark-text">{{ compareData.h2h.avgMargin.toFixed(1) }}</span></div>
+                  </div>
+                </template>
               </div>
             </div>
           </div>
@@ -557,7 +698,49 @@
 
         <!-- Rivalry Highlights — gated -->
         <LeagueGate wrap :locked="!canExpand" label="Rivalry Deep Stats">
-        <div v-if="compareRivalryHighlights" class="mb-6">
+
+        <!-- Roto Highlight Cards -->
+        <div v-if="isRoto && rotoTapeComparison && rotoTapeComparison.seasonsTogether > 0" class="mb-6">
+          <!-- Desktop: 3 cards -->
+          <div class="hidden md:grid grid-cols-3 gap-4">
+            <div class="card" v-if="rotoTapeComparison.biggestGap"><div class="card-body p-4"><div class="text-xs text-dark-textMuted mb-2">📏 Biggest Gap</div><div class="font-bold text-dark-text mb-1">{{ rotoTapeComparison.biggestGap.winner }}</div><div class="text-lg text-primary font-bold">{{ rotoTapeComparison.biggestGap.gap }} spots</div><div class="text-xs text-dark-textMuted mt-1">{{ rotoTapeComparison.biggestGap.year }}: {{ getOrdinal(rotoTapeComparison.biggestGap.team1Rank) }} vs {{ getOrdinal(rotoTapeComparison.biggestGap.team2Rank) }}</div></div></div>
+            <div class="card" v-if="rotoTapeComparison.closestSeason"><div class="card-body p-4"><div class="text-xs text-dark-textMuted mb-2">🎯 Closest Season</div><div class="font-bold text-dark-text mb-1">{{ rotoTapeComparison.closestSeason.gap === 0 ? 'Tied!' : rotoTapeComparison.closestSeason.gap + ' spot' + (rotoTapeComparison.closestSeason.gap > 1 ? 's' : '') }}</div><div class="text-lg text-primary font-bold">{{ getOrdinal(rotoTapeComparison.closestSeason.team1Rank) }} vs {{ getOrdinal(rotoTapeComparison.closestSeason.team2Rank) }}</div><div class="text-xs text-dark-textMuted mt-1">{{ rotoTapeComparison.closestSeason.year }}</div></div></div>
+            <div class="card" v-if="rotoTapeComparison.bestCombined"><div class="card-body p-4"><div class="text-xs text-dark-textMuted mb-2">🔥 Best Combined Season</div><div class="font-bold text-dark-text mb-1">Combined {{ getOrdinal(rotoTapeComparison.bestCombined.combined) }} place</div><div class="text-lg text-primary font-bold">{{ getOrdinal(rotoTapeComparison.bestCombined.team1Rank) }} + {{ getOrdinal(rotoTapeComparison.bestCombined.team2Rank) }}</div><div class="text-xs text-dark-textMuted mt-1">{{ rotoTapeComparison.bestCombined.year }}</div></div></div>
+          </div>
+          <!-- Mobile: carousel -->
+          <div class="md:hidden card p-0 overflow-hidden">
+            <div class="p-4 text-center">
+              <template v-if="rivalryHighIdx === 0 && rotoTapeComparison.biggestGap">
+                <div class="text-xs text-dark-textMuted mb-3">📏 Biggest Gap</div>
+                <div class="font-bold text-lg text-dark-text mb-1">{{ rotoTapeComparison.biggestGap.winner }}</div>
+                <div class="text-3xl text-primary font-bold mb-1">{{ rotoTapeComparison.biggestGap.gap }} spots</div>
+                <div class="text-xs text-dark-textMuted">{{ rotoTapeComparison.biggestGap.year }}: {{ getOrdinal(rotoTapeComparison.biggestGap.team1Rank) }} vs {{ getOrdinal(rotoTapeComparison.biggestGap.team2Rank) }}</div>
+              </template>
+              <template v-else-if="rivalryHighIdx === 1 && rotoTapeComparison.closestSeason">
+                <div class="text-xs text-dark-textMuted mb-3">🎯 Closest Season</div>
+                <div class="font-bold text-lg text-dark-text mb-1">{{ rotoTapeComparison.closestSeason.gap === 0 ? 'Tied!' : rotoTapeComparison.closestSeason.gap + ' spot' + (rotoTapeComparison.closestSeason.gap > 1 ? 's' : '') }}</div>
+                <div class="text-3xl text-primary font-bold mb-1">{{ getOrdinal(rotoTapeComparison.closestSeason.team1Rank) }} vs {{ getOrdinal(rotoTapeComparison.closestSeason.team2Rank) }}</div>
+                <div class="text-xs text-dark-textMuted">{{ rotoTapeComparison.closestSeason.year }}</div>
+              </template>
+              <template v-else>
+                <template v-if="rotoTapeComparison.bestCombined">
+                  <div class="text-xs text-dark-textMuted mb-3">🔥 Best Combined Season</div>
+                  <div class="font-bold text-lg text-dark-text mb-1">Combined {{ getOrdinal(rotoTapeComparison.bestCombined.combined) }} place</div>
+                  <div class="text-3xl text-primary font-bold mb-1">{{ getOrdinal(rotoTapeComparison.bestCombined.team1Rank) }} + {{ getOrdinal(rotoTapeComparison.bestCombined.team2Rank) }}</div>
+                  <div class="text-xs text-dark-textMuted">{{ rotoTapeComparison.bestCombined.year }}</div>
+                </template>
+              </template>
+            </div>
+            <div class="flex items-center justify-center gap-3 pb-3">
+              <button @click="rivalryHighIdx = Math.max(0, rivalryHighIdx - 1)" :disabled="rivalryHighIdx === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="rivalryHighIdx === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+              <div class="flex gap-1.5"><div v-for="(_, i) in 3" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === rivalryHighIdx ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+              <button @click="rivalryHighIdx = Math.min(2, rivalryHighIdx + 1)" :disabled="rivalryHighIdx >= 2" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="rivalryHighIdx >= 2 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- H2H Highlight Cards -->
+        <div v-else-if="!isRoto && compareRivalryHighlights" class="mb-6">
           <!-- Desktop: 3 cards -->
           <div class="hidden md:grid grid-cols-3 gap-4">
             <div class="card"><div class="card-body p-4"><div class="text-xs text-dark-textMuted mb-2">💥 Biggest Blowout</div><div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.biggestBlowout.winner }}</div><div class="text-lg text-primary font-bold">{{ compareRivalryHighlights.biggestBlowout.margin.toFixed(1) }} points</div><div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.biggestBlowout.season }} Week {{ compareRivalryHighlights.biggestBlowout.week }}</div></div></div>
@@ -595,7 +778,49 @@
         </div>
         </LeagueGate>
 
-        <!-- Rivalry History -->
+        <!-- Roto: Season-by-Season Comparison -->
+        <div v-if="isRoto && rotoTapeComparison && rotoTapeComparison.seasonsTogether > 0" class="card mb-6">
+          <div class="card-header">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">📜</span>
+              <h2 class="card-title">Season-by-Season Comparison</h2>
+            </div>
+            <p class="card-subtitle mt-2">{{ rotoTapeComparison.seasonsTogether }} season{{ rotoTapeComparison.seasonsTogether !== 1 ? 's' : '' }} together</p>
+          </div>
+          <div class="card-body">
+            <div class="max-h-96 overflow-y-auto">
+              <div
+                v-for="(season, idx) in rotoTapeComparison.seasons"
+                :key="idx"
+                class="flex items-center justify-between py-3 border-b border-dark-border"
+              >
+                <span class="text-sm font-bold text-dark-text">{{ season.year }}</span>
+                <div class="flex items-center gap-4">
+                  <span class="font-bold" :class="season.team1Rank < season.team2Rank ? 'text-green-400' : season.team1Rank > season.team2Rank ? 'text-red-400' : 'text-dark-text'">
+                    {{ getOrdinal(season.team1Rank) }}
+                  </span>
+                  <span class="text-dark-textMuted text-xs">vs</span>
+                  <span class="font-bold" :class="season.team2Rank < season.team1Rank ? 'text-green-400' : season.team2Rank > season.team1Rank ? 'text-red-400' : 'text-dark-text'">
+                    {{ getOrdinal(season.team2Rank) }}
+                  </span>
+                  <span class="text-xs text-dark-textMuted w-12 text-right">
+                    {{ Math.abs(season.team1Rank - season.team2Rank) === 0 ? 'Tied' : `+${Math.abs(season.team1Rank - season.team2Rank)}` }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Roto: No seasons together message -->
+        <div v-else-if="isRoto && (!rotoTapeComparison || rotoTapeComparison.seasonsTogether === 0)" class="card mb-6">
+          <div class="card-body text-center py-8">
+            <p class="text-dark-textMuted">No overlapping seasons found between these teams</p>
+          </div>
+        </div>
+
+        <!-- H2H: Rivalry History -->
+        <template v-if="!isRoto">
         <div class="card mb-6" v-if="compareRivalryHistory.length > 0">
           <div class="card-header">
             <div class="flex items-center gap-2">
@@ -606,8 +831,8 @@
           </div>
           <div class="card-body">
             <div class="space-y-3 max-h-96 overflow-y-auto">
-              <div 
-                v-for="(matchup, idx) in compareRivalryHistory" 
+              <div
+                v-for="(matchup, idx) in compareRivalryHistory"
                 :key="idx"
                 class="p-3 bg-dark-border/20 rounded-lg border border-dark-border"
               >
@@ -648,10 +873,21 @@
             <p class="text-dark-textMuted">No head-to-head matchups found between these teams</p>
           </div>
         </div>
+        </template>
+      </template>
+
+      <!-- Roto: No H2H Matrix -->
+      <template v-if="isRoto">
+        <div class="card">
+          <div class="p-6 text-center">
+            <p class="text-dark-textMuted text-sm">Head-to-head records are not tracked in rotisserie leagues.</p>
+            <p class="text-dark-textMuted text-xs mt-2">In roto, every team competes against all other teams simultaneously across the entire season.</p>
+          </div>
+        </div>
       </template>
 
       <!-- Head-to-Head Matrix -->
-      <div class="card">
+      <div v-if="!isRoto" class="card">
         <div class="card-header">
           <div class="flex items-center justify-between flex-wrap gap-4">
             <div class="flex items-center gap-2">
@@ -789,7 +1025,7 @@
               </option>
             </select>
           </div>
-          <div v-if="selectedAwardTab === 'Weekly'" class="mt-4 flex gap-4">
+          <div v-if="selectedAwardTab === 'Weekly' && !isRoto" class="mt-4 flex gap-4">
             <div>
               <label class="text-sm text-dark-textMuted">Season:</label>
               <select 
@@ -979,7 +1215,11 @@
 
           <!-- Weekly Awards -->
           <div v-if="selectedAwardTab === 'Weekly'">
-            <div class="hidden md:grid grid-cols-2 gap-4">
+            <div v-if="isRoto" class="p-8 text-center">
+              <p class="text-dark-textMuted text-sm">Weekly awards are not available for rotisserie leagues.</p>
+              <p class="text-dark-textMuted text-xs mt-2">Roto leagues don't have weekly matchups — standings are cumulative across the entire season.</p>
+            </div>
+            <div v-if="!isRoto" class="hidden md:grid grid-cols-2 gap-4">
               <div v-for="(award, idx) in weeklyAwards" :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" :key="award.title" class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors" @click="openWeeklyAwardModal(award.title, award.isShame ? 'worst' : 'best')">
                 <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                 <div v-if="award.winner" class="flex items-center gap-3 mb-2">
@@ -992,7 +1232,7 @@
                 <div class="text-xs text-yellow-400 mt-2 opacity-70">Click for details →</div>
               </div>
             </div>
-            <div class="md:hidden card p-0 overflow-hidden">
+            <div v-if="!isRoto" class="md:hidden card p-0 overflow-hidden">
               <div class="p-4" v-if="weeklyAwards[weeklyIdx]" @click="openWeeklyAwardModal(weeklyAwards[weeklyIdx].title, weeklyAwards[weeklyIdx].isShame ? 'worst' : 'best')">
                 <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ weeklyAwards[weeklyIdx].title }}</div>
                 <div v-if="weeklyAwards[weeklyIdx].winner" class="flex items-center gap-3 mb-2">
@@ -1038,6 +1278,44 @@
                 
                 <!-- Scoring Breakdown -->
                 <div v-if="showLegacyExplainer" class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                  <template v-if="isRoto">
+                    <div class="bg-dark-bg/50 rounded-lg p-3">
+                      <div class="font-semibold text-emerald-400 mb-2">🏆 Championships & Finishes</div>
+                      <div class="space-y-1 text-dark-textMuted">
+                        <div class="flex justify-between"><span>Championship</span><span class="text-emerald-400">+100</span></div>
+                        <div class="flex justify-between"><span>Runner-up</span><span class="text-emerald-400">+50</span></div>
+                        <div class="flex justify-between"><span>3rd Place</span><span class="text-emerald-400">+25</span></div>
+                        <div class="flex justify-between"><span>Top-Half Finish</span><span class="text-emerald-400">+20</span></div>
+                        <div class="flex justify-between"><span>Roto Pts Leader</span><span class="text-emerald-400">+30</span></div>
+                      </div>
+                    </div>
+                    <div class="bg-dark-bg/50 rounded-lg p-3">
+                      <div class="font-semibold text-blue-400 mb-2">📈 Season Performance</div>
+                      <div class="space-y-1 text-dark-textMuted">
+                        <div class="flex justify-between"><span>Per Roto Point</span><span class="text-blue-400">+1</span></div>
+                        <div class="flex justify-between"><span>Above-Average Season</span><span class="text-blue-400">+10</span></div>
+                        <div class="flex justify-between"><span>Top 3 Finish</span><span class="text-blue-400">+15</span></div>
+                      </div>
+                    </div>
+                    <div class="bg-dark-bg/50 rounded-lg p-3">
+                      <div class="font-semibold text-purple-400 mb-2">⭐ Category Achievements</div>
+                      <div class="space-y-1 text-dark-textMuted">
+                        <div class="flex justify-between"><span>Category Leader Season</span><span class="text-purple-400">+20</span></div>
+                        <div class="flex justify-between"><span>Top 3 Roto Pts Season</span><span class="text-purple-400">+10</span></div>
+                        <div class="flex justify-between"><span>Best Hitting Season</span><span class="text-purple-400">+10</span></div>
+                        <div class="flex justify-between"><span>Best Pitching Season</span><span class="text-purple-400">+10</span></div>
+                      </div>
+                    </div>
+                    <div class="bg-dark-bg/50 rounded-lg p-3">
+                      <div class="font-semibold text-amber-400 mb-2">🎖️ Longevity</div>
+                      <div class="space-y-1 text-dark-textMuted">
+                        <div class="flex justify-between"><span>Per Season Played</span><span class="text-amber-400">+5</span></div>
+                        <div class="flex justify-between"><span>5+ Year Top-Half Streak</span><span class="text-amber-400">+30</span></div>
+                        <div class="flex justify-between"><span>3+ Year Top-3 Streak</span><span class="text-amber-400">+10</span></div>
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
                   <div class="bg-dark-bg/50 rounded-lg p-3">
                     <div class="font-semibold text-emerald-400 mb-2">🏆 Championships</div>
                     <div class="space-y-1 text-dark-textMuted">
@@ -1080,6 +1358,7 @@
                       <div class="flex justify-between"><span>Losing Record Season</span><span class="text-red-400">-5</span></div>
                     </div>
                   </div>
+                  </template>
                 </div>
               </div>
             </div>
@@ -1089,8 +1368,8 @@
         <!-- Controls -->
         <div class="flex items-center justify-between flex-wrap gap-4 mb-6">
           <div class="flex items-center gap-4">
-            <!-- Toggle Penalties -->
-            <label class="flex items-center gap-2 cursor-pointer">
+            <!-- Toggle Penalties (H2H only) -->
+            <label v-if="!isRoto" class="flex items-center gap-2 cursor-pointer">
               <span class="text-sm text-dark-textMuted">Include Penalties</span>
               <div class="relative">
                 <input type="checkbox" v-model="includeLegacyPenalties" class="sr-only">
@@ -1190,12 +1469,22 @@
                     <div v-if="team.championships > 0" class="flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-400 text-xs">
                       <span>🏆</span> {{ team.championships }}
                     </div>
-                    <div v-if="team.playoff_appearances > 0" class="flex items-center gap-1 px-2 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs">
-                      <span>📈</span> {{ team.playoff_appearances }}
-                    </div>
-                    <div v-if="team.regular_season_titles > 0" class="flex items-center gap-1 px-2 py-1 rounded-full bg-purple-500/10 text-purple-400 text-xs">
-                      <span>👑</span> {{ team.regular_season_titles }}
-                    </div>
+                    <template v-if="isRoto">
+                      <div v-if="team.top_half_finishes > 0" class="flex items-center gap-1 px-2 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs">
+                        <span>📈</span> {{ team.top_half_finishes }}
+                      </div>
+                      <div v-if="team.category_leader_seasons > 0" class="flex items-center gap-1 px-2 py-1 rounded-full bg-purple-500/10 text-purple-400 text-xs">
+                        <span>⭐</span> {{ team.category_leader_seasons }}
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div v-if="team.playoff_appearances > 0" class="flex items-center gap-1 px-2 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs">
+                        <span>📈</span> {{ team.playoff_appearances }}
+                      </div>
+                      <div v-if="team.regular_season_titles > 0" class="flex items-center gap-1 px-2 py-1 rounded-full bg-purple-500/10 text-purple-400 text-xs">
+                        <span>👑</span> {{ team.regular_season_titles }}
+                      </div>
+                    </template>
                   </div>
                   
                   <!-- Score -->
@@ -1239,18 +1528,30 @@
               <span class="text-lg">🏆</span>
               <span class="text-sm text-dark-textMuted">Championships</span>
             </div>
-            <div class="flex items-center gap-2">
-              <span class="text-lg">📈</span>
-              <span class="text-sm text-dark-textMuted">Playoff Appearances</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-lg">👑</span>
-              <span class="text-sm text-dark-textMuted">Regular Season Titles</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-lg">⭐</span>
-              <span class="text-sm text-dark-textMuted">Weekly High Scores</span>
-            </div>
+            <template v-if="isRoto">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">📈</span>
+                <span class="text-sm text-dark-textMuted">Top-Half Finishes</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-lg">⭐</span>
+                <span class="text-sm text-dark-textMuted">Category Leader Seasons</span>
+              </div>
+            </template>
+            <template v-else>
+              <div class="flex items-center gap-2">
+                <span class="text-lg">📈</span>
+                <span class="text-sm text-dark-textMuted">Playoff Appearances</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-lg">👑</span>
+                <span class="text-sm text-dark-textMuted">Regular Season Titles</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-lg">⭐</span>
+                <span class="text-sm text-dark-textMuted">Weekly High Scores</span>
+              </div>
+            </template>
           </div>
         </div>
 
@@ -1428,8 +1729,8 @@
                         <span class="font-bold text-dark-text">+{{ yearData.points }}</span>
                       </div>
                       <span v-if="yearData.isChampion" class="text-yellow-400" title="Championship">🏆</span>
-                      <span v-else-if="yearData.isRegSeasonChamp" class="text-purple-400" title="Regular Season Title">👑</span>
-                      <span v-else-if="yearData.madePlayoffs" class="text-blue-400" title="Made Playoffs">📈</span>
+                      <span v-else-if="yearData.isRegSeasonChamp" class="text-purple-400" :title="isRoto ? 'Roto Pts Leader' : 'Regular Season Title'">👑</span>
+                      <span v-else-if="yearData.madePlayoffs" class="text-blue-400" :title="isRoto ? 'Top-Half Finish' : 'Made Playoffs'">📈</span>
                     </div>
                   </div>
                 </div>
@@ -1928,18 +2229,18 @@
             </div>
             <div class="text-center">
               <div class="text-2xl">📈</div>
-              <div class="text-xl font-bold text-blue-400">{{ selectedLegacyTeam.playoff_appearances }}</div>
-              <div class="text-xs text-dark-textMuted">Playoffs</div>
+              <div class="text-xl font-bold text-blue-400">{{ isRoto ? selectedLegacyTeam.top_half_finishes : selectedLegacyTeam.playoff_appearances }}</div>
+              <div class="text-xs text-dark-textMuted">{{ isRoto ? 'Top-Half' : 'Playoffs' }}</div>
             </div>
             <div class="text-center">
               <div class="text-2xl">✓</div>
-              <div class="text-xl font-bold text-green-400">{{ selectedLegacyTeam.total_wins }}</div>
-              <div class="text-xs text-dark-textMuted">Wins</div>
+              <div class="text-xl font-bold text-green-400">{{ isRoto ? Math.round(selectedLegacyTeam.total_roto_pts) : selectedLegacyTeam.total_wins }}</div>
+              <div class="text-xs text-dark-textMuted">{{ isRoto ? 'Total Roto Pts' : 'Wins' }}</div>
             </div>
             <div class="text-center">
               <div class="text-2xl">⭐</div>
-              <div class="text-xl font-bold text-purple-400">{{ selectedLegacyTeam.season_high_scores }}</div>
-              <div class="text-xs text-dark-textMuted">High Scores</div>
+              <div class="text-xl font-bold text-purple-400">{{ isRoto ? selectedLegacyTeam.category_leader_seasons : selectedLegacyTeam.season_high_scores }}</div>
+              <div class="text-xs text-dark-textMuted">{{ isRoto ? 'Cat Leaders' : 'High Scores' }}</div>
             </div>
           </div>
           
@@ -1995,8 +2296,8 @@
           <div class="p-6 border-b border-dark-border">
             <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Quick Presets</h4>
             <div class="flex flex-wrap gap-2">
-              <button 
-                v-for="preset in legacyPresets" 
+              <button
+                v-for="preset in isRoto ? rotoLegacyPresets : legacyPresets"
                 :key="preset.id"
                 @click="applyLegacyPreset(preset)"
                 class="px-3 py-2 rounded-lg border border-dark-border text-sm hover:border-primary hover:text-primary transition-colors"
@@ -2009,10 +2310,10 @@
 
           <!-- Point Categories -->
           <div class="p-6 space-y-6">
-            <!-- Championships & Playoffs -->
+            <!-- Championships & Playoffs / Championships & Finishes -->
             <div>
               <h4 class="text-sm font-semibold text-yellow-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <span>🏆</span> Championships & Playoffs
+                <span>🏆</span> {{ isRoto ? 'Championships & Finishes' : 'Championships & Playoffs' }}
               </h4>
               <div class="space-y-4">
                 <div v-for="factor in legacyFactors.filter(f => f.category === 'championship')" :key="factor.id" class="bg-dark-border/30 rounded-xl p-4">
@@ -2027,18 +2328,18 @@
                   </div>
                   <p class="text-xs text-dark-textMuted mb-3">{{ factor.description }}</p>
                   <div class="flex items-center gap-3">
-                    <input 
-                      type="range" 
-                      v-model.number="legacyPoints[factor.id]" 
-                      :min="factor.min" 
-                      :max="factor.max" 
+                    <input
+                      type="range"
+                      v-model.number="(isRoto ? rotoLegacyPoints : legacyPoints)[factor.id]"
+                      :min="factor.min"
+                      :max="factor.max"
                       :step="factor.step"
                       class="flex-1 h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-primary"
                     />
-                    <input 
-                      type="number" 
-                      v-model.number="legacyPoints[factor.id]" 
-                      :min="factor.min" 
+                    <input
+                      type="number"
+                      v-model.number="(isRoto ? rotoLegacyPoints : legacyPoints)[factor.id]"
+                      :min="factor.min"
                       :max="factor.max"
                       class="w-16 px-2 py-1 bg-dark-card border border-dark-border rounded text-sm text-center text-dark-text"
                     />
@@ -2065,18 +2366,18 @@
                   </div>
                   <p class="text-xs text-dark-textMuted mb-3">{{ factor.description }}</p>
                   <div class="flex items-center gap-3">
-                    <input 
-                      type="range" 
-                      v-model.number="legacyPoints[factor.id]" 
-                      :min="factor.min" 
-                      :max="factor.max" 
+                    <input
+                      type="range"
+                      v-model.number="(isRoto ? rotoLegacyPoints : legacyPoints)[factor.id]"
+                      :min="factor.min"
+                      :max="factor.max"
                       :step="factor.step"
                       class="flex-1 h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-primary"
                     />
-                    <input 
-                      type="number" 
-                      v-model.number="legacyPoints[factor.id]" 
-                      :min="factor.min" 
+                    <input
+                      type="number"
+                      v-model.number="(isRoto ? rotoLegacyPoints : legacyPoints)[factor.id]"
+                      :min="factor.min"
                       :max="factor.max"
                       class="w-16 px-2 py-1 bg-dark-card border border-dark-border rounded text-sm text-center text-dark-text"
                     />
@@ -2085,8 +2386,84 @@
               </div>
             </div>
 
-            <!-- Penalties -->
-            <div>
+            <!-- Category Achievements (roto only) -->
+            <div v-if="isRoto">
+              <h4 class="text-sm font-semibold text-purple-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <span>⭐</span> Category Achievements
+              </h4>
+              <div class="space-y-4">
+                <div v-for="factor in legacyFactors.filter(f => f.category === 'category')" :key="factor.id" class="bg-dark-border/30 rounded-xl p-4">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-lg">{{ factor.icon }}</span>
+                      <span class="font-medium text-dark-text">{{ factor.name }}</span>
+                    </div>
+                    <span class="text-sm font-bold text-green-400">
+                      +{{ factor.value }}
+                    </span>
+                  </div>
+                  <p class="text-xs text-dark-textMuted mb-3">{{ factor.description }}</p>
+                  <div class="flex items-center gap-3">
+                    <input
+                      type="range"
+                      v-model.number="rotoLegacyPoints[factor.id]"
+                      :min="factor.min"
+                      :max="factor.max"
+                      :step="factor.step"
+                      class="flex-1 h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                    <input
+                      type="number"
+                      v-model.number="rotoLegacyPoints[factor.id]"
+                      :min="factor.min"
+                      :max="factor.max"
+                      class="w-16 px-2 py-1 bg-dark-card border border-dark-border rounded text-sm text-center text-dark-text"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Longevity (roto only) -->
+            <div v-if="isRoto">
+              <h4 class="text-sm font-semibold text-green-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <span>🎖️</span> Longevity
+              </h4>
+              <div class="space-y-4">
+                <div v-for="factor in legacyFactors.filter(f => f.category === 'longevity')" :key="factor.id" class="bg-dark-border/30 rounded-xl p-4">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-lg">{{ factor.icon }}</span>
+                      <span class="font-medium text-dark-text">{{ factor.name }}</span>
+                    </div>
+                    <span class="text-sm font-bold text-green-400">
+                      +{{ factor.value }}
+                    </span>
+                  </div>
+                  <p class="text-xs text-dark-textMuted mb-3">{{ factor.description }}</p>
+                  <div class="flex items-center gap-3">
+                    <input
+                      type="range"
+                      v-model.number="rotoLegacyPoints[factor.id]"
+                      :min="factor.min"
+                      :max="factor.max"
+                      :step="factor.step"
+                      class="flex-1 h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                    <input
+                      type="number"
+                      v-model.number="rotoLegacyPoints[factor.id]"
+                      :min="factor.min"
+                      :max="factor.max"
+                      class="w-16 px-2 py-1 bg-dark-card border border-dark-border rounded text-sm text-center text-dark-text"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Penalties (H2H only) -->
+            <div v-if="!isRoto">
               <h4 class="text-sm font-semibold text-red-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                 <span>⚠️</span> Penalties
               </h4>
@@ -2103,18 +2480,18 @@
                   </div>
                   <p class="text-xs text-dark-textMuted mb-3">{{ factor.description }}</p>
                   <div class="flex items-center gap-3">
-                    <input 
-                      type="range" 
-                      v-model.number="legacyPoints[factor.id]" 
-                      :min="factor.min" 
-                      :max="factor.max" 
+                    <input
+                      type="range"
+                      v-model.number="legacyPoints[factor.id]"
+                      :min="factor.min"
+                      :max="factor.max"
                       :step="factor.step"
                       class="flex-1 h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-red-500"
                     />
-                    <input 
-                      type="number" 
-                      v-model.number="legacyPoints[factor.id]" 
-                      :min="factor.min" 
+                    <input
+                      type="number"
+                      v-model.number="legacyPoints[factor.id]"
+                      :min="factor.min"
                       :max="factor.max"
                       class="w-16 px-2 py-1 bg-dark-card border border-dark-border rounded text-sm text-center text-dark-text"
                     />
@@ -2250,6 +2627,171 @@ const scoringTypeLabel = computed(() => {
   return 'H2H Points'
 })
 
+const isRoto = computed(() => {
+  // yahooLeague may be an array — handle both formats
+  const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+  if (yahooLeagueData?.scoring_type?.toLowerCase().includes('roto')) return true
+  if (leagueStore.currentLeague?.scoring_type?.toLowerCase().includes('roto')) return true
+  const saved = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
+  if (saved?.scoring_type?.toLowerCase().includes('roto')) return true
+  return false
+})
+
+function getOrdinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return n + (s[(v - 20) % 10] || s[v] || s[0])
+}
+
+// Roto hitting/pitching category split
+// Hitting stat IDs (baseball): R, HR, RBI, SB, OBP
+const HITTING_STAT_IDS = new Set(['7', '12', '13', '16', '4'])
+// Pitching stat IDs (baseball): K, ERA, WHIP, QS, SV+H
+const PITCHING_STAT_IDS = new Set(['42', '26', '27', '83', '89'])
+// Lower is better stats (lowest value gets highest ranking points)
+const LOWER_IS_BETTER = new Set(['26', '27'])
+
+// Per-category ranking data: { season: { teamKey: { statId: rankingPoints } } }
+const rotoPerCategoryData = ref<Record<string, Record<string, Record<string, number>>>>({})
+
+function getHittingScore(teamKey: string, season: string): number {
+  const rankings = rotoPerCategoryData.value[season]?.[teamKey]
+  if (!rankings) return 0
+  let total = 0
+  for (const sid of HITTING_STAT_IDS) { total += rankings[sid] || 0 }
+  return total
+}
+
+function getPitchingScore(teamKey: string, season: string): number {
+  const rankings = rotoPerCategoryData.value[season]?.[teamKey]
+  if (!rankings) return 0
+  let total = 0
+  for (const sid of PITCHING_STAT_IDS) { total += rankings[sid] || 0 }
+  return total
+}
+
+async function loadRotoPerCategoryData() {
+  if (!isRoto.value) return
+
+  try {
+    const { yahooService } = await import('@/services/yahoo')
+
+    // Get stat categories (same for all seasons)
+    const leagueKey = effectiveLeagueKey.value
+    if (!leagueKey) return
+    const settings = await yahooService.getLeagueSettings(leagueKey)
+    const rawCats = settings?.stat_categories?.stats || settings?.stat_categories || []
+    const scoringCats: string[] = []
+    for (const cat of rawCats) {
+      const s = cat?.stat || cat
+      const sid = String(s?.stat_id ?? '')
+      if (!sid || s?.is_only_display_stat === '1') continue
+      scoringCats.push(sid)
+    }
+
+    // Process each season
+    const seasons = Object.keys(historicalData.value).sort((a, b) => parseInt(b) - parseInt(a))
+    const currentSeasonYear = leagueStore.currentLeague?.season || new Date().getFullYear().toString()
+    console.log(`[Roto] Loading per-category data for ${seasons.length} seasons... (current: ${currentSeasonYear})`)
+
+    for (let idx = 0; idx < seasons.length; idx++) {
+      const season = seasons[idx]
+      if (rotoPerCategoryData.value[season]) continue // already loaded
+
+      // For the current season, use leagueStore.yahooTeams (has original Yahoo team keys)
+      // For past seasons, use historicalData standings (has normalized GUID keys which may not work with Yahoo API)
+      const isCurrentSeason = season === currentSeasonYear
+      const seasonData = historicalData.value[season]
+      const teams = isCurrentSeason
+        ? (leagueStore.yahooTeams?.length > 0 ? leagueStore.yahooTeams : (seasonData?.standings || []))
+        : (seasonData?.standings || [])
+      if (teams.length === 0) continue
+
+      console.log(`[Roto] Loading per-category data for season ${season} (${idx + 1}/${seasons.length})${isCurrentSeason ? ' [CURRENT - using store data]' : ''}`)
+
+      // Try to fetch stats for each team
+      const teamStats: Record<string, Record<string, number>> = {}
+      let hasStats = false
+
+      for (const team of teams) {
+        const tk = team.team_key || team.team_id
+        if (!tk) continue
+        try {
+          const stats = await yahooService.getTeamSeasonStats(tk)
+          if (stats && Object.keys(stats).length > 0) {
+            teamStats[tk] = stats
+            hasStats = true
+          }
+        } catch {
+          // Historical team key might not be accessible — skip silently
+        }
+      }
+
+      if (!hasStats) {
+        console.log(`[Roto] No stat data available for season ${season} — skipping`)
+        continue
+      }
+
+      // Rank teams per category
+      const numTeams = teams.filter((t: any) => t.team_key && teamStats[t.team_key]).length
+      if (numTeams === 0) continue
+
+      const rankings: Record<string, Record<string, number>> = {}
+      for (const team of teams) {
+        if (team.team_key && teamStats[team.team_key]) {
+          rankings[team.team_key] = {}
+        }
+      }
+
+      for (const sid of scoringCats) {
+        const isLower = LOWER_IS_BETTER.has(sid)
+        const vals = teams
+          .filter((t: any) => t.team_key && teamStats[t.team_key])
+          .map((t: any) => ({ tk: t.team_key, val: teamStats[t.team_key]?.[sid] ?? 0 }))
+        vals.sort((a: any, b: any) => isLower ? a.val - b.val : b.val - a.val)
+
+        let i = 0
+        while (i < vals.length) {
+          let j = i + 1
+          while (j < vals.length && vals[j].val === vals[i].val) j++
+          const tied = j - i
+          const totalPts = Array.from({ length: tied }, (_, k) => numTeams - (i + k)).reduce((a, b) => a + b, 0)
+          const avg = totalPts / tied
+          for (let k = i; k < j; k++) {
+            if (rankings[vals[k].tk]) rankings[vals[k].tk][sid] = avg
+          }
+          i = j
+        }
+      }
+
+      // For the current season, the rankings are keyed by original Yahoo team keys.
+      // But historicalData uses normalized GUID keys. Re-map if needed.
+      if (isCurrentSeason && leagueStore.yahooTeams?.length > 0) {
+        const guidMapped: Record<string, Record<string, number>> = {}
+        const histStandings = seasonData?.standings || []
+        for (const team of leagueStore.yahooTeams) {
+          const origKey = team.team_key || team.team_id
+          const guidKey = team.manager_guid || origKey
+          // Also check if historicalData uses this GUID
+          const matchInHist = histStandings.find((h: any) => h.team_key === guidKey || h.name === team.name)
+          const finalKey = matchInHist?.team_key || guidKey
+          if (rankings[origKey]) {
+            guidMapped[finalKey] = rankings[origKey]
+            // Also keep original key for lookups
+            if (finalKey !== origKey) guidMapped[origKey] = rankings[origKey]
+          }
+        }
+        rotoPerCategoryData.value[season] = Object.keys(guidMapped).length > 0 ? guidMapped : rankings
+      } else {
+        rotoPerCategoryData.value[season] = rankings
+      }
+      console.log(`[Roto] Loaded per-category data for season ${season}:`, Object.keys(rotoPerCategoryData.value[season]).length, 'teams')
+    }
+  } catch (e) {
+    console.error('[Roto] Failed to load per-category data:', e)
+  }
+}
+
 // Effective league key - use the actually loaded league (might be previous season)
 const effectiveLeagueKey = computed(() => {
   if (leagueStore.currentLeague?.league_id) return leagueStore.currentLeague.league_id
@@ -2311,6 +2853,17 @@ const weeklyAwardToast = ref<'idle'|'success'|'error'>('idle')
 const sortColumn = ref<string>('wins')
 const sortDirection = ref<'asc' | 'desc'>('desc')
 
+// Watch for roto to set appropriate default sort
+watch(isRoto, (roto) => {
+  if (roto) {
+    sortColumn.value = 'avg_finish'
+    sortDirection.value = 'asc'
+  } else {
+    sortColumn.value = 'wins'
+    sortDirection.value = 'desc'
+  }
+})
+
 // Filter toggles
 const showCurrentMembersOnlyCareer = ref(false)
 const showCurrentMembersOnlyH2H = ref(false)
@@ -2329,10 +2882,10 @@ const selectedLegacyTeam = ref<any>(null)
 
 // Awards state
 const selectedAwardTab = ref<'All-Time' | 'Season' | 'Weekly'>('All-Time')
-const selectedAwardSeason = ref<string>('')
+const selectedAwardSeason = ref<string>(new Date().getFullYear().toString())
 const selectedWeeklyAwardSeason = ref<string>('')
 const selectedWeeklyAwardWeek = ref<number>(1)
-const awardTabs = ['All-Time', 'Season', 'Weekly']
+const awardTabs = computed(() => isRoto.value ? ['All-Time', 'Season'] : ['All-Time', 'Season', 'Weekly'])
 
 // Refs for downloading
 const careerTableRef = ref<HTMLElement | null>(null)
@@ -2358,6 +2911,13 @@ interface CareerStat {
   avg_ppw: number
   total_pf: number
   total_weeks: number
+  // Roto-specific fields
+  avg_finish: number
+  best_finish: number
+  top3_finishes: number
+  avg_roto_pts: number
+  total_roto_pts: number
+  _finish_positions: number[]
 }
 
 interface SeasonRecord {
@@ -2370,6 +2930,11 @@ interface SeasonRecord {
   transaction_count: number
   trade_count: number
   champion: string
+  // Roto fields
+  roto_pts?: number
+  roto_rank?: number
+  roto_pts_back?: number
+  num_teams?: number
 }
 
 interface H2HTeam {
@@ -2408,12 +2973,50 @@ const availableWeeksForAwards = computed(() => {
 const careerRecords = computed(() => {
   const stats = careerStats.value
   if (stats.length === 0) return []
-  
+
+  if (isRoto.value) {
+    const bestAvgFinish = [...stats].filter(s => s.seasons > 0).sort((a, b) => a.avg_finish - b.avg_finish)[0]
+    const mostChampionships = [...stats].sort((a, b) => b.championships - a.championships)[0]
+    const highestAvgRoto = [...stats].filter(s => s.seasons > 0).sort((a, b) => b.avg_roto_pts - a.avg_roto_pts)[0]
+    const mostTop3 = [...stats].sort((a, b) => b.top3_finishes - a.top3_finishes)[0]
+
+    return [
+      {
+        label: 'Best Avg Finish',
+        team: bestAvgFinish?.team_name || 'N/A',
+        value: bestAvgFinish?.avg_finish?.toFixed(1) || '0',
+        icon: '🏆',
+        detail: `Avg ${bestAvgFinish?.avg_finish?.toFixed(1) || 0} over ${bestAvgFinish?.seasons || 0} seasons`
+      },
+      {
+        label: 'Most Championships',
+        team: mostChampionships?.team_name || 'N/A',
+        value: mostChampionships?.championships || 0,
+        icon: '👑',
+        detail: `${mostChampionships?.championships || 0} title(s) won`
+      },
+      {
+        label: 'Highest Avg Roto Pts',
+        team: highestAvgRoto?.team_name || 'N/A',
+        value: highestAvgRoto?.avg_roto_pts?.toFixed(1) || '0',
+        icon: '📈',
+        detail: `Over ${highestAvgRoto?.seasons || 0} season(s)`
+      },
+      {
+        label: 'Most Top-3 Finishes',
+        team: mostTop3?.team_name || 'N/A',
+        value: mostTop3?.top3_finishes || 0,
+        icon: '🥇',
+        detail: `${mostTop3?.top3_finishes || 0} podium finishes`
+      }
+    ]
+  }
+
   const mostWins = [...stats].sort((a, b) => b.wins - a.wins)[0]
   const mostChampionships = [...stats].sort((a, b) => b.championships - a.championships)[0]
   const highestPPW = [...stats].sort((a, b) => b.avg_ppw - a.avg_ppw)[0]
   const mostPoints = [...stats].sort((a, b) => b.total_pf - a.total_pf)[0]
-  
+
   return [
     {
       label: 'Most Wins',
@@ -2469,6 +3072,10 @@ const careerStats = computed((): CareerStat[] => {
       
       console.log(`Team ${team.name}: wins=${team.wins}, losses=${team.losses}, points_for=${team.points_for}, rank=${team.rank}, is_champion=${team.is_champion}`)
       
+      // Determine finish position: use rank property if available, otherwise index+1
+      // Yahoo returns rank as string — ensure it's always a number
+      const finishPosition = parseInt(team.rank) || (standings.indexOf(team) + 1)
+
       if (existing) {
         if (isFinished) existing.seasons++
         existing.wins += team.wins || 0
@@ -2476,6 +3083,13 @@ const careerStats = computed((): CareerStat[] => {
         existing.total_pf += team.points_for || 0
         existing.total_weeks += (team.wins || 0) + (team.losses || 0)
         if (team.is_champion) existing.championships++
+        // Track roto finish positions
+        if (isFinished) {
+          existing._finish_positions.push(finishPosition)
+          existing.total_roto_pts += team.points_for || 0
+          if (finishPosition <= 3) existing.top3_finishes++
+          if (finishPosition < existing.best_finish) existing.best_finish = finishPosition
+        }
         // Update logo if we have one
         if (logoUrl && !existing.logo_url) existing.logo_url = logoUrl
       } else {
@@ -2490,7 +3104,14 @@ const careerStats = computed((): CareerStat[] => {
           win_pct: 0,
           avg_ppw: 0,
           total_pf: team.points_for || 0,
-          total_weeks: (team.wins || 0) + (team.losses || 0)
+          total_weeks: (team.wins || 0) + (team.losses || 0),
+          // Roto fields
+          avg_finish: 0,
+          best_finish: isFinished ? finishPosition : 999,
+          top3_finishes: isFinished && finishPosition <= 3 ? 1 : 0,
+          avg_roto_pts: 0,
+          total_roto_pts: isFinished ? (team.points_for || 0) : 0,
+          _finish_positions: isFinished ? [finishPosition] : []
         }
       }
     }
@@ -2534,6 +3155,12 @@ const careerStats = computed((): CareerStat[] => {
     const totalGames = stat.wins + stat.losses
     stat.win_pct = totalGames > 0 ? stat.wins / totalGames : 0
     stat.avg_ppw = stat.total_weeks > 0 ? stat.total_pf / stat.total_weeks : 0
+    // Roto derived stats
+    if (stat._finish_positions.length > 0) {
+      stat.avg_finish = stat._finish_positions.reduce((a, b) => a + b, 0) / stat._finish_positions.length
+      stat.avg_roto_pts = stat.total_roto_pts / stat._finish_positions.length
+    }
+    if (stat.best_finish === 999) stat.best_finish = 0
     return stat
   })
   
@@ -2590,6 +3217,10 @@ const seasonRecords = computed((): SeasonRecord[] => {
     // Find champion - prefer is_champion flag (from bracket data), fallback to rank 1
     const champion = standings.find((t: any) => t.is_champion) || standings.find((t: any) => t.rank === 1)
     
+    // Roto: find the winner's roto points and the team count for pts_back
+    const winnerRotoPts = standings.length > 0 ? Math.max(...standings.map((t: any) => t.points_for || 0)) : 0
+    const numTeams = standings.length
+
     records.push({
       season,
       avg_ppw: totalWeeks > 0 ? totalPoints / totalWeeks : 0,
@@ -2599,7 +3230,12 @@ const seasonRecords = computed((): SeasonRecord[] => {
       low_scorer: lowScorer,
       transaction_count: seasonData.transaction_count || 0,
       trade_count: seasonData.trade_count || 0,
-      champion: champion?.is_champion ? champion.name : (champion?.name || 'TBD')
+      champion: champion?.is_champion ? champion.name : (champion?.name || 'TBD'),
+      // Roto fields — uses first-place team's roto points as reference
+      roto_pts: winnerRotoPts,
+      roto_rank: 1, // placeholder — champion is rank 1
+      roto_pts_back: 0,
+      num_teams: numTeams
     })
   }
   
@@ -2708,18 +3344,57 @@ const compareRivalryHistory = computed(() => {
 // Calculate comparison data between the two teams
 const compareData = computed(() => {
   if (!compareTeam1Key.value || !compareTeam2Key.value) return null
-  
+
+  const team1Career = careerStats.value.find(t => t.team_key === compareTeam1Key.value)
+  const team2Career = careerStats.value.find(t => t.team_key === compareTeam2Key.value)
+
+  // For roto leagues, build compare data from career stats directly
+  if (isRoto.value) {
+    if (!team1Career || !team2Career) return null
+    const roto = rotoTapeComparison.value
+    return {
+      team1: {
+        championships: team1Career.championships,
+        seasons: team1Career.seasons,
+        avgFinish: team1Career.avg_finish,
+        bestFinish: team1Career.best_finish,
+        avgRotoPts: team1Career.avg_roto_pts,
+        totalRotoPts: team1Career.total_roto_pts,
+        // Keep H2H fields for backwards compat (won't be displayed)
+        playoffAppearances: 0, wins: team1Career.wins, losses: team1Career.losses,
+        winPct: 0, avgPPW: 0, totalPoints: team1Career.total_pf
+      },
+      team2: {
+        championships: team2Career.championships,
+        seasons: team2Career.seasons,
+        avgFinish: team2Career.avg_finish,
+        bestFinish: team2Career.best_finish,
+        avgRotoPts: team2Career.avg_roto_pts,
+        totalRotoPts: team2Career.total_roto_pts,
+        playoffAppearances: 0, wins: team2Career.wins, losses: team2Career.losses,
+        winPct: 0, avgPPW: 0, totalPoints: team2Career.total_pf
+      },
+      h2h: {
+        team1Wins: roto?.team1Wins || 0,
+        team2Wins: roto?.team2Wins || 0,
+        ties: roto?.ties || 0,
+        totalGames: roto?.seasonsTogether || 0,
+        avgMargin: 0
+      }
+    }
+  }
+
   const team1Legacy = legacyScores.value.find(t => t.team_key === compareTeam1Key.value)
   const team2Legacy = legacyScores.value.find(t => t.team_key === compareTeam2Key.value)
-  
+
   if (!team1Legacy || !team2Legacy) return null
-  
+
   // Calculate H2H record from rivalry history
   let team1Wins = 0
   let team2Wins = 0
   let ties = 0
   let totalMargin = 0
-  
+
   for (const matchup of compareRivalryHistory.value) {
     if (matchup.team1Score > matchup.team2Score) {
       team1Wins++
@@ -2730,14 +3405,10 @@ const compareData = computed(() => {
     }
     totalMargin += matchup.margin
   }
-  
+
   const totalGames = compareRivalryHistory.value.length
   const avgMargin = totalGames > 0 ? totalMargin / totalGames : 0
-  
-  // Calculate total points and PPW from career stats
-  const team1Career = careerStats.value.find(t => t.team_key === compareTeam1Key.value)
-  const team2Career = careerStats.value.find(t => t.team_key === compareTeam2Key.value)
-  
+
   return {
     team1: {
       championships: team1Legacy.championships,
@@ -2811,6 +3482,102 @@ const compareRivalryHighlights = computed(() => {
   }
 })
 
+// Roto Tale of the Tape: season-by-season comparison between two selected teams
+const rotoTapeComparison = computed(() => {
+  if (!isRoto.value || !compareTeam1Key.value || !compareTeam2Key.value) return null
+
+  const seasons: Array<{
+    year: string
+    team1Rank: number
+    team2Rank: number
+    team1RotoPts: number
+    team2RotoPts: number
+  }> = []
+
+  for (const [year, seasonData] of Object.entries(historicalData.value)) {
+    const standings = (seasonData as any).standings || []
+    if (standings.length === 0) continue
+
+    const team1Entry = standings.find((t: any) => t.team_key === compareTeam1Key.value)
+    const team2Entry = standings.find((t: any) => t.team_key === compareTeam2Key.value)
+
+    if (team1Entry && team2Entry) {
+      const team1Rank = team1Entry.rank || (standings.indexOf(team1Entry) + 1)
+      const team2Rank = team2Entry.rank || (standings.indexOf(team2Entry) + 1)
+      seasons.push({
+        year,
+        team1Rank,
+        team2Rank,
+        team1RotoPts: team1Entry.points_for || 0,
+        team2RotoPts: team2Entry.points_for || 0
+      })
+    }
+  }
+
+  // Sort most recent first
+  seasons.sort((a, b) => parseInt(b.year) - parseInt(a.year))
+
+  let team1Wins = 0
+  let team2Wins = 0
+  let ties = 0
+
+  for (const s of seasons) {
+    if (s.team1Rank < s.team2Rank) team1Wins++
+    else if (s.team2Rank < s.team1Rank) team2Wins++
+    else ties++
+  }
+
+  // Highlight cards
+  let biggestGap = seasons[0] || null
+  let closestSeason = seasons[0] || null
+  let bestCombined = seasons[0] || null
+
+  for (const s of seasons) {
+    const gap = Math.abs(s.team1Rank - s.team2Rank)
+    if (gap > Math.abs((biggestGap?.team1Rank || 0) - (biggestGap?.team2Rank || 0))) {
+      biggestGap = s
+    }
+    const closestGap = Math.abs((closestSeason?.team1Rank || 0) - (closestSeason?.team2Rank || 0))
+    if (gap < closestGap) {
+      closestSeason = s
+    }
+    const combined = s.team1Rank + s.team2Rank
+    const bestComb = (bestCombined?.team1Rank || 0) + (bestCombined?.team2Rank || 0)
+    if (combined < bestComb) {
+      bestCombined = s
+    }
+  }
+
+  return {
+    team1Wins,
+    team2Wins,
+    ties,
+    seasonsTogether: seasons.length,
+    seasons,
+    biggestGap: biggestGap ? {
+      year: biggestGap.year,
+      team1Rank: biggestGap.team1Rank,
+      team2Rank: biggestGap.team2Rank,
+      gap: Math.abs(biggestGap.team1Rank - biggestGap.team2Rank),
+      winner: biggestGap.team1Rank < biggestGap.team2Rank
+        ? (compareTeam1Data.value?.team_name || 'Team 1')
+        : (compareTeam2Data.value?.team_name || 'Team 2')
+    } : null,
+    closestSeason: closestSeason ? {
+      year: closestSeason.year,
+      team1Rank: closestSeason.team1Rank,
+      team2Rank: closestSeason.team2Rank,
+      gap: Math.abs(closestSeason.team1Rank - closestSeason.team2Rank)
+    } : null,
+    bestCombined: bestCombined ? {
+      year: bestCombined.year,
+      team1Rank: bestCombined.team1Rank,
+      team2Rank: bestCombined.team2Rank,
+      combined: bestCombined.team1Rank + bestCombined.team2Rank
+    } : null
+  }
+})
+
 // ==================== LEGACY SCORE CALCULATIONS ====================
 
 interface LegacyScore {
@@ -2842,6 +3609,17 @@ interface LegacyScore {
   season_low_scores: number
   scoring_cellar_seasons: number
   losing_seasons: number
+  // Roto-specific fields
+  top_half_finishes: number
+  roto_pts_leader_seasons: number
+  total_roto_pts: number
+  above_avg_roto_seasons: number
+  category_leader_seasons: number
+  top_3_roto_pts_seasons: number
+  best_hitting_season: boolean
+  best_pitching_season: boolean
+  top_half_streak_max: number
+  top_3_streak_max: number
   // Breakdown for display
   breakdown: {
     category: string
@@ -2883,8 +3661,32 @@ const DEFAULT_LEGACY_POINTS = {
   LOSING_SEASON: -5
 }
 
+// Default roto legacy point values
+const DEFAULT_ROTO_LEGACY_POINTS = {
+  // Championships & Finishes
+  CHAMPIONSHIP: 100,
+  RUNNER_UP: 50,
+  THIRD_PLACE: 25,
+  TOP_HALF_FINISH: 20,
+  ROTO_PTS_LEADER: 30,
+  // Season Performance
+  ROTO_PT: 1,
+  ABOVE_AVG_ROTO: 10,
+  TOP_3_FINISH: 15,
+  // Category Achievements
+  CATEGORY_LEADER: 20,
+  TOP_3_ROTO_PTS: 10,
+  BEST_HITTING_SEASON: 10,
+  BEST_PITCHING_SEASON: 10,
+  // Longevity
+  SEASON_PLAYED: 5,
+  TOP_HALF_STREAK_5: 30,
+  TOP_3_STREAK_3: 10,
+}
+
 // Reactive legacy points (can be customized)
 const legacyPoints = ref({ ...DEFAULT_LEGACY_POINTS })
+const rotoLegacyPoints = ref({ ...DEFAULT_ROTO_LEGACY_POINTS })
 
 // Legacy presets
 const legacyPresets = [
@@ -2957,8 +3759,78 @@ const legacyPresets = [
   }
 ]
 
+// Roto legacy presets
+const rotoLegacyPresets = [
+  {
+    id: 'balanced',
+    name: 'Balanced',
+    icon: '⚖️',
+    description: 'Default balanced roto scoring',
+    values: { ...DEFAULT_ROTO_LEGACY_POINTS }
+  },
+  {
+    id: 'championship',
+    name: 'Championship Heavy',
+    icon: '🏆',
+    description: 'Emphasizes winning championships',
+    values: {
+      CHAMPIONSHIP: 150, RUNNER_UP: 75, THIRD_PLACE: 40, TOP_HALF_FINISH: 15, ROTO_PTS_LEADER: 40,
+      ROTO_PT: 1, ABOVE_AVG_ROTO: 8, TOP_3_FINISH: 12,
+      CATEGORY_LEADER: 15, TOP_3_ROTO_PTS: 8, BEST_HITTING_SEASON: 8, BEST_PITCHING_SEASON: 8,
+      SEASON_PLAYED: 3, TOP_HALF_STREAK_5: 25, TOP_3_STREAK_3: 8
+    }
+  },
+  {
+    id: 'dynasty',
+    name: 'Dynasty Builder',
+    icon: '👑',
+    description: 'Rewards longevity and consistency',
+    values: {
+      CHAMPIONSHIP: 80, RUNNER_UP: 45, THIRD_PLACE: 25, TOP_HALF_FINISH: 25, ROTO_PTS_LEADER: 35,
+      ROTO_PT: 1, ABOVE_AVG_ROTO: 15, TOP_3_FINISH: 20,
+      CATEGORY_LEADER: 25, TOP_3_ROTO_PTS: 15, BEST_HITTING_SEASON: 12, BEST_PITCHING_SEASON: 12,
+      SEASON_PLAYED: 10, TOP_HALF_STREAK_5: 50, TOP_3_STREAK_3: 15
+    }
+  },
+  {
+    id: 'casual',
+    name: 'Casual',
+    icon: '😎',
+    description: 'Light scoring, rewards participation',
+    values: {
+      CHAMPIONSHIP: 75, RUNNER_UP: 40, THIRD_PLACE: 20, TOP_HALF_FINISH: 15, ROTO_PTS_LEADER: 25,
+      ROTO_PT: 1, ABOVE_AVG_ROTO: 8, TOP_3_FINISH: 10,
+      CATEGORY_LEADER: 15, TOP_3_ROTO_PTS: 8, BEST_HITTING_SEASON: 8, BEST_PITCHING_SEASON: 8,
+      SEASON_PLAYED: 10, TOP_HALF_STREAK_5: 20, TOP_3_STREAK_3: 8
+    }
+  }
+]
+
 // Legacy factors configuration for UI
-const legacyFactors = computed(() => [
+const legacyFactors = computed(() => isRoto.value ? [
+  // Championships & Finishes
+  { id: 'CHAMPIONSHIP', name: 'Championship', description: 'Points for winning the league (1st place)', icon: '🏆', category: 'championship', min: 0, max: 200, step: 5, value: rotoLegacyPoints.value.CHAMPIONSHIP },
+  { id: 'RUNNER_UP', name: 'Runner-up', description: 'Points for finishing 2nd', icon: '🥈', category: 'championship', min: 0, max: 100, step: 5, value: rotoLegacyPoints.value.RUNNER_UP },
+  { id: 'THIRD_PLACE', name: 'Third Place', description: 'Points for finishing 3rd', icon: '🥉', category: 'championship', min: 0, max: 75, step: 5, value: rotoLegacyPoints.value.THIRD_PLACE },
+  { id: 'TOP_HALF_FINISH', name: 'Top-Half Finish', description: 'Points for finishing in top half of league', icon: '📈', category: 'championship', min: 0, max: 50, step: 5, value: rotoLegacyPoints.value.TOP_HALF_FINISH },
+  { id: 'ROTO_PTS_LEADER', name: 'Roto Pts Leader', description: 'Points for leading the league in roto points', icon: '👑', category: 'championship', min: 0, max: 75, step: 5, value: rotoLegacyPoints.value.ROTO_PTS_LEADER },
+
+  // Season Performance
+  { id: 'ROTO_PT', name: 'Roto Pt', description: 'Points per lifetime roto point earned', icon: '✅', category: 'season', min: 0, max: 5, step: 1, value: rotoLegacyPoints.value.ROTO_PT },
+  { id: 'ABOVE_AVG_ROTO', name: 'Above-Average Season', description: 'Bonus for a season with above-average roto points', icon: '📊', category: 'season', min: 0, max: 30, step: 5, value: rotoLegacyPoints.value.ABOVE_AVG_ROTO },
+  { id: 'TOP_3_FINISH', name: 'Top 3 Finish', description: 'Points for finishing in top 3', icon: '🎖️', category: 'season', min: 0, max: 50, step: 5, value: rotoLegacyPoints.value.TOP_3_FINISH },
+
+  // Category Achievements
+  { id: 'CATEGORY_LEADER', name: 'Category Leader Season', description: 'Points for leading the most categories in a season', icon: '⭐', category: 'category', min: 0, max: 50, step: 5, value: rotoLegacyPoints.value.CATEGORY_LEADER },
+  { id: 'TOP_3_ROTO_PTS', name: 'Top 3 Roto Pts Season', description: 'Points for a top-3 roto point total in the league', icon: '🔥', category: 'category', min: 0, max: 30, step: 5, value: rotoLegacyPoints.value.TOP_3_ROTO_PTS },
+  { id: 'BEST_HITTING_SEASON', name: 'Best Hitting Season', description: 'Points for the best hitting ranking score ever (awarded once)', icon: '🏏', category: 'category', min: 0, max: 25, step: 1, value: rotoLegacyPoints.value.BEST_HITTING_SEASON },
+  { id: 'BEST_PITCHING_SEASON', name: 'Best Pitching Season', description: 'Points for the best pitching ranking score ever (awarded once)', icon: '⚾', category: 'category', min: 0, max: 25, step: 1, value: rotoLegacyPoints.value.BEST_PITCHING_SEASON },
+
+  // Longevity
+  { id: 'SEASON_PLAYED', name: 'Season Played', description: 'Points for each season of participation', icon: '📅', category: 'longevity', min: 0, max: 20, step: 1, value: rotoLegacyPoints.value.SEASON_PLAYED },
+  { id: 'TOP_HALF_STREAK_5', name: '5+ Year Top-Half Streak', description: 'Bonus for 5+ consecutive top-half finishes', icon: '🔥', category: 'longevity', min: 0, max: 75, step: 5, value: rotoLegacyPoints.value.TOP_HALF_STREAK_5 },
+  { id: 'TOP_3_STREAK_3', name: '3+ Year Top-3 Streak', description: 'Bonus for 3+ consecutive top-3 finishes', icon: '🎯', category: 'longevity', min: 0, max: 30, step: 5, value: rotoLegacyPoints.value.TOP_3_STREAK_3 },
+] : [
   // Championships & Playoffs
   { id: 'CHAMPIONSHIP', name: 'Championship', description: 'Points for winning the league championship', icon: '🏆', category: 'championship', min: 0, max: 200, step: 5, value: legacyPoints.value.CHAMPIONSHIP },
   { id: 'RUNNER_UP', name: 'Runner-up', description: 'Points for finishing second in the championship', icon: '🥈', category: 'championship', min: 0, max: 100, step: 5, value: legacyPoints.value.RUNNER_UP },
@@ -2986,30 +3858,55 @@ const legacyFactors = computed(() => [
 // Apply a preset
 function applyLegacyPreset(preset: typeof legacyPresets[0]) {
   currentLegacyPreset.value = preset.id
-  Object.assign(legacyPoints.value, preset.values)
+  if (isRoto.value) {
+    Object.assign(rotoLegacyPoints.value, preset.values)
+  } else {
+    Object.assign(legacyPoints.value, preset.values)
+  }
 }
 
 // Reset to default
 function resetLegacyPoints() {
   currentLegacyPreset.value = 'balanced'
-  Object.assign(legacyPoints.value, DEFAULT_LEGACY_POINTS)
+  if (isRoto.value) {
+    Object.assign(rotoLegacyPoints.value, DEFAULT_ROTO_LEGACY_POINTS)
+  } else {
+    Object.assign(legacyPoints.value, DEFAULT_LEGACY_POINTS)
+  }
 }
 
 // Alias for backwards compatibility - use .value in calculations
 const LEGACY_POINTS = legacyPoints
+const ROTO_LEGACY_POINTS = rotoLegacyPoints
 
 // Computed: Legacy Scores for all teams
 const legacyScores = computed((): LegacyScore[] => {
-  const teams: Record<string, LegacyScore> = {}
-  const seasons = Object.keys(historicalData.value)
-    .sort((a, b) => parseInt(a) - parseInt(b)) // Ascending for streak tracking
-  
-  if (seasons.length === 0) return []
-  
-  // Track most recent season data for each team (for name/logo)
+  if (isRoto.value) return computeRotoLegacyScores()
+  return computeH2HLegacyScores()
+})
+
+function initLegacyTeam(teamKey: string, mostRecentTeamData: Record<string, { name: string; logo_url: string; season: string }>, fallbackTeam: any): LegacyScore {
+  const recentData = mostRecentTeamData[teamKey]
+  return {
+    team_key: teamKey,
+    team_name: recentData?.name || fallbackTeam?.name || 'Unknown',
+    logo_url: recentData?.logo_url || fallbackTeam?.logo_url || allTeams.value[teamKey]?.logo_url || '',
+    seasons: 0, total_score: 0,
+    championships: 0, runner_ups: 0, third_places: 0, playoff_appearances: 0, regular_season_titles: 0,
+    total_wins: 0, winning_seasons: 0, top_3_finishes: 0, points_leader_seasons: 0,
+    top_3_scoring_seasons: 0, above_avg_ppw_seasons: 0, season_high_scores: 0,
+    playoff_streak_max: 0, winning_streak_max: 0,
+    last_place_finishes: 0, season_low_scores: 0, scoring_cellar_seasons: 0, losing_seasons: 0,
+    top_half_finishes: 0, roto_pts_leader_seasons: 0, total_roto_pts: 0,
+    above_avg_roto_seasons: 0, category_leader_seasons: 0, top_3_roto_pts_seasons: 0,
+    best_hitting_season: false, best_pitching_season: false,
+    top_half_streak_max: 0, top_3_streak_max: 0,
+    breakdown: []
+  }
+}
+
+function getMostRecentTeamData(seasons: string[]): Record<string, { name: string; logo_url: string; season: string }> {
   const mostRecentTeamData: Record<string, { name: string; logo_url: string; season: string }> = {}
-  
-  // Pre-populate with most recent data (process seasons in descending order for this)
   const descendingSeasons = [...seasons].reverse()
   for (const season of descendingSeasons) {
     const seasonData = historicalData.value[season]
@@ -3024,7 +3921,210 @@ const legacyScores = computed((): LegacyScore[] => {
       }
     }
   }
-  
+  return mostRecentTeamData
+}
+
+function computeRotoLegacyScores(): LegacyScore[] {
+  const teams: Record<string, LegacyScore> = {}
+  const seasons = Object.keys(historicalData.value).sort((a, b) => parseInt(a) - parseInt(b))
+  if (seasons.length === 0) return []
+
+  const mostRecentTeamData = getMostRecentTeamData(seasons)
+  const RP = ROTO_LEGACY_POINTS.value
+
+  // Pre-compute best hitting/pitching scores across all seasons
+  let bestHitting = { score: 0, teamKey: '' }
+  let bestPitching = { score: 0, teamKey: '' }
+  for (const season of seasons) {
+    const perCat = rotoPerCategoryData.value[season]
+    if (!perCat) continue
+    for (const tk of Object.keys(perCat)) {
+      const hScore = getHittingScore(tk, season)
+      const pScore = getPitchingScore(tk, season)
+      if (hScore > bestHitting.score) bestHitting = { score: hScore, teamKey: tk }
+      if (pScore > bestPitching.score) bestPitching = { score: pScore, teamKey: tk }
+    }
+  }
+
+  // Track streaks
+  const teamStreaks: Record<string, { topHalfStreak: number; top3Streak: number; maxTopHalfStreak: number; maxTop3Streak: number }> = {}
+
+  for (const season of seasons) {
+    const seasonData = historicalData.value[season]
+    const standings = seasonData.standings || []
+    if (standings.length === 0) continue
+    const isSeasonFinished = seasonData.isFinished !== false
+    const numTeams = standings.length
+    const topHalfCutoff = Math.floor(numTeams / 2)
+
+    // Compute roto points for this season (from standings points_for)
+    const sortedByRotoPts = [...standings].sort((a: any, b: any) => (b.points_for || 0) - (a.points_for || 0))
+    const rotoPtsLeader = sortedByRotoPts[0]?.team_key || ''
+    const top3RotoPts = sortedByRotoPts.slice(0, 3).map((t: any) => t.team_key)
+
+    // Compute average roto pts for this season
+    const totalRotoPts = standings.reduce((sum: number, t: any) => sum + (t.points_for || 0), 0)
+    const avgRotoPts = numTeams > 0 ? totalRotoPts / numTeams : 0
+
+    // Find who led the most individual categories this season
+    const perCat = rotoPerCategoryData.value[season]
+    let categoryLeaderTeam = ''
+    if (perCat) {
+      let maxCatsLed = 0
+      const allStatIds = new Set<string>()
+      for (const tk of Object.keys(perCat)) {
+        for (const sid of Object.keys(perCat[tk])) allStatIds.add(sid)
+      }
+      // For each stat, find who has the highest ranking points
+      const catsLedByTeam: Record<string, number> = {}
+      for (const sid of allStatIds) {
+        let bestVal = 0
+        let bestTk = ''
+        for (const tk of Object.keys(perCat)) {
+          const val = perCat[tk][sid] || 0
+          if (val > bestVal) { bestVal = val; bestTk = tk }
+        }
+        if (bestTk) catsLedByTeam[bestTk] = (catsLedByTeam[bestTk] || 0) + 1
+      }
+      for (const [tk, count] of Object.entries(catsLedByTeam)) {
+        if (count > maxCatsLed) { maxCatsLed = count; categoryLeaderTeam = tk }
+      }
+    }
+
+    for (const team of standings) {
+      const teamKey = team.team_key
+      if (!teams[teamKey]) teams[teamKey] = initLegacyTeam(teamKey, mostRecentTeamData, team)
+      if (!teamStreaks[teamKey]) teamStreaks[teamKey] = { topHalfStreak: 0, top3Streak: 0, maxTopHalfStreak: 0, maxTop3Streak: 0 }
+
+      const t = teams[teamKey]
+      const streak = teamStreaks[teamKey]
+      const rank = team.rank || 999
+      const rotoPts = team.points_for || 0
+
+      if (isSeasonFinished) t.seasons++
+
+      // Championships & Finishes
+      if (isSeasonFinished) {
+        if (rank === 1 || team.is_champion) t.championships++
+        if (rank === 2) t.runner_ups++
+        if (rank === 3) t.third_places++
+        if (rank <= topHalfCutoff) t.top_half_finishes++
+        if (teamKey === rotoPtsLeader) t.roto_pts_leader_seasons++
+      }
+
+      // Season Performance
+      t.total_roto_pts += rotoPts
+      if (isSeasonFinished && rotoPts > avgRotoPts) t.above_avg_roto_seasons++
+      if (isSeasonFinished && rank <= 3) t.top_3_finishes++
+
+      // Category Achievements
+      if (isSeasonFinished && categoryLeaderTeam === teamKey) t.category_leader_seasons++
+      if (isSeasonFinished && top3RotoPts.includes(teamKey)) t.top_3_roto_pts_seasons++
+
+      // Streak tracking (only for finished seasons)
+      if (isSeasonFinished) {
+        if (rank <= topHalfCutoff) {
+          streak.topHalfStreak++
+          streak.maxTopHalfStreak = Math.max(streak.maxTopHalfStreak, streak.topHalfStreak)
+        } else {
+          streak.topHalfStreak = 0
+        }
+        if (rank <= 3) {
+          streak.top3Streak++
+          streak.maxTop3Streak = Math.max(streak.maxTop3Streak, streak.top3Streak)
+        } else {
+          streak.top3Streak = 0
+        }
+      }
+    }
+  }
+
+  // Update max streaks and best hitting/pitching
+  for (const [teamKey, streak] of Object.entries(teamStreaks)) {
+    if (teams[teamKey]) {
+      teams[teamKey].top_half_streak_max = streak.maxTopHalfStreak
+      teams[teamKey].top_3_streak_max = streak.maxTop3Streak
+    }
+  }
+  if (bestHitting.teamKey && teams[bestHitting.teamKey]) teams[bestHitting.teamKey].best_hitting_season = true
+  if (bestPitching.teamKey && teams[bestPitching.teamKey]) teams[bestPitching.teamKey].best_pitching_season = true
+
+  // Calculate total scores and breakdowns
+  for (const t of Object.values(teams)) {
+    const breakdown: LegacyScore['breakdown'] = []
+    let total = 0
+
+    // Championships & Finishes
+    const champItems = [
+      { label: 'Championships', count: t.championships, points: t.championships * RP.CHAMPIONSHIP },
+      { label: 'Runner-ups', count: t.runner_ups, points: t.runner_ups * RP.RUNNER_UP },
+      { label: '3rd Place', count: t.third_places, points: t.third_places * RP.THIRD_PLACE },
+      { label: 'Top-Half Finishes', count: t.top_half_finishes, points: t.top_half_finishes * RP.TOP_HALF_FINISH },
+      { label: 'Roto Pts Leader Seasons', count: t.roto_pts_leader_seasons, points: t.roto_pts_leader_seasons * RP.ROTO_PTS_LEADER }
+    ].filter(i => i.count > 0)
+    const champSubtotal = champItems.reduce((sum, i) => sum + i.points, 0)
+    if (champItems.length > 0) {
+      breakdown.push({ category: '🏆 Championships & Finishes', items: champItems, subtotal: champSubtotal })
+      total += champSubtotal
+    }
+
+    // Season Performance
+    const roundedRotoPts = Math.round(t.total_roto_pts)
+    const perfItems = [
+      { label: 'Total Roto Pts', count: roundedRotoPts, points: roundedRotoPts * RP.ROTO_PT },
+      { label: 'Above-Average Seasons', count: t.above_avg_roto_seasons, points: t.above_avg_roto_seasons * RP.ABOVE_AVG_ROTO },
+      { label: 'Top 3 Finishes', count: t.top_3_finishes, points: t.top_3_finishes * RP.TOP_3_FINISH }
+    ].filter(i => i.count > 0)
+    const perfSubtotal = perfItems.reduce((sum, i) => sum + i.points, 0)
+    if (perfItems.length > 0) {
+      breakdown.push({ category: '📈 Season Performance', items: perfItems, subtotal: perfSubtotal })
+      total += perfSubtotal
+    }
+
+    // Category Achievements
+    const catItems: { label: string; count: number; points: number }[] = [
+      { label: 'Category Leader Seasons', count: t.category_leader_seasons, points: t.category_leader_seasons * RP.CATEGORY_LEADER },
+      { label: 'Top 3 Roto Pts Seasons', count: t.top_3_roto_pts_seasons, points: t.top_3_roto_pts_seasons * RP.TOP_3_ROTO_PTS },
+    ]
+    if (t.best_hitting_season) catItems.push({ label: 'Best Hitting Season', count: 1, points: RP.BEST_HITTING_SEASON })
+    if (t.best_pitching_season) catItems.push({ label: 'Best Pitching Season', count: 1, points: RP.BEST_PITCHING_SEASON })
+    const filteredCatItems = catItems.filter(i => i.count > 0)
+    const catSubtotal = filteredCatItems.reduce((sum, i) => sum + i.points, 0)
+    if (filteredCatItems.length > 0) {
+      breakdown.push({ category: '⭐ Category Achievements', items: filteredCatItems, subtotal: catSubtotal })
+      total += catSubtotal
+    }
+
+    // Longevity
+    const longItems = [
+      { label: 'Seasons Played', count: t.seasons, points: t.seasons * RP.SEASON_PLAYED }
+    ]
+    if (t.top_half_streak_max >= 5) {
+      longItems.push({ label: '5+ Year Top-Half Streak', count: 1, points: RP.TOP_HALF_STREAK_5 })
+    }
+    if (t.top_3_streak_max >= 3) {
+      longItems.push({ label: '3+ Year Top-3 Streak', count: 1, points: RP.TOP_3_STREAK_3 })
+    }
+    const longSubtotal = longItems.reduce((sum, i) => sum + i.points, 0)
+    breakdown.push({ category: '🎖️ Longevity', items: longItems, subtotal: longSubtotal })
+    total += longSubtotal
+
+    t.breakdown = breakdown
+    t.total_score = total
+  }
+
+  return Object.values(teams).sort((a, b) => b.total_score - a.total_score)
+}
+
+function computeH2HLegacyScores(): LegacyScore[] {
+  const teams: Record<string, LegacyScore> = {}
+  const seasons = Object.keys(historicalData.value)
+    .sort((a, b) => parseInt(a) - parseInt(b)) // Ascending for streak tracking
+
+  if (seasons.length === 0) return []
+
+  const mostRecentTeamData = getMostRecentTeamData(seasons)
+
   // First pass: Collect all team data and calculate season-level metrics
   const seasonMetrics: Record<string, {
     standings: any[]
@@ -3036,20 +4136,20 @@ const legacyScores = computed((): LegacyScore[] => {
     numTeams: number
     playoffTeamCount: number
   }> = {}
-  
+
   for (const season of seasons) {
     const seasonData = historicalData.value[season]
     const standings = seasonData.standings || []
     const matchups = allMatchups.value[season] || {}
-    
+
     if (standings.length === 0) continue
-    
+
     // Calculate season metrics
     let totalPoints = 0
     let totalWeeks = 0
     let highScore = { value: 0, team_key: '' }
     let lowScore = { value: Infinity, team_key: '' }
-    
+
     for (const [week, weekMatchups] of Object.entries(matchups)) {
       for (const matchup of weekMatchups as any[]) {
         for (const team of matchup.teams || []) {
@@ -3067,20 +4167,17 @@ const legacyScores = computed((): LegacyScore[] => {
         }
       }
     }
-    
+
     const avgPPW = totalWeeks > 0 ? totalPoints / totalWeeks : 0
-    
+
     // Find points leaders
     const sortedByPoints = [...standings].sort((a: any, b: any) => (b.points_for || 0) - (a.points_for || 0))
     const pointsLeader = sortedByPoints[0]?.team_key || ''
     const top3Scorers = sortedByPoints.slice(0, 3).map((t: any) => t.team_key)
-    
+
     // Determine playoff team count
-    // Use heuristic: typically top 50% of league or max 6 teams
-    // NOTE: Don't use teamsWithPlayoffSeed.length because ESPN sets playoff_seed for ALL 
-    // teams in any bracket (including consolation), not just championship bracket teams
     const playoffTeamCount = Math.min(Math.floor(standings.length / 2), 6)
-    
+
     seasonMetrics[season] = {
       standings,
       avgPPW,
@@ -3092,114 +4189,77 @@ const legacyScores = computed((): LegacyScore[] => {
       playoffTeamCount
     }
   }
-  
+
   // Track playoff and winning streaks per team
   const teamStreaks: Record<string, { playoffStreak: number; winningStreak: number; maxPlayoffStreak: number; maxWinningStreak: number }> = {}
-  
+
   // Second pass: Calculate legacy scores
   for (const season of seasons) {
     const metrics = seasonMetrics[season]
     if (!metrics) continue
-    
+
     const { standings, avgPPW, highScore, lowScore, pointsLeader, top3Scorers, numTeams, playoffTeamCount } = metrics
-    
-    // Sort standings by rank for playoff determination
-    const sortedStandings = [...standings].sort((a: any, b: any) => (a.rank || 999) - (b.rank || 999))
-    
+
     for (const team of standings) {
       const teamKey = team.team_key
-      
-      // Initialize team if needed - use most recent name/logo
-      if (!teams[teamKey]) {
-        const recentData = mostRecentTeamData[teamKey]
-        teams[teamKey] = {
-          team_key: teamKey,
-          team_name: recentData?.name || team.name || 'Unknown',
-          logo_url: recentData?.logo_url || team.logo_url || allTeams.value[teamKey]?.logo_url || '',
-          seasons: 0,
-          total_score: 0,
-          championships: 0,
-          runner_ups: 0,
-          third_places: 0,
-          playoff_appearances: 0,
-          regular_season_titles: 0,
-          total_wins: 0,
-          winning_seasons: 0,
-          top_3_finishes: 0,
-          points_leader_seasons: 0,
-          top_3_scoring_seasons: 0,
-          above_avg_ppw_seasons: 0,
-          season_high_scores: 0,
-          playoff_streak_max: 0,
-          winning_streak_max: 0,
-          last_place_finishes: 0,
-          season_low_scores: 0,
-          scoring_cellar_seasons: 0,
-          losing_seasons: 0,
-          breakdown: []
-        }
-      }
-      
+
+      if (!teams[teamKey]) teams[teamKey] = initLegacyTeam(teamKey, mostRecentTeamData, team)
+
       // Initialize streak tracking
       if (!teamStreaks[teamKey]) {
         teamStreaks[teamKey] = { playoffStreak: 0, winningStreak: 0, maxPlayoffStreak: 0, maxWinningStreak: 0 }
       }
-      
+
       const t = teams[teamKey]
       const streak = teamStreaks[teamKey]
-      
+
       // Determine if this season is complete
       const isSeasonFinished = historicalData.value[season]?.isFinished !== false
-      
+
       if (isSeasonFinished) t.seasons++
-      
+
       const wins = team.wins || 0
       const losses = team.losses || 0
       const rank = team.rank || 999
       const pointsFor = team.points_for || 0
       const teamPPW = (wins + losses) > 0 ? pointsFor / (wins + losses) : 0
-      
-      // Determine if team made playoffs (only count for finished seasons)
-      // For ESPN, playoff_seed is set for ALL teams in any bracket (including consolation)
-      // A team made the REAL playoffs only if their seed is <= playoffTeamCount
-      // If no playoff_seed, fall back to rank-based determination
-      const madePlayoffs = isSeasonFinished && (team.playoff_seed > 0 
-        ? team.playoff_seed <= playoffTeamCount 
+
+      const madePlayoffs = isSeasonFinished && (team.playoff_seed > 0
+        ? team.playoff_seed <= playoffTeamCount
         : rank <= playoffTeamCount)
-      
+
       // Championships & Playoffs (season-end only)
       if (isSeasonFinished) {
         if (team.is_champion) t.championships++
         if (rank === 2 && !team.is_champion) t.runner_ups++
         if (rank === 3) t.third_places++
         if (madePlayoffs) t.playoff_appearances++
-      
-        // Check for regular season title (most wins, or if tied, most points)
+
         const sortedByWins = [...standings].sort((a: any, b: any) => {
           if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0)
           return (b.points_for || 0) - (a.points_for || 0)
         })
         if (sortedByWins[0]?.team_key === teamKey) t.regular_season_titles++
       }
-      
-      // Season Performance (in-progress safe: total_wins, above_avg; season-end: winning_seasons, top 3, leader)
+
+      // Season Performance
       t.total_wins += wins
       if (isSeasonFinished && wins > losses) t.winning_seasons++
       if (isSeasonFinished && rank <= 3) t.top_3_finishes++
       if (isSeasonFinished && teamKey === pointsLeader) t.points_leader_seasons++
       if (isSeasonFinished && top3Scorers.includes(teamKey)) t.top_3_scoring_seasons++
       if (teamPPW > avgPPW) t.above_avg_ppw_seasons++
-      
-      // Historic Moments (in-progress safe — weekly achievements)
+
+      // Historic Moments
       if (teamKey === highScore.team_key) t.season_high_scores++
-      
-      // Penalties (season-end only for position-based, in-progress safe for weekly)
+
+      // Penalties
       if (isSeasonFinished && rank === numTeams) t.last_place_finishes++
       if (teamKey === lowScore.team_key) t.season_low_scores++
       const sortedByPointsAsc = [...standings].sort((a: any, b: any) => (a.points_for || 0) - (b.points_for || 0))
       if (isSeasonFinished && sortedByPointsAsc[0]?.team_key === teamKey) t.scoring_cellar_seasons++
       if (isSeasonFinished && wins < losses) t.losing_seasons++
-      
+
       // Streak tracking (only for finished seasons)
       if (isSeasonFinished) {
         if (madePlayoffs) {
@@ -3208,7 +4268,7 @@ const legacyScores = computed((): LegacyScore[] => {
         } else {
           streak.playoffStreak = 0
         }
-        
+
         if (wins > losses) {
           streak.winningStreak++
           streak.maxWinningStreak = Math.max(streak.maxWinningStreak, streak.winningStreak)
@@ -3218,7 +4278,7 @@ const legacyScores = computed((): LegacyScore[] => {
       }
     }
   }
-  
+
   // Update max streaks
   for (const [teamKey, streak] of Object.entries(teamStreaks)) {
     if (teams[teamKey]) {
@@ -3226,14 +4286,14 @@ const legacyScores = computed((): LegacyScore[] => {
       teams[teamKey].winning_streak_max = streak.maxWinningStreak
     }
   }
-  
+
   // Calculate total scores and breakdowns
   const includePenalties = includeLegacyPenalties.value
-  
+
   for (const t of Object.values(teams)) {
     const breakdown: LegacyScore['breakdown'] = []
     let total = 0
-    
+
     // Championships & Playoffs
     const champItems = [
       { label: 'Championships', count: t.championships, points: t.championships * LEGACY_POINTS.value.CHAMPIONSHIP },
@@ -3242,26 +4302,26 @@ const legacyScores = computed((): LegacyScore[] => {
       { label: 'Playoff Appearances', count: t.playoff_appearances, points: t.playoff_appearances * LEGACY_POINTS.value.PLAYOFF_APPEARANCE },
       { label: 'Regular Season Titles', count: t.regular_season_titles, points: t.regular_season_titles * LEGACY_POINTS.value.REGULAR_SEASON_TITLE }
     ].filter(i => i.count > 0)
-    
+
     const champSubtotal = champItems.reduce((sum, i) => sum + i.points, 0)
     if (champItems.length > 0) {
       breakdown.push({ category: '🏆 Championships & Playoffs', items: champItems, subtotal: champSubtotal })
       total += champSubtotal
     }
-    
+
     // Season Performance
     const perfItems = [
       { label: 'Total Wins', count: t.total_wins, points: t.total_wins * LEGACY_POINTS.value.WIN },
       { label: 'Winning Seasons', count: t.winning_seasons, points: t.winning_seasons * LEGACY_POINTS.value.WINNING_SEASON },
       { label: 'Top 3 Finishes', count: t.top_3_finishes, points: t.top_3_finishes * LEGACY_POINTS.value.TOP_3_FINISH }
     ].filter(i => i.count > 0)
-    
+
     const perfSubtotal = perfItems.reduce((sum, i) => sum + i.points, 0)
     if (perfItems.length > 0) {
       breakdown.push({ category: '📈 Season Performance', items: perfItems, subtotal: perfSubtotal })
       total += perfSubtotal
     }
-    
+
     // Scoring Achievements
     const scoreItems = [
       { label: 'Points Leader Seasons', count: t.points_leader_seasons, points: t.points_leader_seasons * LEGACY_POINTS.value.POINTS_LEADER },
@@ -3269,13 +4329,13 @@ const legacyScores = computed((): LegacyScore[] => {
       { label: 'Above Avg PPW Seasons', count: t.above_avg_ppw_seasons, points: t.above_avg_ppw_seasons * LEGACY_POINTS.value.ABOVE_AVG_PPW },
       { label: 'Weekly High Scores', count: t.season_high_scores, points: t.season_high_scores * LEGACY_POINTS.value.SEASON_HIGH_SCORE }
     ].filter(i => i.count > 0)
-    
+
     const scoreSubtotal = scoreItems.reduce((sum, i) => sum + i.points, 0)
     if (scoreItems.length > 0) {
       breakdown.push({ category: '⭐ Scoring Achievements', items: scoreItems, subtotal: scoreSubtotal })
       total += scoreSubtotal
     }
-    
+
     // Longevity
     const longItems = [
       { label: 'Seasons Played', count: t.seasons, points: t.seasons * LEGACY_POINTS.value.SEASON_PLAYED }
@@ -3288,11 +4348,11 @@ const legacyScores = computed((): LegacyScore[] => {
     if (t.winning_streak_max >= 3) {
       longItems.push({ label: '3+ Year Winning Streak', count: 1, points: LEGACY_POINTS.value.WINNING_STREAK_3 })
     }
-    
+
     const longSubtotal = longItems.reduce((sum, i) => sum + i.points, 0)
     breakdown.push({ category: '🎖️ Longevity', items: longItems, subtotal: longSubtotal })
     total += longSubtotal
-    
+
     // Penalties (if enabled)
     if (includePenalties) {
       const penItems = [
@@ -3301,21 +4361,21 @@ const legacyScores = computed((): LegacyScore[] => {
         { label: 'Scoring Cellar Seasons', count: t.scoring_cellar_seasons, points: t.scoring_cellar_seasons * LEGACY_POINTS.value.SCORING_CELLAR },
         { label: 'Losing Seasons', count: t.losing_seasons, points: t.losing_seasons * LEGACY_POINTS.value.LOSING_SEASON }
       ].filter(i => i.count > 0)
-      
+
       const penSubtotal = penItems.reduce((sum, i) => sum + i.points, 0)
       if (penItems.length > 0) {
         breakdown.push({ category: '💀 Penalties', items: penItems, subtotal: penSubtotal })
         total += penSubtotal
       }
     }
-    
+
     t.breakdown = breakdown
     t.total_score = total
   }
-  
+
   // Sort by total score descending
   return Object.values(teams).sort((a, b) => b.total_score - a.total_score)
-})
+}
 
 // Computed: Filtered legacy scores
 const filteredLegacyScores = computed(() => {
@@ -3465,18 +4525,158 @@ watch(filteredLegacyScores, () => {
 
 // Compute legacy scores by year for each team (cumulative) with year-by-year details including reg season champ
 const legacyScoresByYearDetailed = computed(() => {
+  if (isRoto.value) return computeRotoLegacyScoresByYear()
+  return computeH2HLegacyScoresByYear()
+})
+
+function computeRotoLegacyScoresByYear() {
   const seasons = Object.keys(historicalData.value).sort((a, b) => parseInt(a) - parseInt(b))
   if (seasons.length === 0) return { scores: new Map<string, number[]>(), details: new Map<string, { year: string; points: number; isChampion: boolean; isRegSeasonChamp: boolean; madePlayoffs: boolean }[]>() }
-  
+
+  const RP = ROTO_LEGACY_POINTS.value
+  const scores = new Map<string, number[]>()
+  const details = new Map<string, { year: string; points: number; isChampion: boolean; isRegSeasonChamp: boolean; madePlayoffs: boolean }[]>()
+  const teamCumulativeScores: Record<string, number> = {}
+  const teamStreaks: Record<string, { topHalfStreak: number; top3Streak: number }> = {}
+
+  // Pre-compute best hitting/pitching across all seasons (for one-time bonus)
+  let bestHitting = { score: 0, teamKey: '' }
+  let bestPitching = { score: 0, teamKey: '' }
+  for (const season of seasons) {
+    const perCat = rotoPerCategoryData.value[season]
+    if (!perCat) continue
+    for (const tk of Object.keys(perCat)) {
+      const hScore = getHittingScore(tk, season)
+      const pScore = getPitchingScore(tk, season)
+      if (hScore > bestHitting.score) bestHitting = { score: hScore, teamKey: tk }
+      if (pScore > bestPitching.score) bestPitching = { score: pScore, teamKey: tk }
+    }
+  }
+  // Track which season was the first one where the best hitting/pitching was established
+  // (award it on the season it happened)
+  let bestHittingAwarded = false
+  let bestPitchingAwarded = false
+
+  for (const season of seasons) {
+    const seasonData = historicalData.value[season]
+    const standings = seasonData.standings || []
+    if (standings.length === 0) continue
+    const numTeams = standings.length
+    const topHalfCutoff = Math.floor(numTeams / 2)
+
+    const sortedByRotoPts = [...standings].sort((a: any, b: any) => (b.points_for || 0) - (a.points_for || 0))
+    const rotoPtsLeader = sortedByRotoPts[0]?.team_key || ''
+    const top3RotoPts = sortedByRotoPts.slice(0, 3).map((t: any) => t.team_key)
+    const totalRotoPts = standings.reduce((sum: number, t: any) => sum + (t.points_for || 0), 0)
+    const avgRotoPts = numTeams > 0 ? totalRotoPts / numTeams : 0
+
+    // Category leader for this season
+    const perCat = rotoPerCategoryData.value[season]
+    let categoryLeaderTeam = ''
+    if (perCat) {
+      const allStatIds = new Set<string>()
+      for (const tk of Object.keys(perCat)) {
+        for (const sid of Object.keys(perCat[tk])) allStatIds.add(sid)
+      }
+      const catsLedByTeam: Record<string, number> = {}
+      for (const sid of allStatIds) {
+        let bestVal = 0; let bestTk = ''
+        for (const tk of Object.keys(perCat)) {
+          const val = perCat[tk][sid] || 0
+          if (val > bestVal) { bestVal = val; bestTk = tk }
+        }
+        if (bestTk) catsLedByTeam[bestTk] = (catsLedByTeam[bestTk] || 0) + 1
+      }
+      let maxCatsLed = 0
+      for (const [tk, count] of Object.entries(catsLedByTeam)) {
+        if (count > maxCatsLed) { maxCatsLed = count; categoryLeaderTeam = tk }
+      }
+    }
+
+    for (const team of standings) {
+      const teamKey = team.team_key
+      if (!teamCumulativeScores[teamKey]) teamCumulativeScores[teamKey] = 0
+      if (!teamStreaks[teamKey]) teamStreaks[teamKey] = { topHalfStreak: 0, top3Streak: 0 }
+      if (!scores.has(teamKey)) scores.set(teamKey, [])
+      if (!details.has(teamKey)) details.set(teamKey, [])
+
+      const streak = teamStreaks[teamKey]
+      const rank = team.rank || 999
+      const rotoPts = team.points_for || 0
+      const isChampion = (rank === 1 || team.is_champion) || false
+      const isTopHalf = rank <= topHalfCutoff
+
+      let seasonPoints = 0
+
+      // Championships & Finishes
+      if (isChampion) seasonPoints += RP.CHAMPIONSHIP
+      if (rank === 2) seasonPoints += RP.RUNNER_UP
+      if (rank === 3) seasonPoints += RP.THIRD_PLACE
+      if (isTopHalf) seasonPoints += RP.TOP_HALF_FINISH
+      if (teamKey === rotoPtsLeader) seasonPoints += RP.ROTO_PTS_LEADER
+
+      // Season Performance
+      seasonPoints += Math.round(rotoPts) * RP.ROTO_PT
+      if (rotoPts > avgRotoPts) seasonPoints += RP.ABOVE_AVG_ROTO
+      if (rank <= 3) seasonPoints += RP.TOP_3_FINISH
+
+      // Category Achievements
+      if (categoryLeaderTeam === teamKey) seasonPoints += RP.CATEGORY_LEADER
+      if (top3RotoPts.includes(teamKey)) seasonPoints += RP.TOP_3_ROTO_PTS
+
+      // Best hitting/pitching (one-time, awarded on the season it first applies)
+      if (!bestHittingAwarded && bestHitting.teamKey === teamKey && perCat) {
+        const currentBest = getHittingScore(teamKey, season)
+        if (currentBest === bestHitting.score) {
+          seasonPoints += RP.BEST_HITTING_SEASON
+          bestHittingAwarded = true
+        }
+      }
+      if (!bestPitchingAwarded && bestPitching.teamKey === teamKey && perCat) {
+        const currentBest = getPitchingScore(teamKey, season)
+        if (currentBest === bestPitching.score) {
+          seasonPoints += RP.BEST_PITCHING_SEASON
+          bestPitchingAwarded = true
+        }
+      }
+
+      // Longevity
+      seasonPoints += RP.SEASON_PLAYED
+
+      // Streak bonuses
+      if (isTopHalf) {
+        streak.topHalfStreak++
+        if (streak.topHalfStreak === 5) seasonPoints += RP.TOP_HALF_STREAK_5
+      } else {
+        streak.topHalfStreak = 0
+      }
+      if (rank <= 3) {
+        streak.top3Streak++
+        if (streak.top3Streak === 3) seasonPoints += RP.TOP_3_STREAK_3
+      } else {
+        streak.top3Streak = 0
+      }
+
+      teamCumulativeScores[teamKey] += seasonPoints
+      scores.get(teamKey)!.push(teamCumulativeScores[teamKey])
+      details.get(teamKey)!.push({ year: season, points: seasonPoints, isChampion, isRegSeasonChamp: teamKey === rotoPtsLeader, madePlayoffs: isTopHalf })
+    }
+  }
+
+  return { scores, details }
+}
+
+function computeH2HLegacyScoresByYear() {
+  const seasons = Object.keys(historicalData.value).sort((a, b) => parseInt(a) - parseInt(b))
+  if (seasons.length === 0) return { scores: new Map<string, number[]>(), details: new Map<string, { year: string; points: number; isChampion: boolean; isRegSeasonChamp: boolean; madePlayoffs: boolean }[]>() }
+
   const includePenalties = includeLegacyPenalties.value
   const scores = new Map<string, number[]>()
   const details = new Map<string, { year: string; points: number; isChampion: boolean; isRegSeasonChamp: boolean; madePlayoffs: boolean }[]>()
-  
-  // Track cumulative scores for each team
+
   const teamCumulativeScores: Record<string, number> = {}
   const teamStreaks: Record<string, { playoffStreak: number; winningStreak: number; maxPlayoffStreak: number; maxWinningStreak: number }> = {}
-  
-  // Pre-calculate season metrics (same as legacyScores)
+
   const seasonMetrics: Record<string, {
     standings: any[]
     avgPPW: number
@@ -3488,19 +4688,19 @@ const legacyScoresByYearDetailed = computed(() => {
     playoffTeamCount: number
     regSeasonChamp: string
   }> = {}
-  
+
   for (const season of seasons) {
     const seasonData = historicalData.value[season]
     const standings = seasonData.standings || []
     const matchups = allMatchups.value[season] || {}
-    
+
     if (standings.length === 0) continue
-    
+
     let totalPoints = 0
     let totalWeeks = 0
     let highScore = { value: 0, team_key: '' }
     let lowScore = { value: Infinity, team_key: '' }
-    
+
     for (const [week, weekMatchups] of Object.entries(matchups)) {
       for (const matchup of weekMatchups as any[]) {
         for (const team of matchup.teams || []) {
@@ -3518,89 +4718,63 @@ const legacyScoresByYearDetailed = computed(() => {
         }
       }
     }
-    
+
     const avgPPW = totalWeeks > 0 ? totalPoints / totalWeeks : 0
     const sortedByPoints = [...standings].sort((a: any, b: any) => (b.points_for || 0) - (a.points_for || 0))
     const pointsLeader = sortedByPoints[0]?.team_key || ''
     const top3Scorers = sortedByPoints.slice(0, 3).map((t: any) => t.team_key)
-    
-    // Determine playoff team count - use heuristic, don't count all teams with playoff seeds
-    // ESPN sets playoff_seed for ALL teams in any bracket (including consolation)
+
     const playoffTeamCount = Math.min(Math.floor(standings.length / 2), 6)
-    
-    // Find regular season champion (most wins, tiebreaker: most points)
+
     const sortedByWins = [...standings].sort((a: any, b: any) => {
       if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0)
       return (b.points_for || 0) - (a.points_for || 0)
     })
     const regSeasonChamp = sortedByWins[0]?.team_key || ''
-    
+
     seasonMetrics[season] = {
-      standings,
-      avgPPW,
-      highScore,
+      standings, avgPPW, highScore,
       lowScore: lowScore.value === Infinity ? { value: 0, team_key: '' } : lowScore,
-      pointsLeader,
-      top3Scorers,
-      numTeams: standings.length,
-      playoffTeamCount,
-      regSeasonChamp
+      pointsLeader, top3Scorers,
+      numTeams: standings.length, playoffTeamCount, regSeasonChamp
     }
   }
-  
-  // Calculate year-by-year cumulative scores
+
   for (const season of seasons) {
     const metrics = seasonMetrics[season]
     if (!metrics) continue
-    
+
     const { standings, avgPPW, highScore, lowScore, pointsLeader, top3Scorers, numTeams, playoffTeamCount, regSeasonChamp } = metrics
-    const sortedByWins = [...standings].sort((a: any, b: any) => {
-      if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0)
-      return (b.points_for || 0) - (a.points_for || 0)
-    })
     const sortedByPointsAsc = [...standings].sort((a: any, b: any) => (a.points_for || 0) - (b.points_for || 0))
-    
+
     for (const team of standings) {
       const teamKey = team.team_key
-      
-      // Initialize if needed
-      if (!teamCumulativeScores[teamKey]) {
-        teamCumulativeScores[teamKey] = 0
-      }
-      if (!teamStreaks[teamKey]) {
-        teamStreaks[teamKey] = { playoffStreak: 0, winningStreak: 0, maxPlayoffStreak: 0, maxWinningStreak: 0 }
-      }
-      if (!scores.has(teamKey)) {
-        scores.set(teamKey, [])
-      }
-      if (!details.has(teamKey)) {
-        details.set(teamKey, [])
-      }
-      
+
+      if (!teamCumulativeScores[teamKey]) teamCumulativeScores[teamKey] = 0
+      if (!teamStreaks[teamKey]) teamStreaks[teamKey] = { playoffStreak: 0, winningStreak: 0, maxPlayoffStreak: 0, maxWinningStreak: 0 }
+      if (!scores.has(teamKey)) scores.set(teamKey, [])
+      if (!details.has(teamKey)) details.set(teamKey, [])
+
       const streak = teamStreaks[teamKey]
       const wins = team.wins || 0
       const losses = team.losses || 0
       const rank = team.rank || 999
       const pointsFor = team.points_for || 0
       const teamPPW = (wins + losses) > 0 ? pointsFor / (wins + losses) : 0
-      // For ESPN, playoff_seed is set for ALL teams in any bracket (including consolation)
-      // A team made the REAL playoffs only if their seed is <= playoffTeamCount
-      const madePlayoffs = team.playoff_seed > 0 
-        ? team.playoff_seed <= playoffTeamCount 
+      const madePlayoffs = team.playoff_seed > 0
+        ? team.playoff_seed <= playoffTeamCount
         : rank <= playoffTeamCount
       const isChampion = team.is_champion || false
       const isRegSeasonChamp = teamKey === regSeasonChamp
-      
+
       let seasonPoints = 0
-      
-      // Championships & Playoffs
+
       if (isChampion) seasonPoints += LEGACY_POINTS.value.CHAMPIONSHIP
       if (rank === 2 && !isChampion) seasonPoints += LEGACY_POINTS.value.RUNNER_UP
       if (rank === 3) seasonPoints += LEGACY_POINTS.value.THIRD_PLACE
       if (madePlayoffs) seasonPoints += LEGACY_POINTS.value.PLAYOFF_APPEARANCE
       if (isRegSeasonChamp) seasonPoints += LEGACY_POINTS.value.REGULAR_SEASON_TITLE
-      
-      // Season Performance
+
       seasonPoints += wins * LEGACY_POINTS.value.WIN
       if (wins > losses) seasonPoints += LEGACY_POINTS.value.WINNING_SEASON
       if (rank <= 3) seasonPoints += LEGACY_POINTS.value.TOP_3_FINISH
@@ -3608,11 +4782,9 @@ const legacyScoresByYearDetailed = computed(() => {
       if (top3Scorers.includes(teamKey)) seasonPoints += LEGACY_POINTS.value.TOP_3_SCORING
       if (teamPPW > avgPPW) seasonPoints += LEGACY_POINTS.value.ABOVE_AVG_PPW
       if (teamKey === highScore.team_key) seasonPoints += LEGACY_POINTS.value.SEASON_HIGH_SCORE
-      
-      // Longevity
+
       seasonPoints += LEGACY_POINTS.value.SEASON_PLAYED
-      
-      // Streak bonuses (check after updating streak)
+
       if (madePlayoffs) {
         streak.playoffStreak++
         if (streak.playoffStreak === 3) seasonPoints += LEGACY_POINTS.value.PLAYOFF_STREAK_3
@@ -3620,30 +4792,29 @@ const legacyScoresByYearDetailed = computed(() => {
       } else {
         streak.playoffStreak = 0
       }
-      
+
       if (wins > losses) {
         streak.winningStreak++
         if (streak.winningStreak === 3) seasonPoints += LEGACY_POINTS.value.WINNING_STREAK_3
       } else {
         streak.winningStreak = 0
       }
-      
-      // Penalties (if enabled)
+
       if (includePenalties) {
         if (rank === numTeams) seasonPoints += LEGACY_POINTS.value.LAST_PLACE
         if (teamKey === lowScore.team_key) seasonPoints += LEGACY_POINTS.value.SEASON_LOW_SCORE
         if (sortedByPointsAsc[0]?.team_key === teamKey) seasonPoints += LEGACY_POINTS.value.SCORING_CELLAR
         if (wins < losses) seasonPoints += LEGACY_POINTS.value.LOSING_SEASON
       }
-      
+
       teamCumulativeScores[teamKey] += seasonPoints
       scores.get(teamKey)!.push(teamCumulativeScores[teamKey])
       details.get(teamKey)!.push({ year: season, points: seasonPoints, isChampion, isRegSeasonChamp, madePlayoffs })
     }
   }
-  
+
   return { scores, details }
-})
+}
 
 // Backward-compatible accessor
 const legacyScoresByYear = computed(() => legacyScoresByYearDetailed.value.scores)
@@ -3923,8 +5094,13 @@ async function downloadLegacyLeaderboard() {  if (!canDownload.value) {
       // Achievement badges
       const badges = []
       if (team.championships > 0) badges.push(`<span style="color: #facc15;">🏆${team.championships}</span>`)
-      if (team.playoff_appearances > 0) badges.push(`<span style="color: #3b82f6;">📈${team.playoff_appearances}</span>`)
-      if (team.regular_season_titles > 0) badges.push(`<span style="color: #a855f7;">👑${team.regular_season_titles}</span>`)
+      if (isRoto.value) {
+        if (team.top_half_finishes > 0) badges.push(`<span style="color: #3b82f6;">📈${team.top_half_finishes}</span>`)
+        if (team.category_leader_seasons > 0) badges.push(`<span style="color: #a855f7;">⭐${team.category_leader_seasons}</span>`)
+      } else {
+        if (team.playoff_appearances > 0) badges.push(`<span style="color: #3b82f6;">📈${team.playoff_appearances}</span>`)
+        if (team.regular_season_titles > 0) badges.push(`<span style="color: #a855f7;">👑${team.regular_season_titles}</span>`)
+      }
       
       return `
       <div style="display: flex; height: 80px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
@@ -3981,8 +5157,8 @@ async function downloadLegacyLeaderboard() {  if (!canDownload.value) {
           <!-- Legend -->
           <div style="display: flex; justify-content: center; gap: 24px; font-size: 11px; color: #6b7280; margin-bottom: 8px;">
             <span>🏆 Championships</span>
-            <span>📈 Playoff Appearances</span>
-            <span>👑 Reg Season Titles</span>
+            <span>📈 ${isRoto.value ? 'Top-Half Finishes' : 'Playoff Appearances'}</span>
+            <span>${isRoto.value ? '⭐ Cat Leader Seasons' : '👑 Reg Season Titles'}</span>
           </div>
         </div>
         
@@ -4157,7 +5333,14 @@ async function downloadTeamLegacy(team: LegacyScore) {
     }
     
     // Category breakdown
-    const categories = [
+    const categories = isRoto.value ? [
+      { label: 'Championships', value: team.championships, icon: '🏆', color: '#facc15', points: team.championships * ROTO_LEGACY_POINTS.value.CHAMPIONSHIP },
+      { label: 'Runner-ups', value: team.runner_ups, icon: '🥈', color: '#9ca3af', points: team.runner_ups * ROTO_LEGACY_POINTS.value.RUNNER_UP },
+      { label: 'Top-Half Finishes', value: team.top_half_finishes, icon: '📈', color: '#3b82f6', points: team.top_half_finishes * ROTO_LEGACY_POINTS.value.TOP_HALF_FINISH },
+      { label: 'Total Roto Pts', value: Math.round(team.total_roto_pts), icon: '✅', color: '#10b981', points: Math.round(team.total_roto_pts) * ROTO_LEGACY_POINTS.value.ROTO_PT },
+      { label: 'Cat Leader Seasons', value: team.category_leader_seasons, icon: '⭐', color: '#f59e0b', points: team.category_leader_seasons * ROTO_LEGACY_POINTS.value.CATEGORY_LEADER },
+      { label: 'Roto Pts Leader', value: team.roto_pts_leader_seasons, icon: '👑', color: '#a855f7', points: team.roto_pts_leader_seasons * ROTO_LEGACY_POINTS.value.ROTO_PTS_LEADER },
+    ].filter(c => c.value > 0) : [
       { label: 'Championships', value: team.championships, icon: '🏆', color: '#facc15', points: team.championships * LEGACY_POINTS.value.CHAMPIONSHIP },
       { label: 'Runner-ups', value: team.runner_ups, icon: '🥈', color: '#9ca3af', points: team.runner_ups * LEGACY_POINTS.value.RUNNER_UP },
       { label: 'Playoff Apps', value: team.playoff_appearances, icon: '📈', color: '#3b82f6', points: team.playoff_appearances * LEGACY_POINTS.value.PLAYOFF_APPEARANCE },
@@ -4325,7 +5508,96 @@ function getLogoByTeamName(teamName: string): string {
 const allTimeHallOfFame = computed((): Award[] => {
   const stats = careerStats.value
   if (stats.length === 0) return []
-  
+
+  if (isRoto.value) {
+    // Most Dominant Win -- champion with biggest margin
+    let dominantWin = { team: '', season: '', margin: 0, logo: '' }
+    for (const [season, seasonData] of Object.entries(historicalData.value)) {
+      const standings = [...(seasonData.standings || [])].sort((a: any, b: any) => (b.points_for || 0) - (a.points_for || 0))
+      if (standings.length >= 2) {
+        const margin = (standings[0].points_for || 0) - (standings[1].points_for || 0)
+        if (margin > dominantWin.margin) {
+          dominantWin = { team: standings[0].name, season, margin, logo: standings[0].logo_url || '' }
+        }
+      }
+    }
+
+    // Best Avg Finish
+    const bestAvgFinish = [...stats].filter(s => s.seasons > 0 && s.avg_finish > 0).sort((a, b) => a.avg_finish - b.avg_finish)[0]
+
+    // Best Hitting Season (from per-category data)
+    let bestHitting = { team: '', season: '', score: 0, logo: '' }
+    for (const [season, teamRankings] of Object.entries(rotoPerCategoryData.value)) {
+      const seasonData = historicalData.value[season]
+      const teams = seasonData?.standings || []
+      for (const team of teams) {
+        const tk = team.team_key
+        if (!tk) continue
+        const score = getHittingScore(tk, season)
+        if (score > bestHitting.score) {
+          bestHitting = { team: team.name, season, score, logo: team.logo_url || '' }
+        }
+      }
+    }
+
+    // Best Pitching Season
+    let bestPitching = { team: '', season: '', score: 0, logo: '' }
+    for (const [season, teamRankings] of Object.entries(rotoPerCategoryData.value)) {
+      const seasonData = historicalData.value[season]
+      const teams = seasonData?.standings || []
+      for (const team of teams) {
+        const tk = team.team_key
+        if (!tk) continue
+        const score = getPitchingScore(tk, season)
+        if (score > bestPitching.score) {
+          bestPitching = { team: team.name, season, score, logo: team.logo_url || '' }
+        }
+      }
+    }
+
+    return [
+      {
+        title: 'Most Dominant Win',
+        winner: dominantWin.margin > 0 ? {
+          team_name: dominantWin.team,
+          logo_url: dominantWin.logo || getLogoByTeamName(dominantWin.team),
+          value: `+${dominantWin.margin.toFixed(1)}`,
+          season: dominantWin.season,
+          details: `Won by ${dominantWin.margin.toFixed(1)} roto pts`
+        } : null
+      },
+      {
+        title: 'Best Avg Finish',
+        winner: bestAvgFinish ? {
+          team_name: bestAvgFinish.team_name,
+          logo_url: bestAvgFinish.logo_url || getLogoByTeamName(bestAvgFinish.team_name),
+          value: bestAvgFinish.avg_finish.toFixed(1),
+          details: `Avg ${getOrdinal(Math.round(bestAvgFinish.avg_finish))} over ${bestAvgFinish.seasons} seasons`
+        } : null
+      },
+      {
+        title: 'Best Hitting Season',
+        winner: bestHitting.score > 0 ? {
+          team_name: bestHitting.team,
+          logo_url: bestHitting.logo || getLogoByTeamName(bestHitting.team),
+          value: bestHitting.score.toFixed(1),
+          season: bestHitting.season,
+          details: `Hitting ranking pts (${bestHitting.season})`
+        } : null
+      },
+      {
+        title: 'Best Pitching Season',
+        winner: bestPitching.score > 0 ? {
+          team_name: bestPitching.team,
+          logo_url: bestPitching.logo || getLogoByTeamName(bestPitching.team),
+          value: bestPitching.score.toFixed(1),
+          season: bestPitching.season,
+          details: `Pitching ranking pts (${bestPitching.season})`
+        } : null
+      }
+    ]
+  }
+
   // Find best performers across all matchups
   let highestScore = { value: 0, team: '', teamKey: '', logoUrl: '', season: '', week: 0 }
   let mostWins = { value: 0, team: '', logo: '' }
@@ -4401,7 +5673,100 @@ const allTimeHallOfFame = computed((): Award[] => {
 const allTimeHallOfShame = computed((): Award[] => {
   const stats = careerStats.value
   if (stats.length === 0) return []
-  
+
+  if (isRoto.value) {
+    // Biggest Gap Behind 1st
+    let biggestGap = { team: '', season: '', gap: 0, logo: '' }
+    for (const [season, seasonData] of Object.entries(historicalData.value)) {
+      const standings = [...(seasonData.standings || [])].sort((a: any, b: any) => (b.points_for || 0) - (a.points_for || 0))
+      if (standings.length >= 2) {
+        const maxPts = standings[0].points_for || 0
+        const lastTeam = standings[standings.length - 1]
+        const gap = maxPts - (lastTeam.points_for || 0)
+        if (gap > biggestGap.gap) {
+          biggestGap = { team: lastTeam.name, season, gap, logo: lastTeam.logo_url || '' }
+        }
+      }
+    }
+
+    // Worst Avg Finish
+    const worstAvgFinish = [...stats].filter(s => s.seasons > 0 && s.avg_finish > 0).sort((a, b) => b.avg_finish - a.avg_finish)[0]
+
+    // Worst Hitting Season
+    let worstHitting = { team: '', season: '', score: Infinity, logo: '' }
+    for (const [season, teamRankings] of Object.entries(rotoPerCategoryData.value)) {
+      const seasonData = historicalData.value[season]
+      const teams = seasonData?.standings || []
+      for (const team of teams) {
+        const tk = team.team_key
+        if (!tk) continue
+        const score = getHittingScore(tk, season)
+        if (score > 0 && score < worstHitting.score) {
+          worstHitting = { team: team.name, season, score, logo: team.logo_url || '' }
+        }
+      }
+    }
+    if (worstHitting.score === Infinity) worstHitting.score = 0
+
+    // Worst Pitching Season
+    let worstPitching = { team: '', season: '', score: Infinity, logo: '' }
+    for (const [season, teamRankings] of Object.entries(rotoPerCategoryData.value)) {
+      const seasonData = historicalData.value[season]
+      const teams = seasonData?.standings || []
+      for (const team of teams) {
+        const tk = team.team_key
+        if (!tk) continue
+        const score = getPitchingScore(tk, season)
+        if (score > 0 && score < worstPitching.score) {
+          worstPitching = { team: team.name, season, score, logo: team.logo_url || '' }
+        }
+      }
+    }
+    if (worstPitching.score === Infinity) worstPitching.score = 0
+
+    return [
+      {
+        title: 'Biggest Gap Behind 1st',
+        winner: biggestGap.gap > 0 ? {
+          team_name: biggestGap.team,
+          logo_url: biggestGap.logo || getLogoByTeamName(biggestGap.team),
+          value: `-${biggestGap.gap.toFixed(1)}`,
+          season: biggestGap.season,
+          details: `${biggestGap.gap.toFixed(1)} pts behind champion`
+        } : null
+      },
+      {
+        title: 'Worst Avg Finish',
+        winner: worstAvgFinish ? {
+          team_name: worstAvgFinish.team_name,
+          logo_url: worstAvgFinish.logo_url || getLogoByTeamName(worstAvgFinish.team_name),
+          value: worstAvgFinish.avg_finish.toFixed(1),
+          details: `Avg ${getOrdinal(Math.round(worstAvgFinish.avg_finish))} over ${worstAvgFinish.seasons} seasons`
+        } : null
+      },
+      {
+        title: 'Worst Hitting Season',
+        winner: worstHitting.score > 0 ? {
+          team_name: worstHitting.team,
+          logo_url: worstHitting.logo || getLogoByTeamName(worstHitting.team),
+          value: worstHitting.score.toFixed(1),
+          season: worstHitting.season,
+          details: `Hitting ranking pts (${worstHitting.season})`
+        } : null
+      },
+      {
+        title: 'Worst Pitching Season',
+        winner: worstPitching.score > 0 ? {
+          team_name: worstPitching.team,
+          logo_url: worstPitching.logo || getLogoByTeamName(worstPitching.team),
+          value: worstPitching.score.toFixed(1),
+          season: worstPitching.season,
+          details: `Pitching ranking pts (${worstPitching.season})`
+        } : null
+      }
+    ]
+  }
+
   // Find worst performers
   let lowestScore = { value: Infinity, team: '', teamKey: '', logoUrl: '', season: '', week: 0 }
   
@@ -4573,6 +5938,34 @@ function getRecordRankings(recordType: string): any[] {
         value: s.total_pf.toFixed(0),
         detail: `Over ${s.seasons} season(s)`
       }))
+    // Roto career record cases
+    case 'Best Avg Finish':
+      sorted = [...stats].filter(s => s.seasons > 0 && s.avg_finish > 0).sort((a, b) => a.avg_finish - b.avg_finish)
+      return sorted.map((s, idx) => ({
+        rank: idx + 1,
+        team_name: s.team_name,
+        logo_url: s.logo_url,
+        value: s.avg_finish.toFixed(1),
+        detail: `Avg ${getOrdinal(Math.round(s.avg_finish))} over ${s.seasons} seasons`
+      }))
+    case 'Highest Avg Roto Pts':
+      sorted = [...stats].filter(s => s.seasons > 0 && s.avg_roto_pts > 0).sort((a, b) => b.avg_roto_pts - a.avg_roto_pts)
+      return sorted.map((s, idx) => ({
+        rank: idx + 1,
+        team_name: s.team_name,
+        logo_url: s.logo_url,
+        value: s.avg_roto_pts.toFixed(1),
+        detail: `Over ${s.seasons} season(s)`
+      }))
+    case 'Most Top-3 Finishes':
+      sorted = [...stats].sort((a, b) => b.top3_finishes - a.top3_finishes)
+      return sorted.map((s, idx) => ({
+        rank: idx + 1,
+        team_name: s.team_name,
+        logo_url: s.logo_url,
+        value: s.top3_finishes,
+        detail: `${s.top3_finishes} podium finish(es) in ${s.seasons} seasons`
+      }))
     default:
       return []
   }
@@ -4660,6 +6053,151 @@ function getAwardRankings(awardTitle: string, type: 'best' | 'worst'): any[] {
         detail: `${s.wins}-${s.losses} (min 10 games)`
       }))
     }
+    // Roto All-Time Awards
+    case 'Most Dominant Win': {
+      const entries: any[] = []
+      for (const [season, seasonData] of Object.entries(historicalData.value)) {
+        const standings = [...(seasonData.standings || [])].sort((a: any, b: any) => (b.points_for || 0) - (a.points_for || 0))
+        if (standings.length >= 2) {
+          const margin = (standings[0].points_for || 0) - (standings[1].points_for || 0)
+          entries.push({
+            team_name: standings[0].name,
+            logo_url: standings[0].logo_url || getLogoByName(standings[0].name),
+            value: `+${margin.toFixed(1)}`,
+            detail: `${season} — Won by ${margin.toFixed(1)} roto pts`
+          })
+        }
+      }
+      entries.sort((a, b) => parseFloat(b.value) - parseFloat(a.value))
+      return entries.slice(0, 10)
+    }
+    case 'Biggest Gap Behind 1st': {
+      const entries: any[] = []
+      for (const [season, seasonData] of Object.entries(historicalData.value)) {
+        const standings = [...(seasonData.standings || [])].sort((a: any, b: any) => (b.points_for || 0) - (a.points_for || 0))
+        if (standings.length >= 2) {
+          const maxPts = standings[0].points_for || 0
+          const lastTeam = standings[standings.length - 1]
+          const gap = maxPts - (lastTeam.points_for || 0)
+          entries.push({
+            team_name: lastTeam.name,
+            logo_url: lastTeam.logo_url || getLogoByName(lastTeam.name),
+            value: `-${gap.toFixed(1)}`,
+            detail: `${season} — ${gap.toFixed(1)} pts behind champion`
+          })
+        }
+      }
+      entries.sort((a, b) => parseFloat(a.value) - parseFloat(b.value)) // most negative first
+      return entries.slice(0, 10)
+    }
+    case 'Best Avg Finish': {
+      const filtered = [...stats].filter(s => s.seasons > 0 && s.avg_finish > 0)
+      filtered.sort((a, b) => a.avg_finish - b.avg_finish)
+      return filtered.slice(0, 10).map(s => ({
+        team_name: s.team_name,
+        logo_url: s.logo_url || getLogoByName(s.team_name),
+        value: s.avg_finish.toFixed(1),
+        detail: `Avg ${getOrdinal(Math.round(s.avg_finish))} over ${s.seasons} seasons`
+      }))
+    }
+    case 'Worst Avg Finish': {
+      const filtered = [...stats].filter(s => s.seasons > 0 && s.avg_finish > 0)
+      filtered.sort((a, b) => b.avg_finish - a.avg_finish)
+      return filtered.slice(0, 10).map(s => ({
+        team_name: s.team_name,
+        logo_url: s.logo_url || getLogoByName(s.team_name),
+        value: s.avg_finish.toFixed(1),
+        detail: `Avg ${getOrdinal(Math.round(s.avg_finish))} over ${s.seasons} seasons`
+      }))
+    }
+    case 'Best Hitting Season': {
+      const entries: any[] = []
+      for (const [season, teamRankings] of Object.entries(rotoPerCategoryData.value)) {
+        const seasonData = historicalData.value[season]
+        const teams = seasonData?.standings || []
+        for (const team of teams) {
+          const tk = team.team_key
+          if (!tk || !teamRankings[tk]) continue
+          const score = getHittingScore(tk, season)
+          if (score > 0) {
+            entries.push({
+              team_name: team.name,
+              logo_url: team.logo_url || getLogoByName(team.name),
+              value: score.toFixed(1),
+              detail: `${season} — Hitting ranking pts`
+            })
+          }
+        }
+      }
+      entries.sort((a, b) => parseFloat(b.value) - parseFloat(a.value))
+      return entries.slice(0, 10)
+    }
+    case 'Worst Hitting Season': {
+      const entries: any[] = []
+      for (const [season, teamRankings] of Object.entries(rotoPerCategoryData.value)) {
+        const seasonData = historicalData.value[season]
+        const teams = seasonData?.standings || []
+        for (const team of teams) {
+          const tk = team.team_key
+          if (!tk || !teamRankings[tk]) continue
+          const score = getHittingScore(tk, season)
+          if (score > 0) {
+            entries.push({
+              team_name: team.name,
+              logo_url: team.logo_url || getLogoByName(team.name),
+              value: score.toFixed(1),
+              detail: `${season} — Hitting ranking pts`
+            })
+          }
+        }
+      }
+      entries.sort((a, b) => parseFloat(a.value) - parseFloat(b.value))
+      return entries.slice(0, 10)
+    }
+    case 'Best Pitching Season': {
+      const entries: any[] = []
+      for (const [season, teamRankings] of Object.entries(rotoPerCategoryData.value)) {
+        const seasonData = historicalData.value[season]
+        const teams = seasonData?.standings || []
+        for (const team of teams) {
+          const tk = team.team_key
+          if (!tk || !teamRankings[tk]) continue
+          const score = getPitchingScore(tk, season)
+          if (score > 0) {
+            entries.push({
+              team_name: team.name,
+              logo_url: team.logo_url || getLogoByName(team.name),
+              value: score.toFixed(1),
+              detail: `${season} — Pitching ranking pts`
+            })
+          }
+        }
+      }
+      entries.sort((a, b) => parseFloat(b.value) - parseFloat(a.value))
+      return entries.slice(0, 10)
+    }
+    case 'Worst Pitching Season': {
+      const entries: any[] = []
+      for (const [season, teamRankings] of Object.entries(rotoPerCategoryData.value)) {
+        const seasonData = historicalData.value[season]
+        const teams = seasonData?.standings || []
+        for (const team of teams) {
+          const tk = team.team_key
+          if (!tk || !teamRankings[tk]) continue
+          const score = getPitchingScore(tk, season)
+          if (score > 0) {
+            entries.push({
+              team_name: team.name,
+              logo_url: team.logo_url || getLogoByName(team.name),
+              value: score.toFixed(1),
+              detail: `${season} — Pitching ranking pts`
+            })
+          }
+        }
+      }
+      entries.sort((a, b) => parseFloat(a.value) - parseFloat(b.value))
+      return entries.slice(0, 10)
+    }
     default:
       return []
   }
@@ -4698,16 +6236,79 @@ function getAwardBarWidth(value: any, title: string, type: 'best' | 'worst'): st
 function getSeasonAwardRankings(awardTitle: string, type: 'best' | 'worst'): any[] {
   const season = selectedAwardSeason.value
   if (!season) return []
-  
+
   const seasonData = historicalData.value[season]
+  if (!seasonData) return []
+
   const matchups = allMatchups.value[season]
-  if (!seasonData || !matchups) return []
-  
   const standings = seasonData.standings || []
-  
+
   switch (awardTitle) {
+    // Roto season awards
+    case 'Most Roto Pts':
+    case 'Least Roto Pts': {
+      const sorted = type === 'best'
+        ? [...standings].sort((a: any, b: any) => (b.points_for || 0) - (a.points_for || 0))
+        : [...standings].sort((a: any, b: any) => (a.points_for || 0) - (b.points_for || 0))
+      return sorted.slice(0, 10).map((s: any) => ({
+        team_name: s.name || s.team_name,
+        logo_url: s.logo_url || getLogoByTeamName(s.name),
+        value: (s.points_for || 0).toFixed(1),
+        detail: type === 'best' ? 'Highest roto points' : 'Fewest roto points'
+      }))
+    }
+    case 'Best Hitting':
+    case 'Worst Hitting': {
+      const perCat = rotoPerCategoryData.value[season]
+      if (!perCat) return []
+      const entries = standings
+        .filter((t: any) => (t.team_key || t.team_id) && perCat[t.team_key || t.team_id])
+        .map((t: any) => {
+          const tk = t.team_key || t.team_id
+          const score = getHittingScore(tk, season)
+          return {
+            team_name: t.name || t.team_name,
+            logo_url: t.logo_url || getLogoByTeamName(t.name),
+            value: score.toFixed(1),
+            detail: 'Hitting ranking pts'
+          }
+        })
+        .filter((e: any) => parseFloat(e.value) > 0)
+      if (type === 'best') {
+        entries.sort((a: any, b: any) => parseFloat(b.value) - parseFloat(a.value))
+      } else {
+        entries.sort((a: any, b: any) => parseFloat(a.value) - parseFloat(b.value))
+      }
+      return entries.slice(0, 10)
+    }
+    case 'Best Pitching':
+    case 'Worst Pitching': {
+      const perCat = rotoPerCategoryData.value[season]
+      if (!perCat) return []
+      const entries = standings
+        .filter((t: any) => (t.team_key || t.team_id) && perCat[t.team_key || t.team_id])
+        .map((t: any) => {
+          const tk = t.team_key || t.team_id
+          const score = getPitchingScore(tk, season)
+          return {
+            team_name: t.name || t.team_name,
+            logo_url: t.logo_url || getLogoByTeamName(t.name),
+            value: score.toFixed(1),
+            detail: 'Pitching ranking pts'
+          }
+        })
+        .filter((e: any) => parseFloat(e.value) > 0)
+      if (type === 'best') {
+        entries.sort((a: any, b: any) => parseFloat(b.value) - parseFloat(a.value))
+      } else {
+        entries.sort((a: any, b: any) => parseFloat(a.value) - parseFloat(b.value))
+      }
+      return entries.slice(0, 10)
+    }
+    // H2H season awards
     case 'Season High Score':
     case 'Season Low Score': {
+      if (!matchups) return []
       const weeklyScores: any[] = []
       for (const [week, weekMatchups] of Object.entries(matchups)) {
         for (const matchup of weekMatchups as any[]) {
@@ -4897,7 +6498,71 @@ function closeWeeklyAwardModal() {
 const seasonHallOfFame = computed((): Award[] => {
   const season = selectedAwardSeason.value
   if (!season) return []
-  
+
+  if (isRoto.value) {
+    const seasonData = historicalData.value[season]
+    if (!seasonData?.standings) return []
+    const standings = [...seasonData.standings].sort((a: any, b: any) => (b.points_for || 0) - (a.points_for || 0))
+    const hasPerCategory = !!rotoPerCategoryData.value[season]
+
+    const highestRoto = standings[0]
+
+    // Best hitter and pitcher for this season
+    let bestHitter: any = null
+    let bestPitcher: any = null
+    if (hasPerCategory) {
+      let maxHitting = 0, maxPitching = 0
+      for (const team of standings) {
+        const tk = team.team_key || team.team_id
+        const hScore = getHittingScore(tk, season)
+        const pScore = getPitchingScore(tk, season)
+        if (hScore > maxHitting) { maxHitting = hScore; bestHitter = { ...team, hittingScore: hScore } }
+        if (pScore > maxPitching) { maxPitching = pScore; bestPitcher = { ...team, pitchingScore: pScore } }
+      }
+    }
+
+    const awards: Award[] = [
+      {
+        title: 'Most Roto Pts',
+        winner: highestRoto ? {
+          team_name: highestRoto.name || highestRoto.team_name,
+          logo_url: highestRoto.logo_url || getLogoByTeamName(highestRoto.name),
+          value: (highestRoto.points_for || 0).toFixed(1),
+          season,
+          details: 'Highest roto points this season'
+        } : null
+      }
+    ]
+
+    if (bestHitter) {
+      awards.push({
+        title: 'Best Hitting',
+        winner: {
+          team_name: bestHitter.name || bestHitter.team_name,
+          logo_url: bestHitter.logo_url || getLogoByTeamName(bestHitter.name),
+          value: bestHitter.hittingScore.toFixed(1),
+          season,
+          details: 'Highest hitting ranking pts'
+        }
+      })
+    }
+
+    if (bestPitcher) {
+      awards.push({
+        title: 'Best Pitching',
+        winner: {
+          team_name: bestPitcher.name || bestPitcher.team_name,
+          logo_url: bestPitcher.logo_url || getLogoByTeamName(bestPitcher.name),
+          value: bestPitcher.pitchingScore.toFixed(1),
+          season,
+          details: 'Highest pitching ranking pts'
+        }
+      })
+    }
+
+    return awards
+  }
+
   const seasonData = historicalData.value[season]
   const matchups = allMatchups.value[season]
   if (!seasonData || !matchups) return []
@@ -4959,7 +6624,70 @@ const seasonHallOfFame = computed((): Award[] => {
 const seasonHallOfShame = computed((): Award[] => {
   const season = selectedAwardSeason.value
   if (!season) return []
-  
+
+  if (isRoto.value) {
+    const seasonData = historicalData.value[season]
+    if (!seasonData?.standings) return []
+    const standings = [...seasonData.standings].sort((a: any, b: any) => (a.points_for || 0) - (b.points_for || 0))
+    const hasPerCategory = !!rotoPerCategoryData.value[season]
+
+    const lowestRoto = standings[0]
+
+    let worstHitter: any = null
+    let worstPitcher: any = null
+    if (hasPerCategory) {
+      let minHitting = Infinity, minPitching = Infinity
+      for (const team of standings) {
+        const tk = team.team_key || team.team_id
+        const hScore = getHittingScore(tk, season)
+        const pScore = getPitchingScore(tk, season)
+        if (hScore > 0 && hScore < minHitting) { minHitting = hScore; worstHitter = { ...team, hittingScore: hScore } }
+        if (pScore > 0 && pScore < minPitching) { minPitching = pScore; worstPitcher = { ...team, pitchingScore: pScore } }
+      }
+    }
+
+    const awards: Award[] = [
+      {
+        title: 'Least Roto Pts',
+        winner: lowestRoto ? {
+          team_name: lowestRoto.name || lowestRoto.team_name,
+          logo_url: lowestRoto.logo_url || getLogoByTeamName(lowestRoto.name),
+          value: (lowestRoto.points_for || 0).toFixed(1),
+          season,
+          details: 'Fewest roto points this season'
+        } : null
+      }
+    ]
+
+    if (worstHitter) {
+      awards.push({
+        title: 'Worst Hitting',
+        winner: {
+          team_name: worstHitter.name || worstHitter.team_name,
+          logo_url: worstHitter.logo_url || getLogoByTeamName(worstHitter.name),
+          value: worstHitter.hittingScore.toFixed(1),
+          season,
+          details: 'Lowest hitting ranking pts'
+        }
+      })
+    }
+
+    if (worstPitcher) {
+      awards.push({
+        title: 'Worst Pitching',
+        winner: {
+          team_name: worstPitcher.name || worstPitcher.team_name,
+          logo_url: worstPitcher.logo_url || getLogoByTeamName(worstPitcher.name),
+          value: worstPitcher.pitchingScore.toFixed(1),
+          season,
+          details: 'Lowest pitching ranking pts'
+        }
+      })
+    }
+
+    return awards
+  }
+
   const seasonData = historicalData.value[season]
   const matchups = allMatchups.value[season]
   if (!seasonData || !matchups) return []
@@ -5020,6 +6748,8 @@ const seasonHallOfShame = computed((): Award[] => {
 
 // Computed: Weekly Awards
 const weeklyAwards = computed((): Award[] => {
+  if (isRoto.value) return [] // No weekly matchups in roto
+
   const season = selectedWeeklyAwardSeason.value
   const week = selectedWeeklyAwardWeek.value
   if (!season || !week) return []
@@ -5119,7 +6849,8 @@ function sortBy(column: string) {
     sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
   } else {
     sortColumn.value = column
-    sortDirection.value = 'desc'
+    // For finish positions, lower is better so default ascending
+    sortDirection.value = (column === 'avg_finish' || column === 'best_finish') ? 'asc' : 'desc'
   }
 }
 
@@ -5140,6 +6871,14 @@ function sortStats(stats: CareerStat[]): CareerStat[] {
         aVal = a.avg_ppw; bVal = b.avg_ppw; break
       case 'total_pf':
         aVal = a.total_pf; bVal = b.total_pf; break
+      case 'avg_finish':
+        aVal = a.avg_finish || 999; bVal = b.avg_finish || 999; break
+      case 'best_finish':
+        aVal = a.best_finish || 999; bVal = b.best_finish || 999; break
+      case 'avg_roto_pts':
+        aVal = a.avg_roto_pts; bVal = b.avg_roto_pts; break
+      case 'top3_finishes':
+        aVal = a.top3_finishes; bVal = b.top3_finishes; break
       default:
         aVal = a.wins; bVal = b.wins
     }
@@ -7553,6 +9292,10 @@ async function loadHistoricalData() {
     loadingProgress.value = { ...loadingProgress.value, currentStep: 'Error occurred' }
   } finally {
     isLoading.value = false
+    // Load roto per-category data for hitting/pitching awards
+    if (isRoto.value) {
+      loadRotoPerCategoryData()
+    }
   }
 }
 
@@ -7561,6 +9304,13 @@ watch(selectedWeeklyAwardSeason, () => {
   const weeks = availableWeeksForAwards.value
   if (weeks.length > 0 && !weeks.includes(selectedWeeklyAwardWeek.value)) {
     selectedWeeklyAwardWeek.value = weeks[0]
+  }
+})
+
+// Reset award tab if Weekly is selected but not available (roto leagues)
+watch(isRoto, (roto) => {
+  if (roto && selectedAwardTab.value === 'Weekly') {
+    selectedAwardTab.value = 'All-Time'
   }
 })
 
@@ -7575,6 +9325,7 @@ watch(() => leagueStore.activeLeagueId, (newLeagueId) => {
     allTeams.value = {}
     h2hRecords.value = {}
     currentMembers.value = []
+    rotoPerCategoryData.value = {}
     // Reload
     loadHistoricalData()
   }
@@ -7589,6 +9340,7 @@ watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
     allTeams.value = {}
     h2hRecords.value = {}
     currentMembers.value = []
+    rotoPerCategoryData.value = {}
     loadHistoricalData()
   }
 })

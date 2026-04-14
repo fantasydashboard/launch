@@ -1206,13 +1206,15 @@ export const useLeagueStore = defineStore('league', () => {
       // Check if this is a category league
       const savedLeague = savedLeagues.value.find(l => l.league_id === leagueKey)
       const scoringType = savedLeague?.scoring_type || leagueDetails?.[0]?.scoring_type || ''
+      const isRoto = scoringType === 'roto'
       const isCategoryLeague = scoringType === 'head' || scoringType === 'headone' || scoringType === 'roto'
-      
-      console.log('[Yahoo] Loading matchups, scoring_type:', scoringType, 'isCategoryLeague:', isCategoryLeague)
-      
-      // Fetch current week matchups - use getCategoryMatchups for category leagues
+
+      console.log('[Yahoo] Loading matchups, scoring_type:', scoringType, 'isCategoryLeague:', isCategoryLeague, 'isRoto:', isRoto)
+
+      // Fetch current week matchups - use getCategoryMatchups for H2H category leagues
+      // Roto leagues have NO weekly matchups, so skip getCategoryMatchups entirely
       let matchups: any[]
-      if (isCategoryLeague) {
+      if (isCategoryLeague && !isRoto) {
         let weekToLoad = metadata.currentWeek
         
         // If season is finished, start from end week instead of current week
@@ -1303,6 +1305,10 @@ export const useLeagueStore = defineStore('league', () => {
           team2: m.teams?.[1]?.name,
           wins: `${m.team1_wins}-${m.team2_wins}-${m.ties}`
         })))
+      } else if (isRoto) {
+        // Roto leagues have no weekly matchups — pass empty array
+        console.log('[Yahoo] Roto league — skipping matchup fetch (no weekly matchups in roto)')
+        matchups = []
       } else {
         matchups = await yahooService.getMatchups(leagueKey, metadata.currentWeek)
       }

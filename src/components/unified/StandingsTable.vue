@@ -13,12 +13,12 @@
             <tr class="border-b border-dark-border/50">
               <th class="text-left py-3 px-2 text-dark-textMuted font-medium">#</th>
               <th class="text-left py-3 px-2 text-dark-textMuted font-medium">Team</th>
-              <th class="text-center py-3 px-2 text-dark-textMuted font-medium">Record</th>
-              <th v-if="leagueType === 'categories' || leagueType === 'roto'" class="text-center py-3 px-2 text-dark-textMuted font-medium">Cat Record</th>
-              <th class="text-right py-3 px-2 text-dark-textMuted font-medium">{{ leagueType === 'roto' ? 'Points' : 'PF' }}</th>
+              <th v-if="leagueType !== 'roto'" class="text-center py-3 px-2 text-dark-textMuted font-medium">Record</th>
+              <th v-if="leagueType === 'categories'" class="text-center py-3 px-2 text-dark-textMuted font-medium">Cat Record</th>
+              <th class="text-right py-3 px-2 text-dark-textMuted font-medium">{{ leagueType === 'roto' ? 'Roto Pts' : 'PF' }}</th>
               <th v-if="leagueType === 'points'" class="text-right py-3 px-2 text-dark-textMuted font-medium">PA</th>
-              <th class="text-center py-3 px-2 text-dark-textMuted font-medium">Win%</th>
-              <th v-if="showStreak" class="text-center py-3 px-2 text-dark-textMuted font-medium">Streak</th>
+              <th v-if="leagueType !== 'roto'" class="text-center py-3 px-2 text-dark-textMuted font-medium">Win%</th>
+              <th v-if="showStreak && leagueType !== 'roto'" class="text-center py-3 px-2 text-dark-textMuted font-medium">Streak</th>
             </tr>
           </thead>
           <tbody>
@@ -49,18 +49,18 @@
                   </div>
                 </div>
               </td>
-              <td class="py-3 px-2 text-center">
+              <td v-if="leagueType !== 'roto'" class="py-3 px-2 text-center">
                 <span class="font-medium text-dark-text">{{ entry.wins }}-{{ entry.losses }}<span v-if="entry.ties">-{{ entry.ties }}</span></span>
               </td>
-              <td v-if="leagueType === 'categories' || leagueType === 'roto'" class="py-3 px-2 text-center">
+              <td v-if="leagueType === 'categories'" class="py-3 px-2 text-center">
                 <span class="text-dark-textMuted text-xs">{{ entry.categoryWins || 0 }}-{{ entry.categoryLosses || 0 }}</span>
               </td>
               <td class="py-3 px-2 text-right"><span class="font-medium text-dark-text">{{ formatNumber(entry.pointsFor) }}</span></td>
               <td v-if="leagueType === 'points'" class="py-3 px-2 text-right"><span class="text-dark-textMuted">{{ formatNumber(entry.pointsAgainst) }}</span></td>
-              <td class="py-3 px-2 text-center">
+              <td v-if="leagueType !== 'roto'" class="py-3 px-2 text-center">
                 <span class="text-xs px-2 py-0.5 rounded-full" :class="getWinPctClass(entry.winPercentage)">{{ (entry.winPercentage * 100).toFixed(1) }}%</span>
               </td>
-              <td v-if="showStreak" class="py-3 px-2 text-center">
+              <td v-if="showStreak && leagueType !== 'roto'" class="py-3 px-2 text-center">
                 <span v-if="entry.streak" class="text-xs font-medium" :class="entry.streak.startsWith('W') ? 'text-green-400' : 'text-red-400'">{{ entry.streak }}</span>
                 <span v-else class="text-dark-textMuted">-</span>
               </td>
@@ -77,19 +77,19 @@
           <tr class="border-b border-dark-border/50">
             <th class="text-left py-3 px-2 text-dark-textMuted font-medium">#</th>
             <th class="text-left py-3 px-2 text-dark-textMuted font-medium">Team</th>
-            <th class="text-center py-3 px-2 text-dark-textMuted font-medium">Record</th>
-            <th 
-              v-if="leagueType === 'categories' || leagueType === 'roto'" 
+            <th v-if="leagueType !== 'roto'" class="text-center py-3 px-2 text-dark-textMuted font-medium">Record</th>
+            <th
+              v-if="leagueType === 'categories'"
               class="text-center py-3 px-2 text-dark-textMuted font-medium"
             >
               Cat Record
             </th>
             <th class="text-right py-3 px-2 text-dark-textMuted font-medium">
-              {{ leagueType === 'roto' ? 'Points' : 'PF' }}
+              {{ leagueType === 'roto' ? 'Roto Pts' : 'PF' }}
             </th>
             <th v-if="leagueType === 'points'" class="text-right py-3 px-2 text-dark-textMuted font-medium">PA</th>
-            <th class="text-center py-3 px-2 text-dark-textMuted font-medium">Win%</th>
-            <th v-if="showStreak" class="text-center py-3 px-2 text-dark-textMuted font-medium">Streak</th>
+            <th v-if="leagueType !== 'roto'" class="text-center py-3 px-2 text-dark-textMuted font-medium">Win%</th>
+            <th v-if="showStreak && leagueType !== 'roto'" class="text-center py-3 px-2 text-dark-textMuted font-medium">Streak</th>
             <th v-if="showGamesBack" class="text-right py-3 px-2 text-dark-textMuted font-medium">GB</th>
           </tr>
         </thead>
@@ -127,10 +127,10 @@
                 </div>
               </div>
             </td>
-            <td class="py-3 px-2 text-center">
+            <td v-if="leagueType !== 'roto'" class="py-3 px-2 text-center">
               <span class="font-medium text-dark-text">{{ entry.wins }}-{{ entry.losses }}<span v-if="entry.ties">-{{ entry.ties }}</span></span>
             </td>
-            <td v-if="leagueType === 'categories' || leagueType === 'roto'" class="py-3 px-2 text-center">
+            <td v-if="leagueType === 'categories'" class="py-3 px-2 text-center">
               <span class="text-dark-textMuted text-xs">
                 {{ entry.categoryWins || 0 }}-{{ entry.categoryLosses || 0 }}
                 <span v-if="entry.categoryTies">-{{ entry.categoryTies }}</span>
@@ -142,10 +142,10 @@
             <td v-if="leagueType === 'points'" class="py-3 px-2 text-right">
               <span class="text-dark-textMuted">{{ formatNumber(entry.pointsAgainst) }}</span>
             </td>
-            <td class="py-3 px-2 text-center">
+            <td v-if="leagueType !== 'roto'" class="py-3 px-2 text-center">
               <span class="text-xs px-2 py-0.5 rounded-full" :class="getWinPctClass(entry.winPercentage)">{{ (entry.winPercentage * 100).toFixed(1) }}%</span>
             </td>
-            <td v-if="showStreak" class="py-3 px-2 text-center">
+            <td v-if="showStreak && leagueType !== 'roto'" class="py-3 px-2 text-center">
               <span v-if="entry.streak" class="text-xs font-medium" :class="entry.streak.startsWith('W') ? 'text-green-400' : 'text-red-400'">{{ entry.streak }}</span>
               <span v-else class="text-dark-textMuted">-</span>
             </td>
