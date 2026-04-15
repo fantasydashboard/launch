@@ -84,11 +84,38 @@
         </div>
 
         <div class="card-body !p-0">
+          <!-- Mobile category page nav -->
+          <div v-if="standingsPageCount > 1" class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30">
+            <button
+              @click="standingsPage = Math.max(0, standingsPage - 1)"
+              :disabled="standingsPage === 0"
+              class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              :class="standingsPage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div class="flex gap-1.5">
+              <div
+                v-for="i in standingsPageCount"
+                :key="i"
+                class="w-2 h-2 rounded-full transition-colors"
+                :class="i - 1 === standingsPage ? 'bg-yellow-400' : 'bg-dark-border/60'"
+              />
+            </div>
+            <button
+              @click="standingsPage = Math.min(standingsPageCount - 1, standingsPage + 1)"
+              :disabled="standingsPage >= standingsPageCount - 1"
+              class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              :class="standingsPage >= standingsPageCount - 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead>
-                <!-- Position group header (Batting / Pitching) if we know positions -->
-                <tr v-if="hasPositionGroups" class="text-xs text-dark-textMuted uppercase tracking-wider border-b border-dark-border/30">
+                <!-- Position group header (Batting / Pitching) - desktop only for simplicity -->
+                <tr v-if="hasPositionGroups" class="hidden sm:table-row text-xs text-dark-textMuted uppercase tracking-wider border-b border-dark-border/30">
                   <th class="py-2 px-3"></th>
                   <th class="py-2 px-3"></th>
                   <th
@@ -109,21 +136,28 @@
                   <th class="py-2 px-3"></th>
                 </tr>
                 <tr class="text-xs text-dark-textMuted uppercase tracking-wider border-b border-dark-border/50">
-                  <th class="py-3 px-3 text-left font-medium">#</th>
-                  <th class="py-3 px-3 text-left font-medium min-w-[160px]">Team</th>
+                  <th class="py-3 px-2 sm:px-3 text-left font-medium">#</th>
+                  <!-- Team column: full on page 0, logo-only on subsequent mobile pages -->
+                  <th
+                    class="py-3 px-2 sm:px-3 text-left font-medium min-w-[110px] sm:min-w-[160px]"
+                    :class="standingsPage > 0 ? 'sm:min-w-[160px]' : ''"
+                  >Team</th>
                   <th
                     v-for="cat in orderedCategories"
                     :key="cat.stat_id"
                     class="py-3 px-2 text-center font-medium whitespace-nowrap"
-                    :class="cat.positionType === 'P' && battingCats.length ? 'border-l border-dark-border/30' : ''"
+                    :class="[
+                      cat.positionType === 'P' && battingCats.length ? 'sm:border-l sm:border-dark-border/30' : '',
+                      isCatOnStandingsPage(cat) ? '' : 'hidden sm:table-cell'
+                    ]"
                     :title="(cat.name || cat.display_name) + (cat.isLowerBetter ? ' (lower is better)' : '')"
                   >
                     {{ cat.display_name }}
                   </th>
-                  <th class="py-3 px-3 text-right font-medium border-l border-dark-border/30 whitespace-nowrap">
+                  <th class="py-3 px-2 sm:px-3 text-right font-medium sm:border-l sm:border-dark-border/30 whitespace-nowrap">
                     Total
                   </th>
-                  <th class="py-3 px-3 text-right font-medium whitespace-nowrap">Back</th>
+                  <th class="hidden sm:table-cell py-3 px-3 text-right font-medium whitespace-nowrap">Back</th>
                 </tr>
               </thead>
               <tbody>
@@ -133,18 +167,22 @@
                   class="border-b border-dark-border/20 hover:bg-dark-border/10 transition-colors last:border-b-0"
                   :class="row.team.team_key === myTeamKey ? 'bg-primary/5' : ''"
                 >
-                  <td class="py-3 px-3 font-bold" :class="rankColorClass(idx)">{{ idx + 1 }}</td>
-                  <td class="py-3 px-3">
-                    <div class="flex items-center gap-3">
+                  <td class="py-3 px-2 sm:px-3 font-bold" :class="rankColorClass(idx)">{{ idx + 1 }}</td>
+                  <td class="py-3 px-2 sm:px-3">
+                    <div class="flex items-center gap-2 sm:gap-3">
                       <img
                         v-if="row.team.logo_url"
                         :src="row.team.logo_url"
-                        class="w-7 h-7 rounded-full bg-dark-border object-cover"
+                        class="w-7 h-7 rounded-full bg-dark-border object-cover flex-shrink-0"
                         @error="(e: any) => e.target.style.display = 'none'"
                       />
+                      <!-- Name hidden on mobile past page 0 -->
                       <span
                         class="font-semibold truncate"
-                        :class="row.team.team_key === myTeamKey ? 'text-primary' : 'text-dark-text'"
+                        :class="[
+                          row.team.team_key === myTeamKey ? 'text-primary' : 'text-dark-text',
+                          standingsPage > 0 ? 'hidden sm:inline' : ''
+                        ]"
                       >{{ row.team.name }}</span>
                     </div>
                   </td>
@@ -153,18 +191,19 @@
                     :key="cat.stat_id"
                     class="py-3 px-2 text-center font-semibold whitespace-nowrap"
                     :class="[
-                      cat.positionType === 'P' && battingCats.length ? 'border-l border-dark-border/30' : '',
-                      cellColorClass(row.cells[cat.stat_id])
+                      cat.positionType === 'P' && battingCats.length ? 'sm:border-l sm:border-dark-border/30' : '',
+                      cellColorClass(row.cells[cat.stat_id]),
+                      isCatOnStandingsPage(cat) ? '' : 'hidden sm:table-cell'
                     ]"
                   >
                     {{ viewMode === 'points'
                       ? formatPoints(row.cells[cat.stat_id]?.points)
                       : formatStat(row.cells[cat.stat_id]?.value, cat.stat_id) }}
                   </td>
-                  <td class="py-3 px-3 text-right font-bold border-l border-dark-border/30 text-primary whitespace-nowrap">
+                  <td class="py-3 px-2 sm:px-3 text-right font-bold sm:border-l sm:border-dark-border/30 text-primary whitespace-nowrap">
                     {{ row.total.toFixed(1) }}
                   </td>
-                  <td class="py-3 px-3 text-right text-dark-textMuted whitespace-nowrap">
+                  <td class="hidden sm:table-cell py-3 px-3 text-right text-dark-textMuted whitespace-nowrap">
                     {{ idx === 0 ? '—' : (standingsRows[0].total - row.total).toFixed(1) }}
                   </td>
                 </tr>
@@ -188,38 +227,119 @@
           </div>
 
           <!-- Horizontal team selector (ordered by roto points) -->
-          <div class="mt-4 pt-4 border-t border-dark-border/30 overflow-x-auto">
-            <div class="flex items-center gap-1.5 min-w-max pb-1">
-              <button
-                v-for="(row, idx) in standingsRows"
-                :key="row.team.team_key"
-                @click="selectedTeamKey = row.team.team_key"
-                class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all flex-shrink-0 border"
-                :class="row.team.team_key === selectedTeamKey
-                  ? 'bg-yellow-400/15 border-yellow-400/70 text-yellow-200 shadow-sm'
-                  : 'border-transparent hover:bg-dark-border/40 text-dark-textSecondary'"
-              >
-                <span class="text-[10px] text-dark-textMuted font-bold w-4 text-center">{{ idx + 1 }}</span>
-                <img
-                  v-if="row.team.logo_url"
-                  :src="row.team.logo_url"
-                  class="w-5 h-5 rounded-full bg-dark-elevated object-cover flex-shrink-0"
-                  @error="(e: any) => e.target.style.display = 'none'"
+          <div class="mt-4 pt-4 border-t border-dark-border/30">
+            <!-- Desktop: scrollable full list -->
+            <div class="hidden sm:block overflow-x-auto">
+              <div class="flex items-center gap-1.5 min-w-max pb-1">
+                <button
+                  v-for="(row, idx) in standingsRows"
+                  :key="row.team.team_key"
+                  @click="selectedTeamKey = row.team.team_key"
+                  class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all flex-shrink-0 border"
+                  :class="row.team.team_key === selectedTeamKey
+                    ? 'bg-yellow-400/15 border-yellow-400/70 text-yellow-200 shadow-sm'
+                    : 'border-transparent hover:bg-dark-border/40 text-dark-textSecondary'"
+                >
+                  <span class="text-[10px] text-dark-textMuted font-bold w-4 text-center">{{ idx + 1 }}</span>
+                  <img
+                    v-if="row.team.logo_url"
+                    :src="row.team.logo_url"
+                    class="w-5 h-5 rounded-full bg-dark-elevated object-cover flex-shrink-0"
+                    @error="(e: any) => e.target.style.display = 'none'"
+                  />
+                  <span class="font-semibold truncate max-w-[110px]">{{ row.team.name }}</span>
+                  <span v-if="row.team.team_key === myTeamKey" class="text-yellow-400 text-[10px]">★</span>
+                </button>
+              </div>
+            </div>
+            <!-- Mobile: paginated -->
+            <div class="sm:hidden">
+              <div class="flex items-center gap-2">
+                <button
+                  @click="teamSelectorPage = Math.max(0, teamSelectorPage - 1)"
+                  :disabled="teamSelectorPage === 0"
+                  class="w-7 h-7 rounded-full flex items-center justify-center transition-all flex-shrink-0"
+                  :class="teamSelectorPage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <div class="flex-1 grid grid-cols-3 gap-1.5">
+                  <button
+                    v-for="row in mobileTeamSelectorRows"
+                    :key="row.team.team_key"
+                    @click="selectedTeamKey = row.team.team_key"
+                    class="flex items-center gap-1.5 px-1.5 py-1.5 rounded-lg text-xs transition-all border min-w-0"
+                    :class="row.team.team_key === selectedTeamKey
+                      ? 'bg-yellow-400/15 border-yellow-400/70 text-yellow-200 shadow-sm'
+                      : 'border-transparent bg-dark-border/20 text-dark-textSecondary'"
+                  >
+                    <span class="text-[10px] text-dark-textMuted font-bold flex-shrink-0">{{ standingsRows.findIndex(r => r.team.team_key === row.team.team_key) + 1 }}</span>
+                    <img
+                      v-if="row.team.logo_url"
+                      :src="row.team.logo_url"
+                      class="w-5 h-5 rounded-full bg-dark-elevated object-cover flex-shrink-0"
+                      @error="(e: any) => e.target.style.display = 'none'"
+                    />
+                    <span class="font-semibold truncate text-[11px] min-w-0">{{ row.team.name }}</span>
+                  </button>
+                </div>
+                <button
+                  @click="teamSelectorPage = Math.min(teamSelectorPageCount - 1, teamSelectorPage + 1)"
+                  :disabled="teamSelectorPage >= teamSelectorPageCount - 1"
+                  class="w-7 h-7 rounded-full flex items-center justify-center transition-all flex-shrink-0"
+                  :class="teamSelectorPage >= teamSelectorPageCount - 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+              </div>
+              <div class="flex justify-center gap-1.5 mt-2" v-if="teamSelectorPageCount > 1">
+                <div
+                  v-for="i in teamSelectorPageCount"
+                  :key="i"
+                  class="w-1.5 h-1.5 rounded-full transition-colors"
+                  :class="i - 1 === teamSelectorPage ? 'bg-yellow-400' : 'bg-dark-border/60'"
                 />
-                <span class="font-semibold truncate max-w-[110px]">{{ row.team.name }}</span>
-                <span v-if="row.team.team_key === myTeamKey" class="text-yellow-400 text-[10px]">★</span>
-              </button>
+              </div>
             </div>
           </div>
         </div>
 
         <div class="card-body">
+          <!-- Mobile distance page nav -->
+          <div v-if="distancePageCount > 1" class="sm:hidden flex items-center justify-center gap-3 pb-3 mb-2">
+            <button
+              @click="distancePage = Math.max(0, distancePage - 1)"
+              :disabled="distancePage === 0"
+              class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              :class="distancePage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div class="flex gap-1.5">
+              <div
+                v-for="i in distancePageCount"
+                :key="i"
+                class="w-2 h-2 rounded-full transition-colors"
+                :class="i - 1 === distancePage ? 'bg-yellow-400' : 'bg-dark-border/60'"
+              />
+            </div>
+            <button
+              @click="distancePage = Math.min(distancePageCount - 1, distancePage + 1)"
+              :disabled="distancePage >= distancePageCount - 1"
+              class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              :class="distancePage >= distancePageCount - 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+
           <div class="overflow-x-auto">
-            <div class="flex gap-4 min-w-max pb-2">
+            <div class="flex gap-4 sm:min-w-max pb-2 justify-center sm:justify-start">
               <div
                 v-for="col in distanceColumns"
                 :key="col.stat_id"
-                class="flex flex-col"
+                class="flex-col"
+                :class="isCatOnDistancePage(col) ? 'flex flex-1 sm:flex-none' : 'hidden sm:flex'"
                 style="min-width: 124px;"
               >
                 <!-- Category header -->
@@ -375,6 +495,14 @@ const selectedTeamKey = ref<string>('')
 const lastUpdated = ref<Date>(new Date())
 const nowTick = ref(Date.now())
 
+// Mobile pagination
+const standingsPage = ref(0)
+const STANDINGS_CATS_PER_PAGE = 4
+const distancePage = ref(0)
+const DISTANCE_COLS_PER_PAGE = 2
+const teamSelectorPage = ref(0)
+const TEAM_SELECTOR_PER_PAGE = 3
+
 const LOWER_IS_BETTER = new Set(['26', '27'])
 
 // Auto-refresh: poll every 60s while mounted
@@ -404,6 +532,23 @@ const teamsForSelect = computed(() => {
 })
 
 const viewedTeam = computed(() => teams.value.find((t: any) => t.team_key === selectedTeamKey.value))
+
+// Mobile pagination computeds
+const standingsPageCount = computed(() => Math.max(1, Math.ceil(orderedCategories.value.length / STANDINGS_CATS_PER_PAGE)))
+const mobileStandingsCats = computed(() => {
+  const start = standingsPage.value * STANDINGS_CATS_PER_PAGE
+  return orderedCategories.value.slice(start, start + STANDINGS_CATS_PER_PAGE)
+})
+const distancePageCount = computed(() => Math.max(1, Math.ceil(orderedCategories.value.length / DISTANCE_COLS_PER_PAGE)))
+const mobileDistanceCols = computed(() => {
+  const start = distancePage.value * DISTANCE_COLS_PER_PAGE
+  return distanceColumns.value.slice(start, start + DISTANCE_COLS_PER_PAGE)
+})
+const teamSelectorPageCount = computed(() => Math.max(1, Math.ceil(standingsRows.value.length / TEAM_SELECTOR_PER_PAGE)))
+const mobileTeamSelectorRows = computed(() => {
+  const start = teamSelectorPage.value * TEAM_SELECTOR_PER_PAGE
+  return standingsRows.value.slice(start, start + TEAM_SELECTOR_PER_PAGE)
+})
 
 // Build per-team cells: rank + ranking-point per category
 const standingsRows = computed<StandingsRow[]>(() => {
@@ -554,6 +699,18 @@ const lastUpdatedLabel = computed(() => {
   const h = Math.floor(m / 60)
   return `${h}h ago`
 })
+
+function isCatOnStandingsPage(cat: StatCategory) {
+  const idx = orderedCategories.value.indexOf(cat)
+  const start = standingsPage.value * STANDINGS_CATS_PER_PAGE
+  return idx >= start && idx < start + STANDINGS_CATS_PER_PAGE
+}
+
+function isCatOnDistancePage(col: any) {
+  const idx = orderedCategories.value.findIndex(c => c.stat_id === col.stat_id)
+  const start = distancePage.value * DISTANCE_COLS_PER_PAGE
+  return idx >= start && idx < start + DISTANCE_COLS_PER_PAGE
+}
 
 function rankColorClass(idx: number) {
   if (idx === 0) return 'text-yellow-400'
@@ -706,6 +863,17 @@ onBeforeUnmount(() => {
 
 watch(() => leagueStore.activeLeagueId, () => {
   selectedTeamKey.value = ''
+  standingsPage.value = 0
+  distancePage.value = 0
+  teamSelectorPage.value = 0
   loadData()
 })
+
+// Auto-page the team selector to show the user's team (or currently selected team)
+watch([standingsRows, selectedTeamKey], ([rows, key]) => {
+  if (!rows.length || !key) return
+  const idx = rows.findIndex(r => r.team.team_key === key)
+  if (idx < 0) return
+  teamSelectorPage.value = Math.floor(idx / TEAM_SELECTOR_PER_PAGE)
+}, { immediate: true })
 </script>

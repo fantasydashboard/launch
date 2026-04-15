@@ -37,8 +37,8 @@
       </div>
     </div>
 
-    <!-- Week In Progress Banner — show when no completed weeks exist yet -->
-    <div v-else-if="!isLoading && availableWeeks.length === 0"
+    <!-- Week In Progress Banner — only relevant for H2H leagues; roto is cumulative -->
+    <div v-else-if="!isLoading && availableWeeks.length === 0 && !isRoto"
       class="rounded-xl p-5 flex items-start gap-4"
       style="background:rgba(234,179,8,0.07);border:1px solid rgba(234,179,8,0.3);">
       <div class="text-2xl flex-shrink-0">⏳</div>
