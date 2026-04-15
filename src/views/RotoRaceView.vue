@@ -45,7 +45,7 @@
       </div>
 
       <!-- Overall Standings Card -->
-      <div class="card">
+      <div class="card" ref="standingsCardRef">
         <div class="card-header">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div class="flex items-center gap-2">
@@ -59,25 +59,49 @@
                 </p>
               </div>
             </div>
-            <!-- Points / Stats toggle -->
-            <div class="inline-flex rounded-lg border border-dark-border/50 bg-dark-bg p-1 self-start sm:self-auto">
+            <div class="flex items-center gap-2 self-start sm:self-auto">
+              <!-- Points / Stats toggle -->
+              <div class="inline-flex rounded-lg border border-dark-border/50 bg-dark-bg p-1">
+                <button
+                  @click="viewMode = 'points'"
+                  class="px-4 py-1.5 text-xs font-semibold rounded-md transition-all"
+                  :class="viewMode === 'points'
+                    ? 'bg-yellow-400 text-gray-900 shadow-sm'
+                    : 'text-dark-textMuted hover:text-dark-text'"
+                >
+                  Points
+                </button>
+                <button
+                  @click="viewMode = 'stats'"
+                  class="px-4 py-1.5 text-xs font-semibold rounded-md transition-all"
+                  :class="viewMode === 'stats'
+                    ? 'bg-yellow-400 text-gray-900 shadow-sm'
+                    : 'text-dark-textMuted hover:text-dark-text'"
+                >
+                  Stats
+                </button>
+              </div>
+              <!-- Share button -->
               <button
-                @click="viewMode = 'points'"
-                class="px-4 py-1.5 text-xs font-semibold rounded-md transition-all"
-                :class="viewMode === 'points'
-                  ? 'bg-primary text-gray-900 shadow-sm'
-                  : 'text-dark-textMuted hover:text-dark-text'"
+                @click="shareSection('standings')"
+                :disabled="shareState.standings === 'loading'"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+                :style="shareState.standings === 'success'
+                  ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;'
+                  : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
+                data-html2canvas-ignore
               >
-                Points
-              </button>
-              <button
-                @click="viewMode = 'stats'"
-                class="px-4 py-1.5 text-xs font-semibold rounded-md transition-all"
-                :class="viewMode === 'stats'
-                  ? 'bg-primary text-gray-900 shadow-sm'
-                  : 'text-dark-textMuted hover:text-dark-text'"
-              >
-                Stats
+                <svg v-if="shareState.standings === 'loading'" class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <svg v-else-if="shareState.standings === 'success'" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+                </svg>
+                {{ shareState.standings === 'loading' ? 'Generating…' : shareState.standings === 'success' ? 'Copied!' : 'Share' }}
               </button>
             </div>
           </div>
@@ -180,7 +204,7 @@
                       <span
                         class="font-semibold truncate"
                         :class="[
-                          row.team.team_key === myTeamKey ? 'text-primary' : 'text-dark-text',
+                          row.team.team_key === myTeamKey ? 'text-yellow-400' : 'text-dark-text',
                           standingsPage > 0 ? 'hidden sm:inline' : ''
                         ]"
                       >{{ row.team.name }}</span>
@@ -200,7 +224,7 @@
                       ? formatPoints(row.cells[cat.stat_id]?.points)
                       : formatStat(row.cells[cat.stat_id]?.value, cat.stat_id) }}
                   </td>
-                  <td class="py-3 px-2 sm:px-3 text-right font-bold sm:border-l sm:border-dark-border/30 text-primary whitespace-nowrap">
+                  <td class="py-3 px-2 sm:px-3 text-right font-bold sm:border-l sm:border-dark-border/30 text-yellow-400 whitespace-nowrap">
                     {{ row.total.toFixed(1) }}
                   </td>
                   <td class="hidden sm:table-cell py-3 px-3 text-right text-dark-textMuted whitespace-nowrap">
@@ -214,16 +238,40 @@
       </div>
 
       <!-- Distance from Competition -->
-      <div class="card">
+      <div class="card" ref="distanceCardRef">
         <div class="card-header">
-          <div class="flex items-start gap-2">
-            <span class="text-2xl">📐</span>
-            <div>
-              <h2 class="card-title">Distance from Competition</h2>
-              <p class="card-subtitle">
-                Click any team to see where they stand in every category — yellow highlights the selected team.
-              </p>
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-start gap-2">
+              <span class="text-2xl">📐</span>
+              <div>
+                <h2 class="card-title">Distance from Competition</h2>
+                <p class="card-subtitle">
+                  Click any team to see where they stand in every category — yellow highlights the selected team.
+                </p>
+              </div>
             </div>
+            <!-- Share button -->
+            <button
+              @click="shareSection('distance')"
+              :disabled="shareState.distance === 'loading'"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 flex-shrink-0"
+              :style="shareState.distance === 'success'
+                ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;'
+                : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
+              data-html2canvas-ignore
+            >
+              <svg v-if="shareState.distance === 'loading'" class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <svg v-else-if="shareState.distance === 'success'" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+              </svg>
+              {{ shareState.distance === 'loading' ? 'Generating…' : shareState.distance === 'success' ? 'Copied!' : 'Share' }}
+            </button>
           </div>
 
           <!-- Horizontal team selector (ordered by roto points) -->
@@ -448,7 +496,7 @@
             </div>
             <div>
               <div class="text-xs text-dark-textMuted uppercase tracking-wider">Total roto pts</div>
-              <div class="text-primary font-semibold mt-0.5">{{ viewedTeamSummary.total.toFixed(1) }}</div>
+              <div class="text-yellow-400 font-semibold mt-0.5">{{ viewedTeamSummary.total.toFixed(1) }}</div>
             </div>
           </div>
         </div>
@@ -458,10 +506,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useLeagueStore } from '@/stores/league'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const leagueStore = useLeagueStore()
+const { canDownload } = useFeatureAccess()
 
 type ViewMode = 'points' | 'stats'
 
@@ -494,6 +544,13 @@ const viewMode = ref<ViewMode>('points')
 const selectedTeamKey = ref<string>('')
 const lastUpdated = ref<Date>(new Date())
 const nowTick = ref(Date.now())
+
+// Template refs for share
+const standingsCardRef = ref<HTMLElement | null>(null)
+const distanceCardRef = ref<HTMLElement | null>(null)
+
+// Share state: per-section 'idle' | 'loading' | 'success' | 'error'
+const shareState = ref<{ standings: string; distance: string }>({ standings: 'idle', distance: 'idle' })
 
 // Mobile pagination
 const standingsPage = ref(0)
@@ -793,6 +850,308 @@ function formatStat(v: number | undefined, statId: string) {
   if (['4', '26', '27'].includes(statId)) return v.toFixed(3)
   if (Number.isInteger(v)) return v.toString()
   return v.toFixed(1)
+}
+
+async function shareSection(section: 'standings' | 'distance') {
+  if (!canDownload.value) {
+    window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
+    return
+  }
+
+  shareState.value[section] = 'loading'
+
+  try {
+    const html2canvas = (await import('html2canvas')).default
+
+    // Preload UFD logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const res = await fetch('/UFD_V8.png')
+        if (!res.ok) return ''
+        const blob = await res.blob()
+        return await new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string || '')
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch { return '' }
+    }
+
+    // Create a circular placeholder from team initials
+    const placeholderLogo = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64; canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        const colors = ['#0D8ABC', '#9B59B6', '#E91E63', '#F39C12', '#1ABC9C', '#2ECC71', '#E74C3C', '#00BCD4', '#8E44AD', '#3498DB']
+        const colorIdx = (name || '').split('').reduce((s, c) => s + c.charCodeAt(0), 0) % colors.length
+        ctx.fillStyle = colors[colorIdx]
+        ctx.beginPath(); ctx.arc(32, 32, 32, 0, Math.PI * 2); ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText((name || '?').charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+
+    const drawCircle = (img: HTMLImageElement): string => {
+      const c = document.createElement('canvas')
+      c.width = 64; c.height = 64
+      const ctx = c.getContext('2d')
+      if (ctx) {
+        ctx.beginPath(); ctx.arc(32, 32, 32, 0, Math.PI * 2); ctx.closePath(); ctx.clip()
+        ctx.drawImage(img, 0, 0, 64, 64)
+      }
+      return c.toDataURL('image/png')
+    }
+
+    const loadTeamImage = async (team: any): Promise<string> => {
+      const url = team.logo_url || ''
+      if (!url) return placeholderLogo(team.name)
+      const tryFetch = async (fetchUrl: string): Promise<string> => {
+        try {
+          const res = await fetch(fetchUrl, { signal: AbortSignal.timeout(6000) })
+          if (!res.ok) return ''
+          const blob = await res.blob()
+          if (blob.size < 100) return ''
+          const dataUrl = await new Promise<string>((resolve) => {
+            const r = new FileReader()
+            r.onloadend = () => resolve(r.result as string || '')
+            r.onerror = () => resolve('')
+            r.readAsDataURL(blob)
+          })
+          if (!dataUrl.startsWith('data:')) return ''
+          return await new Promise<string>((resolve) => {
+            const img = new Image()
+            img.onload = () => { try { resolve(drawCircle(img)) } catch { resolve('') } }
+            img.onerror = () => resolve('')
+            img.src = dataUrl
+          })
+        } catch { return '' }
+      }
+      const r1 = await tryFetch(`/api/proxy-image?url=${encodeURIComponent(url)}`)
+      if (r1) return r1
+      const r2 = await tryFetch(url)
+      if (r2) return r2
+      return placeholderLogo(team.name)
+    }
+
+    const logoBase64 = await loadLogo()
+    const imageMap = new Map<string, string>()
+    await Promise.all(teams.value.map(async (t: any) => {
+      imageMap.set(t.team_key, await loadTeamImage(t))
+    }))
+
+    const leagueName = (leagueStore.currentLeague as any)?.name
+      || (leagueStore.yahooLeague as any)?.[0]?.name
+      || (leagueStore.savedLeagues || []).find((l: any) => l.league_id === leagueStore.activeLeagueId)?.league_name
+      || 'League'
+    const dateStr = new Date().toLocaleDateString()
+
+    const SHARE_WIDTH = section === 'standings' ? 1100 : 1200
+
+    const brandFrame = (title: string, subtitle: string, inner: string) => `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.5); overflow: hidden;">
+        <!-- Top Yellow Bar -->
+        <div style="background: #facc15; padding: 10px 24px; text-align: center;">
+          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -17px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        <!-- Header -->
+        <div style="display: flex; align-items: flex-start; padding: 18px 24px; border-bottom: 1px solid rgba(250,204,21,0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 64px; width: auto; margin-right: 20px; display: block;" />` : ''}
+          <div style="flex: 1; margin-top: -10px;">
+            <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(250,204,21,0.4); line-height: 1.05;">${title}</div>
+            <div style="font-size: 18px; margin-top: 8px; font-weight: 600; line-height: 1;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 8px;">•</span>
+              <span style="color: #facc15; font-weight: 700;">${subtitle}</span>
+            </div>
+          </div>
+        </div>
+        <!-- Main content -->
+        <div style="padding: 20px 24px;">${inner}</div>
+        <!-- Footer -->
+        <div style="padding: 16px 24px 20px; text-align: center;">
+          <span style="font-size: 22px; font-weight: bold; color: #facc15; letter-spacing: -0.5px; display: block; margin-top: -20px;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+
+    const container = document.createElement('div')
+    container.style.cssText = `position: absolute; left: -99999px; top: 0; width: ${SHARE_WIDTH}px; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;`
+
+    if (section === 'standings') {
+      const cats = orderedCategories.value
+      const rowHtml = standingsRows.value.map((row, idx) => {
+        const cells = cats.map(cat => {
+          const cell = row.cells[cat.stat_id]
+          const val = viewMode.value === 'points' ? formatPoints(cell?.points) : formatStat(cell?.value, cat.stat_id)
+          const color = cell?.isBest ? '#4ade80' : cell?.isWorst ? '#f87171' : '#e5e7eb'
+          return `<td style="padding: 10px 6px; text-align: center; font-weight: 700; color: ${color}; font-size: 13px; white-space: nowrap;">${val}</td>`
+        }).join('')
+        const rankColor = idx === 0 ? '#facc15' : idx === 1 ? '#b0b3c2' : idx === 2 ? '#b87333' : '#7b7f92'
+        const rowBg = row.team.team_key === myTeamKey.value ? 'background: rgba(250,204,21,0.08);' : ''
+        return `
+          <tr style="border-bottom: 1px solid rgba(38,42,58,0.5); ${rowBg}">
+            <td style="padding: 10px 10px; font-weight: 900; color: ${rankColor}; font-size: 15px;">${idx + 1}</td>
+            <td style="padding: 10px 8px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="${imageMap.get(row.team.team_key) || ''}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: #262a3a; flex-shrink: 0;" />
+                <span style="font-weight: 700; color: ${row.team.team_key === myTeamKey.value ? '#facc15' : '#f7f7ff'}; font-size: 13px; white-space: nowrap;">${row.team.name}</span>
+              </div>
+            </td>
+            ${cells}
+            <td style="padding: 10px 10px; text-align: right; font-weight: 900; color: #facc15; font-size: 15px; border-left: 1px solid rgba(38,42,58,0.5); white-space: nowrap;">${row.total.toFixed(1)}</td>
+            <td style="padding: 10px 10px; text-align: right; color: #7b7f92; font-size: 12px; white-space: nowrap;">${idx === 0 ? '—' : (standingsRows.value[0].total - row.total).toFixed(1)}</td>
+          </tr>
+        `
+      }).join('')
+
+      const catHeaders = cats.map(cat => {
+        const border = cat.positionType === 'P' && battingCats.value.length ? 'border-left: 1px solid rgba(38,42,58,0.5);' : ''
+        return `<th style="padding: 10px 6px; text-align: center; color: #7b7f92; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; ${border}">${cat.display_name}</th>`
+      }).join('')
+
+      const groupHeader = hasPositionGroups.value ? `
+        <tr style="border-bottom: 1px solid rgba(38,42,58,0.4);">
+          <th></th><th></th>
+          ${battingCats.value.length ? `<th colspan="${battingCats.value.length}" style="padding: 8px; text-align: center; color: #b0b3c2; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Batting</th>` : ''}
+          ${pitchingCats.value.length ? `<th colspan="${pitchingCats.value.length}" style="padding: 8px; text-align: center; color: #b0b3c2; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border-left: 1px solid rgba(38,42,58,0.5);">Pitching</th>` : ''}
+          <th></th><th></th>
+        </tr>
+      ` : ''
+
+      const subtitle = viewMode.value === 'points'
+        ? `Roto Points · #1 = ${standingsRows.value.length} pts`
+        : 'Season Stats'
+
+      const inner = `
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            ${groupHeader}
+            <tr style="border-bottom: 1px solid rgba(38,42,58,0.6);">
+              <th style="padding: 10px; text-align: left; color: #7b7f92; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">#</th>
+              <th style="padding: 10px; text-align: left; color: #7b7f92; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Team</th>
+              ${catHeaders}
+              <th style="padding: 10px; text-align: right; color: #7b7f92; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-left: 1px solid rgba(38,42,58,0.5);">Total</th>
+              <th style="padding: 10px; text-align: right; color: #7b7f92; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Back</th>
+            </tr>
+          </thead>
+          <tbody>${rowHtml}</tbody>
+        </table>
+      `
+
+      container.innerHTML = brandFrame('Overall Standings', subtitle, inner)
+    } else {
+      // Distance from Competition
+      const cols = distanceColumns.value
+      const AXIS_HEIGHT = 520
+      const PAD = 16
+      const colsHtml = cols.map(col => {
+        const markers = col.entries.map((entry: any) => {
+          const top = PAD + ((AXIS_HEIGHT - PAD * 2) * entry.yPct) / 100
+          const isSelected = entry.isSelected
+          const isAbove = entry.isAbove
+          const isBelow = entry.isBelow
+          const size = isSelected ? 30 : (isAbove || isBelow) ? 22 : 18
+          const ring = isSelected ? '0 0 0 2.5px #facc15, 0 0 10px rgba(250,204,21,0.5)'
+            : isAbove ? '0 0 0 1px rgba(239,68,68,0.7)'
+            : isBelow ? '0 0 0 1px rgba(34,197,94,0.7)'
+            : '0 0 0 1px rgba(38,42,58,0.6)'
+          const opacity = isSelected || isAbove || isBelow ? 1 : 0.7
+          const valueColor = isSelected ? '#fde047'
+            : isAbove ? '#fca5a5'
+            : isBelow ? '#86efac'
+            : entry.rank === 1 ? '#4ade80'
+            : entry.rank === col.entries.length ? '#f87171'
+            : '#b0b3c2'
+          const valueText = formatStat(entry.value, col.stat_id)
+          const logoSrc = imageMap.get(entry.team_key) || ''
+          const deltaLeft = isAbove
+            ? `<span style="position: absolute; right: calc(100% + 6px); top: 50%; transform: translateY(-50%); font-size: 10px; font-weight: 700; color: #fca5a5; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.5); border-radius: 4px; padding: 1px 4px; white-space: nowrap;">+${formatGap(col.aboveGap, col.stat_id)}</span>`
+            : isBelow
+            ? `<span style="position: absolute; right: calc(100% + 6px); top: 50%; transform: translateY(-50%); font-size: 10px; font-weight: 700; color: #86efac; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.5); border-radius: 4px; padding: 1px 4px; white-space: nowrap;">−${formatGap(col.belowGap, col.stat_id)}</span>`
+            : ''
+          return `
+            <div style="position: absolute; top: ${top}px; left: 50%; transform: translate(-50%, -50%); opacity: ${opacity};">
+              <div style="position: relative; width: ${size}px; height: ${size}px;">
+                <img src="${logoSrc}" style="width: ${size}px; height: ${size}px; border-radius: 50%; object-fit: cover; background: #11131a; box-shadow: ${ring}; display: block;" />
+                <span style="position: absolute; left: calc(100% + 6px); top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: ${valueColor}; white-space: nowrap; font-family: 'SF Mono', Consolas, monospace;">${valueText}</span>
+                ${deltaLeft}
+              </div>
+            </div>
+          `
+        }).join('')
+
+        return `
+          <div style="flex: 1; min-width: 100px; display: flex; flex-direction: column; align-items: stretch;">
+            <div style="text-align: center; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid rgba(38,42,58,0.5);">
+              <div style="font-size: 13px; font-weight: 700; color: #f7f7ff;">${col.display_name}</div>
+              <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #7b7f92; margin-top: 2px;">${col.isLowerBetter ? '↓ Lower' : '↑ Higher'}</div>
+            </div>
+            <div style="text-align: center; font-size: 11px; font-weight: 700; color: #4ade80; margin-bottom: 4px;">${formatStat(col.leaderVal, col.stat_id)}</div>
+            <div style="position: relative; height: ${AXIS_HEIGHT}px; border-radius: 12px; background: rgba(5,6,10,0.55); overflow: visible;">
+              <div style="position: absolute; top: ${PAD}px; bottom: ${PAD}px; left: 50%; transform: translateX(-50%); border-left: 2px dashed rgba(123,127,146,0.3);"></div>
+              <div style="position: absolute; left: 12px; right: 12px; top: ${PAD - 1}px; height: 1px; background: rgba(34,197,94,0.4);"></div>
+              <div style="position: absolute; left: 12px; right: 12px; bottom: ${PAD - 1}px; height: 1px; background: rgba(239,68,68,0.4);"></div>
+              ${markers}
+            </div>
+            <div style="text-align: center; font-size: 11px; font-weight: 700; color: #f87171; margin-top: 6px;">${formatStat(col.lastVal, col.stat_id)}</div>
+          </div>
+        `
+      }).join('')
+
+      const selectedName = viewedTeam.value?.name || 'N/A'
+      const inner = `<div style="display: flex; gap: 12px; justify-content: stretch;">${colsHtml}</div>`
+
+      container.innerHTML = brandFrame('Distance from Competition', `Viewing: ${selectedName}`, inner)
+    }
+
+    document.body.appendChild(container)
+    await nextTick()
+    await new Promise(r => setTimeout(r, 200))
+
+    const canvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      allowTaint: true,
+      width: SHARE_WIDTH
+    })
+    document.body.removeChild(container)
+
+    const blobPromise = new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+    })
+    const filename = section === 'standings' ? 'roto-standings.png' : 'roto-distance.png'
+    if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })])
+        shareState.value[section] = 'success'
+        setTimeout(() => { shareState.value[section] = 'idle' }, 3000)
+        return
+      } catch {
+        // fall through to download
+      }
+    }
+    const blob = await blobPromise
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.download = filename
+    link.href = url
+    link.click()
+    URL.revokeObjectURL(url)
+    shareState.value[section] = 'success'
+    setTimeout(() => { shareState.value[section] = 'idle' }, 3000)
+  } catch (e) {
+    console.error('[RotoRace] share failed:', e)
+    shareState.value[section] = 'error'
+    setTimeout(() => { shareState.value[section] = 'idle' }, 4000)
+  }
 }
 
 async function loadData(silent = false) {
