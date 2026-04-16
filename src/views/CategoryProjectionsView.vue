@@ -226,9 +226,23 @@
         <div class="card-header">
           <div class="flex items-center gap-2">
             <span class="text-2xl">📊</span>
-            <h2 class="card-title">{{ isOverallView ? 'Overall Player Rankings' : (selectedCategoryInfo?.name || 'Category') + ' Rankings' }} - Rest of Season</h2>
+            <h2 class="card-title">{{ isOverallView ? 'Overall Player Rankings' : (selectedCategoryInfo?.name || 'Category') + ' Rankings' }} - {{ tableMode === 'stats' ? (statPeriod === 'season' ? 'Season Stats' : statPeriod === 'last7' ? 'Last 7 Days' : statPeriod === 'last15' ? 'Last 15 Days' : 'Last 30 Days') : 'Rest of Season' }}</h2>
           </div>
           <p class="card-subtitle">{{ isOverallView ? 'Ranked by composite value across all categories · Click column headers to sort' : 'Click on a player to see detailed stats and performance chart' }}</p>
+          <!-- Projections vs Stats toggle (Overall view only) -->
+          <div v-if="isOverallView" class="flex items-center gap-3 mt-3">
+            <div class="inline-flex rounded-lg overflow-hidden border border-dark-border/50">
+              <button @click="tableMode = 'projections'" class="px-3 py-1.5 text-xs font-semibold transition-colors" :class="tableMode === 'projections' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-elevated text-dark-textMuted hover:text-dark-text'">Projections</button>
+              <button @click="tableMode = 'stats'" class="px-3 py-1.5 text-xs font-semibold transition-colors" :class="tableMode === 'stats' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-elevated text-dark-textMuted hover:text-dark-text'">Stats</button>
+            </div>
+            <div v-if="tableMode === 'stats'" class="inline-flex rounded-lg overflow-hidden border border-dark-border/50">
+              <button @click="statPeriod = 'season'" class="px-3 py-1.5 text-xs font-semibold transition-colors" :class="statPeriod === 'season' ? 'bg-purple-500 text-white' : 'bg-dark-elevated text-dark-textMuted hover:text-dark-text'">Season</button>
+              <button @click="statPeriod = 'last7'" class="px-3 py-1.5 text-xs font-semibold transition-colors" :class="statPeriod === 'last7' ? 'bg-purple-500 text-white' : 'bg-dark-elevated text-dark-textMuted hover:text-dark-text'">Last 7</button>
+              <button @click="statPeriod = 'last15'" class="px-3 py-1.5 text-xs font-semibold transition-colors" :class="statPeriod === 'last15' ? 'bg-purple-500 text-white' : 'bg-dark-elevated text-dark-textMuted hover:text-dark-text'">Last 15</button>
+              <button @click="statPeriod = 'last30'" class="px-3 py-1.5 text-xs font-semibold transition-colors" :class="statPeriod === 'last30' ? 'bg-purple-500 text-white' : 'bg-dark-elevated text-dark-textMuted hover:text-dark-text'">Last 30</button>
+            </div>
+            <span v-if="periodStatsLoading" class="text-xs text-dark-textMuted animate-pulse">Loading stats...</span>
+          </div>
         </div>
         <div class="card-body p-0">
           <!-- Mobile pagination nav: Category player table -->
@@ -264,17 +278,43 @@
                     <div class="flex items-center justify-center gap-1">Pos <span v-if="sortColumn === 'position'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
                   
-                  <!-- OVERALL VIEW: Show all category columns (desktop only on mobile p0; page 1 shows them) -->
+                  <!-- OVERALL VIEW: %ROST + category columns with dividers -->
                   <template v-if="isOverallView">
-                    <th 
-                      v-for="cat in displayCategories" 
-                      :key="cat.stat_id" 
-                      class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-yellow-400 min-w-[60px]"
+                    <!-- Roster % column -->
+                    <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-yellow-400 min-w-[50px]" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'" @click="toggleSort('percentOwned')">
+                      <div class="flex items-center justify-center gap-0.5">%ROST <span v-if="sortColumn === 'percentOwned'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
+                    </th>
+                    <!-- 7-day trend column -->
+                    <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-yellow-400 min-w-[45px]" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'" @click="toggleSort('percentChange')" title="7-day ownership change">
+                      <div class="flex items-center justify-center gap-0.5">+/- <span v-if="sortColumn === 'percentChange'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
+                    </th>
+                    <!-- Divider before batting cats -->
+                    <th class="w-px px-0 py-3 hidden sm:table-cell" :class="catTablePage === 1 ? '!table-cell' : ''"><div class="w-px h-full bg-dark-border/60 min-h-[20px]"></div></th>
+                    <!-- Batting categories -->
+                    <th
+                      v-for="cat in hittingCategories"
+                      :key="cat.stat_id"
+                      class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-yellow-400 min-w-[50px]"
                       :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'"
                       @click="toggleSort(cat.stat_id)"
                     >
                       <div class="flex items-center justify-center gap-0.5">
-                        {{ cat.display_name }} 
+                        {{ cat.display_name }}
+                        <span v-if="sortColumn === cat.stat_id" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                      </div>
+                    </th>
+                    <!-- Divider between batting and pitching -->
+                    <th class="w-px px-0 py-3 hidden sm:table-cell" :class="catTablePage === 1 ? '!table-cell' : ''"><div class="w-px h-full bg-dark-border/60 min-h-[20px]"></div></th>
+                    <!-- Pitching categories -->
+                    <th
+                      v-for="cat in pitchingCategories"
+                      :key="cat.stat_id"
+                      class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-yellow-400 min-w-[50px]"
+                      :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'"
+                      @click="toggleSort(cat.stat_id)"
+                    >
+                      <div class="flex items-center justify-center gap-0.5">
+                        {{ cat.display_name }}
                         <span v-if="sortColumn === cat.stat_id" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                       </div>
                     </th>
@@ -303,7 +343,7 @@
                 <template v-for="(player, idx) in gatedSortedPlayers" :key="player.player_key">
                   <!-- Tier Break -->
                   <tr v-if="showTierBreak(player, idx)" class="bg-dark-border/10">
-                    <td :colspan="isOverallView ? displayCategories.length + 4 : 7" class="px-4 py-2">
+                    <td :colspan="isOverallView ? displayCategories.length + 8 : 7" class="px-4 py-2">
                       <div class="flex items-center gap-2">
                         <div class="h-px flex-1 bg-yellow-400/30"></div>
                         <span class="text-xs font-bold text-yellow-400 uppercase tracking-wider">{{ getTierLabel(player.tier) }}</span>
@@ -367,9 +407,27 @@
                       <span class="px-2 py-1 rounded text-xs font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span>
                     </td>
                     
-                    <!-- OVERALL VIEW: All category stat values — page 1 on mobile -->
+                    <!-- OVERALL VIEW: %ROST + category stat values with dividers — page 1 on mobile -->
                     <template v-if="isOverallView">
-                      <td v-for="cat in displayCategories" :key="cat.stat_id" class="px-2 py-3 text-center" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'">
+                      <!-- Roster % -->
+                      <td class="px-2 py-3 text-center" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'">
+                        <span class="text-sm font-medium" :class="(player.percentOwned || 0) >= 90 ? 'text-green-400' : (player.percentOwned || 0) >= 50 ? 'text-dark-text' : 'text-dark-textMuted'">{{ player.percentOwned != null && player.percentOwned > 0 ? Math.round(player.percentOwned) + '%' : '-' }}</span>
+                      </td>
+                      <!-- 7-day trend -->
+                      <td class="px-2 py-3 text-center" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'">
+                        <span v-if="player.percentChange && Math.abs(player.percentChange) >= 0.1" class="text-xs font-bold" :class="player.percentChange > 0 ? 'text-green-400' : 'text-red-400'">{{ player.percentChange > 0 ? '+' : '' }}{{ player.percentChange.toFixed(1) }}%</span>
+                        <span v-else class="text-xs text-dark-textMuted">-</span>
+                      </td>
+                      <!-- Divider -->
+                      <td class="w-px px-0 py-3 hidden sm:table-cell" :class="catTablePage === 1 ? '!table-cell' : ''"><div class="w-px h-full bg-dark-border/40 min-h-[20px]"></div></td>
+                      <!-- Batting stats -->
+                      <td v-for="cat in hittingCategories" :key="cat.stat_id" class="px-2 py-3 text-center" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'">
+                        <span class="text-sm font-medium text-dark-text">{{ formatCategoryStat(player, cat.stat_id) }}</span>
+                      </td>
+                      <!-- Divider -->
+                      <td class="w-px px-0 py-3 hidden sm:table-cell" :class="catTablePage === 1 ? '!table-cell' : ''"><div class="w-px h-full bg-dark-border/40 min-h-[20px]"></div></td>
+                      <!-- Pitching stats -->
+                      <td v-for="cat in pitchingCategories" :key="cat.stat_id" class="px-2 py-3 text-center" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'">
                         <span class="text-sm font-medium text-dark-text">{{ formatCategoryStat(player, cat.stat_id) }}</span>
                       </td>
                     </template>
@@ -394,7 +452,7 @@
                     </td>
                   </tr>
                 </template>
-                <tr v-if="gatedSortedPlayers.length === 0"><td :colspan="isOverallView ? displayCategories.length + 4 : 7" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
+                <tr v-if="gatedSortedPlayers.length === 0"><td :colspan="isOverallView ? displayCategories.length + 8 : 7" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
               </tbody>
             </table>
             
@@ -2632,8 +2690,16 @@
         
         <!-- Content -->
         <div class="p-6 overflow-y-auto max-h-[calc(90vh-100px)] space-y-6">
+          <!-- Categories / Positions Toggle -->
+          <div class="flex items-center gap-3">
+            <div class="inline-flex rounded-lg overflow-hidden border border-dark-border/50">
+              <button @click="teamDetailView = 'categories'" class="px-4 py-1.5 text-xs font-semibold transition-colors" :class="teamDetailView === 'categories' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-elevated text-dark-textMuted hover:text-dark-text'">Categories</button>
+              <button @click="teamDetailView = 'positions'" class="px-4 py-1.5 text-xs font-semibold transition-colors" :class="teamDetailView === 'positions' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-elevated text-dark-textMuted hover:text-dark-text'">Positions</button>
+            </div>
+          </div>
+
           <!-- Category Breakdown Table -->
-          <div>
+          <div v-if="teamDetailView === 'categories'">
             <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>📊</span> Category Breakdown</h4>
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
@@ -2676,6 +2742,40 @@
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- Position Strength View -->
+          <div v-if="teamDetailView === 'positions'">
+            <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>🏟️</span> Position Strength</h4>
+            <div class="space-y-3">
+              <div v-for="pos in teamPositionStrength" :key="pos.position" class="bg-dark-card rounded-lg p-4 border border-dark-border/30">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-3">
+                    <span class="px-2.5 py-1 rounded text-xs font-bold" :class="getPositionClass(pos.position)">{{ pos.position }}</span>
+                    <span class="text-sm font-semibold text-dark-text">{{ pos.players.length }} player{{ pos.players.length !== 1 ? 's' : '' }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs text-dark-textMuted">Strength</span>
+                    <span class="text-lg font-black" :class="pos.grade === 'A+' || pos.grade === 'A' ? 'text-green-400' : pos.grade === 'A-' || pos.grade === 'B+' ? 'text-emerald-400' : pos.grade === 'B' || pos.grade === 'B-' ? 'text-yellow-400' : pos.grade === 'C+' || pos.grade === 'C' ? 'text-orange-400' : 'text-red-400'">{{ pos.grade }}</span>
+                  </div>
+                </div>
+                <!-- Value bar -->
+                <div class="h-2 bg-dark-border rounded-full overflow-hidden mb-3">
+                  <div class="h-full rounded-full transition-all" :class="pos.grade === 'A+' || pos.grade === 'A' ? 'bg-green-400' : pos.grade === 'A-' || pos.grade === 'B+' ? 'bg-emerald-400' : pos.grade === 'B' || pos.grade === 'B-' ? 'bg-yellow-400' : pos.grade === 'C+' || pos.grade === 'C' ? 'bg-orange-400' : 'bg-red-400'" :style="{ width: pos.pct + '%' }"></div>
+                </div>
+                <!-- Players at this position -->
+                <div class="space-y-1.5">
+                  <div v-for="player in pos.players" :key="player.player_key" class="flex items-center justify-between text-sm">
+                    <div class="flex items-center gap-2">
+                      <img :src="player.headshot || defaultHeadshot" class="w-6 h-6 rounded-full" @error="handleImageError" />
+                      <span class="text-dark-text">{{ player.full_name }}</span>
+                      <span v-if="player.fantasy_team_key === myTeamKey" class="text-yellow-400 text-xs">★</span>
+                    </div>
+                    <span class="text-yellow-400 font-semibold">{{ player.overallValue?.toFixed(0) || '-' }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -3022,6 +3122,7 @@ import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import CategoryRankingCustomizer from '@/components/CategoryRankingCustomizer.vue'
 import { liveGamesService, type LiveGame } from '@/services/live-games'
+import { enrichPlayersWithProjections, type EnrichedProjection } from '@/services/projectionService'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { 
   DEFAULT_CATEGORY_ROS_FACTORS, 
@@ -3202,6 +3303,15 @@ const selectedCategory = ref<string>('overall')
 const allPlayers = ref<any[]>([])
 const teamsData = ref<any[]>([])
 const myTeamKey = ref<string | null>(null)
+const fgEnrichments = ref<Map<string, EnrichedProjection>>(new Map())
+
+// Projections vs Stats toggle
+const tableMode = ref<'projections' | 'stats'>('projections')
+const statPeriod = ref<'season' | 'last7' | 'last15' | 'last30'>('season')
+const periodStats = ref<Map<string, Record<string, number>>>(new Map())
+const periodStatsLoading = ref(false)
+const ESPN_SPLIT_IDS: Record<string, number> = { season: 0, last7: 1, last15: 2, last30: 3 }
+const teamDetailView = ref<'categories' | 'positions'>('categories')
 
 // My players with game info for comparison picker
 const myPlayersWithGameInfo = computed(() => {
@@ -3593,11 +3703,17 @@ const columnTooltips = computed(() => ({
 
 // Stat detection - use names instead of hardcoded IDs since IDs vary by league
 // Baseball pitching stats
-const baseballPitchingStatNames = ['ERA', 'WHIP', 'W', 'SV', 'K', 'IP', 'QS', 'HLD', 'Wins', 'Saves', 'Strikeouts', 'Innings', 'Quality', 'Holds', 'L', 'Losses', 'BB', 'Walks', 'CG', 'SHO', 'BSV', 'Blown']
+const baseballPitchingStatNames = ['ERA', 'WHIP', 'W', 'SV', 'HD', 'SVHD', 'K', 'IP', 'QS', 'HLD', 'Wins', 'Saves', 'Holds', 'Strikeouts (Pitching)', 'Innings', 'Quality', 'CG', 'SHO', 'BS', 'Blown', 'BF', 'Batters Faced', 'OBA', 'Opponent', 'GS', 'Games Started', 'Games (Pitching)', 'Games Pitched', 'RAPP', 'W%', 'FIP', 'xFIP']
+// ESPN baseball stat IDs that are PITCHING stats (for positive classification when display names are ambiguous)
+const baseballPitchingStatIds = new Set(['18','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','61','62','63','64','65','66','67','68','69','70','71','72','73','74','75','77','78','80','83','99'])
 // Hockey goalie stats (these are the "pitching" equivalent for hockey)
 const hockeyGoalieStatNames = ['GAA', 'SV%', 'SO', 'Shutouts', 'Saves', 'Goals Against', 'Goalie', 'GW', 'GA', 'MIN', 'GS', 'SA']
-const ratioStatNames = ['ERA', 'WHIP', 'AVG', 'OPS', 'OBP', 'SLG', 'BABIP', 'K/9', 'BB/9', 'K/BB', 'GAA', 'SV%', 'SH%', 'FG%', 'FT%', '3P%', 'FGA', 'FTA']
-const lowerIsBetterNames = ['ERA', 'WHIP', 'BB', 'L', 'ER', 'H', 'Losses', 'Walks', 'GAA', 'GA', 'GV']
+const ratioStatNames = ['ERA', 'WHIP', 'AVG', 'OPS', 'OBP', 'SLG', 'BABIP', 'K/9', 'BB/9', 'H/9', 'K/BB', 'GAA', 'SV%', 'SH%', 'FG%', 'FT%', '3P%', 'FGA', 'FTA', 'FPCT', 'Fielding Percentage', 'OBA', 'Opponent Batting', 'W%', 'Win Percentage', 'wOBA', 'FIP', 'xFIP']
+// ESPN baseball stat IDs that are RATIO stats (not counting)
+const baseballRatioStatIds = new Set(['8','9','10','11','21','47','48','62','68','69','70','74','76','77','78','81','83'])
+const lowerIsBetterNames = ['ERA', 'WHIP', 'Losses', 'GAA', 'GA', 'GV', 'Blown Saves', 'Opponent Batting', 'Hits Allowed', 'Runs Allowed', 'Home Runs Allowed', 'Walks Allowed', 'Wild Pitches', 'Inherited Runners Scored', 'Grounded Into DP', 'FIP', 'xFIP', 'Errors', 'Hit By Pitch', 'Earned Runs']
+// ESPN baseball stat IDs where lower is better (authoritative)
+const baseballLowerIsBetterIds = new Set(['12','24','36','40','42','47','48','49','50','51','52','56','57','59','61','64','65','69','70','73','75','77','78','83'])
 
 function isPitchingStat(cat: any): boolean {
   if (!cat) return false
@@ -3619,12 +3735,16 @@ function isPitchingStat(cat: any): boolean {
     return hockeyGoalieStatNames.some(gn => name.includes(gn.toUpperCase()) || display.includes(gn.toUpperCase()))
   }
   
-  // Baseball (default)
+  // Baseball (default) — prefer authoritative stat_id mapping; fall back to name matching
+  if (cat.stat_id && baseballPitchingStatIds.has(String(cat.stat_id))) return true
   return baseballPitchingStatNames.some(pn => name.includes(pn.toUpperCase()) || display.includes(pn.toUpperCase()))
 }
 
 function isRatioStat(cat: any): boolean {
   if (!cat) return false
+  if (currentSport.value !== 'basketball' && currentSport.value !== 'football' && currentSport.value !== 'hockey') {
+    if (cat.stat_id && baseballRatioStatIds.has(String(cat.stat_id))) return true
+  }
   const name = (cat.name || '').toUpperCase()
   const display = (cat.display_name || '').toUpperCase()
   return ratioStatNames.some(rn => name.includes(rn.toUpperCase()) || display.includes(rn.toUpperCase()))
@@ -3641,12 +3761,34 @@ function isPercentageStat(cat: any): boolean {
 
 function isLowerBetterStat(cat: any): boolean {
   if (!cat) return false
+  if (currentSport.value !== 'basketball' && currentSport.value !== 'football' && currentSport.value !== 'hockey') {
+    if (cat.stat_id && baseballLowerIsBetterIds.has(String(cat.stat_id))) return true
+  }
   const name = (cat.name || '').toUpperCase()
   const display = (cat.display_name || '').toUpperCase()
   return lowerIsBetterNames.some(ln => name.includes(ln.toUpperCase()) || display.includes(ln.toUpperCase()))
 }
 
-const displayCategories = computed(() => statCategories.value.filter(c => !c.is_only_display_stat && c.stat_id))
+const displayCategories = computed(() => {
+  const cats = statCategories.value.filter(c => !c.is_only_display_stat && c.stat_id)
+  // ESPN display order: all batting categories first, then all pitching categories.
+  // Within each group, use ESPN's standard column order.
+  const espnBattingOrder = ['0','1','32','2','33','3','34','19','4','23','5','6','8','14','9','10','11','16','17','20','21','25','76','79','81','82']
+  const espnPitchingOrder = ['18','53','41','39','43','67','35','47','83','48','71','37','38','36','57','44','45','63','62','68','69','70','74','77','78','80','99']
+  const hitting = cats.filter(c => !isPitchingStat(c))
+  const pitching = cats.filter(c => isPitchingStat(c))
+  hitting.sort((a, b) => {
+    const ai = espnBattingOrder.indexOf(a.stat_id)
+    const bi = espnBattingOrder.indexOf(b.stat_id)
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+  })
+  pitching.sort((a, b) => {
+    const ai = espnPitchingOrder.indexOf(a.stat_id)
+    const bi = espnPitchingOrder.indexOf(b.stat_id)
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+  })
+  return [...hitting, ...pitching]
+})
 const hittingCategories = computed(() => displayCategories.value.filter(c => !isPitchingStat(c)))
 const pitchingCategories = computed(() => displayCategories.value.filter(c => isPitchingStat(c)))
 const selectedCategoryInfo = computed(() => displayCategories.value.find(c => c.stat_id === selectedCategory.value))
@@ -4030,6 +4172,8 @@ const sortedPlayers = computed(() => {
     case 'current': players.sort((a, b) => dir * ((a.currentValue || 0) - (b.currentValue || 0))); break
     case 'perGame': players.sort((a, b) => dir * ((a.perGameValue || 0) - (b.perGameValue || 0))); break
     case 'value': players.sort((a, b) => dir * ((a.overallValue || 0) - (b.overallValue || 0))); break
+    case 'percentOwned': players.sort((a, b) => dir * ((a.percentOwned || a.percent_owned || 0) - (b.percentOwned || b.percent_owned || 0))); break
+    case 'percentChange': players.sort((a, b) => dir * ((a.percentChange || a.percent_change || 0) - (b.percentChange || b.percent_change || 0))); break
     case 'rank': default: 
       // Check if sorting by a category stat_id (for overall view)
       if (sortColumn.value !== 'rank') {
@@ -4065,6 +4209,66 @@ const selectedPlayer = computed(() => {
 const selectedTeam = computed(() => {
   if (!expandedTeamKey.value) return null
   return teamsData.value.find((t: any) => t.team_key === expandedTeamKey.value) || null
+})
+
+const teamPositionStrength = computed(() => {
+  if (!selectedTeam.value) return []
+  const teamKey = selectedTeam.value.team_key
+  const teamPlayers = allPlayersWithValues.value.filter(p => p.fantasy_team_key === teamKey)
+  if (teamPlayers.length === 0) return []
+
+  // Group players by primary position
+  const posMap = new Map<string, any[]>()
+  for (const p of teamPlayers) {
+    const pos = (p.position || 'Util').split(',')[0].trim()
+    if (!posMap.has(pos)) posMap.set(pos, [])
+    posMap.get(pos)!.push(p)
+  }
+
+  // Compute average overallValue per position and compare across league
+  const numTeams = teamsData.value.length || 12
+  const allWithValues = allPlayersWithValues.value.filter(p => p.fantasy_team_key)
+
+  const result: { position: string; players: any[]; avgValue: number; leagueAvg: number; grade: string; pct: number }[] = []
+
+  const posOrder = currentSport.value === 'baseball'
+    ? ['C', 'SS', '2B', '3B', '1B', 'OF', 'CF', 'LF', 'RF', 'DH', 'Util', 'SP', 'RP']
+    : ['C', 'LW', 'RW', 'D', 'G', 'Util', 'PG', 'SG', 'SF', 'PF']
+
+  for (const [pos, players] of posMap) {
+    players.sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
+    const avgValue = players.reduce((s, p) => s + (p.overallValue || 0), 0) / players.length
+
+    // League average for this position
+    const leaguePosPlayers = allWithValues.filter(p => (p.position || '').split(',')[0].trim() === pos)
+    const leagueAvg = leaguePosPlayers.length > 0
+      ? leaguePosPlayers.reduce((s, p) => s + (p.overallValue || 0), 0) / leaguePosPlayers.length
+      : 50
+
+    // Rank this team's position group vs other teams
+    const teamPosAvgs: number[] = []
+    for (const team of teamsData.value) {
+      const tp = allWithValues.filter(p => p.fantasy_team_key === team.team_key && (p.position || '').split(',')[0].trim() === pos)
+      if (tp.length > 0) teamPosAvgs.push(tp.reduce((s, p) => s + (p.overallValue || 0), 0) / tp.length)
+    }
+    teamPosAvgs.sort((a, b) => b - a)
+    const rank = teamPosAvgs.indexOf(avgValue) + 1 || Math.ceil(teamPosAvgs.length / 2)
+    const pct = teamPosAvgs.length > 1 ? Math.round((1 - (rank - 1) / (teamPosAvgs.length - 1)) * 100) : 50
+
+    const grades = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'F']
+    const gradeIdx = Math.min(grades.length - 1, Math.floor((rank - 1) / Math.max(1, teamPosAvgs.length / grades.length)))
+    const grade = grades[Math.min(gradeIdx, grades.length - 1)]
+
+    result.push({ position: pos, players, avgValue, leagueAvg, grade, pct })
+  }
+
+  result.sort((a, b) => {
+    const ai = posOrder.indexOf(a.position)
+    const bi = posOrder.indexOf(b.position)
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
+  })
+
+  return result
 })
 
 const myPlayersInCategory = computed(() => categoryRankedPlayers.value.filter(p => isMyPlayer(p)).sort((a, b) => b.projectedValue - a.projectedValue))
@@ -4396,23 +4600,37 @@ function formatStatValue(value: number | undefined, decimals: number = 1): strin
   return value.toFixed(decimals) 
 }
 
-function formatCategoryStat(player: any, statId: string): string { 
-  const value = player.stats?.[statId]
+function formatCategoryStat(player: any, statId: string): string {
+  let value: number | undefined | null
+  if (tableMode.value === 'stats' && isOverallView.value) {
+    // Pull from pre-loaded stat periods (captured during initial ESPN data load)
+    const splitId = ESPN_SPLIT_IDS[statPeriod.value] ?? 0
+    const periods = player._originalStats?._statPeriods || player.stats?._statPeriods
+    if (periods?.[splitId]) {
+      value = periods[splitId][statId]
+    }
+    // Fallback for season: use the base original stats
+    if ((value === undefined || value === null) && statPeriod.value === 'season') {
+      value = player._originalStats?.[statId]
+    }
+  } else {
+    value = player.stats?.[statId]
+  }
   if (value === undefined || value === null) return '-'
-  
-  // Check if this is a ratio stat by looking up the category
+
   const cat = displayCategories.value.find(c => c.stat_id === statId)
-  
-  // Handle percentage stats
+
   if (isPercentageStat(cat)) {
     return (value * 100).toFixed(1) + '%'
   }
-  
-  if (isRatioStat(cat)) { 
-    if (value < 1 && value > 0) return value.toFixed(3).replace(/^0/, '')
-    return value.toFixed(2) 
+
+  if (isRatioStat(cat)) {
+    if (Math.abs(value) < 30 && Math.abs(value) > 0) {
+      if (Math.abs(value) < 1) return value.toFixed(3).replace(/^0/, '')
+      return value.toFixed(2)
+    }
   }
-  return Math.round(value).toString() 
+  return Math.round(value).toString()
 }
 
 function getCategoryRank(player: any, statId: string): number { 
@@ -4630,19 +4848,21 @@ async function loadProjections() {
     const rosteredPlayers = await yahooService.getAllRosteredPlayers(leagueKey)
     const freeAgents = await yahooService.getTopFreeAgents(leagueKey, 100)
     
-    const rostered = (rosteredPlayers || []).map((p: any) => ({ 
-      ...p, 
-      player_key: p.player_key, 
-      full_name: p.full_name || p.name || 'Unknown', 
-      position: p.position || 'Util', 
-      mlb_team: p.mlb_team || '', 
-      nba_team: p.nba_team || '', 
+    const rostered = (rosteredPlayers || []).map((p: any) => ({
+      ...p,
+      player_key: p.player_key,
+      full_name: p.full_name || p.name || 'Unknown',
+      position: p.position || 'Util',
+      mlb_team: p.mlb_team || '',
+      nba_team: p.nba_team || '',
       nhl_team: p.nhl_team || '',
-      headshot: p.headshot || '', 
-      fantasy_team: p.fantasy_team || p.team_name, 
-      fantasy_team_key: p.fantasy_team_key || p.team_key, 
-      stats: p.stats || {}, 
+      headshot: p.headshot || '',
+      fantasy_team: p.fantasy_team || p.team_name,
+      fantasy_team_key: p.fantasy_team_key || p.team_key,
+      stats: p.stats || {},
       total_points: p.total_points || 0,
+      percentOwned: p.percent_owned ?? p.percentOwned ?? 0,
+      percentChange: p.percent_change ?? p.percentChange ?? 0,
       status: p.status || '',
       injury_note: p.injury_note || ''
     }))
@@ -4686,19 +4906,21 @@ async function loadProjections() {
       }
     }
     
-    const fas = (freeAgents || []).map((p: any) => ({ 
-      ...p, 
-      player_key: p.player_key, 
-      full_name: p.full_name || p.name || 'Unknown', 
-      position: p.position || 'Util', 
-      mlb_team: p.mlb_team || '', 
+    const fas = (freeAgents || []).map((p: any) => ({
+      ...p,
+      player_key: p.player_key,
+      full_name: p.full_name || p.name || 'Unknown',
+      position: p.position || 'Util',
+      mlb_team: p.mlb_team || '',
       nba_team: p.nba_team || '',
       nhl_team: p.nhl_team || '',
-      headshot: p.headshot || '', 
-      fantasy_team: null, 
-      fantasy_team_key: null, 
-      stats: p.stats || {}, 
+      headshot: p.headshot || '',
+      fantasy_team: null,
+      fantasy_team_key: null,
+      stats: p.stats || {},
       total_points: p.total_points || 0,
+      percentOwned: p.percent_owned ?? p.percentOwned ?? 0,
+      percentChange: p.percent_change ?? p.percentChange ?? 0,
       status: p.status || '',
       injury_note: p.injury_note || ''
     }))
@@ -4825,33 +5047,93 @@ async function loadEspnProjections() {
     if (scoringSettings?.scoringItems) {
       // ESPN stat ID to display name mapping - baseball
       const espnBaseballStatNames: Record<number, { name: string; display: string; isHitting: boolean }> = {
-        // Hitting
+        // Hitting (IDs 0-34)
         0: { name: 'At Bats', display: 'AB', isHitting: true },
         1: { name: 'Hits', display: 'H', isHitting: true },
-        2: { name: 'Batting Average', display: 'AVG', isHitting: true },
+        2: { name: 'Runs', display: 'R', isHitting: true },
         3: { name: 'Home Runs', display: 'HR', isHitting: true },
-        4: { name: 'Runs', display: 'R', isHitting: true },
-        5: { name: 'Runs Batted In', display: 'RBI', isHitting: true },
-        6: { name: 'Stolen Bases', display: 'SB', isHitting: true },
-        7: { name: 'Walks', display: 'BB', isHitting: true },
-        8: { name: 'Strikeouts', display: 'K', isHitting: true },
-        9: { name: 'Doubles', display: '2B', isHitting: true },
-        10: { name: 'Triples', display: '3B', isHitting: true },
-        11: { name: 'Total Bases', display: 'TB', isHitting: true },
-        12: { name: 'On Base Percentage', display: 'OBP', isHitting: true },
-        13: { name: 'Slugging Percentage', display: 'SLG', isHitting: true },
-        14: { name: 'On Base Plus Slugging', display: 'OPS', isHitting: true },
-        // Pitching
-        32: { name: 'Wins', display: 'W', isHitting: false },
-        33: { name: 'Losses', display: 'L', isHitting: false },
-        34: { name: 'Saves', display: 'SV', isHitting: false },
-        35: { name: 'Holds', display: 'HD', isHitting: false },
-        36: { name: 'Earned Run Average', display: 'ERA', isHitting: false },
-        37: { name: 'WHIP', display: 'WHIP', isHitting: false },
-        38: { name: 'Innings Pitched', display: 'IP', isHitting: false },
-        39: { name: 'Strikeouts', display: 'K', isHitting: false },
-        40: { name: 'Quality Starts', display: 'QS', isHitting: false },
-        41: { name: 'Blown Saves', display: 'BS', isHitting: false }
+        4: { name: 'RBI', display: 'RBI', isHitting: true },
+        5: { name: 'Stolen Bases', display: 'SB', isHitting: true },
+        6: { name: 'Walks (Batting)', display: 'BB', isHitting: true },
+        7: { name: 'Strikeouts (Batting)', display: 'K', isHitting: true },
+        8: { name: 'OPS', display: 'OPS', isHitting: true },
+        9: { name: 'On Base Percentage', display: 'OBP', isHitting: true },
+        10: { name: 'Slugging Percentage', display: 'SLG', isHitting: true },
+        11: { name: 'Batting Average', display: 'AVG', isHitting: true },
+        12: { name: 'Grounded Into DP', display: 'GIDP', isHitting: true },
+        13: { name: 'Singles', display: '1B', isHitting: true },
+        14: { name: 'Doubles', display: '2B', isHitting: true },
+        15: { name: 'Triples', display: '3B', isHitting: true },
+        16: { name: 'Extra Base Hits', display: 'XBH', isHitting: true },
+        17: { name: 'Plate Appearances', display: 'PA', isHitting: true },
+        19: { name: 'Total Bases', display: 'TB', isHitting: true },
+        20: { name: "Fielder's Choice", display: 'FC', isHitting: true },
+        21: { name: 'Fielding Percentage', display: 'FPCT', isHitting: true },
+        22: { name: 'Sac Bunts', display: 'SAC', isHitting: true },
+        23: { name: 'RBI', display: 'RBI', isHitting: true },
+        24: { name: 'Errors', display: 'E', isHitting: true },
+        25: { name: 'Hit By Pitch', display: 'HBP', isHitting: true },
+        26: { name: 'Intentional Walks', display: 'IBB', isHitting: true },
+        27: { name: 'Outfield Assists', display: 'OFAST', isHitting: true },
+        28: { name: 'Double Plays Turned', display: 'DP', isHitting: true },
+        29: { name: 'Putouts', display: 'PO', isHitting: true },
+        30: { name: 'Assists', display: 'A', isHitting: true },
+        31: { name: 'Total Chances', display: 'TC', isHitting: true },
+        32: { name: 'Runs', display: 'R', isHitting: true },
+        33: { name: 'Home Runs', display: 'HR', isHitting: true },
+        34: { name: 'Total Bases', display: 'TB', isHitting: true },
+        // Pitching (IDs 35+, plus stat 18 "Games" is pitching appearances)
+        18: { name: 'Games (Pitching)', display: 'G', isHitting: false },
+        35: { name: 'Wins', display: 'W', isHitting: false },
+        36: { name: 'Losses', display: 'L', isHitting: false },
+        37: { name: 'Saves', display: 'SV', isHitting: false },
+        38: { name: 'Holds', display: 'HD', isHitting: false },
+        39: { name: 'Innings Pitched', display: 'IP', isHitting: false },
+        40: { name: 'Earned Runs', display: 'ER', isHitting: false },
+        41: { name: 'Innings Pitched', display: 'IP', isHitting: false },
+        42: { name: 'Earned Runs', display: 'ER', isHitting: false },
+        43: { name: 'Strikeouts (Pitching)', display: 'K', isHitting: false },
+        44: { name: 'Complete Games', display: 'CG', isHitting: false },
+        45: { name: 'Shutouts', display: 'SHO', isHitting: false },
+        46: { name: 'No Hitters', display: 'NH', isHitting: false },
+        47: { name: 'ERA', display: 'ERA', isHitting: false },
+        48: { name: 'WHIP', display: 'WHIP', isHitting: false },
+        49: { name: 'Hits Allowed', display: 'HA', isHitting: false },
+        50: { name: 'Runs Allowed', display: 'RA', isHitting: false },
+        51: { name: 'Home Runs Allowed', display: 'HRA', isHitting: false },
+        52: { name: 'Walks Allowed', display: 'BBI', isHitting: false },
+        53: { name: 'Games Started', display: 'GS', isHitting: false },
+        54: { name: 'Pitches Thrown', display: 'PC', isHitting: false },
+        55: { name: 'Pickoffs', display: 'PKO', isHitting: false },
+        56: { name: 'Wild Pitches', display: 'WP', isHitting: false },
+        57: { name: 'Blown Saves', display: 'BS', isHitting: false },
+        58: { name: 'Relief Wins', display: 'RW', isHitting: false },
+        59: { name: 'Relief Losses', display: 'RL', isHitting: false },
+        60: { name: 'Save Opportunities', display: 'SVO', isHitting: false },
+        61: { name: 'Inherited Runners Scored', display: 'IRS', isHitting: false },
+        62: { name: 'K/BB', display: 'K/BB', isHitting: false },
+        63: { name: 'Quality Starts', display: 'QS', isHitting: false },
+        64: { name: 'Hit Batters', display: 'HB', isHitting: false },
+        65: { name: 'Balks', display: 'BK', isHitting: false },
+        66: { name: 'Ground Outs', display: 'GO', isHitting: false },
+        67: { name: 'Batters Faced', display: 'BF', isHitting: false },
+        68: { name: 'K/9', display: 'K/9', isHitting: false },
+        69: { name: 'BB/9', display: 'BB/9', isHitting: false },
+        70: { name: 'H/9', display: 'H/9', isHitting: false },
+        71: { name: 'Saves + Holds', display: 'SVHD', isHitting: false },
+        72: { name: 'Relief Appearances', display: 'RAPP', isHitting: false },
+        73: { name: 'Total Bases Allowed', display: 'TBA', isHitting: false },
+        74: { name: 'Win Percentage', display: 'W%', isHitting: false },
+        75: { name: 'Losses (Pitching)', display: 'L', isHitting: false },
+        76: { name: 'BABIP', display: 'BABIP', isHitting: true },
+        77: { name: 'FIP', display: 'FIP', isHitting: false },
+        78: { name: 'xFIP', display: 'xFIP', isHitting: false },
+        79: { name: 'WAR (Batting)', display: 'WAR', isHitting: true },
+        80: { name: 'WAR (Pitching)', display: 'WAR', isHitting: false },
+        81: { name: 'wOBA', display: 'wOBA', isHitting: true },
+        82: { name: 'wRC+', display: 'wRC+', isHitting: true },
+        83: { name: 'Opponent Batting Avg', display: 'OBA', isHitting: false },
+        99: { name: 'Games Pitched', display: 'GP', isHitting: false }
       }
       
       // ESPN stat ID to display name mapping - basketball
@@ -5065,8 +5347,11 @@ async function loadEspnProjections() {
           headshot: getEspnHeadshotUrl(playerId, sport),
           fantasy_team: team.name,
           fantasy_team_key: `espn_${leagueId}_${season}_${team.id}`,
-          stats: playerStats,  // Initial stats from roster (may be empty)
+          stats: playerStats,
           total_points: entry.actualPoints || 0,
+          percentOwned: entry.percentOwned ?? 0,
+          percentStarted: entry.percentStarted ?? 0,
+          percentChange: entry.percentChange ?? 0,
           status: entry.injuryStatus || '',
           injury_note: entry.injuryDetail || ''
         })
@@ -5153,10 +5438,13 @@ async function loadEspnProjections() {
           nhl_team: sport === 'hockey' ? faTeamAbbr : '',
           nba_team: sport === 'basketball' ? faTeamAbbr : '',
           headshot: getEspnHeadshotUrl(player.playerId || player.id, sport),
-          fantasy_team: null,  // Free agents have no team
-          fantasy_team_key: null,  // Free agents have no team key
+          fantasy_team: null,
+          fantasy_team_key: null,
           stats: player.stats || {},
           total_points: player.actualPoints || 0,
+          percentOwned: player.percentOwned ?? 0,
+          percentStarted: player.percentStarted ?? 0,
+          percentChange: player.percentChange ?? 0,
           status: player.injuryStatus || '',
           injury_note: player.injuryDetail || ''
         }
@@ -5201,12 +5489,27 @@ async function loadEspnProjections() {
     
     // Debug: log players with injury status
     const injuredPlayers = allPlayers.value.filter(p => p.status && p.status !== 'ACTIVE')
-    console.log(`[ESPN Injury] ${injuredPlayers.length} players with injury data:`, 
-      injuredPlayers.slice(0, 10).map(p => ({ 
+    console.log(`[ESPN Injury] ${injuredPlayers.length} players with injury data:`,
+      injuredPlayers.slice(0, 10).map(p => ({
         name: p.full_name, status: p.status, note: p.injury_note,
-        severity: getInjuryInfo(p)?.severity 
+        severity: getInjuryInfo(p)?.severity
       })))
-    
+
+    // Enrich with FanGraphs Depth Charts ROS projections + Baseball Savant Statcast
+    if (currentSport.value === 'baseball') {
+      try {
+        loadingMessage.value = 'Loading expert projections...'
+        const catIds = displayCategories.value.map(c => c.stat_id)
+        const enrichments = await enrichPlayersWithProjections(allPlayers.value, catIds)
+        if (enrichments.size > 0) {
+          fgEnrichments.value = enrichments
+          console.log(`[FG Enrichment] ${enrichments.size} players matched to FanGraphs/Statcast data`)
+        }
+      } catch (e) {
+        console.warn('[FG Enrichment] Failed to load (falling back to ESPN projections):', e)
+      }
+    }
+
     // Process teams for Teams tab
     processTeamsData()
     
@@ -5256,10 +5559,19 @@ function getEspnTeamAbbrev(teamId: number): string {
   return mlbTeams[teamId] || ''
 }
 
-function transformEspnPlayerStats(statsArray: any[]): Record<string, number> {
-  const stats: Record<string, number> = {}
+function flattenStatEntry(statObj: any): Record<string, number> {
+  const result: Record<string, number> = {}
+  if (!statObj?.stats) return result
+  for (const [statId, value] of Object.entries(statObj.stats)) {
+    result[statId] = typeof value === 'number' ? value : parseFloat(value as string) || 0
+  }
+  return result
+}
+
+// Returns { season stats, plus a _statPeriods map with all available time periods }
+function transformEspnPlayerStats(statsArray: any[]): Record<string, number> & { _statPeriods?: Record<number, Record<string, number>> } {
+  const stats: Record<string, number> & { _statPeriods?: Record<number, Record<string, number>> } = {}
   if (!statsArray || !Array.isArray(statsArray)) {
-    // Check if it's already an object (not an array)
     if (statsArray && typeof statsArray === 'object' && !Array.isArray(statsArray)) {
       for (const [statId, value] of Object.entries(statsArray)) {
         stats[statId] = typeof value === 'number' ? value : parseFloat(value as string) || 0
@@ -5268,30 +5580,32 @@ function transformEspnPlayerStats(statsArray: any[]): Record<string, number> {
     }
     return stats
   }
-  
-  // Look for season stats - try multiple sources
-  // statSourceId: 0 = actuals, 1 = projections
-  // statSplitTypeId: 0 = season total, 1 = last 7 days, 2 = last 15 days, 5 = single period
-  let seasonStats = statsArray.find((s: any) => s.statSourceId === 0 && s.statSplitTypeId === 0)
-  
-  // If not found, try statSourceId 0 with any season-level split (avoid weekly/per-period splits)
-  if (!seasonStats?.stats) {
-    seasonStats = statsArray.find((s: any) => s.statSourceId === 0 && (s.statSplitTypeId === 0 || s.statSplitTypeId === null || s.statSplitTypeId === undefined))
-  }
-  
-  // Last resort: any actual stats (but prefer larger stat objects to avoid single-game entries)
-  if (!seasonStats?.stats) {
-    const candidates = statsArray.filter((s: any) => s.stats && Object.keys(s.stats).length > 0)
-    // Pick the entry with the most stat keys - more keys = more likely to be full season
-    seasonStats = candidates.sort((a: any, b: any) => Object.keys(b.stats).length - Object.keys(a.stats).length)[0]
-  }
-  
-  if (seasonStats?.stats) {
-    for (const [statId, value] of Object.entries(seasonStats.stats)) {
-      stats[statId] = typeof value === 'number' ? value : parseFloat(value as string) || 0
+
+  // Extract ALL actual stat periods (sourceId=0) and save them
+  // splitTypeId: 0=season, 1=last7, 2=last15, 3=last30, 5=currentPeriod
+  const periods: Record<number, Record<string, number>> = {}
+  for (const entry of statsArray) {
+    if (entry.statSourceId === 0 && entry.stats && Object.keys(entry.stats).length > 0) {
+      const splitId = entry.statSplitTypeId ?? 0
+      // If we already have this split type, keep the one with more keys
+      if (!periods[splitId] || Object.keys(entry.stats).length > Object.keys(periods[splitId]).length) {
+        periods[splitId] = flattenStatEntry(entry)
+      }
     }
   }
-  
+  stats._statPeriods = periods
+
+  // Season stats (splitType 0) as the default
+  const seasonData = periods[0]
+  if (seasonData) {
+    Object.assign(stats, seasonData)
+  } else {
+    // Fallback: pick the entry with the most keys
+    const candidates = statsArray.filter((s: any) => s.stats && Object.keys(s.stats).length > 0)
+    const best = candidates.sort((a: any, b: any) => Object.keys(b.stats).length - Object.keys(a.stats).length)[0]
+    if (best?.stats) Object.assign(stats, flattenStatEntry(best))
+  }
+
   return stats
 }
 
@@ -5497,6 +5811,7 @@ function toggleTeamExpanded(team: any) {
   if (expandedTeamKey.value === team.team_key) {
     expandedTeamKey.value = null
   } else {
+    teamDetailView.value = 'categories'
     expandedTeamKey.value = team.team_key
   }
 }
@@ -6932,110 +7247,223 @@ const otherTeams = computed(() => {
 // All players with calculated overall values (for trade analyzer)
 const allPlayersWithValues = computed(() => {
   if (allPlayers.value.length === 0) return []
-  
-  // First pass: calculate raw scores for all players
-  const playersWithRawScores = allPlayers.value.map(p => {
-    const isPlayerPitcher = isPitcher(p)
-    const relevantCats = isPlayerPitcher ? pitchingCategories.value : hittingCategories.value
-    
-    if (relevantCats.length === 0) return { ...p, rawScore: 50, isPlayerPitcher }
-    
-    // Calculate how good this player is across their relevant categories
-    let totalScore = 0
-    let catsWithValue = 0
-    
-    // Get all players of same type for comparison
-    const samePlayers = allPlayers.value.filter(pl => isPitcher(pl) === isPlayerPitcher)
-    
-    for (const cat of relevantCats) {
-      const statId = cat.stat_id
-      const value = parseFloat(p.stats?.[statId] || 0)
-      
-      if (value === 0) continue
-      
-      // Get all non-zero values for this stat among ROSTERED players only (prevent FA outliers)
-      const rosteredSamePlayers = samePlayers.filter(pl => !isFreeAgent(pl))
-      const refPool = rosteredSamePlayers.length >= 3 ? rosteredSamePlayers : samePlayers
-      const allValues = refPool
-        .map(pl => parseFloat(pl.stats?.[statId] || 0))
-        .filter(v => v > 0)
-      
-      if (allValues.length === 0) continue
-      
-      // Sort based on whether lower is better
-      const isLower = isLowerBetterStat(cat)
-      allValues.sort((a, b) => isLower ? a - b : b - a)
-      
-      // Find rank (handle ties by finding first occurrence)
-      const rank = allValues.indexOf(value)
-      const percentile = rank >= 0 ? (1 - (rank / allValues.length)) * 100 : 50
-      
-      totalScore += percentile
-      catsWithValue++
+
+  // When FanGraphs Depth Charts projections are available, overlay them onto ESPN players.
+  // FG projections are Steamer+ZiPS blended, updated daily, with proper stabilization
+  // for early-season small samples. This is the single biggest quality improvement.
+  const enrichments = fgEnrichments.value
+  const all = allPlayers.value.map(p => {
+    const key = p.player_key || p.player_id?.toString() || p.full_name
+    const enrichment = enrichments.get(key)
+    if (!enrichment || Object.keys(enrichment.mappedStats).length === 0) return { ...p, _originalStats: { ...p.stats } }
+    const mergedStats = { ...p.stats }
+    for (const [statId, value] of Object.entries(enrichment.mappedStats)) {
+      mergedStats[statId] = value
     }
-    
-    const avgScore = catsWithValue > 0 ? totalScore / catsWithValue : 50
-    
-    // Smaller multi-category bonus (max 10 instead of 20)
-    // Scale by percentage of categories contributed to, not absolute count
-    const catContributionRate = relevantCats.length > 0 ? catsWithValue / relevantCats.length : 0
-    const multiCatBonus = catContributionRate * 10
-    
-    // Position scarcity bonus (only for hitters at scarce positions)
-    const pos = p.position?.split(',')[0]?.trim() || 'Util'
-    const scarcePositions = ['C', 'SS', '2B']
-    const scarcityBonus = (!isPlayerPitcher && scarcePositions.includes(pos)) ? 5 : 0
-    
-    const rawScore = avgScore + multiCatBonus + scarcityBonus
-    
-    return { ...p, rawScore, isPlayerPitcher }
-  })
-  
-  // Second pass: normalize scores within each group (pitchers vs hitters)
-  // CRITICAL: Normalize using ROSTERED players only as reference pool.
-  // Including free agents skews the distribution - one FA with a bad stat mapping
-  // (e.g. wrong ESPN stat ID returning a huge number) becomes the max and 
-  // compresses all rostered players into a low range.
-  const pitchers = playersWithRawScores.filter(p => p.isPlayerPitcher)
-  const hitters = playersWithRawScores.filter(p => !p.isPlayerPitcher)
-  const rosteredPitchers = pitchers.filter(p => !isFreeAgent(p))
-  const rosteredHitters = hitters.filter(p => !isFreeAgent(p))
-  
-  // Calculate stats for normalization - use rostered players as reference, fall back to all
-  const getStats = (rosteredPlayers: any[], allPlayers: any[]) => {
-    const ref = rosteredPlayers.length >= 3 ? rosteredPlayers : allPlayers
-    if (ref.length === 0) return { min: 0, max: 100, avg: 50 }
-    const scores = ref.map(p => p.rawScore)
     return {
-      min: Math.min(...scores),
-      max: Math.max(...scores),
-      avg: scores.reduce((a, b) => a + b, 0) / scores.length
+      ...p,
+      _originalStats: { ...p.stats },
+      stats: mergedStats,
+      _fgProjection: enrichment.fgProjection,
+      _statcast: enrichment.statcast,
+      _breakoutSignals: enrichment.breakoutSignals,
+      _dataSource: 'fangraphs',
     }
+  })
+  const hittingCats = hittingCategories.value
+  const pitchingCats = pitchingCategories.value
+
+  const hitters = all.filter(p => !isPitcher(p))
+  const pitchers = all.filter(p => isPitcher(p))
+
+  // Volume stat lookups (used for both ratio weighting and pool trimming).
+  // Try ESPN stat IDs first (authoritative), then display-name fallback.
+  const findVolumeStat = (cats: any[], idCandidates: string[], nameCandidates: string[]): string | undefined => {
+    for (const id of idCandidates) {
+      if (cats.some(c => String(c.stat_id) === id)) return id
+    }
+    const byName = cats.find(c => nameCandidates.includes((c.display_name || '').toUpperCase()))
+    return byName?.stat_id
   }
-  
-  const pitcherStats = getStats(rosteredPitchers, pitchers)
-  const hitterStats = getStats(rosteredHitters, hitters)
-  
-  // Normalize to 0-100 scale within each group, then blend
-  // Target: both groups should have similar distribution centered around 50
-  const normalizeScore = (rawScore: number, stats: { min: number; max: number; avg: number }) => {
-    if (stats.max === stats.min) return 50
-    // Normalize to 0-100 range
-    const normalized = ((rawScore - stats.min) / (stats.max - stats.min)) * 80 + 10
-    return Math.min(100, Math.max(0, normalized))
+  // Hitters: AB(0), PA(17). Pitchers: IP(39/41), BF(67), GP(99).
+  const abId = findVolumeStat(hittingCats, ['0', '17'], ['AB', 'PA'])
+  const ipId = findVolumeStat(pitchingCats, ['41', '39', '67', '99', '18'], ['IP', 'BF', 'GP', 'G'])
+
+  // Fallback volume lookup straight from the player.stats blob (some leagues have these
+  // stats in player projections even if they aren't H2H categories).
+  const getVolume = (player: any, primaryId: string | undefined, fallbackIds: string[]): number => {
+    if (primaryId) {
+      const v = parseFloat(player.stats?.[primaryId] || 0) || 0
+      if (v > 0) return v
+    }
+    for (const fid of fallbackIds) {
+      const v = parseFloat(player.stats?.[fid] || 0) || 0
+      if (v > 0) return v
+    }
+    return 0
   }
-  
-  return playersWithRawScores.map(p => {
-    const stats = p.isPlayerPitcher ? pitcherStats : hitterStats
-    let overallValue = normalizeScore(p.rawScore, stats)
-    
-    // Apply injury penalty
+  const hitterVol = (p: any) => getVolume(p, abId, ['0', '17', '18'])
+  const pitcherVol = (p: any) => getVolume(p, ipId, ['41', '39', '67', '99', '18'])
+
+  // Trim each pool to "rosterable" players: top N by projected volume.
+  // Pool size = league teams × roster slots × bench cushion. This prevents the
+  // mean from being dragged toward zero by deep-bench / minor-league projections,
+  // which previously caused the "value cliff" after the top 2.
+  const numTeams = Math.max(teamsData.value?.length || 12, 8)
+  const hitterPoolSize = numTeams * 14   // ~13 hitter slots + cushion
+  const pitcherPoolSize = numTeams * 12  // ~11 pitcher slots + cushion
+
+  const trimPool = (group: any[], volFn: (p: any) => number, poolSize: number) => {
+    const ranked = [...group]
+      .map(p => ({ p, v: volFn(p) }))
+      .filter(x => x.v > 0)
+      .sort((a, b) => b.v - a.v)
+      .slice(0, poolSize)
+      .map(x => x.p)
+    // Fallback if volume lookup failed for everyone — use rostered players, then all
+    if (ranked.length >= 10) return ranked
+    const rostered = group.filter(p => !isFreeAgent(p))
+    return rostered.length >= 10 ? rostered : group
+  }
+
+  const hitterPool = trimPool(hitters, hitterVol, hitterPoolSize)
+  const pitcherPool = trimPool(pitchers, pitcherVol, pitcherPoolSize)
+
+  const meanStd = (values: number[]) => {
+    if (values.length === 0) return { mean: 0, std: 1 }
+    const mean = values.reduce((s, v) => s + v, 0) / values.length
+    const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length
+    const std = Math.sqrt(variance) || 1
+    return { mean, std }
+  }
+
+  const clampZ = (z: number) => Math.max(-3, Math.min(3, z))
+
+  // Volume thresholds for the negative-counting damper.
+  // A player with 0 IP can't have "earned" their 0 BS — scale their contribution
+  // by min(1, volume/threshold) so low-volume zeros don't masquerade as positives.
+  const HITTER_VOL_THRESHOLD = 200  // ~200 AB ≈ semi-regular hitter
+  const PITCHER_VOL_THRESHOLD = 50  // ~50 IP ≈ part-season starter / full RP season
+
+  type CatBase = {
+    cat: any
+    statId: string
+    isRatio: boolean
+    isLower: boolean
+    isCountingNegative: boolean
+    volumeId?: string
+    rawMean: number
+    rawStd: number
+    contribMean: number
+    contribStd: number
+  }
+
+  const buildBaselines = (cats: any[], pool: any[], volumeId: string | undefined, volFn: (p: any) => number, volThreshold: number): CatBase[] => {
+    return cats.map(cat => {
+      const statId = cat.stat_id
+      const isRatio = isRatioStat(cat)
+      const isLower = isLowerBetterStat(cat)
+      const isCountingNegative = !isRatio && isLower
+
+      let rawMean = 0, rawStd = 1, contribMean = 0, contribStd = 1
+
+      if (isRatio && volumeId) {
+        // Ratio cats: baseline is volume-weighted league mean; series is (val - mean) * vol
+        const totalVol = pool.reduce((s, p) => s + volFn(p), 0)
+        const totalNumer = pool.reduce((s, p) => s + (parseFloat(p.stats?.[statId] || 0) || 0) * volFn(p), 0)
+        rawMean = totalVol > 0 ? totalNumer / totalVol : 0
+        const contribs = pool.map(p => ((parseFloat(p.stats?.[statId] || 0) || 0) - rawMean) * volFn(p))
+        const s = meanStd(contribs)
+        contribMean = s.mean
+        contribStd = s.std
+      } else if (isCountingNegative) {
+        // Negative counting (BS, L, GIDP…): apply volume damper to the series so a
+        // 0 from a low-volume player isn't treated as a strong "positive".
+        const damped = pool.map(p => (parseFloat(p.stats?.[statId] || 0) || 0) * Math.min(1, volFn(p) / volThreshold))
+        const s = meanStd(damped)
+        rawMean = s.mean
+        rawStd = s.std
+      } else {
+        // Positive counting: straight z over the trimmed pool.
+        const rawValues = pool.map(p => parseFloat(p.stats?.[statId] || 0) || 0)
+        const s = meanStd(rawValues)
+        rawMean = s.mean
+        rawStd = s.std
+      }
+
+      return { cat, statId, isRatio, isLower, isCountingNegative, volumeId, rawMean, rawStd, contribMean, contribStd }
+    })
+  }
+
+  const hitterBaselines = buildBaselines(hittingCats, hitterPool, abId, hitterVol, HITTER_VOL_THRESHOLD)
+  const pitcherBaselines = buildBaselines(pitchingCats, pitcherPool, ipId, pitcherVol, PITCHER_VOL_THRESHOLD)
+
+  const zSum = (player: any, baselines: CatBase[], volFn: (p: any) => number, volThreshold: number) => {
+    let sum = 0
+    const playerVol = volFn(player)
+    for (const b of baselines) {
+      const val = parseFloat(player.stats?.[b.statId] || 0) || 0
+      let z: number
+      if (b.isRatio && b.volumeId) {
+        const myContrib = (val - b.rawMean) * playerVol
+        z = (myContrib - b.contribMean) / b.contribStd
+      } else if (b.isCountingNegative) {
+        const damped = val * Math.min(1, playerVol / volThreshold)
+        z = (damped - b.rawMean) / b.rawStd
+      } else {
+        z = (val - b.rawMean) / b.rawStd
+      }
+      if (b.isLower) z = -z
+      sum += clampZ(z)
+    }
+    return sum
+  }
+
+  const withSums = all.map(p => {
+    const isP = isPitcher(p)
+    const sgpSum = isP
+      ? zSum(p, pitcherBaselines, pitcherVol, PITCHER_VOL_THRESHOLD)
+      : zSum(p, hitterBaselines, hitterVol, HITTER_VOL_THRESHOLD)
+    return { ...p, sgpSum, isPlayerPitcher: isP }
+  })
+
+  // Calibrate pitchers to hitters so top-N means align. Prevents the previous bug
+  // where RPs (smaller pool, dominated narrow cats) outranked elite hitters.
+  const topN = 24
+  const pickTop = (arr: any[]) => [...arr].sort((a, b) => b.sgpSum - a.sgpSum).slice(0, topN)
+  const topHitterSums = pickTop(withSums.filter(p => !p.isPlayerPitcher)).map(p => p.sgpSum)
+  const topPitcherSums = pickTop(withSums.filter(p => p.isPlayerPitcher)).map(p => p.sgpSum)
+  const avg = (a: number[]) => a.length ? a.reduce((s, v) => s + v, 0) / a.length : 1
+  const hitterTopMean = avg(topHitterSums)
+  const pitcherTopMean = avg(topPitcherSums)
+  const pitcherScale = pitcherTopMean > 0 ? hitterTopMean / pitcherTopMean : 1
+
+  const scaled = withSums.map(p => ({
+    ...p,
+    calibrated: p.isPlayerPitcher ? p.sgpSum * pitcherScale : p.sgpSum,
+  }))
+
+  // Map calibrated sum → 0-100 using rostered-player min/max
+  const calRefPool = scaled.filter(p => !isFreeAgent(p))
+  const calRef = calRefPool.length >= 10 ? calRefPool.map(p => p.calibrated) : scaled.map(p => p.calibrated)
+  const calMin = calRef.length ? Math.min(...calRef) : 0
+  const calMax = calRef.length ? Math.max(...calRef) : 1
+  const range = calMax - calMin || 1
+
+  return scaled.map(p => {
+    let overallValue = Math.min(100, Math.max(0, ((p.calibrated - calMin) / range) * 90 + 5))
+
+    // Position scarcity (hitters only)
+    const pos = (p.position || '').split(',')[0]?.trim() || 'Util'
+    if (!p.isPlayerPitcher && ['C', 'SS', '2B'].includes(pos)) {
+      overallValue += 2
+    }
+
+    // Injury penalty
     const injury = getInjuryInfo(p)
-    if (injury) {
-      overallValue = overallValue * (1 - injury.severity)
-    }
-    
-    return { ...p, overallValue: Math.round(overallValue * 10) / 10 }
+    if (injury) overallValue = overallValue * (1 - injury.severity)
+
+    return { ...p, overallValue: Math.round(Math.min(100, Math.max(0, overallValue)) * 10) / 10 }
   })
 })
 
@@ -8486,6 +8914,8 @@ const potentialFlips = computed(() => {
 })
 
 watch(selectedCategory, () => { selectAllPositions() })
+
+// Stats mode uses pre-loaded _statPeriods from initial ESPN data — no extra API call needed
 
 // Watch for sport changes to reset positions
 watch(currentSport, (newSport) => {

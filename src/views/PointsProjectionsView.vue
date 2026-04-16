@@ -1382,6 +1382,48 @@
               </div>
             </div>
 
+            <!-- Balance Suggestions -->
+            <div v-if="tradeSuggestions.length > 0" class="card mt-6 border-yellow-500/30">
+              <div class="card-header bg-gradient-to-r from-yellow-500/10 to-orange-500/10">
+                <div class="flex items-center gap-2">
+                  <span class="text-xl">💡</span>
+                  <h3 class="font-bold text-dark-text">Suggestions to Balance This Trade</h3>
+                </div>
+                <p class="text-xs text-dark-textMuted mt-1">
+                  {{ tradeAnalysis.fairnessPercent > 55 ? 'You\'re winning this trade. Adding one of these players could make it more appealing to the other team:' : 'They\'re winning this trade. Ask for one of these players to balance it out:' }}
+                </p>
+              </div>
+              <div class="card-body space-y-3">
+                <div v-for="(suggestion, idx) in tradeSuggestions" :key="idx"
+                  class="flex items-center justify-between p-3 rounded-xl border transition-all hover:border-yellow-400/40"
+                  :class="suggestion.type === 'add_give' ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-cyan-500/5 border-cyan-500/20'">
+                  <div class="flex items-center gap-3">
+                    <img :src="suggestion.player.headshot || defaultHeadshot" class="w-10 h-10 rounded-full" @error="handleImageError" />
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="text-sm font-semibold text-dark-text">{{ suggestion.player.full_name }}</span>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getPositionClass(suggestion.player.position)">{{ suggestion.player.position?.split(',')[0] }}</span>
+                      </div>
+                      <div class="text-xs text-dark-textMuted">{{ suggestion.reason }}</div>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <div class="text-right">
+                      <div class="text-sm font-bold" :class="suggestion.type === 'add_give' ? 'text-yellow-400' : 'text-cyan-400'">{{ suggestion.player.total_points?.toFixed(0) }} pts</div>
+                      <div class="text-xs text-dark-textMuted">→ {{ suggestion.newFairness }}% fair</div>
+                    </div>
+                    <button @click="applySuggestion(suggestion)" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                      :class="suggestion.type === 'add_give' ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-300' : 'bg-cyan-400 text-gray-900 hover:bg-cyan-300'">
+                      {{ suggestion.type === 'add_give' ? '+ Add to Give' : '+ Add to Get' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else-if="isGeneratingSuggestions" class="card mt-6">
+              <div class="card-body text-center text-dark-textMuted text-sm animate-pulse">Generating balance suggestions...</div>
+            </div>
+
             <!-- Team Impact -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
               <!-- Before vs After -->
@@ -1445,6 +1487,82 @@
                         </tr>
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Position Rankings & Power Rankings Impact -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+              <!-- Position Rankings -->
+              <div class="card" v-if="tradeAnalysis.positionRankings?.length">
+                <div class="card-header">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xl">🏆</span>
+                    <h3 class="font-bold text-dark-text">Position Rankings After Trade</h3>
+                  </div>
+                  <p class="text-xs text-dark-textMuted mt-1">Your rank at each position vs all {{ teamsData.length }} teams</p>
+                </div>
+                <div class="card-body p-0">
+                  <table class="w-full text-sm">
+                    <thead class="bg-dark-border/30">
+                      <tr>
+                        <th class="py-2 px-3 text-left text-dark-textMuted font-medium">Position</th>
+                        <th class="py-2 px-3 text-center text-dark-textMuted font-medium">Before</th>
+                        <th class="py-2 px-3 text-center text-dark-textMuted font-medium">After</th>
+                        <th class="py-2 px-3 text-center text-dark-textMuted font-medium">Change</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-dark-border/30">
+                      <tr v-for="pos in tradeAnalysis.positionRankings" :key="pos.position" class="hover:bg-dark-border/10">
+                        <td class="py-2 px-3">
+                          <span class="px-2 py-0.5 rounded text-xs font-bold" :class="getPositionClass(pos.position)">{{ pos.position }}</span>
+                        </td>
+                        <td class="py-2 px-3 text-center font-medium text-dark-textMuted">#{{ pos.rankBefore }}</td>
+                        <td class="py-2 px-3 text-center font-bold" :class="pos.rankAfter <= 3 ? 'text-green-400' : pos.rankAfter <= 6 ? 'text-yellow-400' : 'text-red-400'">#{{ pos.rankAfter }}</td>
+                        <td class="py-2 px-3 text-center font-bold">
+                          <span v-if="pos.change > 0" class="text-green-400">+{{ pos.change }}</span>
+                          <span v-else-if="pos.change < 0" class="text-red-400">{{ pos.change }}</span>
+                          <span v-else class="text-dark-textMuted">—</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Power Rankings Impact -->
+              <div class="card">
+                <div class="card-header">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xl">⚡</span>
+                    <h3 class="font-bold text-dark-text">Power Rankings Impact</h3>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="flex items-center justify-center gap-8">
+                    <div class="text-center">
+                      <div class="text-sm text-dark-textMuted mb-1">Current Rank</div>
+                      <div class="text-4xl font-black text-dark-text">#{{ tradeAnalysis.powerRankBefore }}</div>
+                      <div class="text-xs text-dark-textMuted">of {{ teamsData.length }}</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                      <svg class="w-8 h-8" :class="tradeAnalysis.powerRankChange > 0 ? 'text-green-400' : tradeAnalysis.powerRankChange < 0 ? 'text-red-400' : 'text-dark-textMuted'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                      <span v-if="tradeAnalysis.powerRankChange !== 0" class="text-sm font-bold mt-1" :class="tradeAnalysis.powerRankChange > 0 ? 'text-green-400' : 'text-red-400'">
+                        {{ tradeAnalysis.powerRankChange > 0 ? '+' : '' }}{{ tradeAnalysis.powerRankChange }}
+                      </span>
+                      <span v-else class="text-sm text-dark-textMuted mt-1">No change</span>
+                    </div>
+                    <div class="text-center">
+                      <div class="text-sm text-dark-textMuted mb-1">After Trade</div>
+                      <div class="text-4xl font-black" :class="tradeAnalysis.powerRankAfter < tradeAnalysis.powerRankBefore ? 'text-green-400' : tradeAnalysis.powerRankAfter > tradeAnalysis.powerRankBefore ? 'text-red-400' : 'text-dark-text'">#{{ tradeAnalysis.powerRankAfter }}</div>
+                      <div class="text-xs text-dark-textMuted">of {{ teamsData.length }}</div>
+                    </div>
+                  </div>
+                  <div class="mt-4 text-center text-sm text-dark-textMuted">
+                    Based on projected ROS team totals across all {{ teamsData.length }} teams
                   </div>
                 </div>
               </div>
@@ -1719,6 +1837,7 @@ import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
 import { sleeperService } from '@/services/sleeper'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import { loadProjectionData, type FGProjection } from '@/services/projectionService'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { liveGamesService } from '@/services/live-games'
@@ -2240,6 +2359,8 @@ const tradeGetSearch = ref('')
 const tradeGivePositionFilter = ref('all')
 const tradeGetPositionFilter = ref('all')
 const tradeAnalysis = ref<any>(null)
+const tradeSuggestions = ref<any[]>([])
+const isGeneratingSuggestions = ref(false)
 const isAnalyzingTrade = ref(false)
 
 const tradePositionOptions = [
@@ -4152,9 +4273,87 @@ async function loadEspnProjections() {
     })
     allPlayers.value = [...allRosteredPlayers, ...freeAgentPlayers]
     console.log('[ESPN Points Projections] Total players:', allPlayers.value.length, '(rostered:', allRosteredPlayers.length, ', FA:', freeAgentPlayers.length, ')')
-    
+
+    // Enrich with FanGraphs Depth Charts ROS projections (baseball only).
+    // FG projections use Steamer+ZiPS blend with proper stabilization — far more
+    // reliable than ESPN raw projections early in the season.
+    if (sport === 'baseball' && Object.keys(scoringMap).length > 0) {
+      try {
+        loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading expert projections...' }
+        const { projections: fgProjections } = await loadProjectionData()
+        if (fgProjections.length > 0) {
+          // Build name lookup
+          const normName = (n: string) => n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\b(jr|sr|iii|ii|iv)\.?\b/gi, '').replace(/[^a-z ]/g, '').replace(/\s+/g, ' ').trim()
+          const fgByName = new Map<string, FGProjection>()
+          for (const fg of fgProjections) {
+            const key = normName(fg.player_name)
+            if (!fgByName.has(key)) fgByName.set(key, fg)
+          }
+
+          // ESPN stat_id → FG field mapping for points calculation
+          const fgBatterFields: Record<number, string | ((fg: any) => number | null)> = {
+            0: 'ab', 1: 'h', 2: 'r', 3: 'hr', 4: 'rbi', 5: 'sb', 6: 'bb', 7: 'so',
+            8: 'ops', 9: 'obp', 10: 'slg', 11: 'avg', 14: (fg) => fg.raw_data?.['2B'] != null ? parseInt(fg.raw_data['2B']) : null,
+            15: (fg) => fg.raw_data?.['3B'] != null ? parseInt(fg.raw_data['3B']) : null,
+            17: 'pa', 19: 'tb', 23: 'rbi', 25: (fg) => fg.raw_data?.HBP != null ? parseInt(fg.raw_data.HBP) : null,
+            32: 'r', 33: 'hr', 34: 'tb',
+          }
+          const fgPitcherFields: Record<number, string | ((fg: any) => number | null)> = {
+            18: 'gp', 35: 'w', 36: 'l', 37: 'sv', 38: 'hld', 39: 'ip', 41: 'ip',
+            43: 'so', 47: 'era', 48: 'whip', 53: 'gs',
+            57: (fg) => fg.raw_data?.BS != null ? parseInt(fg.raw_data.BS) : null,
+            63: (fg) => fg.raw_data?.QS != null ? parseInt(fg.raw_data.QS) : null,
+            67: (fg) => fg.raw_data?.TBF != null ? parseInt(fg.raw_data.TBF) : null,
+            71: (fg) => (fg.sv ?? 0) + (fg.hld ?? 0),
+          }
+
+          let enriched = 0
+          const isPitcherPos = (pos: string) => pos.includes('SP') || pos.includes('RP') || pos === 'P'
+          const GAMES_IN_SEASON: Record<string, number> = { baseball: 162, basketball: 82, hockey: 82, football: 17 }
+          const totalGames = GAMES_IN_SEASON[sport] || 162
+
+          for (const player of allPlayers.value) {
+            const fg = fgByName.get(normName(player.full_name || ''))
+            if (!fg) continue
+
+            // Compute projected total points from FG stats through the scoring map
+            const fields = isPitcherPos(player.position || '') ? fgPitcherFields : fgBatterFields
+            let fgTotalPts = 0
+            let mappedAny = false
+            for (const [statIdNum, pts] of Object.entries(scoringMap)) {
+              const statId = parseInt(statIdNum)
+              const mapper = fields[statId]
+              if (!mapper) continue
+              let val: number | null = null
+              if (typeof mapper === 'string') {
+                val = (fg as any)[mapper] ?? null
+              } else {
+                val = mapper(fg)
+              }
+              if (val !== null && val !== undefined) {
+                fgTotalPts += pts * val
+                mappedAny = true
+              }
+            }
+
+            if (mappedAny && Math.abs(fgTotalPts) > 0) {
+              player.total_points = fgTotalPts
+              // PPG based on FG projected games (or sport default)
+              const projGames = fg.g || fg.gp || fg.gs || totalGames
+              player.ppg = fgTotalPts / Math.max(projGames, 1)
+              player._dataSource = 'fangraphs'
+              enriched++
+            }
+          }
+          console.log(`[ESPN Points FG Enrichment] ${enriched} players enriched with FanGraphs projections`)
+        }
+      } catch (e) {
+        console.warn('[ESPN Points FG Enrichment] Failed (using ESPN projections):', e)
+      }
+    }
+
     loadingProgress.value = { ...loadingProgress.value, currentStep: 'Calculating rankings...', currentStepName: 'Complete', completedSteps: 6 }
-    
+
     recalculateRankings()
     console.log('[ESPN Points Projections] Complete!')
     
@@ -4414,8 +4613,11 @@ function analyzeTrade() {
       avgPPG: teamAfterPlayers.reduce((sum, p) => sum + (p.ppg || 0), 0) / Math.max(teamAfterPlayers.length, 1)
     }
     
-    // Position impact
-    const positions = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
+    // Position impact (simple giving/getting)
+    const positions = currentSport.value === 'baseball' ? ['C', '1B', '2B', '3B', 'SS', 'OF', 'DH', 'SP', 'RP']
+      : currentSport.value === 'hockey' ? ['C', 'LW', 'RW', 'D', 'G']
+      : currentSport.value === 'basketball' ? ['PG', 'SG', 'SF', 'PF', 'C']
+      : ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
     const positionImpact = positions.map(pos => {
       const giving = tradeGivePlayers.value
         .filter(p => p.position?.includes(pos))
@@ -4425,7 +4627,48 @@ function analyzeTrade() {
         .reduce((sum, p) => sum + (p.total_points || 0), 0)
       return { position: pos, giving, getting, net: getting - giving }
     }).filter(p => p.giving > 0 || p.getting > 0)
-    
+
+    // Position Rankings Impact: rank each position group across all teams (before/after)
+    const numTeams = teamsData.value.length || 10
+    const positionRankings: { position: string; rankBefore: number; rankAfter: number; change: number }[] = []
+    for (const pos of positions) {
+      // Compute each team's best player PPG at this position
+      const teamScores: { teamKey: string; ppg: number }[] = []
+      for (const team of teamsData.value) {
+        const teamPlayers = allPlayers.value.filter(p => p.fantasy_team_key === team.team_key && p.position?.includes(pos))
+        const bestPPG = teamPlayers.length > 0 ? Math.max(...teamPlayers.map(p => p.ppg || 0)) : 0
+        teamScores.push({ teamKey: team.team_key, ppg: bestPPG })
+      }
+      // Before rank
+      teamScores.sort((a, b) => b.ppg - a.ppg)
+      const myKey = myTeamPlayers.value[0]?.fantasy_team_key
+      const rankBefore = myKey ? teamScores.findIndex(t => t.teamKey === myKey) + 1 : numTeams
+
+      // After: recalculate my team's best at this position post-trade
+      const myAfterPlayers = teamAfterPlayers.filter(p => p.position?.includes(pos))
+      const myAfterBest = myAfterPlayers.length > 0 ? Math.max(...myAfterPlayers.map(p => p.ppg || 0)) : 0
+      const afterScores = teamScores.map(t => t.teamKey === myKey ? { ...t, ppg: myAfterBest } : t)
+      afterScores.sort((a, b) => b.ppg - a.ppg)
+      const rankAfter = myKey ? afterScores.findIndex(t => t.teamKey === myKey) + 1 : numTeams
+
+      if (rankBefore <= numTeams || rankAfter <= numTeams) {
+        positionRankings.push({ position: pos, rankBefore: rankBefore || numTeams, rankAfter: rankAfter || numTeams, change: (rankBefore || numTeams) - (rankAfter || numTeams) })
+      }
+    }
+
+    // Power Rankings Impact: estimate team total points rank before/after
+    const teamTotals: { teamKey: string; total: number }[] = teamsData.value.map(team => {
+      const tp = allPlayers.value.filter(p => p.fantasy_team_key === team.team_key)
+      return { teamKey: team.team_key, total: tp.reduce((s, p) => s + (p.total_points || 0), 0) }
+    })
+    teamTotals.sort((a, b) => b.total - a.total)
+    const myTeamKeyVal = myTeamPlayers.value[0]?.fantasy_team_key
+    const powerRankBefore = myTeamKeyVal ? teamTotals.findIndex(t => t.teamKey === myTeamKeyVal) + 1 : numTeams
+    const myAfterTotal = teamAfterPlayers.reduce((s, p) => s + (p.total_points || 0), 0)
+    const afterTotals = teamTotals.map(t => t.teamKey === myTeamKeyVal ? { ...t, total: myAfterTotal } : t)
+    afterTotals.sort((a, b) => b.total - a.total)
+    const powerRankAfter = myTeamKeyVal ? afterTotals.findIndex(t => t.teamKey === myTeamKeyVal) + 1 : numTeams
+
     tradeAnalysis.value = {
       grade,
       headline,
@@ -4437,12 +4680,152 @@ function analyzeTrade() {
       teamBefore,
       teamAfter,
       positionImpact,
+      positionRankings,
+      powerRankBefore,
+      powerRankAfter,
+      powerRankChange: powerRankBefore - powerRankAfter,
       valueDiff,
       ppgDiff,
       vorDiff
     }
     
     isAnalyzingTrade.value = false
+
+    // Auto-generate balance suggestions if the trade is lopsided
+    if (Math.abs(fairnessPercent - 50) > 5) {
+      generateTradeSuggestions()
+    } else {
+      tradeSuggestions.value = []
+    }
   }, 500)
+}
+
+function generateTradeSuggestions() {
+  if (!tradePartnerKey.value || !myTeamKey.value) return
+  isGeneratingSuggestions.value = true
+
+  setTimeout(() => {
+    const analysis = tradeAnalysis.value
+    if (!analysis) { isGeneratingSuggestions.value = false; return }
+
+    const suggestions: any[] = []
+    const iWin = analysis.fairnessPercent > 55
+    const valueDiff = Math.abs(analysis.valueDiff)
+
+    // Identify position needs for both teams
+    const getTeamPositionNeeds = (teamKey: string) => {
+      const teamPlayers = allPlayers.value.filter(p => p.fantasy_team_key === teamKey)
+      const positions = currentSport.value === 'baseball' ? ['C', '1B', '2B', '3B', 'SS', 'OF', 'DH', 'SP', 'RP']
+        : currentSport.value === 'hockey' ? ['C', 'LW', 'RW', 'D', 'G']
+        : currentSport.value === 'basketball' ? ['PG', 'SG', 'SF', 'PF', 'C']
+        : ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+      const needs: { position: string; bestPPG: number; depth: number }[] = []
+      for (const pos of positions) {
+        const posPlayers = teamPlayers.filter(p => p.position?.includes(pos))
+        const bestPPG = posPlayers.length > 0 ? Math.max(...posPlayers.map(p => p.ppg || 0)) : 0
+        needs.push({ position: pos, bestPPG, depth: posPlayers.length })
+      }
+      needs.sort((a, b) => a.bestPPG - b.bestPPG)
+      return needs
+    }
+
+    const myNeeds = getTeamPositionNeeds(myTeamKey.value)
+    const partnerNeeds = getTeamPositionNeeds(tradePartnerKey.value)
+
+    // Positions the partner is weakest in (they NEED these)
+    const partnerWeakPositions = new Set(partnerNeeds.slice(0, 3).map(n => n.position))
+    // Positions I'm strongest in (I CAN GIVE from these)
+    const myStrongPositions = new Set([...myNeeds].reverse().slice(0, 3).map(n => n.position))
+    // Positions I need (I WANT from these)
+    const myWeakPositions = new Set(myNeeds.slice(0, 3).map(n => n.position))
+
+    // Get available players (not already in the trade)
+    const alreadyGiving = new Set(tradeGivePlayers.value.map(p => p.player_key))
+    const alreadyGetting = new Set(tradeGetPlayers.value.map(p => p.player_key))
+
+    if (iWin) {
+      // I'm winning — suggest adding one of MY players to balance, ideally at a position the partner needs
+      const candidates = myTeamPlayers.value
+        .filter(p => !alreadyGiving.has(p.player_key) && (p.total_points || 0) > 0)
+        .map(p => {
+          const pos = (p.position || '').split(',')[0].trim()
+          const fillsPartnerNeed = partnerWeakPositions.has(pos) ? 1 : 0
+          const iCanSpare = myStrongPositions.has(pos) ? 1 : 0
+          const fitScore = fillsPartnerNeed + iCanSpare
+          return { ...p, fitScore, reason: fillsPartnerNeed && iCanSpare
+            ? `Fills their ${pos} need, you have depth there`
+            : fillsPartnerNeed ? `Fills their ${pos} need`
+            : iCanSpare ? `You have depth at ${pos}`
+            : `Balances trade value` }
+        })
+        .filter(p => Math.abs((p.total_points || 0) - valueDiff) < valueDiff * 1.5 || (p.total_points || 0) < valueDiff * 1.2)
+        .sort((a, b) => {
+          if (b.fitScore !== a.fitScore) return b.fitScore - a.fitScore
+          return Math.abs((a.total_points || 0) - valueDiff) - Math.abs((b.total_points || 0) - valueDiff)
+        })
+
+      for (const p of candidates.slice(0, 3)) {
+        const newGiveTotal = tradeGivePlayers.value.reduce((s, gp) => s + (gp.total_points || 0), 0) + (p.total_points || 0)
+        const getTotal = tradeGetPlayers.value.reduce((s, gp) => s + (gp.total_points || 0), 0)
+        const newFairness = (getTotal / (newGiveTotal + getTotal)) * 100
+        suggestions.push({
+          type: 'add_give',
+          player: p,
+          reason: p.reason,
+          newFairness: Math.round(newFairness),
+          improvement: Math.abs(newFairness - 50) < Math.abs(analysis.fairnessPercent - 50)
+        })
+      }
+    } else {
+      // They're winning — suggest adding one of THEIR players, ideally at a position I need
+      const partnerPlayers = allPlayers.value.filter(p => p.fantasy_team_key === tradePartnerKey.value)
+      const candidates = partnerPlayers
+        .filter(p => !alreadyGetting.has(p.player_key) && (p.total_points || 0) > 0)
+        .map(p => {
+          const pos = (p.position || '').split(',')[0].trim()
+          const fillsMyNeed = myWeakPositions.has(pos) ? 1 : 0
+          const partnerCanSpare = !partnerWeakPositions.has(pos) ? 1 : 0
+          const fitScore = fillsMyNeed + partnerCanSpare
+          return { ...p, fitScore, reason: fillsMyNeed && partnerCanSpare
+            ? `Fills your ${pos} need, they have depth there`
+            : fillsMyNeed ? `Fills your ${pos} need`
+            : partnerCanSpare ? `They have depth at ${pos}`
+            : `Balances trade value` }
+        })
+        .filter(p => Math.abs((p.total_points || 0) - valueDiff) < valueDiff * 1.5 || (p.total_points || 0) < valueDiff * 1.2)
+        .sort((a, b) => {
+          if (b.fitScore !== a.fitScore) return b.fitScore - a.fitScore
+          return Math.abs((a.total_points || 0) - valueDiff) - Math.abs((b.total_points || 0) - valueDiff)
+        })
+
+      for (const p of candidates.slice(0, 3)) {
+        const giveTotal = tradeGivePlayers.value.reduce((s, gp) => s + (gp.total_points || 0), 0)
+        const newGetTotal = tradeGetPlayers.value.reduce((s, gp) => s + (gp.total_points || 0), 0) + (p.total_points || 0)
+        const newFairness = (newGetTotal / (giveTotal + newGetTotal)) * 100
+        suggestions.push({
+          type: 'add_get',
+          player: p,
+          reason: p.reason,
+          newFairness: Math.round(newFairness),
+          improvement: Math.abs(newFairness - 50) < Math.abs(analysis.fairnessPercent - 50)
+        })
+      }
+    }
+
+    tradeSuggestions.value = suggestions.filter(s => s.improvement).slice(0, 3)
+    isGeneratingSuggestions.value = false
+  }, 300)
+}
+
+function applySuggestion(suggestion: any) {
+  if (suggestion.type === 'add_give') {
+    tradeGivePlayers.value = [...tradeGivePlayers.value, suggestion.player]
+  } else {
+    tradeGetPlayers.value = [...tradeGetPlayers.value, suggestion.player]
+  }
+  tradeSuggestions.value = []
+  tradeAnalysis.value = null
+  // Re-analyze with the new player added
+  setTimeout(() => analyzeTrade(), 100)
 }
 </script>

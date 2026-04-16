@@ -1739,6 +1739,8 @@ export class EspnFantasyService {
           actualPoints: seasonStats.appliedTotal || 0,
           percentOwned: entry.player?.ownership?.percentOwned || player.ownership?.percentOwned || 0,
           percentStarted: entry.player?.ownership?.percentStarted || player.ownership?.percentStarted || 0,
+          percentChange: entry.player?.ownership?.percentChange || player.ownership?.percentChange || 0,
+          averageDraftPosition: entry.player?.ownership?.averageDraftPosition || player.ownership?.averageDraftPosition || 0,
           stats: this.flattenStats(seasonStats.stats || {})
         })
       }
@@ -2238,6 +2240,72 @@ export class EspnFantasyService {
       console.error('Error fetching ESPN players by IDs:', error)
       return new Map()
     }
+  }
+
+  /**
+   * Fetch actual stats for a specific time period.
+   * statSplitTypeId: 0=season, 1=last7, 2=last15, 3=last30
+   * ESPN's split type IDs vary by sport/league. We request ALL split types
+   * and pick the best match, logging what's available for debugging.
+   */
+  async getPlayersStatsByPeriod(
+    sport: Sport, leagueId: string | number, season: number,
+    playerIds: number[], statSplitTypeId: number = 0
+  ): Promise<Map<number, Record<string, number>>> {
+    if (playerIds.length === 0) return new Map()
+
+    const result = new Map<number, Record<string, number>>()
+    const chunkSize = 50
+    let loggedSplitTypes = false
+
+    for (let i = 0; i < playerIds.length; i += chunkSize) {
+      const chunk = playerIds.slice(i, i + chunkSize)
+      try {
+        const filterObj = {
+          players: {
+            filterIds: { value: chunk },
+            filterStatsForSplitTypeIds: { value: [0, 1, 2, 3, 4, 5] },
+            filterStatsForSourceIds: { value: [0] },
+            filterStatsForSeasonId: { value: season }
+          }
+        }
+
+        const data = await this.apiRequestWithFilter(sport, leagueId, season, [ESPN_VIEWS.PLAYER_INFO], filterObj)
+        for (const entry of (data.players || [])) {
+          const player = entry.player || entry
+          if (!player.id) continue
+          const statsArray = player.stats || []
+
+          // Log all available split types for the first player to help debug
+          if (!loggedSplitTypes && statsArray.length > 0) {
+            const available = statsArray.map((s: any) => ({
+              sourceId: s.statSourceId,
+              splitTypeId: s.statSplitTypeId,
+              seasonId: s.seasonId,
+              numStats: s.stats ? Object.keys(s.stats).length : 0,
+              id: s.id
+            }))
+            console.log(`[ESPN getPlayersStatsByPeriod] Available stat entries for player ${player.fullName || player.id}:`, JSON.stringify(available))
+            loggedSplitTypes = true
+          }
+
+          // Find stats matching requested split type (actuals only)
+          const match = statsArray.find((s: any) =>
+            s.statSourceId === 0 &&
+            s.statSplitTypeId === statSplitTypeId &&
+            s.stats && Object.keys(s.stats).length > 0
+          )
+          if (match?.stats) {
+            result.set(player.id, match.stats)
+          }
+        }
+      } catch (e) {
+        console.error(`[ESPN getPlayersStatsByPeriod] chunk error:`, e)
+      }
+    }
+
+    console.log(`[ESPN getPlayersStatsByPeriod] split=${statSplitTypeId}: got stats for ${result.size}/${playerIds.length} players`)
+    return result
   }
 
   /**
@@ -3349,6 +3417,8 @@ export class EspnFantasyService {
       actualPoints: seasonStats.appliedTotal || 0,
       percentOwned: playerPoolEntry.player?.ownership?.percentOwned || 0,
       percentStarted: playerPoolEntry.player?.ownership?.percentStarted || 0,
+      percentChange: playerPoolEntry.player?.ownership?.percentChange || 0,
+      averageDraftPosition: playerPoolEntry.player?.ownership?.averageDraftPosition || 0,
       stats: this.flattenStats(seasonStats.stats || {}),
       projectedStats: this.flattenStats(projectedStats.stats || {})
     }

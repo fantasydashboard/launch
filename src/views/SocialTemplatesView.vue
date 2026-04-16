@@ -336,6 +336,66 @@
       </div><!-- end three-size-row -->
     </div>
     </template>
+
+    <!-- Link Preview / OG Image -->
+    <template v-if="selectedStaticItem === 'link_preview'">
+    <div class="post-wrap" style="max-width:none;">
+      <div class="post-label">Link Preview / OG Image — 1200×630</div>
+      <p style="font-size:12px;color:#6b7280;margin-bottom:12px;">Download this and save it as <code style="background:#1e2130;padding:2px 6px;border-radius:4px;color:#eab308;">public/ufd-og.png</code> for link previews (iMessage, Slack, Discord, Twitter, Facebook, etc.)</p>
+      <div class="three-size-row">
+        <div class="three-size-cell">
+          <div class="three-size-cell-header">
+            <div class="three-size-label">OG Image · 1200×630</div>
+            <button class="three-size-download" @click="downloadCardFromButton($event, 1200, 630, 'ufd-og')">⬇ PNG</button>
+          </div>
+          <div style="width:600px;height:315px;background:linear-gradient(135deg,#0f1117 0%,#1a1d2e 50%,#0f1117 100%);border-radius:16px;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;">
+            <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+            <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+            <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 40%,rgba(234,179,8,0.08) 0%,transparent 60%);"></div>
+            <img src="/UFD_V8.png" style="height:64px;width:auto;object-fit:contain;margin-bottom:16px;position:relative;">
+            <div style="font-size:28px;font-weight:900;color:#ffffff;letter-spacing:0.02em;text-align:center;position:relative;">Ultimate Fantasy Dashboard</div>
+            <div style="font-size:14px;color:#9ca3af;margin-top:8px;letter-spacing:0.04em;position:relative;">Fantasy Analytics for Every League</div>
+            <div style="display:flex;gap:16px;margin-top:20px;position:relative;">
+              <span style="font-size:11px;font-weight:600;color:#eab308;background:rgba(234,179,8,0.12);padding:4px 12px;border-radius:20px;border:1px solid rgba(234,179,8,0.25);">ESPN</span>
+              <span style="font-size:11px;font-weight:600;color:#eab308;background:rgba(234,179,8,0.12);padding:4px 12px;border-radius:20px;border:1px solid rgba(234,179,8,0.25);">Yahoo</span>
+              <span style="font-size:11px;font-weight:600;color:#eab308;background:rgba(234,179,8,0.12);padding:4px 12px;border-radius:20px;border:1px solid rgba(234,179,8,0.25);">Sleeper</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </template>
+
+    <!-- Facebook Cover -->
+    <template v-if="selectedStaticItem === 'facebook_cover'">
+    <div class="post-wrap" style="max-width:none;">
+      <div class="post-label">Facebook Cover — 1640×856</div>
+      <p style="font-size:12px;color:#6b7280;margin-bottom:12px;">Optimized for Facebook page/group cover photos. Important content is centered to account for mobile cropping.</p>
+      <div class="three-size-row">
+        <div class="three-size-cell">
+          <div class="three-size-cell-header">
+            <div class="three-size-label">Facebook Cover · 1640×856</div>
+            <button class="three-size-download" @click="downloadCardFromButton($event, 1640, 856, 'ufd-facebook-cover')">⬇ PNG</button>
+          </div>
+          <div style="width:600px;height:313px;background:linear-gradient(135deg,#0f1117 0%,#151825 30%,#1a1d2e 50%,#151825 70%,#0f1117 100%);border-radius:12px;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;">
+            <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
+            <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
+            <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(234,179,8,0.06) 0%,transparent 70%);"></div>
+            <img src="/UFD_V8.png" style="height:56px;width:auto;object-fit:contain;margin-bottom:14px;position:relative;">
+            <div style="font-size:24px;font-weight:900;color:#ffffff;letter-spacing:0.02em;text-align:center;position:relative;">Ultimate Fantasy Dashboard</div>
+            <div style="font-size:13px;color:#9ca3af;margin-top:6px;letter-spacing:0.04em;position:relative;">Data-Driven Rankings · Trade Analyzer · Power Rankings · Live Scores</div>
+            <div style="display:flex;gap:12px;margin-top:16px;position:relative;">
+              <span style="font-size:10px;font-weight:700;color:#eab308;background:rgba(234,179,8,0.1);padding:4px 10px;border-radius:16px;border:1px solid rgba(234,179,8,0.2);">⚾ Baseball</span>
+              <span style="font-size:10px;font-weight:700;color:#eab308;background:rgba(234,179,8,0.1);padding:4px 10px;border-radius:16px;border:1px solid rgba(234,179,8,0.2);">🏈 Football</span>
+              <span style="font-size:10px;font-weight:700;color:#eab308;background:rgba(234,179,8,0.1);padding:4px 10px;border-radius:16px;border:1px solid rgba(234,179,8,0.2);">🏀 Basketball</span>
+              <span style="font-size:10px;font-weight:700;color:#eab308;background:rgba(234,179,8,0.1);padding:4px 10px;border-radius:16px;border:1px solid rgba(234,179,8,0.2);">🏒 Hockey</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </template>
+
     </template>
 
     <!-- ══════════════════════════════════════ INTERACTIVE TAB ══ -->
@@ -2673,6 +2733,8 @@ const selectedInteractiveItem = ref('wp_daily')
 // ── Static item picker ────────────────────────────────────────────────────
 const staticItems = [
   { id: 'pr_general', label: 'Power Rankings — General' },
+  { id: 'link_preview', label: 'Link Preview / OG Image (1200×630)' },
+  { id: 'facebook_cover', label: 'Facebook Cover (1640×856)' },
 ]
 const selectedStaticItem = ref('pr_general')
 

@@ -1464,9 +1464,10 @@ export class YahooFantasyService {
         let position = ''
         let headshot = ''
         let percentOwned = 0
+        let percentDelta = 0
         let status = ''
         let injury_note = ''
-        
+
         for (const item of playerInfo) {
           if (item?.player_key) playerKey = item.player_key
           if (item?.player_id) playerId = item.player_id
@@ -1474,12 +1475,15 @@ export class YahooFantasyService {
           if (item?.editorial_team_abbr) team = item.editorial_team_abbr
           if (item?.display_position) position = item.display_position
           if (item?.headshot) headshot = item.headshot.url || ''
-          if (item?.percent_owned) percentOwned = parseFloat(item.percent_owned.value || '0')
+          if (item?.percent_owned) {
+            percentOwned = parseFloat(item.percent_owned.value || '0')
+            percentDelta = parseFloat(item.percent_owned.delta || '0')
+          }
           if (item?.status) status = item.status
           if (item?.status_full) status = item.status_full || status
           if (item?.injury_note) injury_note = item.injury_note
         }
-        
+
         if (playerKey) {
           playerKeys.push(playerKey)
           freeAgents.push({
@@ -1490,6 +1494,7 @@ export class YahooFantasyService {
             mlb_team: team,
             headshot,
             percent_owned: percentOwned,
+            percent_change: percentDelta,
             fantasy_team: null,
             fantasy_team_key: null,
             manager_name: null,
