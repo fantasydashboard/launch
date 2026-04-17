@@ -884,8 +884,9 @@ const cardTypes = [
 
 const platformOptions = [
   { value: 'x', label: 'X' },
+  { value: 'reddit', label: 'Reddit' },
+  { value: 'fb', label: 'FB Groups' },
   { value: 'ig', label: 'Instagram' },
-  { value: 'fb', label: 'Facebook' },
 ]
 
 const pillarOptions = ['League Culture', 'Analytical Wedge', 'League Archaeology', 'Founder POV', 'Topical / Cultural']
@@ -1696,601 +1697,169 @@ POSTING NOTES: Takes 2 minutes. Screenshot your actual baseball league if you ha
     status: 'idea',
   })
 
+  // ═══════════════════════════════════════════════════════════════
+  // STRATEGY SHIFT (Apr 17+): Reply-first X, Reddit 2-3x/wk,
+  // FB Groups over page, no IG priority, hold paid ads.
+  // Daily: 2-3 X replies to big accounts (not calendar items — just do them)
+  // ═══════════════════════════════════════════════════════════════
+
   // -- Apr 17 (Thu) --
   addCard(17, 1, {
-    type: 'social', platforms: ['x', 'ig'], pillar: 'Founder POV', sport: 'General',
-    title: 'Why I built this for all four sports',
-    copy: '',
-    xCopy: `SINGLE TWEET + IMAGE
-
-Most fantasy tools only do football.
-
-I play in football, baseball, basketball and hockey leagues. Building for one sport was never an option.
-
-Here's what it looks like when one tool covers all of them \u2193
-
----
-IMAGES: Screenshot showing UFD dashboard with multiple sport tabs visible, or the Power Rankings phone mockup.
-POSTING NOTES: This positions UFD's key differentiator (4 sports vs. competitors' 1). If anyone asks "which sports do you support?" reply: "Football, baseball, basketball, hockey. ESPN, Yahoo, Sleeper. Points and category leagues."`,
-    igCaption: `FEED SINGLE IMAGE or CAROUSEL (4 slides, one per sport)
-
-CAPTION:
-Most fantasy tools only do football.
-
-I play in football, baseball, basketball and hockey leagues. Building for one sport was never an option.
-
-Power rankings, win probability, draft grades, league history \u2014 for every league you're in, on every platform.
-
-ESPN \u00B7 Yahoo \u00B7 Sleeper
-
-@ufdashboard
-
-.
-.
-.
-#FantasyFootball #FantasyBaseball #FantasyBasketball #FantasyHockey #FantasySports #AllSports #MultiSport #PowerRankings
-
----
-IMAGE OPTIONS:
-Option A (easier): Single image \u2014 the Power Rankings phone mockup.
-Option B (better): 4-slide carousel, each slide showing a power rankings screenshot for a different sport (football, baseball, basketball, hockey). If you don't have screenshots for all 4, use the phone mockup as a single image.
-POSTING NOTES: This is a brand-positioning post, not an engagement post. Lower engagement is expected \u2014 the goal is to establish the multi-sport identity.`,
+    type: 'social', platforms: ['x'], pillar: 'Founder POV', sport: 'General',
+    title: 'Pin converting tweet',
+    copy: 'Record 15-sec screen capture of power rankings or trade analyzer. Post with: "Built this for my fantasy league. Now it works for yours. Free to try \u2192 [link]". PIN THIS TWEET.',
+    status: 'idea',
+  })
+  addCard(17, 2, {
+    type: 'community', group: 'Reddit', action: 'respond',
+    title: 'Reply to Reddit comment (power rankings post)',
+    copy: 'Respond to DiligentCake3399 using the Option A response. Ask follow-up questions to keep the thread alive. Do NOT link the tool unless someone asks.',
     status: 'idea',
   })
 
   // -- Apr 18 (Fri) --
   addCard(18, 1, {
-    type: 'social', platforms: ['x', 'ig'], pillar: 'League Culture', sport: 'General',
-    title: 'Best league name drop \u2014 engagement bait',
-    copy: '',
-    xCopy: `SINGLE TWEET
-
-Best fantasy league name you've ever seen?
-
-Drop it in the replies. I'll rank the top 10 tomorrow.
-
----
-IMAGES: No image.
-POSTING NOTES: Engagement bait. Reply to every response with a quick reaction ("that's elite" / "criminal" / "top 3 for sure"). The promise to "rank the top 10 tomorrow" creates a reason for people to come back \u2014 follow through on it with a short thread the next day.`,
-    igCaption: `STORY (not feed)
-
-Screen 1: Dark bg, text: "Best fantasy league name you've ever seen?"
-Screen 2: Question sticker: "Drop your league name \u2B07\uFE0F"
-Screen 3 (post later): Reshare the best responses to your Story with your reactions.
-
----
-POSTING NOTES: Stories are better than feed for engagement bait questions. Check responses throughout the day. If you get 10+ responses, compile them into a feed carousel the next day ("Top 10 league names you sent me, ranked").`,
+    type: 'community', group: 'Reddit', action: 'post',
+    title: 'Reddit: Power rankings formula post (r/fantasybaseball)',
+    copy: 'Post the "Building a power rankings formula" draft in r/fantasybaseball. Use the "asking for input" format. Include actual percentages from our formula. Do NOT link the tool in the post — only share if someone asks in comments.',
     status: 'idea',
   })
   addCard(18, 2, {
-    type: 'community', group: 'r/fantasybball', action: 'comment',
-    title: 'Engage in NBA playoff fantasy discussions',
-    copy: 'NBA playoffs are underway. Comment on 2-3 posts about playoff fantasy strategy, category league adjustments, or end-of-season takes.\n\nSample: \'Playoff fantasy is a completely different game \u2014 we switched to total points for playoffs and it eliminated the \'one hot week\' flukes.\'',
+    type: 'social', platforms: ['x'], pillar: 'Topical / Cultural', sport: 'Baseball',
+    title: 'X: Baseball hot take (standalone tweet)',
+    copy: 'One standalone baseball hot take tweet. React to last night\'s games. Include a screenshot or meme. NO threads.',
     status: 'idea',
   })
 
   // -- Apr 19 (Sat) --
   addCard(19, 1, {
-    type: 'community', group: 'Fantasy Football on Sleeper App', action: 'comment',
-    title: 'Build face in Sleeper community',
-    copy: 'Comment on 2 posts in the Sleeper group. These are your direct platform users \u2014 they already know what Sleeper is, and UFD connects to Sleeper natively.\n\nSample: \'Sleeper\'s platform is great for managing the league but I\'ve always wished the analytics went deeper \u2014 especially power rankings that factor in more than just W-L.\'\n\nThis is as close to \'soft promo\' as you should get in a group comment. It positions the problem without naming your product.',
+    type: 'community', group: 'Facebook Groups', action: 'join',
+    title: 'Join 3-5 fantasy baseball Facebook groups',
+    copy: 'Search for groups with 10K+ members. Join and LURK today. Read the vibe. Don\'t post yet — just comment on 2-3 existing threads with analytical takes.',
     status: 'idea',
   })
 
   // -- Apr 20 (Sun) --
   addCard(20, 1, {
-    type: 'social', platforms: ['ig'], pillar: 'Founder POV', sport: 'General',
-    title: 'IG Story: Week 2 recap + poll',
-    copy: '',
-    igCaption: `STORY (3 screens)
-
-Screen 1: Screenshot of your IG insights showing follower growth or top post. Text: "Week 2 of building @ufdashboard. Here's what worked."
-Screen 2: Text: "Best-performing post: [name of post]. Lesson: [what you learned]."
-Screen 3: Poll: "What do you want to see more of?" Option A: "Product screenshots" Option B: "League culture takes"
-
----
-POSTING NOTES: Also use this Sunday to batch content for Mon-Fri of Week 3. Review which posts hit, which flopped. Write out the posts for next week using this calendar.`,
-    status: 'idea',
-    notes: 'Sunday batch: write Mon-Fri posts for Week 3. Review Week 2 performance.',
-  })
-  addCard(20, 2, {
-    type: 'community', group: 'NHL Fantasy Hockey Talk', action: 'comment',
-    title: 'Engage in NHL playoff discussion',
-    copy: 'NHL playoffs are starting. Smaller community = less competition for attention. Comment on 2 posts about playoff fantasy hockey.\n\nSample: \'NHL fantasy playoffs are chaos \u2014 one hot goalie run can swing the whole thing. Do you adjust your scoring for playoffs?\'',
+    type: 'social', platforms: ['x'], pillar: 'Analytical Wedge', sport: 'Baseball',
+    title: 'X: Weekend baseball recap tweet',
+    copy: 'Standalone tweet recapping weekend fantasy baseball action. Tag relevant accounts if replying to their content. Include tool screenshot if natural.',
     status: 'idea',
   })
 
   // -- Apr 21 (Mon) --
   addCard(21, 1, {
-    type: 'social', platforms: ['x', 'ig', 'fb'], pillar: 'Analytical Wedge', sport: 'Baseball',
-    title: 'Win probability \u2014 not vibes, a number',
-    copy: '',
-    xCopy: `SINGLE TWEET + IMAGE
-
-You don't have to wait until Sunday night to know where you stand.
-
-UFD tracks your matchup every single day \u2014 10,000 simulations running daily.
-
-Not a guess. Not vibes. A number.
-
----
-IMAGES: Attach a Win Probability chart screenshot from the app, ideally one showing a dramatic mid-week lead change.
-POSTING NOTES: "Not a guess. Not vibes. A number." is a signature UFD line \u2014 use it consistently. Reply to anyone asking "how does it work?" with "Monte Carlo simulation \u2014 10,000 projections based on each player's historical performance."`,
-    igCaption: `FEED SINGLE IMAGE
-
-CAPTION:
-You don't have to wait until Sunday night to know where you stand. \u{1F4C8}
-
-UFD tracks your matchup every single day \u2014 10,000 Monte Carlo simulations running daily. Real odds for your current matchup.
-
-Not a guess. Not vibes. A number.
-
-ESPN \u00B7 Yahoo \u00B7 Sleeper \u00B7 All four sports.
-
-@ufdashboard
-
-.
-.
-.
-#FantasyBaseball #WinProbability #FantasyAnalytics #MonteCarlo #FantasySports #DataDriven #NotVibes
-
----
-IMAGE: Win Probability chart screenshot showing a dramatic crossover point mid-week. If you don't have a real one, use a product screenshot from the demo.
-POSTING NOTES: Product-proof post. Pairs well with the "standings lie" post from last week \u2014 together they establish the analytical brand.`,
-    fbCopy: `PAGE POST
-
-You don't have to wait until Sunday night to know where you stand.
-
-UFD tracks your matchup every single day \u2014 updating your win probability in real time as players score. 10,000 Monte Carlo simulations run daily to give you a real number, not a guess.
-
-Tuesday morning to Sunday night, in one chart.
-
-Works with ESPN, Yahoo & Sleeper. Football, baseball, basketball, hockey.
-
-\u2014 Ultimate Fantasy Dashboard
-
----
-IMAGES: Attach Win Probability chart screenshot.
-POSTING NOTES: Page post only. No group cross-posting for product screenshots.`,
+    type: 'community', group: 'Facebook Groups', action: 'post',
+    title: 'FB Group: First substantive post',
+    copy: 'Post the power rankings formula content (adapted for FB tone) in your best-fit group. Include a screenshot of the rankings tool. Ask for opinions on the formula weights.',
     status: 'idea',
   })
   addCard(21, 2, {
-    type: 'community', group: 'DynastyNerds.com group', action: 'comment',
-    title: 'Engage in dynasty offseason discussion',
-    copy: 'DynastyNerds members are the most data-savvy fantasy players \u2014 highest fit for UFD\'s analytical angle. Comment on 2 posts about dynasty rankings, player valuations, or league formats.\n\nSample: \'Dynasty leagues are where analytics matter most \u2014 you\'re making decisions across multiple seasons. I\'ve been tracking all-time H2H records in our league and the data tells a completely different story than the current standings.\'',
+    type: 'social', platforms: ['x'], pillar: 'Topical / Cultural', sport: 'Baseball',
+    title: 'X: Monday fantasy baseball content',
+    copy: 'Post weekend win probability leaders or power rankings movers. Standalone tweet with screenshot.',
     status: 'idea',
   })
 
   // -- Apr 22 (Tue) --
   addCard(22, 1, {
-    type: 'social', platforms: ['x', 'ig'], pillar: 'League Archaeology', sport: 'General',
-    title: 'Your league has history you\'ve never seen',
-    copy: '',
-    xCopy: `SINGLE TWEET + IMAGE
-
-Your league has been around for 6 years and you've never seen this view.
-
-All-time records. H2H matrix. Every rivalry. Every title.
-
-The receipts are heavy.
-
----
-IMAGES: Attach a screenshot of the H2H Matrix from UFD \u2014 the one with green/red cells showing every manager vs. every manager.
-POSTING NOTES: The H2H matrix is the most visually striking screenshot UFD has. It stops the scroll because people immediately try to read it. If anyone asks what this is, reply: "It's every matchup your league has ever played, manager vs. manager. Built from your ESPN/Yahoo/Sleeper data automatically."`,
-    igCaption: `FEED SINGLE IMAGE
-
-CAPTION:
-Your league has been around for years and you've never seen this view. \u{1F3C6}
-
-All-time records. Head-to-head matrix. Career awards. Every rivalry, every title, every blowout.
-
-The receipts are heavy.
-
-@ufdashboard
-
-.
-.
-.
-#FantasyFootball #FantasyBaseball #LeagueHistory #AllTimeRecords #FantasySports #FantasyReceipts #H2H #GroupChat
-
----
-IMAGE: H2H Matrix screenshot or Tale of the Tape screenshot from UFD. The matrix with green/red cells is the most visually compelling.
-POSTING NOTES: This post targets the "League Archaeology" pillar \u2014 appealing to long-running leagues that have years of history they've never analyzed.`,
+    type: 'community', group: 'Reddit', action: 'post',
+    title: 'Reddit: Post #2 (different subreddit)',
+    copy: 'Post in r/fantasyfootball or r/dynastyff. Topic: "What factors should go into offseason power rankings?" or share the trade analyzer concept. Different angle than the baseball post.',
     status: 'idea',
   })
 
   // -- Apr 23 (Wed) --
   addCard(23, 1, {
-    type: 'social', platforms: ['x'], pillar: 'Topical / Cultural', sport: 'Basketball',
-    title: 'NBA playoffs fantasy take',
-    copy: '',
-    xCopy: `SINGLE TWEET
-
-NBA playoffs start this week.
-
-If your fantasy basketball league doesn't have a playoff format, your commissioner is asleep at the wheel.
-
-The regular season is just qualifying.
-
----
-IMAGES: No image.
-POSTING NOTES: Quick hot take. X-only. Reply to any major NBA playoff news throughout the day with fantasy-league-angle reactions.`,
+    type: 'social', platforms: ['x'], pillar: 'League Culture', sport: 'General',
+    title: 'X: Engagement tweet (hot take or poll)',
+    copy: 'Standalone engagement tweet. Examples: "Name a player you\'re targeting in every trade right now" or "What\'s the worst trade you\'ve seen this season?" NO threads.',
     status: 'idea',
   })
   addCard(23, 2, {
-    type: 'social', platforms: ['ig'], pillar: 'Topical / Cultural', sport: 'Basketball',
-    title: 'IG Story: NBA playoffs reaction',
-    copy: '',
-    igCaption: `STORY (2 screens)
-
-Screen 1: Screenshot of NBA playoff bracket or a box score. Text overlay: "NBA playoffs. Fantasy impact?"
-Screen 2: Text: "Your fantasy basketball league should have a playoff format. If it doesn't, your commissioner is sleeping." Add "Agree/Disagree" slider sticker.
-
----
-POSTING NOTES: React to the biggest NBA playoff moment of the day. Quick, reactive, low effort.`,
-    status: 'idea',
-  })
-  addCard(23, 3, {
-    type: 'community', group: 'Fantasy Basketball Discussion', action: 'post',
-    title: 'Ask about playoff scoring strategies',
-    copy: 'Post from personal profile: \'How does your league handle playoff scoring? Standard categories, or do you switch to cumulative? We\'ve been debating this for 3 years and can\'t agree.\'\n\nThis is a genuine question that invites discussion. Every commissioner in this group has an opinion.',
+    type: 'community', group: 'Facebook Groups', action: 'comment',
+    title: 'FB Groups: Comment on 3-5 posts',
+    copy: 'Find posts about rankings, trades, or waiver adds. Comment with analytical perspective. Mention the tool only if someone asks for recommendations.',
     status: 'idea',
   })
 
   // -- Apr 24 (Thu -- NFL Draft Day 1) --
   addCard(24, 1, {
-    type: 'social', platforms: ['x', 'ig', 'fb'], pillar: 'Topical / Cultural', sport: 'Football',
-    title: 'NFL Draft night \u2014 league chaos thread',
-    copy: '',
-    xCopy: `THREAD (1 intro tweet + live reactions)
-
-Tweet 1 (post BEFORE the draft starts):
-NFL Draft night.
-
-Not ranking the picks \u2014 ranking the fantasy LEAGUES that just got chaos injected into them.
-
-Your dynasty group chat is about to explode. \u{1F9F5}
-
-Live reactions below as picks come in \u2193
-
-THEN: post 5-10 individual reaction tweets during the draft. Each one reacts to a pick through the lens of "what this does to your fantasy league":
-- "How many dynasty leagues just lost their mind over this pick?"
-- "Every redraft league with a top-3 pick just got reshuffled"
-- "This is the pick that's going to cause the most arguments in group chats tonight"
-- "[Team] just gave dynasty owners a headache for the next 3 years"
-- "This is the kind of pick that makes one guy in every league say 'I told you so' for the rest of the offseason"
-
----
-IMAGES: No images during live-tweeting. Speed > polish.
-POSTING NOTES: LIVE-TWEET DURING THE DRAFT. This is the biggest X engagement opportunity of the month. Be fast, be opinionated, react through the fantasy-league lens (not the NFL team lens). Reply to every response. Quote-tweet other people's reactions with your take. Stay active for the full first round.`,
-    igCaption: `FEED POST (post the MORNING AFTER the draft, not during)
-
-CAPTION:
-NFL Draft night. \u{1F3C8}
-
-Not ranking the picks. Ranking the fantasy leagues that just got chaos injected into them.
-
-Your dynasty group chat is about to explode.
-
-Drop your biggest draft night reaction below \u2B07\uFE0F
-
-@ufdashboard
-
-.
-.
-.
-#NFLDraft #NFLDraft2026 #FantasyFootball #DynastyFF #FantasyDraft #FantasySports #DraftNight #GroupChat
-
----
-IMAGE: A graphic with "NFL DRAFT 2026 \u2014 THE FANTASY LEAGUE PERSPECTIVE" on dark background. Or a screenshot of your most-engaged draft reaction tweet.
-POSTING NOTES: Post this the MORNING AFTER the draft \u2014 IG is not a real-time platform. The X thread handles real-time; IG handles the recap.`,
-    fbCopy: `PAGE POST + GROUP POSTS
-
-PAGE POST (morning after):
-NFL Draft night. Not ranking the picks \u2014 ranking the fantasy leagues that just got chaos injected.
-
-Every dynasty group chat in America exploded last night. Here's my take on which picks caused the most league chaos: [share your top 3-5 reactions from your X thread].
-
-Drop your biggest draft night reaction below.
-
-GROUP POSTS (from personal profile, stagger throughout the day):
-r/DynastyFF: Reply to 3-5 hot draft reaction threads with your dynasty league perspective. This sub will be at peak engagement.
-Fantasy Football: "What was the pick that caused the most chaos in your dynasty league last night?"
-Everything NFL & Fantasy Football: Same question, broader audience.
-
----
-IMAGES: Screenshot of your best-performing draft reaction tweet.
-POSTING NOTES: The NFL Draft is the 2nd-biggest content moment of April (behind the origin story launch). Be everywhere today.`,
+    type: 'social', platforms: ['x'], pillar: 'Topical / Cultural', sport: 'Football',
+    title: 'X: NFL Draft night reactions',
+    copy: 'REACTIVE REPLIES ONLY. Reply to @AdamSchefter, @RapSheet, @FieldYates with fantasy takes on each pick. "How does this affect [player]\'s fantasy value?" angle. This is your highest-reach opportunity of the month.',
+    status: 'idea',
+  })
+  addCard(24, 2, {
+    type: 'social', platforms: ['x'], pillar: 'Topical / Cultural', sport: 'Football',
+    title: 'X: Draft night standalone tweet',
+    copy: 'One standalone tweet with a bold dynasty/redraft fantasy take based on a first-round pick. Make it hot-take enough to get engagement.',
     status: 'idea',
   })
 
   // -- Apr 25 (Fri -- NFL Draft Day 2) --
   addCard(25, 1, {
     type: 'social', platforms: ['x'], pillar: 'Topical / Cultural', sport: 'Football',
-    title: 'Draft day 2 \u2014 dynasty takes',
-    copy: '',
-    xCopy: `SINGLE TWEET + LIVE REACTIONS
-
-Day 2 picks that dynasty owners are losing sleep over tonight.
-
-Not player analysis \u2014 league reaction analysis.
-
-The group chats are on fire.
-
-THEN: 3-5 reaction tweets during Day 2 picks, same style as Day 1 but focused on dynasty impact.
-
----
-IMAGES: No images during live reactions.
-POSTING NOTES: Lower volume than Day 1 \u2014 the frenzy has calmed slightly. Focus on the picks with the biggest dynasty impact. Reply to dynasty-focused accounts.`,
+    title: 'X: Draft Day 2 reactions',
+    copy: 'Continue reply strategy. Focus on fantasy-relevant picks (RBs, WRs, TEs). Standalone tweet: "Winners and losers from the fantasy football perspective after 2 rounds."',
     status: 'idea',
   })
   addCard(25, 2, {
-    type: 'community', group: 'r/DynastyFF', action: 'comment',
-    title: 'Reply to draft reaction threads',
-    copy: 'r/DynastyFF is at PEAK engagement today. Reply to 3-5 hot threads about Day 1 and Day 2 picks.\n\nSample: \'This pick is going to split dynasty group chats right down the middle \u2014 half the league thinks this is a league-winner, the other half thinks it was a reach.\'\n\nDo NOT mention UFD. Just be a dynasty player with strong opinions.',
+    type: 'community', group: 'Reddit', action: 'post',
+    title: 'Reddit: NFL Draft fantasy impact post',
+    copy: 'Post in r/fantasyfootball: "Draft night fantasy winners — which rookies are you targeting?" Time it for morning after Day 2 when discussion is hottest.',
     status: 'idea',
   })
 
-  // -- Apr 26 (Sat -- NFL Draft Day 3) --
+  // -- Apr 26 (Sat) --
   addCard(26, 1, {
-    type: 'social', platforms: ['x', 'ig'], pillar: 'Topical / Cultural', sport: 'Football',
-    title: 'NFL Draft recap \u2014 the league chat perspective',
-    copy: '',
-    xCopy: `SINGLE TWEET
-
-The NFL Draft is over.
-
-Now rank: whose fantasy league group chat was the most chaotic this weekend?
-
-Dynasty owners or redraft guys?
-
-I'll take dynasty by a mile.
-
----
-IMAGES: No image.
-POSTING NOTES: Engagement closer for the draft weekend. Let people debate dynasty vs. redraft. Reply to responses.`,
-    igCaption: `FEED CAROUSEL (6 slides)
-
-CAPTION:
-The NFL Draft is over. \u{1F3C8}
-
-Ranking the top 5 picks by dynasty chaos impact \u2014 not by NFL value, but by how much damage they did to league group chats this weekend.
-
-Dynasty owners or redraft guys \u2014 whose chat was more chaotic? \u2B07\uFE0F
-
-@ufdashboard
-
-.
-.
-.
-#NFLDraft #NFLDraft2026 #DynastyFF #FantasyFootball #FantasyDraft #DraftRecap #GroupChat
-
----
-SLIDES:
-Slide 1 (cover): "NFL Draft 2026 \u2014 Ranked by Fantasy League Chaos" + SWIPE \u2192
-Slides 2-6: Top 5 picks ranked by dynasty impact. Each slide: pick number, player name, team, and a one-liner about the dynasty impact. (Fill in the actual picks after the draft happens \u2014 you can't write these in advance.)
-
-DESIGN: Dark background, same carousel template. Use the team colors as accent for each slide if you want to get fancy.
-POSTING NOTES: This carousel needs to be designed AFTER the draft happens (you need the actual picks). Batch it Saturday morning while it's fresh.`,
+    type: 'social', platforms: ['x'], pillar: 'Topical / Cultural', sport: 'Football',
+    title: 'X: Draft weekend recap tweet',
+    copy: 'Standalone tweet: dynasty rookie rankings or "5 undrafted free agents fantasy managers should watch." Light day — one post is fine.',
     status: 'idea',
   })
 
   // -- Apr 27 (Sun) --
   addCard(27, 1, {
-    type: 'social', platforms: ['ig'], pillar: 'Founder POV', sport: 'General',
-    title: 'IG Story: Draft weekend recap',
-    copy: '',
-    igCaption: `STORY (3 screens)
-
-Screen 1: Screenshot of your X analytics from draft weekend showing engagement spike. Text: "NFL Draft weekend was wild. Here's what happened for @ufdashboard."
-Screen 2: Text: "Best performing tweet: [your top draft reaction]. [X] likes, [X] retweets."
-Screen 3: Text: "Final week of April coming up. Then we start planning May \u2014 NBA/NHL playoffs are deepening and baseball is hitting mid-season."
-
----
-POSTING NOTES: Sunday batch day. Write posts for Mon-Fri of the final April week. Review April performance so far: which pillar performed best? Which platform? Use this data to shape May's plan.`,
-    status: 'idea',
-    notes: 'Sunday batch: plan final week of April. Prep May content. Review April performance.',
-  })
-  addCard(27, 2, {
-    type: 'community', group: 'Everything NFL & Fantasy Football', action: 'comment',
-    title: 'Comment on post-draft reaction threads',
-    copy: 'The day after the draft, these groups are buzzing with reactions. Comment on 2-3 posts about draft picks from a commissioner/analytical angle.\n\nSample: \'Every dynasty league I\'m in had at least 3 trades happen within an hour of the first round ending. The draft is the biggest trade catalyst of the offseason.\'',
+    type: 'community', group: 'Facebook Groups', action: 'post',
+    title: 'FB Group: Post-draft dynasty take',
+    copy: 'Post in a dynasty-focused FB group about how the draft changes rookie rankings. Include a tool screenshot if relevant. Ask: "Who\'s your favorite late-round dynasty stash?"',
     status: 'idea',
   })
 
   // -- Apr 28 (Mon) --
   addCard(28, 1, {
-    type: 'social', platforms: ['x', 'ig', 'fb'], pillar: 'Analytical Wedge', sport: 'General',
-    title: 'Draft grades \u2014 did you actually win the draft?',
-    copy: '',
-    xCopy: `SINGLE TWEET + IMAGE
-
-Did you actually win your draft?
-
-UFD grades every pick against where players actually finished the season. Steals, busts, and everything in between.
-
-Here's what real draft grades look like \u2193
-
----
-IMAGES: Use a Draft Grades screenshot from the app showing team grades and pick verdicts. Or reference the Draft Tools email visuals.
-POSTING NOTES: This tweet naturally follows the NFL Draft weekend \u2014 people are still thinking about drafts. Riding the momentum.`,
-    igCaption: `FEED SINGLE IMAGE
-
-CAPTION:
-Did you actually win your draft? \u{1F4CB}
-
-Every pick graded against where players actually finished. Team grades. Pick-by-pick verdicts. Steals and busts.
-
-Your draft, scored.
-
-ESPN \u00B7 Yahoo \u00B7 Sleeper \u00B7 All four sports.
-
-@ufdashboard
-
-.
-.
-.
-#FantasyDraft #DraftGrades #FantasyFootball #FantasyBaseball #FantasyAnalytics #FantasySports #DraftDay
-
----
-IMAGE: Draft Grades screenshot from the app, or the Draft Tools phone mockup if one exists in Admin \u2192 Social \u2192 Static.`,
-    fbCopy: `PAGE POST
-
-Did you actually win your draft?
-
-Everybody walks away from the draft thinking they crushed it. UFD Draft Tools tell you who actually did.
-
-Every pick gets a verdict. Every team gets a grade. Steals, hits, misses and busts \u2014 the whole draft, scored against where players actually finished the season.
-
-Works with ESPN, Yahoo & Sleeper. Football, baseball, basketball, hockey.
-
-\u2014 Ultimate Fantasy Dashboard
-
----
-IMAGES: Draft Grades screenshot.
-POSTING NOTES: Page post only. This is a product-proof post that follows the NFL Draft weekend naturally.`,
+    type: 'community', group: 'Reddit', action: 'post',
+    title: 'Reddit: Post #3 (trade analyzer or ROS rankings)',
+    copy: 'Post in r/fantasybaseball: share a trade analysis breakdown or "How I\'m approaching ROS rankings in category leagues." Value-add content, not promotion.',
     status: 'idea',
   })
   addCard(28, 2, {
-    type: 'community', group: 'Fantasy Football Commissioners', action: 'post',
-    title: 'First soft UFD post \u2014 share a power rankings screenshot',
-    copy: 'THIS IS YOUR FIRST PRODUCT-RELATED POST IN ANY FB GROUP. Only do this because you\'ve been commenting for 2+ weeks.\n\nPost from personal profile:\n\n\'Curious how other commissioners handle this. I built a tool that generates power rankings for my league automatically \u2014 here\'s what it looks like [attach UFD power rankings screenshot].\n\nI was doing this manually every Tuesday night for years and finally got tired of it. Now I\'m wondering: how many of you actually do power rankings for your league? And if you do \u2014 how are you putting them together? Manual? A spreadsheet? Some tool?\n\nI\'m Josh \u2014 built this trying to scratch my own itch. Just curious how widespread the manual pain really is.\'\n\nThis frames it as a DISCUSSION with product context, not a promo. Read the room \u2014 if the group seems hostile to any product mentions, wait another week.',
+    type: 'social', platforms: ['x'], pillar: 'Analytical Wedge', sport: 'Baseball',
+    title: 'X: Monday baseball content',
+    copy: 'Win probability leaders or trade analyzer screenshot. Standalone tweet. Tag relevant baseball accounts in replies throughout the day.',
     status: 'idea',
-    notes: 'ONLY post this after 2+ weeks of genuine commenting in this group. If you haven\'t been active enough, push this to May.',
   })
 
   // -- Apr 29 (Tue) --
   addCard(29, 1, {
-    type: 'social', platforms: ['x', 'ig'], pillar: 'League Culture', sport: 'General',
-    title: 'What makes a great fantasy rivalry',
-    copy: '',
-    xCopy: `SINGLE TWEET
-
-The best fantasy rivalries aren't about who's winning.
-
-They're about who can't stop talking about the time they lost.
-
-What's your league's defining rivalry moment?
-
----
-IMAGES: No image.
-POSTING NOTES: Engagement bait. Reply to responses with reactions. If someone shares a great rivalry story, quote-tweet it with your take.`,
-    igCaption: `FEED SINGLE IMAGE or STORY
-
-CAPTION (if feed):
-The best fantasy rivalries aren't about who's winning.
-
-They're about who can't stop talking about the time they lost.
-
-Drop your league's defining rivalry moment \u2B07\uFE0F
-
-@ufdashboard
-
-.
-.
-.
-#FantasyFootball #FantasyBaseball #FantasyRivalry #LeagueCulture #FantasySports #GroupChat #Receipts
-
----
-IMAGE: Text-on-dark-background graphic with the quote. Or post as a Story with Question sticker instead of a feed post \u2014 "Drop your league's defining rivalry moment."
-POSTING NOTES: This is a light engagement post to close out the month. Lower effort, higher engagement potential.`,
+    type: 'social', platforms: ['x'], pillar: 'League Culture', sport: 'General',
+    title: 'X: Engagement tweet',
+    copy: '"What\'s the most fun page on your fantasy dashboard?" or "Rank these: power rankings, win probability, draft grades, league history." Engagement-first, tool-awareness second.',
     status: 'idea',
   })
 
   // -- Apr 30 (Wed) --
   addCard(30, 1, {
-    type: 'social', platforms: ['x', 'ig', 'fb'], pillar: 'Founder POV', sport: 'General',
-    title: 'April recap \u2014 one month of building in public',
-    copy: '',
-    xCopy: `THREAD (4 tweets)
-
-Tweet 1:
-One month of building UFD's social presence.
-
-Here's what I learned: \u{1F9F5}
-
-Tweet 2:
-What worked:
-- The origin story thread outperformed everything
-- Culture content (league mates, commissioner chaos) > product screenshots for engagement
-- NFL Draft weekend was the biggest traffic spike
-- The "group chat" angle resonates every single time
-
-Tweet 3:
-What I'd do differently:
-- More video content (even static slideshows as Reels)
-- More engagement in Reddit (I was too focused on FB groups)
-- Less product-first posts, more opinion-first posts
-
-Tweet 4:
-May plan:
-- NBA and NHL playoffs are deepening
-- Baseball is hitting mid-season \u2014 power rankings matter now
-- Football mock draft season starts in late May/early June
-
-If you followed along this month \u2014 thank you. This is just getting started.
-
-@ufdashboard
-
----
-IMAGES: Screenshot of your best X analytics from the month (showing follower growth or top tweet).
-POSTING NOTES: "Build in public" content performs well because it's transparent and relatable. End the month strong. Use the insights from this thread to shape May's content plan.`,
-    igCaption: `FEED CAROUSEL (5 slides)
-
-CAPTION:
-One month of building @ufdashboard's social presence. Here's what I learned \u{1F4CA}
-
-\u2192 The origin story thread outperformed everything
-\u2192 Culture content beats product content for engagement
-\u2192 NFL Draft weekend was the biggest traffic spike
-\u2192 The "group chat" angle resonates every single time
-
-May: NBA/NHL playoffs deepen, baseball mid-season power rankings, and football mock draft season starts.
-
-@ufdashboard
-
-.
-.
-.
-#BuildInPublic #FounderJourney #FantasySports #ContentStrategy #StartupLife #FantasyFootball #FantasyBaseball
-
----
-SLIDES:
-Slide 1: "One month. Here's what I learned." + @ufdashboard
-Slide 2: "What worked" \u2014 bullet points from the caption
-Slide 3: "What I'd do differently" \u2014 bullet points
-Slide 4: "May plan" \u2014 NBA/NHL playoffs, baseball mid-season, football mock drafts
-Slide 5: "This is just getting started. Follow along." + @ufdashboard
-
-DESIGN: Dark bg, white text, green accent. Same carousel template.
-POSTING NOTES: Last feed post of the month. Use actual data from your analytics, not placeholder numbers.`,
-    fbCopy: `PAGE POST
-
-One month of building UFD's social presence. Here's what I learned:
-
-1. The origin story thread outperformed everything else \u2014 people connect with the "I built this because I needed it" narrative more than product features.
-
-2. Culture content (league mates ranked, commissioner chaos rules) gets more engagement than product screenshots \u2014 by a lot.
-
-3. NFL Draft weekend was the biggest traffic spike of the month \u2014 even though UFD is primarily a regular-season tool, draft weekend is when fantasy people are most active online.
-
-4. The "group chat" angle resonates every single time \u2014 anything framed around "drop this in your group chat" or "the chat is about to blow up" gets attention.
-
-May plan: NBA and NHL playoffs are deepening, baseball is hitting mid-season, and football mock draft season starts in late May/early June.
-
-If you've been following along \u2014 thank you. This is just getting started.
-
-\u2014 Josh, building Ultimate Fantasy Dashboard
-
----
-IMAGES: Screenshot of best analytics or the Slide 1 cover from the IG carousel.
-POSTING NOTES: Page post only. Honest, reflective, founder-voice. End the month with gratitude and a forward look.`,
+    type: 'social', platforms: ['x'], pillar: 'Founder POV', sport: 'General',
+    title: 'X: Monthly recap + forward look',
+    copy: 'Standalone tweet: "April recap: launched the tool, X users signed up, Y leagues connected. Here\'s what I\'m building in May." Founder transparency post.',
     status: 'idea',
   })
   addCard(30, 2, {
     type: 'email', segment: 'lapsed',
-    title: 'Baseball is in full swing \u2014 your league has power rankings waiting',
-    copy: 'SEND VIA: Admin \u2192 Email tab \u2192 compose using the Trial Expired template as the base.\n\nSUBJECT: Your fantasy baseball league has power rankings waiting \u26BE\nPREVIEW: Two weeks of data. Real rankings. Your league is already connected.\n\nANGLE: Baseball-focused seasonal hook. Their league is already connected from when they signed up \u2014 the data is waiting, they just can\'t see it.\n\nKEY LINES:\n- \'Your baseball league is two weeks in. Power rankings are already running.\'\n- \'You don\'t need to reconnect anything \u2014 your league data is saved.\'\n- \'Individual: $4/mo. League Pass: $29. Your commissioner would probably buy it for the whole league if you asked.\'\n\nSEGMENT: Lapsed/expired users who have at least one baseball league connected.\nTIMING: Send late morning (10-11am ET) when people check email at work.',
+    title: 'Email: Re-engagement for lapsed baseball users',
+    copy: 'SEND VIA: Admin > Email tab. SUBJECT: Your fantasy baseball league has power rankings waiting. ANGLE: Their league is already connected from signup — data is waiting. SEGMENT: Expired trial users with baseball leagues.',
     status: 'idea',
   })
 
