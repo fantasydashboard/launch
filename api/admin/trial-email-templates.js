@@ -378,7 +378,17 @@ In a <strong style="color:#e5e7eb;">points league</strong>, picks are graded aga
 <tr><td style="padding:36px 32px 28px;background:#0a0c14;">
 <p style="font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#f59e0b;margin:0 0 10px;">DON&#x2019;T LOSE ACCESS</p>
 <h1 style="font-size:27px;font-weight:900;color:#fff;line-height:1.1;letter-spacing:-0.02em;margin:0 0 18px;">Everything goes dark in 48 hours.</h1>
-<p style="font-size:14px;color:#9ca3af;line-height:1.75;margin:0 0 16px;">You&#x2019;ve had full access to your league&#x2019;s analytics all week. Power rankings, win probability, draft grades, full league history &#x2014; all of it. In two days, <strong style="color:#e5e7eb;">it all goes away unless you upgrade.</strong></p>
+<p style="font-size:14px;color:#9ca3af;line-height:1.75;margin:0 0 16px;">You&#x2019;ve had full access to your league&#x2019;s analytics all week. In two days, <strong style="color:#e5e7eb;">here&#x2019;s exactly what changes:</strong></p>
+<!-- FREE vs PAID comparison -->
+<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border:1px solid #1e2130;border-radius:12px;overflow:hidden;">
+<tr style="background:#080a10;"><td style="padding:8px 14px;font-size:11px;font-weight:700;color:#4b5563;letter-spacing:0.08em;text-transform:uppercase;border-bottom:1px solid #1e2130;">Feature</td><td style="padding:8px 14px;font-size:11px;font-weight:700;color:#ef4444;letter-spacing:0.08em;text-transform:uppercase;border-bottom:1px solid #1e2130;text-align:center;">After Trial</td><td style="padding:8px 14px;font-size:11px;font-weight:700;color:#22c55e;letter-spacing:0.08em;text-transform:uppercase;border-bottom:1px solid #1e2130;text-align:center;">With Pass</td></tr>
+<tr style="background:#0a0c14;"><td style="padding:10px 14px;font-size:12px;color:#e5e7eb;border-bottom:1px solid #0f1017;">&#x1F3C6; Power Rankings</td><td style="padding:10px 14px;text-align:center;font-size:12px;color:#ef4444;border-bottom:1px solid #0f1017;">&#x274C; Locked</td><td style="padding:10px 14px;text-align:center;font-size:12px;color:#22c55e;border-bottom:1px solid #0f1017;">&#x2705; Full access</td></tr>
+<tr style="background:#0a0c14;"><td style="padding:10px 14px;font-size:12px;color:#e5e7eb;border-bottom:1px solid #0f1017;">&#x26A1; Win Probability</td><td style="padding:10px 14px;text-align:center;font-size:12px;color:#ef4444;border-bottom:1px solid #0f1017;">&#x274C; Locked</td><td style="padding:10px 14px;text-align:center;font-size:12px;color:#22c55e;border-bottom:1px solid #0f1017;">&#x2705; Daily updates</td></tr>
+<tr style="background:#0a0c14;"><td style="padding:10px 14px;font-size:12px;color:#e5e7eb;border-bottom:1px solid #0f1017;">&#x1F4CB; Draft Grades</td><td style="padding:10px 14px;text-align:center;font-size:12px;color:#ef4444;border-bottom:1px solid #0f1017;">&#x274C; Locked</td><td style="padding:10px 14px;text-align:center;font-size:12px;color:#22c55e;border-bottom:1px solid #0f1017;">&#x2705; Full access</td></tr>
+<tr style="background:#0a0c14;"><td style="padding:10px 14px;font-size:12px;color:#e5e7eb;border-bottom:1px solid #0f1017;">&#x1F4DC; League History</td><td style="padding:10px 14px;text-align:center;font-size:12px;color:#ef4444;border-bottom:1px solid #0f1017;">&#x274C; Locked</td><td style="padding:10px 14px;text-align:center;font-size:12px;color:#22c55e;border-bottom:1px solid #0f1017;">&#x2705; Every season</td></tr>
+<tr style="background:#0a0c14;"><td style="padding:10px 14px;font-size:12px;color:#e5e7eb;border-bottom:1px solid #0f1017;">&#x1F4F2; Shareable Graphics</td><td style="padding:10px 14px;text-align:center;font-size:12px;color:#ef4444;border-bottom:1px solid #0f1017;">&#x274C; Locked</td><td style="padding:10px 14px;text-align:center;font-size:12px;color:#22c55e;border-bottom:1px solid #0f1017;">&#x2705; Unlimited</td></tr>
+<tr style="background:#0a0c14;"><td style="padding:10px 14px;font-size:12px;color:#e5e7eb;">&#x1F4CA; ROS Rankings + Trade Analyzer</td><td style="padding:10px 14px;text-align:center;font-size:12px;color:#ef4444;">&#x274C; Locked</td><td style="padding:10px 14px;text-align:center;font-size:12px;color:#22c55e;">&#x2705; Full access</td></tr>
+</table>
 <p style="font-size:13px;font-weight:700;color:#fff;margin:0 0 10px;">&#x1F4CB; Here&#x2019;s what you&#x2019;ve been using:</p>
 <!-- FEATURE RECAP — 4 cards -->
 <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
@@ -536,6 +546,68 @@ In a <strong style="color:#e5e7eb;">points league</strong>, picks are graded aga
   },
 }
 
+  trial_reengagement: {
+    subject: "Your fantasy league has 3 weeks of data waiting \u26be",
+    preview: "Power rankings, trade analyzer, ROS projections \u2014 your league is connected and the data is building.",
+    html: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#05060a;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#05060a;"><tr><td align="center" style="padding:24px 16px;"><table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#0a0c14;border:1px solid #1e2130;border-radius:12px;overflow:hidden;">
+<tr><td style="background:#0a0c14;border-bottom:2px solid #22c55e;padding:16px 28px;text-align:center;"><img src="https://ultimatefantasydashboard.com/UFD_V8.png" height="26" alt="Ultimate Fantasy Dashboard" style="display:inline-block;"></td></tr>
+<tr><td style="background:linear-gradient(90deg,#0a1f0f,#0c1824);border-bottom:1px solid rgba(34,197,94,0.2);padding:11px 28px;text-align:center;font-size:12px;color:#86efac;letter-spacing:0.03em;">&#x26BE; Your league data has been building while you were away</td></tr>
+<tr><td style="padding:36px 32px 28px;background:#0a0c14;">
+<p style="font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#22c55e;margin:0 0 10px;">COME BACK</p>
+<h1 style="font-size:27px;font-weight:900;color:#fff;line-height:1.1;letter-spacing:-0.02em;margin:0 0 18px;">Your league is weeks into the season. The data is piling up.</h1>
+<p style="font-size:14px;color:#9ca3af;line-height:1.75;margin:0 0 16px;">Since you signed up, your league has played multiple weeks. Power rankings have shifted. Trades have happened. Someone on your roster might be a breakout candidate &#x2014; or a bust you need to move. <strong style="color:#e5e7eb;">You just can&#x2019;t see any of it right now.</strong></p>
+
+<p style="font-size:13px;font-weight:700;color:#fff;margin:0 0 12px;">&#x1F680; What&#x2019;s new since your trial:</p>
+<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+<tr><td style="padding:10px 14px;background:#11131a;border:1px solid #1e2130;border-radius:10px;margin-bottom:8px;display:block;">
+<div style="font-size:13px;font-weight:700;color:#22c55e;margin-bottom:4px;">&#x1F4CA; ROS Rankings powered by FanGraphs</div>
+<div style="font-size:11px;color:#6b7280;line-height:1.5;">Rest-of-season player rankings using Steamer + ZiPS projections. See who&#x2019;s actually valuable &#x2014; not just who had a hot week.</div>
+</td></tr><tr><td height="8"></td></tr>
+<tr><td style="padding:10px 14px;background:#11131a;border:1px solid #1e2130;border-radius:10px;margin-bottom:8px;display:block;">
+<div style="font-size:13px;font-weight:700;color:#eab308;margin-bottom:4px;">&#x1F4B1; Trade Analyzer with Balance Suggestions</div>
+<div style="font-size:11px;color:#6b7280;line-height:1.5;">Analyze any trade, see the grade, and get AI-suggested players to make lopsided trades fair.</div>
+</td></tr><tr><td height="8"></td></tr>
+<tr><td style="padding:10px 14px;background:#11131a;border:1px solid #1e2130;border-radius:10px;display:block;">
+<div style="font-size:13px;font-weight:700;color:#06b6d4;margin-bottom:4px;">&#x1F525; Stats Toggle: Season / Last 7 / Last 15 / Last 30</div>
+<div style="font-size:11px;color:#6b7280;line-height:1.5;">See who&#x2019;s hot right now &#x2014; not just who&#x2019;s been good all year. Toggle between projections and actual stats.</div>
+</td></tr>
+</table>
+
+<div style="background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.25);border-radius:10px;padding:16px 18px;margin:0 0 20px;">
+<div style="font-size:13px;color:#fcd34d;font-weight:700;margin-bottom:6px;">&#x1F4AC; The commissioner pitch:</div>
+<div style="font-size:12px;color:#9ca3af;line-height:1.6;">A League Pass is $29 for the whole year &#x2014; everyone in your league gets in. Split that 10 ways and it&#x2019;s less than $3 each. Drop the link in your group chat and let the commish handle it.</div>
+</div>
+
+<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+<tr>
+<td width="48%" valign="top" style="padding-right:6px;">
+<div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:16px;">
+<div style="font-size:12px;font-weight:800;color:#22c55e;letter-spacing:0.04em;margin-bottom:6px;">INDIVIDUAL</div>
+<div style="font-size:28px;font-weight:900;color:#fff;">$4<span style="font-size:14px;font-weight:600;color:#9ca3af;">/mo</span></div>
+<div style="font-size:11px;color:#6b7280;margin-top:4px;">billed annually at $49/yr</div>
+</div>
+</td>
+<td width="4%"></td>
+<td width="48%" valign="top" style="padding-left:6px;">
+<div style="background:rgba(234,179,8,0.06);border:1px solid rgba(234,179,8,0.25);border-radius:10px;padding:16px;">
+<div style="font-size:12px;font-weight:800;color:#eab308;letter-spacing:0.04em;margin-bottom:6px;">LEAGUE PASS</div>
+<div style="font-size:28px;font-weight:900;color:#fff;">$29<span style="font-size:14px;font-weight:600;color:#9ca3af;"> once</span></div>
+<div style="font-size:11px;color:#6b7280;margin-top:4px;">one league, 365 days, everyone in</div>
+</div>
+</td>
+</tr>
+</table>
+
+<hr style="border:none;border-top:1px solid #1e2130;margin:22px 0;">
+<p style="font-size:13px;color:#6b7280;font-style:italic;margin:0 0 24px;">Your league is already connected. Nothing to set up again &#x2014; just unlock and everything is there.</p>
+<div style="text-align:center;margin:0 0 8px;"><a href="https://ultimatefantasydashboard.com/pricing" style="display:inline-block;background:#22c55e;color:#0a0c14;font-size:14px;font-weight:800;letter-spacing:0.05em;padding:14px 36px;border-radius:10px;text-decoration:none;">UNLOCK MY LEAGUE &#x2192;</a></div>
+<p style="font-size:11px;color:#374151;text-align:center;margin:0;">Individual $4/mo &middot; League Pass $29 &middot; Cancel anytime</p>
+</td></tr>
+<tr><td style="background:#080a10;padding:14px 28px;border-top:1px solid #1e2130;text-align:center;font-size:11px;color:#374151;">ultimatefantasydashboard.com &nbsp;&middot;&nbsp; <a href="{{{RESEND_UNSUBSCRIBE_URL}}}" style="color:#374151;text-decoration:none;">Unsubscribe</a></td></tr>
+</table></td></tr></table></body></html>`,
+  },
+}
+
 export const TRIAL_SEQUENCE = [
   { id: 'trial_welcome', day: 0 },
   { id: 'trial_power_rankings', day: 1 },
@@ -544,4 +616,5 @@ export const TRIAL_SEQUENCE = [
   { id: 'trial_draft_tools', day: 4 },
   { id: 'trial_ending', day: 5, skipIfPaid: true },
   { id: 'trial_expired', day: 8, skipIfPaid: true, useExpiryDate: true },
+  { id: 'trial_reengagement', day: 21, skipIfPaid: true, useExpiryDate: true },
 ]
