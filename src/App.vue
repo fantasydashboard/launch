@@ -2,7 +2,7 @@
   <div class="min-h-screen transition-colors overflow-x-hidden" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
 
     <!-- Show Landing Page for non-authenticated users -->
-    <template v-if="!authStore.isAuthenticated && !$route.path.startsWith('/resources') && !$route.path.startsWith('/powerrankings') && !$route.path.startsWith('/matchups-info') && !$route.path.startsWith('/draft-info') && !$route.path.startsWith('/history-info') && !$route.path.startsWith('/signup') && !$route.path.startsWith('/auth/') && !$route.path.startsWith('/privacy')">
+    <template v-if="!authStore.isAuthenticated && !$route.path.startsWith('/resources') && !$route.path.startsWith('/powerrankings') && !$route.path.startsWith('/matchups-info') && !$route.path.startsWith('/draft-info') && !$route.path.startsWith('/history-info') && !$route.path.startsWith('/signup') && !$route.path.startsWith('/auth/') && !$route.path.startsWith('/privacy') && !$route.path.startsWith('/free-tools') && !$route.path.startsWith('/draftlottery') && !$route.path.startsWith('/draftorder') && !$route.path.startsWith('/schedulegenerator')">
       <!-- Simple Header for Landing Page -->
       <header class="fixed top-0 left-0 right-0 z-50 border-b border-dark-border/50" style="background: rgba(10, 12, 20, 0.95); backdrop-filter: blur(10px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -41,6 +41,43 @@
     <!-- Clean layout for public resource pages (unauthenticated only) -->
     <template v-else-if="!authStore.isAuthenticated && ($route.path.startsWith('/resources') || $route.path.startsWith('/powerrankings') || $route.path.startsWith('/matchups-info') || $route.path.startsWith('/draft-info') || $route.path.startsWith('/history-info') || $route.path.startsWith('/signup') || $route.path.startsWith('/auth/') || $route.path.startsWith('/socialtemplates'))">
       <router-view />
+    </template>
+
+    <!-- Public free tools layout (unauthenticated): minimal header + tool -->
+    <template v-else-if="!authStore.isAuthenticated && ($route.path.startsWith('/free-tools') || $route.path.startsWith('/draftlottery') || $route.path.startsWith('/draftorder') || $route.path.startsWith('/schedulegenerator'))">
+      <header class="fixed top-0 left-0 right-0 z-50 border-b border-dark-border/50" style="background: rgba(10, 12, 20, 0.95); backdrop-filter: blur(10px);">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex items-center justify-between h-16">
+            <router-link to="/" class="flex items-center gap-2 sm:gap-3">
+              <img src="/UFD_V8.png" alt="Ultimate Fantasy Dashboard" class="h-10 sm:h-12 object-contain" />
+            </router-link>
+            <div class="flex items-center gap-2 sm:gap-3">
+              <button
+                @click="showAuthModal = true; authMode = 'login'"
+                class="px-3 sm:px-4 py-2 rounded-lg text-gray-300 hover:text-white font-medium transition-colors text-sm sm:text-base"
+              >
+                Sign In
+              </button>
+              <button
+                @click="showAuthModal = true; authMode = 'signup'"
+                class="px-3 sm:px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors text-sm sm:text-base"
+              >
+                <span class="hidden sm:inline">Get Started</span>
+                <span class="sm:hidden">Start</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div class="pt-20 pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <router-view />
+      </div>
+      <AuthModal
+        :isOpen="showAuthModal"
+        :initialMode="authMode"
+        @close="showAuthModal = false"
+        @success="handleAuthSuccess"
+      />
     </template>
 
     <!-- Show Full App for authenticated users -->

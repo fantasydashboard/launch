@@ -1035,6 +1035,29 @@
     </section>
 
     <!-- ══════════════════════════════════════════════
+         FREE TOOLS — no account needed
+    ══════════════════════════════════════════════ -->
+    <section class="resources-section" style="padding-top:40px;padding-bottom:40px">
+      <div class="section-inner">
+        <div class="section-eyebrow">Free tools — no account needed</div>
+        <h2 class="section-headline">Run your league's <span class="accent">draft order</span> or <span class="accent">schedule</span> in seconds.</h2>
+        <p class="section-sub" style="text-align:center;max-width:560px;margin:0 auto 40px">Open any tool directly — no sign-in required. Sign in to skip manual entry and pull in your league's team names and logos automatically.</p>
+        <div class="resources-grid">
+          <router-link to="/draftlottery" class="resource-tile">
+            <span class="resource-tile-icon">🎱</span>
+            <span class="resource-tile-title">Draft Lottery</span>
+            <span class="resource-tile-sub">Random, weighted, or custom →</span>
+          </router-link>
+          <router-link to="/schedulegenerator" class="resource-tile">
+            <span class="resource-tile-icon">📅</span>
+            <span class="resource-tile-title">Schedule Generator</span>
+            <span class="resource-tile-sub">Custom weekly matchups →</span>
+          </router-link>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
          RESOURCES SECTION
     ══════════════════════════════════════════════ -->
     <section class="resources-section">

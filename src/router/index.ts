@@ -127,6 +127,19 @@ const router = createRouter({
       component: () => import('@/views/ToolsView.vue')
     },
     {
+      path: '/draftlottery',
+      name: 'draft-lottery-tool',
+      component: () => import('@/views/ToolsView.vue'),
+      props: { initialTool: 'draft' }
+    },
+    { path: '/draftorder', redirect: '/draftlottery' },
+    {
+      path: '/schedulegenerator',
+      name: 'schedule-generator-tool',
+      component: () => import('@/views/ToolsView.vue'),
+      props: { initialTool: 'schedule' }
+    },
+    {
       path: '/tools',
       redirect: '/free-tools'
     },
