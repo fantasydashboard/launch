@@ -335,33 +335,113 @@
               <span class="text-sm text-dark-textMuted">Connect ESPN League</span>
             </div>
             <div class="space-y-4">
-              <div class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
-                <div class="text-2xl flex-shrink-0">🖥️</div>
-                <div>
-                  <p class="text-dark-text font-semibold text-sm mb-1">ESPN leagues require desktop setup</p>
-                  <p class="text-dark-textMuted text-xs leading-relaxed mt-1">
-                    ESPN requires a browser extension to sync your league. You'll need to connect it once using Chrome on a desktop or laptop.
-                  </p>
-                  <p class="text-dark-textMuted text-xs leading-relaxed mt-2">
-                    Once connected on desktop, your ESPN leagues will appear here on mobile automatically — no extra steps needed.
-                  </p>
-                  <a
-                    href="https://ultimatefantasydashboard.com/resources/espn-mobile"
-                    target="_blank"
-                    class="inline-flex items-center gap-1 mt-3 text-xs text-primary hover:underline font-medium"
-                  >
-                    Why is desktop required?
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  </a>
-                </div>
-              </div>
+              <!-- Option 2: Auto-sync hint -->
               <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 flex items-start gap-3">
                 <div class="text-emerald-400 text-lg flex-shrink-0">✓</div>
                 <div>
                   <p class="text-emerald-300 text-xs font-medium">Already set up on desktop?</p>
-                  <p class="text-dark-textMuted text-xs mt-0.5">Sign in to your UFD account on mobile — your ESPN leagues will load automatically.</p>
+                  <p class="text-dark-textMuted text-xs mt-0.5">Your ESPN leagues should load automatically when you sign in. If they don't appear, use the options below.</p>
+                </div>
+              </div>
+
+              <!-- Option 3 + 1: League ID first, then auth if needed -->
+              <div class="space-y-3">
+                <label class="block text-sm font-medium text-dark-textMuted">League ID</label>
+                <input
+                  v-model="espnLeagueId"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="e.g., 12345678"
+                  class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-[#0719b2] focus:ring-1 focus:ring-[#0719b2] transition-colors text-dark-text"
+                  @keyup.enter="validateEspnLeague"
+                />
+                <p class="text-xs text-dark-textMuted">
+                  Find this in your ESPN league URL: fantasy.espn.com/.../<span class="text-[#4d6bff]">leagueId</span>=12345678
+                </p>
+                <div v-if="espnDiscoveryStatus" class="text-dark-textMuted text-sm flex items-center gap-2">
+                  <svg class="animate-spin h-4 w-4 text-[#0719b2]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {{ espnDiscoveryStatus }}
+                </div>
+                <div v-if="errorMessage" class="text-red-400 text-sm">{{ errorMessage }}</div>
+                <button
+                  @click="validateEspnLeague"
+                  :disabled="!espnLeagueId.trim() || loading"
+                  class="w-full px-4 py-3 rounded-xl bg-[#0719b2] text-white font-semibold hover:bg-[#0719b2]/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <span v-if="loading">Discovering League...</span>
+                  <span v-else>Find League</span>
+                </button>
+              </div>
+
+              <!-- Option 1: Email/password login (for private leagues) -->
+              <div class="border-t border-dark-border/50 pt-4">
+                <button @click="espnMobileShowLogin = !espnMobileShowLogin" class="w-full text-xs text-dark-textMuted hover:text-dark-text transition-colors py-1 flex items-center justify-center gap-1">
+                  <span>{{ espnMobileShowLogin ? '▲ Hide' : '▼ Private league? Sign in with ESPN' }}</span>
+                </button>
+                <div v-if="espnMobileShowLogin" class="mt-3 space-y-3">
+                  <div v-if="!espnLoginSuccess" class="bg-dark-bg/60 border border-dark-border rounded-xl p-4">
+                    <div class="flex items-center gap-3 mb-3">
+                      <div class="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                        <img src="/espn-logo.svg" class="w-6 h-6" alt="ESPN" />
+                      </div>
+                      <div>
+                        <p class="text-sm text-dark-text font-semibold">Sign in with ESPN</p>
+                        <p class="text-xs text-dark-textMuted">Use your ESPN account credentials</p>
+                      </div>
+                    </div>
+                    <div class="space-y-3">
+                      <div>
+                        <label class="block text-xs font-medium text-dark-textMuted mb-1">ESPN Email</label>
+                        <input v-model="espnLoginEmail" type="email" placeholder="your@email.com" autocomplete="email"
+                          class="w-full px-3 py-2.5 rounded-lg bg-dark-bg border border-dark-border focus:border-[#0719b2] focus:ring-1 focus:ring-[#0719b2] transition-colors text-dark-text text-sm"
+                          @keyup.enter="espnLoginPassword && loginToEspn()" />
+                      </div>
+                      <div>
+                        <label class="block text-xs font-medium text-dark-textMuted mb-1">Password</label>
+                        <input v-model="espnLoginPassword" type="password" placeholder="Your ESPN password" autocomplete="current-password"
+                          class="w-full px-3 py-2.5 rounded-lg bg-dark-bg border border-dark-border focus:border-[#0719b2] focus:ring-1 focus:ring-[#0719b2] transition-colors text-dark-text text-sm"
+                          @keyup.enter="espnLoginEmail && loginToEspn()" />
+                      </div>
+                      <div v-if="espnLoginError" class="text-red-400 text-xs py-1">{{ espnLoginError }}</div>
+                      <button @click="loginToEspn" :disabled="!espnLoginEmail.trim() || !espnLoginPassword.trim() || espnLoginLoading"
+                        class="w-full px-4 py-2.5 rounded-xl bg-[#0719b2] text-white text-sm font-semibold hover:bg-[#0719b2]/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
+                        <svg v-if="espnLoginLoading" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>{{ espnLoginLoading ? 'Signing in...' : 'Sign In to ESPN' }}</span>
+                      </button>
+                    </div>
+                    <p class="text-center text-xs text-dark-textMuted mt-3">Credentials go directly to ESPN and are never stored by UFD.</p>
+                  </div>
+                  <div v-if="espnLoginSuccess" class="bg-green-500/10 border border-green-500/30 rounded-xl p-3 flex items-center gap-3">
+                    <svg class="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p class="text-xs text-green-300">Signed in to ESPN — now enter your League ID above</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Option 4: Manual cookie paste -->
+              <div class="border-t border-dark-border/50 pt-3">
+                <button @click="espnMobileShowCookies = !espnMobileShowCookies" class="w-full text-xs text-dark-textMuted hover:text-dark-text transition-colors py-1">
+                  {{ espnMobileShowCookies ? '▲ Hide cookie entry' : '▼ Advanced: paste cookies manually' }}
+                </button>
+                <div v-if="espnMobileShowCookies" class="mt-3 space-y-3">
+                  <div>
+                    <label class="block text-xs font-medium text-dark-textMuted mb-1">espn_s2 cookie</label>
+                    <textarea v-model="espnS2Cookie" rows="2" placeholder="Paste espn_s2 value..."
+                      class="w-full px-3 py-2 rounded-lg bg-dark-bg border border-dark-border focus:border-[#0719b2] focus:ring-1 focus:ring-[#0719b2] transition-colors text-dark-text text-xs font-mono"></textarea>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-dark-textMuted mb-1">SWID cookie</label>
+                    <input v-model="espnSwidCookie" type="text" placeholder="{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}"
+                      class="w-full px-3 py-2 rounded-lg bg-dark-bg border border-dark-border focus:border-[#0719b2] focus:ring-1 focus:ring-[#0719b2] transition-colors text-dark-text text-xs font-mono" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -578,7 +658,7 @@
           </div>
           
           <!-- Step 1b: ESPN - Private League, need credentials -->
-          <div v-else-if="step === 1 && selectedPlatform === 'espn' && espnNeedsCredentials && !isMobile">
+          <div v-else-if="step === 1 && selectedPlatform === 'espn' && espnNeedsCredentials">
             <div class="flex items-center gap-2 mb-4">
               <button @click="espnNeedsCredentials = false; errorMessage = ''; espnShowManualFields = false" class="p-1 hover:bg-dark-border/50 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1050,6 +1130,8 @@ const espnExtensionChecking = ref(false)
 const espnExtensionImporting = ref(false)
 const espnExtensionError = ref('')
 const espnShowManualFields = ref(false)
+const espnMobileShowLogin = ref(false)
+const espnMobileShowCookies = ref(false)
 
 // ESPN Extension league list
 const espnExtensionLeagues = ref<EspnLeague[]>([])
