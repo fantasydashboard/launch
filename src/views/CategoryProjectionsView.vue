@@ -2315,6 +2315,48 @@
               </div>
             </div>
 
+            <!-- Balance Suggestions -->
+            <div v-if="tradeSuggestions.length > 0" class="card border-yellow-500/30">
+              <div class="card-header bg-gradient-to-r from-yellow-500/10 to-orange-500/10">
+                <div class="flex items-center gap-2">
+                  <span class="text-xl">💡</span>
+                  <h3 class="font-bold text-dark-text">Suggestions to Balance This Trade</h3>
+                </div>
+                <p class="text-xs text-dark-textMuted mt-1">
+                  {{ tradeAnalysis.recommendation === 'accept' ? 'You\'re winning this trade. Adding one of these players could make it more appealing:' : 'They\'re winning. Ask for one of these players to balance it out:' }}
+                </p>
+              </div>
+              <div class="card-body space-y-3">
+                <div v-for="(suggestion, idx) in tradeSuggestions" :key="idx"
+                  class="flex items-center justify-between p-3 rounded-xl border transition-all hover:border-yellow-400/40"
+                  :class="suggestion.type === 'add_give' ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-cyan-500/5 border-cyan-500/20'">
+                  <div class="flex items-center gap-3">
+                    <img :src="suggestion.player.headshot || defaultHeadshot" class="w-10 h-10 rounded-full" @error="handleImageError" />
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="text-sm font-semibold text-dark-text">{{ suggestion.player.full_name }}</span>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getPositionClass(suggestion.player.position)">{{ suggestion.player.position?.split(',')[0] }}</span>
+                      </div>
+                      <div class="text-xs text-dark-textMuted">{{ suggestion.reason }}</div>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <div class="text-right">
+                      <div class="text-sm font-bold" :class="suggestion.type === 'add_give' ? 'text-yellow-400' : 'text-cyan-400'">{{ suggestion.player.overallValue?.toFixed(1) }} val</div>
+                      <div class="text-xs text-dark-textMuted">→ {{ suggestion.newFairness }}% fair</div>
+                    </div>
+                    <button @click="applyCategoryTradeSuggestion(suggestion)" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                      :class="suggestion.type === 'add_give' ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-300' : 'bg-cyan-400 text-gray-900 hover:bg-cyan-300'">
+                      {{ suggestion.type === 'add_give' ? '+ Add to Give' : '+ Add to Get' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else-if="isGeneratingSuggestions" class="card">
+              <div class="card-body text-center text-dark-textMuted text-sm animate-pulse">Generating balance suggestions...</div>
+            </div>
+
             <!-- Category Impact & Rankings -->
             <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
               <!-- Category Impact Table -->
@@ -3573,6 +3615,8 @@ const tradeGetPositionFilter = ref<string>('all')
 const tradeGiveSortBy = ref<string>('value')  // 'value', 'position', or a stat_id
 const tradeGetSortBy = ref<string>('value')   // 'value', 'position', or a stat_id
 const tradeAnalysis = ref<any>(null)
+const tradeSuggestions = ref<any[]>([])
+const isGeneratingSuggestions = ref(false)
 const showValueExplanation = ref(false)
 
 // Position options for trade filter - sport-aware
@@ -7786,6 +7830,127 @@ function analyzeTrade() {
     recommendation,
     bottomLine
   }
+
+  // Auto-generate balance suggestions if the trade is lopsided
+  const giveVal = tradeGivePlayers.value.reduce((s, p) => s + (p.overallValue || 0), 0)
+  const getVal = tradeGetPlayers.value.reduce((s, p) => s + (p.overallValue || 0), 0)
+  const totalVal = giveVal + getVal
+  const fairness = totalVal > 0 ? (getVal / totalVal) * 100 : 50
+  if (Math.abs(fairness - 50) > 5) {
+    generateCategoryTradeSuggestions(fairness, Math.abs(giveVal - getVal))
+  } else {
+    tradeSuggestions.value = []
+  }
+}
+
+function generateCategoryTradeSuggestions(fairness: number, valueDiff: number) {
+  isGeneratingSuggestions.value = true
+  const iWin = fairness > 55
+  const alreadyGiving = new Set(tradeGivePlayers.value.map(p => p.player_key))
+  const alreadyGetting = new Set(tradeGetPlayers.value.map(p => p.player_key))
+
+  // Identify category needs: which categories each team is weak/strong in
+  const getTeamCatProfile = (teamKey: string) => {
+    const team = teamsData.value.find(t => t.team_key === teamKey)
+    if (!team?.categoryRanks) return { weak: new Set<string>(), strong: new Set<string>() }
+    const numTeams = teamsData.value.length
+    const weak = new Set<string>()
+    const strong = new Set<string>()
+    for (const [catId, rank] of Object.entries(team.categoryRanks)) {
+      if ((rank as number) >= numTeams - 2) weak.add(catId)
+      if ((rank as number) <= 3) strong.add(catId)
+    }
+    return { weak, strong }
+  }
+
+  const myProfile = getTeamCatProfile(myTeamKey.value || '')
+  const partnerProfile = getTeamCatProfile(tradePartnerKey.value)
+
+  // Find positions where each team has depth
+  const getPositionDepth = (teamKey: string) => {
+    const players = allPlayersWithValues.value.filter(p => p.fantasy_team_key === teamKey)
+    const posCount = new Map<string, number>()
+    for (const p of players) {
+      const pos = (p.position || '').split(',')[0].trim()
+      posCount.set(pos, (posCount.get(pos) || 0) + 1)
+    }
+    return posCount
+  }
+  const myDepth = getPositionDepth(myTeamKey.value || '')
+  const partnerDepth = getPositionDepth(tradePartnerKey.value)
+
+  const suggestions: any[] = []
+
+  if (iWin) {
+    // I'm winning — suggest MY players to add (at positions partner needs, cats they need)
+    const myPlayers = allPlayersWithValues.value
+      .filter(p => p.fantasy_team_key === myTeamKey.value && !alreadyGiving.has(p.player_key) && (p.overallValue || 0) > 0)
+    for (const p of myPlayers) {
+      const pos = (p.position || '').split(',')[0].trim()
+      const playerCats = displayCategories.value.filter(c => (p.stats?.[c.stat_id] || 0) > 0).map(c => c.stat_id)
+      const fillsPartnerCatNeed = playerCats.some(cid => partnerProfile.weak.has(cid))
+      const iCanSpare = (myDepth.get(pos) || 0) >= 2
+      const fitScore = (fillsPartnerCatNeed ? 2 : 0) + (iCanSpare ? 1 : 0)
+
+      const reason = fillsPartnerCatNeed && iCanSpare
+        ? `Fills their category need, you have depth at ${pos}`
+        : fillsPartnerCatNeed ? `Helps their weak categories`
+        : iCanSpare ? `You have depth at ${pos}`
+        : `Balances trade value`
+
+      if (Math.abs((p.overallValue || 0) - valueDiff) < valueDiff * 1.5 || (p.overallValue || 0) < valueDiff * 1.2) {
+        const newGive = tradeGivePlayers.value.reduce((s, gp) => s + (gp.overallValue || 0), 0) + (p.overallValue || 0)
+        const getTotal = tradeGetPlayers.value.reduce((s, gp) => s + (gp.overallValue || 0), 0)
+        const newFairness = (getTotal / (newGive + getTotal)) * 100
+        const improvement = Math.abs(newFairness - 50) < Math.abs(fairness - 50)
+        if (improvement) {
+          suggestions.push({ type: 'add_give', player: p, reason, fitScore, newFairness: Math.round(newFairness), improvement })
+        }
+      }
+    }
+  } else {
+    // They're winning — suggest THEIR players to ask for (cats I need, positions they have depth)
+    const partnerPlayers = allPlayersWithValues.value
+      .filter(p => p.fantasy_team_key === tradePartnerKey.value && !alreadyGetting.has(p.player_key) && (p.overallValue || 0) > 0)
+    for (const p of partnerPlayers) {
+      const pos = (p.position || '').split(',')[0].trim()
+      const playerCats = displayCategories.value.filter(c => (p.stats?.[c.stat_id] || 0) > 0).map(c => c.stat_id)
+      const fillsMyCatNeed = playerCats.some(cid => myProfile.weak.has(cid))
+      const partnerCanSpare = (partnerDepth.get(pos) || 0) >= 2
+      const fitScore = (fillsMyCatNeed ? 2 : 0) + (partnerCanSpare ? 1 : 0)
+
+      const reason = fillsMyCatNeed && partnerCanSpare
+        ? `Fills your category need, they have depth at ${pos}`
+        : fillsMyCatNeed ? `Helps your weak categories`
+        : partnerCanSpare ? `They have depth at ${pos}`
+        : `Balances trade value`
+
+      if (Math.abs((p.overallValue || 0) - valueDiff) < valueDiff * 1.5 || (p.overallValue || 0) < valueDiff * 1.2) {
+        const giveTotal = tradeGivePlayers.value.reduce((s, gp) => s + (gp.overallValue || 0), 0)
+        const newGet = tradeGetPlayers.value.reduce((s, gp) => s + (gp.overallValue || 0), 0) + (p.overallValue || 0)
+        const newFairness = (newGet / (giveTotal + newGet)) * 100
+        const improvement = Math.abs(newFairness - 50) < Math.abs(fairness - 50)
+        if (improvement) {
+          suggestions.push({ type: 'add_get', player: p, reason, fitScore, newFairness: Math.round(newFairness), improvement })
+        }
+      }
+    }
+  }
+
+  suggestions.sort((a, b) => b.fitScore - a.fitScore || Math.abs(a.newFairness - 50) - Math.abs(b.newFairness - 50))
+  tradeSuggestions.value = suggestions.slice(0, 3)
+  isGeneratingSuggestions.value = false
+}
+
+function applyCategoryTradeSuggestion(suggestion: any) {
+  if (suggestion.type === 'add_give') {
+    tradeGivePlayers.value = [...tradeGivePlayers.value, suggestion.player]
+  } else {
+    tradeGetPlayers.value = [...tradeGetPlayers.value, suggestion.player]
+  }
+  tradeSuggestions.value = []
+  tradeAnalysis.value = null
+  setTimeout(() => analyzeTrade(), 100)
 }
 
 function calculateNewCategoryRank(statId: string, newTotal: number, isLowerBetter: boolean): number {
