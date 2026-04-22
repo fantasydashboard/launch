@@ -11,6 +11,10 @@ const CURRENT_SEASON = new Date().getFullYear()
 
 // Simple CSV parser (handles quoted fields with commas)
 function parseCSV(text: string): Record<string, string>[] {
+  // Baseball Savant CSV exports start with a UTF-8 BOM which, if left in,
+  // becomes part of the first header key (e.g. "﻿last_name, first_name")
+  // and silently breaks row[header] lookups downstream.
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1)
   const lines = text.trim().split('\n')
   if (lines.length < 2) return []
 
@@ -45,6 +49,21 @@ function toNum(val: string | undefined): number | null {
 function toInt(val: string | undefined): number | null {
   const n = toNum(val)
   return n !== null ? Math.round(n) : null
+}
+
+// Baseball Savant CSVs ship the player name as a single "Last, First"
+// column keyed literally `last_name, first_name`. Flip it to conventional
+// "First Last" so matching against platform player names works.
+function savantName(row: Record<string, string>): string {
+  const combined = row['last_name, first_name'] || row['last_name,first_name'] || ''
+  if (combined.includes(',')) {
+    const [last, first] = combined.split(',').map(s => s.trim())
+    return `${first} ${last}`.trim()
+  }
+  // Fallback for any endpoint that does split the columns
+  const first = row.first_name || ''
+  const last = row.last_name || ''
+  return `${first} ${last}`.trim() || row.player_name || ''
 }
 
 // ==================== FANGRAPHS ====================
@@ -156,7 +175,7 @@ async function fetchAllSavantMetrics() {
     if (!id) continue
     batMerged.set(id, {
       mlbam_id: id,
-      player_name: `${row.first_name || ''} ${row.last_name || ''}`.trim(),
+      player_name: savantName(row),
       player_type: 'batter',
       pa: toInt(row.pa),
       ba: toNum(row.ba), slg: toNum(row.slg), woba: toNum(row.woba),
@@ -166,7 +185,7 @@ async function fetchAllSavantMetrics() {
   for (const row of batStatcast) {
     const id = parseInt(row.player_id)
     if (!id) continue
-    const existing = batMerged.get(id) || { mlbam_id: id, player_name: `${row.first_name || ''} ${row.last_name || ''}`.trim(), player_type: 'batter' }
+    const existing = batMerged.get(id) || { mlbam_id: id, player_name: savantName(row), player_type: 'batter' }
     Object.assign(existing, {
       xobp: toNum(row.xobp), xiso: toNum(row.xiso),
       exit_velocity_avg: toNum(row.exit_velocity_avg),
@@ -188,7 +207,7 @@ async function fetchAllSavantMetrics() {
     if (!id) continue
     pitMerged.set(id, {
       mlbam_id: id,
-      player_name: `${row.first_name || ''} ${row.last_name || ''}`.trim(),
+      player_name: savantName(row),
       player_type: 'pitcher',
       pa: toInt(row.pa),
       ba: toNum(row.ba), slg: toNum(row.slg), woba: toNum(row.woba),
@@ -198,7 +217,7 @@ async function fetchAllSavantMetrics() {
   for (const row of pitStatcast) {
     const id = parseInt(row.player_id)
     if (!id) continue
-    const existing = pitMerged.get(id) || { mlbam_id: id, player_name: `${row.first_name || ''} ${row.last_name || ''}`.trim(), player_type: 'pitcher' }
+    const existing = pitMerged.get(id) || { mlbam_id: id, player_name: savantName(row), player_type: 'pitcher' }
     Object.assign(existing, {
       xera: toNum(row.xera),
       exit_velocity_avg: toNum(row.exit_velocity_avg),
