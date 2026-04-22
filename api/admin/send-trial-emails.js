@@ -196,6 +196,9 @@ export default async function handler(req, res) {
           results.sent++
           console.log(`[send-trial-emails] Sent ${emailId} to ${profile.email}`)
 
+          // Stay under Resend's 5 req/sec rate limit.
+          await new Promise(r => setTimeout(r, 250))
+
           // At most one drip email per user per cron run — backlog catches up 1/day.
           if (!welcomeOnlyUserId) break
 
