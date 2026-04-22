@@ -2,6 +2,9 @@
   "crons": [{
     "path": "/api/admin/send-trial-emails",
     "schedule": "0 14 * * *"
+  }, {
+    "path": "/api/admin/refresh-projections",
+    "schedule": "30 12 * * *"
   }],
   "rewrites": [
     {

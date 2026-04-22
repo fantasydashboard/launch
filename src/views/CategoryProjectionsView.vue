@@ -5022,11 +5022,28 @@ async function loadProjections() {
     // Debug: show unique team keys to identify mismatch
     const uniqueTeamKeys = [...new Set(allPlayers.value.filter(p => p.fantasy_team_key).map(p => p.fantasy_team_key))]
     console.log('Unique fantasy_team_keys in players:', uniqueTeamKeys)
-    
+
+    // Overlay FanGraphs Depth Charts ROS onto platform YTD stats for baseball.
+    // Without this, Yahoo/Sleeper leagues render season-to-date actuals under a
+    // "Rest of Season" label, which is misleading and makes rookies/slumping stars look bad.
+    if (currentSport.value === 'baseball') {
+      try {
+        loadingMessage.value = 'Loading expert projections...'
+        const catIds = displayCategories.value.map(c => c.stat_id)
+        const enrichments = await enrichPlayersWithProjections(allPlayers.value, catIds)
+        if (enrichments.size > 0) {
+          fgEnrichments.value = enrichments
+          console.log(`[FG Enrichment] ${enrichments.size} players matched to FanGraphs/Statcast data`)
+        }
+      } catch (e) {
+        console.warn('[FG Enrichment] Failed (falling back to platform YTD stats):', e)
+      }
+    }
+
     // Process teams for Teams tab
     processTeamsData()
-    
-  } catch (error) { 
+
+  } catch (error) {
     console.error('Error loading projections:', error)
     loadingMessage.value = 'Error loading data' 
   } finally { 
