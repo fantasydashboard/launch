@@ -3942,31 +3942,59 @@ async function applyFGPointsOverlayYahoo(leagueKey: string) {
       return
     }
 
-    // Build Yahoo stat_id → display_name lookup from stat_categories
+    // Build Yahoo stat_id → display_name lookup from stat_categories.
+    // Yahoo's shape varies: sometimes an array of { stat: {...} } wrappers,
+    // sometimes a numbered-keys object, sometimes already-flat entries.
     const idToName = new Map<string, string>()
-    for (const entry of settings.stat_categories || []) {
-      const s = entry?.stat || entry
+    const catList = Array.isArray(settings.stat_categories)
+      ? settings.stat_categories
+      : (settings.stat_categories && typeof settings.stat_categories === 'object')
+        ? Object.values(settings.stat_categories as Record<string, any>).filter(v => typeof v === 'object')
+        : []
+    for (const entry of catList) {
+      const s = (entry as any)?.stat || entry
       const id = s?.stat_id ?? s?.id
       if (id != null) idToName.set(String(id), (s?.display_name || s?.name || '').toString())
     }
+    console.log(`[Yahoo FG Points] stat_categories parsed ${idToName.size} entries; sample:`,
+      [...idToName.entries()].slice(0, 6))
 
-    // Collapse stat_modifiers (Map or plain object) into { displayName: pts }
-    const scoringByName: Record<string, number> = {}
+    // Collapse stat_modifiers into { displayName: pts }. Shape can be a Map,
+    // a plain object, or Yahoo's array-of-wrapper form.
     const rawModifiers: Array<[string, number]> = []
     const mods = settings.stat_modifiers
     if (mods instanceof Map) {
       for (const [id, val] of mods.entries()) rawModifiers.push([String(id), Number(val) || 0])
+    } else if (Array.isArray(mods)) {
+      for (const entry of mods) {
+        const s = (entry as any)?.stat || entry
+        const id = s?.stat_id ?? s?.id
+        const val = s?.value ?? s?.points
+        if (id != null) rawModifiers.push([String(id), Number(val) || 0])
+      }
     } else if (mods && typeof mods === 'object') {
-      for (const [id, val] of Object.entries(mods as Record<string, any>)) {
-        rawModifiers.push([String(id), Number(val) || 0])
+      // Could be { stat_id: points } OR { "0": { stat: { stat_id, value } }, ... }
+      for (const [key, raw] of Object.entries(mods as Record<string, any>)) {
+        if (raw && typeof raw === 'object') {
+          const s = raw.stat || raw
+          const id = s?.stat_id ?? s?.id ?? key
+          const val = s?.value ?? s?.points ?? (typeof raw === 'number' ? raw : null)
+          if (id != null && val != null) rawModifiers.push([String(id), Number(val) || 0])
+        } else if (typeof raw === 'number' || typeof raw === 'string') {
+          rawModifiers.push([String(key), Number(raw) || 0])
+        }
       }
     }
+    console.log(`[Yahoo FG Points] stat_modifiers parsed ${rawModifiers.length} entries; sample:`,
+      rawModifiers.slice(0, 6))
+
+    const scoringByName: Record<string, number> = {}
     for (const [id, pts] of rawModifiers) {
       const name = idToName.get(id)
       if (name && pts) scoringByName[name.toUpperCase()] = pts
     }
     if (Object.keys(scoringByName).length === 0) {
-      console.warn('[Yahoo FG Points] Built scoring map is empty — leaving Yahoo totals in place')
+      console.warn('[Yahoo FG Points] Built scoring map is empty — leaving Yahoo totals in place. Raw settings:', settings)
       return
     }
     console.log('[Yahoo FG Points] Scoring map:', scoringByName)
