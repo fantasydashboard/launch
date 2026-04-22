@@ -4677,10 +4677,22 @@ function formatStatValue(value: number | undefined, decimals: number = 1): strin
 // Compute YTD over/underperformance for a single category cell. Only defined
 // for rate stats that have a Baseball Savant expected counterpart (AVG/OBP/
 // SLG/OPS/ISO/ERA). Returns null for counting stats (R, HR, RBI, SB, K, W…).
+//
+// Prefers statcast's own YTD fields (ba/slg/woba) because those are keyed
+// by mlbam_id and don't depend on platform-specific stat_id plumbing. Falls
+// back to the platform's original YTD blob for stats statcast doesn't store
+// (OBP, OPS derived, ISO, ERA).
 function getCellLuck(player: any, cat: any): LuckDelta | null {
   const sc = player?._statcast
   if (!sc || !cat?.display_name) return null
-  const actual = player._originalStats?.[cat.stat_id]
+  const name = (cat.display_name || '').toUpperCase().trim()
+
+  let actual: number | string | null | undefined = null
+  if (name === 'AVG' || name === 'BA') actual = sc.ba
+  else if (name === 'SLG') actual = sc.slg
+  else if (name === 'OPS') actual = sc.ba != null && sc.slg != null ? (sc.ba + sc.slg) : undefined // rough actual OPS proxy
+  else actual = player._originalStats?.[cat.stat_id]
+
   return computeLuck(cat.display_name, actual, sc)
 }
 
@@ -4705,28 +4717,27 @@ function getCellLuckTitle(player: any, cat: any): string {
 }
 
 // Single composite luck signal for the Overall view's Luck column. Hitters
-// use xBA vs AVG (the most universally available rate stat); pitchers use
-// xERA vs ERA. Returns null if no comparable category / no statcast data.
+// use xBA vs BA (stored directly on the statcast row — self-consistent, no
+// platform plumbing required). Pitchers use xERA vs platform-reported ERA if
+// available, else opponent-BA luck as a proxy. Returns null when there's no
+// statcast data for the player yet (e.g. rookies with <25 PA).
 function getOverallLuck(player: any): LuckDelta | null {
   const sc = player?._statcast
   if (!sc) return null
-  const cats = displayCategories.value
   const isPit = sc.player_type === 'pitcher' || isPitcher(player)
 
   if (isPit) {
-    const eraCat = cats.find(c => (c.display_name || '').toUpperCase() === 'ERA')
-    if (!eraCat) return null
-    return computeLuck('ERA', player._originalStats?.[eraCat.stat_id], sc)
+    const eraCat = displayCategories.value.find(c => (c.display_name || '').toUpperCase() === 'ERA')
+    const ytdEra = eraCat ? player._originalStats?.[eraCat.stat_id] : null
+    const eraLuck = computeLuck('ERA', ytdEra, sc)
+    if (eraLuck) return eraLuck
+    // Fallback: opponent-BA vs expected opponent-BA (BABIP luck proxy)
+    if (sc.ba != null && sc.xba != null) return computeLuck('AVG', sc.ba, sc)
+    return null
   }
 
-  // Hitters: prefer AVG, fall back to OPS, then SLG, then OBP.
-  for (const name of ['AVG', 'BA', 'OPS', 'SLG', 'OBP']) {
-    const c = cats.find(cc => (cc.display_name || '').toUpperCase() === name)
-    if (!c) continue
-    const luck = computeLuck(name, player._originalStats?.[c.stat_id], sc)
-    if (luck) return luck
-  }
-  return null
+  // Hitters: statcast has both ba and xba in the same row — use them directly.
+  return computeLuck('AVG', sc.ba, sc)
 }
 
 // Signed score for sorting: positive = buy-low, negative = sell-high, 0 neutral
@@ -5134,7 +5145,11 @@ async function loadProjections() {
     if (currentSport.value === 'baseball') {
       try {
         loadingMessage.value = 'Loading expert projections...'
-        const cats = displayCategories.value.map(c => ({ stat_id: c.stat_id, display_name: c.display_name }))
+        const cats = displayCategories.value.map(c => ({
+          stat_id: c.stat_id,
+          display_name: c.display_name,
+          isPitching: isPitchingStat(c),
+        }))
         const enrichments = await enrichPlayersWithProjections(allPlayers.value, cats)
         if (enrichments.size > 0) {
           fgEnrichments.value = enrichments
@@ -5665,7 +5680,11 @@ async function loadEspnProjections() {
     if (currentSport.value === 'baseball') {
       try {
         loadingMessage.value = 'Loading expert projections...'
-        const cats = displayCategories.value.map(c => ({ stat_id: c.stat_id, display_name: c.display_name }))
+        const cats = displayCategories.value.map(c => ({
+          stat_id: c.stat_id,
+          display_name: c.display_name,
+          isPitching: isPitchingStat(c),
+        }))
         const enrichments = await enrichPlayersWithProjections(allPlayers.value, cats)
         if (enrichments.size > 0) {
           fgEnrichments.value = enrichments

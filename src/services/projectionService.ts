@@ -17,7 +17,7 @@ const DISPLAY_NAME_TO_FG_BATTER: Record<string, FGMapper> = {
   OBP: 'obp',
   SLG: 'slg',
   BB: 'bb',
-  K: 'so',
+  K: 'so',       // batter strikeouts — only reachable when the category is flagged as batting
   SO: 'so',
   TB: 'tb',
   PA: 'pa',
@@ -155,11 +155,15 @@ export interface StatcastData {
   mlbam_id: number
   player_name: string
   player_type: 'batter' | 'pitcher'
+  // Actuals (YTD) from Baseball Savant expected_statistics endpoint.
+  // For batters these are the player's own; for pitchers they are opponent-against.
+  ba?: number; slg?: number; woba?: number
   xba?: number; xslg?: number; xwoba?: number; xobp?: number; xiso?: number
   xera?: number
   exit_velocity_avg?: number; launch_angle_avg?: number
   barrel_rate?: number; hard_hit_pct?: number
   k_pct?: number; bb_pct?: number; whiff_pct?: number
+  sprint_speed?: number; sweet_spot_pct?: number
   pa?: number
 }
 
@@ -254,11 +258,12 @@ function matchPlayer(
 }
 
 // Map FanGraphs projection to league stat IDs for a player. Prefers display
-// name (platform-agnostic) and falls back to the legacy ESPN stat_id mapping
-// when display_name isn't available or doesn't match a known category.
+// name (platform-agnostic) and skips categories that belong to the opposite
+// player type (e.g. a pitching category on a batter's row). Falls back to the
+// legacy ESPN stat_id mapping only when display_name isn't available.
 function mapToEspnStats(
   fg: FGProjection,
-  categories: Array<{ stat_id: string; display_name?: string }>
+  categories: Array<{ stat_id: string; display_name?: string; isPitching?: boolean }>
 ): Record<string, number> {
   const mapped: Record<string, number> = {}
   const isPitcher = fg.player_type === 'pitcher'
@@ -271,9 +276,18 @@ function mapToEspnStats(
   }
 
   for (const cat of categories) {
+    // Skip categories that belong to the opposite player type. Without this,
+    // a batter's "K" column (pitching category in most leagues) would get
+    // filled with the batter's strikeout projection, and Yahoo's SV stat_id
+    // (32) collides with ESPN's "r" slot in the legacy fallback map.
+    if (cat.isPitching !== undefined) {
+      if (cat.isPitching && !isPitcher) continue
+      if (!cat.isPitching && isPitcher) continue
+    }
+
     const nameKey = (cat.display_name || '').toUpperCase().trim()
     let mapper: FGMapper | undefined = nameKey ? byName[nameKey] : undefined
-    if (!mapper) mapper = byId[cat.stat_id]
+    if (!mapper && !nameKey) mapper = byId[cat.stat_id]
     if (!mapper) continue
 
     const value = resolve(mapper)
@@ -413,7 +427,7 @@ function detectBreakouts(fg: FGProjection | null, sc: StatcastData | null): stri
 // string[] of stat_ids (ESPN-only fallback).
 export async function enrichPlayersWithProjections(
   espnPlayers: any[],
-  categoriesOrStatIds: Array<{ stat_id: string; display_name?: string }> | string[]
+  categoriesOrStatIds: Array<{ stat_id: string; display_name?: string; isPitching?: boolean }> | string[]
 ): Promise<Map<string, EnrichedProjection>> {
   const { projections, statcast } = await loadProjectionData()
 
@@ -422,10 +436,10 @@ export async function enrichPlayersWithProjections(
     return new Map()
   }
 
-  const categories: Array<{ stat_id: string; display_name?: string }> =
+  const categories: Array<{ stat_id: string; display_name?: string; isPitching?: boolean }> =
     Array.isArray(categoriesOrStatIds) && typeof categoriesOrStatIds[0] === 'string'
       ? (categoriesOrStatIds as string[]).map(id => ({ stat_id: id }))
-      : (categoriesOrStatIds as Array<{ stat_id: string; display_name?: string }>)
+      : (categoriesOrStatIds as Array<{ stat_id: string; display_name?: string; isPitching?: boolean }>)
 
   const lookups = buildLookups(projections, statcast)
   const enriched = new Map<string, EnrichedProjection>()
