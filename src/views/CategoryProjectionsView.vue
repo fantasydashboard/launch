@@ -3887,21 +3887,25 @@ const availablePositions = computed(() => {
   const sport = currentSport.value
   
   if (sport === 'hockey') {
-    // Hockey positions - skaters vs goalies
-    return isPitchingCategory.value 
+    // Hockey positions - skaters vs goalies. Overall view shows both groups
+    // so users can filter to any position on the combined rankings.
+    if (isOverallView.value) return ['C', 'LW', 'RW', 'D', 'F', 'Util', 'G']
+    return isPitchingCategory.value
       ? ['G']  // Goalies (for goalie stats like SV%, GAA, W)
       : ['C', 'LW', 'RW', 'D', 'F', 'Util']  // Skaters
   }
-  
+
   if (sport === 'basketball') {
     return ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'Util']
   }
-  
+
   if (sport === 'football') {
     return ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'Flex']
   }
-  
-  // Baseball (default)
+
+  // Baseball (default). Overall view merges hitter and pitcher positions so
+  // the composite rankings page can be filtered to SP/RP alongside C/1B/…
+  if (isOverallView.value) return ['C', '1B', '2B', '3B', 'SS', 'OF', 'Util', 'SP', 'RP']
   return isPitchingCategory.value ? ['SP', 'RP'] : ['C', '1B', '2B', '3B', 'SS', 'OF', 'Util']
 })
 
