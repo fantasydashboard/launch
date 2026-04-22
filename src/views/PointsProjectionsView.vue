@@ -302,13 +302,26 @@
                   <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('vor')" :class="rosTablePage === 2 ? '' : 'hidden sm:table-cell'">
                     VOR <span v-if="rosSortColumn === 'vor'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
+                  <th
+                    v-if="currentSport === 'baseball'"
+                    class="px-2 py-3 text-center text-xs font-semibold uppercase w-16 cursor-pointer hover:text-yellow-400"
+                    :class="rosTablePage === 2 ? '' : 'hidden sm:table-cell'"
+                    @click="setRosSort('luck')"
+                    :title="luckHeaderTooltip"
+                  >
+                    <div class="flex items-center justify-center gap-1">
+                      Luck
+                      <span class="text-dark-textMuted/50 text-[10px]">ⓘ</span>
+                      <span v-if="rosSortColumn === 'luck'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-dark-border/30">
                 <template v-for="(player, idx) in gatedFilteredPlayers" :key="player.player_key">
                   <!-- Tier Divider Row (only when sorted by rank/score) -->
                   <tr v-if="shouldShowTierDivider(player, idx)" class="bg-dark-border/10">
-                    <td colspan="8" class="px-4 py-2">
+                    <td :colspan="currentSport === 'baseball' ? 9 : 8" class="px-4 py-2">
                       <div class="flex items-center gap-2">
                         <div class="h-px flex-1 bg-yellow-400/30"></div>
                         <span class="text-xs font-bold text-yellow-400 uppercase">Tier {{ player.tier }}</span>
@@ -369,9 +382,27 @@
                     <td class="px-2 py-3 text-center font-bold text-dark-text" :class="rosTablePage === 1 ? '' : 'hidden sm:table-cell'">{{ player.ppg?.toFixed(2) || '0' }}</td>
                     <!-- VOR: page 2 on mobile -->
                     <td class="px-2 py-3 text-center font-bold" :class="[player.vor > 0 ? 'text-green-400' : player.vor < -3 ? 'text-red-400' : 'text-dark-textMuted', rosTablePage === 2 ? '' : 'hidden sm:table-cell']">{{ player.vor >= 0 ? '+' : '' }}{{ player.vor?.toFixed(1) || '0' }}</td>
+                    <!-- Luck: page 2 on mobile (baseball only) -->
+                    <td
+                      v-if="currentSport === 'baseball'"
+                      class="px-2 py-3 text-center"
+                      :class="rosTablePage === 2 ? '' : 'hidden sm:table-cell'"
+                      :title="getPointsLuckTitle(player)"
+                    >
+                      <template v-if="getPointsLuck(player)?.severity">
+                        <span
+                          class="inline-flex items-center gap-0.5 text-xs font-bold"
+                          :class="getPointsLuck(player)?.direction === 'under' ? 'text-green-400' : 'text-red-400'"
+                        >
+                          {{ getPointsLuck(player)?.direction === 'under' ? '↑' : '↓' }}
+                          {{ getPointsLuck(player)?.formatted }}
+                        </span>
+                      </template>
+                      <span v-else class="text-xs text-dark-textMuted">-</span>
+                    </td>
                   </tr>
                 </template>
-                <tr v-if="gatedFilteredPlayers.length === 0"><td colspan="8" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
+                <tr v-if="gatedFilteredPlayers.length === 0"><td :colspan="currentSport === 'baseball' ? 9 : 8" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
               </tbody>
             </table>
             
@@ -1837,7 +1868,7 @@ import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
 import { sleeperService } from '@/services/sleeper'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
-import { loadProjectionData, type FGProjection } from '@/services/projectionService'
+import { loadProjectionData, buildPlayerMatchers, type FGProjection } from '@/services/projectionService'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { liveGamesService } from '@/services/live-games'
@@ -2454,9 +2485,13 @@ const filteredPlayers = computed(() => {
   // Apply sorting
   const col = rosSortColumn.value
   const dir = rosSortDirection.value
+  const getSortValue = (p: any): number | string => {
+    if (col === 'luck') return getPointsLuckScore(p)
+    return p[col] ?? 0
+  }
   players.sort((a, b) => {
-    let aVal = a[col] ?? 0
-    let bVal = b[col] ?? 0
+    let aVal = getSortValue(a)
+    let bVal = getSortValue(b)
     if (typeof aVal === 'string') aVal = aVal.toLowerCase()
     if (typeof bVal === 'string') bVal = bVal.toLowerCase()
     if (aVal < bVal) return dir === 'asc' ? -1 : 1
@@ -2473,6 +2508,76 @@ function setRosSort(column: string) {
     rosSortColumn.value = column
     rosSortDirection.value = column === 'rosRank' || column === 'positionRank' ? 'asc' : 'desc'
   }
+}
+
+// ─── Luck (YTD over/underperformance vs Baseball Savant xStats) ────────────
+// Points leagues don't have category columns to tint, but we can still show a
+// single signal per player: xBA vs BA for hitters, with polarity flipped for
+// pitchers (opp-BA lower than expected = pitcher getting lucky).
+
+const luckHeaderTooltip = `Luck — how far a player's YTD performance has diverged from their Baseball Savant expected stats. These "x-stats" strip out luck-driven outcomes by re-scoring each batted ball from its exit velocity and launch angle.
+
+For hitters: xBA vs actual BA.
+For pitchers: opponent xBA vs actual opponent BA (pitchers allowing a lower BA than expected are BABIP-lucky).
+
+↑ green = underperforming → positive regression likely (buy-low)
+↓ red  = overperforming → negative regression likely (sell-high)
+
+Early-season signals can be noisy — trust strong tints more after samples grow. Players without enough PAs for Savant to publish (typically <25) show "-".`
+
+function isPitcherForLuck(player: any): boolean {
+  const pos = (player.position || '').toString()
+  return pos.includes('SP') || pos.includes('RP') || pos === 'P'
+    || player._statcast?.player_type === 'pitcher'
+}
+
+interface PointsLuck { direction: 'over' | 'under' | null; severity: 'strong' | 'mild' | null; delta: number; formatted: string; actual: number; expected: number }
+
+function getPointsLuck(player: any): PointsLuck | null {
+  const sc = player?._statcast
+  if (!sc || sc.ba == null || sc.xba == null) return null
+  const rawDelta = sc.ba - sc.xba
+  const magnitude = Math.abs(rawDelta)
+  const isPit = isPitcherForLuck(player)
+
+  // Polarity: hitters overperform when actual > expected. Pitchers overperform
+  // when they hold opponents to LESS than expected BA (i.e. delta < 0).
+  const isOver = isPit ? rawDelta < 0 : rawDelta > 0
+
+  let severity: 'strong' | 'mild' | null = null
+  if (magnitude >= 0.040) severity = 'strong'
+  else if (magnitude >= 0.020) severity = 'mild'
+
+  return {
+    direction: severity ? (isOver ? 'over' : 'under') : null,
+    severity,
+    delta: rawDelta,
+    actual: sc.ba,
+    expected: sc.xba,
+    formatted: `${Math.round(magnitude * 1000)} pts`,
+  }
+}
+
+function getPointsLuckTitle(player: any): string {
+  const luck = getPointsLuck(player)
+  if (!luck) return 'No expected-stats data for this player yet'
+  const actualFmt = luck.actual.toFixed(3).replace(/^0/, '')
+  const expectedFmt = luck.expected.toFixed(3).replace(/^0/, '')
+  const isPit = isPitcherForLuck(player)
+  const statLabel = isPit ? 'Opp BA' : 'BA'
+  if (!luck.severity) return `${statLabel}: ${actualFmt} vs x${statLabel} ${expectedFmt} — in line with expected`
+  const label = luck.direction === 'over'
+    ? 'overperforming — regression likely'
+    : 'underperforming — positive regression likely'
+  return `${statLabel}: ${actualFmt} vs x${statLabel} ${expectedFmt} — ${luck.formatted}, ${label}`
+}
+
+function getPointsLuckScore(player: any): number {
+  const luck = getPointsLuck(player)
+  if (!luck || !luck.severity) return 0
+  const weight = luck.severity === 'strong' ? 2 : 1
+  const sign = luck.direction === 'under' ? 1 : -1
+  return sign * weight * Math.abs(luck.delta)
 }
 
 // Gated filtered players - show top 3 for non-premium users
@@ -3785,18 +3890,42 @@ async function loadProjections() {
       }
     })
     allPlayers.value = combined
-    
+
+    await attachStatcastToPlayers()
+
     // Debug logging
     console.log('=== Trade Analyzer Debug ===')
     console.log('myTeamKey:', myTeamKey.value)
     console.log('teamsData count:', teamsData.value.length)
     const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
     console.log('Players on my team:', myPlayers.length)
-    
+
     loadingProgress.value = { ...loadingProgress.value, currentStep: 'Calculating rankings...', currentStepName: 'Complete', completedSteps: 5 }
     recalculateRankings()
   } catch (e) { console.error('Error:', e); loadingMessage.value = 'Error loading data' }
   finally { isLoading.value = false }
+}
+
+// Attach FanGraphs + Baseball Savant data to every player in allPlayers.
+// Platform-agnostic — matches by normalized name. Used by the Luck column
+// and by the FG-points overlay. Safe to call when no baseball sport is
+// active (no-op) or when the projections tables are empty (just leaves
+// _statcast/_fgProjection unset).
+async function attachStatcastToPlayers() {
+  if (currentSport.value !== 'baseball') return
+  try {
+    const { matchFG, matchStatcast } = await buildPlayerMatchers()
+    let matched = 0
+    for (const p of allPlayers.value) {
+      const fg = matchFG(p)
+      const sc = matchStatcast(p)
+      if (fg) p._fgProjection = fg
+      if (sc) { p._statcast = sc; matched++ }
+    }
+    console.log(`[Points Statcast] ${matched}/${allPlayers.value.length} players matched to Savant data`)
+  } catch (e) {
+    console.warn('[Points Statcast] Failed to attach Savant data:', e)
+  }
 }
 
 // Sleeper version of loadProjections
@@ -3952,6 +4081,8 @@ async function loadSleeperProjections() {
     freeAgentPlayers.sort((a, b) => (b.ppg || 0) - (a.ppg || 0))
     const combined = [...allRosteredPlayers, ...freeAgentPlayers.slice(0, 150)]
     allPlayers.value = combined
+
+    await attachStatcastToPlayers()
 
     loadingProgress.value = { ...loadingProgress.value, currentStep: 'Calculating rankings...', currentStepName: 'Complete', completedSteps: 6 }
     recalculateRankings()
@@ -4351,6 +4482,8 @@ async function loadEspnProjections() {
         console.warn('[ESPN Points FG Enrichment] Failed (using ESPN projections):', e)
       }
     }
+
+    await attachStatcastToPlayers()
 
     loadingProgress.value = { ...loadingProgress.value, currentStep: 'Calculating rankings...', currentStepName: 'Complete', completedSteps: 6 }
 

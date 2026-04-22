@@ -424,6 +424,29 @@ function detectBreakouts(fg: FGProjection | null, sc: StatcastData | null): stri
   return signals
 }
 
+// Lightweight helper for views (e.g. Points rankings) that want Statcast +
+// FG data attached to players without running the full category-overlay
+// logic. Returns a matcher function callers apply per-player.
+export async function buildPlayerMatchers(): Promise<{
+  matchFG: (player: { full_name?: string; mlb_team?: string }) => FGProjection | null
+  matchStatcast: (player: { full_name?: string; mlb_team?: string }) => StatcastData | null
+}> {
+  const { projections, statcast } = await loadProjectionData()
+  const lookups = buildLookups(projections, statcast)
+  return {
+    matchFG: (p) => {
+      const name = p.full_name || ''
+      let fg = lookups.fgByNameTeam.get(makeMatchKey(name, p.mlb_team))
+      if (!fg) fg = lookups.fgByName.get(makeNameOnlyKey(name)) || null
+      return fg || null
+    },
+    matchStatcast: (p) => {
+      const name = p.full_name || ''
+      return lookups.scByName.get(makeNameOnlyKey(name)) || null
+    },
+  }
+}
+
 // Main function: enrich platform players with FanGraphs + Statcast data.
 // Accepts either the league's category objects (preferred — lets us key off
 // display_name, which is consistent across ESPN/Yahoo/Sleeper) or the legacy
