@@ -5029,8 +5029,8 @@ async function loadProjections() {
     if (currentSport.value === 'baseball') {
       try {
         loadingMessage.value = 'Loading expert projections...'
-        const catIds = displayCategories.value.map(c => c.stat_id)
-        const enrichments = await enrichPlayersWithProjections(allPlayers.value, catIds)
+        const cats = displayCategories.value.map(c => ({ stat_id: c.stat_id, display_name: c.display_name }))
+        const enrichments = await enrichPlayersWithProjections(allPlayers.value, cats)
         if (enrichments.size > 0) {
           fgEnrichments.value = enrichments
           console.log(`[FG Enrichment] ${enrichments.size} players matched to FanGraphs/Statcast data`)
@@ -5560,8 +5560,8 @@ async function loadEspnProjections() {
     if (currentSport.value === 'baseball') {
       try {
         loadingMessage.value = 'Loading expert projections...'
-        const catIds = displayCategories.value.map(c => c.stat_id)
-        const enrichments = await enrichPlayersWithProjections(allPlayers.value, catIds)
+        const cats = displayCategories.value.map(c => ({ stat_id: c.stat_id, display_name: c.display_name }))
+        const enrichments = await enrichPlayersWithProjections(allPlayers.value, cats)
         if (enrichments.size > 0) {
           fgEnrichments.value = enrichments
           console.log(`[FG Enrichment] ${enrichments.size} players matched to FanGraphs/Statcast data`)

@@ -1,8 +1,68 @@
 import { supabase } from '@/lib/supabase'
 
-// ESPN stat ID → FanGraphs projection column mapping (baseball)
+// Display-name → FanGraphs projection field. Platform-agnostic (ESPN, Yahoo,
+// Sleeper all use the same human-readable category names even though their
+// numeric stat_ids diverge). This is the preferred lookup path.
+type FGMapper = string | ((p: any) => number | null)
+
+const DISPLAY_NAME_TO_FG_BATTER: Record<string, FGMapper> = {
+  R: 'r',
+  H: 'h',
+  HR: 'hr',
+  RBI: 'rbi',
+  SB: 'sb',
+  AVG: 'avg',
+  BA: 'avg',
+  OPS: 'ops',
+  OBP: 'obp',
+  SLG: 'slg',
+  BB: 'bb',
+  K: 'so',
+  SO: 'so',
+  TB: 'tb',
+  PA: 'pa',
+  AB: 'ab',
+  '2B': (p) => p.raw_data?.['2B'] != null ? parseInt(p.raw_data['2B']) : null,
+  '3B': (p) => p.raw_data?.['3B'] != null ? parseInt(p.raw_data['3B']) : null,
+  HBP: (p) => p.raw_data?.HBP != null ? parseInt(p.raw_data.HBP) : null,
+  'R+RBI': (p) => (p.r ?? 0) + (p.rbi ?? 0),
+  XBH: (p) => {
+    const d = p.raw_data?.['2B'] != null ? parseInt(p.raw_data['2B']) : 0
+    const t = p.raw_data?.['3B'] != null ? parseInt(p.raw_data['3B']) : 0
+    return d + t + (p.hr ?? 0)
+  },
+}
+
+const DISPLAY_NAME_TO_FG_PITCHER: Record<string, FGMapper> = {
+  W: 'w',
+  L: 'l',
+  SV: 'sv',
+  HLD: 'hld',
+  HD: 'hld',
+  'SV+HLD': (p) => (p.sv ?? 0) + (p.hld ?? 0),
+  SVH: (p) => (p.sv ?? 0) + (p.hld ?? 0),
+  SVHD: (p) => (p.sv ?? 0) + (p.hld ?? 0),
+  K: 'so',
+  SO: 'so',
+  ERA: 'era',
+  WHIP: 'whip',
+  IP: 'ip',
+  GS: 'gs',
+  G: 'gp',
+  GP: 'gp',
+  'K/9': 'k9',
+  'BB/9': 'bb9',
+  'K/BB': (p) => p.raw_data?.['K/BB'] != null ? parseFloat(p.raw_data['K/BB']) : null,
+  QS: (p) => p.raw_data?.QS != null ? parseInt(p.raw_data.QS) : null,
+  BS: (p) => p.raw_data?.BS != null ? parseInt(p.raw_data.BS) : null,
+  BF: (p) => p.raw_data?.TBF != null ? parseInt(p.raw_data.TBF) : null,
+  TBF: (p) => p.raw_data?.TBF != null ? parseInt(p.raw_data.TBF) : null,
+  FIP: 'fip',
+}
+
+// Legacy ESPN stat-id → FanGraphs fallback, used only when display name misses.
 // For stats FG doesn't project, we return null and the caller falls back to ESPN values
-const ESPN_TO_FG_BATTER: Record<string, string | ((p: any) => number | null)> = {
+const ESPN_TO_FG_BATTER: Record<string, FGMapper> = {
   '0':  'ab',           // AB
   '1':  'h',            // H
   '2':  'r',            // R (batting stat_id 2 = R in some leagues)
@@ -26,7 +86,7 @@ const ESPN_TO_FG_BATTER: Record<string, string | ((p: any) => number | null)> = 
   '34': 'tb',           // TB (alternate)
 }
 
-const ESPN_TO_FG_PITCHER: Record<string, string | ((p: any) => number | null)> = {
+const ESPN_TO_FG_PITCHER: Record<string, FGMapper> = {
   '18': 'gp',           // G (pitching appearances)
   '35': 'w',            // W
   '36': 'l',            // L
@@ -193,27 +253,32 @@ function matchPlayer(
   return { fg, sc }
 }
 
-// Map FanGraphs projection to ESPN stat IDs for a player
+// Map FanGraphs projection to league stat IDs for a player. Prefers display
+// name (platform-agnostic) and falls back to the legacy ESPN stat_id mapping
+// when display_name isn't available or doesn't match a known category.
 function mapToEspnStats(
   fg: FGProjection,
-  categoryStatIds: string[]
+  categories: Array<{ stat_id: string; display_name?: string }>
 ): Record<string, number> {
   const mapped: Record<string, number> = {}
-  const mapping = fg.player_type === 'pitcher' ? ESPN_TO_FG_PITCHER : ESPN_TO_FG_BATTER
+  const isPitcher = fg.player_type === 'pitcher'
+  const byName = isPitcher ? DISPLAY_NAME_TO_FG_PITCHER : DISPLAY_NAME_TO_FG_BATTER
+  const byId = isPitcher ? ESPN_TO_FG_PITCHER : ESPN_TO_FG_BATTER
 
-  for (const statId of categoryStatIds) {
-    const mapper = mapping[statId]
+  const resolve = (mapper: FGMapper): number | null => {
+    if (typeof mapper === 'string') return (fg as any)[mapper] ?? null
+    return mapper(fg)
+  }
+
+  for (const cat of categories) {
+    const nameKey = (cat.display_name || '').toUpperCase().trim()
+    let mapper: FGMapper | undefined = nameKey ? byName[nameKey] : undefined
+    if (!mapper) mapper = byId[cat.stat_id]
     if (!mapper) continue
 
-    let value: number | null = null
-    if (typeof mapper === 'string') {
-      value = (fg as any)[mapper] ?? null
-    } else {
-      value = mapper(fg)
-    }
-
+    const value = resolve(mapper)
     if (value !== null && value !== undefined) {
-      mapped[statId] = value
+      mapped[cat.stat_id] = value
     }
   }
 
@@ -265,10 +330,13 @@ function detectBreakouts(fg: FGProjection | null, sc: StatcastData | null): stri
   return signals
 }
 
-// Main function: enrich ESPN players with FanGraphs + Statcast data
+// Main function: enrich platform players with FanGraphs + Statcast data.
+// Accepts either the league's category objects (preferred — lets us key off
+// display_name, which is consistent across ESPN/Yahoo/Sleeper) or the legacy
+// string[] of stat_ids (ESPN-only fallback).
 export async function enrichPlayersWithProjections(
   espnPlayers: any[],
-  categoryStatIds: string[]
+  categoriesOrStatIds: Array<{ stat_id: string; display_name?: string }> | string[]
 ): Promise<Map<string, EnrichedProjection>> {
   const { projections, statcast } = await loadProjectionData()
 
@@ -276,6 +344,11 @@ export async function enrichPlayersWithProjections(
     console.warn('[ProjectionService] No FanGraphs data available — using ESPN projections only')
     return new Map()
   }
+
+  const categories: Array<{ stat_id: string; display_name?: string }> =
+    Array.isArray(categoriesOrStatIds) && typeof categoriesOrStatIds[0] === 'string'
+      ? (categoriesOrStatIds as string[]).map(id => ({ stat_id: id }))
+      : (categoriesOrStatIds as Array<{ stat_id: string; display_name?: string }>)
 
   const lookups = buildLookups(projections, statcast)
   const enriched = new Map<string, EnrichedProjection>()
@@ -292,7 +365,7 @@ export async function enrichPlayersWithProjections(
       enriched.set(playerKey, {
         fgProjection: fg,
         statcast: sc,
-        mappedStats: mapToEspnStats(fg, categoryStatIds),
+        mappedStats: mapToEspnStats(fg, categories),
         breakoutSignals: detectBreakouts(fg, sc),
       })
     } else {
@@ -300,7 +373,7 @@ export async function enrichPlayersWithProjections(
     }
   }
 
-  console.log(`[ProjectionService] Matched ${matched}/${matched + unmatched} ESPN players to FanGraphs projections`)
+  console.log(`[ProjectionService] Matched ${matched}/${matched + unmatched} players to FanGraphs projections`)
 
   return enriched
 }
