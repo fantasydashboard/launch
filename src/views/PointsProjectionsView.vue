@@ -1868,7 +1868,7 @@ import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
 import { sleeperService } from '@/services/sleeper'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
-import { loadProjectionData, buildPlayerMatchers, type FGProjection } from '@/services/projectionService'
+import { loadProjectionData, buildPlayerMatchers, computePointsFromFG, type FGProjection } from '@/services/projectionService'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { liveGamesService } from '@/services/live-games'
@@ -3892,6 +3892,7 @@ async function loadProjections() {
     allPlayers.value = combined
 
     await attachStatcastToPlayers()
+    await applyFGPointsOverlayYahoo(leagueKey)
 
     // Debug logging
     console.log('=== Trade Analyzer Debug ===')
@@ -3925,6 +3926,67 @@ async function attachStatcastToPlayers() {
     console.log(`[Points Statcast] ${matched}/${allPlayers.value.length} players matched to Savant data`)
   } catch (e) {
     console.warn('[Points Statcast] Failed to attach Savant data:', e)
+  }
+}
+
+// Replace Yahoo's YTD-weighted total_points/ppg with FG-projected ROS totals
+// computed from the league's actual scoring rules. Without this step, Yahoo
+// points-league rankings are dominated by hot 3-week starts (Sal Stewart,
+// Ben Rice-style outliers) instead of reflecting projected ROS production.
+async function applyFGPointsOverlayYahoo(leagueKey: string) {
+  if (currentSport.value !== 'baseball') return
+  try {
+    const settings = await yahooService.getLeagueScoringSettings(leagueKey)
+    if (!settings) {
+      console.warn('[Yahoo FG Points] No scoring settings returned')
+      return
+    }
+
+    // Build Yahoo stat_id → display_name lookup from stat_categories
+    const idToName = new Map<string, string>()
+    for (const entry of settings.stat_categories || []) {
+      const s = entry?.stat || entry
+      const id = s?.stat_id ?? s?.id
+      if (id != null) idToName.set(String(id), (s?.display_name || s?.name || '').toString())
+    }
+
+    // Collapse stat_modifiers (Map or plain object) into { displayName: pts }
+    const scoringByName: Record<string, number> = {}
+    const rawModifiers: Array<[string, number]> = []
+    const mods = settings.stat_modifiers
+    if (mods instanceof Map) {
+      for (const [id, val] of mods.entries()) rawModifiers.push([String(id), Number(val) || 0])
+    } else if (mods && typeof mods === 'object') {
+      for (const [id, val] of Object.entries(mods as Record<string, any>)) {
+        rawModifiers.push([String(id), Number(val) || 0])
+      }
+    }
+    for (const [id, pts] of rawModifiers) {
+      const name = idToName.get(id)
+      if (name && pts) scoringByName[name.toUpperCase()] = pts
+    }
+    if (Object.keys(scoringByName).length === 0) {
+      console.warn('[Yahoo FG Points] Built scoring map is empty — leaving Yahoo totals in place')
+      return
+    }
+    console.log('[Yahoo FG Points] Scoring map:', scoringByName)
+
+    const GAMES_IN_SEASON = 162
+    let enriched = 0
+    for (const p of allPlayers.value) {
+      const fg = p._fgProjection as FGProjection | undefined
+      if (!fg) continue
+      const total = computePointsFromFG(fg, scoringByName)
+      if (!total) continue
+      p.total_points = total
+      const projGames = (fg as any).g || (fg as any).gp || (fg as any).gs || GAMES_IN_SEASON
+      p.ppg = total / Math.max(projGames, 1)
+      p._dataSource = 'fangraphs'
+      enriched++
+    }
+    console.log(`[Yahoo FG Points] Enriched ${enriched}/${allPlayers.value.length} players with FG-projected totals`)
+  } catch (e) {
+    console.warn('[Yahoo FG Points] Failed:', e)
   }
 }
 

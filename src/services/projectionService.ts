@@ -424,6 +424,34 @@ function detectBreakouts(fg: FGProjection | null, sc: StatcastData | null): stri
   return signals
 }
 
+// Compute a projected total-points value for a player from their FG projection
+// and a league's scoring rules. Scoring is passed keyed by category display
+// name (R, HR, SB, K, ERA, …) to stay platform-agnostic; the caller is
+// responsible for translating Yahoo/Sleeper/ESPN stat_ids → display names
+// using league settings.
+//
+// Returns 0 when no scored categories map to the player's type — callers
+// should treat that as "skip this player, no FG overlay."
+export function computePointsFromFG(
+  fg: FGProjection,
+  scoringByDisplayName: Record<string, number>
+): number {
+  const isPit = fg.player_type === 'pitcher'
+  const mapping = isPit ? DISPLAY_NAME_TO_FG_PITCHER : DISPLAY_NAME_TO_FG_BATTER
+  let total = 0
+  let hits = 0
+  for (const [rawName, pts] of Object.entries(scoringByDisplayName)) {
+    if (!pts) continue
+    const mapper = mapping[rawName.toUpperCase().trim()]
+    if (!mapper) continue
+    const val = typeof mapper === 'string' ? (fg as any)[mapper] : mapper(fg)
+    if (val == null) continue
+    total += pts * val
+    hits++
+  }
+  return hits > 0 ? total : 0
+}
+
 // Lightweight helper for views (e.g. Points rankings) that want Statcast +
 // FG data attached to players without running the full category-overlay
 // logic. Returns a matcher function callers apply per-player.
