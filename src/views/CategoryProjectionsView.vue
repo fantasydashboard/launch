@@ -4729,11 +4729,7 @@ function getOverallLuck(player: any): LuckDelta | null {
   if (isPit) {
     const eraCat = displayCategories.value.find(c => (c.display_name || '').toUpperCase() === 'ERA')
     const ytdEra = eraCat ? player._originalStats?.[eraCat.stat_id] : null
-    const eraLuck = computeLuck('ERA', ytdEra, sc)
-    if (eraLuck) return eraLuck
-    // Fallback: opponent-BA vs expected opponent-BA (BABIP luck proxy)
-    if (sc.ba != null && sc.xba != null) return computeLuck('AVG', sc.ba, sc)
-    return null
+    return computeLuck('ERA', ytdEra, sc)
   }
 
   // Hitters: statcast has both ba and xba in the same row — use them directly.

@@ -369,9 +369,12 @@ export function computeLuck(
     direction = isOver ? 'over' : 'under'
   }
 
+  // Unsigned magnitude — the caller pairs this with a direction arrow so the
+  // sign is already conveyed. "+12" next to ↑ reads as double-signalling.
+  const magDisplay = Math.abs(rawDelta)
   const formatted = cfg.unit === 'runs'
-    ? `${rawDelta >= 0 ? '+' : ''}${rawDelta.toFixed(2)}`
-    : `${rawDelta >= 0 ? '+' : ''}${Math.round(rawDelta * 1000)} pts`
+    ? magDisplay.toFixed(2)
+    : `${Math.round(magDisplay * 1000)} pts`
 
   return { direction, severity, delta: rawDelta, actual, expected, formatted }
 }
