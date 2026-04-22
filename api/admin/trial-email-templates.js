@@ -544,7 +544,6 @@ In a <strong style="color:#e5e7eb;">points league</strong>, picks are graded aga
 <tr><td style="background:#080a10;padding:14px 28px;border-top:1px solid #1e2130;text-align:center;font-size:11px;color:#374151;">ultimatefantasydashboard.com &nbsp;&middot;&nbsp; <a href="{{{RESEND_UNSUBSCRIBE_URL}}}" style="color:#374151;text-decoration:none;">Unsubscribe</a></td></tr>
 </table></td></tr></table></body></html>`,
   },
-}
 
   trial_reengagement: {
     subject: "Your fantasy league has 3 weeks of data waiting \u26be",

@@ -196,6 +196,9 @@ export default async function handler(req, res) {
           results.sent++
           console.log(`[send-trial-emails] Sent ${emailId} to ${profile.email}`)
 
+          // At most one drip email per user per cron run — backlog catches up 1/day.
+          if (!welcomeOnlyUserId) break
+
         } catch (sendErr) {
           console.error(`[send-trial-emails] Fetch error for ${profile.email} (${emailId}):`, sendErr)
           results.errors.push({ email: profile.email, emailId, error: sendErr.message || 'Network error' })
