@@ -1561,8 +1561,18 @@ export class YahooFantasyService {
     // Check cache first - settings rarely change
     const cached = cache.get<any>(CACHE_KEYS.YAHOO_SETTINGS, leagueKey)
     if (cached) {
-      console.log(`[Cache HIT] Scoring settings for ${leagueKey}`)
-      return cached
+      // Older cache entries stored stat_modifiers as a Map, which JSON-
+      // serialized down to `{}` — every cache hit after that returned empty
+      // modifiers. Only points leagues are supposed to have modifiers, so
+      // when we see a points league with zero of them, treat it as stale.
+      const mods = cached.stat_modifiers
+      const hasMods = mods && typeof mods === 'object' && Object.keys(mods).length > 0
+      const isPointsLeague = cached.scoring_type === 'headpoint' || cached.scoring_type === 'point'
+      if (!isPointsLeague || hasMods) {
+        console.log(`[Cache HIT] Scoring settings for ${leagueKey}`)
+        return cached
+      }
+      console.log(`[Cache STALE] Scoring settings for ${leagueKey} has empty stat_modifiers for a points league — refetching`)
     }
     
     try {
@@ -1575,15 +1585,17 @@ export class YahooFantasyService {
       // Extract stat categories and their point values
       const statCategories = settings?.stat_categories?.stats || []
       const statModifiers = settings?.stat_modifiers?.stats || []
-      
-      // Build a map of stat_id to point value
-      const scoringMap = new Map<string, number>()
+
+      // Build a stat_id → point value map. Stored as a plain object because
+      // this settings blob gets JSON-serialized into the cache, and JSON
+      // turns a Map into {} (silently dropping every entry on any cache hit).
+      const scoringMap: Record<string, number> = {}
       for (const mod of statModifiers) {
-        if (mod?.stat) {
-          scoringMap.set(mod.stat.stat_id, parseFloat(mod.stat.value || '0'))
+        if (mod?.stat?.stat_id != null) {
+          scoringMap[String(mod.stat.stat_id)] = parseFloat(mod.stat.value ?? '0')
         }
       }
-      
+
       const result = {
         scoring_type: settings?.scoring_type,
         stat_categories: statCategories,
