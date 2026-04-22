@@ -285,6 +285,83 @@ function mapToEspnStats(
   return mapped
 }
 
+// ─── Luck / Regression analysis ────────────────────────────────────────────
+// Compares a player's YTD actual rate stat against Baseball Savant's
+// expected version to flag likely regression candidates.
+//   direction: 'over'  = actual > expected (due to regress down — sell high)
+//              'under' = actual < expected (due to improve — buy low)
+//   severity:  'strong' / 'mild' / null — based on how far from expected
+
+export type LuckDirection = 'over' | 'under' | null
+export type LuckSeverity = 'strong' | 'mild' | null
+
+export interface LuckDelta {
+  direction: LuckDirection
+  severity: LuckSeverity
+  delta: number           // signed: actual - expected (sign of over/under depends on stat polarity)
+  actual: number
+  expected: number
+  formatted: string       // "+24 pts", "-0.42", etc.
+}
+
+// Per-category thresholds for YTD luck detection. Keyed by uppercased
+// display name. 'lowerIsBetter' flips the over/under interpretation so
+// ERA < xERA becomes "overperforming" (lucky) rather than "underperforming."
+const LUCK_CONFIG: Record<string, {
+  xField: keyof StatcastData | 'xops'
+  mild: number; strong: number
+  lowerIsBetter?: boolean
+  unit: 'points' | 'runs'
+}> = {
+  AVG:  { xField: 'xba',   mild: 0.020, strong: 0.040, unit: 'points' },
+  BA:   { xField: 'xba',   mild: 0.020, strong: 0.040, unit: 'points' },
+  OBP:  { xField: 'xobp',  mild: 0.020, strong: 0.040, unit: 'points' },
+  SLG:  { xField: 'xslg',  mild: 0.050, strong: 0.100, unit: 'points' },
+  OPS:  { xField: 'xops',  mild: 0.050, strong: 0.100, unit: 'points' },
+  ISO:  { xField: 'xiso',  mild: 0.040, strong: 0.080, unit: 'points' },
+  ERA:  { xField: 'xera',  mild: 0.40,  strong: 0.80,  unit: 'runs', lowerIsBetter: true },
+}
+
+export function computeLuck(
+  displayName: string | undefined,
+  actualRaw: number | string | null | undefined,
+  statcast: StatcastData | null | undefined
+): LuckDelta | null {
+  if (!displayName || !statcast) return null
+  const cfg = LUCK_CONFIG[displayName.toUpperCase().trim()]
+  if (!cfg) return null
+
+  const actual = typeof actualRaw === 'string' ? parseFloat(actualRaw) : actualRaw
+  if (actual == null || Number.isNaN(actual)) return null
+
+  // xOPS isn't a direct Savant field — derive from xOBP + xSLG
+  const expected = cfg.xField === 'xops'
+    ? (statcast.xobp != null && statcast.xslg != null ? statcast.xobp + statcast.xslg : null)
+    : (statcast[cfg.xField as keyof StatcastData] as number | undefined)
+  if (expected == null) return null
+
+  const rawDelta = actual - expected
+  const magnitude = Math.abs(rawDelta)
+
+  let severity: LuckSeverity = null
+  if (magnitude >= cfg.strong) severity = 'strong'
+  else if (magnitude >= cfg.mild) severity = 'mild'
+
+  let direction: LuckDirection = null
+  if (severity) {
+    // For positive stats: actual > expected means overperforming (lucky).
+    // For lower-is-better stats (ERA): actual < expected means overperforming.
+    const isOver = cfg.lowerIsBetter ? rawDelta < 0 : rawDelta > 0
+    direction = isOver ? 'over' : 'under'
+  }
+
+  const formatted = cfg.unit === 'runs'
+    ? `${rawDelta >= 0 ? '+' : ''}${rawDelta.toFixed(2)}`
+    : `${rawDelta >= 0 ? '+' : ''}${Math.round(rawDelta * 1000)} pts`
+
+  return { direction, severity, delta: rawDelta, actual, expected, formatted }
+}
+
 // Detect breakout signals by comparing Statcast actuals to FG projection
 function detectBreakouts(fg: FGProjection | null, sc: StatcastData | null): string[] {
   if (!fg || !sc) return []

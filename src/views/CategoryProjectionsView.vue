@@ -318,6 +318,18 @@
                         <span v-if="sortColumn === cat.stat_id" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                       </div>
                     </th>
+                    <!-- Luck column: YTD actual vs Statcast expected (xBA/xERA etc) -->
+                    <th
+                      class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-yellow-400 min-w-[60px]"
+                      :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'"
+                      @click="toggleSort('luck')"
+                      title="YTD luck vs Baseball Savant expected stats. ↑ green = unlucky so far (buy-low). ↓ red = lucky so far (sell-high)."
+                    >
+                      <div class="flex items-center justify-center gap-0.5">
+                        Luck
+                        <span v-if="sortColumn === 'luck'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                      </div>
+                    </th>
                   </template>
                   
                   <!-- CATEGORY VIEW: Show ROS Proj / Current / Per Game — page 1 on mobile -->
@@ -343,7 +355,7 @@
                 <template v-for="(player, idx) in gatedSortedPlayers" :key="player.player_key">
                   <!-- Tier Break -->
                   <tr v-if="showTierBreak(player, idx)" class="bg-dark-border/10">
-                    <td :colspan="isOverallView ? displayCategories.length + 8 : 7" class="px-4 py-2">
+                    <td :colspan="isOverallView ? displayCategories.length + 9 : 7" class="px-4 py-2">
                       <div class="flex items-center gap-2">
                         <div class="h-px flex-1 bg-yellow-400/30"></div>
                         <span class="text-xs font-bold text-yellow-400 uppercase tracking-wider">{{ getTierLabel(player.tier) }}</span>
@@ -421,14 +433,27 @@
                       <!-- Divider -->
                       <td class="w-px px-0 py-3 hidden sm:table-cell" :class="catTablePage === 1 ? '!table-cell' : ''"><div class="w-px h-full bg-dark-border/40 min-h-[20px]"></div></td>
                       <!-- Batting stats -->
-                      <td v-for="cat in hittingCategories" :key="cat.stat_id" class="px-2 py-3 text-center" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'">
-                        <span class="text-sm font-medium text-dark-text">{{ formatCategoryStat(player, cat.stat_id) }}</span>
+                      <td v-for="cat in hittingCategories" :key="cat.stat_id" class="px-2 py-3 text-center" :class="[catTablePage === 1 ? '' : 'hidden sm:table-cell', getCellLuckClass(player, cat)]" :title="getCellLuckTitle(player, cat)">
+                        <span class="text-sm font-medium">{{ formatCategoryStat(player, cat.stat_id) }}</span>
                       </td>
                       <!-- Divider -->
                       <td class="w-px px-0 py-3 hidden sm:table-cell" :class="catTablePage === 1 ? '!table-cell' : ''"><div class="w-px h-full bg-dark-border/40 min-h-[20px]"></div></td>
                       <!-- Pitching stats -->
-                      <td v-for="cat in pitchingCategories" :key="cat.stat_id" class="px-2 py-3 text-center" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'">
-                        <span class="text-sm font-medium text-dark-text">{{ formatCategoryStat(player, cat.stat_id) }}</span>
+                      <td v-for="cat in pitchingCategories" :key="cat.stat_id" class="px-2 py-3 text-center" :class="[catTablePage === 1 ? '' : 'hidden sm:table-cell', getCellLuckClass(player, cat)]" :title="getCellLuckTitle(player, cat)">
+                        <span class="text-sm font-medium">{{ formatCategoryStat(player, cat.stat_id) }}</span>
+                      </td>
+                      <!-- Luck indicator -->
+                      <td class="px-2 py-3 text-center" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'" :title="getOverallLuckTitle(player)">
+                        <template v-if="getOverallLuck(player)?.severity">
+                          <span
+                            class="inline-flex items-center gap-0.5 text-xs font-bold"
+                            :class="getOverallLuck(player)?.direction === 'under' ? 'text-green-400' : 'text-red-400'"
+                          >
+                            {{ getOverallLuck(player)?.direction === 'under' ? '↑' : '↓' }}
+                            {{ getOverallLuck(player)?.formatted }}
+                          </span>
+                        </template>
+                        <span v-else class="text-xs text-dark-textMuted">-</span>
                       </td>
                     </template>
                     
@@ -452,7 +477,7 @@
                     </td>
                   </tr>
                 </template>
-                <tr v-if="gatedSortedPlayers.length === 0"><td :colspan="isOverallView ? displayCategories.length + 8 : 7" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
+                <tr v-if="gatedSortedPlayers.length === 0"><td :colspan="isOverallView ? displayCategories.length + 9 : 7" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
               </tbody>
             </table>
             
@@ -3164,7 +3189,7 @@ import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import CategoryRankingCustomizer from '@/components/CategoryRankingCustomizer.vue'
 import { liveGamesService, type LiveGame } from '@/services/live-games'
-import { enrichPlayersWithProjections, type EnrichedProjection } from '@/services/projectionService'
+import { enrichPlayersWithProjections, computeLuck, type EnrichedProjection, type LuckDelta } from '@/services/projectionService'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { 
   DEFAULT_CATEGORY_ROS_FACTORS, 
@@ -4222,7 +4247,8 @@ const sortedPlayers = computed(() => {
     case 'value': players.sort((a, b) => dir * ((a.overallValue || 0) - (b.overallValue || 0))); break
     case 'percentOwned': players.sort((a, b) => dir * ((a.percentOwned || a.percent_owned || 0) - (b.percentOwned || b.percent_owned || 0))); break
     case 'percentChange': players.sort((a, b) => dir * ((a.percentChange || a.percent_change || 0) - (b.percentChange || b.percent_change || 0))); break
-    case 'rank': default: 
+    case 'luck': players.sort((a, b) => dir * (getOverallLuckScore(a) - getOverallLuckScore(b))); break
+    case 'rank': default:
       // Check if sorting by a category stat_id (for overall view)
       if (sortColumn.value !== 'rank') {
         const statId = sortColumn.value
@@ -4646,6 +4672,81 @@ function formatStatValue(value: number | undefined, decimals: number = 1): strin
   }
   if (Number.isInteger(value)) return value.toString()
   return value.toFixed(decimals) 
+}
+
+// Compute YTD over/underperformance for a single category cell. Only defined
+// for rate stats that have a Baseball Savant expected counterpart (AVG/OBP/
+// SLG/OPS/ISO/ERA). Returns null for counting stats (R, HR, RBI, SB, K, W…).
+function getCellLuck(player: any, cat: any): LuckDelta | null {
+  const sc = player?._statcast
+  if (!sc || !cat?.display_name) return null
+  const actual = player._originalStats?.[cat.stat_id]
+  return computeLuck(cat.display_name, actual, sc)
+}
+
+function getCellLuckClass(player: any, cat: any): string {
+  const luck = getCellLuck(player, cat)
+  if (!luck || !luck.severity) return 'text-dark-text'
+  // 'over' = lucky / likely regress down → red
+  // 'under' = unlucky / likely improve → green
+  if (luck.direction === 'over') {
+    return luck.severity === 'strong' ? 'text-red-300 bg-red-500/15' : 'text-red-300/90 bg-red-500/5'
+  }
+  return luck.severity === 'strong' ? 'text-green-300 bg-green-500/15' : 'text-green-300/90 bg-green-500/5'
+}
+
+function getCellLuckTitle(player: any, cat: any): string {
+  const luck = getCellLuck(player, cat)
+  if (!luck) return ''
+  const actualFmt = cat.display_name === 'ERA' ? luck.actual.toFixed(2) : luck.actual.toFixed(3).replace(/^0/, '')
+  const expectedFmt = cat.display_name === 'ERA' ? luck.expected.toFixed(2) : luck.expected.toFixed(3).replace(/^0/, '')
+  const label = luck.direction === 'over' ? 'overperforming (due to regress)' : luck.direction === 'under' ? 'underperforming (due to improve)' : 'in line with expected'
+  return `${cat.display_name}: ${actualFmt} vs x${cat.display_name} ${expectedFmt} — ${luck.formatted}, ${label}`
+}
+
+// Single composite luck signal for the Overall view's Luck column. Hitters
+// use xBA vs AVG (the most universally available rate stat); pitchers use
+// xERA vs ERA. Returns null if no comparable category / no statcast data.
+function getOverallLuck(player: any): LuckDelta | null {
+  const sc = player?._statcast
+  if (!sc) return null
+  const cats = displayCategories.value
+  const isPit = sc.player_type === 'pitcher' || isPitcher(player)
+
+  if (isPit) {
+    const eraCat = cats.find(c => (c.display_name || '').toUpperCase() === 'ERA')
+    if (!eraCat) return null
+    return computeLuck('ERA', player._originalStats?.[eraCat.stat_id], sc)
+  }
+
+  // Hitters: prefer AVG, fall back to OPS, then SLG, then OBP.
+  for (const name of ['AVG', 'BA', 'OPS', 'SLG', 'OBP']) {
+    const c = cats.find(cc => (cc.display_name || '').toUpperCase() === name)
+    if (!c) continue
+    const luck = computeLuck(name, player._originalStats?.[c.stat_id], sc)
+    if (luck) return luck
+  }
+  return null
+}
+
+// Signed score for sorting: positive = buy-low, negative = sell-high, 0 neutral
+function getOverallLuckScore(player: any): number {
+  const luck = getOverallLuck(player)
+  if (!luck || !luck.severity) return 0
+  // Normalize by severity so strong signals sort outside mild ones
+  const weight = luck.severity === 'strong' ? 2 : 1
+  const sign = luck.direction === 'under' ? 1 : -1
+  return sign * weight * Math.abs(luck.delta)
+}
+
+function getOverallLuckTitle(player: any): string {
+  const luck = getOverallLuck(player)
+  if (!luck) return 'No expected-stats data for this player yet'
+  if (!luck.severity) return `In line with expected (${luck.formatted})`
+  const label = luck.direction === 'over'
+    ? 'overperforming YTD — projections expect regression down'
+    : 'underperforming YTD — projections expect improvement'
+  return `${luck.formatted} vs expected — ${label}`
 }
 
 function formatCategoryStat(player: any, statId: string): string {
