@@ -323,10 +323,11 @@
                       class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-yellow-400 min-w-[60px]"
                       :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'"
                       @click="toggleSort('luck')"
-                      title="YTD luck vs Baseball Savant expected stats. ↑ green = unlucky so far (buy-low). ↓ red = lucky so far (sell-high)."
+                      :title="luckHeaderTooltip"
                     >
-                      <div class="flex items-center justify-center gap-0.5">
+                      <div class="flex items-center justify-center gap-1">
                         Luck
+                        <span class="text-dark-textMuted/50 text-[10px]">ⓘ</span>
                         <span v-if="sortColumn === 'luck'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                       </div>
                     </th>
@@ -4745,6 +4746,15 @@ function getOverallLuckScore(player: any): number {
   const sign = luck.direction === 'under' ? 1 : -1
   return sign * weight * Math.abs(luck.delta)
 }
+
+const luckHeaderTooltip = `Luck — how far a player's YTD performance has diverged from their Baseball Savant expected stats (xBA for hitters, xERA for pitchers). These "x-stats" strip out luck-driven outcomes by re-scoring each batted ball from its exit velocity and launch angle.
+
+↑ green = underperforming their expected stats → positive regression likely (buy-low)
+↓ red  = overperforming their expected stats → negative regression likely (sell-high)
+
+Magnitude shows the gap: ~20 pts AVG or ~0.40 ERA is a mild signal; ~40 pts / ~0.80 ERA is strong. Counting stats (R, HR, RBI, SB, K, W, SV) aren't luck-measurable and stay uncolored.
+
+Early-season signals can be noisy — trust strong tints more after samples grow.`
 
 function getOverallLuckTitle(player: any): string {
   const luck = getOverallLuck(player)
