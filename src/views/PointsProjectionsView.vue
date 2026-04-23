@@ -2504,7 +2504,15 @@ const filteredPlayers = computed(() => {
     if (aVal > bVal) return dir === 'asc' ? 1 : -1
     return 0
   })
-  return players
+  // Dedupe by player_key — upstream data has produced duplicates after
+  // filter toggling in both ESPN and Yahoo points leagues.
+  const seen = new Set<string>()
+  return players.filter(p => {
+    const k = p.player_key || p.player_id?.toString() || p.full_name || ''
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
 })
 
 function setRosSort(column: string) {

@@ -7616,18 +7616,29 @@ const allPlayersWithValues = computed(() => {
 
   const zSum = (player: any, baselines: CatBase[], volFn: (p: any) => number, volThreshold: number) => {
     const playerVol = volFn(player)
-    // Sanity gate: a "projection" with zero volume isn't a projection — it's a
-    // ghost row. FG's depth-chart file occasionally carries minor-league or
-    // stale entries with nonsense counting stats (e.g. W=15 for a pitcher with
-    // IP=0). Letting those through the z-sum clamps to +3 on wins and rockets
-    // randos above Mason Miller. Treating them as unrated (sum=0) parks them
-    // mid-pack where they belong until real projections arrive.
-    if (playerVol === 0) return 0
 
-    // Volume ratio dampens z-contribution for players below the threshold. A
-    // 10-IP reliever's zero blown saves is less meaningful than a 60-IP
-    // reliever's zero blown saves; the former has simply had fewer chances.
-    const volRatio = Math.min(1, playerVol / volThreshold)
+    // Ghost-row sanity check: a player who has *no* counting stats at all is
+    // a stale/phantom projection (FG's depth-chart occasionally carries
+    // minor-league rows for MLB players with 0 IP but W=15). Treat them as
+    // unrated (sum=0) so they park mid-pack instead of clamping to +3 on
+    // wins and leapfrogging real producers.
+    //
+    // We can't rely on playerVol alone — some ESPN leagues store IP/AB under
+    // stat_ids we don't know about, so volFn returns 0 even for real players.
+    // Instead, check whether *any* non-ratio counting category has a real
+    // positive value. If yes, the player is real; process normally.
+    const hasAnyCountingStats = baselines.some(b => {
+      if (b.isRatio) return false
+      const v = parseFloat(player.stats?.[b.statId] || 0) || 0
+      return v > 0
+    })
+    if (!hasAnyCountingStats) return 0
+
+    // Volume ratio dampens z-contribution for players below the threshold.
+    // Falls back to 1 when volFn can't read the volume stat (rather than 0,
+    // which would null out the whole calculation for real players whose
+    // league's volume stat_id isn't in our lookup list).
+    const volRatio = playerVol > 0 ? Math.min(1, playerVol / volThreshold) : 1
 
     let sum = 0
     for (const b of baselines) {
