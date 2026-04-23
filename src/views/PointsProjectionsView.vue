@@ -4382,6 +4382,10 @@ async function loadEspnProjections() {
           scoringMap[item.statId] = item.pointsOverride ?? item.points ?? 0
         }
         console.log('[ESPN Points Projections] Scoring map loaded:', Object.keys(scoringMap).length, 'stats')
+        // Dump the full map so we can see every stat_id and its point value.
+        // Helps identify which stat_ids this league uses for which categories.
+        const mapDump = Object.entries(scoringMap).map(([id, pts]) => `${id}:${pts}`).join(', ')
+        console.log(`[ESPN Points Projections] Full scoringMap: [${mapDump}]`)
       }
     } catch (e) {
       console.log('[ESPN Points Projections] Could not load scoring settings:', e)
@@ -4576,12 +4580,15 @@ async function loadEspnProjections() {
             if (!fgByName.has(key)) fgByName.set(key, fg)
           }
 
-          // ESPN treats stat_ids 18 and 35-99 as pitching stats; everything
-          // else (0-17, 19-34) is batting. We use this to filter the scoring
-          // map so we only process stat_ids relevant to each player's side.
-          const ESPN_PITCHER_STAT_IDS = new Set([18, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 77, 78, 80, 83, 99])
-          const isPitchingStatId = (id: number) => ESPN_PITCHER_STAT_IDS.has(id)
-
+          // ESPN leagues vary wildly in which stat_ids they use for which
+          // categories — some score pitcher Wins at stat_id 3, others at 35.
+          // Rather than guess, we provide mappings for every FG field at BOTH
+          // common stat_id ranges and let the league's scoringMap pick the
+          // ones it actually scores. This works because a zero-value
+          // scoringMap entry contributes nothing, so "unused" mappings are
+          // harmless. We keep separate batter/pitcher tables so stat_id 3
+          // maps to fg.hr for a batter (HR) and fg.w for a pitcher (Wins)
+          // without conflict.
           const fgBatterFields: Record<number, string | ((fg: any) => number | null)> = {
             0: 'ab', 1: 'h', 2: 'r', 3: 'hr', 4: 'rbi', 5: 'sb', 6: 'bb', 7: 'so',
             8: 'ops', 9: 'obp', 10: 'slg', 11: 'avg',
@@ -4590,32 +4597,27 @@ async function loadEspnProjections() {
             17: 'pa', 19: 'tb', 23: 'rbi',
             25: (fg) => fg.raw_data?.HBP != null ? parseInt(fg.raw_data.HBP) : null,
             27: 'so',
-            // Additional batter stats seen in custom ESPN configs
-            20: (fg) => {  // XBH = 2B + 3B + HR
-              const d = fg.raw_data?.['2B'] != null ? parseInt(fg.raw_data['2B']) : 0
-              const t = fg.raw_data?.['3B'] != null ? parseInt(fg.raw_data['3B']) : 0
-              return d + t + (fg.hr ?? 0)
-            },
-            21: 'r',   // guess: R bonus in custom configs
-            34: 'tb',  // guess: TB scoring via alt ID
           }
           const fgPitcherFields: Record<number, string | ((fg: any) => number | null)> = {
-            // Volume / counting
+            // Dual conventions — some ESPN leagues put pitcher counting at
+            // low IDs (3-10), others at high IDs (35+). We register under
+            // both so whichever convention the user's league uses gets
+            // picked up. Since each stat_id appears only once in the
+            // league's scoringMap with its point value, only the active
+            // IDs contribute.
+            3: 'w',   // some leagues: Wins
+            4: 'ip',  // some leagues: IP
+            5: 'sv',  // some leagues: Saves
+            8: 'so',  // some leagues: K
+            10: 'hld', // some leagues: Holds (0.5 weight matches this)
+            27: 'l',  // some leagues: Losses (-1 matches)
+            // Standard convention (most ESPN leagues)
             18: 'gp', 35: 'w', 36: 'l', 37: 'sv', 38: 'hld', 39: 'ip', 41: 'ip',
             43: 'so', 53: 'gs',
-            // Rate stats
             47: 'era', 48: 'whip',
-            // Pitcher negatives
             33: 'er', 34: 'h',
             42: (fg) => fg.raw_data?.HBP != null ? parseInt(fg.raw_data.HBP) : null,
             44: 'hr', 45: 'bb', 46: 'bb',
-            // Additional pitcher stats seen in custom ESPN configs
-            54: 'er',   // alt ID for earned runs
-            58: 'l',    // alt penalty ID (loss-like)
-            60: (fg) => fg.raw_data?.QS != null ? parseInt(fg.raw_data.QS) : null,  // QS via alt ID
-            // 65 is likely a no-hitter/perfect-game bonus; FG doesn't project
-            // rare events, so we leave unmapped (negligible ROS impact).
-            // Extended
             57: (fg) => fg.raw_data?.BS != null ? parseInt(fg.raw_data.BS) : null,
             63: (fg) => fg.raw_data?.QS != null ? parseInt(fg.raw_data.QS) : null,
             67: (fg) => fg.raw_data?.TBF != null ? parseInt(fg.raw_data.TBF) : null,
@@ -4641,12 +4643,6 @@ async function loadEspnProjections() {
             let mappedAny = false
             for (const [statIdNum, pts] of Object.entries(scoringMap)) {
               const statId = parseInt(statIdNum)
-              // Skip stats that belong to the OTHER side. A pitcher shouldn't
-              // get credit for batter HR scoring and vice versa; without this
-              // filter, the "unmapped" diagnostic gets polluted with stats
-              // that legitimately don't apply.
-              if (isPit && !isPitchingStatId(statId)) continue
-              if (!isPit && isPitchingStatId(statId)) continue
               const mapper = fields[statId]
               if (!mapper) {
                 if (pts !== 0) (isPit ? unmappedPitcherIds : unmappedBatterIds).add(statId)
