@@ -4187,12 +4187,16 @@ const categoryRankedPlayers = computed(() => {
       overallValue += (catScarcity * 50) * ((weights.categoryScarcity || 0) / 100 * normFactor)
     }
     
-    // Apply injury penalty
+    // ROS-scaled injury penalty (see allPlayersWithValues for rationale).
     const injury = getInjuryInfo(p)
     if (injury) {
-      overallValue = overallValue * (1 - injury.severity)
+      let rosSeverity = 0
+      if (injury.severity >= 1.0) rosSeverity = 1.0
+      else if (injury.severity >= 0.6) rosSeverity = 0.3
+      else if (injury.severity >= 0.4) rosSeverity = 0.1
+      overallValue = overallValue * (1 - rosSeverity)
     }
-    
+
     return { ...p, tier, categoryRank: index + 1, overallValue: Math.round(overallValue * 10) / 10, categoriesContributing, scarcityScore: Math.round(scarcityScore) }
   })
   return players
@@ -7671,9 +7675,20 @@ const allPlayersWithValues = computed(() => {
       overallValue += 2
     }
 
-    // Injury penalty
+    // ROS-scaled injury penalty. getInjuryInfo's severity is tuned for
+    // today/this-week start-sit decisions; applied raw, a DTD Lindor who
+    // plays tomorrow loses 15% of his ROS value even though FG projections
+    // already bake in expected missed games. Rescale so only extended
+    // absences meaningfully move ROS rank.
     const injury = getInjuryInfo(p)
-    if (injury) overallValue = overallValue * (1 - injury.severity)
+    if (injury) {
+      let rosSeverity = 0
+      if (injury.severity >= 1.0) rosSeverity = 1.0       // Season-ending — player is done
+      else if (injury.severity >= 0.6) rosSeverity = 0.3  // IL/DL/OUT — 30% haircut
+      else if (injury.severity >= 0.4) rosSeverity = 0.1  // Doubtful — 10% haircut
+      // DTD / GTD / Q / PROB → 0 (FG already handles short-term absences)
+      overallValue = overallValue * (1 - rosSeverity)
+    }
 
     return { ...p, overallValue: Math.round(Math.min(100, Math.max(0, overallValue)) * 10) / 10 }
   })
