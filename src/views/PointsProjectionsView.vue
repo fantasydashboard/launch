@@ -4706,9 +4706,15 @@ async function loadEspnProjections() {
           // unexpectedly low and we need to know why in one call.
           if (typeof window !== 'undefined') {
             (window as any)._diagnosePoints = (nameFragment: string) => {
+              console.log(`%c[diag] _diagnosePoints("${nameFragment}") called — searching ${allPlayers.value.length} players`, 'color: orange; font-weight: bold')
               const frag = nameFragment.toLowerCase()
               const matches = allPlayers.value.filter(p => (p.full_name || '').toLowerCase().includes(frag))
-              if (!matches.length) { console.log(`No player matching "${nameFragment}"`); return }
+              console.log(`%c[diag] ${matches.length} match(es) found`, 'color: orange')
+              if (!matches.length) {
+                const sampleNames = allPlayers.value.slice(0, 5).map(p => p.full_name).join(', ')
+                console.log(`%c[diag] Sample player names: ${sampleNames}`, 'color: orange')
+                return
+              }
               for (const p of matches) {
                 const fg = fgByName.get(normName(p.full_name || ''))
                 if (!fg) { console.log(`${p.full_name}: no FG projection matched for name "${normName(p.full_name || '')}"`); continue }
