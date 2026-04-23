@@ -4658,11 +4658,15 @@ async function loadEspnProjections() {
             }
           }
           console.log(`[ESPN Points FG Enrichment] matched=${matched}, enriched=${enriched}/${allPlayers.value.length}`)
+          // Include each unmapped stat_id with its configured points so we can
+          // tell at a glance which ones matter (e.g. "45:-0.5" is BB allowed
+          // worth fixing, "99:0" is unused and can be ignored).
+          const fmt = (s: Set<number>) => [...s].sort((a, b) => a - b).map(id => `${id}:${scoringMap[id]}`).join(', ')
           if (unmappedPitcherIds.size > 0) {
-            console.warn('[ESPN Points FG Enrichment] Unmapped pitcher stat_ids (add to fgPitcherFields):', [...unmappedPitcherIds].sort((a, b) => a - b))
+            console.warn(`[ESPN Points FG Enrichment] Unmapped pitcher stat_ids: [${fmt(unmappedPitcherIds)}]`)
           }
           if (unmappedBatterIds.size > 0) {
-            console.warn('[ESPN Points FG Enrichment] Unmapped batter stat_ids (add to fgBatterFields):', [...unmappedBatterIds].sort((a, b) => a - b))
+            console.warn(`[ESPN Points FG Enrichment] Unmapped batter stat_ids: [${fmt(unmappedBatterIds)}]`)
           }
         }
       } catch (e) {
