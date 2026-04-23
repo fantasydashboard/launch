@@ -4698,6 +4698,36 @@ async function loadEspnProjections() {
           if (unmappedBatterIds.size > 0) {
             console.warn(`[ESPN Points FG Enrichment] Unmapped batter stat_ids: [${fmt(unmappedBatterIds)}]`)
           }
+
+          // Expose a diagnostic for ESPN points leagues parallel to the Yahoo
+          // version: `window._diagnosePoints('vlad')` dumps per-stat_id
+          // breakdown so we can see which scoring rules fired and which
+          // fg fields they pulled from. Closes the gap when a player ranks
+          // unexpectedly low and we need to know why in one call.
+          if (typeof window !== 'undefined') {
+            (window as any)._diagnosePoints = (nameFragment: string) => {
+              const frag = nameFragment.toLowerCase()
+              const matches = allPlayers.value.filter(p => (p.full_name || '').toLowerCase().includes(frag))
+              if (!matches.length) { console.log(`No player matching "${nameFragment}"`); return }
+              for (const p of matches) {
+                const fg = fgByName.get(normName(p.full_name || ''))
+                if (!fg) { console.log(`${p.full_name}: no FG projection matched for name "${normName(p.full_name || '')}"`); continue }
+                const isPit = isPitcherPos(p.position || '')
+                const fields = isPit ? fgPitcherFields : fgBatterFields
+                const breakdown: Array<{ statId: number; weight: number; fgValue: number | string; points: number }> = []
+                for (const [statIdNum, pts] of Object.entries(scoringMap)) {
+                  const statId = parseInt(statIdNum)
+                  const mapper = fields[statId]
+                  if (!mapper || pts === 0) continue
+                  const val = typeof mapper === 'string' ? ((fg as any)[mapper] ?? null) : mapper(fg)
+                  breakdown.push({ statId, weight: pts, fgValue: val ?? 'null', points: val != null ? Math.round((pts * val) * 10) / 10 : 0 })
+                }
+                breakdown.sort((a, b) => Math.abs(b.points) - Math.abs(a.points))
+                console.log(`=== ${p.full_name} (${isPit ? 'PITCHER' : 'BATTER'}) pos=${p.position} total=${(p.total_points || 0).toFixed(1)} ppg=${(p.ppg || 0).toFixed(2)} fgGames=${fg.g || fg.gp || fg.gs || '?'} ===`)
+                console.table(breakdown)
+              }
+            }
+          }
         }
       } catch (e) {
         console.warn('[ESPN Points FG Enrichment] Failed (using ESPN projections):', e)
