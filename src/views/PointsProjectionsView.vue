@@ -1868,7 +1868,7 @@ import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
 import { sleeperService } from '@/services/sleeper'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
-import { loadProjectionData, buildPlayerMatchers, computePointsFromFG, type FGProjection } from '@/services/projectionService'
+import { loadProjectionData, buildPlayerMatchers, computePointsFromFG, DISPLAY_NAME_TO_FG_BATTER, DISPLAY_NAME_TO_FG_PITCHER, type FGProjection } from '@/services/projectionService'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { liveGamesService } from '@/services/live-games'
@@ -2469,7 +2469,13 @@ const uniquePositions = computed(() => {
 const filteredPlayers = computed(() => {
   let players = [...allPlayers.value]
   if (selectedPositions.value.length > 0 && selectedPositions.value.length < positionFilters.value.length) {
-    players = players.filter(p => selectedPositions.value.some(pos => p.position?.includes(pos)))
+    players = players.filter(p => {
+      const segs = (p.position || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+      return selectedPositions.value.some(pos => {
+        if (pos === 'OF') return segs.some(s => s === 'OF' || s === 'LF' || s === 'CF' || s === 'RF')
+        return segs.includes(pos)
+      })
+    })
   }
   
   // Fix: If both checkboxes checked, show union (my players OR free agents)
@@ -3942,10 +3948,12 @@ async function applyFGPointsOverlayYahoo(leagueKey: string) {
       return
     }
 
-    // Build Yahoo stat_id → display_name lookup from stat_categories.
-    // Yahoo's shape varies: sometimes an array of { stat: {...} } wrappers,
-    // sometimes a numbered-keys object, sometimes already-flat entries.
-    const idToName = new Map<string, string>()
+    // Build Yahoo stat_id → { name, posType } lookup from stat_categories.
+    // posType is 'B' (batter), 'P' (pitcher), or '' (applies to both). Critical
+    // for points leagues where the same display name (e.g. "K") can mean
+    // pitcher Ks (+3) OR batter Ks (–0.5) depending on which stat_id it came
+    // from. Collapsing by name alone mis-applies pitcher weights to batters.
+    const idToStat = new Map<string, { name: string; posType: string }>()
     const catList = Array.isArray(settings.stat_categories)
       ? settings.stat_categories
       : (settings.stat_categories && typeof settings.stat_categories === 'object')
@@ -3954,10 +3962,15 @@ async function applyFGPointsOverlayYahoo(leagueKey: string) {
     for (const entry of catList) {
       const s = (entry as any)?.stat || entry
       const id = s?.stat_id ?? s?.id
-      if (id != null) idToName.set(String(id), (s?.display_name || s?.name || '').toString())
+      if (id != null) {
+        idToStat.set(String(id), {
+          name: (s?.display_name || s?.name || '').toString(),
+          posType: (s?.position_type || '').toString().toUpperCase(),
+        })
+      }
     }
-    console.log(`[Yahoo FG Points] stat_categories parsed ${idToName.size} entries; sample:`,
-      [...idToName.entries()].slice(0, 6))
+    console.log(`[Yahoo FG Points] stat_categories parsed ${idToStat.size} entries; sample:`,
+      [...idToStat.entries()].slice(0, 6))
 
     // Collapse stat_modifiers into { displayName: pts }. Shape can be a Map,
     // a plain object, or Yahoo's array-of-wrapper form.
@@ -3988,23 +4001,31 @@ async function applyFGPointsOverlayYahoo(leagueKey: string) {
     console.log(`[Yahoo FG Points] stat_modifiers parsed ${rawModifiers.length} entries; sample:`,
       rawModifiers.slice(0, 6))
 
-    const scoringByName: Record<string, number> = {}
+    const batterScoring: Record<string, number> = {}
+    const pitcherScoring: Record<string, number> = {}
     for (const [id, pts] of rawModifiers) {
-      const name = idToName.get(id)
-      if (name && pts) scoringByName[name.toUpperCase()] = pts
+      const stat = idToStat.get(id)
+      if (!stat?.name || !pts) continue
+      const key = stat.name.toUpperCase()
+      if (stat.posType === 'P') pitcherScoring[key] = pts
+      else if (stat.posType === 'B') batterScoring[key] = pts
+      else { batterScoring[key] = pts; pitcherScoring[key] = pts }
     }
-    if (Object.keys(scoringByName).length === 0) {
+    if (Object.keys(batterScoring).length === 0 && Object.keys(pitcherScoring).length === 0) {
       console.warn('[Yahoo FG Points] Built scoring map is empty — leaving Yahoo totals in place. Raw settings:', settings)
       return
     }
-    console.log('[Yahoo FG Points] Scoring map:', scoringByName)
+    console.log('[Yahoo FG Points] Batter scoring:', JSON.stringify(batterScoring))
+    console.log('[Yahoo FG Points] Pitcher scoring:', JSON.stringify(pitcherScoring))
 
     const GAMES_IN_SEASON = 162
     let enriched = 0
     for (const p of allPlayers.value) {
       const fg = p._fgProjection as FGProjection | undefined
       if (!fg) continue
-      const total = computePointsFromFG(fg, scoringByName)
+      const isPit = (fg as any).player_type === 'pitcher'
+      const scoringForPlayer = isPit ? pitcherScoring : batterScoring
+      const total = computePointsFromFG(fg, scoringForPlayer)
       if (!total) continue
       p.total_points = total
       const projGames = (fg as any).g || (fg as any).gp || (fg as any).gs || GAMES_IN_SEASON
@@ -4013,6 +4034,33 @@ async function applyFGPointsOverlayYahoo(leagueKey: string) {
       enriched++
     }
     console.log(`[Yahoo FG Points] Enriched ${enriched}/${allPlayers.value.length} players with FG-projected totals`)
+
+    // Diagnostic: `window._diagnosePoints('vlad')` shows per-category point
+    // breakdown for any player whose name matches. Useful for auditing why a
+    // player ranks where they do (e.g. "TB contributes 0 because fg.tb null").
+    if (typeof window !== 'undefined') {
+      (window as any)._diagnosePoints = (nameFragment: string) => {
+        const frag = nameFragment.toLowerCase()
+        const matches = allPlayers.value.filter(p => (p.full_name || '').toLowerCase().includes(frag))
+        if (!matches.length) { console.log(`No player matching "${nameFragment}"`); return }
+        for (const p of matches) {
+          const fg = p._fgProjection as FGProjection | undefined
+          if (!fg) { console.log(`${p.full_name}: no FG projection matched`); continue }
+          const isPit = (fg as any).player_type === 'pitcher'
+          const mapping = isPit ? DISPLAY_NAME_TO_FG_PITCHER : DISPLAY_NAME_TO_FG_BATTER
+          const scoring = isPit ? pitcherScoring : batterScoring
+          const breakdown: Array<{ cat: string; value: number | string; weight: number; points: number }> = []
+          for (const [cat, pts] of Object.entries(scoring)) {
+            const mapper = mapping[cat]
+            if (!mapper) { breakdown.push({ cat, value: 'UNMAPPED', weight: pts, points: 0 }); continue }
+            const val = typeof mapper === 'string' ? (fg as any)[mapper] : mapper(fg)
+            breakdown.push({ cat, value: val ?? 'null', weight: pts, points: val != null ? Math.round((pts * val) * 10) / 10 : 0 })
+          }
+          console.log(`=== ${p.full_name} (${isPit ? 'PITCHER' : 'BATTER'}) total=${(p.total_points || 0).toFixed(1)} ppg=${(p.ppg || 0).toFixed(2)} ===`)
+          console.table(breakdown)
+        }
+      }
+    }
   } catch (e) {
     console.warn('[Yahoo FG Points] Failed:', e)
   }

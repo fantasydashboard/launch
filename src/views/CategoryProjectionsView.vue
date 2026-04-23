@@ -191,16 +191,20 @@
 
       <!-- Filters -->
       <div class="flex flex-wrap items-center gap-4">
-        <div class="flex items-center gap-2">
-          <span class="text-dark-textMuted text-sm">Filter:</span>
-          <button 
-            v-for="pos in availablePositions" 
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-dark-textMuted font-medium">Positions:</span>
+          <button
+            @click="selectAllPositions"
+            :class="selectedPositions.length === availablePositions.length ? 'bg-yellow-400 text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary'"
+            class="px-3 py-1.5 rounded-lg text-sm font-medium"
+          >All</button>
+          <button
+            v-for="pos in availablePositions"
             :key="pos"
             @click="togglePositionFilter(pos)"
-            :class="selectedPositions.includes(pos) ? 'bg-green-500/20 text-green-400 border-green-500' : 'bg-dark-card text-dark-textMuted border-dark-border hover:border-dark-textMuted'"
-            class="px-3 py-1 text-sm rounded-lg border transition-all"
+            :class="selectedPositions.includes(pos) ? 'bg-yellow-400 text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary'"
+            class="px-3 py-1.5 rounded-lg text-sm font-medium"
           >{{ pos }}</button>
-          <button @click="selectAllPositions" class="text-xs text-green-400 hover:underline ml-2">All</button>
         </div>
         <div class="flex items-center gap-3 ml-auto">
           <label class="flex items-center gap-2 cursor-pointer">
@@ -4228,12 +4232,29 @@ const overallRankedPlayers = computed(() => {
 
 const filteredPlayers = computed(() => {
   let players = isOverallView.value ? [...overallRankedPlayers.value] : [...categoryRankedPlayers.value]
-  if (selectedPositions.value.length > 0 && selectedPositions.value.length < availablePositions.value.length) { 
-    players = players.filter(p => selectedPositions.value.some(pos => p.position?.includes(pos))) 
+  if (selectedPositions.value.length > 0 && selectedPositions.value.length < availablePositions.value.length) {
+    players = players.filter(p => {
+      // Exact-segment match so 'C' doesn't match 'CF' (center fielder) and
+      // 'SS' doesn't swallow every 'S*' position. Baseball especially needs
+      // this since position strings look like 'CF,OF' or 'SS,2B'.
+      const segs = (p.position || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+      return selectedPositions.value.some(pos => {
+        if (pos === 'OF') return segs.some(s => s === 'OF' || s === 'LF' || s === 'CF' || s === 'RF')
+        return segs.includes(pos)
+      })
+    })
   }
   if (showOnlyMyPlayers.value) players = players.filter(p => isMyPlayer(p))
   if (showOnlyFreeAgents.value) players = players.filter(p => isFreeAgent(p))
-  return players
+  // Dedupe by player_key (upstream has occasionally produced duplicates after
+  // rapid filter toggles; cheap safety net rather than hunting the source).
+  const seen = new Set<string>()
+  return players.filter(p => {
+    const k = p.player_key || p.player_id?.toString() || p.full_name || ''
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
 })
 
 const sortedPlayers = computed(() => {
@@ -4460,7 +4481,7 @@ function isMyPlayer(player: any): boolean {
 }
 
 function isFreeAgent(player: any): boolean { return !player.fantasy_team && !player.fantasy_team_key }
-function selectAllPositions() { selectedPositions.value = [...availablePositions.value] }
+function selectAllPositions() { selectedPositions.value = selectedPositions.value.length === availablePositions.value.length ? [] : [...availablePositions.value] }
 function togglePositionFilter(pos: string) { const idx = selectedPositions.value.indexOf(pos); if (idx >= 0) { selectedPositions.value.splice(idx, 1) } else { selectedPositions.value.push(pos) } }
 function toggleSort(column: string) { if (sortColumn.value === column) { sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc' } else { sortColumn.value = column; sortDirection.value = (column === 'name' || column === 'position') ? 'asc' : 'desc' } }
 
@@ -7641,7 +7662,7 @@ const allPlayersWithValues = computed(() => {
   const calMax = calRef.length ? Math.max(...calRef) : 1
   const range = calMax - calMin || 1
 
-  return scaled.map(p => {
+  const result = scaled.map(p => {
     let overallValue = Math.min(100, Math.max(0, ((p.calibrated - calMin) / range) * 90 + 5))
 
     // Position scarcity (hitters only)
@@ -7656,6 +7677,45 @@ const allPlayersWithValues = computed(() => {
 
     return { ...p, overallValue: Math.round(Math.min(100, Math.max(0, overallValue)) * 10) / 10 }
   })
+
+  // Diagnostic: `window._diagnoseValue('lindor')` dumps per-category breakdown
+  // showing data source, raw value, z-contribution. Use this when a specific
+  // player ranks suspiciously — one call shows exactly which category is
+  // tanking them and whether the data came from FG or ESPN.
+  if (typeof window !== 'undefined') {
+    (window as any)._diagnoseValue = (nameFragment: string) => {
+      const frag = nameFragment.toLowerCase()
+      const matches = result.filter(p => (p.full_name || '').toLowerCase().includes(frag))
+      if (!matches.length) { console.log(`No player matching "${nameFragment}"`); return }
+      for (const p of matches) {
+        const isP = p.isPlayerPitcher
+        const baselines = isP ? pitcherBaselines : hitterBaselines
+        const volFn = isP ? pitcherVol : hitterVol
+        const volThreshold = isP ? PITCHER_VOL_THRESHOLD : HITTER_VOL_THRESHOLD
+        const playerVol = volFn(p)
+        const perCat = baselines.map(b => {
+          const val = parseFloat((p as any).stats?.[b.statId] || 0) || 0
+          let z: number
+          if (b.isRatio && b.volumeId) {
+            const myContrib = (val - b.rawMean) * playerVol
+            z = (myContrib - b.contribMean) / b.contribStd
+          } else if (b.isCountingNegative) {
+            const damped = val * Math.min(1, playerVol / volThreshold)
+            z = (damped - b.rawMean) / b.rawStd
+          } else {
+            z = (val - b.rawMean) / b.rawStd
+          }
+          if (b.isLower) z = -z
+          const clamped = Math.max(-3, Math.min(3, z))
+          return { cat: b.cat.display_name || b.statId, val, poolMean: b.rawMean.toFixed(2), z: z.toFixed(2), clamped: clamped.toFixed(2) }
+        })
+        console.log(`=== ${p.full_name} (${p.position}) — value=${p.overallValue} rank-sum=${p.sgpSum.toFixed(2)} calibrated=${p.calibrated.toFixed(2)} source=${(p as any)._dataSource || 'espn'} ===`)
+        console.table(perCat)
+      }
+    }
+  }
+
+  return result
 })
 
 // Total values for trade comparison

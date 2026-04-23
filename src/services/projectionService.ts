@@ -5,7 +5,10 @@ import { supabase } from '@/lib/supabase'
 // numeric stat_ids diverge). This is the preferred lookup path.
 type FGMapper = string | ((p: any) => number | null)
 
-const DISPLAY_NAME_TO_FG_BATTER: Record<string, FGMapper> = {
+const parse2B = (p: any): number => p.raw_data?.['2B'] != null ? parseInt(p.raw_data['2B']) : 0
+const parse3B = (p: any): number => p.raw_data?.['3B'] != null ? parseInt(p.raw_data['3B']) : 0
+
+export const DISPLAY_NAME_TO_FG_BATTER: Record<string, FGMapper> = {
   R: 'r',
   H: 'h',
   HR: 'hr',
@@ -19,21 +22,27 @@ const DISPLAY_NAME_TO_FG_BATTER: Record<string, FGMapper> = {
   BB: 'bb',
   K: 'so',       // batter strikeouts — only reachable when the category is flagged as batting
   SO: 'so',
-  TB: 'tb',
+  TB: (p) => {
+    if (p.tb != null) return p.tb
+    const h = p.h ?? 0, hr = p.hr ?? 0
+    const d = parse2B(p), t = parse3B(p)
+    const singles = Math.max(0, h - d - t - hr)
+    return singles + 2 * d + 3 * t + 4 * hr
+  },
   PA: 'pa',
   AB: 'ab',
-  '2B': (p) => p.raw_data?.['2B'] != null ? parseInt(p.raw_data['2B']) : null,
-  '3B': (p) => p.raw_data?.['3B'] != null ? parseInt(p.raw_data['3B']) : null,
+  '1B': (p) => {
+    const h = p.h ?? 0, hr = p.hr ?? 0
+    return Math.max(0, h - parse2B(p) - parse3B(p) - hr)
+  },
+  '2B': parse2B,
+  '3B': parse3B,
   HBP: (p) => p.raw_data?.HBP != null ? parseInt(p.raw_data.HBP) : null,
   'R+RBI': (p) => (p.r ?? 0) + (p.rbi ?? 0),
-  XBH: (p) => {
-    const d = p.raw_data?.['2B'] != null ? parseInt(p.raw_data['2B']) : 0
-    const t = p.raw_data?.['3B'] != null ? parseInt(p.raw_data['3B']) : 0
-    return d + t + (p.hr ?? 0)
-  },
+  XBH: (p) => parse2B(p) + parse3B(p) + (p.hr ?? 0),
 }
 
-const DISPLAY_NAME_TO_FG_PITCHER: Record<string, FGMapper> = {
+export const DISPLAY_NAME_TO_FG_PITCHER: Record<string, FGMapper> = {
   W: 'w',
   L: 'l',
   SV: 'sv',
