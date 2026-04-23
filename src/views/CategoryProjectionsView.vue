@@ -7636,6 +7636,16 @@ const allPlayersWithValues = computed(() => {
     // league's volume stat_id isn't in our lookup list).
     const volRatio = playerVol > 0 ? Math.min(1, playerVol / volThreshold) : 1
 
+    // Category scarcity multipliers — saves/holds have ~30 real contributors
+    // across MLB while strikeouts have ~300. Treating them equally in the
+    // z-sum means elite closers (narrow but unmatched production) get
+    // shortchanged vs elite SPs (broad contribution across K/IP/W). We weight
+    // the scarce categories up so a Mason Miller's SVHD dominance carries the
+    // weight it actually has in a fantasy roster.
+    const CAT_SCARCITY: Record<string, number> = {
+      SV: 1.75, HLD: 1.5, HD: 1.5, SVHD: 1.75, 'SV+HLD': 1.75, SVH: 1.75, SB: 1.3,
+    }
+
     let sum = 0
     for (const b of baselines) {
       const val = parseFloat(player.stats?.[b.statId] || 0) || 0
@@ -7653,7 +7663,9 @@ const allPlayersWithValues = computed(() => {
         z = (val - b.rawMean) / b.rawStd
       }
       if (b.isLower) z = -z
-      sum += clampZ(z)
+      const catName = (b.cat.display_name || b.cat.name || '').toString().toUpperCase().trim()
+      const scarcity = CAT_SCARCITY[catName] || 1
+      sum += clampZ(z) * scarcity
     }
     return sum
   }
