@@ -4576,17 +4576,38 @@ async function loadEspnProjections() {
             if (!fgByName.has(key)) fgByName.set(key, fg)
           }
 
-          // ESPN stat_id → FG field mapping for points calculation
+          // ESPN stat_id → FG field mapping for points calculation.
+          // Covers both low-ID ("regular stats") and high-ID ("fantasy stats")
+          // conventions ESPN uses across different league configs. When an
+          // unmapped stat_id appears in the league scoring, we log it so we
+          // can keep expanding this.
           const fgBatterFields: Record<number, string | ((fg: any) => number | null)> = {
             0: 'ab', 1: 'h', 2: 'r', 3: 'hr', 4: 'rbi', 5: 'sb', 6: 'bb', 7: 'so',
-            8: 'ops', 9: 'obp', 10: 'slg', 11: 'avg', 14: (fg) => fg.raw_data?.['2B'] != null ? parseInt(fg.raw_data['2B']) : null,
+            8: 'ops', 9: 'obp', 10: 'slg', 11: 'avg',
+            14: (fg) => fg.raw_data?.['2B'] != null ? parseInt(fg.raw_data['2B']) : null,
             15: (fg) => fg.raw_data?.['3B'] != null ? parseInt(fg.raw_data['3B']) : null,
-            17: 'pa', 19: 'tb', 23: 'rbi', 25: (fg) => fg.raw_data?.HBP != null ? parseInt(fg.raw_data.HBP) : null,
-            32: 'r', 33: 'hr', 34: 'tb',
+            17: 'pa', 19: 'tb', 23: 'rbi',
+            25: (fg) => fg.raw_data?.HBP != null ? parseInt(fg.raw_data.HBP) : null,
+            // Some leagues store hitter negatives under a separate ID:
+            27: 'so',  // batter K (strikeouts — some leagues scored as negative)
           }
           const fgPitcherFields: Record<number, string | ((fg: any) => number | null)> = {
+            // Volume / counting
             18: 'gp', 35: 'w', 36: 'l', 37: 'sv', 38: 'hld', 39: 'ip', 41: 'ip',
-            43: 'so', 47: 'era', 48: 'whip', 53: 'gs',
+            43: 'so', 53: 'gs',
+            // Rate stats
+            47: 'era', 48: 'whip',
+            // Pitcher negatives commonly penalized in points leagues — these
+            // were MISSING before, causing ESPN YTD totals (which bleed in as
+            // negative for bad-start pitchers like Hancock) to stay in place
+            // instead of being replaced with FG ROS projections.
+            33: 'er',  // earned runs
+            34: 'h',   // hits allowed
+            42: (fg) => fg.raw_data?.HBP != null ? parseInt(fg.raw_data.HBP) : null,
+            44: 'hr',  // HR allowed
+            45: 'bb',  // BB allowed (some ESPN configs)
+            46: 'bb',  // BB allowed (alt ID)
+            // Extended
             57: (fg) => fg.raw_data?.BS != null ? parseInt(fg.raw_data.BS) : null,
             63: (fg) => fg.raw_data?.QS != null ? parseInt(fg.raw_data.QS) : null,
             67: (fg) => fg.raw_data?.TBF != null ? parseInt(fg.raw_data.TBF) : null,
@@ -4594,6 +4615,9 @@ async function loadEspnProjections() {
           }
 
           let enriched = 0
+          let matched = 0
+          const unmappedPitcherIds = new Set<number>()
+          const unmappedBatterIds = new Set<number>()
           const isPitcherPos = (pos: string) => pos.includes('SP') || pos.includes('RP') || pos === 'P'
           const GAMES_IN_SEASON: Record<string, number> = { baseball: 162, basketball: 82, hockey: 82, football: 17 }
           const totalGames = GAMES_IN_SEASON[sport] || 162
@@ -4601,37 +4625,45 @@ async function loadEspnProjections() {
           for (const player of allPlayers.value) {
             const fg = fgByName.get(normName(player.full_name || ''))
             if (!fg) continue
+            matched++
 
-            // Compute projected total points from FG stats through the scoring map
-            const fields = isPitcherPos(player.position || '') ? fgPitcherFields : fgBatterFields
+            const isPit = isPitcherPos(player.position || '')
+            const fields = isPit ? fgPitcherFields : fgBatterFields
             let fgTotalPts = 0
             let mappedAny = false
             for (const [statIdNum, pts] of Object.entries(scoringMap)) {
               const statId = parseInt(statIdNum)
               const mapper = fields[statId]
-              if (!mapper) continue
-              let val: number | null = null
-              if (typeof mapper === 'string') {
-                val = (fg as any)[mapper] ?? null
-              } else {
-                val = mapper(fg)
+              if (!mapper) {
+                if (pts !== 0) (isPit ? unmappedPitcherIds : unmappedBatterIds).add(statId)
+                continue
               }
+              const val = typeof mapper === 'string' ? ((fg as any)[mapper] ?? null) : mapper(fg)
               if (val !== null && val !== undefined) {
                 fgTotalPts += pts * val
                 mappedAny = true
               }
             }
 
-            if (mappedAny && Math.abs(fgTotalPts) > 0) {
+            // Overwrite whenever we matched AND got any mapped stats, even if
+            // fgTotalPts happens to round to 0. Leaving ESPN YTD in place for
+            // bad-start pitchers was making them look replacement-level-bad
+            // when their ROS projection is actually fine.
+            if (mappedAny) {
               player.total_points = fgTotalPts
-              // PPG based on FG projected games (or sport default)
               const projGames = fg.g || fg.gp || fg.gs || totalGames
               player.ppg = fgTotalPts / Math.max(projGames, 1)
               player._dataSource = 'fangraphs'
               enriched++
             }
           }
-          console.log(`[ESPN Points FG Enrichment] ${enriched} players enriched with FanGraphs projections`)
+          console.log(`[ESPN Points FG Enrichment] matched=${matched}, enriched=${enriched}/${allPlayers.value.length}`)
+          if (unmappedPitcherIds.size > 0) {
+            console.warn('[ESPN Points FG Enrichment] Unmapped pitcher stat_ids (add to fgPitcherFields):', [...unmappedPitcherIds].sort((a, b) => a - b))
+          }
+          if (unmappedBatterIds.size > 0) {
+            console.warn('[ESPN Points FG Enrichment] Unmapped batter stat_ids (add to fgBatterFields):', [...unmappedBatterIds].sort((a, b) => a - b))
+          }
         }
       } catch (e) {
         console.warn('[ESPN Points FG Enrichment] Failed (using ESPN projections):', e)

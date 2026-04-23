@@ -59,6 +59,14 @@ export const DISPLAY_NAME_TO_FG_PITCHER: Record<string, FGMapper> = {
   GS: 'gs',
   G: 'gp',
   GP: 'gp',
+  // Pitcher counting stats that are often scored negatively in points leagues —
+  // critical for ESPN points where ER/H/BB/HR penalties drive pitcher totals.
+  H: 'h',   // hits allowed
+  BB: 'bb', // walks allowed
+  HR: 'hr', // HR allowed
+  ER: 'er', // earned runs
+  R: (p) => p.r ?? p.er ?? null, // runs allowed (fall back to ER if R not projected)
+  HBP: (p) => p.raw_data?.HBP != null ? parseInt(p.raw_data.HBP) : null,
   'K/9': 'k9',
   'BB/9': 'bb9',
   'K/BB': (p) => p.raw_data?.['K/BB'] != null ? parseFloat(p.raw_data['K/BB']) : null,
@@ -67,6 +75,7 @@ export const DISPLAY_NAME_TO_FG_PITCHER: Record<string, FGMapper> = {
   BF: (p) => p.raw_data?.TBF != null ? parseInt(p.raw_data.TBF) : null,
   TBF: (p) => p.raw_data?.TBF != null ? parseInt(p.raw_data.TBF) : null,
   FIP: 'fip',
+  OBA: (p) => p.raw_data?.['OBA'] != null ? parseFloat(p.raw_data['OBA']) : null,
 }
 
 // Legacy ESPN stat-id → FanGraphs fallback, used only when display name misses.
