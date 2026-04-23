@@ -7615,8 +7615,21 @@ const allPlayersWithValues = computed(() => {
   const pitcherBaselines = buildBaselines(pitchingCats, pitcherPool, ipId, pitcherVol, PITCHER_VOL_THRESHOLD)
 
   const zSum = (player: any, baselines: CatBase[], volFn: (p: any) => number, volThreshold: number) => {
-    let sum = 0
     const playerVol = volFn(player)
+    // Sanity gate: a "projection" with zero volume isn't a projection — it's a
+    // ghost row. FG's depth-chart file occasionally carries minor-league or
+    // stale entries with nonsense counting stats (e.g. W=15 for a pitcher with
+    // IP=0). Letting those through the z-sum clamps to +3 on wins and rockets
+    // randos above Mason Miller. Treating them as unrated (sum=0) parks them
+    // mid-pack where they belong until real projections arrive.
+    if (playerVol === 0) return 0
+
+    // Volume ratio dampens z-contribution for players below the threshold. A
+    // 10-IP reliever's zero blown saves is less meaningful than a 60-IP
+    // reliever's zero blown saves; the former has simply had fewer chances.
+    const volRatio = Math.min(1, playerVol / volThreshold)
+
+    let sum = 0
     for (const b of baselines) {
       const val = parseFloat(player.stats?.[b.statId] || 0) || 0
       let z: number
@@ -7624,8 +7637,11 @@ const allPlayersWithValues = computed(() => {
         const myContrib = (val - b.rawMean) * playerVol
         z = (myContrib - b.contribMean) / b.contribStd
       } else if (b.isCountingNegative) {
-        const damped = val * Math.min(1, playerVol / volThreshold)
-        z = (damped - b.rawMean) / b.rawStd
+        // Negative counting (BS, L, GIDP…): a zero needs to be *earned* via
+        // volume. Scale the z toward 0 for low-volume players so fringe
+        // guys can't farm credit for "not blowing any saves" they never had.
+        const raw = (val - b.rawMean) / b.rawStd
+        z = raw * volRatio
       } else {
         z = (val - b.rawMean) / b.rawStd
       }
