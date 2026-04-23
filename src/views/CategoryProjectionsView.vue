@@ -7617,22 +7617,18 @@ const allPlayersWithValues = computed(() => {
   const zSum = (player: any, baselines: CatBase[], volFn: (p: any) => number, volThreshold: number) => {
     const playerVol = volFn(player)
 
-    // Ghost-row sanity check: a player who has *no* counting stats at all is
-    // a stale/phantom projection (FG's depth-chart occasionally carries
-    // minor-league rows for MLB players with 0 IP but W=15). Treat them as
-    // unrated (sum=0) so they park mid-pack instead of clamping to +3 on
-    // wins and leapfrogging real producers.
-    //
-    // We can't rely on playerVol alone — some ESPN leagues store IP/AB under
-    // stat_ids we don't know about, so volFn returns 0 even for real players.
-    // Instead, check whether *any* non-ratio counting category has a real
-    // positive value. If yes, the player is real; process normally.
+    // Ghost-row detection: a player with no positive counting stats in any
+    // non-ratio category is a phantom — retired player, minor-league row
+    // bleeding into MLB data, unprojected free agent. Returning NaN tells
+    // the caller to drop them from the ranking entirely rather than
+    // floating at a mid-pack value 53 where they'd outrank real but
+    // struggling producers (e.g. ten ghost RPs outranking Mason Miller).
     const hasAnyCountingStats = baselines.some(b => {
       if (b.isRatio) return false
       const v = parseFloat(player.stats?.[b.statId] || 0) || 0
       return v > 0
     })
-    if (!hasAnyCountingStats) return 0
+    if (!hasAnyCountingStats) return NaN
 
     // Volume ratio dampens z-contribution for players below the threshold.
     // Falls back to 1 when volFn can't read the volume stat (rather than 0,
@@ -7668,7 +7664,7 @@ const allPlayersWithValues = computed(() => {
       ? zSum(p, pitcherBaselines, pitcherVol, PITCHER_VOL_THRESHOLD)
       : zSum(p, hitterBaselines, hitterVol, HITTER_VOL_THRESHOLD)
     return { ...p, sgpSum, isPlayerPitcher: isP }
-  })
+  }).filter(p => !Number.isNaN(p.sgpSum))  // drop ghost rows entirely
 
   // Calibrate pitchers to hitters so top-N means align. Prevents the previous bug
   // where RPs (smaller pool, dominated narrow cats) outranked elite hitters.

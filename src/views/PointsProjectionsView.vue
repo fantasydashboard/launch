@@ -2468,6 +2468,15 @@ const uniquePositions = computed(() => {
 
 const filteredPlayers = computed(() => {
   let players = [...allPlayers.value]
+
+  // Ghost filter: a player with zero total_points AND zero PPG has no
+  // projection data to evaluate — retired player, unprojected fringe free
+  // agent, FG match that failed. Keep them out of rankings entirely so they
+  // don't float mid-pack on default-filled composite scores (VOR=+3 from
+  // replacement-level math, RecentForm=50 baseline, etc.) and outrank real
+  // players who happen to have negative YTD totals.
+  players = players.filter(p => (p.total_points || 0) !== 0 || (p.ppg || 0) !== 0)
+
   if (selectedPositions.value.length > 0 && selectedPositions.value.length < positionFilters.value.length) {
     players = players.filter(p => {
       const segs = (p.position || '').split(',').map((s: string) => s.trim()).filter(Boolean)
