@@ -437,15 +437,18 @@
                       </td>
                       <!-- Divider -->
                       <td class="w-px px-0 py-3 hidden sm:table-cell" :class="catTablePage === 1 ? '!table-cell' : ''"><div class="w-px h-full bg-dark-border/40 min-h-[20px]"></div></td>
-                      <!-- Batting stats -->
-                      <td v-for="cat in hittingCategories" :key="cat.stat_id" class="px-2 py-3 text-center" :class="[catTablePage === 1 ? '' : 'hidden sm:table-cell', getCellLuckClass(player, cat)]" :title="getCellLuckTitle(player, cat)">
-                        <span class="text-sm font-medium">{{ formatCategoryStat(player, cat.stat_id) }}</span>
+                      <!-- Batting stats — blank for pitchers so we don't show the
+                           hitter R/HR/TB columns with whatever noise ESPN has in
+                           the pitcher's stats object (often stale AAA batting
+                           carryover or collided stat_ids). -->
+                      <td v-for="cat in hittingCategories" :key="cat.stat_id" class="px-2 py-3 text-center" :class="[catTablePage === 1 ? '' : 'hidden sm:table-cell', isPitcher(player) ? '' : getCellLuckClass(player, cat)]" :title="isPitcher(player) ? '' : getCellLuckTitle(player, cat)">
+                        <span class="text-sm font-medium" :class="isPitcher(player) ? 'text-dark-textMuted' : ''">{{ isPitcher(player) ? '-' : formatCategoryStat(player, cat.stat_id) }}</span>
                       </td>
                       <!-- Divider -->
                       <td class="w-px px-0 py-3 hidden sm:table-cell" :class="catTablePage === 1 ? '!table-cell' : ''"><div class="w-px h-full bg-dark-border/40 min-h-[20px]"></div></td>
-                      <!-- Pitching stats -->
-                      <td v-for="cat in pitchingCategories" :key="cat.stat_id" class="px-2 py-3 text-center" :class="[catTablePage === 1 ? '' : 'hidden sm:table-cell', getCellLuckClass(player, cat)]" :title="getCellLuckTitle(player, cat)">
-                        <span class="text-sm font-medium">{{ formatCategoryStat(player, cat.stat_id) }}</span>
+                      <!-- Pitching stats — blank for hitters. -->
+                      <td v-for="cat in pitchingCategories" :key="cat.stat_id" class="px-2 py-3 text-center" :class="[catTablePage === 1 ? '' : 'hidden sm:table-cell', !isPitcher(player) ? '' : getCellLuckClass(player, cat)]" :title="!isPitcher(player) ? '' : getCellLuckTitle(player, cat)">
+                        <span class="text-sm font-medium" :class="!isPitcher(player) ? 'text-dark-textMuted' : ''">{{ !isPitcher(player) ? '-' : formatCategoryStat(player, cat.stat_id) }}</span>
                       </td>
                       <!-- Luck indicator -->
                       <td class="px-2 py-3 text-center" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'" :title="getOverallLuckTitle(player)">
