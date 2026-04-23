@@ -4597,6 +4597,26 @@ async function loadEspnProjections() {
             17: 'pa', 19: 'tb', 23: 'rbi',
             25: (fg) => fg.raw_data?.HBP != null ? parseInt(fg.raw_data.HBP) : null,
             27: 'so',
+            // Alternate stat_id convention used in custom ESPN configs —
+            // confirmed via diagnostic that removing these cost ~400 pts
+            // off top hitters (Judge dropped from rank 8 to 114). The
+            // league uses these IDs for R/H/TB/1B/3B/HR-bonus/K.
+            20: (fg) => {  // XBH = 2B + 3B + HR (confirmed fit for value=+1)
+              const d = fg.raw_data?.['2B'] != null ? parseInt(fg.raw_data['2B']) : 0
+              const t = fg.raw_data?.['3B'] != null ? parseInt(fg.raw_data['3B']) : 0
+              return d + t + (fg.hr ?? 0)
+            },
+            21: 'r',
+            34: 'tb',
+            45: 'so',  // batter K penalty (common -2 weighting)
+            48: (fg) => {  // 1B derivation = H - 2B - 3B - HR
+              const h = fg.h ?? 0, hr = fg.hr ?? 0
+              const d = fg.raw_data?.['2B'] != null ? parseInt(fg.raw_data['2B']) : 0
+              const t = fg.raw_data?.['3B'] != null ? parseInt(fg.raw_data['3B']) : 0
+              return Math.max(0, h - d - t - hr)
+            },
+            53: (fg) => fg.raw_data?.['3B'] != null ? parseInt(fg.raw_data['3B']) : null, // 3B (fits +2.5)
+            57: 'hr',  // HR bonus (fits +5)
           }
           const fgPitcherFields: Record<number, string | ((fg: any) => number | null)> = {
             // Dual conventions — some ESPN leagues put pitcher counting at
@@ -4615,10 +4635,10 @@ async function loadEspnProjections() {
             18: 'gp', 35: 'w', 36: 'l', 37: 'sv', 38: 'hld', 39: 'ip', 41: 'ip',
             43: 'so', 53: 'gs',
             47: 'era', 48: 'whip',
-            33: 'er', 34: 'h',
             42: (fg) => fg.raw_data?.HBP != null ? parseInt(fg.raw_data.HBP) : null,
             44: 'hr', 45: 'bb', 46: 'bb',
-            57: (fg) => fg.raw_data?.BS != null ? parseInt(fg.raw_data.BS) : null,
+            54: 'er',  // ER penalty (fits -2) — this league's ER stat_id
+            60: (fg) => fg.raw_data?.QS != null ? parseInt(fg.raw_data.QS) : null, // QS bonus (fits +2)
             63: (fg) => fg.raw_data?.QS != null ? parseInt(fg.raw_data.QS) : null,
             67: (fg) => fg.raw_data?.TBF != null ? parseInt(fg.raw_data.TBF) : null,
             71: (fg) => (fg.sv ?? 0) + (fg.hld ?? 0),
