@@ -2024,6 +2024,13 @@ const showOnlyFreeAgents = ref(false)
 const defaultHeadshot = 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=200&h=145'
 const defaultTeamAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
 
+// Reentrancy guard: onMounted + 3 immediate watchers (activeLeagueId,
+// activePlatform, currentLeague.league_id) all fire on page load and each
+// kicks off a loader. Without this flag, two-to-three copies of
+// loadEspnProjections race the same Supabase queries and end up with one
+// overwriting allPlayers.value mid-enrichment — rankings never land.
+let loadInFlight = false
+
 const copyToast = ref<'idle' | 'copying' | 'success' | 'error'>('idle')
 const selectedDate = ref(new Date())
 const todaysGames = ref<any[]>([])
@@ -3813,13 +3820,18 @@ async function loadGamesForPoints() {
 }
 
 async function loadProjections() {
+  if (loadInFlight) {
+    console.log('[Yahoo Points Projections] Skipping duplicate call — load already in flight')
+    return
+  }
+  loadInFlight = true
   isLoading.value = true
   loadingMessage.value = 'Loading Player Projections'
   loadingProgress.value = { currentStep: 'Connecting to Yahoo...', currentStepName: 'Initializing', completedSteps: 0, totalSteps: 5 }
-  
+
   try {
     const leagueKey = effectiveLeagueKey.value
-    if (!leagueKey || !authStore.user?.id) { isLoading.value = false; return }
+    if (!leagueKey || !authStore.user?.id) { isLoading.value = false; loadInFlight = false; return }
     await yahooService.initialize(authStore.user.id)
     
     loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading league settings...', currentStepName: 'Settings', completedSteps: 1 }
@@ -3927,7 +3939,7 @@ async function loadProjections() {
     loadingProgress.value = { ...loadingProgress.value, currentStep: 'Calculating rankings...', currentStepName: 'Complete', completedSteps: 5 }
     recalculateRankings()
   } catch (e) { console.error('Error:', e); loadingMessage.value = 'Error loading data' }
-  finally { isLoading.value = false }
+  finally { isLoading.value = false; loadInFlight = false }
 }
 
 // Attach FanGraphs + Baseball Savant data to every player in allPlayers.
@@ -4085,13 +4097,18 @@ async function applyFGPointsOverlayYahoo(leagueKey: string) {
 
 // Sleeper version of loadProjections
 async function loadSleeperProjections() {
+  if (loadInFlight) {
+    console.log('[Sleeper Points Projections] Skipping duplicate call — load already in flight')
+    return
+  }
+  loadInFlight = true
   isLoading.value = true
   loadingMessage.value = 'Loading Sleeper Data'
   loadingProgress.value = { currentStep: 'Connecting to Sleeper...', currentStepName: 'Initializing', completedSteps: 0, totalSteps: 6 }
 
   try {
     const leagueId = leagueStore.activeLeagueId?.replace('sleeper_', '') || leagueStore.currentLeague?.league_id || ''
-    if (!leagueId) { isLoading.value = false; return }
+    if (!leagueId) { isLoading.value = false; loadInFlight = false; return }
 
     // Load league info to get sport + roster positions
     loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading league settings...', currentStepName: 'Settings', completedSteps: 1 }
@@ -4247,6 +4264,7 @@ async function loadSleeperProjections() {
     loadingMessage.value = 'Error loading Sleeper data'
   } finally {
     isLoading.value = false
+    loadInFlight = false
   }
 }
 
@@ -4294,11 +4312,16 @@ function getEspnTeamAbbrev(teamId: number): string {
 
 // ESPN version of loadProjections
 async function loadEspnProjections() {
+  if (loadInFlight) {
+    console.log('[ESPN Points Projections] Skipping duplicate call — load already in flight')
+    return
+  }
+  loadInFlight = true
   console.log('[ESPN Points Projections] ========== STARTING ==========')
   isLoading.value = true
   loadingMessage.value = 'Loading ESPN Projections'
   loadingProgress.value = { currentStep: 'Connecting to ESPN...', currentStepName: 'Initializing', completedSteps: 0, totalSteps: 6 }
-  
+
   try {
     const leagueKey = leagueStore.activeLeagueId
     console.log('[ESPN Points Projections] League key:', leagueKey)
@@ -4570,7 +4593,19 @@ async function loadEspnProjections() {
     if (sport === 'baseball' && Object.keys(scoringMap).length > 0) {
       try {
         loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading expert projections...' }
-        const { projections: fgProjections } = await loadProjectionData()
+        // Race FG load against a hard timeout. Without this, a slow Supabase
+        // query here stalls the whole pipeline — recalculateRankings() at the
+        // bottom of this function never runs, compositeScore stays 0 for
+        // every player, and the ROS table falls back to insertion order
+        // (which is team-grouped, not value-ranked).
+        const FG_LOAD_TIMEOUT_MS = 12000
+        const fgData = await Promise.race([
+          loadProjectionData(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('FG load timed out')), FG_LOAD_TIMEOUT_MS)
+          ),
+        ])
+        const { projections: fgProjections } = fgData
         if (fgProjections.length > 0) {
           // Build name lookup
           const normName = (n: string) => n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\b(jr|sr|iii|ii|iv)\.?\b/gi, '').replace(/[^a-z ]/g, '').replace(/\s+/g, ' ').trim()
@@ -4765,10 +4800,11 @@ async function loadEspnProjections() {
     loadingMessage.value = 'Error loading ESPN data'
   } finally {
     isLoading.value = false
+    loadInFlight = false
   }
 }
 
-watch(() => leagueStore.activeLeagueId, (id) => { 
+watch(() => leagueStore.activeLeagueId, (id) => {
   console.log('[PointsProjections] Watch triggered - id:', id, 'platform:', leagueStore.activePlatform)
   if (id) {
     if (isEspn.value) {
