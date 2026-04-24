@@ -4589,34 +4589,47 @@ async function loadEspnProjections() {
           // harmless. We keep separate batter/pitcher tables so stat_id 3
           // maps to fg.hr for a batter (HR) and fg.w for a pitcher (Wins)
           // without conflict.
+          // ESPN stat_id → FG field mapping for BATTERS. This league's
+          // convention (confirmed via _diagnosePoints for Vlad Jr.):
+          //   4=RBI, 20=XBH, 21=R, 34=TB, 45=K, 48=1B, 53=3B, 57=HR
+          // The low IDs (3, 5, 8, 10, 27) are PITCHER stats in this league
+          // (W, SV, K, HLD, L). Previously I had dual-convention batter
+          // mappings that caused severe double-counting: Vlad was being
+          // credited +25 HR from stat 3 AND +125 HR from stat 57, penalized
+          // -78 K from stat 27 AND -156 K from stat 45, plus +85 bogus RBI
+          // from stat 23. Removing the conflicting batter mappings.
           const fgBatterFields: Record<number, string | ((fg: any) => number | null)> = {
-            0: 'ab', 1: 'h', 2: 'r', 3: 'hr', 4: 'rbi', 5: 'sb', 6: 'bb', 7: 'so',
-            8: 'ops', 9: 'obp', 10: 'slg', 11: 'avg',
+            0: 'ab', 1: 'h', 2: 'r', 4: 'rbi', 6: 'bb', 7: 'so',
+            9: 'obp', 11: 'avg',
             14: (fg) => fg.raw_data?.['2B'] != null ? parseInt(fg.raw_data['2B']) : null,
             15: (fg) => fg.raw_data?.['3B'] != null ? parseInt(fg.raw_data['3B']) : null,
-            17: 'pa', 19: 'tb', 23: 'rbi',
+            17: 'pa', 19: 'tb',
             25: (fg) => fg.raw_data?.HBP != null ? parseInt(fg.raw_data.HBP) : null,
-            27: 'so',
-            // Alternate stat_id convention used in custom ESPN configs —
-            // confirmed via diagnostic that removing these cost ~400 pts
-            // off top hitters (Judge dropped from rank 8 to 114). The
-            // league uses these IDs for R/H/TB/1B/3B/HR-bonus/K.
-            20: (fg) => {  // XBH = 2B + 3B + HR (confirmed fit for value=+1)
+            20: (fg) => {  // XBH = 2B + 3B + HR
               const d = fg.raw_data?.['2B'] != null ? parseInt(fg.raw_data['2B']) : 0
               const t = fg.raw_data?.['3B'] != null ? parseInt(fg.raw_data['3B']) : 0
               return d + t + (fg.hr ?? 0)
             },
             21: 'r',
-            34: 'tb',
-            45: 'so',  // batter K penalty (common -2 weighting)
-            48: (fg) => {  // 1B derivation = H - 2B - 3B - HR
+            34: (fg) => {  // TB with fallback — Vlad's fg.tb was null in
+                            // the FG source CSV, which zeroed out ~253 pts
+                            // of his scoring. Derive from hit components.
+              if (fg.tb != null) return fg.tb
+              const h = fg.h ?? 0, hr = fg.hr ?? 0
+              const d = fg.raw_data?.['2B'] != null ? parseInt(fg.raw_data['2B']) : 0
+              const t = fg.raw_data?.['3B'] != null ? parseInt(fg.raw_data['3B']) : 0
+              const singles = Math.max(0, h - d - t - hr)
+              return singles + 2 * d + 3 * t + 4 * hr
+            },
+            45: 'so',
+            48: (fg) => {  // 1B = H - 2B - 3B - HR
               const h = fg.h ?? 0, hr = fg.hr ?? 0
               const d = fg.raw_data?.['2B'] != null ? parseInt(fg.raw_data['2B']) : 0
               const t = fg.raw_data?.['3B'] != null ? parseInt(fg.raw_data['3B']) : 0
               return Math.max(0, h - d - t - hr)
             },
-            53: (fg) => fg.raw_data?.['3B'] != null ? parseInt(fg.raw_data['3B']) : null, // 3B (fits +2.5)
-            57: 'hr',  // HR bonus (fits +5)
+            53: (fg) => fg.raw_data?.['3B'] != null ? parseInt(fg.raw_data['3B']) : null,
+            57: 'hr',
           }
           const fgPitcherFields: Record<number, string | ((fg: any) => number | null)> = {
             // Dual conventions — some ESPN leagues put pitcher counting at
