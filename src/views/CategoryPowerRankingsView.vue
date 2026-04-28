@@ -3606,7 +3606,25 @@ async function loadPowerRankings() {
     finalRankings.forEach((team, idx) => {
       team.rank = idx + 1
     })
-    
+
+    // Sync the chart's most-recent week with finalRankings. The per-week loop
+    // builds rankHistory using teamStats as it stood after each week's
+    // matchups — but the table's `finalRankings` is computed *after* two
+    // post-loop overlays (ESPN season-cumulative valuesByStat and the Outlook
+    // 30% forward-look factor). Without this sync, the table can show a team
+    // at #2 while the chart's last point shows them at #4. We can only fix
+    // the latest week — the overlays are season-snapshots, not historical.
+    if (chartWeeks.value.length > 0) {
+      const lastIdx = chartWeeks.value.length - 1
+      finalRankings.forEach((team, idx) => {
+        const ranks = rankHistory.get(team.team_key)
+        if (ranks && ranks.length > lastIdx) {
+          ranks[lastIdx] = idx + 1
+        }
+      })
+      historicalRanks.value = new Map(rankHistory)
+    }
+
     powerRankings.value = finalRankings
     buildChart()
     
