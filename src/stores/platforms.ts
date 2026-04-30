@@ -449,18 +449,92 @@ export const usePlatformsStore = defineStore('platforms', () => {
   })
 
   /**
-   * Sync an ESPN league to the database
-   * For now, skip database and just return success - data comes from ESPN API directly
+   * Sync an ESPN league to the database. Mirrors syncYahooLeagues' upsert
+   * pattern. team_name/team_id are left null — populated separately if/when
+   * an espnService.getMyTeam() equivalent exists.
    */
   async function syncEspnLeague(
-    leagueId: string, 
-    sport: Sport, 
+    leagueId: string,
+    sport: Sport,
     season: number,
     leagueInfo?: { name: string; size: number; scoringType?: string }
   ): Promise<{ success: boolean; error?: string }> {
-    // Skip database for now - ESPN data is fetched live from API
-    // Just return success so the flow continues
-    console.log('[ESPN] Skipping database save, data will be fetched from API')
+    const authStore = useAuthStore()
+    if (!supabase || !authStore.user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    const leagueData: LeagueInsert = {
+      user_id: authStore.user.id,
+      platform: 'espn',
+      sport,
+      platform_league_id: leagueId,
+      league_name: leagueInfo?.name ?? `ESPN ${sport} League ${leagueId}`,
+      season,
+      team_name: null,
+      team_id: null,
+      scoring_type: leagueInfo?.scoringType ?? null,
+      league_size: leagueInfo?.size ?? null,
+      is_active: true,
+      last_synced_at: new Date().toISOString(),
+    }
+
+    const { error: upsertError } = await supabase
+      .from('leagues')
+      .upsert(leagueData, {
+        onConflict: 'user_id,platform,platform_league_id,season',
+      })
+
+    if (upsertError) {
+      console.error('[ESPN] Error saving league:', upsertError)
+      return { success: false, error: upsertError.message }
+    }
+
+    return { success: true }
+  }
+
+  /**
+   * Sync a Sleeper league to the database. Mirrors the Yahoo/ESPN pattern.
+   * team_name/team_id/scoring_type left null — would need a Sleeper API call
+   * to populate (the user's roster within the league).
+   */
+  async function syncSleeperLeague(
+    league: { league_id: string; name: string; season: string; total_rosters?: number },
+    sport: Sport
+  ): Promise<{ success: boolean; error?: string }> {
+    const authStore = useAuthStore()
+    if (!supabase || !authStore.user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    const seasonNum = parseInt(league.season, 10) || new Date().getFullYear()
+
+    const leagueData: LeagueInsert = {
+      user_id: authStore.user.id,
+      platform: 'sleeper',
+      sport,
+      platform_league_id: league.league_id,
+      league_name: league.name,
+      season: seasonNum,
+      team_name: null,
+      team_id: null,
+      scoring_type: null,
+      league_size: league.total_rosters ?? null,
+      is_active: true,
+      last_synced_at: new Date().toISOString(),
+    }
+
+    const { error: upsertError } = await supabase
+      .from('leagues')
+      .upsert(leagueData, {
+        onConflict: 'user_id,platform,platform_league_id,season',
+      })
+
+    if (upsertError) {
+      console.error('[Sleeper] Error saving league:', upsertError)
+      return { success: false, error: upsertError.message }
+    }
+
     return { success: true }
   }
 
@@ -486,7 +560,10 @@ export const usePlatformsStore = defineStore('platforms', () => {
     isYahooTokenExpired,
     getYahooAccessToken,
     clearState,
-    
+
+    // Sleeper
+    syncSleeperLeague,
+
     // ESPN
     storeEspnCredentials,
     getEspnCredentials,

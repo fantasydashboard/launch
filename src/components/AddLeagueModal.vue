@@ -1631,6 +1631,22 @@ async function searchSleeperLeagues() {
 }
 
 function selectSleeperLeague(league: SleeperLeague) {
+  // Map Sleeper sport tag (added by loadSleeperLeagues) to UFD Sport type
+  // and persist to the leagues table so CommandSite analytics see it.
+  const sleeperSport = (league as any).sport as string | undefined
+  const sport: Sport | null =
+    sleeperSport === 'nfl' ? 'football'
+    : sleeperSport === 'nba' ? 'basketball'
+    : sleeperSport === 'mlb' ? 'baseball'
+    : sleeperSport === 'nhl' ? 'hockey'
+    : null
+
+  if (sport) {
+    platformsStore
+      .syncSleeperLeague(league as any, sport)
+      .catch((e) => console.error('[Sleeper] sync failed', e))
+  }
+
   emit('league-added', league)
 }
 
