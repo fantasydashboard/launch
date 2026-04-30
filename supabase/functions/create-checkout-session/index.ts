@@ -127,6 +127,11 @@ Deno.serve(async (req) => {
         customer: customerId,
         mode: 'subscription',
         line_items: [{ price: priceId, quantity: 1 }],
+        // Surfaces the "Add promotion code" link in Stripe Checkout so
+        // returning users can paste at-risk-drip codes (e.g. COMEBACK10).
+        // Only enabled on annual — keeps the monthly/league-pass checkouts
+        // clean and prevents discounts from being misapplied.
+        allow_promotion_codes: true,
         success_url: `${appUrl}/pricing?success=1&plan=individual_annual`,
         cancel_url: `${appUrl}/pricing?cancelled=1`,
         metadata: {
