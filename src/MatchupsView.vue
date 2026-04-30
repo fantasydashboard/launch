@@ -900,6 +900,7 @@ import { useLeagueStore } from '@/stores/league'
 import { sleeperService } from '@/services/sleeper'
 import type { SleeperRoster, SleeperMatchup, SleeperUser } from '@/types/sleeper'
 import ApexCharts from 'apexcharts'
+import { trackCardShare } from '@/services/shareTracking'
 
 const leagueStore = useLeagueStore()
 
@@ -3047,7 +3048,8 @@ async function loadUFDLogo(): Promise<string> {
 // Download MATCHUP PREVIEW as PNG - Shows player comparison table
 async function downloadMatchupPreview() {
   if (!selectedMatchup.value) return
-  
+  trackCardShare({ dashboard_type: 'matchup_preview' })
+
   isDownloadingPreview.value = true
   
   try {
@@ -3313,7 +3315,8 @@ function getPositionColorForDownload(position: string): string {
 // Download full matchup analysis as PNG (Win Probability + Scouting + Preview)
 async function downloadFullMatchupAnalysis() {
   if (!selectedMatchup.value) return
-  
+  trackCardShare({ dashboard_type: 'matchup_full_analysis' })
+
   isDownloadingFullAnalysis.value = true
   
   try {
@@ -3695,7 +3698,8 @@ async function downloadFullMatchupAnalysis() {
 // Download STAT COMPARISON as PNG - Shows Statistical Comparison + Lifetime Series
 async function downloadStatComparison() {
   if (!selectedMatchup.value) return
-  
+  trackCardShare({ dashboard_type: 'matchup_stat_comparison' })
+
   isDownloadingComparison.value = true
   
   try {

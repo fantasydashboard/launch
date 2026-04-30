@@ -604,6 +604,7 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import LeagueGate from '@/components/LeagueGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { useRouter } from 'vue-router'
+import { trackCardShare } from '@/services/shareTracking'
 
 const leagueStore = useLeagueStore()
 const router = useRouter()
@@ -2225,6 +2226,7 @@ async function downloadAllMatchups() {
   }
 
   if (!matchups.value.length) return
+  trackCardShare({ dashboard_type: 'matchups_all_points' })
   isDownloadingAll.value = true
   
   try {
@@ -2251,6 +2253,7 @@ async function downloadWinProbability() {
   }
 
   if (!selectedMatchup.value) return
+  trackCardShare({ dashboard_type: 'win_probability_points' })
   isDownloading.value = true
   
   try {
@@ -2584,6 +2587,7 @@ async function downloadComparison() {
   }
 
   if (!selectedMatchup.value) return
+  trackCardShare({ dashboard_type: 'matchup_comparison_points' })
   isDownloadingComparison.value = true
   
   try {

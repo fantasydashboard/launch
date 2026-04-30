@@ -2603,6 +2603,7 @@
 import { ref, computed, defineComponent, h, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
+import { trackCardShare } from '@/services/shareTracking'
 
 // ── Embed detection (hide shell when loaded in admin iframe) ──────────────
 const route = useRoute()
@@ -2615,6 +2616,7 @@ const activeType = ref('interactive')
 
 // ── Card download (uses html-to-image — first-pass reliability test) ───
 async function downloadCardFromButton(ev: MouseEvent, targetW: number, targetH: number, fileName: string) {
+  trackCardShare({ dashboard_type: `social_template:${fileName}` })
   const button = ev.currentTarget as HTMLElement
   // Walk up to the .three-size-cell, then find the card element inside it.
   // The card is the LAST direct child that isn't the header row — could be a

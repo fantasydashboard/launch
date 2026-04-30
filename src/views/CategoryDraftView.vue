@@ -1323,6 +1323,7 @@ import { espnService } from '@/services/espn'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import LeagueGate from '@/components/LeagueGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import { trackCardShare } from '@/services/shareTracking'
 import { 
   getTierMovementScore, 
   scoreToGrade, 
@@ -3236,6 +3237,7 @@ async function downloadStealsImage() {  if (!canDownload.value) {
     return
   }
 
+  trackCardShare({ dashboard_type: 'draft_steals_category' })
   isDownloadingSteals.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
@@ -3422,6 +3424,7 @@ async function downloadBustsImage() {  if (!canDownload.value) {
     return
   }
 
+  trackCardShare({ dashboard_type: 'draft_busts_category' })
   isDownloadingBusts.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
@@ -3607,6 +3610,7 @@ async function downloadTeamDraftImage() {  if (!canDownload.value) {
   }
 
   if (!selectedBoardTeamData.value) return
+  trackCardShare({ dashboard_type: 'draft_team_card_category' })
   isDownloadingTeamDraft.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
@@ -3838,6 +3842,7 @@ async function downloadBalanceImage() {  if (!canDownload.value) {
   }
 
   if (!selectedTeamData.value) return
+  trackCardShare({ dashboard_type: 'draft_balance_category' })
   isDownloadingBalance.value = true
   try {
     const html2canvas = (await import('html2canvas')).default

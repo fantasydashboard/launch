@@ -1307,6 +1307,7 @@ import ScheduleAnalysis from '@/components/ScheduleAnalysis.vue'
 import AuthModal from '@/components/AuthModal.vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
+import { trackCardShare } from '@/services/shareTracking'
 
 const props = defineProps<{
   initialTool?: 'draft' | 'schedule' | 'sos'
@@ -1698,6 +1699,7 @@ async function startLotteryAnimation() {
 function closeLotteryModal() { showLotteryModal.value = false }
 
 async function downloadDraftOrderImage() {
+  trackCardShare({ dashboard_type: 'draft_order' })
   isDownloadingDraft.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
@@ -1895,7 +1897,8 @@ async function downloadDraftAnimation() {
     alert('No draft order to animate. Please generate a draft order first.')
     return
   }
-  
+  trackCardShare({ dashboard_type: 'draft_animation' })
+
   isDownloadingAnimation.value = true
   
   try {
@@ -2780,6 +2783,7 @@ function getTeamScheduleMatchupClass(teamIdx: number, week: number): string {
 
 async function downloadTeamScheduleImage() {
   if (selectedTeamIndex.value === null) return
+  trackCardShare({ dashboard_type: 'team_schedule' })
   
   isDownloadingTeamSchedule.value = true
   try {
@@ -3141,6 +3145,7 @@ function downloadScheduleCSV() {
 }
 
 async function downloadScheduleImage() {
+  trackCardShare({ dashboard_type: 'league_schedule' })
   isDownloadingSchedule.value = true
   try {
     const html2canvas = (await import('html2canvas')).default

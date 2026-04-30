@@ -2058,6 +2058,7 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import LeagueGate from '@/components/LeagueGate.vue'
 import { useRouter } from 'vue-router'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import { trackCardShare } from '@/services/shareTracking'
 
 const leagueStore = useLeagueStore()
 const { hasLeagueAccess, canExpand, canDownload} = useFeatureAccess()
@@ -3925,6 +3926,7 @@ async function downloadLegacyLeaderboard() {  if (!canDownload.value) {
     window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
     return
   }
+  trackCardShare({ dashboard_type: 'legacy_leaderboard_category' })
 
   isDownloadingLegacy.value = true
   
@@ -4669,6 +4671,7 @@ async function downloadCareerStats() {  if (!canDownload.value) {
     window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
     return
   }
+  trackCardShare({ dashboard_type: 'career_stats_category' })
 
   isDownloading.value = true
   try {
@@ -4884,6 +4887,7 @@ async function downloadSeasonHistory() {  if (!canDownload.value) {
   }
 
   if (!seasonTableRef.value) return
+  trackCardShare({ dashboard_type: 'season_history_category' })
   isDownloadingSeason.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
@@ -4986,6 +4990,7 @@ async function downloadH2HMatrix() {  if (!canDownload.value) {
     window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
     return
   }
+  trackCardShare({ dashboard_type: 'head_to_head_matrix_category' })
 
   isDownloadingH2H.value = true
   try {
@@ -5236,6 +5241,7 @@ async function downloadComparison() {  if (!canDownload.value) {
   }
 
   if (!compareTeam1Data.value || !compareTeam2Data.value || !compareData.value) return
+  trackCardShare({ dashboard_type: 'team_comparison_category' })
   isDownloadingComparison.value = true
   
   try {
@@ -5434,6 +5440,7 @@ async function downloadComparison() {  if (!canDownload.value) {
 
 // Download individual record ranking as image
 async function downloadRecordRankings(recordLabel: string) {
+  trackCardShare({ dashboard_type: 'record_rankings_category' })
   isDownloadingRecord.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
@@ -5657,6 +5664,7 @@ async function downloadRecordRankings(recordLabel: string) {
 
 // Download season category rankings as image (mirrors Career Leaders style)
 async function downloadSeasonCategoryRankings(category: string, type: 'best' | 'worst', catType: 'hitting' | 'pitching') {
+  trackCardShare({ dashboard_type: 'season_category_rankings' })
   isDownloadingSeasonCategory.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
@@ -5857,6 +5865,7 @@ async function downloadSeasonCategoryRankings(category: string, type: 'best' | '
 
 // Download award category rankings as image
 async function downloadAwardRankings(category: string, type: 'best' | 'worst', catType: 'hitting' | 'pitching') {
+  trackCardShare({ dashboard_type: 'award_rankings_category' })
   isDownloadingAward.value = true
   try {
     const html2canvas = (await import('html2canvas')).default

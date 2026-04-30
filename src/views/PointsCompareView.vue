@@ -390,6 +390,7 @@ import ApexCharts from 'apexcharts'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import { trackCardShare } from '@/services/shareTracking'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
@@ -522,6 +523,7 @@ function getLeagueName(): string {
 
 async function downloadComparisonImage() {
   if (!team1Data.value || !team2Data.value || !comparisonData.value) return
+  trackCardShare({ dashboard_type: 'points_compare' })
   isDownloadingComparison.value = true
   
   try {

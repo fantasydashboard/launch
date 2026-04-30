@@ -1872,6 +1872,7 @@ import { loadProjectionData, buildPlayerMatchers, computePointsFromFG, DISPLAY_N
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { liveGamesService } from '@/services/live-games'
+import { trackCardShare } from '@/services/shareTracking'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
@@ -3137,6 +3138,7 @@ const modifiedSuggestedLineupTotal = computed(() => {
 
 async function downloadSuggestedLineup() {
   if (copyToast.value === 'copying') return
+  trackCardShare({ dashboard_type: 'lineup_suggestion_points' })
   copyToast.value = 'copying'
   const date = selectedDate.value.toISOString().split('T')[0]
   const mode = scoringMode.value === 'daily' ? 'Daily' : 'Weekly'

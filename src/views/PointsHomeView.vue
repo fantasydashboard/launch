@@ -578,6 +578,7 @@ import { useLeagueStore } from '@/stores/league'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { espnService } from '@/services/espn'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import { trackCardShare } from '@/services/shareTracking'
 
 const leagueStore = useLeagueStore()
 const { canExpand } = useFeatureAccess()
@@ -1247,6 +1248,7 @@ function closeLeaderModal() { showLeaderModal.value = false }
 
 // Download Leader/Quick Stat image
 async function downloadLeaderImage() {
+  trackCardShare({ dashboard_type: 'leaderboard_home_points' })
   isGeneratingLeaderDownload.value = true
   
   try {
@@ -1502,6 +1504,7 @@ function buildChart() {
 
 // Download standings as shareable image
 async function downloadStandings() {
+  trackCardShare({ dashboard_type: 'standings_home_points' })
   isGeneratingDownload.value = true
   
   try {

@@ -1073,6 +1073,7 @@ import { yahooService } from '@/services/yahoo'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import LeagueGate from '@/components/LeagueGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import { trackCardShare } from '@/services/shareTracking'
 import { 
   getTierConfig, 
   getTier, 
@@ -1728,6 +1729,7 @@ async function downloadTeamImage() {  if (!canDownload.value) {
   }
 
   if (!selectedTeamData.value) return
+  trackCardShare({ dashboard_type: 'draft_team_card_points' })
   isDownloadingTeam.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
@@ -1765,6 +1767,7 @@ async function downloadStealsImage() {  if (!canDownload.value) {
     return
   }
 
+  trackCardShare({ dashboard_type: 'draft_steals_points' })
   isDownloadingSteals.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
@@ -1887,6 +1890,7 @@ async function downloadBustsImage() {  if (!canDownload.value) {
     return
   }
 
+  trackCardShare({ dashboard_type: 'draft_busts_points' })
   isDownloadingBusts.value = true
   try {
     const html2canvas = (await import('html2canvas')).default

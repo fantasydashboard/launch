@@ -2539,6 +2539,7 @@ import LeagueGate from '@/components/LeagueGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { useRouter } from 'vue-router'
 import VueApexCharts from 'vue3-apexcharts'
+import { trackCardShare } from '@/services/shareTracking'
 
 const apexchart = VueApexCharts
 
@@ -4966,6 +4967,7 @@ async function downloadLegacyLeaderboard() {  if (!canDownload.value) {
     window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
     return
   }
+  trackCardShare({ dashboard_type: 'legacy_leaderboard_points' })
 
   isDownloadingLegacy.value = true
   
@@ -5218,6 +5220,7 @@ async function downloadLegacyLeaderboard() {  if (!canDownload.value) {
 
 // Download individual team legacy
 async function downloadTeamLegacy(team: LegacyScore) {
+  trackCardShare({ dashboard_type: 'team_legacy_points' })
   isDownloadingTeamLegacy.value = true
   
   try {
@@ -6944,6 +6947,7 @@ function handleImageError(e: Event) {
 
 // Download record rankings image
 async function downloadRecordRankings(recordType: string) {
+  trackCardShare({ dashboard_type: 'record_rankings_points' })
   isDownloadingRecord.value = true
   try {
     // Get league name
@@ -7162,6 +7166,7 @@ async function downloadRecordRankings(recordType: string) {
 
 // Download award rankings image
 async function downloadAwardRankings(awardTitle: string, type: 'best' | 'worst') {
+  trackCardShare({ dashboard_type: 'award_rankings_points' })
   isDownloadingAward.value = true
   try {
     // Get league name
@@ -7390,6 +7395,7 @@ async function downloadAwardRankings(awardTitle: string, type: 'best' | 'worst')
 }
 
 async function downloadSeasonAwardRankings(awardTitle: string, type: 'best' | 'worst') {
+  trackCardShare({ dashboard_type: 'season_award_rankings_points' })
   isDownloadingSeasonAward.value = true
   try {
     const activeId = leagueStore.activeLeagueId
@@ -7595,6 +7601,7 @@ async function downloadSeasonAwardRankings(awardTitle: string, type: 'best' | 'w
 }
 
 async function downloadWeeklyAwardRankings(awardTitle: string, type: 'best' | 'worst') {
+  trackCardShare({ dashboard_type: 'weekly_award_rankings_points' })
   isDownloadingWeeklyAward.value = true
   try {
     const activeId = leagueStore.activeLeagueId
@@ -7796,6 +7803,7 @@ async function downloadCareerStats() {  if (!canDownload.value) {
     window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
     return
   }
+  trackCardShare({ dashboard_type: 'career_stats_points' })
 
   isDownloadingCareerStats.value = true
   try {
@@ -8006,6 +8014,7 @@ async function downloadSeasonHistory() {  if (!canDownload.value) {
   }
 
   if (!seasonTableRef.value) return
+  trackCardShare({ dashboard_type: 'season_history_points' })
   isDownloadingSeasonHistory.value = true
   try {
     const leagueName = leagueDisplayName.value
@@ -8107,6 +8116,7 @@ async function downloadHeadToHead() {  if (!canDownload.value) {
     window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
     return
   }
+  trackCardShare({ dashboard_type: 'head_to_head_points' })
 
   isDownloadingH2H.value = true
   try {
@@ -8331,6 +8341,7 @@ async function downloadComparison() {  if (!canDownload.value) {
   }
 
   if (!compareTeam1Data.value || !compareTeam2Data.value || !compareData.value) return
+  trackCardShare({ dashboard_type: 'team_comparison_points' })
   isDownloadingComparison.value = true
   
   try {

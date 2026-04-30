@@ -962,6 +962,7 @@ import { calculateCategoryBalance } from '@/services/categoryPowerRankingFactors
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import LeagueGate from '@/components/LeagueGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import { trackCardShare } from '@/services/shareTracking'
 
 const leagueStore = useLeagueStore()
 const router = useRouter()
@@ -1692,6 +1693,7 @@ async function downloadRankings() {  if (!canDownload.value) {
     window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
     return
   }
+  trackCardShare({ dashboard_type: 'power_rankings_category' })
 
   isGeneratingDownload.value = true
   

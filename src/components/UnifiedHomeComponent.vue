@@ -1050,6 +1050,7 @@ import { espnService } from '@/services/espn'
 import { getEspnCookiesFromExtension } from '@/services/espnExtension'
 import { sleeperService } from '@/services/sleeper'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import { trackCardShare } from '@/services/shareTracking'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
@@ -3746,6 +3747,7 @@ async function loadTeamImageCORS(team: any): Promise<string> {
 
 // Download standings as shareable image
 async function downloadStandings() {
+  trackCardShare({ dashboard_type: 'standings_card' })
   isGeneratingDownload.value = true
   
   try {
@@ -4127,6 +4129,7 @@ async function downloadStandings() {
 
 // Download Leader Modal image (Most Category Wins, Best All Play, etc.)
 async function downloadLeaderImage() {
+  trackCardShare({ dashboard_type: 'leaderboard_card' })
   isDownloadingLeader.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
@@ -4334,6 +4337,7 @@ async function downloadLeaderImage() {
 // Download Team Detail Modal image
 async function downloadTeamDetailImage() {
   if (!selectedTeamDetail.value) return
+  trackCardShare({ dashboard_type: 'team_detail_card' })
   
   isDownloadingTeamDetail.value = true
   try {

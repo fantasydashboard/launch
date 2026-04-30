@@ -466,6 +466,7 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import LeagueGate from '@/components/LeagueGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { useRouter } from 'vue-router'
+import { trackCardShare } from '@/services/shareTracking'
 
 const leagueStore = useLeagueStore()
 const router = useRouter()
@@ -2590,6 +2591,7 @@ async function downloadMatchupAnalysis() {
   }
 
   if (!selectedMatchup.value) return
+  trackCardShare({ dashboard_type: 'matchup_analysis_category' })
   isDownloading.value = true
   
   try {
@@ -2611,6 +2613,7 @@ async function downloadCategoryBreakdown() {
   }
 
   if (!selectedMatchup.value) return
+  trackCardShare({ dashboard_type: 'matchup_category_breakdown' })
   isDownloadingCategories.value = true
   
   try {
