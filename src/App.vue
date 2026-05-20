@@ -2,7 +2,7 @@
   <div class="min-h-screen transition-colors overflow-x-hidden" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
 
     <!-- Show Landing Page for non-authenticated users -->
-    <template v-if="!authStore.isAuthenticated && !$route.path.startsWith('/resources') && !$route.path.startsWith('/powerrankings') && !$route.path.startsWith('/matchups-info') && !$route.path.startsWith('/draft-info') && !$route.path.startsWith('/history-info') && !$route.path.startsWith('/signup') && !$route.path.startsWith('/auth/') && !$route.path.startsWith('/privacy') && !$route.path.startsWith('/free-tools') && !$route.path.startsWith('/draftlottery') && !$route.path.startsWith('/draftorder') && !$route.path.startsWith('/schedulegenerator')">
+    <template v-if="!authStore.isAuthenticated && !$route.path.startsWith('/resources') && !$route.path.startsWith('/powerrankings') && !$route.path.startsWith('/matchups-info') && !$route.path.startsWith('/draft-info') && !$route.path.startsWith('/history-info') && !$route.path.startsWith('/signup') && !$route.path.startsWith('/auth/') && !$route.path.startsWith('/privacy') && !$route.path.startsWith('/free-tools') && !$route.path.startsWith('/draftlottery') && !$route.path.startsWith('/draftorder') && !$route.path.startsWith('/schedulegenerator') && !$route.path.startsWith('/demo')">
       <!-- Simple Header for Landing Page -->
       <header class="fixed top-0 left-0 right-0 z-50 border-b border-dark-border/50" style="background: rgba(10, 12, 20, 0.95); backdrop-filter: blur(10px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -72,6 +72,17 @@
       <div class="pt-20 pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <router-view />
       </div>
+      <AuthModal
+        :isOpen="showAuthModal"
+        :initialMode="authMode"
+        @close="showAuthModal = false"
+        @success="handleAuthSuccess"
+      />
+    </template>
+
+    <!-- Demo league (both auth states): render bare DemoLayout, no app chrome -->
+    <template v-else-if="$route.path.startsWith('/demo')">
+      <router-view @open-signup="showAuthModal = true; authMode = 'signup'" />
       <AuthModal
         :isOpen="showAuthModal"
         :initialMode="authMode"
@@ -1182,6 +1193,7 @@ const tabs = computed(() => [
   { name: 'Season', path: '/' },
   { name: 'Power Rankings', path: '/power-rankings' },
   { name: isRotoLeague.value ? 'Roto Race' : 'Matchups', path: '/matchups' },
+  { name: 'Recap', path: '/recap' },
   { name: 'Draft', path: '/draft' },
   { name: 'History', path: '/history' },
   { name: 'Free Tools', path: '/free-tools' },

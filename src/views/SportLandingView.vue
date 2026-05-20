@@ -6,7 +6,7 @@
         <div class="flex items-center justify-between h-16">
           <!-- Logo -->
           <router-link to="/" class="flex items-center gap-2 sm:gap-3">
-            <img src="/ufd-logo.png" alt="UFD Logo" class="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
+            <img src="/UFD_V8.png" alt="UFD Logo" class="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
             <div>
               <h1 class="text-base sm:text-lg font-bold text-dark-text">
                 <span class="hidden sm:inline">Ultimate Fantasy Dashboard</span>

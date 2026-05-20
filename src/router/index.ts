@@ -165,7 +165,77 @@ const router = createRouter({
     { path: '/draft-info', name: 'page-draft', component: () => import('@/views/DraftPage.vue') },
     { path: '/history-info', name: 'page-history', component: () => import('@/views/HistoryPage.vue') },
     { path: '/socialtemplates', name: 'social-templates', component: () => import('@/views/SocialTemplatesView.vue') },
+    {
+      path: '/recap',
+      name: 'weekly-recap',
+      component: () => import('@/views/WeeklyRecapView.vue')
+    },
   { path: '/admin', name: 'admin', component: () => import('@/views/AdminView.vue') },
+    // Demo league (no auth required, pre-baked The Pillars data)
+    {
+      path: '/demo',
+      component: () => import('@/views/DemoLayout.vue'),
+      children: [
+        {
+          path: '',
+          name: 'demo-home',
+          component: () => import('@/views/DemoHomeView.vue'),
+        },
+        {
+          path: 'power-rankings',
+          name: 'demo-power-rankings',
+          component: () => import('@/views/DemoPowerRankingsView.vue'),
+        },
+        {
+          path: 'matchups',
+          name: 'demo-matchups',
+          component: () => import('@/views/DemoMatchupsView.vue'),
+        },
+        {
+          path: 'draft',
+          name: 'demo-draft',
+          component: () => import('@/views/DemoDraftView.vue'),
+        },
+        {
+          path: 'history',
+          name: 'demo-history',
+          component: () => import('@/views/DemoHistoryView.vue'),
+        },
+      ],
+    },
+    // Category-league demo (no auth required, pre-baked category baseball data)
+    {
+      path: '/demo-categories',
+      component: () => import('@/views/CategoryDemoLayout.vue'),
+      children: [
+        { path: '', redirect: '/demo-categories/home' },
+        {
+          path: 'home',
+          name: 'demo-cat-home',
+          component: () => import('@/views/CategoryDemoHomeView.vue'),
+        },
+        {
+          path: 'power-rankings',
+          name: 'demo-cat-power-rankings',
+          component: () => import('@/views/CategoryDemoPowerRankingsView.vue'),
+        },
+        {
+          path: 'matchups',
+          name: 'demo-cat-matchups',
+          component: () => import('@/views/CategoryDemoMatchupsView.vue'),
+        },
+        {
+          path: 'draft',
+          name: 'demo-cat-draft',
+          component: () => import('@/views/CategoryDemoDraftView.vue'),
+        },
+        {
+          path: 'history',
+          name: 'demo-cat-history',
+          component: () => import('@/views/CategoryDemoHistoryView.vue'),
+        },
+      ],
+    },
 ]
 })
 

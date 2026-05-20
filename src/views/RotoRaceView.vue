@@ -509,6 +509,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import { trackCardShare } from '@/services/shareTracking'
 
 const leagueStore = useLeagueStore()
 const { canDownload } = useFeatureAccess()
@@ -857,6 +858,7 @@ async function shareSection(section: 'standings' | 'distance') {
     window.dispatchEvent(new CustomEvent('ufd:show-upgrade'))
     return
   }
+  trackCardShare({ dashboard_type: section === 'standings' ? 'roto_race_standings' : 'roto_race_distance' })
 
   shareState.value[section] = 'loading'
 
@@ -1154,13 +1156,113 @@ async function shareSection(section: 'standings' | 'distance') {
   }
 }
 
+// Known H2H baseball stat IDs that appear in ESPN roto leagues' valuesByStat.
+// Mirrors the list in CategoryPowerRankingsView — keep them in sync. The
+// positionType lets RotoRaceView's existing battingCats/pitchingCats split work.
+const ESPN_BASEBALL_ROTO_STATS: Array<{ id: string; name: string; display: string; positionType: 'B' | 'P'; isNegative?: boolean }> = [
+  { id: '1',  name: 'Hits',                display: 'H',    positionType: 'B' },
+  { id: '32', name: 'Runs',                display: 'R',    positionType: 'B' },
+  { id: '33', name: 'Home Runs',           display: 'HR',   positionType: 'B' },
+  { id: '34', name: 'Total Bases',         display: 'TB',   positionType: 'B' },
+  { id: '23', name: 'RBI',                 display: 'RBI',  positionType: 'B' },
+  { id: '5',  name: 'Stolen Bases',        display: 'SB',   positionType: 'B' },
+  { id: '6',  name: 'Walks',               display: 'BB',   positionType: 'B' },
+  { id: '8',  name: 'OPS',                 display: 'OPS',  positionType: 'B' },
+  { id: '10', name: 'Slugging Pct',        display: 'SLG',  positionType: 'B' },
+  { id: '11', name: 'Batting Average',     display: 'AVG',  positionType: 'B' },
+  { id: '17', name: 'On Base Pct',         display: 'OBP',  positionType: 'B' },
+  { id: '25', name: 'Hit By Pitch',        display: 'HBP',  positionType: 'B' },
+  { id: '53', name: 'Quality Starts',      display: 'QS',   positionType: 'P' },
+  { id: '41', name: 'Innings Pitched',     display: 'IP',   positionType: 'P' },
+  { id: '43', name: 'Strikeouts',          display: 'K',    positionType: 'P' },
+  { id: '35', name: 'Wins',                display: 'W',    positionType: 'P' },
+  { id: '37', name: 'Saves',               display: 'SV',   positionType: 'P' },
+  { id: '38', name: 'Holds',               display: 'HD',   positionType: 'P' },
+  { id: '47', name: 'ERA',                 display: 'ERA',  positionType: 'P', isNegative: true },
+  { id: '48', name: 'WHIP',                display: 'WHIP', positionType: 'P', isNegative: true },
+  { id: '71', name: 'Saves + Holds',       display: 'SVHD', positionType: 'P' },
+  { id: '68', name: 'K/9',                 display: 'K/9',  positionType: 'P' },
+  { id: '69', name: 'BB/9',                display: 'BB/9', positionType: 'P', isNegative: true },
+  { id: '40', name: 'Earned Runs',         display: 'ER',   positionType: 'P', isNegative: true },
+  { id: '51', name: 'Home Runs Allowed',   display: 'HRA',  positionType: 'P', isNegative: true },
+]
+
+async function loadEspnRotoData(leagueKey: string) {
+  const { espnService } = await import('@/services/espn')
+  const parts = leagueKey.split('_')
+  if (parts.length < 4 || parts[0] !== 'espn') {
+    console.warn('[RotoRace ESPN] Unexpected league key format:', leagueKey)
+    return
+  }
+  const sport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
+  const espnLeagueId = parts[2]
+  const season = parseInt(parts[3])
+
+  const espnTeams = await espnService.getTeams(sport, espnLeagueId, season)
+  console.log(`[RotoRace ESPN] Loaded ${espnTeams.length} teams for ${sport} ${espnLeagueId}/${season}`)
+
+  // Derive categories from the first team's valuesByStat keys, intersected
+  // with our known stat list. Unknown stat IDs are dropped — add them to
+  // ESPN_BASEBALL_ROTO_STATS as new league configurations surface.
+  const cats: StatCategory[] = []
+  if (sport === 'baseball') {
+    const sample = espnTeams.find(t => t.valuesByStat && Object.keys(t.valuesByStat).length > 0)
+    if (sample?.valuesByStat) {
+      const valKeys = new Set(Object.keys(sample.valuesByStat))
+      for (const s of ESPN_BASEBALL_ROTO_STATS) {
+        if (!valKeys.has(s.id)) continue
+        if (s.isNegative) LOWER_IS_BETTER.add(s.id)
+        cats.push({
+          stat_id: s.id,
+          name: s.name,
+          display_name: s.display,
+          positionType: s.positionType,
+          isLowerBetter: !!s.isNegative,
+        })
+      }
+      console.log(`[RotoRace ESPN] Derived ${cats.length} categories from valuesByStat`)
+    } else {
+      console.warn('[RotoRace ESPN] No valuesByStat on any team — cannot derive categories')
+    }
+  } else {
+    console.warn('[RotoRace ESPN] Sport not yet supported for ESPN roto:', sport)
+  }
+  statCategories.value = cats
+
+  const stats: Record<string, Record<string, number>> = {}
+  for (const t of espnTeams) {
+    if (!t.valuesByStat) continue
+    const tk = `espn_${espnLeagueId}_${season}_${t.id}`
+    const numeric: Record<string, number> = {}
+    for (const [sid, v] of Object.entries(t.valuesByStat)) {
+      const n = typeof v === 'number' ? v : parseFloat(v as any)
+      if (!Number.isNaN(n)) numeric[sid] = n
+    }
+    stats[tk] = numeric
+  }
+  teamSeasonStats.value = stats
+  lastUpdated.value = new Date()
+
+  if (!selectedTeamKey.value) {
+    selectedTeamKey.value = myTeamKey.value || teams.value[0]?.team_key || ''
+  }
+}
+
 async function loadData(silent = false) {
   if (!silent) loading.value = true
   try {
-    const { yahooService } = await import('@/services/yahoo')
     const leagueKey = leagueStore.currentLeague?.league_id || leagueStore.activeLeagueId
     if (!leagueKey) return
 
+    // ESPN branch — yahooService doesn't understand ESPN league keys, so we'd
+    // get an empty page. Mirrors CategoryPowerRankingsView's dual-platform
+    // pattern: pull season-cumulative stats from ESPN's valuesByStat.
+    if (typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
+      await loadEspnRotoData(leagueKey)
+      return
+    }
+
+    const { yahooService } = await import('@/services/yahoo')
     const settings = await yahooService.getLeagueSettings(leagueKey)
     const rawCats = settings?.stat_categories?.stats || settings?.stat_categories || []
     const cats: StatCategory[] = []
