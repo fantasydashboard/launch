@@ -241,9 +241,22 @@ const router = createRouter({
 
 // Navigation guard for auth-required routes
 router.beforeEach((to, from, next) => {
+  // Hide the in-progress category-league demo from the production domain.
+  // Stays available on localhost and Vercel preview deployments for testing.
+  if (to.path.startsWith('/demo-categories') && typeof window !== 'undefined') {
+    const host = window.location.hostname
+    const isProdHost =
+      host === 'ultimatefantasydashboard.com' ||
+      host === 'www.ultimatefantasydashboard.com'
+    if (isProdHost) {
+      next({ path: '/' })
+      return
+    }
+  }
+
   if (to.meta.requiresAuth) {
     const authStore = useAuthStore()
-    
+
     if (!authStore.isAuthenticated) {
       // Redirect to home, the auth modal will be triggered there
       next({ path: '/', query: { redirect: to.fullPath, showLogin: 'true' } })
