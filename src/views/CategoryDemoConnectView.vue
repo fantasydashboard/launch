@@ -416,6 +416,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { usePlatformsStore } from '@/stores/platforms'
+import { useLeaguesStore } from '@/stores/leaguesNew'
 import { yahooService } from '@/services/yahoo'
 import {
   isExtensionInstalled,
@@ -521,13 +522,43 @@ onMounted(() => {
   void refreshEspnCredsStatus()
 })
 
-function onSubmit(): void {
+async function onSubmit(): Promise<void> {
   const id = leagueIdInput.value.trim()
   if (!id || selectedPlatform.value !== 'sleeper') return
-  router.push({
-    path: '/demo-categories/home',
-    query: { leagueId: id, platform: 'sleeper' },
-  })
+  // Persist the connection so it appears in the switcher across
+  // sessions, then route to the live-league URL by Supabase UUID.
+  // The fetch is just to grab the league's display name + size from
+  // the Sleeper API — best-effort, the row save tolerates failures.
+  let leagueRowId: string | undefined
+  if (authStore.isAuthenticated) {
+    try {
+      const meta = await fetch(`https://api.sleeper.app/v1/league/${id}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null)
+      const result = await platformsStore.syncSleeperLeague(
+        {
+          league_id: id,
+          name: meta?.name ?? `Sleeper League ${id}`,
+          season: String(meta?.season ?? new Date().getFullYear()),
+          total_rosters: meta?.total_rosters,
+        },
+        'baseball',
+      )
+      if (result.success) leagueRowId = result.leagueRowId
+    } catch (err) {
+      console.warn('[CategoryDemoConnect] Sleeper persist failed:', err)
+    }
+  }
+  if (leagueRowId) {
+    router.push(`/leagues/${leagueRowId}/home`)
+  } else {
+    // Anonymous user or save failed — fall back to legacy query-param
+    // route so the demo still works without the persisted record.
+    router.push({
+      path: '/demo-categories/home',
+      query: { leagueId: id, platform: 'sleeper' },
+    })
+  }
 }
 
 /**
@@ -600,13 +631,37 @@ function connectYahoo(): void {
   platformsStore.connectYahoo()
 }
 
-function onYahooSubmit(): void {
+async function onYahooSubmit(): Promise<void> {
   const key = selectedYahooLeagueKey.value.trim()
   if (!key) return
-  router.push({
-    path: '/demo-categories/home',
-    query: { leagueId: key, platform: 'yahoo' },
-  })
+  // syncYahooLeagues already persists every league the OAuth account
+  // can see; we just need to fetch the freshly-saved row to learn its
+  // UUID for the redirect target.
+  let leagueRowId: string | undefined
+  if (authStore.isAuthenticated) {
+    try {
+      await platformsStore.syncYahooLeagues('baseball')
+      // The store updates `leagues` rows; re-read to find the one the
+      // user just picked. We match by platform_league_id (= league_key
+      // in Yahoo's vocabulary).
+      const leaguesStore = useLeaguesStore()
+      if (leaguesStore.leagues.length === 0) await leaguesStore.fetchLeagues()
+      const row = leaguesStore.leagues.find(
+        (l) => l.platform === 'yahoo' && l.platform_league_id === key,
+      )
+      if (row) leagueRowId = row.id
+    } catch (err) {
+      console.warn('[CategoryDemoConnect] Yahoo persist failed:', err)
+    }
+  }
+  if (leagueRowId) {
+    router.push(`/leagues/${leagueRowId}/home`)
+  } else {
+    router.push({
+      path: '/demo-categories/home',
+      query: { leagueId: key, platform: 'yahoo' },
+    })
+  }
 }
 
 /**
@@ -636,10 +691,28 @@ async function onEspnSubmit(): Promise<void> {
         return
       }
     }
-    router.push({
-      path: '/demo-categories/home',
-      query: { leagueId: id, platform: 'espn' },
-    })
+    // Persist the league row to power the switcher across sessions.
+    let leagueRowId: string | undefined
+    if (authStore.isAuthenticated) {
+      try {
+        const result = await platformsStore.syncEspnLeague(
+          id,
+          'baseball',
+          new Date().getFullYear(),
+        )
+        if (result.success) leagueRowId = result.leagueRowId
+      } catch (err) {
+        console.warn('[CategoryDemoConnect] ESPN persist failed:', err)
+      }
+    }
+    if (leagueRowId) {
+      router.push(`/leagues/${leagueRowId}/home`)
+    } else {
+      router.push({
+        path: '/demo-categories/home',
+        query: { leagueId: id, platform: 'espn' },
+      })
+    }
   } catch (err) {
     espnError.value = (err as Error).message || 'Failed to connect ESPN league.'
   } finally {

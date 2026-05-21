@@ -458,7 +458,7 @@ export const usePlatformsStore = defineStore('platforms', () => {
     sport: Sport,
     season: number,
     leagueInfo?: { name: string; size: number; scoringType?: string }
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; leagueRowId?: string; error?: string }> {
     const authStore = useAuthStore()
     if (!supabase || !authStore.user) {
       return { success: false, error: 'Not authenticated' }
@@ -479,18 +479,22 @@ export const usePlatformsStore = defineStore('platforms', () => {
       last_synced_at: new Date().toISOString(),
     }
 
-    const { error: upsertError } = await supabase
+    // `.select().single()` so we get the row back — callers need the
+    // Supabase UUID to navigate to /leagues/:leagueId/...
+    const { data, error: upsertError } = await supabase
       .from('leagues')
       .upsert(leagueData, {
         onConflict: 'user_id,platform,platform_league_id,season',
       })
+      .select()
+      .single()
 
     if (upsertError) {
       console.error('[ESPN] Error saving league:', upsertError)
       return { success: false, error: upsertError.message }
     }
 
-    return { success: true }
+    return { success: true, leagueRowId: data?.id }
   }
 
   /**
@@ -501,7 +505,7 @@ export const usePlatformsStore = defineStore('platforms', () => {
   async function syncSleeperLeague(
     league: { league_id: string; name: string; season: string; total_rosters?: number },
     sport: Sport
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; leagueRowId?: string; error?: string }> {
     const authStore = useAuthStore()
     if (!supabase || !authStore.user) {
       return { success: false, error: 'Not authenticated' }
@@ -524,18 +528,20 @@ export const usePlatformsStore = defineStore('platforms', () => {
       last_synced_at: new Date().toISOString(),
     }
 
-    const { error: upsertError } = await supabase
+    const { data, error: upsertError } = await supabase
       .from('leagues')
       .upsert(leagueData, {
         onConflict: 'user_id,platform,platform_league_id,season',
       })
+      .select()
+      .single()
 
     if (upsertError) {
       console.error('[Sleeper] Error saving league:', upsertError)
       return { success: false, error: upsertError.message }
     }
 
-    return { success: true }
+    return { success: true, leagueRowId: data?.id }
   }
 
   return {

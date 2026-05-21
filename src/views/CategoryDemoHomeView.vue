@@ -184,7 +184,11 @@
          Replaces football's "Week 10 Results" with a daily-cadence
          beat suited to category baseball.
     ────────────────────────────────────────────────────────────── -->
-    <section class="story-track-section" aria-labelledby="swings-h">
+    <!-- Strict-live mode hides the fixture-driven Big Swings carousel.
+         The replacement ("This Week's Movers") derived from live data
+         is a follow-up — until then we'd rather show nothing than fake
+         box-score stories with demo player names. -->
+    <section v-if="!isStrictLiveMode" class="story-track-section" aria-labelledby="swings-h">
       <header class="section-head section-head-flex">
         <div>
           <p class="section-eyebrow section-eyebrow-teal">Yesterday's big swings</p>
@@ -735,8 +739,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useLeaguesStore } from '@/stores/leaguesNew'
 import {
   teams,
   standings2026Week8,
@@ -904,20 +909,44 @@ const liveEditorial = shallowRef<RenderedHomeCopy>(
 )
 const liveLoading = ref(false)
 const liveError = ref<string | null>(null)
-const liveLeagueId = computed(() => {
+
+// Two ways to bind this view to a real league:
+//   - Strict mode: `/leagues/:leagueId/home` — leagueId is a Supabase
+//     `leagues.id` UUID. We look up the row from the leaguesNew store
+//     to discover the platform + platform_league_id. No fixture
+//     fallback rendered when this mode is active.
+//   - Soft mode (legacy): `/demo-categories/home?leagueId=…&platform=…`
+//     — direct platform-league-id in the URL. Falls back to fixture
+//     when no query params present. Kept until everything lives on the
+//     new /leagues route tree.
+const leaguesStore = useLeaguesStore()
+const strictLeagueRecord = computed(() => {
+  const uuid = route.params.leagueId
+  if (typeof uuid !== 'string' || uuid.length === 0) return null
+  return leaguesStore.leagues.find((l) => l.id === uuid) ?? null
+})
+const isStrictLiveMode = computed(() => typeof route.params.leagueId === 'string')
+
+const liveLeagueId = computed<string | null>(() => {
+  // Strict route: the platform's own league id lives on the leagues
+  // store record (we keep the Supabase UUID in the URL for cleanliness).
+  if (isStrictLiveMode.value) {
+    return strictLeagueRecord.value?.platform_league_id ?? null
+  }
   const v = route.query.leagueId
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
 })
-const livePlatform = computed(() => {
+const livePlatform = computed<string | null>(() => {
+  if (isStrictLiveMode.value) {
+    return strictLeagueRecord.value?.platform ?? null
+  }
   const v = route.query.platform
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
 })
 
 // Human-readable platform label, surfaced by the loading banner so the
 // "Loading your league from X" copy matches the platform the user
-// actually picked on the Connect screen. Falls back to a generic phrase
-// when no platform query is present (shouldn't happen in practice, but
-// keeps the banner sensible if someone navigates here directly).
+// actually picked on the Connect screen.
 const platformLabel = computed(() => {
   const p = livePlatform.value
   if (p === 'yahoo') return 'Yahoo'
@@ -926,23 +955,15 @@ const platformLabel = computed(() => {
   return 'your league'
 })
 
-onMounted(async () => {
+async function loadLiveData() {
   const id = liveLeagueId.value
   const platform = livePlatform.value
   if (!id || (platform !== 'sleeper' && platform !== 'espn' && platform !== 'yahoo')) {
-    return  // fixture-only path
+    return  // no live binding requested
   }
-
   liveLoading.value = true
   liveError.value = null
   try {
-    // Pull the signed-in user's per-platform identity from the
-    // platforms store so the adapter can wire `isMyTeam` correctly.
-    // Each adapter only consumes the field for its own platform; the
-    // others are ignored. Wrapped in try/catch because the store may
-    // not have been hydrated yet (off-line, first-visit) — missing
-    // identity just means no team gets the wayfinding tint, which is
-    // a fine degraded experience.
     const opts = { userIdentity: collectUserIdentity() }
     const data =
       platform === 'espn'
@@ -953,13 +974,40 @@ onMounted(async () => {
     liveData.value = data
     liveEditorial.value = renderHomePage(data)
   } catch (err) {
-    const platformLabel =
+    const platformName =
       platform === 'espn' ? 'ESPN' : platform === 'yahoo' ? 'Yahoo' : 'Sleeper'
-    liveError.value = (err as Error).message || `Failed to load ${platformLabel} league data.`
+    liveError.value = (err as Error).message || `Failed to load ${platformName} league data.`
   } finally {
     liveLoading.value = false
   }
+}
+
+onMounted(async () => {
+  // In strict mode the leagues store may not be hydrated yet (deep link
+  // or page refresh) — make sure we have the row before trying to load.
+  if (isStrictLiveMode.value && leaguesStore.leagues.length === 0) {
+    try {
+      await leaguesStore.fetchLeagues()
+    } catch (err) {
+      console.warn('[CategoryDemoHomeView] fetchLeagues failed:', err)
+    }
+  }
+  await loadLiveData()
 })
+
+// React to URL changes — switching between leagues replaces
+// `route.params.leagueId`, which triggers a re-fetch through the new
+// platform / platform_league_id pair. Without this watch the user
+// would have to refresh after switching.
+watch(
+  () => route.params.leagueId,
+  async (next, prev) => {
+    if (next === prev) return
+    liveData.value = null
+    liveEditorial.value = renderHomePage(categoriesFixtureToLeagueData())
+    await loadLiveData()
+  },
+)
 
 /**
  * Build the cross-platform identity object the adapters need to flag

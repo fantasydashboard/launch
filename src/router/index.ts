@@ -203,6 +203,44 @@ const router = createRouter({
         },
       ],
     },
+    // Live league routes — your real connected leagues, no fixture
+    // fallback. URL is keyed by the Supabase `leagues.id` UUID (not the
+    // platform's league id) so the league switcher can deep-link without
+    // exposing platform identifiers. The view looks up the row from the
+    // leaguesNew store to pick the right adapter.
+    {
+      path: '/leagues/:leagueId',
+      component: () => import('@/views/MyLeagueLayout.vue'),
+      meta: { requiresAuth: true },
+      children: [
+        { path: '', redirect: (to) => `/leagues/${to.params.leagueId}/home` },
+        {
+          path: 'home',
+          name: 'my-league-home',
+          component: () => import('@/views/CategoryDemoHomeView.vue'),
+        },
+        {
+          path: 'power-rankings',
+          name: 'my-league-power-rankings',
+          component: () => import('@/views/CategoryDemoPowerRankingsView.vue'),
+        },
+        {
+          path: 'matchups',
+          name: 'my-league-matchups',
+          component: () => import('@/views/CategoryDemoMatchupsView.vue'),
+        },
+        {
+          path: 'draft',
+          name: 'my-league-draft',
+          component: () => import('@/views/CategoryDemoDraftView.vue'),
+        },
+        {
+          path: 'history',
+          name: 'my-league-history',
+          component: () => import('@/views/CategoryDemoHistoryView.vue'),
+        },
+      ],
+    },
     // Category-league demo (no auth required, pre-baked category baseball data)
     {
       path: '/demo-categories',
