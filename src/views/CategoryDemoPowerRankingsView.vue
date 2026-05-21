@@ -17,25 +17,25 @@
       <div class="page-head-copy">
         <p class="page-eyebrow">
           <span class="page-eyebrow-bar" aria-hidden="true"></span>
-          Week {{ currentWeek }}
+          Week {{ displayCurrentWeek }}
         </p>
         <h1 class="page-headline">Power Rankings</h1>
         <p class="page-sub">{{ livePR.subHeadline }}</p>
       </div>
       <ul class="page-context" role="list" aria-label="At a glance">
         <li class="page-context-stat">
-          <span class="page-context-num">{{ currentWeek }}</span>
+          <span class="page-context-num">{{ displayCurrentWeek }}</span>
           <span class="page-context-label">weeks done</span>
         </li>
         <li class="page-context-sep" aria-hidden="true"></li>
         <li class="page-context-stat">
           <span class="page-context-num page-context-num-accent">+{{ biggestJump.spots }}</span>
-          <span class="page-context-label">biggest jump ({{ getTeam(biggestJump.teamId).name }})</span>
+          <span class="page-context-label">biggest jump ({{ lookupTeam(biggestJump.teamId).name }})</span>
         </li>
         <li class="page-context-sep" aria-hidden="true"></li>
         <li class="page-context-stat">
           <span class="page-context-num">{{ longestFall.fromRank }} → {{ longestFall.toRank }}</span>
-          <span class="page-context-label">longest fall ({{ getTeam(longestFall.teamId).name }})</span>
+          <span class="page-context-label">longest fall ({{ lookupTeam(longestFall.teamId).name }})</span>
         </li>
       </ul>
     </header>
@@ -139,7 +139,7 @@
           <!-- Clip paths for circular endpoint logos -->
           <defs>
             <clipPath
-              v-for="t in teams"
+              v-for="t in displayTeams"
               :key="`clip-${t.id}`"
               :id="`cat-endpoint-clip-${t.id}`"
             >
@@ -166,8 +166,11 @@
             :stroke="lineColorFor(t.id)"
           />
 
-          <!-- Annotation: bt takes #1 at week 6 -->
-          <g class="trajectory-annotation">
+          <!-- Annotation: bt takes #1 at week 6.
+               Fixture-only — it's the hand-authored throne-change moment.
+               Hidden when live data is loaded since we don't compute a
+               matching annotation dynamically yet. -->
+          <g class="trajectory-annotation" v-if="!liveData">
             <circle
               :cx="weekX(6)"
               :cy="rankY(1)"
@@ -190,7 +193,7 @@
 
           <!-- Endpoints -->
           <g
-            v-for="t in teams"
+            v-for="t in displayTeams"
             :key="`endpoint-${t.id}`"
             class="trajectory-endpoint"
             :class="{
@@ -226,7 +229,7 @@
         </svg>
 
         <ul class="trajectory-weeks" aria-hidden="true">
-          <li v-for="w in WEEK_COUNT" :key="`wk-${w}`">W{{ w }}</li>
+          <li v-for="w in weekCount" :key="`wk-${w}`">W{{ w }}</li>
         </ul>
       </div>
 
@@ -270,13 +273,13 @@
           <div class="throne-id">
             <div
               class="throne-avatar"
-              :style="{ background: `linear-gradient(135deg, ${getTeam(side.teamId).avatarColor})` }"
+              :style="{ background: `linear-gradient(135deg, ${lookupTeam(side.teamId).avatarColor})` }"
             >
-              <img v-if="getTeam(side.teamId).avatarUrl" :src="getTeam(side.teamId).avatarUrl" class="avatar-image" alt="" />
-              <span v-else>{{ getTeam(side.teamId).ownerInitials }}</span>
+              <img v-if="lookupTeam(side.teamId).avatarUrl" :src="lookupTeam(side.teamId).avatarUrl" class="avatar-image" alt="" />
+              <span v-else>{{ lookupTeam(side.teamId).ownerInitials }}</span>
             </div>
             <div class="throne-text">
-              <p class="throne-name">{{ getTeam(side.teamId).name }}</p>
+              <p class="throne-name">{{ lookupTeam(side.teamId).name }}</p>
               <p class="throne-meta">
                 <span class="throne-owns">Owns <strong>{{ side.owns }}</strong></span>
                 <span class="throne-sep" aria-hidden="true">·</span>
@@ -284,9 +287,9 @@
               </p>
             </div>
           </div>
-          <ul class="throne-strip" role="list" :aria-label="`${getTeam(side.teamId).name} category fingerprint`">
+          <ul class="throne-strip" role="list" :aria-label="`${lookupTeam(side.teamId).name} category fingerprint`">
             <li
-              v-for="cat in categories"
+              v-for="cat in displayCategories"
               :key="`throne-${side.teamId}-${cat.id}`"
               class="throne-cell"
               :class="cellClass(side.ranks[cat.id])"
@@ -311,6 +314,7 @@
         </div>
         <div class="board-actions">
           <button
+            v-if="!liveData"
             type="button"
             class="board-customize"
             aria-label="Customize power ranking weights"
@@ -345,10 +349,10 @@
               v-for="row in boardRows"
               :key="row.teamId"
               class="board-row"
-              :class="{ 'is-my-team': getTeam(row.teamId).isMyTeam }"
+              :class="{ 'is-my-team': lookupTeam(row.teamId).isMyTeam }"
               tabindex="0"
               role="button"
-              :aria-label="`Open ${getTeam(row.teamId).name} detail`"
+              :aria-label="`Open ${lookupTeam(row.teamId).name} detail`"
               @click="openDetail(row.teamId, $event)"
               @keydown.enter.prevent="openDetail(row.teamId, $event)"
               @keydown.space.prevent="openDetail(row.teamId, $event)"
@@ -365,24 +369,24 @@
                 <div class="team-cell">
                   <div
                     class="team-avatar"
-                    :style="{ background: `linear-gradient(135deg, ${getTeam(row.teamId).avatarColor})` }"
+                    :style="{ background: `linear-gradient(135deg, ${lookupTeam(row.teamId).avatarColor})` }"
                   >
                     <img
-                      v-if="getTeam(row.teamId).avatarUrl"
-                      :src="getTeam(row.teamId).avatarUrl"
+                      v-if="lookupTeam(row.teamId).avatarUrl"
+                      :src="lookupTeam(row.teamId).avatarUrl"
                       class="avatar-image"
                       alt=""
                     />
-                    <span v-else>{{ getTeam(row.teamId).ownerInitials }}</span>
-                    <span v-if="getTeam(row.teamId).isMyTeam" class="team-star" aria-label="Your team" title="Your team">
+                    <span v-else>{{ lookupTeam(row.teamId).ownerInitials }}</span>
+                    <span v-if="lookupTeam(row.teamId).isMyTeam" class="team-star" aria-label="Your team" title="Your team">
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                         <polygon points="12 2 15 9 22 9.5 16.5 14.5 18 22 12 18 6 22 7.5 14.5 2 9.5 9 9"/>
                       </svg>
                     </span>
                   </div>
                   <div class="team-name-block">
-                    <p class="team-name">{{ getTeam(row.teamId).name }}</p>
-                    <p class="team-desc">{{ getTeam(row.teamId).profileDescriptor }}</p>
+                    <p class="team-name">{{ lookupTeam(row.teamId).name }}</p>
+                    <p class="team-desc">{{ lookupTeam(row.teamId).profileDescriptor }}</p>
                   </div>
                 </div>
               </td>
@@ -418,9 +422,9 @@
                 <span :style="{ color: winPctColor(row.standing.winPct) }">{{ (row.standing.winPct * 100).toFixed(1) }}%</span>
               </td>
               <td class="col-finger">
-                <ul class="finger-strip" role="list" :aria-label="`${getTeam(row.teamId).name} category fingerprint`">
+                <ul class="finger-strip" role="list" :aria-label="`${lookupTeam(row.teamId).name} category fingerprint`">
                   <li
-                    v-for="cat in categories"
+                    v-for="cat in displayCategories"
                     :key="`fp-${row.teamId}-${cat.id}`"
                     class="finger-cell"
                     :class="cellClass(catRanksFor(row.teamId)[cat.id])"
@@ -482,7 +486,7 @@
             <p class="heater-eyebrow">{{ heaterCopy?.eyebrow || 'On a heater' }}</p>
             <p class="heater-team">{{ heaterTeam.name }}</p>
             <p class="heater-owner">{{ heaterTeam.ownerName }}</p>
-            <div class="heater-streak" :aria-label="`${movementBeats.onHeater.streak} win streak`">
+            <div class="heater-streak" :aria-label="`${heaterStreakLabel} win streak`">
               <svg
                 v-for="i in 3"
                 :key="`heater-chev-${i}`"
@@ -499,7 +503,7 @@
               >
                 <polyline points="6 15 12 9 18 15"/>
               </svg>
-              <span class="heater-streak-label">{{ movementBeats.onHeater.streak }}</span>
+              <span class="heater-streak-label">{{ heaterStreakLabel }}</span>
             </div>
             <p class="heater-copy">{{ heaterCopy?.body || movementBeats.onHeater.body }}</p>
           </div>
@@ -531,9 +535,9 @@
             />
           </svg>
           <p class="fall-meta">
-            <span class="fall-from">#{{ movementBeats.longFall.fromRank }}</span>
+            <span class="fall-from">#{{ fallRanks.fromRank }}</span>
             <span class="fall-arrow" aria-hidden="true">to</span>
-            <span class="fall-to">#{{ movementBeats.longFall.toRank }}</span>
+            <span class="fall-to">#{{ fallRanks.toRank }}</span>
             <span class="fall-since">since week 1</span>
           </p>
         </article>
@@ -722,8 +726,28 @@ defineEmits<{ (e: 'open-signup'): void }>()
 
 const route = useRoute()
 
-const standings = standings2026Week8
-const myTeam = teams.find((t) => t.isMyTeam)!
+// Standings, teams, and season-rank history — prefer live data when a
+// real league has been wired up, else fall back to the hand-authored
+// fixture so the demo experience keeps working. Every downstream
+// computed below reads from these (not the fixture imports directly)
+// so toggling between fixture and live is a single source of truth.
+const standings = computed(() =>
+  liveData.value?.standings ?? standings2026Week8,
+)
+const displayTeams = computed(() =>
+  liveData.value?.teams ?? teams,
+)
+const liveSeasonRankHistory = computed(() =>
+  liveData.value?.seasonRankHistory ?? seasonRankHistory,
+)
+const displayCurrentWeek = computed(() =>
+  liveData.value?.currentWeek ?? currentWeek,
+)
+const fixtureMyTeam = teams.find((t) => t.isMyTeam)!
+const myTeam = computed(() => {
+  const live = liveData.value?.teams.find((t) => t.isMyTeam)
+  return live ?? fixtureMyTeam
+})
 const { liveRankings } = useDemoCategoryPowerRankings()
 
 /* ─────────────────────────────────────────────────────────────────
@@ -854,13 +878,61 @@ interface BoardRow {
   standing: CategoryStanding
 }
 // Week-over-week rank delta. Positive number = climbed (lower rank number this week).
-const lastWeekRanks = seasonRankHistory[seasonRankHistory.length - 2]?.ranks ?? {}
-const thisWeekRanks = seasonRankHistory[seasonRankHistory.length - 1]?.ranks ?? {}
+const lastWeekRanks = computed<Record<string, number>>(() => {
+  const hist = liveSeasonRankHistory.value
+  return hist[hist.length - 2]?.ranks ?? {}
+})
+const thisWeekRanks = computed<Record<string, number>>(() => {
+  const hist = liveSeasonRankHistory.value
+  // Live ESPN data may not include the in-progress week in history yet
+  // (buildSeasonRankHistory only writes weeks where every matchup is
+  // decided). Fall back to current standings so the week-over-week move
+  // chip still reflects the right ranks.
+  const last = hist[hist.length - 1]?.ranks
+  if (last && Object.keys(last).length > 0) return last
+  const fallback: Record<string, number> = {}
+  for (const s of standings.value) fallback[s.teamId] = s.rank
+  return fallback
+})
 const boardRows = computed<BoardRow[]>(() => {
+  const lwRanks = lastWeekRanks.value
+  const twRanks = thisWeekRanks.value
+
+  // Live path — the Customize composable is fixture-hardcoded
+  // (`useDemoCategoryPowerRankings` imports the fixture `teams` +
+  // `teamFactorScores`), so when the page is bound to a real league we
+  // bypass it entirely. The board sorts by live category-win record
+  // and proxies the power score as winPct × 100, which is a clean
+  // first-pass score until we wire a real per-league multi-factor
+  // model. Move chip still reads live week-over-week ranks.
+  if (liveData.value) {
+    const live = [...liveData.value.standings].sort((a, b) => a.rank - b.rank)
+    return live.map((s) => {
+      const lw = lwRanks[s.teamId]
+      const tw = twRanks[s.teamId]
+      const weekMove =
+        typeof lw === 'number' && typeof tw === 'number' ? lw - tw : 0
+      return {
+        teamId: s.teamId,
+        rank: s.rank,
+        prevRank: typeof lw === 'number' ? lw : s.rank,
+        change: typeof lw === 'number' ? lw - s.rank : 0,
+        weekMove,
+        powerScore: Math.round(s.winPct * 1000) / 10,
+        standing: s as unknown as CategoryStanding,
+      }
+    })
+  }
+
+  // Fixture / demo path — keep the existing weighted-rankings flow so
+  // the demo experience (and the Customize formula modal) behaves
+  // exactly as before.
+  const standingsList = standings.value
   return liveRankings.value.map((row) => {
-    const s = standings.find((x) => x.teamId === row.teamId)!
-    const lw = lastWeekRanks[row.teamId]
-    const tw = thisWeekRanks[row.teamId]
+    const s = standingsList.find((x) => x.teamId === row.teamId)
+      ?? standings2026Week8.find((x) => x.teamId === row.teamId)!
+    const lw = lwRanks[row.teamId]
+    const tw = twRanks[row.teamId]
     const weekMove =
       typeof lw === 'number' && typeof tw === 'number' ? lw - tw : 0
     return {
@@ -903,9 +975,27 @@ function powerColor(v: number) {
 // Biggest jump: team with the largest positive delta from W1 to current week.
 // Longest fall: team with the largest negative delta.
 const seasonDeltas = computed(() => {
-  const first = seasonRankHistory[0].ranks
-  const last = seasonRankHistory[seasonRankHistory.length - 1].ranks
-  return teams.map((t) => ({
+  const hist = liveSeasonRankHistory.value
+  if (hist.length === 0) {
+    // No history at all — derive a flat snapshot so downstream chips
+    // still render without throwing.
+    return displayTeams.value.map((t) => ({
+      teamId: t.id,
+      fromRank: 10,
+      toRank: 10,
+      delta: 0,
+    }))
+  }
+  const first = hist[0].ranks
+  const lastEntry = hist[hist.length - 1].ranks
+  // Same fallback story as `thisWeekRanks`: end-of-history may not
+  // include the in-progress week yet.
+  let last: Record<string, number> = lastEntry
+  if (Object.keys(last).length === 0) {
+    last = {}
+    for (const s of standings.value) last[s.teamId] = s.rank
+  }
+  return displayTeams.value.map((t) => ({
     teamId: t.id,
     fromRank: first[t.id] ?? 10,
     toRank: last[t.id] ?? 10,
@@ -925,19 +1015,13 @@ const longestFall = computed(() => {
 })
 
 /* ─── Hero mover ─────────────────────────────────────────────── */
-// Hero team: when live data is on, derive from the detected hero team
-// name by reverse-lookup; otherwise fall back to the fixture's mover.
+// Hero team: the renderer now surfaces `teamId` on the rendered hero
+// copy, so we read it directly when present. Falls back to the fixture
+// mover so the demo (no leagueId in URL) still works.
 const heroMoverTeam = computed(() => {
-  if (liveData.value) {
-    const name = livePR.value.hero.headline
-    // The hero render emits "{TeamName} ...." — find a team whose name
-    // is a prefix of the headline. This avoids a second detection pass
-    // here. Fallback: fixture's mover.
-    const list = liveData.value.teams
-    const match = list.find((t) => name.includes(t.name))
-    if (match) return match
-  }
-  return getTeam(heroMover.teamId)
+  const id = livePR.value.hero.teamId
+  if (id) return lookupTeam(id)
+  return lookupTeam(heroMover.teamId)
 })
 
 // Editorial hero copy — live render when present, else fixture.
@@ -959,13 +1043,42 @@ interface FaceoffSide {
   owns: number
   bleeds: number
 }
+
+// Look up a team's per-category ranks. Prefers live data (set by the
+// adapter) and falls back to the fixture's `catRanksFor` helper, which
+// only knows about the hand-authored teams.
+function catRanksForTeam(teamId: string): Record<string, number> {
+  const live = liveData.value?.categoryRanks.find((r) => r.teamId === teamId)
+  if (live) return live.catRanks
+  try {
+    return catRanksFor(teamId) as unknown as Record<string, number>
+  } catch {
+    return {}
+  }
+}
+
 const faceoffSides = computed<FaceoffSide[]>(() => {
-  const ids = [headlineThisWeek.protagonistTeamId, headlineThisWeek.antagonistTeamId]
+  // Live: top 2 teams in the current standings — the team holding #1
+  // now and whichever team it most recently passed (rank #2 is a
+  // reasonable proxy when we don't have a "previous king" signal).
+  // Fixture: keep the hand-authored protagonist / antagonist so the
+  // "pitching side flipped" copy still matches the cells.
+  let ids: string[]
+  if (liveData.value) {
+    const sorted = [...liveData.value.standings].sort((a, b) => a.rank - b.rank)
+    ids = sorted.slice(0, 2).map((s) => s.teamId)
+  } else {
+    ids = [headlineThisWeek.protagonistTeamId, headlineThisWeek.antagonistTeamId]
+  }
+  // Categories list — prefer the live league's active cats so the
+  // strip mirrors the user's league instead of the demo's 11-cat baseball.
+  const activeCats = liveData.value?.categories ?? categories
   return ids.map((tid) => {
-    const ranks = catRanksFor(tid)
+    const ranks = catRanksForTeam(tid) as Record<CategoryId, number>
     let owns = 0, bleeds = 0
-    for (const c of categories) {
-      const r = ranks[c.id]
+    for (const c of activeCats) {
+      const r = (ranks as Record<string, number>)[c.id]
+      if (r == null) continue
       if (r <= 3) owns++
       else if (r >= 8) bleeds++
     }
@@ -973,43 +1086,59 @@ const faceoffSides = computed<FaceoffSide[]>(() => {
   })
 })
 
+// Active category list — live league's cats when present, else the
+// fixture's 11-cat baseball. Used by the throne strip and the board's
+// per-team finger strip.
+const displayCategories = computed(() => liveData.value?.categories ?? categories)
+
 /* ─── Trajectory bump chart ──────────────────────────────────── */
 const CHART_W = 1000
 const CHART_H = 360
 const X_MARGIN = 40
 const Y_MARGIN = 28
-const WEEK_COUNT = seasonRankHistory.length
+const weekCount = computed(() => Math.max(2, liveSeasonRankHistory.value.length))
 const RANK_COUNT = 10
 const ENDPOINT_INSET = 22
 const endpointX = CHART_W - X_MARGIN
 
-// Feature: top 3, my team, and ct (the falling defending champ).
+// Feature: top 3, my team, and the dynasty-falling team (defending champ
+// who's slid since the start). When live data is on, find the latter by
+// the biggest negative season-delta so the highlight stays meaningful.
+const fallingTeamId = computed<string | undefined>(() => {
+  const sorted = [...seasonDeltas.value].sort((a, b) => a.delta - b.delta)
+  return sorted[0]?.teamId
+})
 const featuredIds = computed<string[]>(() => {
-  const top3 = standings.slice(0, 3).map((s) => s.teamId)
-  const ids = new Set<string>([...top3, myTeam.id, 'ct'])
+  const top3 = standings.value.slice(0, 3).map((s) => s.teamId)
+  const ids = new Set<string>([...top3, myTeam.value.id])
+  const falling = fallingTeamId.value
+  if (falling) ids.add(falling)
   return [...ids]
 })
 function isFeatured(id: string) {
   return featuredIds.value.includes(id)
 }
 const featuredTeams = computed(() =>
-  teams.filter((t) => isFeatured(t.id))
-       .sort((a, b) => currentRank(a.id) - currentRank(b.id)),
+  displayTeams.value
+    .filter((t) => isFeatured(t.id))
+    .sort((a, b) => currentRank(a.id) - currentRank(b.id)),
 )
 const fadedTeams = computed(() =>
-  teams.filter((t) => !isFeatured(t.id))
-       .sort((a, b) => currentRank(a.id) - currentRank(b.id)),
+  displayTeams.value
+    .filter((t) => !isFeatured(t.id))
+    .sort((a, b) => currentRank(a.id) - currentRank(b.id)),
 )
 
-const myTeamRankNow = computed(() => currentRank(myTeam.id))
+const myTeamRankNow = computed(() => currentRank(myTeam.value.id))
 const trajectoryAriaLabel = computed(
-  () => `Power ranking trajectory for 10 teams across ${WEEK_COUNT} weeks. ${myTeam.name} is currently number ${myTeamRankNow.value}.`,
+  () =>
+    `Power ranking trajectory for ${displayTeams.value.length} teams across ${weekCount.value} weeks. ${myTeam.value.name} is currently number ${myTeamRankNow.value}.`,
 )
 
 function weekX(week: number) {
   const idx = week - 1
   const usableW = CHART_W - X_MARGIN * 2 - ENDPOINT_INSET
-  return X_MARGIN + (idx / (WEEK_COUNT - 1)) * usableW
+  return X_MARGIN + (idx / (weekCount.value - 1)) * usableW
 }
 function rankY(rank: number) {
   const idx = rank - 1
@@ -1017,15 +1146,20 @@ function rankY(rank: number) {
   return Y_MARGIN + (idx / (RANK_COUNT - 1)) * span
 }
 function currentRank(teamId: string) {
-  const lastWk = seasonRankHistory[seasonRankHistory.length - 1]
-  return lastWk.ranks[teamId] ?? 10
+  // Prefer the in-progress standings (live ESPN exposes this even when
+  // the week has no history entry yet), then the latest history snapshot.
+  const fromStandings = standings.value.find((s) => s.teamId === teamId)?.rank
+  if (fromStandings != null) return fromStandings
+  const hist = liveSeasonRankHistory.value
+  const lastWk = hist[hist.length - 1]
+  return lastWk?.ranks[teamId] ?? 10
 }
 function lineColorFor(teamId: string) {
-  if (teamId === myTeam.id) return 'oklch(0.78 0.18 92)'
-  return accentFor(getTeam(teamId))
+  if (teamId === myTeam.value.id) return 'oklch(0.78 0.18 92)'
+  return accentFor(lookupTeam(teamId))
 }
 function pathForTeam(teamId: string) {
-  const points: Point[] = seasonRankHistory.map((w) => ({
+  const points: Point[] = liveSeasonRankHistory.value.map((w) => ({
     x: weekX(w.week),
     y: rankY(w.ranks[teamId] ?? 10),
   }))
@@ -1063,15 +1197,76 @@ const shiftBeat = computed(() => {
   return fxShiftBeat.value
 })
 
-const kingTeam = computed(() => getTeam(kingBeat.value.teamId))
-const bleederTeam = computed(() => getTeam(bleederBeat.value.teamId))
-const shiftTeam = computed(() => getTeam(shiftBeat.value.teamId))
+// Dynasty team avatars — prefer the team detected by the render
+// pipeline (so the avatar matches the live headline), fall back to
+// the fixture beat's teamId when no live signal fired.
+const kingTeam = computed(() => {
+  const id = livePR.value.dynasties.hittingKing?.teamId
+  if (id) return lookupTeam(id)
+  return lookupTeam(kingBeat.value.teamId)
+})
+const bleederTeam = computed(() => {
+  const id = livePR.value.dynasties.puntKings?.teamId
+  if (id) return lookupTeam(id)
+  return lookupTeam(bleederBeat.value.teamId)
+})
+const shiftTeam = computed(() => {
+  const id = livePR.value.dynasties.pitchingKing?.teamId
+  if (id) return lookupTeam(id)
+  return lookupTeam(shiftBeat.value.teamId)
+})
 const kingAccent = computed(() => accentFor(kingTeam.value))
 
 /* ─── Pulse Check data ────────────────────────────────────────── */
-const heaterTeam = computed(() => getTeam(movementBeats.onHeater.teamId))
-const fallTeam = computed(() => getTeam(movementBeats.longFall.teamId))
-const steadyTeam = computed(() => getTeam(movementBeats.steadiestHand.teamId))
+// Each pulse card pairs a team avatar with editorial copy. The render
+// pipeline now surfaces `teamId` on each rendered beat, so we prefer
+// that and fall back to the fixture's `movementBeats` only when no
+// live beat fired (demo path, or a quiet league where the heater /
+// long-fall detectors found nothing).
+const heaterTeam = computed(() => {
+  const id = livePR.value.pulse.heater?.teamId
+  if (id) return lookupTeam(id)
+  return lookupTeam(movementBeats.onHeater.teamId)
+})
+const fallTeam = computed(() => {
+  const id = livePR.value.pulse.longFall?.teamId
+  if (id) return lookupTeam(id)
+  return lookupTeam(movementBeats.longFall.teamId)
+})
+const steadyTeam = computed(() => {
+  const id = livePR.value.pulse.steadyHand?.teamId
+  if (id) return lookupTeam(id)
+  return lookupTeam(movementBeats.steadiestHand.teamId)
+})
+
+/* ─── Heater streak label — prefer the live streak from the render
+   pipeline's `pulse.heater` headline; fall back to fixture. The
+   library doesn't surface a structured streak field, so we read the
+   headline for the canonical "W3" / "W5" / "W7" token; defensively
+   fall back if it's missing. ─────────────────────────────────────── */
+const heaterStreakLabel = computed(() => {
+  const headline = livePR.value.pulse.heater?.headline
+  if (headline) {
+    // Match a "W{n}" token; the editorial library uses this
+    // consistently across heater variants.
+    const m = headline.match(/W\d+/)
+    if (m) return m[0]
+  }
+  return movementBeats.onHeater.streak
+})
+
+// Long-fall rank movement — prefer the live trajectory's
+// first→last delta when available, else fall back to fixture.
+const fallRanks = computed(() => {
+  const traj = livePR.value.pulse.longFall?.trajectory
+  if (traj && traj.length >= 2) {
+    return { fromRank: traj[0], toRank: traj[traj.length - 1] }
+  }
+  return {
+    fromRank: movementBeats.longFall.fromRank,
+    toRank: movementBeats.longFall.toRank,
+  }
+})
 
 // Live pulse editorial copy (eyebrow / headline / body / trajectory).
 const heaterCopy = computed(() => livePR.value.pulse.heater)

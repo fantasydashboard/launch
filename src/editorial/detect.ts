@@ -77,7 +77,14 @@ function teamFor(data: CategoryLeagueData, teamId: string): CategoryLeagueDataTe
 
 function rankAtWeek(data: CategoryLeagueData, teamId: string, week: number): number | undefined {
   const wk = data.seasonRankHistory.find((w) => w.week === week)
-  return wk?.ranks[teamId]
+  if (wk) return wk.ranks[teamId]
+  // Fall back to current standings for the current week — ESPN's
+  // `buildSeasonRankHistory` only includes weeks where every matchup
+  // has been decided, so mid-week loads have an unwritten `currentWeek`.
+  if (week === data.currentWeek) {
+    return data.standings.find((s) => s.teamId === teamId)?.rank
+  }
+  return undefined
 }
 
 function currentWeekTopTeam(data: CategoryLeagueData): string | undefined {
@@ -85,14 +92,35 @@ function currentWeekTopTeam(data: CategoryLeagueData): string | undefined {
 }
 
 function previousWeekTopTeam(data: CategoryLeagueData): string | undefined {
-  return findTeamAtRank(data, data.currentWeek - 1, 1)
+  const prev = findTeamAtRank(data, data.currentWeek - 1, 1)
+  if (prev) return prev
+  // If the prior week isn't in history yet (very early season, or the
+  // adapter only wrote one snapshot), look at the most-recent completed
+  // history entry so detectors that compare "now" vs "then" still fire.
+  const completed = [...data.seasonRankHistory]
+    .filter((w) => w.week < data.currentWeek)
+    .sort((a, b) => b.week - a.week)[0]
+  if (completed) {
+    for (const [teamId, r] of Object.entries(completed.ranks)) {
+      if (r === 1) return teamId
+    }
+  }
+  return undefined
 }
 
 function findTeamAtRank(data: CategoryLeagueData, week: number, rank: number): string | undefined {
   const wk = data.seasonRankHistory.find((w) => w.week === week)
-  if (!wk) return undefined
-  for (const [teamId, r] of Object.entries(wk.ranks)) {
-    if (r === rank) return teamId
+  if (wk) {
+    for (const [teamId, r] of Object.entries(wk.ranks)) {
+      if (r === rank) return teamId
+    }
+    return undefined
+  }
+  // Current-week fallback: use the season standings, which the adapters
+  // always populate (ESPN / Yahoo / Sleeper all set per-team `rank`).
+  // Lets `daily-hero-new-throne` / `quiet-day` still fire mid-week.
+  if (week === data.currentWeek) {
+    return data.standings.find((s) => s.rank === rank)?.teamId
   }
   return undefined
 }

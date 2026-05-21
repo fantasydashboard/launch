@@ -47,12 +47,27 @@ export interface RenderedPRHeroCopy {
   body: string
   statChips: Array<{ label: string; value: string }>
   kicker: string
+  /**
+   * Team IDs surfaced so the PR view can render the live avatar / name /
+   * accent matching the headline without re-running detection or doing a
+   * fragile prefix-match on the headline string. Both optional: the
+   * fallback `emptyHero` populates `teamId` with the current rank-1 team
+   * but has no antagonist.
+   */
+  teamId?: string
+  opponentTeamId?: string
 }
 
 export interface RenderedPRBeat {
   eyebrow: string
   headline: string
   body: string
+  /**
+   * The team the beat is about. Surfaced for the same reason as on the
+   * hero copy — the PR view needs to render the matching avatar / name
+   * without doing string matching.
+   */
+  teamId?: string
 }
 
 export interface RenderedPRLongFall extends RenderedPRBeat {
@@ -360,6 +375,8 @@ function renderHero(
     body: rendered.body,
     statChips,
     kicker,
+    teamId: hc.teamId,
+    opponentTeamId: hc.opponentTeamId,
   }
 }
 
@@ -379,6 +396,7 @@ function emptyHero(data: CategoryLeagueData): RenderedPRHeroCopy {
       { label: 'this season', value: top ? `${top.catWins}-${top.catLosses}${top.catTies > 0 ? `-${top.catTies}` : ''}` : '—' },
     ],
     kicker: `WEEK ${data.currentWeek}`,
+    teamId: top?.teamId,
   }
 }
 
@@ -433,6 +451,7 @@ function renderPulseBeat(
     eyebrow: rendered.eyebrow,
     headline: rendered.headline,
     body: rendered.body,
+    teamId: pc.teamId,
   }
 }
 
@@ -469,6 +488,7 @@ function renderDynastyBeat(
     eyebrow: rendered.eyebrow,
     headline: rendered.headline,
     body: rendered.body,
+    teamId: dc.teamId,
   }
 }
 
