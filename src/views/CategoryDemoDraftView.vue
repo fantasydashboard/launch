@@ -9,12 +9,12 @@
     ────────────────────────────────────────────────────────────── -->
     <div v-if="liveLoading" class="live-banner live-banner-loading" role="status" aria-live="polite">
       <span class="live-banner-spinner" aria-hidden="true"></span>
-      Loading your draft from Sleeper. Hang tight.
+      Loading your draft from {{ platformLabel }}. Hang tight.
     </div>
     <LiveLoadError v-else-if="liveError" :message="liveError" />
     <div v-else-if="liveData && !liveData.draft" class="live-banner live-banner-info" role="status">
       <p class="live-banner-error-headline">No draft data available for this league.</p>
-      <p class="live-banner-error-body">Sleeper hasn't exposed it for this format. Showing the demo draft below.</p>
+      <p class="live-banner-error-body">{{ platformLabel }} hasn't exposed it for this format. Showing the demo draft below.</p>
     </div>
 
     <!-- ─── 1. PAGE HEAD ───────────────────────────────────────── -->
@@ -715,6 +715,17 @@ const liveLeagueId = computed(() => {
 const livePlatform = computed(() => {
   const v = route.query.platform
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
+})
+
+// Human-readable platform label, surfaced by the loading and
+// "no draft data" banners so the copy matches the platform the user
+// actually picked on the Connect screen.
+const platformLabel = computed(() => {
+  const p = livePlatform.value
+  if (p === 'yahoo') return 'Yahoo'
+  if (p === 'espn') return 'ESPN'
+  if (p === 'sleeper') return 'Sleeper'
+  return 'your league'
 })
 
 onMounted(async () => {

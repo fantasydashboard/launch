@@ -20,32 +20,37 @@
       </div>
     </header>
 
-    <!-- Secondary nav strip: demo page tabs -->
+    <!-- Secondary nav strip: demo page tabs.
+         Each tab preserves the current `?leagueId=&platform=` query so
+         the live-data context survives navigation between pages. The
+         "back to homepage" and "connect a league" links above
+         intentionally drop the query — those navigate away from the
+         live league experience. -->
     <nav class="demo-nav" aria-label="Demo pages">
       <div class="demo-nav-inner">
         <router-link
           class="demo-nav-tab"
-          to="/demo-categories/home"
+          :to="{ path: '/demo-categories/home', query: $route.query }"
           active-class="demo-nav-tab-active"
         >Home</router-link>
         <router-link
           class="demo-nav-tab"
-          to="/demo-categories/power-rankings"
+          :to="{ path: '/demo-categories/power-rankings', query: $route.query }"
           active-class="demo-nav-tab-active"
         >Power Rankings</router-link>
         <router-link
           class="demo-nav-tab"
-          to="/demo-categories/matchups"
+          :to="{ path: '/demo-categories/matchups', query: $route.query }"
           active-class="demo-nav-tab-active"
         >Matchups</router-link>
         <router-link
           class="demo-nav-tab"
-          to="/demo-categories/draft"
+          :to="{ path: '/demo-categories/draft', query: $route.query }"
           active-class="demo-nav-tab-active"
         >Draft</router-link>
         <router-link
           class="demo-nav-tab"
-          to="/demo-categories/history"
+          :to="{ path: '/demo-categories/history', query: $route.query }"
           active-class="demo-nav-tab-active"
         >History</router-link>
       </div>

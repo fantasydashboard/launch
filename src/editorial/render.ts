@@ -44,6 +44,19 @@ export interface RenderedHeroCopy {
   eyebrow: string
   headline: string
   body: string
+  /**
+   * Team IDs of the protagonist and antagonist in the hero story, so the
+   * Home page's hero face-off avatars can swap their visuals to match
+   * the live editorial. Both are optional because:
+   *   - On the fallback / quiet-day path no hero candidate fires and we
+   *     return an empty copy block with neither set.
+   *   - Some heroes (e.g. quiet-day) have no opponent — only the
+   *     protagonist is meaningful.
+   * Consumers should fall back to a fixture-driven visual when either
+   * field is missing rather than rendering a broken avatar.
+   */
+  protagonistTeamId?: string
+  antagonistTeamId?: string
 }
 
 export interface RenderedTickerRow {
@@ -278,7 +291,16 @@ function renderHeroSlot(
   winner: StoryCandidate<HomeKind, HeroDetectionContext>,
 ): RenderedHeroCopy {
   const ctx = buildHeroContext(data, winner)
-  return renderHome(winner.kind, ctx)
+  const copy = renderHome(winner.kind, ctx)
+  // Surface the detected protagonist + antagonist team IDs so the Home
+  // page's face-off visual stays in sync with the headline copy. We do
+  // this here (not in renderHome) because the home.ts library is
+  // string-only by contract — IDs live on the rendering layer.
+  return {
+    ...copy,
+    protagonistTeamId: winner.context.teamId,
+    antagonistTeamId: winner.context.opponentTeamId,
+  }
 }
 
 function buildHeroContext(

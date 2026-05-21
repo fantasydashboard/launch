@@ -8,7 +8,7 @@
     ────────────────────────────────────────────────────────────── -->
     <div v-if="liveLoading" class="live-banner live-banner-loading" role="status" aria-live="polite">
       <span class="live-banner-spinner" aria-hidden="true"></span>
-      Loading your league from Sleeper. Hang tight.
+      Loading your league from {{ platformLabel }}. Hang tight.
     </div>
     <LiveLoadError v-else-if="liveError" :message="liveError" />
 
@@ -386,18 +386,18 @@
 
       <ul class="live-list" role="list">
         <li
-          v-for="m in matchupsWeek8"
+          v-for="m in liveMatchupRows"
           :key="m.id"
           class="live-row"
-          :class="{ 'live-row-spotlight': m.id === matchupOfTheWeekId }"
+          :class="{ 'live-row-spotlight': m.isSpotlight }"
           tabindex="0"
           role="link"
-          :aria-label="`Open ${getTeam(m.homeTeamId).name} versus ${getTeam(m.awayTeamId).name}`"
+          :aria-label="`Open ${lookupTeam(m.homeTeamId).name} versus ${lookupTeam(m.awayTeamId).name}`"
           @click="goToMatchups"
           @keydown.enter.prevent="goToMatchups"
           @keydown.space.prevent="goToMatchups"
         >
-          <span class="live-spotlight-edge" v-if="m.id === matchupOfTheWeekId" aria-hidden="true"></span>
+          <span class="live-spotlight-edge" v-if="m.isSpotlight" aria-hidden="true"></span>
 
           <!-- Status pip -->
           <span class="live-status" :class="`live-status-${m.status}`">
@@ -413,11 +413,11 @@
 
           <!-- Home team -->
           <div class="live-team" :class="{ 'live-team-winning': m.aWins > m.bWins, 'live-team-losing': m.aWins < m.bWins }">
-            <div class="live-avatar" :style="{ background: `linear-gradient(135deg, ${getTeam(m.homeTeamId).avatarColor})` }">
-              <img v-if="getTeam(m.homeTeamId).avatarUrl" :src="getTeam(m.homeTeamId).avatarUrl" class="avatar-image" alt="" />
-              <span v-else>{{ getTeam(m.homeTeamId).ownerInitials }}</span>
+            <div class="live-avatar" :style="{ background: `linear-gradient(135deg, ${lookupTeam(m.homeTeamId).avatarColor})` }">
+              <img v-if="lookupTeam(m.homeTeamId).avatarUrl" :src="lookupTeam(m.homeTeamId).avatarUrl" class="avatar-image" alt="" />
+              <span v-else>{{ lookupTeam(m.homeTeamId).ownerInitials }}</span>
             </div>
-            <p class="live-team-name">{{ getTeam(m.homeTeamId).name }}</p>
+            <p class="live-team-name">{{ lookupTeam(m.homeTeamId).name }}</p>
             <p class="live-team-score">{{ m.aWins }}</p>
           </div>
 
@@ -425,20 +425,20 @@
 
           <!-- Away team -->
           <div class="live-team" :class="{ 'live-team-winning': m.bWins > m.aWins, 'live-team-losing': m.bWins < m.aWins }">
-            <div class="live-avatar" :style="{ background: `linear-gradient(135deg, ${getTeam(m.awayTeamId).avatarColor})` }">
-              <img v-if="getTeam(m.awayTeamId).avatarUrl" :src="getTeam(m.awayTeamId).avatarUrl" class="avatar-image" alt="" />
-              <span v-else>{{ getTeam(m.awayTeamId).ownerInitials }}</span>
+            <div class="live-avatar" :style="{ background: `linear-gradient(135deg, ${lookupTeam(m.awayTeamId).avatarColor})` }">
+              <img v-if="lookupTeam(m.awayTeamId).avatarUrl" :src="lookupTeam(m.awayTeamId).avatarUrl" class="avatar-image" alt="" />
+              <span v-else>{{ lookupTeam(m.awayTeamId).ownerInitials }}</span>
             </div>
-            <p class="live-team-name">{{ getTeam(m.awayTeamId).name }}</p>
+            <p class="live-team-name">{{ lookupTeam(m.awayTeamId).name }}</p>
             <p class="live-team-score">{{ m.bWins }}</p>
           </div>
 
           <!-- Win prob chip -->
           <span
             class="live-prob"
-            :style="{ color: probColorFor(m), borderColor: probBorderFor(m), background: probBgFor(m) }"
+            :style="{ color: probColorForRow(m), borderColor: probBorderForRow(m), background: probBgForRow(m) }"
           >
-            {{ probSideLabel(m) }} {{ probDisplayValue(m) }}%
+            {{ probSideLabelForRow(m) }} {{ probDisplayValueForRow(m) }}%
           </span>
         </li>
       </ul>
@@ -748,7 +748,6 @@ import {
   weeklyCatsWon,
   weeklyCatLeagueAverage,
   yesterdayBigSwings,
-  type CategoryMatchup,
 } from '@/fixtures/categoriesLeague'
 import { accentFor, accentStops } from '@/utils/teamColor'
 import { smoothPath, type Point } from '@/utils/svgPath'
@@ -766,10 +765,12 @@ defineEmits<{ (e: 'open-signup'): void }>()
 const router = useRouter()
 const route = useRoute()
 
-// Hero face-off: protagonist (bt) overtakes antagonist (ct). Mirrors the
-// movement we wrote in seasonRankHistory (ct: W1 #1 → W8 #6 ; bt: W1 #4 → W8 #1).
-const protagonist = getTeam('bt')
-const antagonist = getTeam('ct')
+// Hero face-off — fixture defaults mirror the movement we wrote in
+// seasonRankHistory (ct: W1 #1 → W8 #6 ; bt: W1 #4 → W8 #1). These act
+// as the fallback when live data hasn't loaded yet, when no hero
+// candidate fired, or when the winning kind has no opponent (quiet-day).
+const fixtureProtagonist = getTeam('bt')
+const fixtureAntagonist = getTeam('ct')
 
 // My team — used for bubble star, standings yellow tint, and the chart line.
 const myTeam = teams.find((t) => t.isMyTeam)!
@@ -778,6 +779,27 @@ const myTeam = teams.find((t) => t.isMyTeam)!
 // the page at a real league (`?leagueId=…&platform=sleeper`). When it
 // is null, every wired widget falls back to the hand-authored fixture.
 const liveData = shallowRef<CategoryLeagueData | null>(null)
+
+// Hero face-off teams — prefer live detection's protagonist/antagonist
+// IDs (set on `liveEditorial.hero.protagonistTeamId` /
+// `antagonistTeamId` by render.ts), falling back to the fixture pair
+// when either is missing so the avatars never render broken.
+const protagonist = computed(() => {
+  const id = liveEditorial.value.hero.protagonistTeamId
+  if (id && liveData.value) {
+    const t = liveData.value.teams.find((x) => x.id === id)
+    if (t) return t
+  }
+  return fixtureProtagonist
+})
+const antagonist = computed(() => {
+  const id = liveEditorial.value.hero.antagonistTeamId
+  if (id && liveData.value) {
+    const t = liveData.value.teams.find((x) => x.id === id)
+    if (t) return t
+  }
+  return fixtureAntagonist
+})
 
 // Standings: live data when present, else the fixture's hand-authored row set.
 const standings = computed(() =>
@@ -807,6 +829,9 @@ function lookupTeam(teamId: string) {
   }
 }
 
+// TODO: wire to live daily MLB stats — needs per-game box scores +
+// roster matching. For now the "Yesterday's Big Swings" carousel stays
+// fixture-driven even when the rest of the page renders live data.
 const swings = yesterdayBigSwings
 
 /* ─────────────────────────────────────────────────────────────────
@@ -886,6 +911,19 @@ const liveLeagueId = computed(() => {
 const livePlatform = computed(() => {
   const v = route.query.platform
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
+})
+
+// Human-readable platform label, surfaced by the loading banner so the
+// "Loading your league from X" copy matches the platform the user
+// actually picked on the Connect screen. Falls back to a generic phrase
+// when no platform query is present (shouldn't happen in practice, but
+// keeps the banner sensible if someone navigates here directly).
+const platformLabel = computed(() => {
+  const p = livePlatform.value
+  if (p === 'yahoo') return 'Yahoo'
+  if (p === 'espn') return 'ESPN'
+  if (p === 'sleeper') return 'Sleeper'
+  return 'your league'
 })
 
 onMounted(async () => {
@@ -1063,28 +1101,104 @@ function onMascotError(ev: Event) {
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   WEEK 8 LIVE — win-prob chip helpers (mirror football home).
+   WEEK N LIVE — normalized matchup feed.
+
+   The home page's matchup feed accepts data from two sources:
+     1. Fixture (`matchupsWeek8`) — uses `aWins/bWins` + per-row
+        `homeWinProb/awayWinProb` already populated by the author.
+     2. Live data (`liveData.matchupsCurrentWeek`) — uses
+        `homeCatWins/awayCatWins`, no win-prob field. We estimate
+        win probability from the cat-record gap (no async call to a
+        win-prob endpoint; a real one is future work).
+
+   `LiveMatchupRow` is the shared shape the template renders, so the
+   markup only sees one kind of row.
 ───────────────────────────────────────────────────────────────── */
 
-function probFavorsHome(m: CategoryMatchup) {
+interface LiveMatchupRow {
+  id: string
+  homeTeamId: string
+  awayTeamId: string
+  status: 'live' | 'coasting' | 'final' | 'upcoming'
+  aWins: number
+  bWins: number
+  homeWinProb: number
+  awayWinProb: number
+  isSpotlight: boolean
+}
+
+/**
+ * Rough win-probability estimate from the current cat-record gap.
+ * Each cat lead is worth ~8 percentage points, anchored to 50/50, then
+ * clamped to [10, 90] so a 6-0 lead with 5 cats still in play doesn't
+ * read "100% — game over". Good enough for the home page chip; the
+ * Matchups page can swap in a calibrated number later.
+ */
+function estimateWinProb(homeWins: number, awayWins: number): number {
+  const gap = homeWins - awayWins
+  const raw = 50 + gap * 8
+  return Math.max(10, Math.min(90, Math.round(raw)))
+}
+
+const liveMatchupRows = computed<LiveMatchupRow[]>(() => {
+  const live = liveData.value?.matchupsCurrentWeek
+  if (live && live.length > 0) {
+    // First matchup in the feed gets the "matchup of the week" spotlight
+    // — there's no equivalent of `matchupOfTheWeekId` in live data yet,
+    // so we pick the first row as a sensible default. The fixture path
+    // keeps its hand-authored spotlight.
+    return live.map((m, idx) => {
+      const homeProb = estimateWinProb(m.homeCatWins, m.awayCatWins)
+      return {
+        id: m.id,
+        homeTeamId: m.homeTeamId,
+        awayTeamId: m.awayTeamId,
+        status: m.status,
+        aWins: m.homeCatWins,
+        bWins: m.awayCatWins,
+        homeWinProb: homeProb,
+        awayWinProb: 100 - homeProb,
+        isSpotlight: idx === 0,
+      }
+    })
+  }
+  // Fixture fallback — preserve existing spotlight behavior.
+  return matchupsWeek8.map((m) => ({
+    id: m.id,
+    homeTeamId: m.homeTeamId,
+    awayTeamId: m.awayTeamId,
+    status: m.status,
+    aWins: m.aWins,
+    bWins: m.bWins,
+    homeWinProb: m.homeWinProb,
+    awayWinProb: m.awayWinProb,
+    isSpotlight: m.id === matchupOfTheWeekId,
+  }))
+})
+
+/* ─────────────────────────────────────────────────────────────────
+   WIN-PROB CHIP HELPERS (mirror football home, normalized-row aware).
+───────────────────────────────────────────────────────────────── */
+
+function probFavorsHomeRow(m: LiveMatchupRow) {
   return m.homeWinProb >= 50
 }
-function probDisplayValue(m: CategoryMatchup) {
-  return probFavorsHome(m) ? m.homeWinProb : m.awayWinProb
+function probDisplayValueForRow(m: LiveMatchupRow) {
+  return probFavorsHomeRow(m) ? m.homeWinProb : m.awayWinProb
 }
-function probSideLabel(m: CategoryMatchup) {
-  const favored = probFavorsHome(m) ? getTeam(m.homeTeamId) : getTeam(m.awayTeamId)
-  return favored.id.toUpperCase()
+function probSideLabelForRow(m: LiveMatchupRow) {
+  const favoredId = probFavorsHomeRow(m) ? m.homeTeamId : m.awayTeamId
+  return favoredId.toUpperCase()
 }
-function probColorFor(m: CategoryMatchup) {
-  const favored = probFavorsHome(m) ? getTeam(m.homeTeamId) : getTeam(m.awayTeamId)
+function probColorForRow(m: LiveMatchupRow) {
+  const favored = probFavorsHomeRow(m) ? lookupTeam(m.homeTeamId) : lookupTeam(m.awayTeamId)
   return accentFor(favored)
 }
-function probBorderFor(m: CategoryMatchup) {
-  return probColorFor(m).replace(/\)$/, ' / 0.36)')
+function probBorderForRow(m: LiveMatchupRow) {
+  return probColorForRow(m).replace(/\)$/, ' / 0.36)')
 }
-function probBgFor(m: CategoryMatchup) {
-  return probColorFor(m).replace(/\)$/, ' / 0.10)')
+function probBgForRow(m: LiveMatchupRow) {
+  return probColorForRow(m).replace(/\)$/, ' / 0.10)')
 }
 
 /* ─────────────────────────────────────────────────────────────────

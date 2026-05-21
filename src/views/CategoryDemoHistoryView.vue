@@ -8,7 +8,7 @@
     ────────────────────────────────────────────────────────────── -->
     <div v-if="liveLoading" class="live-banner live-banner-loading" role="status" aria-live="polite">
       <span class="live-banner-spinner" aria-hidden="true"></span>
-      Loading your league from Sleeper. Hang tight.
+      Loading your league from {{ platformLabel }}. Hang tight.
     </div>
     <LiveLoadError v-else-if="liveError" :message="liveError" />
     <div
@@ -775,6 +775,17 @@ const liveLeagueId = computed(() => {
 const livePlatform = computed(() => {
   const v = route.query.platform
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
+})
+
+// Human-readable platform label, surfaced by the loading banner so the
+// "Loading your league from X" copy matches the platform the user
+// actually picked on the Connect screen.
+const platformLabel = computed(() => {
+  const p = livePlatform.value
+  if (p === 'yahoo') return 'Yahoo'
+  if (p === 'espn') return 'ESPN'
+  if (p === 'sleeper') return 'Sleeper'
+  return 'your league'
 })
 
 onMounted(async () => {
