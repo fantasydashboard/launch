@@ -131,8 +131,21 @@ async function storeYahooTokens() {
 
     console.log('Yahoo tokens saved successfully:', data)
 
-    // Success! Redirect to return URL or home
-    router.replace(returnTo)
+    // Success! Prefer the opt-in localStorage origin (set by callers
+    // like the category demo connect view) so deep flows can resume
+    // exactly where they left off. Falls back to the legacy
+    // `return_to` query param, then '/'.
+    let destination = returnTo
+    try {
+      const origin = localStorage.getItem('ufd_yahoo_oauth_origin')
+      if (origin) {
+        destination = origin
+        localStorage.removeItem('ufd_yahoo_oauth_origin')
+      }
+    } catch {
+      // Private mode — ignore, use the query-param fallback.
+    }
+    router.replace(destination)
   } catch (err: any) {
     console.error('Yahoo callback error:', err)
     error.value = err.message || 'Failed to connect Yahoo account'

@@ -157,7 +157,32 @@
       v-if="selectedSport === 'baseball' && selectedPlatform === 'yahoo'"
       class="form-section"
     >
-      <div class="connect-form">
+      <!-- Signin gate: Yahoo connections persist to the user's UFD
+           account, so we need the user signed in before we can wire
+           up the OAuth flow. Shown only when the user is anonymous. -->
+      <div v-if="!authStore.isAuthenticated" class="signin-gate">
+        <p class="signin-gate-eyebrow">
+          <span class="signin-gate-eyebrow-bar" aria-hidden="true"></span>
+          Almost there
+        </p>
+        <h2 class="signin-gate-headline">Sign into UFD to connect Yahoo.</h2>
+        <p class="signin-gate-body">
+          Your Yahoo connection stays linked to your UFD account so you
+          don't have to reconnect every visit.
+        </p>
+        <button
+          type="button"
+          class="form-submit"
+          @click="openSignup"
+        >
+          Sign in
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+      </div>
+
+      <div v-else class="connect-form">
         <!-- Loading state -->
         <p v-if="yahooLoading" class="form-help">Loading your Yahoo leagues…</p>
 
@@ -239,7 +264,32 @@
       v-if="selectedSport === 'baseball' && selectedPlatform === 'espn'"
       class="form-section"
     >
-      <form class="connect-form" @submit.prevent="onEspnSubmit">
+      <!-- Signin gate: ESPN credentials persist to the user's UFD
+           account too. Without an account, the manual cookie / extension
+           pull paths would silently lose state next visit. -->
+      <div v-if="!authStore.isAuthenticated" class="signin-gate">
+        <p class="signin-gate-eyebrow">
+          <span class="signin-gate-eyebrow-bar" aria-hidden="true"></span>
+          Almost there
+        </p>
+        <h2 class="signin-gate-headline">Sign into UFD to connect ESPN.</h2>
+        <p class="signin-gate-body">
+          Your ESPN connection stays linked to your UFD account so you
+          don't have to reconnect every visit.
+        </p>
+        <button
+          type="button"
+          class="form-submit"
+          @click="openSignup"
+        >
+          Sign in
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+      </div>
+
+      <form v-else class="connect-form" @submit.prevent="onEspnSubmit">
         <!-- Credential status pill -->
         <div class="espn-status">
           <span
@@ -376,6 +426,14 @@ import {
 const router = useRouter()
 const authStore = useAuthStore()
 const platformsStore = usePlatformsStore()
+
+// Bubbles to App.vue, which owns the AuthModal. The demo layout
+// already forwards `open-signup` from its child router-view.
+const emit = defineEmits<{ (e: 'open-signup'): void }>()
+
+function openSignup(): void {
+  emit('open-signup')
+}
 
 type Sport = 'baseball' | 'football' | 'basketball' | 'hockey'
 type Platform = 'sleeper' | 'yahoo' | 'espn'
@@ -526,11 +584,18 @@ async function initializeYahoo(): Promise<void> {
 
 function connectYahoo(): void {
   if (!authStore.isAuthenticated) {
-    yahooError.value =
-      'Please sign in to the dashboard first, then connect your Yahoo account.'
-    // Redirect to home with login modal trigger.
-    router.push({ path: '/', query: { showLogin: 'true', redirect: '/demo-categories/connect' } })
+    // Should not be reachable — the signin gate above hides the
+    // Yahoo CTA when anonymous — but keep the fallback for safety.
+    emit('open-signup')
     return
+  }
+  // Remember where we came from so the Yahoo callback can drop the
+  // user back on the connect picker (instead of the app shell home)
+  // and resume the league-selection step.
+  try {
+    localStorage.setItem('ufd_yahoo_oauth_origin', '/demo-categories/connect')
+  } catch {
+    // Private mode or quota — non-fatal; callback will use its default.
   }
   platformsStore.connectYahoo()
 }
@@ -875,6 +940,52 @@ async function onEspnSubmit(): Promise<void> {
 .form-submit:focus-visible {
   outline: 2px solid var(--ink-1);
   outline-offset: 2px;
+}
+
+/* ─── Signin gate (shown when anonymous + picked Yahoo or ESPN) ── */
+.signin-gate {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: oklch(0.10 0.014 90);
+  border: 1px solid oklch(0.20 0.015 90);
+  border-radius: 14px;
+  padding: 22px;
+}
+.signin-gate-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-tertiary);
+  margin: 0;
+}
+.signin-gate-eyebrow-bar {
+  display: inline-block;
+  width: 22px;
+  height: 2px;
+  background: var(--accent-tertiary);
+  border-radius: 1px;
+}
+.signin-gate-headline {
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: clamp(1.5rem, 3vw, 1.9rem);
+  line-height: 1.05;
+  letter-spacing: -0.005em;
+  color: var(--ink-1);
+}
+.signin-gate-body {
+  margin: 0 0 4px;
+  font-size: 0.94rem;
+  line-height: 1.45;
+  color: var(--ink-2);
+  max-width: 520px;
 }
 
 /* ─── ESPN credential status pill ─────────────────────────────── */
