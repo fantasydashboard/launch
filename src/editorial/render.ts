@@ -222,8 +222,9 @@ function teamToHomeTeam(t: CategoryLeagueDataTeam): HomeTeam {
 }
 
 function seasonStageFor(data: CategoryLeagueData): HomeContext['seasonStage'] {
-  // 12-week regular season assumption (see detect.ts).
-  const REGULAR_SEASON_WEEKS = 12
+  // Use the platform-supplied end week when available; the demo
+  // league's 12-week assumption is only the fallback.
+  const REGULAR_SEASON_WEEKS = data.regularSeasonEndWeek ?? 12
   const remaining = REGULAR_SEASON_WEEKS - data.currentWeek
   if (remaining <= 1) return 'final-stretch'
   if (remaining <= 3) return 'late'
@@ -459,7 +460,7 @@ function renderQuickReadPill(
       cutoffRank: data.playoffCutoff,
       topSeatTeams: [],
       bubbleTeams: [base.team],
-      weeksLeft: Math.max(1, 12 - data.currentWeek),
+      weeksLeft: Math.max(1, (data.regularSeasonEndWeek ?? 12) - data.currentWeek),
       stakes: 'tight',
       gamesBack: 1,
     }

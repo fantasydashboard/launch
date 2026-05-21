@@ -163,6 +163,15 @@ export interface CategoryLeagueData {
   currentWeek: number
   currentSeason: number
   playoffCutoff: number       // top N make playoffs
+  /**
+   * Last week of the regular season (the bubble closes after this).
+   * Adapters populate from the platform's schedule (Yahoo
+   * `end_week`, ESPN settings, Sleeper `playoff_week_start - 1`).
+   * Optional because legacy fixtures and older adapter versions may
+   * not set it. Consumers should fall back to a sport-aware default
+   * (e.g. 12 for the demo category baseball league) when missing.
+   */
+  regularSeasonEndWeek?: number
 
   // Teams
   teams: CategoryLeagueDataTeam[]

@@ -343,6 +343,10 @@ async function buildYahooLeagueData(
     currentWeek,
     currentSeason,
     playoffCutoff,
+    // Yahoo's metadata exposes the final regular-season week directly.
+    // Editorial consumers use this for accurate "weeks left" copy
+    // instead of assuming a 12-week season (the demo league's length).
+    regularSeasonEndWeek: metadata.endWeek,
     teams: teamList,
     categories,
     standings,
@@ -830,7 +834,12 @@ function buildCurrentWeekMatchups(
     }
 
     const contested = Math.max(0, categories.length - decidedCount)
-    const isFinal = decidedCount >= categories.length
+    // Yahoo's `stat_winners` reflects the CURRENT mid-week leader per
+    // cat, not the end-of-week winner. So a mid-week matchup can have
+    // every cat "decided" (= someone is leading) without the matchup
+    // itself being final. Use `winner_team_key` (set only after the
+    // matchup closes) plus `is_tied` as the final signal.
+    const isFinal = Boolean(m.winner_team_key) || m.is_tied === true
     const status: CategoryLeagueDataMatchup['status'] = isFinal
       ? 'final'
       : decidedCount > 0

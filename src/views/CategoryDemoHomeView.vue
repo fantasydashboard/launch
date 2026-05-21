@@ -41,7 +41,13 @@
         </button>
       </div>
 
-      <div class="hero-faceoff" :aria-label="`${protagonist.name} overtaking ${antagonist.name} for first place`">
+      <div
+        class="hero-faceoff"
+        :class="{ 'hero-faceoff-solo': !hasAntagonist }"
+        :aria-label="hasAntagonist
+          ? `${protagonist.name} overtaking ${antagonist.name} for first place`
+          : `${protagonist.name} feature`"
+      >
         <article class="faceoff-team faceoff-rise">
           <div class="faceoff-avatar" :style="{ background: `linear-gradient(135deg, ${protagonist.avatarColor})` }">
             <img v-if="protagonist.avatarUrl" :src="protagonist.avatarUrl" class="avatar-image" alt="" />
@@ -51,24 +57,25 @@
             <p class="faceoff-name">{{ protagonist.name }}</p>
             <p class="faceoff-owner">{{ protagonist.ownerName }}</p>
             <div class="faceoff-rankrow">
-              <span class="faceoff-rankchip faceoff-rankchip-now">#1</span>
-              <span class="faceoff-trend faceoff-trend-up">
+              <span class="faceoff-rankchip faceoff-rankchip-now">#{{ protagonistRank }}</span>
+              <span v-if="protagonistDelta !== 0" class="faceoff-trend" :class="protagonistDelta > 0 ? 'faceoff-trend-up' : 'faceoff-trend-down'">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <polyline points="6 15 12 9 18 15"/>
+                  <polyline v-if="protagonistDelta > 0" points="6 15 12 9 18 15"/>
+                  <polyline v-else points="6 9 12 15 18 9"/>
                 </svg>
-                +5
+                {{ protagonistDelta > 0 ? '+' : '' }}{{ protagonistDelta }}
               </span>
             </div>
           </div>
         </article>
 
-        <div class="faceoff-verb" aria-hidden="true">
+        <div v-if="hasAntagonist" class="faceoff-verb" aria-hidden="true">
           <span class="faceoff-verb-line"></span>
           <span class="faceoff-verb-word">overtakes</span>
           <span class="faceoff-verb-line"></span>
         </div>
 
-        <article class="faceoff-team faceoff-fall">
+        <article v-if="hasAntagonist" class="faceoff-team faceoff-fall">
           <div class="faceoff-avatar faceoff-avatar-dim" :style="{ background: `linear-gradient(135deg, ${antagonist.avatarColor})` }">
             <img v-if="antagonist.avatarUrl" :src="antagonist.avatarUrl" class="avatar-image" alt="" />
             <span v-else>{{ antagonist.ownerInitials }}</span>
@@ -77,12 +84,13 @@
             <p class="faceoff-name">{{ antagonist.name }}</p>
             <p class="faceoff-owner">{{ antagonist.ownerName }}</p>
             <div class="faceoff-rankrow">
-              <span class="faceoff-rankchip faceoff-rankchip-fell">#6</span>
-              <span class="faceoff-trend faceoff-trend-down">
+              <span class="faceoff-rankchip faceoff-rankchip-fell">#{{ antagonistRank }}</span>
+              <span v-if="antagonistDelta !== 0" class="faceoff-trend" :class="antagonistDelta > 0 ? 'faceoff-trend-up' : 'faceoff-trend-down'">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <polyline points="6 9 12 15 18 9"/>
+                  <polyline v-if="antagonistDelta > 0" points="6 15 12 9 18 15"/>
+                  <polyline v-else points="6 9 12 15 18 9"/>
                 </svg>
-                -5
+                {{ antagonistDelta > 0 ? '+' : '' }}{{ antagonistDelta }}
               </span>
             </div>
           </div>
@@ -100,7 +108,7 @@
       <header class="section-head">
         <p class="section-eyebrow section-eyebrow-magenta">Playoff push</p>
         <h2 class="bubble-headline" id="bubble-headline">Four teams. Two spots.</h2>
-        <p class="bubble-deck">Three weeks left to settle the bubble.</p>
+        <p class="bubble-deck">{{ bubbleDeckText }}</p>
       </header>
 
       <ol class="bubble-list" role="list">
@@ -797,6 +805,12 @@ const protagonist = computed(() => {
   }
   return fixtureProtagonist
 })
+// `antagonist` only resolves when the detected hero kind has a real
+// opponent (e.g. new-throne, dynasty-falling). Single-team heroes like
+// bubble-surprise or hot-climber have no antagonist — in that case
+// `hasAntagonist` is false and the face-off renders just the
+// protagonist instead of falling back to a fixture logo (which is what
+// previously caused "Closer's Therapy" to leak into live leagues).
 const antagonist = computed(() => {
   const id = liveEditorial.value.hero.antagonistTeamId
   if (id && liveData.value) {
@@ -805,6 +819,66 @@ const antagonist = computed(() => {
   }
   return fixtureAntagonist
 })
+const hasAntagonist = computed(() => {
+  if (!isStrictLiveMode.value) return true  // demo always shows both
+  const id = liveEditorial.value.hero.antagonistTeamId
+  if (!id || !liveData.value) return false
+  return Boolean(liveData.value.teams.find((x) => x.id === id))
+})
+
+// Hero face-off ranks + season-deltas — derive from live standings so
+// the chip + arrow update with the actual league state. Falls back to
+// the fixture-baked values (#1 / #6 / +5 / -5) in demo mode.
+function rankForTeam(teamId: string | undefined): number | undefined {
+  if (!teamId) return undefined
+  return liveData.value?.standings.find((s) => s.teamId === teamId)?.rank
+}
+function week1RankForTeam(teamId: string | undefined): number | undefined {
+  if (!teamId || !liveData.value) return undefined
+  const wk1 = liveData.value.seasonRankHistory.find((w) => w.week === 1)
+  return wk1?.ranks[teamId]
+}
+const protagonistRank = computed(() => rankForTeam(protagonist.value.id) ?? 1)
+const antagonistRank = computed(() => rankForTeam(antagonist.value.id) ?? 6)
+const protagonistDelta = computed(() => {
+  const w1 = week1RankForTeam(protagonist.value.id)
+  if (typeof w1 !== 'number') return 5
+  return w1 - protagonistRank.value
+})
+const antagonistDelta = computed(() => {
+  const w1 = week1RankForTeam(antagonist.value.id)
+  if (typeof w1 !== 'number') return -5
+  return w1 - antagonistRank.value
+})
+
+// Weeks remaining until the regular season closes — drives the playoff
+// push deck copy. Adapters that expose `regularSeasonEndWeek` (Yahoo
+// today) get an accurate figure; otherwise fall back to the fixture's
+// 12-week assumption. Clamped to a sensible floor so the copy stays
+// grammatical when we're already in the playoffs.
+const bubbleWeeksLeft = computed(() => {
+  const wk = liveData.value?.currentWeek ?? currentWeek
+  const end = liveData.value?.regularSeasonEndWeek ?? 12
+  const left = end - wk
+  if (left <= 0) return 0
+  return left
+})
+const bubbleDeckText = computed(() => {
+  const n = bubbleWeeksLeft.value
+  if (n === 0) return 'Final week of the regular season.'
+  if (n === 1) return 'One week left to settle the bubble.'
+  return `${spellSmallNumber(n)} weeks left to settle the bubble.`
+})
+function spellSmallNumber(n: number): string {
+  // Spelled-out forms match the rest of the editorial copy. Anything
+  // past 12 falls back to digits — at that point the literal number
+  // reads better than the wordy version.
+  const words = [
+    'Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six',
+    'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve',
+  ]
+  return words[n] ?? String(n)
+}
 
 // Standings: live data when present, else the fixture's hand-authored row set.
 const standings = computed(() =>
@@ -1235,8 +1309,13 @@ function probDisplayValueForRow(m: LiveMatchupRow) {
   return probFavorsHomeRow(m) ? m.homeWinProb : m.awayWinProb
 }
 function probSideLabelForRow(m: LiveMatchupRow) {
+  // Show the favored team's initials (e.g. "BT", "TQ"), not the raw
+  // team id. Yahoo team_keys look like "458.L.21788.T.4" which would
+  // render as a wall of text on the chip; the fixture used 2-letter
+  // slugs like "bt" which happened to read fine. Use the lookup so
+  // both modes produce a short, readable identifier.
   const favoredId = probFavorsHomeRow(m) ? m.homeTeamId : m.awayTeamId
-  return favoredId.toUpperCase()
+  return (lookupTeam(favoredId).ownerInitials || '').toUpperCase()
 }
 function probColorForRow(m: LiveMatchupRow) {
   const favored = probFavorsHomeRow(m) ? lookupTeam(m.homeTeamId) : lookupTeam(m.awayTeamId)

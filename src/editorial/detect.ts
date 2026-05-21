@@ -514,7 +514,10 @@ export function detectPlayoffPush(
   // Weeks left: regular-season length proxy. Without an explicit
   // schedule end on CategoryLeagueData yet, infer from current week
   // and a 12-week regular season (category leagues commonly run this).
-  const REGULAR_SEASON_WEEKS = 12
+  // Prefer the adapter-provided end-of-regular-season week (Yahoo has
+  // this from `metadata.end_week`; ESPN can derive from settings).
+  // Falls back to the demo league's 12-week assumption.
+  const REGULAR_SEASON_WEEKS = data.regularSeasonEndWeek ?? 12
   const weeksLeft = Math.max(1, REGULAR_SEASON_WEEKS - wk)
 
   return [{
