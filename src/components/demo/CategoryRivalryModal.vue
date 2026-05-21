@@ -31,7 +31,8 @@
           </button>
         </header>
 
-        <p v-if="profile?.narrative" class="crv-lead">{{ profile.narrative }}</p>
+        <p v-if="props.overrideNarrative" class="crv-lead">{{ props.overrideNarrative }}</p>
+        <p v-else-if="profile?.narrative" class="crv-lead">{{ profile.narrative }}</p>
         <p v-else class="crv-lead">{{ proceduralLead }}</p>
 
         <!-- Tale of the tape -->
@@ -164,7 +165,14 @@ import {
 import { accentFor } from '@/utils/teamColor'
 import { useDemoModal } from '@/composables/useDemoModal'
 
-const props = defineProps<{ teamAId: string; teamBId: string }>()
+const props = defineProps<{
+  teamAId: string
+  teamBId: string
+  /** Editorial-supplied narrative override. When present, takes precedence
+   *  over both the authored profile narrative and the procedural fallback —
+   *  the live-data pipeline supplies this when wiring against real leagues. */
+  overrideNarrative?: string | null
+}>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'open-signup'): void }>()
 
 const teamA = computed(() => getTeam(props.teamAId))

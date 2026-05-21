@@ -1,6 +1,18 @@
 <template>
   <div class="cmlist">
     <!-- ─────────────────────────────────────────────────────────────
+         LIVE LOAD STATUS — only renders when a leagueId is in the URL
+         and the live adapter is fetching or has errored. The
+         underlying editorial keeps a fixture-derived render as its
+         initial value, so the page remains visually populated.
+    ────────────────────────────────────────────────────────────── -->
+    <div v-if="liveLoading" class="live-banner live-banner-loading" role="status" aria-live="polite">
+      <span class="live-banner-spinner" aria-hidden="true"></span>
+      Loading your league from Sleeper. Hang tight.
+    </div>
+    <LiveLoadError v-else-if="liveError" :message="liveError" />
+
+    <!-- ─────────────────────────────────────────────────────────────
          1. PAGE HEADER
     ────────────────────────────────────────────────────────────── -->
     <header class="page-head">
@@ -9,7 +21,7 @@
           <span class="page-eyebrow-bar" aria-hidden="true"></span>
           Week {{ currentWeek }}
         </p>
-        <h1 class="page-headline">Thursday is reshaping the week.</h1>
+        <h1 class="page-headline">{{ liveEditorial.subHeadline }}</h1>
         <p class="page-sub">Daily scores. Live cat math. Who's flipping, who's folded.</p>
       </div>
       <ul class="page-status" role="list" aria-label="Status overview">
@@ -42,7 +54,7 @@
       <span class="hero-glow" aria-hidden="true"></span>
 
       <div class="hero-bar">
-        <span class="hero-pill">Matchup of the Week</span>
+        <span class="hero-pill">{{ heroEyebrow }}</span>
         <span class="hero-live">
           <span class="hero-live-dot" aria-hidden="true"></span>
           Live
@@ -50,8 +62,10 @@
       </div>
 
       <h2 :id="`hero-title-${heroMatchup.id}`" class="hero-headline">
-        {{ heroMatchup.headline }}
+        {{ heroHeadline }}
       </h2>
+
+      <p v-if="heroBody" class="hero-body">{{ heroBody }}</p>
 
       <div class="hero-faceoff">
         <!-- HOME (team A) -->
@@ -134,6 +148,7 @@
         <strong class="cat-strip-strong">{{ heroContested }} contested</strong>.
         <strong class="cat-strip-strong">{{ heroConcededB }} conceded</strong> by {{ heroAwayTeam.name }}.
       </p>
+      <p v-if="heroSubContext" class="hero-sub-context">{{ heroSubContext }}</p>
 
       <!-- Daily trend chart -->
       <div class="hero-chart-wrap">
@@ -313,33 +328,17 @@
     <section class="quick" aria-labelledby="quick-heading">
       <h2 class="section-eyebrow section-eyebrow-mute" id="quick-heading">The board</h2>
       <ul class="pills" role="list">
-        <li class="pill" role="listitem">
+        <li
+          v-for="(pill, i) in liveEditorial.quickReads"
+          :key="pill.label"
+          class="pill"
+          role="listitem"
+        >
           <div class="pill-head">
-            <span class="pill-dot pill-dot-primary" aria-hidden="true"></span>
-            <span class="pill-label">Tightest race today</span>
+            <span class="pill-dot" :class="`pill-dot-${pillDotFor(i)}`" aria-hidden="true"></span>
+            <span class="pill-label">{{ formatPillLabel(pill.label) }}</span>
           </div>
-          <span class="pill-value">{{ matchupQuickReads.tightestRaceToday.label }}</span>
-        </li>
-        <li class="pill" role="listitem">
-          <div class="pill-head">
-            <span class="pill-dot pill-dot-secondary" aria-hidden="true"></span>
-            <span class="pill-label">Biggest sweep in progress</span>
-          </div>
-          <span class="pill-value">{{ matchupQuickReads.biggestSweepInProgress.label }}</span>
-        </li>
-        <li class="pill" role="listitem">
-          <div class="pill-head">
-            <span class="pill-dot pill-dot-tertiary" aria-hidden="true"></span>
-            <span class="pill-label">Bubble-watch matchup</span>
-          </div>
-          <span class="pill-value">{{ matchupQuickReads.bubbleWatchMatchup.label }}</span>
-        </li>
-        <li class="pill" role="listitem">
-          <div class="pill-head">
-            <span class="pill-dot pill-dot-mute" aria-hidden="true"></span>
-            <span class="pill-label">Biggest punt</span>
-          </div>
-          <span class="pill-value">{{ matchupQuickReads.biggestPunt.label }}</span>
+          <span class="pill-value">{{ pill.value }}</span>
         </li>
       </ul>
     </section>
@@ -348,6 +347,8 @@
     <CategoryMatchupDetailModal
       v-if="detailMatchupId"
       :matchup-id="detailMatchupId"
+      :what-to-watch-override="detailWhatToWatch"
+      :season-series-override="detailSeasonSeries"
       @close="closeDetail"
       @open-signup="$emit('open-signup')"
     />
@@ -355,13 +356,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, shallowRef } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   currentWeek,
   getTeam,
   matchupsWeek8,
   matchupOfTheWeekId,
-  matchupQuickReads,
   standings2026Week8,
   type CategoryMatchup,
   type CategoryMatchupCatLine,
@@ -370,12 +371,104 @@ import {
 import CategoryMatchupDetailModal from '@/components/demo/CategoryMatchupDetailModal.vue'
 import { accentFor } from '@/utils/teamColor'
 import { smoothPath, type Point } from '@/utils/svgPath'
+import {
+  renderMatchupsPage,
+  type RenderedMatchupsCopy,
+} from '@/editorial/render-matchups'
+import { categoriesFixtureToLeagueData } from '@/editorial/fixtureAdapter'
+import { sleeperLeagueToCategoryData } from '@/editorial/adapters/sleeperAdapter'
+import { espnLeagueToCategoryData } from '@/editorial/adapters/espnAdapter'
+import { yahooLeagueToCategoryData } from '@/editorial/adapters/yahooAdapter'
+import { usePlatformsStore } from '@/stores/platforms'
+import LiveLoadError from '@/components/demo/LiveLoadError.vue'
 
 defineEmits<{ (e: 'open-signup'): void }>()
+
+const route = useRoute()
+
+/* ─────────────────────────────────────────────────────────────────
+   EDITORIAL — live copy from the detection + rendering pipeline.
+
+   Source of truth:
+   - Default: the hand-authored fixture (the demo experience).
+   - When `?leagueId=…&platform=sleeper` is present in the URL:
+     fetch live data via the matching adapter and re-render copy.
+     The fixture render is kept as the synchronous initial value
+     so the template never sees a null editorial during load.
+
+   `shallowRef` mirrors the Home view pattern — the rendered tree is
+   always replaced wholesale, never mutated in place.
+───────────────────────────────────────────────────────────────── */
+const liveEditorial = shallowRef<RenderedMatchupsCopy>(
+  renderMatchupsPage(categoriesFixtureToLeagueData()),
+)
+const liveLoading = ref(false)
+const liveError = ref<string | null>(null)
+const liveLeagueId = computed(() => {
+  const v = route.query.leagueId
+  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
+})
+const livePlatform = computed(() => {
+  const v = route.query.platform
+  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
+})
+
+onMounted(async () => {
+  const id = liveLeagueId.value
+  const platform = livePlatform.value
+  if (!id || (platform !== 'sleeper' && platform !== 'espn' && platform !== 'yahoo')) {
+    return  // fixture-only path
+  }
+
+  liveLoading.value = true
+  liveError.value = null
+  try {
+    // See CategoryDemoHomeView for why we pass identity explicitly.
+    const opts = { userIdentity: collectUserIdentity() }
+    const data =
+      platform === 'espn'
+        ? await espnLeagueToCategoryData(id, opts)
+        : platform === 'yahoo'
+        ? await yahooLeagueToCategoryData(id, opts)
+        : await sleeperLeagueToCategoryData(id, opts)
+    liveEditorial.value = renderMatchupsPage(data)
+  } catch (err) {
+    const platformLabel =
+      platform === 'espn' ? 'ESPN' : platform === 'yahoo' ? 'Yahoo' : 'Sleeper'
+    liveError.value = (err as Error).message || `Failed to load ${platformLabel} league data.`
+  } finally {
+    liveLoading.value = false
+  }
+})
+
+/** See CategoryDemoHomeView.collectUserIdentity for the rationale. */
+function collectUserIdentity() {
+  try {
+    const platformsStore = usePlatformsStore()
+    return {
+      sleeperUserId: platformsStore.getConnection('sleeper')?.platform_user_id ?? undefined,
+      yahooGuid: platformsStore.getConnection('yahoo')?.platform_user_id ?? undefined,
+      espnSwid: platformsStore.getEspnCredentials()?.swid ?? undefined,
+    }
+  } catch {
+    return {}
+  }
+}
 
 /* ─── Modal state ───────────────────────────────────────────── */
 const detailMatchupId = ref<string | null>(null)
 const lastClickedRef = ref<HTMLElement | null>(null)
+
+const detailWhatToWatch = computed(() => {
+  const id = detailMatchupId.value
+  if (!id) return undefined
+  return liveEditorial.value.matchupCopy[id]?.whatToWatch
+})
+const detailSeasonSeries = computed(() => {
+  const id = detailMatchupId.value
+  if (!id) return undefined
+  return liveEditorial.value.matchupCopy[id]?.seasonSeries
+})
 
 function openDetail(id: string, ev: Event) {
   detailMatchupId.value = id
@@ -394,6 +487,33 @@ const lockedCount   = computed(() => matchupsWeek8.filter((m) => m.status === 'f
 
 /* ─── Hero matchup ──────────────────────────────────────────── */
 const heroMatchup = computed(() => matchupsWeek8.find((m) => m.id === matchupOfTheWeekId)!)
+
+/* Editorial hero copy — driven by the renderer, which picked the
+ *  matchup it considers the strongest hero. The hero face-off, cat
+ *  strip, and chart still bind to the data-driven `heroMatchup`
+ *  fixture entry; only the eyebrow / headline / body / sub-context
+ *  strings come from the editorial pipeline. */
+const heroEyebrow = computed(() => liveEditorial.value.matchupOfWeek.eyebrow || 'Matchup of the Week')
+const heroHeadline = computed(() => liveEditorial.value.matchupOfWeek.headline)
+const heroBody = computed(() => liveEditorial.value.matchupOfWeek.body)
+const heroSubContext = computed(() => liveEditorial.value.matchupOfWeek.subContext)
+
+/** Map quick-read pill index to the existing pill-dot color tokens.
+ *  Matches the order: tightest, sweep, bubble, punt. */
+function pillDotFor(i: number): 'primary' | 'secondary' | 'tertiary' | 'mute' {
+  switch (i) {
+    case 0: return 'primary'
+    case 1: return 'secondary'
+    case 2: return 'tertiary'
+    default: return 'mute'
+  }
+}
+
+/** Pill labels render in sentence case in the template; the renderer
+ *  hands us the uppercase pill identifier. */
+function formatPillLabel(label: string): string {
+  return label.charAt(0) + label.slice(1).toLowerCase()
+}
 const heroHomeTeam = computed(() => getTeam(heroMatchup.value.homeTeamId))
 const heroAwayTeam = computed(() => getTeam(heroMatchup.value.awayTeamId))
 const heroHomeStanding = computed(
@@ -560,6 +680,67 @@ const heroNowX = computed(() => {
 }
 .avatar-img {
   width: 100%; height: 100%; object-fit: cover; display: block;
+}
+
+/* ─── Live load banners ─────────────────────────────────────── */
+.live-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid oklch(0.20 0.015 90);
+  background: oklch(0.10 0.014 90);
+  font-size: 0.92rem;
+  color: var(--ink-2);
+}
+.live-banner-loading { color: var(--accent-tertiary); }
+.live-banner-spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid oklch(0.72 0.18 195 / 0.30);
+  border-top-color: var(--accent-tertiary);
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes live-spin { to { transform: rotate(360deg); } }
+  .live-banner-spinner { animation: live-spin 0.9s linear infinite; }
+}
+.live-banner-error {
+  flex-wrap: wrap;
+  border-color: oklch(0.65 0.20 25 / 0.45);
+  background: oklch(0.65 0.20 25 / 0.08);
+}
+.live-banner-error-headline {
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--accent-down);
+}
+.live-banner-error-body {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--ink-2);
+  flex: 1 1 240px;
+}
+.live-banner-action {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-1);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: oklch(0.20 0.015 90);
+  border: 1px solid oklch(0.32 0.012 90);
+  transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .live-banner-action:hover { background: oklch(0.26 0.015 90); }
 }
 
 /* ─── PAGE HEAD ────────────────────────────────────────────── */
@@ -736,6 +917,25 @@ const heroNowX = computed(() => {
   letter-spacing: -0.014em;
   color: var(--ink-1);
   max-width: 32ch;
+}
+.hero-body {
+  position: relative;
+  z-index: 1;
+  margin: -6px 0 16px;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+  max-width: 56ch;
+}
+.hero-sub-context {
+  position: relative;
+  z-index: 1;
+  margin: -4px 0 12px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
 }
 
 .hero-faceoff {

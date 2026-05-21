@@ -1,6 +1,18 @@
 <template>
   <div class="home">
     <!-- ─────────────────────────────────────────────────────────────
+         LIVE LOAD STATUS — only renders when a leagueId is in the
+         URL and the live adapter is fetching or has errored. The
+         underlying editorial keeps a fixture-derived render as its
+         initial value, so the page remains visually populated.
+    ────────────────────────────────────────────────────────────── -->
+    <div v-if="liveLoading" class="live-banner live-banner-loading" role="status" aria-live="polite">
+      <span class="live-banner-spinner" aria-hidden="true"></span>
+      Loading your league from Sleeper. Hang tight.
+    </div>
+    <LiveLoadError v-else-if="liveError" :message="liveError" />
+
+    <!-- ─────────────────────────────────────────────────────────────
          1. THE HEADLINE — Story of Week 8
          Editorial hero, protagonist vs antagonist face-off.
          Magazine-cover read: "The dynasty falls." Closer's Therapy
@@ -10,14 +22,10 @@
       <div class="hero-copy">
         <p class="hero-eyebrow">
           <span class="hero-eyebrow-bar" aria-hidden="true"></span>
-          Story of Week {{ currentWeek }}
+          {{ liveEditorial.hero.eyebrow }}
         </p>
-        <h1 class="hero-headline" id="hero-headline">The dynasty falls.</h1>
-        <p class="hero-body">
-          Closer's Therapy has won this league two years running. Through eight
-          weeks they've slipped from #1 to #6 and lost three straight matchups.
-          Bullpen Theology is the new throne.
-        </p>
+        <h1 class="hero-headline" id="hero-headline">{{ liveEditorial.hero.headline }}</h1>
+        <p class="hero-body">{{ liveEditorial.hero.body }}</p>
         <button
           type="button"
           class="hero-share"
@@ -102,7 +110,7 @@
             :class="{
               'bubble-row-in':  row.inPlayoffs,
               'bubble-row-out': !row.inPlayoffs,
-              'bubble-row-mine': getTeam(row.teamId).isMyTeam,
+              'bubble-row-mine': lookupTeam(row.teamId).isMyTeam,
             }"
           >
             <span class="bubble-seed" :class="{ 'bubble-seed-in': row.inPlayoffs }">{{ row.rank }}</span>
@@ -110,17 +118,17 @@
             <div class="bubble-team">
               <div
                 class="bubble-avatar"
-                :style="{ background: `linear-gradient(135deg, ${getTeam(row.teamId).avatarColor})` }"
+                :style="{ background: `linear-gradient(135deg, ${lookupTeam(row.teamId).avatarColor})` }"
               >
                 <img
-                  v-if="getTeam(row.teamId).avatarUrl"
-                  :src="getTeam(row.teamId).avatarUrl"
+                  v-if="lookupTeam(row.teamId).avatarUrl"
+                  :src="lookupTeam(row.teamId).avatarUrl"
                   class="avatar-image"
                   alt=""
                 />
-                <span v-else>{{ getTeam(row.teamId).ownerInitials }}</span>
+                <span v-else>{{ lookupTeam(row.teamId).ownerInitials }}</span>
                 <span
-                  v-if="getTeam(row.teamId).isMyTeam"
+                  v-if="lookupTeam(row.teamId).isMyTeam"
                   class="bubble-star"
                   aria-label="My team marker"
                   title="My team"
@@ -131,8 +139,8 @@
                 </span>
               </div>
               <div class="bubble-name-block">
-                <p class="bubble-name">{{ getTeam(row.teamId).name }}</p>
-                <p class="bubble-owner">{{ getTeam(row.teamId).ownerName }}</p>
+                <p class="bubble-name">{{ lookupTeam(row.teamId).name }}</p>
+                <p class="bubble-owner">{{ lookupTeam(row.teamId).ownerName }}</p>
               </div>
             </div>
 
@@ -168,7 +176,7 @@
         </template>
       </ol>
 
-      <p class="bubble-closer">{{ bubbleCloser }}</p>
+      <p class="bubble-closer">{{ liveEditorial.playoffPushCloser }}</p>
     </section>
 
     <!-- ─────────────────────────────────────────────────────────────
@@ -443,7 +451,7 @@
       <header class="section-head section-head-flex">
         <div>
           <p class="section-eyebrow section-eyebrow-magenta">Standings</p>
-          <h2 class="standings-headline" id="standings-headline">Top {{ playoffCutoff }} make the playoffs.</h2>
+          <h2 class="standings-headline" id="standings-headline">Top {{ bubbleCutoff }} make the playoffs.</h2>
         </div>
         <router-link to="/demo-categories/power-rankings" class="section-link">
           View full rankings
@@ -466,37 +474,37 @@
           v-for="row in standings"
           :key="row.teamId"
           class="stand-row"
-          :class="{ 'stand-row-mine': getTeam(row.teamId).isMyTeam, 'stand-row-cutoff': row.rank === playoffCutoff }"
+          :class="{ 'stand-row-mine': lookupTeam(row.teamId).isMyTeam, 'stand-row-cutoff': row.rank === bubbleCutoff }"
           tabindex="0"
           role="button"
-          :aria-label="`Open team detail for ${getTeam(row.teamId).name}`"
+          :aria-label="`Open team detail for ${lookupTeam(row.teamId).name}`"
           @click="goToPowerRankings"
           @keydown.enter.prevent="goToPowerRankings"
           @keydown.space.prevent="goToPowerRankings"
         >
-          <span class="stand-rank" :class="{ 'stand-rank-playoff': row.rank <= playoffCutoff }">
+          <span class="stand-rank" :class="{ 'stand-rank-playoff': row.rank <= bubbleCutoff }">
             <span v-if="row.rank === 1" class="stand-rank-crown" aria-label="League leader">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>
               </svg>
             </span>
             <span class="stand-rank-num">{{ row.rank }}</span>
-            <span v-if="row.rank <= playoffCutoff && row.rank !== 1" class="stand-rank-dot" aria-hidden="true"></span>
+            <span v-if="row.rank <= bubbleCutoff && row.rank !== 1" class="stand-rank-dot" aria-hidden="true"></span>
           </span>
 
           <div class="stand-team">
-            <div class="stand-avatar" :style="{ background: `linear-gradient(135deg, ${getTeam(row.teamId).avatarColor})` }">
-              <img v-if="getTeam(row.teamId).avatarUrl" :src="getTeam(row.teamId).avatarUrl" class="avatar-image" alt="" />
-              <span v-else>{{ getTeam(row.teamId).ownerInitials }}</span>
-              <span v-if="getTeam(row.teamId).isMyTeam" class="stand-star" aria-label="Your team" title="Your team">
+            <div class="stand-avatar" :style="{ background: `linear-gradient(135deg, ${lookupTeam(row.teamId).avatarColor})` }">
+              <img v-if="lookupTeam(row.teamId).avatarUrl" :src="lookupTeam(row.teamId).avatarUrl" class="avatar-image" alt="" />
+              <span v-else>{{ lookupTeam(row.teamId).ownerInitials }}</span>
+              <span v-if="lookupTeam(row.teamId).isMyTeam" class="stand-star" aria-label="Your team" title="Your team">
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <polygon points="12 2 15 9 22 9.5 16.5 14.5 18 22 12 18 6 22 7.5 14.5 2 9.5 9 9"/>
                 </svg>
               </span>
             </div>
             <div class="stand-name-block">
-              <p class="stand-name">{{ getTeam(row.teamId).name }}</p>
-              <p class="stand-owner">{{ getTeam(row.teamId).ownerName }}</p>
+              <p class="stand-name">{{ lookupTeam(row.teamId).name }}</p>
+              <p class="stand-owner">{{ lookupTeam(row.teamId).ownerName }}</p>
             </div>
           </div>
 
@@ -692,15 +700,15 @@
 
       <ul class="ticker-list" role="list">
         <li
-          v-for="(item, i) in aroundLeagueBeats"
+          v-for="(item, i) in liveEditorial.ticker"
           :key="i"
           class="ticker-row"
-          :class="[`ticker-row-${item.tone}`, i < 2 ? 'ticker-row-edged' : 'ticker-row-flat']"
+          :class="[`ticker-row-${tickerToneFor(item.eyebrow)}`, i < 2 ? 'ticker-row-edged' : 'ticker-row-flat']"
         >
-          <span class="ticker-edge" :class="`ticker-edge-${item.tone}`" v-if="i < 2" aria-hidden="true"></span>
-          <span class="ticker-dot" :class="`ticker-dot-${item.tone}`" aria-hidden="true"></span>
-          <span class="ticker-tag" :class="`ticker-tag-${item.tone}`">{{ item.eyebrow }}</span>
-          <p class="ticker-copy">{{ item.body }}</p>
+          <span class="ticker-edge" :class="`ticker-edge-${tickerToneFor(item.eyebrow)}`" v-if="i < 2" aria-hidden="true"></span>
+          <span class="ticker-dot" :class="`ticker-dot-${tickerToneFor(item.eyebrow)}`" aria-hidden="true"></span>
+          <span v-if="item.eyebrow" class="ticker-tag" :class="`ticker-tag-${tickerToneFor(item.eyebrow)}`">{{ item.eyebrow }}</span>
+          <p class="ticker-copy">{{ item.headline }}</p>
         </li>
       </ul>
     </section>
@@ -711,25 +719,15 @@
     <section class="quick" aria-labelledby="quick-heading">
       <h2 class="section-eyebrow section-eyebrow-mute" id="quick-heading">Quick reads</h2>
       <ul class="pills" role="list">
-        <li class="pill" role="listitem">
-          <span class="pill-dot pill-dot-tertiary" aria-hidden="true"></span>
-          <span class="pill-label">Top cat this week</span>
-          <span class="pill-value">{{ homeQuickReads.topCatThisWeek.label }}</span>
-        </li>
-        <li class="pill" role="listitem">
-          <span class="pill-dot pill-dot-secondary" aria-hidden="true"></span>
-          <span class="pill-label">Biggest upset</span>
-          <span class="pill-value">{{ homeQuickReads.biggestUpset.label }}</span>
-        </li>
-        <li class="pill" role="listitem">
-          <span class="pill-dot pill-dot-up" aria-hidden="true"></span>
-          <span class="pill-label">Hottest streak</span>
-          <span class="pill-value">{{ homeQuickReads.hottestStreak.label }}</span>
-        </li>
-        <li class="pill" role="listitem">
-          <span class="pill-dot pill-dot-mute" aria-hidden="true"></span>
-          <span class="pill-label">On the bubble</span>
-          <span class="pill-value">{{ homeQuickReads.onTheBubble.label }}</span>
+        <li
+          v-for="pill in liveEditorial.quickReads"
+          :key="pill.label"
+          class="pill"
+          role="listitem"
+        >
+          <span class="pill-dot" :class="`pill-dot-${quickReadDotFor(pill.label)}`" aria-hidden="true"></span>
+          <span class="pill-label">{{ formatPillLabel(pill.label) }}</span>
+          <span class="pill-value">{{ pill.value }}</span>
         </li>
       </ul>
     </section>
@@ -737,8 +735,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   teams,
   standings2026Week8,
@@ -750,16 +748,23 @@ import {
   weeklyCatsWon,
   weeklyCatLeagueAverage,
   yesterdayBigSwings,
-  aroundLeagueBeats,
-  homeQuickReads,
   type CategoryMatchup,
 } from '@/fixtures/categoriesLeague'
 import { accentFor, accentStops } from '@/utils/teamColor'
 import { smoothPath, type Point } from '@/utils/svgPath'
+import { renderHomePage, type RenderedHomeCopy } from '@/editorial/render'
+import { categoriesFixtureToLeagueData } from '@/editorial/fixtureAdapter'
+import { sleeperLeagueToCategoryData } from '@/editorial/adapters/sleeperAdapter'
+import { espnLeagueToCategoryData } from '@/editorial/adapters/espnAdapter'
+import { yahooLeagueToCategoryData } from '@/editorial/adapters/yahooAdapter'
+import type { CategoryLeagueData } from '@/editorial/types'
+import { usePlatformsStore } from '@/stores/platforms'
+import LiveLoadError from '@/components/demo/LiveLoadError.vue'
 
 defineEmits<{ (e: 'open-signup'): void }>()
 
 const router = useRouter()
+const route = useRoute()
 
 // Hero face-off: protagonist (bt) overtakes antagonist (ct). Mirrors the
 // movement we wrote in seasonRankHistory (ct: W1 #1 → W8 #6 ; bt: W1 #4 → W8 #1).
@@ -769,7 +774,39 @@ const antagonist = getTeam('ct')
 // My team — used for bubble star, standings yellow tint, and the chart line.
 const myTeam = teams.find((t) => t.isMyTeam)!
 
-const standings = standings2026Week8
+// `liveData` is set alongside `liveEditorial` whenever the URL points
+// the page at a real league (`?leagueId=…&platform=sleeper`). When it
+// is null, every wired widget falls back to the hand-authored fixture.
+const liveData = shallowRef<CategoryLeagueData | null>(null)
+
+// Standings: live data when present, else the fixture's hand-authored row set.
+const standings = computed(() =>
+  liveData.value?.standings ?? standings2026Week8,
+)
+
+// Look up a team by id — prefers liveData.teams, falls back to the
+// fixture's `getTeam()` so existing call sites keep working when no
+// leagueId is set.
+function lookupTeam(teamId: string) {
+  const t = liveData.value?.teams.find((x) => x.id === teamId)
+  if (t) return t
+  // Fall through to fixture; if neither has it, synthesize a stub so
+  // the template never crashes during transitional renders.
+  try {
+    return getTeam(teamId)
+  } catch {
+    return {
+      id: teamId,
+      name: `Team ${teamId}`,
+      ownerName: `Manager ${teamId}`,
+      ownerInitials: teamId.slice(0, 2).toUpperCase(),
+      avatarUrl: undefined,
+      avatarColor: 'oklch(0.62 0.18 200), oklch(0.42 0.18 220)',
+      isMyTeam: false,
+    }
+  }
+}
+
 const swings = yesterdayBigSwings
 
 /* ─────────────────────────────────────────────────────────────────
@@ -788,12 +825,19 @@ interface BubbleRow {
   lastFive: ('W' | 'L' | 'T')[]
 }
 
+// Bubble window — top of cutoff ±2 (matches the four-team band the
+// design assumes). With a 6-team playoff cutoff this is rows 5..8.
+const bubbleCutoff = computed(() =>
+  liveData.value?.playoffCutoff ?? playoffCutoff,
+)
 const bubbleRows = computed<BubbleRow[]>(() => {
-  const rows = standings.filter((s) => s.rank >= 5 && s.rank <= 8)
-  const cutoffStanding = standings.find((s) => s.rank === playoffCutoff)
+  const cutoff = bubbleCutoff.value
+  const list = standings.value
+  const rows = list.filter((s) => s.rank >= cutoff - 1 && s.rank <= cutoff + 2)
+  const cutoffStanding = list.find((s) => s.rank === cutoff)
   const cutoffWins = cutoffStanding?.catWins ?? 0
   return rows.map((s) => {
-    const inPlayoffs = s.rank <= playoffCutoff
+    const inPlayoffs = s.rank <= cutoff
     // Whole-game gap to the playoff line, measured in matchup-cat-wins
     // and converted to a "matchups behind" approximation. We collapse to a
     // single integer (rounded up) so the chip stays readable.
@@ -816,16 +860,123 @@ const bubbleRows = computed<BubbleRow[]>(() => {
   })
 })
 
-// Editorial closer line — derived from the actual seed-5 and seed-6 teams
-// so the copy stays in sync if the standings get re-ordered later.
-const bubbleCloser = computed(() => {
-  const fifth = standings.find((s) => s.rank === 5)
-  const sixth = standings.find((s) => s.rank === 6)
-  const seventh = standings.find((s) => s.rank === 7)
-  const eighth = standings.find((s) => s.rank === 8)
-  if (!fifth || !sixth || !seventh || !eighth) return ''
-  return `${getTeam(fifth.teamId).name} and ${getTeam(sixth.teamId).name} hold the last two seats. ${getTeam(seventh.teamId).name} and ${getTeam(eighth.teamId).name} need wins.`
+/* ─────────────────────────────────────────────────────────────────
+   EDITORIAL — live copy from the detection + rendering pipeline.
+
+   Source of truth:
+   - Default: the hand-authored fixture (the demo experience).
+   - When `?leagueId=…&platform=sleeper` is present in the URL:
+     fetch live data via the matching adapter and re-render copy.
+     The fixture render is kept as the synchronous initial value
+     so the template never sees a null editorial during load.
+
+   We use `shallowRef` because `RenderedHomeCopy` is a plain object
+   tree of strings and we always swap the whole thing, not mutate
+   it in place — shallowRef skips the unnecessary deep proxy.
+───────────────────────────────────────────────────────────────── */
+const liveEditorial = shallowRef<RenderedHomeCopy>(
+  renderHomePage(categoriesFixtureToLeagueData()),
+)
+const liveLoading = ref(false)
+const liveError = ref<string | null>(null)
+const liveLeagueId = computed(() => {
+  const v = route.query.leagueId
+  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
 })
+const livePlatform = computed(() => {
+  const v = route.query.platform
+  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
+})
+
+onMounted(async () => {
+  const id = liveLeagueId.value
+  const platform = livePlatform.value
+  if (!id || (platform !== 'sleeper' && platform !== 'espn' && platform !== 'yahoo')) {
+    return  // fixture-only path
+  }
+
+  liveLoading.value = true
+  liveError.value = null
+  try {
+    // Pull the signed-in user's per-platform identity from the
+    // platforms store so the adapter can wire `isMyTeam` correctly.
+    // Each adapter only consumes the field for its own platform; the
+    // others are ignored. Wrapped in try/catch because the store may
+    // not have been hydrated yet (off-line, first-visit) — missing
+    // identity just means no team gets the wayfinding tint, which is
+    // a fine degraded experience.
+    const opts = { userIdentity: collectUserIdentity() }
+    const data =
+      platform === 'espn'
+        ? await espnLeagueToCategoryData(id, opts)
+        : platform === 'yahoo'
+        ? await yahooLeagueToCategoryData(id, opts)
+        : await sleeperLeagueToCategoryData(id, opts)
+    liveData.value = data
+    liveEditorial.value = renderHomePage(data)
+  } catch (err) {
+    const platformLabel =
+      platform === 'espn' ? 'ESPN' : platform === 'yahoo' ? 'Yahoo' : 'Sleeper'
+    liveError.value = (err as Error).message || `Failed to load ${platformLabel} league data.`
+  } finally {
+    liveLoading.value = false
+  }
+})
+
+/**
+ * Build the cross-platform identity object the adapters need to flag
+ * the signed-in user's team. Reads from the platforms store (which is
+ * the source of truth for connected accounts).
+ *   - sleeper: `platform_user_id` is the Sleeper `user_id`
+ *   - yahoo:   `platform_user_id` is the Yahoo manager `guid`
+ *   - espn:    ESPN cookies are persisted out-of-band; `swid` is the
+ *              owner identifier
+ * Returns an empty object if the store throws — used by every demo
+ * view, so we centralize the failure handling here.
+ */
+function collectUserIdentity() {
+  try {
+    const platformsStore = usePlatformsStore()
+    return {
+      sleeperUserId: platformsStore.getConnection('sleeper')?.platform_user_id ?? undefined,
+      yahooGuid: platformsStore.getConnection('yahoo')?.platform_user_id ?? undefined,
+      espnSwid: platformsStore.getEspnCredentials()?.swid ?? undefined,
+    }
+  } catch {
+    return {}
+  }
+}
+
+/** Map a ticker eyebrow (from `eyebrowForTicker` in render.ts) to the
+ *  existing tone class set the template already styles for. */
+function tickerToneFor(eyebrow: string | undefined): 'green' | 'magenta' | 'teal' | 'neutral' {
+  switch (eyebrow) {
+    case 'HOT STREAK':    return 'green'
+    case 'TOP CAT KING':  return 'green'
+    case 'ROUGH PATCH':   return 'magenta'
+    case 'BLOWOUT':       return 'magenta'
+    case 'BUBBLE WATCH':  return 'teal'
+    default:              return 'neutral'
+  }
+}
+
+/** Map a quick-read pill label (from `pillLabel` in render.ts, which
+ *  emits uppercase strings) to the existing dot color class set. */
+function quickReadDotFor(label: string): 'tertiary' | 'secondary' | 'up' | 'mute' {
+  switch (label) {
+    case 'TOP CAT THIS WEEK': return 'tertiary'
+    case 'BIGGEST UPSET':     return 'secondary'
+    case 'HOTTEST STREAK':    return 'up'
+    case 'ON THE BUBBLE':     return 'mute'
+    default:                  return 'mute'
+  }
+}
+
+/** Pill labels render in sentence case in the template; the renderer
+ *  hands us the uppercase pill identifier. */
+function formatPillLabel(label: string): string {
+  return label.charAt(0) + label.slice(1).toLowerCase()
+}
 
 /* ─────────────────────────────────────────────────────────────────
    YESTERDAY'S BIG SWINGS — carousel state
@@ -990,18 +1141,31 @@ function ppwSmooth(pts: PPWPoint[]): string {
   return smoothPath(pts as Point[])
 }
 
-// Top scorer: team with the highest cumulative cats-won across the 8 weeks.
-// At W8 that's bt (sum 69). Wrap in computed to stay safe if the fixture moves.
+// Live chart sources — prefer adapter data, fall back to fixture.
+const weeklyCatsWonSource = computed<Record<string, number[]>>(
+  () => liveData.value?.weeklyCatsWon ?? weeklyCatsWon,
+)
+const weeklyAvgSource = computed<number[]>(
+  () => liveData.value?.weeklyLeagueAverage ?? weeklyCatLeagueAverage,
+)
+const chartTeams = computed(() =>
+  liveData.value?.teams ?? teams,
+)
+
+// Top scorer: team with the highest cumulative cats-won.
+// At W8 in the fixture that's bt (sum 69). Wrap in computed so the
+// chart updates if the data source changes (e.g., switching to live).
 const topScorerTeam = computed(() => {
-  let bestId = teams[0].id
+  const list = chartTeams.value
+  let bestId = list[0]?.id ?? 'bt'
   let best = -Infinity
-  for (const t of teams) {
-    const arr = weeklyCatsWon[t.id]
+  for (const t of list) {
+    const arr = weeklyCatsWonSource.value[t.id]
     if (!arr) continue
     const total = arr.reduce((a, b) => a + b, 0)
     if (total > best) { best = total; bestId = t.id }
   }
-  return getTeam(bestId)
+  return lookupTeam(bestId)
 })
 // Second OKLCH stop so the top-scorer line visually separates from yellow.
 const topScorerColor = computed(() => {
@@ -1009,37 +1173,43 @@ const topScorerColor = computed(() => {
   return stops[1] ?? stops[0]
 })
 
-const topScorerPoints = computed(() => ppwPoints(weeklyCatsWon[topScorerTeam.value.id]))
+const topScorerPoints = computed(() =>
+  ppwPoints(weeklyCatsWonSource.value[topScorerTeam.value.id] ?? []),
+)
 const topScorerPath = computed(() => ppwSmooth(topScorerPoints.value))
 const topScorerEnd = computed(() => topScorerPoints.value.at(-1) ?? null)
 
-const myTeamPoints = computed(() => ppwPoints(weeklyCatsWon[myTeam.id]))
+const myTeamPoints = computed(() =>
+  ppwPoints(weeklyCatsWonSource.value[myTeam.id] ?? []),
+)
 const myTeamPath = computed(() => ppwSmooth(myTeamPoints.value))
 const myTeamEnd = computed(() => myTeamPoints.value.at(-1) ?? null)
 
 const avgPpwPoints = computed(() =>
-  weeklyCatLeagueAverage.map((v, idx) => ({ x: ppwX(idx + 1), y: ppwY(v), week: idx + 1, value: v })),
+  weeklyAvgSource.value.map((v, idx) => ({ x: ppwX(idx + 1), y: ppwY(v), week: idx + 1, value: v })),
 )
 const ppwAvgPath = computed(() => ppwSmooth(avgPpwPoints.value))
 const avgEnd = computed(() => avgPpwPoints.value.at(-1) ?? null)
 
 // Background team set — every team except the featured top scorer and my-team.
 const backgroundTeamIds = computed(() =>
-  teams
+  chartTeams.value
     .map((t) => t.id)
     .filter((id) => id !== topScorerTeam.value.id && id !== myTeam.id),
 )
 function teamPath(teamId: string): string {
-  return ppwSmooth(ppwPoints(weeklyCatsWon[teamId] ?? []))
+  return ppwSmooth(ppwPoints(weeklyCatsWonSource.value[teamId] ?? []))
 }
 function bgStrokeFor(teamId: string): string {
   // 12% opacity so background lines read as context, not noise.
-  return accentFor(getTeam(teamId)).replace(/\)$/, ' / 0.12)')
+  return accentFor(lookupTeam(teamId)).replace(/\)$/, ' / 0.12)')
 }
 
 // Annotation: at week 6 bt first holds #1 (seasonRankHistory: bt becomes 1 at W6).
+// Live-data path doesn't have an authored narrative annotation, so skip it.
 interface Annotation { dotX: number; dotY: number; labelX: number; labelY: number }
 const annotation = computed<Annotation | null>(() => {
+  if (liveData.value) return null   // fixture-only narrative annotation
   const idx = 5 // week 6 → index 5
   const btScore = weeklyCatsWon['bt']?.[idx]
   if (btScore == null) return null
@@ -1080,6 +1250,67 @@ function endpointY(id: 'top' | 'mine' | 'avg', rawY: number): number {
   gap: 56px;
   font-family: 'Barlow', sans-serif;
   color: var(--ink-1);
+}
+
+/* ─── Live load banners ───────────────────────────────────────── */
+.live-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid oklch(0.20 0.015 90);
+  background: oklch(0.10 0.014 90);
+  font-size: 0.92rem;
+  color: var(--ink-2);
+}
+.live-banner-loading { color: var(--accent-tertiary); }
+.live-banner-spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid oklch(0.72 0.18 195 / 0.30);
+  border-top-color: var(--accent-tertiary);
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes live-spin { to { transform: rotate(360deg); } }
+  .live-banner-spinner { animation: live-spin 0.9s linear infinite; }
+}
+.live-banner-error {
+  flex-wrap: wrap;
+  border-color: oklch(0.65 0.20 25 / 0.45);
+  background: oklch(0.65 0.20 25 / 0.08);
+}
+.live-banner-error-headline {
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--accent-down);
+}
+.live-banner-error-body {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--ink-2);
+  flex: 1 1 240px;
+}
+.live-banner-action {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-1);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: oklch(0.20 0.015 90);
+  border: 1px solid oklch(0.32 0.012 90);
+  transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .live-banner-action:hover { background: oklch(0.26 0.015 90); }
 }
 
 /* ─── Shared section heading typography ───────────────────────── */

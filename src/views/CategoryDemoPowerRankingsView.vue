@@ -1,6 +1,16 @@
 <template>
   <div class="cat-rankings">
     <!-- ─────────────────────────────────────────────────────────────
+         LIVE LOAD STATUS — only renders when a leagueId is in the
+         URL and the live adapter is fetching or has errored.
+    ────────────────────────────────────────────────────────────── -->
+    <div v-if="liveLoading" class="live-banner live-banner-loading" role="status" aria-live="polite">
+      <span class="live-banner-spinner" aria-hidden="true"></span>
+      Loading your league from Sleeper. Hang tight.
+    </div>
+    <LiveLoadError v-else-if="liveError" :message="liveError" />
+
+    <!-- ─────────────────────────────────────────────────────────────
          1. PAGE HEADER — eyebrow + headline + sub + rank-shape stats
     ────────────────────────────────────────────────────────────── -->
     <header class="page-head">
@@ -10,7 +20,7 @@
           Week {{ currentWeek }}
         </p>
         <h1 class="page-headline">Power Rankings</h1>
-        <p class="page-sub">Eight weeks in. Here's the ladder. Who's climbing, who's bleeding, who's about to swap.</p>
+        <p class="page-sub">{{ livePR.subHeadline }}</p>
       </div>
       <ul class="page-context" role="list" aria-label="At a glance">
         <li class="page-context-stat">
@@ -55,25 +65,25 @@
       <div class="hero-copy">
         <p class="hero-eyebrow">
           <span class="hero-eyebrow-bar" aria-hidden="true"></span>
-          {{ heroMover.eyebrow }}
+          {{ heroMoverCopy.eyebrow }}
         </p>
         <h2 class="hero-headline" :id="`hero-headline-${heroMoverTeam.id}`">
-          {{ heroMover.headline }}
+          {{ heroMoverCopy.headline }}
         </h2>
-        <p class="hero-body">{{ heroMover.body }}</p>
+        <p class="hero-body">{{ heroMoverCopy.body }}</p>
 
         <ul class="hero-stats" role="list">
           <li class="hero-stat hero-stat-primary">
-            <span class="hero-stat-num">+{{ heroMover.spots }}</span>
+            <span class="hero-stat-num">{{ heroSpotsLabel }}</span>
             <span class="hero-stat-label">spots</span>
           </li>
           <li class="hero-stat hero-stat-tertiary">
-            <span class="hero-stat-num">{{ heroMover.streak }}</span>
+            <span class="hero-stat-num">{{ heroStreakLabel }}</span>
             <span class="hero-stat-label">streak</span>
           </li>
           <li class="hero-stat hero-stat-leader">
-            <span class="hero-stat-num">{{ heroMover.lastWeekRecord }}</span>
-            <span class="hero-stat-label">last week</span>
+            <span class="hero-stat-num">{{ heroRecordLabel }}</span>
+            <span class="hero-stat-label">this season</span>
           </li>
         </ul>
 
@@ -91,7 +101,7 @@
             </svg>
             Share this card
           </button>
-          <span class="hero-actions-meta">{{ heroMover.kicker }}</span>
+          <span class="hero-actions-meta">{{ heroMoverCopy.kicker }}</span>
         </div>
       </div>
     </section>
@@ -469,7 +479,7 @@
             </div>
           </div>
           <div class="heater-body">
-            <p class="heater-eyebrow">On a heater</p>
+            <p class="heater-eyebrow">{{ heaterCopy?.eyebrow || 'On a heater' }}</p>
             <p class="heater-team">{{ heaterTeam.name }}</p>
             <p class="heater-owner">{{ heaterTeam.ownerName }}</p>
             <div class="heater-streak" :aria-label="`${movementBeats.onHeater.streak} win streak`">
@@ -491,13 +501,13 @@
               </svg>
               <span class="heater-streak-label">{{ movementBeats.onHeater.streak }}</span>
             </div>
-            <p class="heater-copy">{{ movementBeats.onHeater.body }}</p>
+            <p class="heater-copy">{{ heaterCopy?.body || movementBeats.onHeater.body }}</p>
           </div>
         </article>
 
         <!-- Card B: Long Fall (compact with downward arc) -->
         <article class="fall-card" :aria-label="`Long fall: ${fallTeam.name}`">
-          <p class="fall-eyebrow">Long fall</p>
+          <p class="fall-eyebrow">{{ longFallCopy?.eyebrow || 'Long fall' }}</p>
           <div class="fall-head">
             <span
               class="fall-avatar"
@@ -530,7 +540,7 @@
 
         <!-- Card C: Steadiest Hand (text strip) -->
         <article class="steady-card" :aria-label="`Steadiest hand: ${steadyTeam.name}`">
-          <p class="steady-eyebrow">Steadiest hand</p>
+          <p class="steady-eyebrow">{{ steadyCopy?.eyebrow || 'Steadiest hand' }}</p>
           <div class="steady-row">
             <span
               class="steady-avatar"
@@ -541,7 +551,7 @@
             </span>
             <p class="steady-copy">
               <span class="steady-team">{{ steadyTeam.name }}</span>
-              {{ movementBeats.steadiestHand.body }}
+              {{ steadyCopy?.body || `${movementBeats.steadiestHand.body}` }}
             </p>
           </div>
         </article>
@@ -648,35 +658,19 @@
     </section>
 
     <!-- ─────────────────────────────────────────────────────────────
-         5. QUICK READS — footer pills (presentational)
+         5. QUICK READS — footer pills (live editorial)
     ────────────────────────────────────────────────────────────── -->
     <section class="quick" aria-labelledby="quick-heading">
       <h2 class="section-eyebrow section-eyebrow-mute" id="quick-heading">Quick reads</h2>
       <ul class="pills" role="list">
-        <li class="pill">
-          <span class="pill-dot pill-dot-up" aria-hidden="true"></span>
-          <span class="pill-label">Tightest cat race</span>
-          <span class="pill-value">ERA: top 4 within .12</span>
-        </li>
-        <li class="pill">
-          <span class="pill-dot pill-dot-teal" aria-hidden="true"></span>
-          <span class="pill-label">Most punted cat</span>
-          <span class="pill-value">SB: 4 teams averaging under 3 per week</span>
-        </li>
-        <li class="pill">
-          <span class="pill-dot pill-dot-secondary" aria-hidden="true"></span>
-          <span class="pill-label">Biggest bleed</span>
-          <span class="pill-value">Walk-Off Society · 0-7 in RBI</span>
-        </li>
-        <li class="pill">
-          <span class="pill-dot pill-dot-teal" aria-hidden="true"></span>
-          <span class="pill-label">Bubble watch</span>
-          <span class="pill-value">#6 Closer's Therapy vs #7 Mound Visitors</span>
-        </li>
-        <li class="pill">
-          <span class="pill-dot pill-dot-mute" aria-hidden="true"></span>
-          <span class="pill-label">Floor of the league</span>
-          <span class="pill-value">Walk-Off Society · L4</span>
+        <li
+          v-for="pill in livePR.quickReads"
+          :key="pill.label"
+          class="pill"
+        >
+          <span class="pill-dot" :class="`pill-dot-${quickReadDotFor(pill.label)}`" aria-hidden="true"></span>
+          <span class="pill-label">{{ formatPillLabel(pill.label) }}</span>
+          <span class="pill-value">{{ pill.value }}</span>
         </li>
       </ul>
     </section>
@@ -693,7 +687,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, shallowRef } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   teams,
   categories,
@@ -714,12 +709,111 @@ import CategoryCustomizeRankingsModal from '@/components/demo/CategoryCustomizeR
 import CategoryTeamDetailModal from '@/components/demo/CategoryTeamDetailModal.vue'
 import { accentFor } from '@/utils/teamColor'
 import { smoothPath, type Point } from '@/utils/svgPath'
+import { renderPRPage, type RenderedPRCopy } from '@/editorial/render-pr'
+import { categoriesFixtureToLeagueData } from '@/editorial/fixtureAdapter'
+import { sleeperLeagueToCategoryData } from '@/editorial/adapters/sleeperAdapter'
+import { espnLeagueToCategoryData } from '@/editorial/adapters/espnAdapter'
+import { yahooLeagueToCategoryData } from '@/editorial/adapters/yahooAdapter'
+import type { CategoryLeagueData } from '@/editorial/types'
+import { usePlatformsStore } from '@/stores/platforms'
+import LiveLoadError from '@/components/demo/LiveLoadError.vue'
 
 defineEmits<{ (e: 'open-signup'): void }>()
+
+const route = useRoute()
 
 const standings = standings2026Week8
 const myTeam = teams.find((t) => t.isMyTeam)!
 const { liveRankings } = useDemoCategoryPowerRankings()
+
+/* ─────────────────────────────────────────────────────────────────
+   EDITORIAL — live copy from the detection + rendering pipeline.
+
+   Source of truth:
+   - Default: the hand-authored fixture (the demo experience).
+   - When `?leagueId=…&platform=sleeper` is present in the URL:
+     fetch live data via the matching adapter and re-render copy.
+     The fixture render is kept as the synchronous initial value
+     so the template never sees a null editorial during load.
+───────────────────────────────────────────────────────────────── */
+const liveData = shallowRef<CategoryLeagueData | null>(null)
+const livePR = shallowRef<RenderedPRCopy>(
+  renderPRPage(categoriesFixtureToLeagueData()),
+)
+const liveLoading = ref(false)
+const liveError = ref<string | null>(null)
+const liveLeagueId = computed(() => {
+  const v = route.query.leagueId
+  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
+})
+const livePlatform = computed(() => {
+  const v = route.query.platform
+  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
+})
+
+onMounted(async () => {
+  const id = liveLeagueId.value
+  const platform = livePlatform.value
+  if (!id || (platform !== 'sleeper' && platform !== 'espn' && platform !== 'yahoo')) {
+    return  // fixture-only path
+  }
+
+  liveLoading.value = true
+  liveError.value = null
+  try {
+    // See CategoryDemoHomeView for why we pass identity explicitly.
+    const opts = { userIdentity: collectUserIdentity() }
+    const data =
+      platform === 'espn'
+        ? await espnLeagueToCategoryData(id, opts)
+        : platform === 'yahoo'
+        ? await yahooLeagueToCategoryData(id, opts)
+        : await sleeperLeagueToCategoryData(id, opts)
+    liveData.value = data
+    livePR.value = renderPRPage(data)
+  } catch (err) {
+    const platformLabel =
+      platform === 'espn' ? 'ESPN' : platform === 'yahoo' ? 'Yahoo' : 'Sleeper'
+    liveError.value = (err as Error).message || `Failed to load ${platformLabel} league data.`
+  } finally {
+    liveLoading.value = false
+  }
+})
+
+/** See CategoryDemoHomeView.collectUserIdentity for the rationale. */
+function collectUserIdentity() {
+  try {
+    const platformsStore = usePlatformsStore()
+    return {
+      sleeperUserId: platformsStore.getConnection('sleeper')?.platform_user_id ?? undefined,
+      yahooGuid: platformsStore.getConnection('yahoo')?.platform_user_id ?? undefined,
+      espnSwid: platformsStore.getEspnCredentials()?.swid ?? undefined,
+    }
+  } catch {
+    return {}
+  }
+}
+
+/** Look up a team by id — prefers liveData.teams, falls back to the
+ *  fixture's `getTeam()` so existing call sites keep working when no
+ *  leagueId is set. */
+function lookupTeam(teamId: string) {
+  const t = liveData.value?.teams.find((x) => x.id === teamId)
+  if (t) return t
+  try {
+    return getTeam(teamId)
+  } catch {
+    return {
+      id: teamId,
+      name: `Team ${teamId}`,
+      ownerName: `Manager ${teamId}`,
+      ownerInitials: teamId.slice(0, 2).toUpperCase(),
+      avatarUrl: undefined,
+      avatarColor: 'oklch(0.62 0.18 200), oklch(0.42 0.18 220)',
+      isMyTeam: false,
+    }
+  }
+}
 
 /* ─── Modals ───────────────────────────────────────────────────── */
 const customizeOpen = ref(false)
@@ -820,7 +914,32 @@ const longestFall = computed(() => {
 })
 
 /* ─── Hero mover ─────────────────────────────────────────────── */
-const heroMoverTeam = computed(() => getTeam(heroMover.teamId))
+// Hero team: when live data is on, derive from the detected hero team
+// name by reverse-lookup; otherwise fall back to the fixture's mover.
+const heroMoverTeam = computed(() => {
+  if (liveData.value) {
+    const name = livePR.value.hero.headline
+    // The hero render emits "{TeamName} ...." — find a team whose name
+    // is a prefix of the headline. This avoids a second detection pass
+    // here. Fallback: fixture's mover.
+    const list = liveData.value.teams
+    const match = list.find((t) => name.includes(t.name))
+    if (match) return match
+  }
+  return getTeam(heroMover.teamId)
+})
+
+// Editorial hero copy — live render when present, else fixture.
+const heroMoverCopy = computed(() => livePR.value.hero)
+const heroSpotsLabel = computed(
+  () => heroMoverCopy.value.statChips[0]?.value ?? `+${heroMover.spots}`,
+)
+const heroStreakLabel = computed(
+  () => heroMoverCopy.value.statChips[1]?.value ?? heroMover.streak,
+)
+const heroRecordLabel = computed(
+  () => heroMoverCopy.value.statChips[2]?.value ?? heroMover.lastWeekRecord,
+)
 
 /* ─── Hero face-off data ─────────────────────────────────────── */
 interface FaceoffSide {
@@ -902,10 +1021,37 @@ function pathForTeam(teamId: string) {
   return smoothPath(points)
 }
 
-/* ─── Editorial beats ─────────────────────────────────────────── */
-const kingBeat = computed(() => categoryBeats.find((b) => b.kind === 'king')!)
-const bleederBeat = computed(() => categoryBeats.find((b) => b.kind === 'bleeder')!)
-const shiftBeat = computed(() => categoryBeats.find((b) => b.kind === 'profile-shift')!)
+/* ─── Editorial beats — fixture-driven visual data, live editorial copy ─── */
+const fxKingBeat = computed(() => categoryBeats.find((b) => b.kind === 'king')!)
+const fxBleederBeat = computed(() => categoryBeats.find((b) => b.kind === 'bleeder')!)
+const fxShiftBeat = computed(() => categoryBeats.find((b) => b.kind === 'profile-shift')!)
+
+// "Three Signals" copy: prefer the live PR dynasties; fallback to fixture beats.
+// Mapping: kingBeat = hittingKing, bleederBeat = puntKings, shiftBeat = pitchingKing.
+// (The cards keep their fixture-driven sub-data — cats, weekCatRecord, bleedStreak,
+//  fromProfile/toProfile — because those are not part of the dynasty render shape.)
+const kingBeat = computed(() => {
+  const live = livePR.value.dynasties.hittingKing
+  if (live) {
+    return { ...fxKingBeat.value, eyebrow: live.eyebrow, headline: live.headline, body: live.body }
+  }
+  return fxKingBeat.value
+})
+const bleederBeat = computed(() => {
+  const live = livePR.value.dynasties.puntKings
+  if (live) {
+    return { ...fxBleederBeat.value, eyebrow: live.eyebrow, headline: live.headline, body: live.body }
+  }
+  return fxBleederBeat.value
+})
+const shiftBeat = computed(() => {
+  const live = livePR.value.dynasties.pitchingKing
+  if (live) {
+    return { ...fxShiftBeat.value, eyebrow: live.eyebrow, headline: live.headline, body: live.body }
+  }
+  return fxShiftBeat.value
+})
+
 const kingTeam = computed(() => getTeam(kingBeat.value.teamId))
 const bleederTeam = computed(() => getTeam(bleederBeat.value.teamId))
 const shiftTeam = computed(() => getTeam(shiftBeat.value.teamId))
@@ -916,15 +1062,23 @@ const heaterTeam = computed(() => getTeam(movementBeats.onHeater.teamId))
 const fallTeam = computed(() => getTeam(movementBeats.longFall.teamId))
 const steadyTeam = computed(() => getTeam(movementBeats.steadiestHand.teamId))
 
-// Fall sparkline — ct's full 8-week rank trajectory as a falling arc.
+// Live pulse editorial copy (eyebrow / headline / body / trajectory).
+const heaterCopy = computed(() => livePR.value.pulse.heater)
+const longFallCopy = computed(() => livePR.value.pulse.longFall)
+const steadyCopy = computed(() => livePR.value.pulse.steadyHand)
+
+// Fall sparkline — uses live trajectory when present, else fixture.
 const FALL_W = 200
 const FALL_H = 80
 const fallSparkPoints = computed(() => {
-  const ranks = movementBeats.longFall.trajectory
+  const ranks = longFallCopy.value?.trajectory?.length
+    ? longFallCopy.value.trajectory
+    : movementBeats.longFall.trajectory
   const padX = 6
   const padY = 8
+  if (ranks.length === 0) return []
   return ranks.map((r, i) => ({
-    x: padX + (i / (ranks.length - 1)) * (FALL_W - padX * 2),
+    x: padX + (i / Math.max(1, ranks.length - 1)) * (FALL_W - padX * 2),
     y: padY + ((r - 1) / (RANK_COUNT - 1)) * (FALL_H - padY * 2),
   }))
 })
@@ -944,6 +1098,21 @@ const fallSparkEnd = computed(() => {
   const pts = fallSparkPoints.value
   return pts[pts.length - 1] ?? { x: 0, y: 0 }
 })
+
+/* ─── Quick-read pill formatting (matches Home pattern) ────────── */
+function quickReadDotFor(label: string): 'up' | 'teal' | 'secondary' | 'mute' {
+  switch (label) {
+    case 'TIGHTEST RACE':   return 'up'
+    case 'BIGGEST JUMP':    return 'up'
+    case 'LONGEST FALL':    return 'secondary'
+    case 'LONGEST STREAK':  return 'teal'
+    default:                return 'mute'
+  }
+}
+function formatPillLabel(label: string): string {
+  if (!label) return ''
+  return label.charAt(0) + label.slice(1).toLowerCase()
+}
 </script>
 
 <style scoped>
@@ -954,6 +1123,67 @@ const fallSparkEnd = computed(() => {
   gap: 64px;
   font-family: 'Barlow', sans-serif;
   color: var(--ink-1);
+}
+
+/* ─── Live-data load + error banner (mirrors Home view) ───────── */
+.live-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid oklch(0.20 0.015 90);
+  background: oklch(0.10 0.014 90);
+  font-size: 0.92rem;
+  color: var(--ink-2);
+}
+.live-banner-loading { color: var(--accent-tertiary); }
+.live-banner-spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid oklch(0.72 0.18 195 / 0.30);
+  border-top-color: var(--accent-tertiary);
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes live-spin { to { transform: rotate(360deg); } }
+  .live-banner-spinner { animation: live-spin 0.9s linear infinite; }
+}
+.live-banner-error {
+  flex-wrap: wrap;
+  border-color: oklch(0.65 0.20 25 / 0.45);
+  background: oklch(0.65 0.20 25 / 0.08);
+}
+.live-banner-error-headline {
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--accent-down);
+}
+.live-banner-error-body {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--ink-2);
+  flex: 1 1 240px;
+}
+.live-banner-action {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-1);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: oklch(0.20 0.015 90);
+  border: 1px solid oklch(0.32 0.012 90);
+  transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .live-banner-action:hover { background: oklch(0.26 0.015 90); }
 }
 
 /* ─── Shared section heading typography ───────────────────────── */

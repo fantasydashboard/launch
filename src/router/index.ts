@@ -208,7 +208,15 @@ const router = createRouter({
       path: '/demo-categories',
       component: () => import('@/views/CategoryDemoLayout.vue'),
       children: [
-        { path: '', redirect: '/demo-categories/home' },
+        // First-time visitors land on the connect picker. Direct
+        // links to /demo-categories/home still render the fixture
+        // demo (or live data when ?leagueId=&platform= is set).
+        { path: '', redirect: '/demo-categories/connect' },
+        {
+          path: 'connect',
+          name: 'demo-cat-connect',
+          component: () => import('@/views/CategoryDemoConnectView.vue'),
+        },
         {
           path: 'home',
           name: 'demo-cat-home',

@@ -442,6 +442,68 @@ class SleeperService {
   }
 
   /**
+   * Fetch raw MLB player stats for a single (season, week).
+   *
+   * Endpoint: https://api.sleeper.app/v1/stats/mlb/regular/{season}/{week}
+   * Returns a dictionary keyed by player_id, where each value is the
+   * player's raw stat object for that week (`h`, `hr`, `ab`, `er`,
+   * `ip`, `h_p`, `bb_p`, etc).
+   *
+   * Returns an empty object (NOT null) for weeks Sleeper has no data
+   * for yet (e.g., future weeks) so callers can keep walking without
+   * special-casing. Throws only on non-404 network failures so the
+   * editorial pipeline's error banner surfaces real outages.
+   */
+  async getMlbStats(
+    season: string | number,
+    week: number,
+  ): Promise<Record<string, Record<string, number>>> {
+    const seasonStr = String(season)
+    const cacheKey = `${seasonStr}_${week}`
+    const cached = cache.get<Record<string, Record<string, number>>>(
+      'sleeper_mlb_stats',
+      cacheKey,
+    )
+    if (cached) {
+      console.log(`[Cache HIT] Sleeper MLB stats ${seasonStr} week ${week}`)
+      return cached
+    }
+
+    const url = `${BASE_URL}/stats/mlb/regular/${seasonStr}/${week}`
+    const response = await fetch(url)
+    if (response.status === 404) {
+      // No data for this week — cache the empty result briefly so we
+      // don't hammer the endpoint.
+      cache.set('sleeper_mlb_stats', {}, CACHE_TTL.CURRENT, cacheKey)
+      return {}
+    }
+    if (!response.ok) {
+      throw new Error(
+        `Sleeper MLB stats fetch failed (${response.status}) for ${seasonStr} week ${week}`,
+      )
+    }
+
+    const data = (await response.json()) as
+      | Record<string, Record<string, number>>
+      | null
+    const safe = data && typeof data === 'object' ? data : {}
+
+    // Past weeks rarely change; current/future weeks update live.
+    const isCurrentOrFuture = this.isCurrentMlbWeek(seasonStr, week)
+    const ttl = isCurrentOrFuture ? CACHE_TTL.CURRENT : CACHE_TTL.COMPLETED
+    cache.set('sleeper_mlb_stats', safe, ttl, cacheKey)
+    return safe
+  }
+
+  /** Cheap heuristic — assume current calendar week of MLB season needs short TTL. */
+  private isCurrentMlbWeek(season: string, _week: number): boolean {
+    const now = new Date()
+    const seasonYear = parseInt(season, 10)
+    if (!Number.isFinite(seasonYear)) return true
+    return now.getUTCFullYear() === seasonYear
+  }
+
+  /**
    * Get NFL schedule for a week (includes game info)
    */
   async getNflSchedule(

@@ -324,13 +324,13 @@
 
         <!-- ─── WHAT TO WATCH ──────────────────────────────────────── -->
         <section class="cmm-watch" aria-label="What to watch">
-          <p class="cmm-watch-eyebrow">What to watch</p>
-          <p class="cmm-watch-body">{{ matchup.whatToWatch }}</p>
+          <p class="cmm-watch-eyebrow">{{ watchEyebrow }}</p>
+          <p class="cmm-watch-body">{{ watchBody }}</p>
         </section>
 
         <!-- ─── SEASON SERIES ──────────────────────────────────────── -->
         <section class="cmm-series" aria-labelledby="cmm-series-eyebrow">
-          <p class="cmm-section-eyebrow" id="cmm-series-eyebrow">Season series</p>
+          <p class="cmm-section-eyebrow" id="cmm-series-eyebrow">{{ seriesEyebrow }}</p>
           <p class="cmm-series-body">{{ seriesProse }}</p>
         </section>
 
@@ -365,7 +365,16 @@ import { accentFor } from '@/utils/teamColor'
 import { smoothPath, type Point } from '@/utils/svgPath'
 import { useDemoModal } from '@/composables/useDemoModal'
 
-const props = defineProps<{ matchupId: string }>()
+const props = defineProps<{
+  matchupId: string
+  /** Optional editorial override for the "What to watch" callout. When
+   *  present, replaces the hand-authored fixture string. Provided by
+   *  the Matchups page's live editorial pipeline. */
+  whatToWatchOverride?: { eyebrow?: string; headline?: string }
+  /** Optional editorial override for the Season Series prose. When
+   *  present, replaces the fixture's `matchupSeriesProse` lookup. */
+  seasonSeriesOverride?: { eyebrow?: string; body?: string }
+}>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'open-signup'): void }>()
 
 const matchup = computed(() => getMatchup(props.matchupId))
@@ -526,8 +535,27 @@ function clampWP(v: number): number {
   return Math.max(1, Math.min(99, Math.round(v)))
 }
 
-/* ─── Season series prose lookup ─────────────────────────────── */
+/* ─── What-to-watch copy (editorial-aware) ───────────────────── */
+const watchEyebrow = computed(() => {
+  const eb = props.whatToWatchOverride?.eyebrow
+  if (eb && eb.trim().length > 0) return eb
+  return 'What to watch'
+})
+const watchBody = computed(() => {
+  const body = props.whatToWatchOverride?.headline
+  if (body && body.trim().length > 0) return body
+  return matchup.value.whatToWatch
+})
+
+/* ─── Season series prose lookup (editorial-aware) ───────────── */
+const seriesEyebrow = computed(() => {
+  const eb = props.seasonSeriesOverride?.eyebrow
+  if (eb && eb.trim().length > 0) return eb
+  return 'Season series'
+})
 const seriesProse = computed(() => {
+  const overrideBody = props.seasonSeriesOverride?.body
+  if (overrideBody && overrideBody.trim().length > 0) return overrideBody
   const hId = matchup.value.homeTeamId
   const aId = matchup.value.awayTeamId
   const direct = matchupSeriesProse[`${hId}-${aId}`]

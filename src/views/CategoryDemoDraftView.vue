@@ -1,5 +1,22 @@
 <template>
   <div class="catdraft">
+    <!-- ─────────────────────────────────────────────────────────────
+         LIVE LOAD STATUS — only renders when a leagueId is in the URL
+         and the live adapter is fetching, has errored, or returned
+         data without a draft section. The underlying editorial keeps
+         a fixture-derived render as its initial value so the page
+         stays visually populated during load.
+    ────────────────────────────────────────────────────────────── -->
+    <div v-if="liveLoading" class="live-banner live-banner-loading" role="status" aria-live="polite">
+      <span class="live-banner-spinner" aria-hidden="true"></span>
+      Loading your draft from Sleeper. Hang tight.
+    </div>
+    <LiveLoadError v-else-if="liveError" :message="liveError" />
+    <div v-else-if="liveData && !liveData.draft" class="live-banner live-banner-info" role="status">
+      <p class="live-banner-error-headline">No draft data available for this league.</p>
+      <p class="live-banner-error-body">Sleeper hasn't exposed it for this format. Showing the demo draft below.</p>
+    </div>
+
     <!-- ─── 1. PAGE HEAD ───────────────────────────────────────── -->
     <header class="page-head">
       <div class="page-head-copy">
@@ -57,26 +74,26 @@
           </div>
           <div class="award-best-body">
             <p class="award-best-eyebrow">Best draft of 2026</p>
-            <h3 class="award-best-headline">{{ categoryDraftAwards.bestDraft.headline }}</h3>
-            <p class="award-best-copy">{{ categoryDraftAwards.bestDraft.body }}</p>
+            <h3 class="award-best-headline">{{ bestDraftCopy.headline }}</h3>
+            <p class="award-best-copy">{{ bestDraftCopy.body }}</p>
             <ul class="award-best-stats" role="list">
               <li>
-                <span class="award-best-stat-num award-best-stat-num-pos">{{ categoryDraftAwards.bestDraft.stats.steals }}</span>
+                <span class="award-best-stat-num award-best-stat-num-pos">{{ bestDraftCopy.stats.steals }}</span>
                 <span class="award-best-stat-label">steals</span>
               </li>
               <li class="award-best-stat-sep" aria-hidden="true"></li>
               <li>
-                <span class="award-best-stat-num">{{ categoryDraftAwards.bestDraft.stats.hits }}</span>
+                <span class="award-best-stat-num">{{ bestDraftCopy.stats.hits }}</span>
                 <span class="award-best-stat-label">hits</span>
               </li>
               <li class="award-best-stat-sep" aria-hidden="true"></li>
               <li>
-                <span class="award-best-stat-num award-best-stat-num-neg">{{ categoryDraftAwards.bestDraft.stats.busts }}</span>
+                <span class="award-best-stat-num award-best-stat-num-neg">{{ bestDraftCopy.stats.busts }}</span>
                 <span class="award-best-stat-label">busts</span>
               </li>
               <li class="award-best-stat-sep" aria-hidden="true"></li>
               <li>
-                <span class="award-best-stat-num">{{ categoryDraftAwards.bestDraft.stats.earlyHitRate }}</span>
+                <span class="award-best-stat-num">{{ bestDraftCopy.stats.earlyHitRate }}</span>
                 <span class="award-best-stat-label">early hit rate</span>
               </li>
             </ul>
@@ -92,8 +109,8 @@
               </svg>
             </button>
           </div>
-          <p class="award-best-grade" :aria-label="`Grade ${categoryDraftAwards.bestDraft.grade}`">
-            {{ categoryDraftAwards.bestDraft.grade }}
+          <p class="award-best-grade" :aria-label="`Grade ${bestDraftCopy.grade}`">
+            {{ bestDraftCopy.grade }}
           </p>
         </article>
 
@@ -126,8 +143,8 @@
               </p>
             </div>
           </div>
-          <p class="award-steal-value">+{{ categoryDraftAwards.steal.valueScore }}</p>
-          <p class="award-steal-body">{{ categoryDraftAwards.steal.body }}</p>
+          <p class="award-steal-value">+{{ stealAwardCopy.valueScore }}</p>
+          <p class="award-steal-body">{{ stealAwardCopy.body }}</p>
           <div class="award-steal-by">
             <div
               class="award-by-avatar"
@@ -162,8 +179,8 @@
             <span class="dot" aria-hidden="true">·</span>
             R{{ bustPick.round }} pick #{{ bustPick.pickOverall }}
           </p>
-          <p class="award-bust-value">{{ categoryDraftAwards.bust.valueScore }}</p>
-          <p class="award-bust-body">{{ categoryDraftAwards.bust.body }}</p>
+          <p class="award-bust-value">{{ bustAwardCopy.valueScore }}</p>
+          <p class="award-bust-body">{{ bustAwardCopy.body }}</p>
           <div class="award-steal-by">
             <div
               class="award-by-avatar"
@@ -381,6 +398,9 @@
             {{ r.avgValue >= 0 ? '+' : '' }}{{ r.avgValue.toFixed(1) }}
             <span class="rounds-avg-label">avg</span>
           </span>
+          <p v-if="roundNarratives.get(r.round)" class="rounds-narrative">
+            {{ roundNarratives.get(r.round) }}
+          </p>
         </li>
       </ul>
 
@@ -591,28 +611,28 @@
           <span class="quick-dot" aria-hidden="true"></span>
           <div class="quick-pill-text">
             <span class="quick-pill-eyebrow">Highest value pick</span>
-            <span class="quick-pill-label">{{ draftQuickReads.highestValuePick.label }}</span>
+            <span class="quick-pill-label">{{ quickReadsCopy.highestValuePick }}</span>
           </div>
         </li>
         <li class="quick-pill quick-pill-neg">
           <span class="quick-dot" aria-hidden="true"></span>
           <div class="quick-pill-text">
             <span class="quick-pill-eyebrow">Biggest bust</span>
-            <span class="quick-pill-label">{{ draftQuickReads.biggestBust.label }}</span>
+            <span class="quick-pill-label">{{ quickReadsCopy.biggestBust }}</span>
           </div>
         </li>
         <li class="quick-pill quick-pill-pos">
           <span class="quick-dot" aria-hidden="true"></span>
           <div class="quick-pill-text">
             <span class="quick-pill-eyebrow">Best late round</span>
-            <span class="quick-pill-label">{{ draftQuickReads.bestLateRound.label }}</span>
+            <span class="quick-pill-label">{{ quickReadsCopy.bestLateRound }}</span>
           </div>
         </li>
         <li class="quick-pill quick-pill-teal">
           <span class="quick-dot" aria-hidden="true"></span>
           <div class="quick-pill-text">
             <span class="quick-pill-eyebrow">Most cats delivered</span>
-            <span class="quick-pill-label">{{ draftQuickReads.mostCategoriesDelivered.label }}</span>
+            <span class="quick-pill-label">{{ quickReadsCopy.mostCategoriesDelivered }}</span>
           </div>
         </li>
       </ul>
@@ -635,7 +655,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, shallowRef } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   teams,
   getTeam,
@@ -652,15 +673,189 @@ import {
 } from '@/fixtures/categoriesLeague'
 import CategoryTeamDraftModal from '@/components/demo/CategoryTeamDraftModal.vue'
 import CategoryPlayerPickModal from '@/components/demo/CategoryPlayerPickModal.vue'
+import { renderDraftPage, type RenderedDraftCopy } from '@/editorial/render-draft'
+import { categoriesFixtureToLeagueData } from '@/editorial/fixtureAdapter'
+import { sleeperLeagueToCategoryData } from '@/editorial/adapters/sleeperAdapter'
+import { espnLeagueToCategoryData } from '@/editorial/adapters/espnAdapter'
+import { yahooLeagueToCategoryData } from '@/editorial/adapters/yahooAdapter'
+import type { CategoryLeagueData } from '@/editorial/types'
+import { usePlatformsStore } from '@/stores/platforms'
+import LiveLoadError from '@/components/demo/LiveLoadError.vue'
 
 defineEmits<{ (e: 'open-signup'): void }>()
 
+const route = useRoute()
+
+/* ─────────────────────────────────────────────────────────────────
+   LIVE-DATA PIPELINE — same shape as CategoryDemoHomeView.
+
+   Source of truth:
+   - Default: the hand-authored fixture (demo experience).
+   - When `?leagueId=…&platform=sleeper` is present in the URL:
+     fetch live data via the adapter and re-render copy.
+     The fixture render stays as the synchronous initial value so
+     the template never sees a null editorial during load.
+
+   When the live league has no draft data, `liveData.draft` is
+   undefined and `renderDraftPage` returns the empty bundle. The
+   template falls back to the fixture-based renders via the helper
+   `awardSafe` / `puntSafe` / etc. computed wrappers below.
+───────────────────────────────────────────────────────────────── */
+const liveData = shallowRef<CategoryLeagueData | null>(null)
+const liveDraftEditorial = shallowRef<RenderedDraftCopy>(
+  renderDraftPage(categoriesFixtureToLeagueData()),
+)
+const liveLoading = ref(false)
+const liveError = ref<string | null>(null)
+
+const liveLeagueId = computed(() => {
+  const v = route.query.leagueId
+  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
+})
+const livePlatform = computed(() => {
+  const v = route.query.platform
+  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
+})
+
+onMounted(async () => {
+  const id = liveLeagueId.value
+  const platform = livePlatform.value
+  if (!id || (platform !== 'sleeper' && platform !== 'espn' && platform !== 'yahoo')) {
+    return  // fixture-only path
+  }
+
+  liveLoading.value = true
+  liveError.value = null
+  try {
+    // See CategoryDemoHomeView for why we pass identity explicitly.
+    const opts = { userIdentity: collectUserIdentity() }
+    const data =
+      platform === 'espn'
+        ? await espnLeagueToCategoryData(id, opts)
+        : platform === 'yahoo'
+        ? await yahooLeagueToCategoryData(id, opts)
+        : await sleeperLeagueToCategoryData(id, opts)
+    liveData.value = data
+    liveDraftEditorial.value = renderDraftPage(data)
+  } catch (err) {
+    const platformLabel =
+      platform === 'espn' ? 'ESPN' : platform === 'yahoo' ? 'Yahoo' : 'Sleeper'
+    liveError.value = (err as Error).message || `Failed to load ${platformLabel} league data.`
+  } finally {
+    liveLoading.value = false
+  }
+})
+
+/** See CategoryDemoHomeView.collectUserIdentity for the rationale. */
+function collectUserIdentity() {
+  try {
+    const platformsStore = usePlatformsStore()
+    return {
+      sleeperUserId: platformsStore.getConnection('sleeper')?.platform_user_id ?? undefined,
+      yahooGuid: platformsStore.getConnection('yahoo')?.platform_user_id ?? undefined,
+      espnSwid: platformsStore.getEspnCredentials()?.swid ?? undefined,
+    }
+  } catch {
+    return {}
+  }
+}
+
 /* ─── Awards ─────────────────────────────────────────────── */
-const bestTeam = computed(() => getTeam(categoryDraftAwards.bestDraft.teamId))
-const stealPick = computed(() => draftPicks2026.find((p) => p.playerId === categoryDraftAwards.steal.playerId)!)
+const bestTeam = computed(() => {
+  const id = liveDraftEditorial.value.awards.bestDraft?.teamId
+    ?? categoryDraftAwards.bestDraft.teamId
+  return getTeam(id)
+})
+const stealPick = computed(() => {
+  const live = liveDraftEditorial.value.awards.steal
+  const pid = live?.playerId ?? categoryDraftAwards.steal.playerId
+  return draftPicks2026.find((p) => p.playerId === pid)
+    // When the live pick isn't in the fixture (real league), synthesize.
+    ?? synthesizePickFromLive(live)
+    // Final fixture fallback so the template never crashes.
+    ?? draftPicks2026.find((p) => p.playerId === categoryDraftAwards.steal.playerId)!
+})
 const stealTeam = computed(() => getTeam(stealPick.value.draftedByTeamId))
-const bustPick  = computed(() => draftPicks2026.find((p) => p.playerId === categoryDraftAwards.bust.playerId)!)
+const bustPick  = computed(() => {
+  const live = liveDraftEditorial.value.awards.bust
+  const pid = live?.playerId ?? categoryDraftAwards.bust.playerId
+  return draftPicks2026.find((p) => p.playerId === pid)
+    ?? synthesizePickFromLive(live)
+    ?? draftPicks2026.find((p) => p.playerId === categoryDraftAwards.bust.playerId)!
+})
 const bustTeam  = computed(() => getTeam(bustPick.value.draftedByTeamId))
+
+/* Cross-source fallback: when the live editorial points at a pick
+   we don't have in the fixture, build a minimal draft-pick shape
+   from the live league data so the click-handlers and visual chrome
+   don't crash. Returns undefined when no live data is present. */
+function synthesizePickFromLive(
+  award: { playerId: string; pickOverall: number; draftedByTeamId: string } | null | undefined,
+): typeof draftPicks2026[number] | undefined {
+  if (!award || !liveData.value?.draft) return undefined
+  const p = liveData.value.draft.picks.find((x) => x.pickOverall === award.pickOverall)
+  if (!p) return undefined
+  return {
+    pickOverall: p.pickOverall,
+    pickInRound: ((p.pickOverall - 1) % 10) + 1,
+    round: p.round,
+    playerId: p.playerId,
+    playerName: p.playerName,
+    position: p.position as PlayerPosition,
+    mlbTeam: p.mlbTeam,
+    draftedByTeamId: p.draftedByTeamId,
+    stats: {},
+    valueScore: p.valueScore ?? 0,
+    tier: 'hit',
+  } as unknown as typeof draftPicks2026[number]
+}
+
+/* Resolved hero-award copy: live render with the original fixture
+   render as a final safety net. The page-head stats fall through
+   the live render too. */
+const bestDraftCopy = computed(() => {
+  const live = liveDraftEditorial.value.awards.bestDraft
+  if (live) {
+    return {
+      headline: live.headline,
+      body: live.body,
+      grade: live.gradeLetter,
+      stats: live.stats,
+    }
+  }
+  return {
+    headline: categoryDraftAwards.bestDraft.headline,
+    body: categoryDraftAwards.bestDraft.body,
+    grade: categoryDraftAwards.bestDraft.grade,
+    stats: categoryDraftAwards.bestDraft.stats,
+  }
+})
+const stealAwardCopy = computed(() => {
+  const live = liveDraftEditorial.value.awards.steal
+  if (live) {
+    return {
+      body: live.body,
+      valueScore: live.valueScore,
+    }
+  }
+  return {
+    body: categoryDraftAwards.steal.body,
+    valueScore: categoryDraftAwards.steal.valueScore,
+  }
+})
+const bustAwardCopy = computed(() => {
+  const live = liveDraftEditorial.value.awards.bust
+  if (live) {
+    return {
+      body: live.body,
+      valueScore: live.valueScore,
+    }
+  }
+  return {
+    body: categoryDraftAwards.bust.body,
+    valueScore: categoryDraftAwards.bust.valueScore,
+  }
+})
 
 /* ─── Page-head counts ───────────────────────────────────── */
 const stealCount = computed(() =>
@@ -671,7 +866,44 @@ const disasterCount = computed(() =>
 )
 
 /* ─── Grades — podium + rest ─────────────────────────────── */
-const sortedGrades = computed(() => [...categoryTeamDraftGrades].sort((a, b) => a.rank - b.rank))
+// Grade-letter ladder shared between live and fixture renders.
+const GRADE_ORDER = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'F'] as const
+function gradeWeight(grade: string): number {
+  const idx = (GRADE_ORDER as readonly string[]).indexOf(grade)
+  return idx === -1 ? GRADE_ORDER.length : idx
+}
+
+/* When live draft editorial exposes grades for every team, we
+   rebuild the ranked grade list from it (preserving the rank ordering
+   used by the podium / compact rows). Otherwise, fall back to the
+   fixture's hand-authored ranking. */
+const sortedGrades = computed<CategoryTeamDraftGrade[]>(() => {
+  const liveGrades = liveDraftEditorial.value.teamGrades
+  const liveTeamIds = Object.keys(liveGrades)
+  if (liveTeamIds.length === 0) {
+    return [...categoryTeamDraftGrades].sort((a, b) => a.rank - b.rank)
+  }
+  // Build CategoryTeamDraftGrade-shaped rows from the live render.
+  // Rank order: by grade letter strength, then by total steals-busts.
+  const rows: CategoryTeamDraftGrade[] = liveTeamIds.map((teamId) => {
+    const live = liveGrades[teamId]
+    return {
+      teamId,
+      rank: 0,                            // assigned after sort
+      grade: live.gradeLetter,
+      headline: live.headline,
+      narrative: live.body,
+      stats: live.stats,
+    }
+  })
+  rows.sort((a, b) => {
+    const w = gradeWeight(a.grade) - gradeWeight(b.grade)
+    if (w !== 0) return w
+    return (b.stats.steals - b.stats.busts) - (a.stats.steals - a.stats.busts)
+  })
+  rows.forEach((r, i) => { r.rank = i + 1 })
+  return rows
+})
 const podiumRanks = computed(() => sortedGrades.value.slice(0, 3))
 const restRanks   = computed(() => sortedGrades.value.slice(3))
 
@@ -685,8 +917,11 @@ function gradeBand(grade: string): 'aplus' | 'a' | 'b' | 'c' | 'd' {
   if (grade.startsWith('C')) return 'c'
   return 'd'
 }
-function gradeForTeam(teamId: string) {
-  return categoryTeamDraftGrades.find((g) => g.teamId === teamId)!
+function gradeForTeam(teamId: string): CategoryTeamDraftGrade {
+  // Prefer the freshly-computed sorted list so the board column
+  // grade matches the podium grade after a live re-render.
+  return sortedGrades.value.find((g) => g.teamId === teamId)
+    ?? categoryTeamDraftGrades.find((g) => g.teamId === teamId)!
 }
 
 /* ─── Board ──────────────────────────────────────────────── */
@@ -814,9 +1049,46 @@ const positionBreakdown = computed<PosBreak[]>(() => {
 })
 
 /* ─── Punt report data ───────────────────────────────────── */
-const puntSuccess  = computed(() => puntReports.find((p) => p.kind === 'success')!)
-const puntFailure  = computed(() => puntReports.find((p) => p.kind === 'failure')!)
-const puntBalanced = computed(() => puntReports.find((p) => p.kind === 'balanced')!)
+const fixturePuntSuccess  = puntReports.find((p) => p.kind === 'success')!
+const fixturePuntFailure  = puntReports.find((p) => p.kind === 'failure')!
+const fixturePuntBalanced = puntReports.find((p) => p.kind === 'balanced')!
+
+const puntSuccess = computed(() => {
+  const live = liveDraftEditorial.value.puntReport.success
+  if (!live) return fixturePuntSuccess
+  return {
+    kind: 'success' as const,
+    teamId: live.teamId,
+    category: live.category ?? fixturePuntSuccess.category,
+    headline: live.headline,
+    body: live.body,
+    thisSeasonRank: live.thisSeasonRank ?? fixturePuntSuccess.thisSeasonRank,
+  }
+})
+const puntFailure = computed(() => {
+  const live = liveDraftEditorial.value.puntReport.failure
+  if (!live) return fixturePuntFailure
+  return {
+    kind: 'failure' as const,
+    teamId: live.teamId,
+    category: live.category ?? fixturePuntFailure.category,
+    headline: live.headline,
+    body: live.body,
+    thisSeasonRank: live.thisSeasonRank ?? fixturePuntFailure.thisSeasonRank,
+  }
+})
+const puntBalanced = computed(() => {
+  const live = liveDraftEditorial.value.puntReport.balanced
+  if (!live) return fixturePuntBalanced
+  return {
+    kind: 'balanced' as const,
+    teamId: live.teamId,
+    category: 'NONE',
+    headline: live.headline,
+    body: live.body,
+    thisSeasonRank: 0,
+  }
+})
 const puntSuccessTeam  = computed(() => getTeam(puntSuccess.value.teamId))
 const puntFailureTeam  = computed(() => getTeam(puntFailure.value.teamId))
 const puntBalancedTeam = computed(() => getTeam(puntBalanced.value.teamId))
@@ -835,12 +1107,90 @@ const balancedCatChips = computed(() => {
 })
 
 /* ─── Category kings ─────────────────────────────────────── */
-const kingFiveTool = computed(() => categoryKingBeats.find((k) => k.kind === 'five-tool')!)
-const kingLate     = computed(() => categoryKingBeats.find((k) => k.kind === 'late-round-gem')!)
-const kingBroken   = computed(() => categoryKingBeats.find((k) => k.kind === 'broken-cat')!)
-const kingFiveToolPick = computed(() => draftPicks2026.find((p) => p.playerId === kingFiveTool.value.playerId)!)
-const kingLatePick     = computed(() => draftPicks2026.find((p) => p.playerId === kingLate.value.playerId)!)
-const kingBrokenPick   = computed(() => draftPicks2026.find((p) => p.playerId === kingBroken.value.playerId)!)
+const fixtureKingFiveTool = categoryKingBeats.find((k) => k.kind === 'five-tool')!
+const fixtureKingLate     = categoryKingBeats.find((k) => k.kind === 'late-round-gem')!
+const fixtureKingBroken   = categoryKingBeats.find((k) => k.kind === 'broken-cat')!
+
+const kingFiveTool = computed(() => {
+  const live = liveDraftEditorial.value.categoryKings.fiveTool
+  if (!live) return fixtureKingFiveTool
+  return {
+    kind: 'five-tool' as const,
+    eyebrow: live.eyebrow,
+    headline: live.headline,
+    body: live.body,
+    playerId: live.playerId,
+    cats: live.cats ?? fixtureKingFiveTool.cats,
+  }
+})
+const kingLate = computed(() => {
+  const live = liveDraftEditorial.value.categoryKings.lateRoundGem
+  if (!live) return fixtureKingLate
+  return {
+    kind: 'late-round-gem' as const,
+    eyebrow: live.eyebrow,
+    headline: live.headline,
+    body: live.body,
+    playerId: live.playerId,
+    round: fixtureKingLate.round,
+    draftRoundPick: live.draftRoundPick ?? fixtureKingLate.draftRoundPick,
+  }
+})
+const kingBroken = computed(() => {
+  const live = liveDraftEditorial.value.categoryKings.brokenCat
+  if (!live) return fixtureKingBroken
+  return {
+    kind: 'broken-cat' as const,
+    eyebrow: live.eyebrow,
+    headline: live.headline,
+    body: live.body,
+    playerId: live.playerId,
+    brokenCat: live.brokenCat ?? fixtureKingBroken.brokenCat,
+    brokenTeamId: live.brokenTeamId ?? fixtureKingBroken.brokenTeamId,
+  }
+})
+
+const kingFiveToolPick = computed(() =>
+  draftPicks2026.find((p) => p.playerId === kingFiveTool.value.playerId)
+    ?? draftPicks2026.find((p) => p.playerId === fixtureKingFiveTool.playerId)!,
+)
+const kingLatePick = computed(() =>
+  draftPicks2026.find((p) => p.playerId === kingLate.value.playerId)
+    ?? draftPicks2026.find((p) => p.playerId === fixtureKingLate.playerId)!,
+)
+const kingBrokenPick = computed(() =>
+  draftPicks2026.find((p) => p.playerId === kingBroken.value.playerId)
+    ?? draftPicks2026.find((p) => p.playerId === fixtureKingBroken.playerId)!,
+)
+
+/* ─── Quick-read pills ───────────────────────────────────── */
+/* Live pills, keyed by pill name for direct template lookup. The
+   fallback uses the fixture's labels when the live render returned
+   an empty bundle. */
+const quickReadsCopy = computed(() => {
+  const byPill = new Map<string, string>()
+  for (const p of liveDraftEditorial.value.quickReads) {
+    byPill.set(p.pill, p.value)
+  }
+  return {
+    highestValuePick:        byPill.get('highest-value-pick')       ?? draftQuickReads.highestValuePick.label,
+    biggestBust:             byPill.get('biggest-bust')             ?? draftQuickReads.biggestBust.label,
+    bestLateRound:           byPill.get('best-late-round')          ?? draftQuickReads.bestLateRound.label,
+    mostCategoriesDelivered: byPill.get('most-categories-delivered') ?? draftQuickReads.mostCategoriesDelivered.label,
+  }
+})
+
+/* ─── By-the-round narratives ────────────────────────────── */
+/* Map round number → editorial sentence from the live render. The
+   numerical hit/miss/avg figures already come from `roundSummary`
+   which we keep as the source of truth for the bar chart widths. */
+const roundNarratives = computed(() => {
+  const out = new Map<number, string>()
+  for (const r of liveDraftEditorial.value.byTheRound) {
+    out.set(r.round, r.narrative)
+  }
+  return out
+})
 
 /* ─── Modal state ────────────────────────────────────────── */
 const teamModalId = ref<string | null>(null)
@@ -2321,5 +2671,87 @@ function onOpenPickFromTeam(pickOverall: number) {
 
 @media (max-width: 720px) {
   .quick-pills { grid-template-columns: 1fr; }
+}
+
+/* ─── Live load banners ──────────────────────────────────── */
+.live-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid oklch(0.20 0.015 90);
+  background: oklch(0.10 0.014 90);
+  font-size: 0.92rem;
+  color: var(--ink-2);
+}
+.live-banner-loading { color: var(--accent-tertiary); }
+.live-banner-spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid oklch(0.72 0.18 195 / 0.30);
+  border-top-color: var(--accent-tertiary);
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes live-spin { to { transform: rotate(360deg); } }
+  .live-banner-spinner { animation: live-spin 0.9s linear infinite; }
+}
+.live-banner-error,
+.live-banner-info {
+  flex-wrap: wrap;
+}
+.live-banner-error {
+  border-color: oklch(0.65 0.20 25 / 0.45);
+  background: oklch(0.65 0.20 25 / 0.08);
+}
+.live-banner-info {
+  border-color: oklch(0.72 0.15 60 / 0.40);
+  background: oklch(0.72 0.15 60 / 0.08);
+}
+.live-banner-error-headline {
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--accent-down, oklch(0.80 0.20 350));
+}
+.live-banner-info .live-banner-error-headline {
+  color: oklch(0.86 0.15 60);
+}
+.live-banner-error-body {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--ink-2);
+  flex: 1 1 240px;
+}
+.live-banner-action {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-1);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: oklch(0.20 0.015 90);
+  border: 1px solid oklch(0.32 0.012 90);
+  transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .live-banner-action:hover { background: oklch(0.26 0.015 90); }
+}
+
+/* ─── Round narrative line (live editorial) ──────────────── */
+.rounds-narrative {
+  grid-column: 1 / -1;
+  margin: 6px 0 0;
+  padding-left: 8px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink-3);
+  max-width: 80ch;
 }
 </style>

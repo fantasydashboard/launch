@@ -1,6 +1,25 @@
 <template>
   <div class="cathist">
     <!-- ─────────────────────────────────────────────────────────────
+         LIVE LOAD STATUS — only renders when a leagueId is in the
+         URL and the live adapter is fetching or has errored. The
+         underlying editorial keeps a fixture-derived render as its
+         initial value, so the page remains visually populated.
+    ────────────────────────────────────────────────────────────── -->
+    <div v-if="liveLoading" class="live-banner live-banner-loading" role="status" aria-live="polite">
+      <span class="live-banner-spinner" aria-hidden="true"></span>
+      Loading your league from Sleeper. Hang tight.
+    </div>
+    <LiveLoadError v-else-if="liveError" :message="liveError" />
+    <div
+      v-else-if="liveData && (liveData.seasonHistory?.length ?? 0) < 2"
+      class="live-banner live-banner-info"
+      role="status"
+    >
+      This league is in its first season. History will fill in over the years.
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────────
          SECTION 1 — PAGE HEAD
     ────────────────────────────────────────────────────────────── -->
     <header class="page-head" aria-labelledby="page-headline">
@@ -9,13 +28,13 @@
           <span class="page-eyebrow-bar" aria-hidden="true"></span>
           League history
         </p>
-        <h1 id="page-headline" class="page-headline">Six years of receipts.</h1>
+        <h1 id="page-headline" class="page-headline">{{ pageHeadline }}</h1>
         <p class="page-sub">Champions, rivalries, awards, and the all-time ranking.</p>
       </div>
       <ul class="page-context" role="list">
-        <li class="page-context-pill"><span class="page-context-num">6</span><span class="page-context-lbl">Seasons</span></li>
-        <li class="page-context-pill"><span class="page-context-num">5</span><span class="page-context-lbl">Champions</span></li>
-        <li class="page-context-pill"><span class="page-context-num">10</span><span class="page-context-lbl">Teams</span></li>
+        <li class="page-context-pill"><span class="page-context-num">{{ pageContext.seasons }}</span><span class="page-context-lbl">Seasons</span></li>
+        <li class="page-context-pill"><span class="page-context-num">{{ pageContext.champions }}</span><span class="page-context-lbl">Champions</span></li>
+        <li class="page-context-pill"><span class="page-context-num">{{ pageContext.teamsCount }}</span><span class="page-context-lbl">Teams</span></li>
         <li class="page-context-pill"><span class="page-context-num">{{ totalCatsWonLabel }}</span><span class="page-context-lbl">Cats won</span></li>
       </ul>
     </header>
@@ -38,7 +57,7 @@
           :aria-label="`${rec.year} champion ${getTeam(rec.championTeamId).name}`"
         >
           <p class="champ-year">{{ rec.year }}</p>
-          <p class="champ-era">{{ rec.era }}</p>
+          <p class="champ-era">{{ eraLabelFor(rec.year) ?? rec.era }}</p>
 
           <div
             class="champ-avatar"
@@ -49,7 +68,7 @@
           </div>
 
           <p class="champ-team">{{ getTeam(rec.championTeamId).name }}</p>
-          <p class="champ-score">Won championship {{ rec.championRecord }} in cats.</p>
+          <p class="champ-score">{{ yearHeadlineFor(rec.year) ?? `Won championship ${rec.championRecord} in cats.` }}</p>
 
           <footer class="champ-foot">
             <p class="champ-foot-row">
@@ -123,7 +142,7 @@
             <li class="podium-badge">Titles {{ careerOf(podium[0].teamId).titles }}</li>
             <li class="podium-badge">Playoffs {{ careerOf(podium[0].teamId).playoffApps }}</li>
           </ul>
-          <p class="podium-1-sub">Highest legacy score in league history.</p>
+          <p class="podium-1-sub">{{ legacyHeroCopy.body || 'Highest legacy score in league history.' }}</p>
         </button>
 
         <!-- #3 -->
@@ -351,24 +370,24 @@
       <div class="dyn-grid">
         <!-- Hitting king — wider, green-tinted, logo larger -->
         <article class="dyn-card dyn-hitting" aria-labelledby="dyn-hit">
-          <p class="dyn-eyebrow" id="dyn-hit">{{ hittingKing.eyebrow }}</p>
+          <p class="dyn-eyebrow" id="dyn-hit">{{ hittingBeat.eyebrow }}</p>
           <div class="dyn-body">
             <div
               class="dyn-avatar dyn-avatar-lg"
-              :style="{ background: `linear-gradient(135deg, ${getTeam(hittingKing.teamId).avatarColor})` }"
+              :style="{ background: `linear-gradient(135deg, ${getTeam(hittingBeat.teamId).avatarColor})` }"
             >
-              <img v-if="getTeam(hittingKing.teamId).avatarUrl" :src="getTeam(hittingKing.teamId).avatarUrl" class="dyn-avatar-img" alt="" />
-              <span v-else>{{ getTeam(hittingKing.teamId).ownerInitials }}</span>
+              <img v-if="getTeam(hittingBeat.teamId).avatarUrl" :src="getTeam(hittingBeat.teamId).avatarUrl" class="dyn-avatar-img" alt="" />
+              <span v-else>{{ getTeam(hittingBeat.teamId).ownerInitials }}</span>
             </div>
             <div class="dyn-text">
-              <h3 class="dyn-headline">{{ hittingKing.headline }}</h3>
-              <p class="dyn-prose">{{ hittingKing.body }}</p>
+              <h3 class="dyn-headline">{{ hittingBeat.headline }}</h3>
+              <p class="dyn-prose">{{ hittingBeat.body }}</p>
               <div class="dyn-foot">
                 <ul class="dyn-cats" role="list">
-                  <li v-for="c in hittingKing.cats" :key="c" class="dyn-cat-chip dyn-cat-chip-hit">{{ c }}</li>
+                  <li v-for="c in hittingBeat.cats" :key="c" class="dyn-cat-chip dyn-cat-chip-hit">{{ c }}</li>
                 </ul>
                 <p class="dyn-stat">
-                  <span class="dyn-stat-num">{{ hittingKing.catWinTotal }}</span>
+                  <span class="dyn-stat-num">{{ hittingBeat.catWinTotal }}</span>
                   <span class="dyn-stat-lbl">hitting cats won</span>
                 </p>
               </div>
@@ -378,22 +397,22 @@
 
         <!-- Pitching king — narrower, teal-tinted, logo smaller -->
         <article class="dyn-card dyn-pitching" aria-labelledby="dyn-pit">
-          <p class="dyn-eyebrow" id="dyn-pit">{{ pitchingKing.eyebrow }}</p>
+          <p class="dyn-eyebrow" id="dyn-pit">{{ pitchingBeat.eyebrow }}</p>
           <div
             class="dyn-avatar"
-            :style="{ background: `linear-gradient(135deg, ${getTeam(pitchingKing.teamId).avatarColor})` }"
+            :style="{ background: `linear-gradient(135deg, ${getTeam(pitchingBeat.teamId).avatarColor})` }"
           >
-            <img v-if="getTeam(pitchingKing.teamId).avatarUrl" :src="getTeam(pitchingKing.teamId).avatarUrl" class="dyn-avatar-img" alt="" />
-            <span v-else>{{ getTeam(pitchingKing.teamId).ownerInitials }}</span>
+            <img v-if="getTeam(pitchingBeat.teamId).avatarUrl" :src="getTeam(pitchingBeat.teamId).avatarUrl" class="dyn-avatar-img" alt="" />
+            <span v-else>{{ getTeam(pitchingBeat.teamId).ownerInitials }}</span>
           </div>
-          <h3 class="dyn-headline">{{ pitchingKing.headline }}</h3>
-          <p class="dyn-prose">{{ pitchingKing.body }}</p>
+          <h3 class="dyn-headline">{{ pitchingBeat.headline }}</h3>
+          <p class="dyn-prose">{{ pitchingBeat.body }}</p>
           <div class="dyn-foot">
             <ul class="dyn-cats" role="list">
-              <li v-for="c in pitchingKing.cats" :key="c" class="dyn-cat-chip dyn-cat-chip-pit">{{ c }}</li>
+              <li v-for="c in pitchingBeat.cats" :key="c" class="dyn-cat-chip dyn-cat-chip-pit">{{ c }}</li>
             </ul>
             <p class="dyn-stat">
-              <span class="dyn-stat-num">{{ pitchingKing.catWinTotal }}</span>
+              <span class="dyn-stat-num">{{ pitchingBeat.catWinTotal }}</span>
               <span class="dyn-stat-lbl">pitching cats won</span>
             </p>
           </div>
@@ -402,23 +421,23 @@
         <!-- Punt kings — full-width, magenta border, asymmetric layout -->
         <article class="dyn-card dyn-punt" aria-labelledby="dyn-punt">
           <div class="dyn-punt-side">
-            <p class="dyn-eyebrow dyn-eyebrow-punt" id="dyn-punt">{{ puntKings.eyebrow }}</p>
-            <h3 class="dyn-headline">{{ puntKings.headline }}</h3>
-            <p class="dyn-prose">{{ puntKings.body }}</p>
+            <p class="dyn-eyebrow dyn-eyebrow-punt" id="dyn-punt">{{ puntBeat.eyebrow }}</p>
+            <h3 class="dyn-headline">{{ puntBeat.headline }}</h3>
+            <p class="dyn-prose">{{ puntBeat.body }}</p>
           </div>
           <div class="dyn-punt-meta">
             <div
               class="dyn-avatar dyn-avatar-md"
-              :style="{ background: `linear-gradient(135deg, ${getTeam(puntKings.teamId).avatarColor})` }"
+              :style="{ background: `linear-gradient(135deg, ${getTeam(puntBeat.teamId).avatarColor})` }"
             >
-              <img v-if="getTeam(puntKings.teamId).avatarUrl" :src="getTeam(puntKings.teamId).avatarUrl" class="dyn-avatar-img" alt="" />
-              <span v-else>{{ getTeam(puntKings.teamId).ownerInitials }}</span>
+              <img v-if="getTeam(puntBeat.teamId).avatarUrl" :src="getTeam(puntBeat.teamId).avatarUrl" class="dyn-avatar-img" alt="" />
+              <span v-else>{{ getTeam(puntBeat.teamId).ownerInitials }}</span>
             </div>
             <p class="dyn-mega">
-              <span class="dyn-mega-num">{{ puntKings.puntStreak }}</span>
+              <span class="dyn-mega-num">{{ puntBeat.puntStreak }}</span>
               <span class="dyn-mega-lbl">seasons</span>
             </p>
-            <p class="dyn-mega-trail">Punted {{ puntKings.puntedCat }}</p>
+            <p class="dyn-mega-trail">Punted {{ puntBeat.puntedCat }}</p>
           </div>
         </article>
       </div>
@@ -670,7 +689,7 @@
       <h2 class="section-eyebrow section-eyebrow-mute" id="quick-heading">Footnotes</h2>
       <ul class="pills" role="list">
         <li
-          v-for="(p, i) in historyFootnotes"
+          v-for="(p, i) in footnotes"
           :key="p.label"
           class="pill"
         >
@@ -692,6 +711,7 @@
       v-if="activeRivalry"
       :team-a-id="activeRivalry.a"
       :team-b-id="activeRivalry.b"
+      :override-narrative="rivalryOverrideFor(activeRivalry.a, activeRivalry.b)"
       @close="activeRivalry = null"
       @open-signup="$emit('open-signup')"
     />
@@ -699,7 +719,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, shallowRef } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   teams,
   getTeam,
@@ -718,12 +739,110 @@ import CategoryTeamLegacyModal from '@/components/demo/CategoryTeamLegacyModal.v
 import CategoryRivalryModal from '@/components/demo/CategoryRivalryModal.vue'
 import { accentFor } from '@/utils/teamColor'
 import { linearPath, type Point } from '@/utils/svgPath'
+import { renderHistoryPage, type RenderedHistoryCopy } from '@/editorial/render-history'
+import { categoriesFixtureToLeagueData } from '@/editorial/fixtureAdapter'
+import { sleeperLeagueToCategoryData } from '@/editorial/adapters/sleeperAdapter'
+import { espnLeagueToCategoryData } from '@/editorial/adapters/espnAdapter'
+import { yahooLeagueToCategoryData } from '@/editorial/adapters/yahooAdapter'
+import type { CategoryLeagueData } from '@/editorial/types'
+import { usePlatformsStore } from '@/stores/platforms'
+import LiveLoadError from '@/components/demo/LiveLoadError.vue'
 
 defineEmits<{ (e: 'open-signup'): void }>()
 
+const route = useRoute()
+
+/* ─────────────────────────────────────────────────────────────────
+   LIVE DATA — same pattern as CategoryDemoHomeView.
+
+   Default: fixture-derived render so the page is visually populated
+   on every load. When `?leagueId=…&platform=sleeper` is present, we
+   refetch via the adapter and swap the editorial copy. The rest of
+   the view (chart, matrix, career table) reads from the same fixture
+   refs today; the editorial is the first surface to go live.
+───────────────────────────────────────────────────────────────── */
+const liveData = shallowRef<CategoryLeagueData | null>(null)
+const liveEditorial = shallowRef<RenderedHistoryCopy>(
+  renderHistoryPage(categoriesFixtureToLeagueData()),
+)
+const liveLoading = ref(false)
+const liveError = ref<string | null>(null)
+
+const liveLeagueId = computed(() => {
+  const v = route.query.leagueId
+  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
+})
+const livePlatform = computed(() => {
+  const v = route.query.platform
+  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
+})
+
+onMounted(async () => {
+  const id = liveLeagueId.value
+  const platform = livePlatform.value
+  if (!id || (platform !== 'sleeper' && platform !== 'espn' && platform !== 'yahoo')) {
+    return   // fixture-only path
+  }
+
+  liveLoading.value = true
+  liveError.value = null
+  try {
+    // See CategoryDemoHomeView for why we pass identity explicitly.
+    const opts = { userIdentity: collectUserIdentity() }
+    const data =
+      platform === 'espn'
+        ? await espnLeagueToCategoryData(id, opts)
+        : platform === 'yahoo'
+        ? await yahooLeagueToCategoryData(id, opts)
+        : await sleeperLeagueToCategoryData(id, opts)
+    liveData.value = data
+    liveEditorial.value = renderHistoryPage(data)
+  } catch (err) {
+    const platformLabel =
+      platform === 'espn' ? 'ESPN' : platform === 'yahoo' ? 'Yahoo' : 'Sleeper'
+    liveError.value = (err as Error).message || `Failed to load ${platformLabel} league data.`
+  } finally {
+    liveLoading.value = false
+  }
+})
+
+/** See CategoryDemoHomeView.collectUserIdentity for the rationale. */
+function collectUserIdentity() {
+  try {
+    const platformsStore = usePlatformsStore()
+    return {
+      sleeperUserId: platformsStore.getConnection('sleeper')?.platform_user_id ?? undefined,
+      yahooGuid: platformsStore.getConnection('yahoo')?.platform_user_id ?? undefined,
+      espnSwid: platformsStore.getEspnCredentials()?.swid ?? undefined,
+    }
+  } catch {
+    return {}
+  }
+}
+
+/* ─── Page head — reactive to live data when present ───────── */
+const pageHeadline = computed(() => {
+  const n = liveData.value?.seasonHistory?.length ?? seasonHistory.length
+  if (n === 0) return 'A fresh ledger.'
+  if (n === 1) return 'One season on the books.'
+  return `${numberToWord(n)} years of receipts.`
+})
+function numberToWord(n: number): string {
+  const words = ['zero','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve']
+  return words[n] ?? `${n}`
+}
+const pageContext = computed(() => {
+  const seasonsArr = liveData.value?.seasonHistory ?? seasonHistory
+  const seasonsCount = seasonsArr.length
+  const championsCount = new Set(seasonsArr.map((s) => s.championTeamId)).size
+  const teamsCount = (liveData.value?.teams ?? teams).length
+  return { seasons: seasonsCount, champions: championsCount, teamsCount }
+})
+
 /* ─── Page context ──────────────────────────────────────────── */
 const totalCatsWon = computed(() => {
-  return Object.values(teamCareerStats).reduce((s, t) => s + t.totalCatWins, 0)
+  const src = liveData.value?.teamCareerStats ?? teamCareerStats
+  return Object.values(src).reduce((s, t) => s + t.totalCatWins, 0)
 })
 const totalCatsWonLabel = computed(() => {
   const v = totalCatsWon.value
@@ -732,7 +851,92 @@ const totalCatsWonLabel = computed(() => {
 })
 
 /* ─── Seasons / champions ──────────────────────────────────── */
-const seasonsNewestFirst = computed(() => [...seasonHistory].sort((a, b) => b.year - a.year))
+const seasonsNewestFirst = computed(() => {
+  const src = liveData.value?.seasonHistory ?? seasonHistory
+  return [...src].sort((a, b) => b.year - a.year)
+})
+
+/* ─── Editorial wiring for year cards (era + headline) ─────── */
+function eraLabelFor(year: number): string | null {
+  const card = liveEditorial.value.yearCards.find((c) => c.year === year)
+  return card?.eraLabel ?? null
+}
+function yearHeadlineFor(year: number): string | null {
+  const card = liveEditorial.value.yearCards.find((c) => c.year === year)
+  return card?.headline ?? null
+}
+
+/* ─── Editorial wiring for the legacy hero podium ──────────── */
+const legacyHeroCopy = computed(() => liveEditorial.value.allTimeLegacyHero ?? {
+  teamId: '', eyebrow: '', headline: '', body: '',
+})
+
+/* ─── Editorial wiring for dynasty beats ───────────────────────
+   The fixture beats carry layout-critical metadata (cats array, the
+   catWinTotal numbers, the punt-streak number). The editorial only
+   supplies eyebrow/headline/body. We overlay the editorial copy on
+   the fixture row when the fixture row exists, and otherwise rely
+   on the editorial-derived team id to keep the avatar block valid.
+─────────────────────────────────────────────────────────────── */
+const hittingFixture = computed(() => categoryDynastyBeats.find((b) => b.kind === 'hitting-king')!)
+const pitchingFixture = computed(() => categoryDynastyBeats.find((b) => b.kind === 'pitching-king')!)
+const puntFixture = computed(() => categoryDynastyBeats.find((b) => b.kind === 'punt-kings')!)
+
+const hittingBeat = computed(() => {
+  const ed = liveEditorial.value.dynasties.hitting
+  const fx = hittingFixture.value
+  if (!ed) return fx
+  // teamId from editorial when live data drove it; fall back to fixture so the
+  // avatar block always resolves.
+  const detectedTeamId = liveData.value
+    ? topCareerByPicker(liveData.value, (s) => s.hitCatsWon) ?? fx.teamId
+    : fx.teamId
+  const detectedCount = liveData.value?.teamCareerStats?.[detectedTeamId]?.hitCatsWon ?? fx.catWinTotal
+  return {
+    ...fx,
+    eyebrow: ed.eyebrow,
+    headline: ed.headline,
+    body: ed.body || fx.body,
+    teamId: detectedTeamId,
+    catWinTotal: detectedCount,
+  }
+})
+
+const pitchingBeat = computed(() => {
+  const ed = liveEditorial.value.dynasties.pitching
+  const fx = pitchingFixture.value
+  if (!ed) return fx
+  const detectedTeamId = liveData.value
+    ? topCareerByPicker(liveData.value, (s) => s.pitchCatsWon) ?? fx.teamId
+    : fx.teamId
+  const detectedCount = liveData.value?.teamCareerStats?.[detectedTeamId]?.pitchCatsWon ?? fx.catWinTotal
+  return {
+    ...fx,
+    eyebrow: ed.eyebrow,
+    headline: ed.headline,
+    body: ed.body || fx.body,
+    teamId: detectedTeamId,
+    catWinTotal: detectedCount,
+  }
+})
+
+const puntBeat = computed(() => {
+  // Detection is intentionally skipped for punt-kings (see detect-history.ts).
+  // The fixture beat remains the source of truth for this slot.
+  return puntFixture.value
+})
+
+function topCareerByPicker(
+  data: CategoryLeagueData,
+  picker: (s: NonNullable<CategoryLeagueData['teamCareerStats']>[string]) => number,
+): string | null {
+  const career = data.teamCareerStats
+  if (!career) return null
+  const entries = Object.values(career)
+  if (entries.length === 0) return null
+  const top = entries.reduce((best, s) => (picker(s) > picker(best) ? s : best))
+  return top.teamId
+}
 
 /* ─── Legacy podium and tail ───────────────────────────────── */
 const legacyRanked = computed(() => {
@@ -876,18 +1080,39 @@ function cellTint(rid: string, cid: string): string {
   return ratio.toFixed(2)
 }
 
-/* ─── Category dynasties beats ─────────────────────────────── */
-const hittingKing = computed(() => categoryDynastyBeats.find((b) => b.kind === 'hitting-king')!)
-const pitchingKing = computed(() => categoryDynastyBeats.find((b) => b.kind === 'pitching-king')!)
-const puntKings = computed(() => categoryDynastyBeats.find((b) => b.kind === 'punt-kings')!)
-
 /* ─── Record book ──────────────────────────────────────────── */
 const activeAwardScope = ref<'all-time' | 'season'>('all-time')
 const availableSeasons = [2025, 2024, 2023, 2022, 2021] as const
 const selectedSeason = ref<number>(availableSeasons[0])
 
-const allTimeFame = computed(() => recordBook.filter((r) => r.kind === 'fame'))
-const allTimeShame = computed(() => recordBook.filter((r) => r.kind === 'shame'))
+/* All-time scope. Editorial-driven when live data has provided record
+   candidates; fall back to the fixture record book otherwise so the
+   layout always has four fame + four shame tiles to render.
+
+   We preserve the fixture's eyebrow (uppercase tile label) + teamId
+   + value layout slots, and promote the editorial body into the
+   `context` slot — that's the supplemental sub-line each tile already
+   displays. The editorial owns voice; the fixture owns layout shape. */
+const allTimeFame = computed<CategoryRecordBookEntry[]>(() => {
+  const edFame = liveEditorial.value.recordBook.fame
+  const fxFame = recordBook.filter((r) => r.kind === 'fame')
+  if (edFame.length === 0) return fxFame
+  return fxFame.map((fx, i) => {
+    const ed = edFame[i]
+    if (!ed) return fx
+    return { ...fx, context: ed.body || fx.context }
+  })
+})
+const allTimeShame = computed<CategoryRecordBookEntry[]>(() => {
+  const edShame = liveEditorial.value.recordBook.shame
+  const fxShame = recordBook.filter((r) => r.kind === 'shame')
+  if (edShame.length === 0) return fxShame
+  return fxShame.map((fx, i) => {
+    const ed = edShame[i]
+    if (!ed) return fx
+    return { ...fx, context: ed.body || fx.context }
+  })
+})
 
 // Season-scoped entries derive from yearlyCatRecords for the selected year.
 const seasonFame = computed<CategoryRecordBookEntry[]>(() => {
@@ -969,6 +1194,40 @@ function dotClassFor(i: number): string {
   return map[i % map.length]
 }
 
+/* ─── Footnotes (5 pills) — editorial-driven with a fixture fallback so
+   the layout always has something to render even when detection skips
+   a pill (e.g. brand-new league, no streak yet). */
+const footnotes = computed<readonly { label: string; value: string }[]>(() => {
+  const ed = liveEditorial.value.footnotes
+  if (ed.length === 0) return historyFootnotes
+  // Editorial drives the pills 1:1, mapping its kind labels to the
+  // existing display labels the design uses.
+  const labelMap: Record<string, string> = {
+    'footnote-longest-dynasty':          'LONGEST DYNASTY',
+    'footnote-biggest-blowout':          'BIGGEST CATEGORY SWEEP',
+    'footnote-closest-championship':     'CLOSEST CHAMPIONSHIP',
+    'footnote-most-consistent':          'MOST CONSISTENT',
+    'footnote-most-volatile':            'MOST CATEGORY VOLATILITY',
+  }
+  return ed.map((f) => ({
+    label: labelMap[f.kind] ?? f.label,
+    value: f.value,
+  }))
+})
+
+/* ─── Rivalry editorial passthrough — provides the marquee/procedural
+   narrative that the rivalry modal will display as its lead paragraph.
+   The modal already falls back to its existing authored profile, then
+   to a procedural string, when no override is provided. */
+function rivalryOverrideFor(a: string, b: string): string | null {
+  const key = a < b ? `${a}-${b}` : `${b}-${a}`
+  const entry = liveEditorial.value.rivalryProfiles[key]
+  if (!entry) return null
+  // Use the body when it carries something specific; otherwise headline.
+  const text = entry.body && entry.body.length > 0 ? entry.body : entry.headline
+  return text && text.length > 0 ? text : null
+}
+
 /* ─── Modals state ─────────────────────────────────────────── */
 const activeLegacyTeamId = ref<string | null>(null)
 const activeRivalry = ref<{ a: string; b: string } | null>(null)
@@ -1018,6 +1277,71 @@ function openRivalryModal(a: string, b: string) { activeRivalry.value = { a, b }
   margin: 0;
   max-width: 65ch;
   line-height: 1.5;
+}
+
+/* ─── Live load banner (mirrors CategoryDemoHomeView) ──────────── */
+.live-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid oklch(0.20 0.015 90);
+  background: oklch(0.10 0.014 90);
+  font-size: 0.92rem;
+  color: var(--ink-2);
+}
+.live-banner-loading { color: var(--accent-tertiary); }
+.live-banner-info {
+  color: var(--ink-2);
+  border-color: oklch(0.22 0.015 90);
+}
+.live-banner-spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid oklch(0.72 0.18 195 / 0.30);
+  border-top-color: var(--accent-tertiary);
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes live-spin { to { transform: rotate(360deg); } }
+  .live-banner-spinner { animation: live-spin 0.9s linear infinite; }
+}
+.live-banner-error {
+  flex-wrap: wrap;
+  border-color: oklch(0.65 0.20 25 / 0.45);
+  background: oklch(0.65 0.20 25 / 0.08);
+}
+.live-banner-error-headline {
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--accent-secondary);
+}
+.live-banner-error-body {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--ink-2);
+  flex: 1 1 240px;
+}
+.live-banner-action {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-1);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: oklch(0.20 0.015 90);
+  border: 1px solid oklch(0.32 0.012 90);
+  transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .live-banner-action:hover { background: oklch(0.26 0.015 90); }
 }
 
 /* ─── Page header ─────────────────────────────────────────────── */

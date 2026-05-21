@@ -12,10 +12,10 @@
         </div>
         <div class="demo-bar-right">
           <router-link to="/" class="demo-bar-back">Back to homepage</router-link>
-          <button class="demo-bar-cta" type="button" @click="$emit('open-signup')">
-            Connect your league. Free.
+          <router-link to="/demo-categories/connect" class="demo-bar-cta demo-bar-cta-link">
+            Connect a league
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </button>
+          </router-link>
         </div>
       </div>
     </header>
@@ -165,6 +165,8 @@ defineEmits<{ (e: 'open-signup'): void }>()
   cursor: pointer;
   transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), background-color 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
+/* router-link variant — strip default anchor decoration. */
+.demo-bar-cta-link { text-decoration: none; }
 @media (prefers-reduced-motion: no-preference) {
   .demo-bar-cta:hover { transform: translateY(-1px); }
 }

@@ -11,72 +11,8 @@
  * `allowImportingTsExtensions` tsconfig flag.)
  */
 
-import {
-  teams as fxTeams,
-  categories as fxCategories,
-  standings2026Week8,
-  categoryRanks as fxCategoryRanks,
-  seasonRankHistory,
-  currentWeek,
-  currentSeason,
-  playoffCutoff,
-} from '../src/fixtures/categoriesLeague.ts'
-import type { CategoryLeagueData } from '../src/editorial/types.ts'
 import { renderHomePageWithSignals } from '../src/editorial/render.ts'
-
-/* ─────────────────────────────────────────────────────────────────
-   Fixture → CategoryLeagueData
-───────────────────────────────────────────────────────────────── */
-
-function fixtureToLeagueData(): CategoryLeagueData {
-  return {
-    leagueId: 'demo-categories-2026',
-    leagueName: 'Diamond Cuts',
-    currentWeek,
-    currentSeason,
-    playoffCutoff,
-
-    teams: fxTeams.map((t) => ({
-      id: t.id,
-      name: t.name,
-      ownerName: t.ownerName,
-      ownerInitials: t.ownerInitials,
-      avatarUrl: t.avatarUrl,
-      avatarColor: t.avatarColor,
-      isMyTeam: t.isMyTeam ?? false,
-    })),
-
-    categories: fxCategories.map((c) => ({
-      id: c.id,
-      label: c.label,
-      name: c.name,
-      side: c.side,
-    })),
-
-    standings: standings2026Week8.map((s) => ({
-      rank: s.rank,
-      teamId: s.teamId,
-      catWins: s.catWins,
-      catLosses: s.catLosses,
-      catTies: s.catTies,
-      winPct: s.winPct,
-      streak: { type: s.streak.type, length: s.streak.length },
-      lastSix: [...s.lastSix],
-      ownsCount: s.ownsCount,
-      bleedingCount: s.bleedingCount,
-    })),
-
-    categoryRanks: fxCategoryRanks.map((r) => ({
-      teamId: r.teamId,
-      catRanks: { ...r.catRanks },
-    })),
-
-    seasonRankHistory: seasonRankHistory.map((w) => ({
-      week: w.week,
-      ranks: { ...w.ranks },
-    })),
-  }
-}
+import { categoriesFixtureToLeagueData } from '../src/editorial/fixtureAdapter.ts'
 
 /* ─────────────────────────────────────────────────────────────────
    Layout helpers
@@ -122,7 +58,7 @@ function wrap(text: string, width: number, leftPad = 0): string {
 ───────────────────────────────────────────────────────────────── */
 
 function main(): void {
-  const data = fixtureToLeagueData()
+  const data = categoriesFixtureToLeagueData()
   const result = renderHomePageWithSignals(data)
 
   const lines: string[] = []

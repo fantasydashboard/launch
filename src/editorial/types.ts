@@ -63,6 +63,99 @@ export interface CategoryLeagueDataWeeklyRanks {
   ranks: Record<string, number>
 }
 
+/* ─────────────────────────────────────────────────────────────────
+   EXTENDED DATA — fields beyond the Home page's minimum, consumed
+   by the secondary pages (Matchups, Power Rankings, Draft, History).
+
+   Every one is optional or "may be empty array" because not every
+   platform exposes the underlying data. Detection / rendering on
+   the consumer side must degrade gracefully when a field is missing.
+───────────────────────────────────────────────────────────────── */
+
+export type CategoryMatchupStatus = 'live' | 'coasting' | 'final' | 'upcoming'
+
+export type CategoryCatLineStatus =
+  | 'decided-home'
+  | 'decided-away'
+  | 'contested'
+  | 'punted-home'
+  | 'punted-away'
+
+export interface CategoryLeagueDataCatLine {
+  catId: string
+  homeCurrent: number
+  awayCurrent: number
+  status: CategoryCatLineStatus
+}
+
+/** Current week's matchups — for the Matchups page. */
+export interface CategoryLeagueDataMatchup {
+  id: string
+  homeTeamId: string
+  awayTeamId: string
+  status: CategoryMatchupStatus
+  homeCatWins: number       // current cats won
+  awayCatWins: number
+  ties: number
+  contestedCount: number    // cats still in play
+  // Per-cat current state. `undefined` when stats not yet available.
+  catLines?: CategoryLeagueDataCatLine[]
+}
+
+/** Per-season summary — for the History page season list. */
+export interface CategoryLeagueDataSeasonHistory {
+  year: number
+  championTeamId: string
+  championRecord: string
+  runnerUpTeamId: string
+  basementTeamId: string
+}
+
+/** Per-team aggregated career stats — for the History page. */
+export interface CategoryLeagueDataTeamCareerStats {
+  teamId: string
+  seasonsPlayed: number
+  titles: number
+  playoffApps: number
+  totalCatWins: number
+  totalCatLosses: number
+  totalCatTies: number
+  careerWinPct: number
+  hitCatsWon: number
+  pitchCatsWon: number
+  catDifferential: number
+}
+
+/** All-time head-to-head matrix entry, alphabetized to dedupe. */
+export interface CategoryLeagueDataH2HEntry {
+  teamA: string            // alphabetized teamId order
+  teamB: string
+  recordA: string          // "5-4-1" from A's perspective
+  catDiffA: number
+  meetings: number
+}
+
+/** Single draft pick — for the Draft page. */
+export interface CategoryLeagueDataDraftPick {
+  pickOverall: number
+  round: number
+  playerId: string
+  playerName: string
+  position: string
+  mlbTeam: string
+  draftedByTeamId: string
+  valueScore?: number      // optional — only if we can compute it
+}
+
+/** Draft summary — for the Draft page. Optional because not every
+ *  league has draft data exposed (orphan leagues, platforms with no
+ *  draft API, etc.). */
+export interface CategoryLeagueDataDraft {
+  year: number
+  totalPicks: number
+  picks: CategoryLeagueDataDraftPick[]
+}
+
 export interface CategoryLeagueData {
   // Meta
   leagueId: string
@@ -85,6 +178,30 @@ export interface CategoryLeagueData {
 
   // Season rank history — for trajectory detection
   seasonRankHistory: CategoryLeagueDataWeeklyRanks[]
+
+  /* ───── Extended fields (Wave 2 detection consumers) ───────── */
+
+  /** Current week's matchups — populated when adapter can group them. */
+  matchupsCurrentWeek?: CategoryLeagueDataMatchup[]
+
+  /** Per-season summary across prior years. Empty for brand-new leagues. */
+  seasonHistory?: CategoryLeagueDataSeasonHistory[]
+
+  /** Career-level stats keyed by teamId. */
+  teamCareerStats?: Record<string, CategoryLeagueDataTeamCareerStats>
+
+  /** All-time H2H matrix; one entry per alphabetized team pair. */
+  h2hMatrix?: CategoryLeagueDataH2HEntry[]
+
+  /** Draft data — undefined for leagues with no draft exposed. */
+  draft?: CategoryLeagueDataDraft
+
+  /** Per-team weekly cats-won counts. `teamId → week-1-indexed array`. */
+  weeklyCatsWon?: Record<string, number[]>
+
+  /** Mathematical league average per week (constant 5.5 for an 11-cat
+   *  10-team league with no ties — zero-sum across team-pairs). */
+  weeklyLeagueAverage?: number[]
 }
 
 /* ─────────────────────────────────────────────────────────────────
