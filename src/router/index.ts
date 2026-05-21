@@ -203,6 +203,14 @@ const router = createRouter({
         },
       ],
     },
+    // Internal brand exploration — wordmark mockups for The League
+    // Beat in the real brand system. Hidden from production via the
+    // existing hostname guard below. No auth (internal review only).
+    {
+      path: '/internal/logo-mockups',
+      name: 'internal-logo-mockups',
+      component: () => import('@/views/LogoMockupsView.vue'),
+    },
     // Live league routes — your real connected leagues, no fixture
     // fallback. URL is keyed by the Supabase `leagues.id` UUID (not the
     // platform's league id) so the league switcher can deep-link without
@@ -290,6 +298,17 @@ router.beforeEach((to, from, next) => {
   // Hide the in-progress category-league demo from the production domain.
   // Stays available on localhost and Vercel preview deployments for testing.
   if (to.path.startsWith('/demo-categories') && typeof window !== 'undefined') {
+    const host = window.location.hostname
+    const isProdHost =
+      host === 'ultimatefantasydashboard.com' ||
+      host === 'www.ultimatefantasydashboard.com'
+    if (isProdHost) {
+      next({ path: '/' })
+      return
+    }
+  }
+  // Same guard for the internal brand-exploration surface.
+  if (to.path.startsWith('/internal') && typeof window !== 'undefined') {
     const host = window.location.hostname
     const isProdHost =
       host === 'ultimatefantasydashboard.com' ||
