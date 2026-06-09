@@ -13,6 +13,22 @@ import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
 import type { ConnectedPlatform, Platform, Sport, LeagueInsert } from '@/types/supabase'
 
+/**
+ * Race a thenable (e.g. a Supabase query builder) against a timeout so a
+ * stalled network request surfaces an error instead of hanging the UI forever.
+ */
+async function withTimeout<T>(work: PromiseLike<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s. Please try again.`)), ms)
+  })
+  try {
+    return await Promise.race([Promise.resolve(work), timeout])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
 export const usePlatformsStore = defineStore('platforms', () => {
   // State
   const connectedPlatforms = ref<ConnectedPlatform[]>([])
@@ -481,19 +497,33 @@ export const usePlatformsStore = defineStore('platforms', () => {
 
     // `.select().single()` so we get the row back — callers need the
     // Supabase UUID to navigate to /leagues/:leagueId/...
-    const { data, error: upsertError } = await supabase
-      .from('leagues')
-      .upsert(leagueData, {
-        onConflict: 'user_id,platform,platform_league_id,season',
-      })
-      .select()
-      .single()
-
-    if (upsertError) {
-      console.error('[ESPN] Error saving league:', upsertError)
-      return { success: false, error: upsertError.message }
+    // Guarded by a timeout: if the request stalls (e.g. a hung token refresh),
+    // surface an error instead of leaving the Add-League modal spinning forever.
+    console.log('[ESPN] Saving league row...', { leagueId, sport, season })
+    let data: { id?: string } | null = null
+    try {
+      const res = await withTimeout(
+        supabase
+          .from('leagues')
+          .upsert(leagueData, {
+            onConflict: 'user_id,platform,platform_league_id,season',
+          })
+          .select()
+          .single(),
+        15000,
+        'Saving league'
+      )
+      if (res.error) {
+        console.error('[ESPN] Error saving league:', res.error)
+        return { success: false, error: res.error.message }
+      }
+      data = res.data
+    } catch (e: any) {
+      console.error('[ESPN] Save stalled/failed:', e)
+      return { success: false, error: e?.message || 'Saving the league timed out. Please try again.' }
     }
 
+    console.log('[ESPN] League row saved:', data?.id)
     return { success: true, leagueRowId: data?.id }
   }
 
