@@ -344,6 +344,15 @@ const gaps = computed(() => {
 const gapCategories = computed(() =>
   categories.value.map((c) => ({ statId: c.statId, label: c.label })),
 )
+
+// Tier lookup for the weakness ActionFeed (winnable/lost tags).
+const tierByStatId = computed<Record<string, 'strong' | 'winnable' | 'safe' | 'lost'>>(() => {
+  const map: Record<string, 'strong' | 'winnable' | 'safe' | 'lost'> = {}
+  for (const gap of gaps.value) {
+    map[gap.statId] = gap.tier
+  }
+  return map
+})
 </script>
 
 <template>
@@ -363,7 +372,7 @@ const gapCategories = computed(() =>
     >
       <section v-if="weaknesses.length > 0" class="space-y-2">
         <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Where you're losing</h2>
-        <ActionFeed :recommendations="weaknessRecommendations" :adds-by-stat-id="addsByStatId" />
+        <ActionFeed :recommendations="weaknessRecommendations" :adds-by-stat-id="addsByStatId" :tier-by-stat-id="tierByStatId" />
       </section>
 
       <section v-if="strengths.length > 0" class="space-y-2">

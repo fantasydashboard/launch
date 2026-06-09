@@ -4,9 +4,11 @@ import type { Recommendation } from '@/recommendations/types'
 defineProps<{
   recommendations: Recommendation[]
   // Optional: top available add per category, keyed by statId. When a row's
-  // statId has an entry, a muted "Add: {name} ({statValue} {label})" line is
+  // statId has an entry, the delta line "Add {name} -> +{value} {label}" is
   // rendered beneath the headline (weakness feed only).
   addsByStatId?: Record<string, { name: string; statValue: number; label: string }>
+  // Optional: gap tier per statId, used to show "winnable" / "punt?" inline tags.
+  tierByStatId?: Record<string, 'strong' | 'winnable' | 'safe' | 'lost'>
 }>()
 
 const severityDot: Record<Recommendation['severity'], string> = {
@@ -31,17 +33,28 @@ const severityDot: Record<Recommendation['severity'], string> = {
       <span class="h-2.5 w-2.5 shrink-0 rounded-full" :class="severityDot[rec.severity]" aria-hidden="true" />
       <span class="sr-only">{{ rec.severity }} priority</span>
       <span class="min-w-0 flex-1">
-        <span
-          class="block text-sm font-mono tabular-nums font-semibold"
-          :class="rec.kind === 'category-strength' ? 'text-primary' : 'text-dark-text'"
-        >{{ rec.headline }}</span>
+        <span class="flex items-center gap-1.5">
+          <span
+            class="text-sm font-mono tabular-nums font-semibold"
+            :class="rec.kind === 'category-strength' ? 'text-primary' : 'text-dark-text'"
+          >{{ rec.headline }}</span>
+          <span
+            v-if="tierByStatId && tierByStatId[rec.statId] === 'winnable'"
+            class="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-mono font-semibold leading-none"
+            style="background: rgba(242,179,58,0.15); color: #F2B33A;"
+          >winnable</span>
+          <span
+            v-else-if="tierByStatId && tierByStatId[rec.statId] === 'lost'"
+            class="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-mono font-semibold leading-none text-dark-textMuted opacity-60"
+          >punt?</span>
+        </span>
         <span class="block text-xs text-dark-textMuted">{{ rec.detail }}</span>
         <span
           v-if="addsByStatId && addsByStatId[rec.statId]"
-          class="block text-xs text-dark-textMuted"
-        >Add:
-          <span class="text-dark-text">{{ addsByStatId[rec.statId].name }}</span>
-          <span class="font-mono tabular-nums">({{ addsByStatId[rec.statId].statValue }} {{ addsByStatId[rec.statId].label }})</span>
+          class="block text-xs text-dark-textMuted mt-0.5"
+        >Add <span class="text-dark-text">{{ addsByStatId[rec.statId].name }}</span>
+          <span class="text-dark-textMuted"> &#x2192; </span><span class="font-mono tabular-nums text-primary font-semibold">+{{ addsByStatId[rec.statId].statValue }}</span>
+          <span class="text-dark-textMuted"> {{ addsByStatId[rec.statId].label }}</span>
         </span>
       </span>
       <span class="shrink-0 text-dark-textMuted" aria-hidden="true">&rarr;</span>
