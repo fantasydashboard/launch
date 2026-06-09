@@ -651,7 +651,7 @@ const holes = computed<Hole[]>(() => {
       statId: rec.statId,
       name: cat?.name ?? rec.statId,
       rank: teamCat?.rank ?? 0,
-      lowerIsBetter: cat ? isLowerBetter(cat.statId) : false,
+      lowerIsBetter: cat ? isLowerBetter(cat.label || cat.name || cat.statId) : false,
     }
   })
 })
