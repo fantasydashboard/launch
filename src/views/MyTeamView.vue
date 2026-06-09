@@ -13,6 +13,7 @@ import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
 import { computePlayerContributions } from '@/myteam/contribution'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
+import { computeCategoryGaps } from '@/myteam/categoryGaps'
 import ActionFeed from '@/components/myteam/ActionFeed.vue'
 import SituationStrip from '@/components/myteam/SituationStrip.vue'
 import CategoryProfile from '@/components/myteam/CategoryProfile.vue'
@@ -331,6 +332,18 @@ const drops = computed(() => {
   if (!contributions.value.length) return { candidates: [], weakLink: null }
   return computeDropCandidates(contributions.value)
 })
+
+// Per-category position + gap: where I sit (rank on a 1->N scale) and whether the
+// category is strong / winnable / safe / lost. Feeds the Category Profile viz.
+const gaps = computed(() => {
+  if (!profile.value || !standings.value.length || !cats.value.length) return []
+  return computeCategoryGaps(standings.value, profile.value, cats.value)
+})
+
+// Labels for the gap rows (statId -> display label).
+const gapCategories = computed(() =>
+  categories.value.map((c) => ({ statId: c.statId, label: c.label })),
+)
 </script>
 
 <template>
@@ -361,11 +374,7 @@ const drops = computed(() => {
 
     <section v-if="profile" class="space-y-2">
       <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Category Profile</h2>
-      <CategoryProfile
-        :categories="categories"
-        :team-categories="profile.categories"
-        :num-teams="profile.numTeams"
-      />
+      <CategoryProfile :gaps="gaps" :categories="gapCategories" />
     </section>
 
     <section v-if="profile" class="space-y-2">
