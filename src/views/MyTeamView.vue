@@ -1,20 +1,63 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { profileFromStandings, type StandingsEntryLike } from '@/recommendations/fromStandings'
 import { buildActionFeed } from '@/recommendations/buildActionFeed'
 import type { CategoryDef } from '@/recommendations/types'
+import { useFullSeasonCategoryData } from '@/composables/useFullSeasonCategoryData'
 import ActionFeed from '@/components/myteam/ActionFeed.vue'
 import SituationStrip from '@/components/myteam/SituationStrip.vue'
 
 const leagueStore = useLeagueStore()
 
-// === Wired from the sources recorded in MyTeamView.notes.md (Task 9) ===
+// === Wired from the sources recorded in MyTeamView.notes.md (Task 9 + Task 10) ===
 // No reusable store getter / composable yields the verified StandingsEntryLike[]
 // or CategoryDef[] for the active category league (those are built as local refs
 // inside UnifiedSeasonView.vue). The single source of truth they derive from is
-// leagueStore.yahooMatchups (.stat_winners) + leagueStore.yahooTeams. We reproduce
-// the verified derivation (UnifiedSeasonView.vue:1290-1411) here as computeds.
+// matchup .stat_winners + leagueStore.yahooTeams. We reproduce the verified
+// derivation (UnifiedSeasonView.vue:1290-1411) here as computeds.
+//
+// FULL-SEASON FIX: leagueStore.yahooMatchups only ever holds ONE week (the store's
+// loadYahooLeagueData fetches a single week of category matchups), so deriving from
+// it would under-count. useFullSeasonCategoryData loops getCategoryMatchups across
+// every completed week to give the full-season picture, and also fetches the real
+// stat-category display names from Yahoo league settings (same source as
+// UnifiedSeasonView.vue:1338-1340). We prefer the full-season matchups when loaded
+// and fall back to the single-week store state until then.
+const { seasonMatchups, categoryLabels, loaded: seasonLoaded, load: loadSeasonData } =
+  useFullSeasonCategoryData()
+
+// True when the active league is a Yahoo category (H2H category / roto) league.
+const isYahooCategoryLeague = computed(() => {
+  const id = leagueStore.activeLeagueId
+  if (!id) return false
+  const saved = leagueStore.savedLeagues?.find((l: any) => l.league_id === id)
+  if (saved?.platform && saved.platform !== 'yahoo') return false
+  const st = saved?.scoring_type || ''
+  if (st) return st === 'head' || st === 'headone' || st === 'roto'
+  // Fall back to inspecting matchup data when scoring_type is unknown.
+  return (leagueStore.yahooMatchups || []).some(
+    (m: any) => m?.is_category_league || m?.stat_winners?.length
+  )
+})
+
+function maybeLoadSeasonData() {
+  const id = leagueStore.activeLeagueId
+  if (id && isYahooCategoryLeague.value) {
+    loadSeasonData(id)
+  }
+}
+
+onMounted(maybeLoadSeasonData)
+// Reload when the active league changes (e.g. switching into a category league).
+watch(() => leagueStore.activeLeagueId, maybeLoadSeasonData)
+
+// Matchups to derive from: full-season when loaded, else the single-week store state.
+const sourceMatchups = computed(() =>
+  seasonLoaded.value && seasonMatchups.value.length
+    ? seasonMatchups.value
+    : leagueStore.yahooMatchups || []
+)
 
 // Per-category wins/losses accumulated from matchup stat_winners, keyed by team key/id.
 const perCategory = computed(() => {
@@ -22,7 +65,7 @@ const perCategory = computed(() => {
   const losses = new Map<string, Record<string, number>>()
   const statIds = new Set<string>()
 
-  for (const m of leagueStore.yahooMatchups || []) {
+  for (const m of sourceMatchups.value) {
     if (!m?.stat_winners?.length) continue
     const team1 = m.teams?.[0]
     const team2 = m.teams?.[1]
@@ -82,16 +125,23 @@ const standings = computed<StandingsEntryLike[]>(() => {
 })
 
 // League scoring categories mapped to CategoryDef (stat_id -> statId, etc.).
-// The engine only reads statId + name + per-category ranks; side/label/higherIsBetter
-// are best-effort defaults (see MyTeamView.notes.md).
+// Real display names come from Yahoo league settings via useFullSeasonCategoryData
+// (same getLeagueSettings().stat_categories source as UnifiedSeasonView.vue:1338-1340).
+// The engine only reads statId + name + per-category ranks; side/higherIsBetter are
+// best-effort defaults (see MyTeamView.notes.md). Falls back to "Stat <id>" only when
+// a real name is genuinely unavailable (settings not yet loaded or stat missing).
 const categories = computed<CategoryDef[]>(() => {
-  return [...perCategory.value.statIds].map((statId) => ({
-    statId,
-    label: `S${statId}`,
-    name: `Stat ${statId}`,
-    side: 'hit' as const,
-    higherIsBetter: true
-  }))
+  const labels = categoryLabels.value
+  return [...perCategory.value.statIds].map((statId) => {
+    const meta = labels.get(statId)
+    return {
+      statId,
+      label: meta?.label || `S${statId}`,
+      name: meta?.name || `Stat ${statId}`,
+      side: 'hit' as const,
+      higherIsBetter: true
+    }
+  })
 })
 
 // Logged-in user's teamId (team with is_my_team === true) — UnifiedSeasonView.vue:701-717.
