@@ -12,6 +12,7 @@ import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
 import ActionFeed from '@/components/myteam/ActionFeed.vue'
 import SituationStrip from '@/components/myteam/SituationStrip.vue'
+import CategoryProfile from '@/components/myteam/CategoryProfile.vue'
 
 const leagueStore = useLeagueStore()
 const { players, load: loadPlayers } = useAvailablePlayers()
@@ -319,6 +320,15 @@ const verdict = computed<string | null>(() => {
         <ActionFeed :recommendations="strengths" />
       </section>
     </div>
+
+    <section v-if="profile" class="space-y-2">
+      <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Category Profile</h2>
+      <CategoryProfile
+        :categories="categories"
+        :team-categories="profile.categories"
+        :num-teams="profile.numTeams"
+      />
+    </section>
 
     <p v-if="!profile" class="text-sm text-dark-textMuted">
       Connect or select a category league to see your team's edge.
