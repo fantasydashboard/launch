@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, nextTick, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { profileFromStandings, type StandingsEntryLike } from '@/recommendations/fromStandings'
 import { computeCategoryWeaknesses } from '@/recommendations/categorySignals'
@@ -13,6 +14,7 @@ import type { Hole } from '@/players/types'
 import AddCard from '@/components/players/AddCard.vue'
 
 const leagueStore = useLeagueStore()
+const route = useRoute()
 const { players, loaded: playersLoaded, load: loadPlayers } = useAvailablePlayers()
 
 // === BEGIN copied-from-MyTeamView derivation (standings/categories/myTeamId + season load) ===
@@ -229,6 +231,29 @@ const isLoading = computed(() =>
 function labelFor(statId: string): string {
   return categories.value.find((c) => c.statId === statId)?.label ?? statId
 }
+
+// === Task 1: ?cat= anchor — scroll to and briefly highlight the target category ===
+// When the route carries ?cat=<statId> (e.g. deep-linked from a My Team weakness
+// row), scroll its per-hole section into view and toggle a transient lime ring.
+async function focusCategory(statId: string) {
+  if (!statId) return
+  await nextTick()
+  const el = document.getElementById(`cat-${statId}`)
+  if (!el) return // guard: section not rendered (no adds for that cat)
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  el.classList.add('ring-2', 'ring-primary', 'rounded-xl')
+  setTimeout(() => el.classList.remove('ring-2', 'ring-primary', 'rounded-xl'), 1500)
+}
+
+// Run once the adds populate (the sections must exist before we can scroll/highlight).
+watch(
+  () => [holeAdds.value.length, route.query.cat] as const,
+  () => {
+    const cat = route.query.cat
+    if (cat && holeAdds.value.length) focusCategory(String(cat))
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -252,7 +277,7 @@ function labelFor(statId: string): string {
     </p>
 
     <!-- Results: per-hole add groups -->
-    <section v-for="group in holeAdds" :key="group.hole.statId" class="space-y-2">
+    <section v-for="group in holeAdds" :key="group.hole.statId" :id="'cat-' + group.hole.statId" class="space-y-2 scroll-mt-6 transition-shadow">
       <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-dark-textMuted">
         Adds for {{ group.hole.name }} <span class="text-dark-textMuted/70">(you're {{ group.hole.rank }}th)</span>
       </h2>
