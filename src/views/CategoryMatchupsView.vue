@@ -321,7 +321,10 @@
             <div class="sm:overflow-x-auto mt-4">
               <table class="w-full text-sm">
                 <thead><tr class="text-xs text-dark-textMuted border-b border-dark-border/50">
-                  <th class="text-left py-2 px-1">Category</th>
+                  <th class="text-left py-2 px-1 cursor-pointer select-none" @click="sortedCategories.sortBy('name')">
+                    Category
+                    <span v-if="sortedCategories.sortKey.value === 'name'">{{ sortedCategories.sortDir.value === 'asc' ? '▲' : '▼' }}</span>
+                  </th>
                   <th class="text-center py-2 px-1 cursor-help" title="Current week's stat total for this category">Current</th>
                   <th class="text-center py-2 px-1 cursor-help hidden sm:table-cell" title="Average weekly total for this category this season">Avg</th>
                   <th class="text-center py-2 px-1 cursor-help hidden sm:table-cell" title="Best single-week total for this category this season">High</th>
@@ -333,7 +336,7 @@
                   <th class="text-center py-2 px-1 cursor-help" title="Current week's stat total for this category">Current</th>
                 </tr></thead>
                 <tbody>
-                  <tr v-for="cat in allCategories" :key="cat.stat_id" class="border-b border-dark-border/30 hover:bg-dark-border/10">
+                  <tr v-for="cat in sortedCategories.sorted.value" :key="cat.stat_id" class="border-b border-dark-border/30 hover:bg-dark-border/10">
                     <td class="py-2 px-1 text-dark-text font-medium">{{ cat.display_name }}</td>
                     <td class="text-center py-2 px-1 text-white font-bold">{{ formatStat(getCategoryStat(selectedMatchup, cat.stat_id, 1), cat.stat_id) }}</td>
                     <td class="text-center py-2 px-1 text-dark-textMuted hidden sm:table-cell">{{ formatStat(getCategoryAvg(selectedMatchup.team1.team_key, cat.stat_id), cat.stat_id) }}</td>
@@ -465,6 +468,7 @@ import { matchupChartCache } from '@/stores/matchupChartCache'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import LeagueGate from '@/components/LeagueGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import { useSortedRows } from '@/composables/useSortedRows'
 import { useRouter } from 'vue-router'
 import { trackCardShare } from '@/services/shareTracking'
 
@@ -838,6 +842,10 @@ const allCategories = computed(() => {
   // This ensures hockey, basketball, and any other sport's categories are shown
   return categories.value
 })
+
+const sortedCategories = useSortedRows(allCategories, (cat: any) => ({
+  name: String(cat.display_name ?? cat.name ?? cat.stat_id),
+}))
 
 // Get the start/end dates for a given matchup week from game weeks data
 function getMatchupDates(weekNum: number): { start: string, end: string, totalDays: number, isExtended: boolean } | null {
