@@ -25,7 +25,10 @@ const severityDot: Record<Recommendation['severity'], string> = {
       <span class="h-2.5 w-2.5 shrink-0 rounded-full" :class="severityDot[rec.severity]" aria-hidden="true" />
       <span class="sr-only">{{ rec.severity }} priority</span>
       <span class="min-w-0 flex-1">
-        <span class="block text-sm font-semibold text-dark-text">{{ rec.headline }}</span>
+        <span
+          class="block text-sm font-mono tabular-nums font-semibold"
+          :class="rec.kind === 'category-strength' ? 'text-primary' : 'text-dark-text'"
+        >{{ rec.headline }}</span>
         <span class="block text-xs text-dark-textMuted">{{ rec.detail }}</span>
       </span>
       <span class="shrink-0 text-dark-textMuted" aria-hidden="true">&rarr;</span>

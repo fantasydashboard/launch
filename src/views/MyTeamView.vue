@@ -217,7 +217,7 @@ const record = computed(() => {
 
 <template>
   <div class="mx-auto max-w-4xl px-4 py-6 space-y-6">
-    <h1 class="text-2xl font-bold text-dark-text">My Team</h1>
+    <h1 class="text-2xl font-display font-bold text-dark-text">My Team</h1>
 
     <SituationStrip
       v-if="profile"
@@ -229,12 +229,12 @@ const record = computed(() => {
     />
 
     <section v-if="weaknesses.length > 0" class="space-y-2">
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-dark-textMuted">Where you're losing</h2>
+      <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Where you're losing</h2>
       <ActionFeed :recommendations="weaknesses" />
     </section>
 
     <section v-if="strengths.length > 0" class="space-y-2">
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-dark-textMuted">Your edge</h2>
+      <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Your edge</h2>
       <ActionFeed :recommendations="strengths" />
     </section>
 

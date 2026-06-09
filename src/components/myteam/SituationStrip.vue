@@ -10,11 +10,13 @@ defineProps<{
 
 <template>
   <div class="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl bg-dark-card border border-dark-border px-4 py-3">
-    <span class="text-base font-bold text-dark-text">{{ teamName }}</span>
-    <span class="text-sm text-dark-textMuted">{{ record }}</span>
-    <span v-if="rank > 0" class="text-sm text-dark-textMuted">Rank {{ rank }} / {{ numTeams }}</span>
+    <span class="text-base font-display font-bold text-dark-text">{{ teamName }}</span>
+    <span class="text-sm font-mono tabular-nums text-dark-textMuted">{{ record }}</span>
+    <span v-if="rank > 0" class="text-sm text-dark-textMuted">
+      Rank <span class="font-mono tabular-nums font-semibold text-primary">{{ rank }}</span><span class="font-mono tabular-nums text-dark-textMuted"> / {{ numTeams }}</span>
+    </span>
     <span v-if="winProb !== null" class="text-sm text-dark-textMuted">
-      This week: <span class="font-semibold text-dark-text">{{ Math.round(winProb) }}%</span> win prob
+      This week: <span class="font-mono tabular-nums font-semibold text-dark-text">{{ Math.round(winProb) }}%</span> win prob
     </span>
   </div>
 </template>
