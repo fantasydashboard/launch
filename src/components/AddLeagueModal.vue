@@ -1761,6 +1761,32 @@ function selectYahooLeague(league: GroupedYahooLeague, sport: Sport) {
 // ESPN Methods
 // ============================================================
 
+// Best-effort mirror of an ESPN league into the new `leagues` table (the split
+// route tree reads from it), with a few background retries. Never throws and is
+// never awaited by the add flow — the canonical save (user_leagues) is handled
+// by the parent's espn-league-added handler, so a stalled mirror can't block or
+// fail the add. Retries let it self-heal once ESPN discovery's in-flight
+// requests to the same Supabase host drain.
+async function mirrorEspnLeagueToLeaguesTable(discovered: {
+  leagueId: string; sport: Sport; currentSeason: number; name: string; size: number
+}) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const res = await platformsStore.syncEspnLeague(
+      discovered.leagueId,
+      discovered.sport,
+      discovered.currentSeason,
+      { name: discovered.name, size: discovered.size }
+    )
+    if (res.success) {
+      console.log(`[ESPN] leagues mirror saved (attempt ${attempt})`)
+      return
+    }
+    console.warn(`[ESPN] leagues mirror attempt ${attempt} failed:`, res.error)
+    await new Promise(r => setTimeout(r, 2000 * attempt))
+  }
+  console.error('[ESPN] leagues mirror failed after retries (league still added via user_leagues)')
+}
+
 async function validateEspnLeague() {
   if (!espnLeagueId.value.trim()) return
   
@@ -1816,32 +1842,25 @@ async function validateEspnLeague() {
     console.log('[ESPN] League discovered:', discovered)
     espnSport.value = discovered.sport
     espnSeason.value = discovered.currentSeason
-    
-    // Save just the current season (fast - no re-fetch needed!)
-    espnDiscoveryStatus.value = `Found ${discovered.name} - saving...`
-    
-    const syncResult = await platformsStore.syncEspnLeague(
-      discovered.leagueId,
-      discovered.sport,
-      discovered.currentSeason,
-      { name: discovered.name, size: discovered.size }
-    )
-    
-    if (!syncResult.success) {
-      errorMessage.value = syncResult.error || 'Failed to save league.'
-      return
-    }
-    
+
+    // Mirror into the new `leagues` table (used by the split route tree) as a
+    // best-effort BACKGROUND write — never gate adding the league on it. The
+    // canonical save happens in the parent's espn-league-added handler
+    // (user_leagues). The mirror upsert hits the same Supabase host that ESPN
+    // discovery just hammered, so it can stall behind in-flight requests; we
+    // retry it in the background instead of blocking (or failing) the user.
+    mirrorEspnLeagueToLeaguesTable(discovered)
+
     espnDiscoveryStatus.value = ''
-    
-    // Emit success
+
+    // Emit success — adds the league via the canonical store and closes the modal
     emit('espn-league-added', {
       leagueId: discovered.leagueId,
       sport: discovered.sport,
       season: discovered.currentSeason,
       league: discovered
     })
-    
+
   } catch (err: any) {
     console.error('[ESPN] Error discovering league:', err)
     
@@ -1908,32 +1927,21 @@ async function connectEspnPrivate() {
     console.log('[ESPN] League discovered:', discovered)
     espnSport.value = discovered.sport
     espnSeason.value = discovered.currentSeason
-    
-    // Save just the current season (no re-fetch needed!)
-    espnDiscoveryStatus.value = `Found ${discovered.name} - saving...`
-    
-    const syncResult = await platformsStore.syncEspnLeague(
-      discovered.leagueId,
-      discovered.sport,
-      discovered.currentSeason,
-      { name: discovered.name, size: discovered.size }
-    )
-    
-    if (!syncResult.success) {
-      errorMessage.value = syncResult.error || 'Failed to save league.'
-      return
-    }
-    
+
+    // Best-effort background mirror into `leagues` (see validateEspnLeague) —
+    // never block the add on it. Canonical save runs in the parent handler.
+    mirrorEspnLeagueToLeaguesTable(discovered)
+
     espnDiscoveryStatus.value = ''
-    
-    // Emit success
+
+    // Emit success — adds the league via the canonical store and closes the modal
     emit('espn-league-added', {
       leagueId: discovered.leagueId,
       sport: discovered.sport,
       season: discovered.currentSeason,
       league: discovered
     })
-    
+
   } catch (err: any) {
     console.error('[ESPN] Error connecting private league:', err)
     errorMessage.value = err.message || 'Failed to connect. Please make sure you are logged in to ESPN and try again.'
