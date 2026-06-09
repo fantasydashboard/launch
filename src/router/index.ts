@@ -93,6 +93,16 @@ const router = createRouter({
       component: () => import('@/views/MatchupsWrapper.vue')
     },
     {
+      path: '/my-team',
+      name: 'my-team',
+      component: () => import('@/views/MyTeamWrapper.vue')
+    },
+    {
+      path: '/matchup',
+      name: 'matchup',
+      component: () => import('@/views/MatchupWrapper.vue')
+    },
+    {
       path: '/ultimate-tools',
       name: 'ultimate-tools',
       component: () => import('@/views/ProjectionsWrapper.vue'),

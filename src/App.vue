@@ -1190,10 +1190,10 @@ const isRotoLeague = computed(() => {
 })
 
 const tabs = computed(() => [
-  { name: 'Season', path: '/' },
+  { name: 'My Team', path: '/my-team' },
+  { name: isRotoLeague.value ? 'Roto Race' : 'Matchup', path: '/matchup' },
+  { name: 'League', path: '/' },
   { name: 'Power Rankings', path: '/power-rankings' },
-  { name: isRotoLeague.value ? 'Roto Race' : 'Matchups', path: '/matchups' },
-  { name: 'Recap', path: '/recap' },
   { name: 'Draft', path: '/draft' },
   { name: 'History', path: '/history' },
   { name: 'Free Tools', path: '/free-tools' },
