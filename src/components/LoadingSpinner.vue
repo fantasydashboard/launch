@@ -2,9 +2,9 @@
   <div class="loading-spinner-container" :class="containerClass">
     <div class="badge-flipper" :style="{ width: computedSizeOuter, height: computedSize }">
       <div class="badge-inner">
-        <img 
-          src="/ufd-badge.png" 
-          alt="Loading..." 
+        <img
+          src="/brand/ufd-icon-lime.png"
+          alt="Loading..."
           class="badge-image"
           :style="{ width: computedSize, height: 'auto' }"
         />
