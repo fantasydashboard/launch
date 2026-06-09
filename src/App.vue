@@ -140,7 +140,7 @@
             <!-- Sport Title (Desktop) -->
             <div class="flex items-center gap-6">
               <h1 class="text-xs xl:text-sm font-bold tracking-wide">
-                <span :style="{ color: sportColor }">FANTASY {{ currentSportName.toUpperCase() }}</span>
+                <span class="text-dark-textSecondary">FANTASY {{ currentSportName.toUpperCase() }}</span>
                 <span class="text-dark-textMuted mx-2">—</span>
                 <span class="text-dark-text">ULTIMATE DASHBOARD</span>
               </h1>
@@ -198,7 +198,7 @@
               <button
                 @click="showLeagueDropdown = !showLeagueDropdown"
                 class="flex items-center gap-2 px-2 py-1 rounded-lg bg-dark-card/50 border border-dark-border/50 hover:border-primary/50 transition-colors"
-                :class="[showLeagueHelper ? 'border-primary/70 shadow-[0_0_12px_rgba(34,197,94,0.35)]' : '', activeLeagueHasPass ? 'border-yellow-500/60 shadow-[0_0_10px_rgba(234,179,8,0.3)]' : '']"
+                :class="[showLeagueHelper ? 'border-primary/70 shadow-[0_0_12px_rgba(34,197,94,0.35)]' : '', activeLeagueHasPass ? 'border-primary/60 shadow-[0_0_10px_rgba(198,255,58,0.3)]' : '']"
               >
                 <template v-if="leagueStore.currentLeague">
                   <img 
@@ -411,7 +411,7 @@
               src="/brand/ufd-primary-dark.png"
               alt="Ultimate Fantasy Dashboard"
               class="relative z-10 object-contain transition-all duration-300 ease-out"
-              :style="{ height: isScrolled ? '32px' : '40px' }"
+              :style="{ height: isScrolled ? '36px' : '48px' }"
             />
           </div>
 
@@ -489,8 +489,8 @@
 
                   <button
                     @click="showLeagueDropdown = !showLeagueDropdown"
-                    class="flex items-center gap-1.5 px-3 py-2 bg-black/20 rounded-lg text-white text-sm"
-                    :class="[showLeagueHelper ? 'ring-1 ring-primary/70 shadow-[0_0_10px_rgba(34,197,94,0.3)]' : '', activeLeagueHasPass ? 'ring-1 ring-yellow-500/60 shadow-[0_0_8px_rgba(234,179,8,0.25)]' : '']"
+                    class="flex items-center gap-1.5 px-3 py-2 bg-dark-card border border-dark-border hover:border-primary/50 rounded-lg text-dark-text text-sm transition-colors"
+                    :class="[showLeagueHelper ? 'border-primary/70 shadow-[0_0_10px_rgba(34,197,94,0.3)]' : '', activeLeagueHasPass ? 'border-primary/60 shadow-[0_0_8px_rgba(198,255,58,0.25)]' : '']"
                   >
                     <template v-if="leagueStore.currentLeague">
                       <img 
@@ -503,11 +503,11 @@
                     <template v-else>
                       <span class="text-primary font-medium">Add</span>
                     </template>
-                    <svg class="w-3 h-3 text-white/70 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-3 h-3 text-dark-textMuted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
-                  
+
                   <!-- Mobile League Dropdown Menu -->
                   <div 
                     v-if="showLeagueDropdown"
@@ -838,7 +838,7 @@
           
           <!-- Sport Title -->
           <div class="px-4 py-3 border-b border-dark-border/50">
-            <span class="font-bold" :style="{ color: sportColor }">{{ currentSportName.toUpperCase() }}</span>
+            <span class="font-bold text-dark-textSecondary">{{ currentSportName.toUpperCase() }}</span>
             <span class="text-dark-textMuted mx-2">—</span>
             <span class="text-dark-text font-medium">DASHBOARD</span>
           </div>
