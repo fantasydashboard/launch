@@ -209,6 +209,23 @@ const profile = computed(() => {
   }
 })
 
+// Honest empty/loading copy. The intelligence here is built on Yahoo H2H
+// category data; an active league that isn't a supported Yahoo category league
+// (e.g. an ESPN category league) should say so rather than imply nothing is
+// selected.
+const emptyStateMessage = computed(() => {
+  if (isYahooCategoryLeague.value && !seasonLoaded.value) return 'Loading your team’s edge…'
+  const id = leagueStore.activeLeagueId
+  if (id && !isYahooCategoryLeague.value) {
+    const platform = leagueStore.activePlatform
+    if (platform && platform !== 'yahoo') {
+      return 'My Team currently supports Yahoo category leagues. Support for this league is on the way.'
+    }
+    return 'My Team is built for head-to-head category leagues. This league type isn’t supported here yet.'
+  }
+  return 'Connect or select a category league to see your team’s edge.'
+})
+
 const weaknesses = computed(() => {
   if (!profile.value) return []
   return computeCategoryWeaknesses(profile.value, categories.value)
@@ -404,7 +421,7 @@ const tierByStatId = computed<Record<string, 'strong' | 'winnable' | 'safe' | 'l
     </section>
 
     <p v-if="!profile" class="text-sm text-dark-textMuted">
-      Connect or select a category league to see your team's edge.
+      {{ emptyStateMessage }}
     </p>
   </div>
 </template>

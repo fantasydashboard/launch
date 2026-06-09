@@ -220,9 +220,9 @@
               </button>
               
               <!-- League Dropdown Menu (only when not scrolled) -->
-              <div 
+              <div
                 v-if="showLeagueDropdown && !isScrolled"
-                class="absolute top-full right-0 mt-2 w-80 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 overflow-hidden"
+                class="absolute top-full left-0 mt-2 w-80 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 overflow-hidden"
               >
                 <!-- All Leagues grouped by sport -->
                 <div v-if="leagueStore.allLeagues && leagueStore.allLeagues.length > 0" class="max-h-96 overflow-y-auto">
