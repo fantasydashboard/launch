@@ -63,6 +63,7 @@ const rows = computed<ProfileRow[]>(() => {
 
 function gapNote(row: ProfileRow): string {
   if (row.tier === 'winnable' && row.gapUp != null) {
+    if (row.gapUp === 0) return `tied with ${ordinal(row.rank - 1)}`
     return `${row.gapUp} from ${ordinal(row.rank - 1)}`
   }
   if (row.tier === 'lost') return 'punt?'

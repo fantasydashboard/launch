@@ -20,7 +20,10 @@ interface RosterRow {
   player: RosterPlayer
   plus: ContribChip[]
   minus: ContribChip[]
-  net: number
+  // Single muted chip for a player's best category when they have no plus chips
+  // (so the row isn't blank). Null when they have plus chips or no contributed cat.
+  topChip: ContribChip | null
+  overallValue: number
   dropReason: string | null
   isWeakLink: boolean
 }
@@ -46,9 +49,9 @@ const dropReasonByKey = computed(() => {
   return map
 })
 
-// Build rows with per-category plus/minus chips, drop/weak-link tags, and a net
-// contribution score. Sort strongest contributors first; drop candidates fall to
-// the bottom (lowest net = fewest helps / most hurts).
+// Build rows with per-category plus/minus chips, drop/weak-link tags, and an
+// overall value (mean percentile across contributed cats). Sort best contributors
+// first by overallValue; drop candidates fall to the bottom (lowest value).
 const rows = computed<RosterRow[]>(() => {
   const weakLink = props.drops?.weakLink ?? null
 
@@ -63,18 +66,27 @@ const rows = computed<RosterRow[]>(() => {
         else if (c.tier === 'minus') minus.push({ statId: c.statId, label })
       }
     }
-    const net = contrib ? contrib.plusCount - contrib.minusCount : 0
+    // When a player has no plus chips, surface their best category as a muted chip
+    // so the row reads as something other than "—". Null topStatId => truly blank.
+    let topChip: ContribChip | null = null
+    if (plus.length === 0 && contrib?.topStatId) {
+      topChip = {
+        statId: contrib.topStatId,
+        label: labelByStatId.value.get(contrib.topStatId) || contrib.topStatId,
+      }
+    }
     return {
       player,
       plus,
       minus,
-      net,
+      topChip,
+      overallValue: contrib?.overallValue ?? 0,
       dropReason: dropReasonByKey.value.get(player.playerKey) ?? null,
       isWeakLink: weakLink !== null && player.playerKey === weakLink,
     }
   })
 
-  return built.sort((a, b) => b.net - a.net)
+  return built.sort((a, b) => b.overallValue - a.overallValue)
 })
 </script>
 
@@ -137,7 +149,11 @@ const rows = computed<RosterRow[]>(() => {
           class="rounded px-1.5 py-0.5 font-mono text-xs text-[#FF5C5C] bg-[#FF5C5C]/10"
         >{{ chip.label }}</span>
         <span
-          v-if="row.plus.length === 0 && row.minus.length === 0"
+          v-if="row.topChip"
+          class="rounded px-1.5 py-0.5 font-mono text-xs text-dark-textMuted bg-dark-border/60"
+        >{{ row.topChip.label }}</span>
+        <span
+          v-if="row.plus.length === 0 && row.minus.length === 0 && !row.topChip"
           class="font-mono text-xs text-dark-textMuted"
         >—</span>
       </span>
