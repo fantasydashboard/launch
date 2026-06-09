@@ -2,7 +2,7 @@
 import { computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { profileFromStandings, type StandingsEntryLike } from '@/recommendations/fromStandings'
-import { buildActionFeed } from '@/recommendations/buildActionFeed'
+import { computeCategoryWeaknesses, computeCategoryStrengths } from '@/recommendations/categorySignals'
 import type { CategoryDef } from '@/recommendations/types'
 import { useFullSeasonCategoryData } from '@/composables/useFullSeasonCategoryData'
 import { isYahooCategoryLeague as isYahooCategoryScoringType } from '@/composables/useIsCategoryLeague'
@@ -174,7 +174,37 @@ const profile = computed(() => {
   }
 })
 
-const feed = computed(() => (profile.value ? buildActionFeed(profile.value, categories.value) : []))
+const weaknesses = computed(() => {
+  if (!profile.value) return []
+  return computeCategoryWeaknesses(profile.value, categories.value)
+    .slice()
+    .sort((a, b) => b.leverage - a.leverage)
+    .slice(0, 4)
+})
+
+const strengths = computed(() => {
+  if (!profile.value) return []
+  return computeCategoryStrengths(profile.value, categories.value)
+    .slice()
+    .sort((a, b) => b.leverage - a.leverage)
+    .slice(0, 4)
+})
+
+// Overall standings rank for the logged-in team.
+// yahooStandings entries carry a numeric `rank` field (set by yahoo.ts:476/648).
+// If that field is missing or zero, fall back to the team's 1-based index in the
+// standings array (which Yahoo returns sorted by position).
+const myOverallRank = computed<number>(() => {
+  if (!myTeamId.value) return 0
+  const entry = (leagueStore.yahooStandings || []).find(
+    (s: any) => String(s.team_id ?? s.team_key) === myTeamId.value
+  )
+  if (!entry) return 0
+  if (entry.rank && Number(entry.rank) > 0) return Number(entry.rank)
+  // Derive from array position as fallback.
+  const idx = (leagueStore.yahooStandings || []).indexOf(entry)
+  return idx >= 0 ? idx + 1 : 0
+})
 
 const record = computed(() => {
   // Derived from the standings entry if available; fall back to empty.
@@ -193,14 +223,19 @@ const record = computed(() => {
       v-if="profile"
       :team-name="profile.teamName"
       :record="record"
-      :rank="0"
+      :rank="myOverallRank"
       :num-teams="profile.numTeams"
       :win-prob="null"
     />
 
-    <section class="space-y-2">
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-dark-textMuted">Your edge this week</h2>
-      <ActionFeed :recommendations="feed" />
+    <section v-if="weaknesses.length > 0" class="space-y-2">
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-dark-textMuted">Where you're losing</h2>
+      <ActionFeed :recommendations="weaknesses" />
+    </section>
+
+    <section v-if="strengths.length > 0" class="space-y-2">
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-dark-textMuted">Your edge</h2>
+      <ActionFeed :recommendations="strengths" />
     </section>
 
     <p v-if="!profile" class="text-sm text-dark-textMuted">
