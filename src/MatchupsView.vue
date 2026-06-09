@@ -3030,7 +3030,7 @@ ${isPlayoffWeek
 // Helper function to load UFD logo as base64 for downloads
 async function loadUFDLogo(): Promise<string> {
   try {
-    const response = await fetch('/UFD_V8.png')
+    const response = await fetch('/brand/ufd-primary-dark.png')
     if (!response.ok) return ''
     const blob = await response.blob()
     return new Promise((resolve) => {

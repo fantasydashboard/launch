@@ -3760,7 +3760,7 @@ async function downloadStandings() {
     // Helper to load logo (same as header)
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V8.png')
+        const response = await fetch('/brand/ufd-primary-dark.png')
         const blob = await response.blob()
         return new Promise((resolve) => {
           const reader = new FileReader()
@@ -4139,11 +4139,11 @@ async function downloadLeaderImage() {
       isDownloadingLeader.value = false
       return
     }
-    
+
     // Load UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V8.png')
+        const response = await fetch('/brand/ufd-primary-dark.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -4343,11 +4343,11 @@ async function downloadTeamDetailImage() {
   try {
     const html2canvas = (await import('html2canvas')).default
     const team = selectedTeamDetail.value
-    
+
     // Load UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V8.png')
+        const response = await fetch('/brand/ufd-primary-dark.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
