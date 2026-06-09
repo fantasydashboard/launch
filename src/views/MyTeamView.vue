@@ -11,6 +11,8 @@ import { useMyRoster } from '@/composables/useMyRoster'
 import { rankAddsForHoles } from '@/players/rankAdds'
 import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
+import { computePlayerContributions } from '@/myteam/contribution'
+import { computeDropCandidates } from '@/myteam/dropCandidates'
 import ActionFeed from '@/components/myteam/ActionFeed.vue'
 import SituationStrip from '@/components/myteam/SituationStrip.vue'
 import CategoryProfile from '@/components/myteam/CategoryProfile.vue'
@@ -18,7 +20,7 @@ import RosterPanel from '@/components/myteam/RosterPanel.vue'
 
 const leagueStore = useLeagueStore()
 const { players, load: loadPlayers } = useAvailablePlayers()
-const { players: rosterPlayers, loading: rosterLoading, loaded: rosterLoaded, load: loadRoster } = useMyRoster()
+const { players: rosterPlayers, pool: rosterPool, loading: rosterLoading, loaded: rosterLoaded, load: loadRoster } = useMyRoster()
 
 // === Wired from the sources recorded in docs/superpowers/my-team-data-sources.md (Task 9 + Task 10) ===
 // No reusable store getter / composable yields the verified StandingsEntryLike[]
@@ -305,6 +307,30 @@ const verdict = computed<string | null>(() => {
   if (hole) parts.push(`Biggest hole: ${hole.headline}.`)
   return parts.length ? parts.join(' ') : null
 })
+
+// === Per-player contribution (season-to-date) vs the league's rostered pool ===
+// Direction-aware spec for each scoring category (lowerIsBetter for rate cats).
+const cats = computed(() =>
+  categories.value.map((c) => ({
+    statId: c.statId,
+    lowerIsBetter: isLowerBetter(c.label || c.name || c.statId),
+  })),
+)
+
+// My players' keys (matches the playerKey shape used by the pool/contribution engine).
+const myPlayerKeys = computed(() => rosterPlayers.value.map((p) => p.playerKey))
+
+// Contribution per my player: which categories they help (plus) / hurt (minus).
+const contributions = computed(() => {
+  if (!rosterPool.value.length || !myPlayerKeys.value.length || !cats.value.length) return []
+  return computePlayerContributions(rosterPool.value, myPlayerKeys.value, cats.value)
+})
+
+// Drop candidates + weak link, derived from the contribution tiers.
+const drops = computed(() => {
+  if (!contributions.value.length) return { candidates: [], weakLink: null }
+  return computeDropCandidates(contributions.value)
+})
 </script>
 
 <template>
@@ -351,6 +377,8 @@ const verdict = computed<string | null>(() => {
         v-else-if="rosterPlayers.length > 0"
         :players="rosterPlayers"
         :categories="categories"
+        :contributions="contributions"
+        :drops="drops"
       />
       <p v-else-if="rosterLoaded" class="text-sm text-dark-textMuted">
         No roster found for your team.

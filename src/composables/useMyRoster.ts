@@ -26,8 +26,23 @@ function normalizeRosterPlayer(raw: any): RosterPlayer {
   }
 }
 
+/** A rostered player anywhere in the league, normalized to the minimum the
+ * contribution engine needs (playerKey + season-total stats). */
+export interface PoolPlayer {
+  playerKey: string
+  stats: Record<string, number>
+}
+
+function normalizePoolPlayer(raw: any): PoolPlayer {
+  return {
+    playerKey: String(raw.player_key ?? raw.player_id ?? ''),
+    stats: raw.stats && typeof raw.stats === 'object' ? { ...raw.stats } : {},
+  }
+}
+
 export function useMyRoster() {
   const players = ref<RosterPlayer[]>([])
+  const pool = ref<PoolPlayer[]>([])
   const loading = ref(false)
   const loaded = ref(false)
 
@@ -53,6 +68,8 @@ export function useMyRoster() {
       if (leagueStore.activeLeagueId !== requestedId) return
 
       const all = raw || []
+      // Expose the full unfiltered rostered pool (used for league-wide percentiles).
+      pool.value = all.map(normalizePoolPlayer)
       // Filter to the logged-in user's team via fantasy_team_key (the full Yahoo
       // team_key). Fall back to the team name when a team_key is unavailable.
       let mine: any[] = []
@@ -73,5 +90,5 @@ export function useMyRoster() {
     }
   }
 
-  return { players, loading, loaded, load }
+  return { players, pool, loading, loaded, load }
 }
