@@ -213,30 +213,46 @@ const record = computed(() => {
   const l = mine?.perCategoryLosses ? Object.values(mine.perCategoryLosses).reduce((a, b) => a + b, 0) : 0
   return `${w}-${l}`
 })
+
+// Terse one-line data verdict, built from the top strength + worst weakness.
+// Each Recommendation.headline is already templated like "2nd in K" / "12th in HR",
+// so we reuse it directly (no prose, no new data). Show only the half that exists
+// when one group is empty; return null to omit the line entirely when neither does.
+const verdict = computed<string | null>(() => {
+  const parts: string[] = []
+  const top = strengths.value[0]
+  const hole = weaknesses.value[0]
+  if (top) parts.push(`Strongest: ${top.headline}.`)
+  if (hole) parts.push(`Biggest hole: ${hole.headline}.`)
+  return parts.length ? parts.join(' ') : null
+})
 </script>
 
 <template>
-  <div class="mx-auto max-w-4xl px-4 py-6 space-y-6">
-    <h1 class="text-2xl font-display font-bold text-dark-text">My Team</h1>
-
+  <div class="mx-auto max-w-6xl px-4 py-6 space-y-6">
     <SituationStrip
       v-if="profile"
       :team-name="profile.teamName"
       :record="record"
       :rank="myOverallRank"
       :num-teams="profile.numTeams"
-      :win-prob="null"
+      :verdict="verdict"
     />
 
-    <section v-if="weaknesses.length > 0" class="space-y-2">
-      <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Where you're losing</h2>
-      <ActionFeed :recommendations="weaknesses" />
-    </section>
+    <div
+      v-if="weaknesses.length > 0 || strengths.length > 0"
+      class="grid gap-6 md:grid-cols-2"
+    >
+      <section v-if="weaknesses.length > 0" class="space-y-2">
+        <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Where you're losing</h2>
+        <ActionFeed :recommendations="weaknesses" />
+      </section>
 
-    <section v-if="strengths.length > 0" class="space-y-2">
-      <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Your edge</h2>
-      <ActionFeed :recommendations="strengths" />
-    </section>
+      <section v-if="strengths.length > 0" class="space-y-2">
+        <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Your edge</h2>
+        <ActionFeed :recommendations="strengths" />
+      </section>
+    </div>
 
     <p v-if="!profile" class="text-sm text-dark-textMuted">
       Connect or select a category league to see your team's edge.
