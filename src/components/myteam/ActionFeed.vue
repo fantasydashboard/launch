@@ -20,9 +20,10 @@ const severityDot: Record<Recommendation['severity'], string> = {
       :key="rec.id"
       :to="rec.evidenceRoute"
       data-test="rec-row"
-      class="flex items-center gap-3 px-4 py-3 hover:bg-dark-border/20 transition-colors"
+      class="flex items-center gap-3 px-4 py-3 hover:bg-dark-border/20 transition-colors focus-visible:outline-none focus-visible:bg-dark-border/30 focus-visible:ring-2 focus-visible:ring-primary"
     >
       <span class="h-2.5 w-2.5 shrink-0 rounded-full" :class="severityDot[rec.severity]" aria-hidden="true" />
+      <span class="sr-only">{{ rec.severity }} priority</span>
       <span class="min-w-0 flex-1">
         <span class="block text-sm font-semibold text-dark-text">{{ rec.headline }}</span>
         <span class="block text-xs text-dark-textMuted">{{ rec.detail }}</span>

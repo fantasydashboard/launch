@@ -25,6 +25,8 @@ describe('ActionFeed', () => {
     expect(wrapper.findAll('[data-test="rec-row"]')).toHaveLength(1)
     expect(wrapper.text()).toContain('12th in Saves')
     expect(wrapper.text()).toContain('You rank 12th of 12 in Saves.')
+    const link = wrapper.findComponent(RouterLinkStub)
+    expect(link.props('to')).toBe('/league')
   })
 
   it('shows an empty state when there are no recommendations', () => {
