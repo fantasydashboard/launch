@@ -233,7 +233,7 @@ function labelFor(statId: string): string {
 
 <template>
   <div class="mx-auto max-w-4xl px-4 py-6 space-y-6">
-    <h1 class="text-2xl font-bold text-dark-text">Players</h1>
+    <h1 class="font-display text-2xl font-bold text-dark-text">Players</h1>
     <p class="text-sm text-dark-textMuted">Top available players for your weakest categories.</p>
 
     <!-- Loading state: data still arriving -->
@@ -253,7 +253,7 @@ function labelFor(statId: string): string {
 
     <!-- Results: per-hole add groups -->
     <section v-for="group in holeAdds" :key="group.hole.statId" class="space-y-2">
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-dark-textMuted">
+      <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-dark-textMuted">
         Adds for {{ group.hole.name }} <span class="text-dark-textMuted/70">(you're {{ group.hole.rank }}th)</span>
       </h2>
       <div class="rounded-xl bg-dark-card border border-dark-border divide-y divide-dark-border/60">

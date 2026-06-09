@@ -19,8 +19,8 @@ defineProps<{ add: Add; statLabel: string }>()
       </span>
     </span>
     <span class="shrink-0 text-right">
-      <span class="block text-sm font-bold text-dark-text">{{ add.statValue }}</span>
-      <span class="block text-xs text-dark-textMuted">{{ statLabel }}</span>
+      <span class="block font-mono text-sm font-bold tabular-nums text-primary">{{ add.statValue }}</span>
+      <span class="block font-mono text-xs tabular-nums text-dark-textMuted">{{ statLabel }}</span>
     </span>
   </div>
 </template>
