@@ -4,13 +4,14 @@
 
 /* CSS Variables for dynamic theming */
 :root {
-  --color-primary: #22c55e; /* Default to football green */
-  --color-primary-rgb: 34, 197, 94;
+  --color-primary: #C6FF3A; /* Electric Lime — the active edge */
+  --color-primary-rgb: 198, 255, 58;
 }
 
 @layer base {
   body {
     @apply antialiased;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: radial-gradient(circle at top, #1c2030, #05060a 55%);
   }
   

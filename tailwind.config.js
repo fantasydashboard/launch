@@ -8,18 +8,26 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: 'var(--color-primary, #22c55e)',
+        primary: 'var(--color-primary, #C6FF3A)',
+        accent: 'var(--color-primary, #C6FF3A)',
+        warn: '#F2B33A',
+        alert: '#FF5C5C',
         dark: {
-          bg: '#05060a',
-          elevated: '#11131a',
-          elevatedSoft: '#181b25',
-          card: '#11131a',
-          cardHover: '#181b25',
-          border: '#262a3a',
-          text: '#f7f7ff',
-          textSecondary: '#b0b3c2',
-          textMuted: '#7b7f92'
+          bg: '#0B0E13',
+          elevated: '#12161F',
+          elevatedSoft: '#181D29',
+          card: '#12161F',
+          cardHover: '#181D29',
+          border: '#222835',
+          text: '#E6EAF2',
+          textSecondary: '#A6AEC0',
+          textMuted: '#8A93A6'
         }
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
       },
       borderRadius: {
         'card': '16px'

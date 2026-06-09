@@ -91,9 +91,10 @@ export const useSportStore = defineStore('sport', () => {
   }
 
   function applyTheme() {
-    const config = SPORT_CONFIGS[activeSport.value]
-    document.documentElement.style.setProperty('--color-primary', config.color)
-    document.documentElement.style.setProperty('--color-primary-rgb', config.colorRgb)
+    // Rebrand (Athletic Terminal): the brand accent is a single fixed Electric Lime
+    // (#C6FF3A), defined in src/style.css :root. We intentionally no longer override
+    // --color-primary per sport so the accent stays lime regardless of active sport.
+    // (Per-sport color is still exposed via primaryColor/sportColor for sport labels.)
   }
 
   // Watch for changes and apply theme
