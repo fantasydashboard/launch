@@ -103,6 +103,11 @@ const router = createRouter({
       component: () => import('@/views/MatchupWrapper.vue')
     },
     {
+      path: '/players',
+      name: 'players',
+      component: () => import('@/views/PlayersWrapper.vue')
+    },
+    {
       path: '/ultimate-tools',
       name: 'ultimate-tools',
       component: () => import('@/views/ProjectionsWrapper.vue'),
