@@ -7,15 +7,18 @@ import type { CategoryDef } from '@/recommendations/types'
 import { useFullSeasonCategoryData } from '@/composables/useFullSeasonCategoryData'
 import { isYahooCategoryLeague as isYahooCategoryScoringType } from '@/composables/useIsCategoryLeague'
 import { useAvailablePlayers } from '@/composables/useAvailablePlayers'
+import { useMyRoster } from '@/composables/useMyRoster'
 import { rankAddsForHoles } from '@/players/rankAdds'
 import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
 import ActionFeed from '@/components/myteam/ActionFeed.vue'
 import SituationStrip from '@/components/myteam/SituationStrip.vue'
 import CategoryProfile from '@/components/myteam/CategoryProfile.vue'
+import RosterPanel from '@/components/myteam/RosterPanel.vue'
 
 const leagueStore = useLeagueStore()
 const { players, load: loadPlayers } = useAvailablePlayers()
+const { players: rosterPlayers, loading: rosterLoading, loaded: rosterLoaded, load: loadRoster } = useMyRoster()
 
 // === Wired from the sources recorded in docs/superpowers/my-team-data-sources.md (Task 9 + Task 10) ===
 // No reusable store getter / composable yields the verified StandingsEntryLike[]
@@ -69,14 +72,23 @@ function maybeLoadPlayers() {
   }
 }
 
+// Load the logged-in user's roster (same Yahoo-category gate) for the Your Roster panel.
+function maybeLoadRoster() {
+  if (isYahooCategoryLeague.value) {
+    loadRoster()
+  }
+}
+
 onMounted(() => {
   maybeLoadSeasonData()
   maybeLoadPlayers()
+  maybeLoadRoster()
 })
 // Reload when the active league changes (e.g. switching into a category league).
 watch(() => leagueStore.activeLeagueId, () => {
   maybeLoadSeasonData()
   maybeLoadPlayers()
+  maybeLoadRoster()
 })
 
 // Matchups to derive from: full-season when loaded, else the single-week store state.
@@ -296,7 +308,7 @@ const verdict = computed<string | null>(() => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl px-4 py-6 space-y-6">
+  <div class="mx-auto max-w-6xl px-4 py-6 space-y-8">
     <SituationStrip
       v-if="profile"
       :team-name="profile.teamName"
@@ -328,6 +340,21 @@ const verdict = computed<string | null>(() => {
         :team-categories="profile.categories"
         :num-teams="profile.numTeams"
       />
+    </section>
+
+    <section v-if="profile" class="space-y-2">
+      <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Your Roster</h2>
+      <p v-if="rosterLoading && rosterPlayers.length === 0" class="text-sm text-dark-textMuted">
+        Loading your roster…
+      </p>
+      <RosterPanel
+        v-else-if="rosterPlayers.length > 0"
+        :players="rosterPlayers"
+        :categories="categories"
+      />
+      <p v-else-if="rosterLoaded" class="text-sm text-dark-textMuted">
+        No roster found for your team.
+      </p>
     </section>
 
     <p v-if="!profile" class="text-sm text-dark-textMuted">
