@@ -13,7 +13,7 @@ import type { Hole } from '@/players/types'
 import AddCard from '@/components/players/AddCard.vue'
 
 const leagueStore = useLeagueStore()
-const { players, load: loadPlayers } = useAvailablePlayers()
+const { players, loaded: playersLoaded, load: loadPlayers } = useAvailablePlayers()
 
 // === BEGIN copied-from-MyTeamView derivation (standings/categories/myTeamId + season load) ===
 // Copied VERBATIM from src/views/MyTeamView.vue so Players and My Team share identical
@@ -63,14 +63,20 @@ function maybeLoadSeasonData() {
   }
 }
 
+function maybeLoadPlayers() {
+  if (isYahooCategoryLeague.value) {
+    loadPlayers()
+  }
+}
+
 onMounted(() => {
   maybeLoadSeasonData()
-  loadPlayers()
+  maybeLoadPlayers()
 })
 // Reload when the active league changes (e.g. switching into a category league).
 watch(() => leagueStore.activeLeagueId, () => {
   maybeLoadSeasonData()
-  loadPlayers()
+  maybeLoadPlayers()
 })
 
 // Matchups to derive from: full-season when loaded, else the single-week store state.
@@ -213,6 +219,13 @@ const holeAdds = computed(() =>
     : [],
 )
 
+// True while we don't yet have a usable profile AND at least one data source is
+// still in flight. Once both data sources report loaded (or profile is available),
+// the loading state ends.
+const isLoading = computed(() =>
+  !profile.value && (!playersLoaded.value || !seasonLoaded.value)
+)
+
 function labelFor(statId: string): string {
   return categories.value.find((c) => c.statId === statId)?.label ?? statId
 }
@@ -223,6 +236,22 @@ function labelFor(statId: string): string {
     <h1 class="text-2xl font-bold text-dark-text">Players</h1>
     <p class="text-sm text-dark-textMuted">Top available players for your weakest categories.</p>
 
+    <!-- Loading state: data still arriving -->
+    <p v-if="isLoading" class="text-sm text-dark-textMuted">
+      Finding your best available adds…
+    </p>
+
+    <!-- No weaknesses: data loaded, but no holes found -->
+    <p v-else-if="holeAdds.length === 0 && profile" class="text-sm text-dark-textMuted">
+      No weak categories right now. You're competitive across the board.
+    </p>
+
+    <!-- Hard data failure: loaded but no profile (should be rare given the wrapper) -->
+    <p v-else-if="holeAdds.length === 0 && !profile" class="text-sm text-dark-textMuted">
+      No data yet — category standings will appear once matchup results are in.
+    </p>
+
+    <!-- Results: per-hole add groups -->
     <section v-for="group in holeAdds" :key="group.hole.statId" class="space-y-2">
       <h2 class="text-sm font-semibold uppercase tracking-wide text-dark-textMuted">
         Adds for {{ group.hole.name }} <span class="text-dark-textMuted/70">(you're {{ group.hole.rank }}th)</span>
@@ -239,9 +268,5 @@ function labelFor(statId: string): string {
         />
       </div>
     </section>
-
-    <p v-if="holeAdds.length === 0" class="text-sm text-dark-textMuted">
-      Connect or select a category league to see suggested adds.
-    </p>
   </div>
 </template>
