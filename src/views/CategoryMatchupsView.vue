@@ -321,7 +321,7 @@
             <div class="sm:overflow-x-auto mt-4">
               <table class="w-full text-sm">
                 <thead><tr class="text-xs text-dark-textMuted border-b border-dark-border/50">
-                  <th class="text-left py-2 px-1 cursor-pointer select-none" @click="sortedCategories.sortBy('name')">
+                  <th class="text-left py-2 px-1 cursor-pointer select-none" @click="sortedCategories.sortBy('name')" tabindex="0" role="button" @keydown.enter="sortedCategories.sortBy('name')" @keydown.space.prevent="sortedCategories.sortBy('name')">
                     Category
                     <span v-if="sortedCategories.sortKey.value === 'name'">{{ sortedCategories.sortDir.value === 'asc' ? '▲' : '▼' }}</span>
                   </th>
