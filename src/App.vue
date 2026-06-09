@@ -136,18 +136,19 @@
           class="relative hidden lg:block"
           style="background: #0B0E13; height: 36px;"
         >
-          <div class="flex items-center justify-end h-9 px-4 xl:px-8">
-            <!-- Sport Title (Desktop) -->
-            <div class="flex items-center gap-6">
-              <h1 class="text-xs xl:text-sm font-bold tracking-wide">
-                <span class="text-dark-textSecondary">FANTASY {{ currentSportName.toUpperCase() }}</span>
-                <span class="text-dark-textMuted mx-2">—</span>
-                <span class="text-dark-text">ULTIMATE DASHBOARD</span>
-              </h1>
-            </div>
+          <div class="flex items-center justify-between h-9 px-4 xl:px-8">
+            <!-- LEFT: Brand logo + League switcher (identity + context) -->
+            <div class="flex items-center gap-3">
+              <router-link to="/my-team" class="flex items-center flex-shrink-0">
+                <img
+                  src="/brand/ufd-primary-dark.png"
+                  alt="Ultimate Fantasy Dashboard"
+                  class="h-7 xl:h-8 object-contain"
+                />
+              </router-link>
 
-            <!-- League Dropdown -->
-            <div class="relative ml-6" ref="leagueDropdownRef">
+              <!-- League Dropdown -->
+              <div class="relative" ref="leagueDropdownRef">
               <!-- League Helper Tooltip (Desktop) -->
               <Transition name="helper-pop">
                 <div
@@ -335,10 +336,41 @@
                 </div>
               </div>
             </div>
+            <!-- /LEFT group (logo + league switcher) -->
+            </div>
+
+            <!-- RIGHT: Tools + context chip + settings -->
+            <div class="flex items-center gap-1">
+              <!-- Tools (Free Tools link + Ultimate Tools upsell CTA) -->
+              <router-link
+                v-for="tool in toolTabs"
+                :key="tool.path"
+                :to="tool.path"
+                class="px-3 py-1 text-xs font-semibold rounded-full transition-colors"
+                :class="[
+                  (tool as any).isUltimate
+                    ? ($route.path === tool.path
+                        ? 'bg-primary text-dark-bg'
+                        : 'text-primary border border-primary/50 hover:bg-primary/15')
+                    : ($route.path === tool.path
+                        ? 'text-primary'
+                        : 'text-dark-textSecondary hover:text-dark-text')
+                ]"
+              >
+                {{ tool.name }}
+              </router-link>
+
+              <!-- Context chip: Week n · season -->
+              <span
+                v-if="leagueStore.currentLeague"
+                class="ml-2 px-2 py-0.5 rounded-full bg-dark-card/50 border border-dark-border/50 text-[11px] font-medium text-dark-textMuted whitespace-nowrap"
+              >
+                Week {{ leagueStore.currentWeek }} · {{ leagueStore.currentSeason }}
+              </span>
 
             <!-- User Menu -->
-            <div class="relative ml-3" data-user-menu>
-              <button 
+            <div class="relative ml-1" data-user-menu>
+              <button
                 @click="showUserMenu = !showUserMenu"
                 class="group p-2 rounded-lg hover:bg-dark-border/30 transition-colors"
                 title="Settings"
@@ -380,6 +412,9 @@
                 </button>
               </div>
             </div>
+            <!-- /User Menu -->
+            </div>
+            <!-- /RIGHT group -->
           </div>
         </header>
 
@@ -389,40 +424,26 @@
           :class="isScrolled ? 'fixed left-0 right-0' : 'relative'"
           :style="{ background: '#12161F', height: '56px', top: isScrolled ? (((isOnActiveTrial || isTrialExpired) && !isPaid) ? '33px' : '0') : 'auto' }"
         >
-          <!-- Logo Container - Fits within combined headers, never goes below green menu -->
-          <div 
-            class="absolute left-0 z-50 hidden lg:flex items-center pl-4 xl:pl-6 transition-all duration-300 ease-out"
-            :style="{ 
-              top: isScrolled ? '4px' : '-32px',
-              height: isScrolled ? '48px' : '88px'
-            }"
+          <!-- Logo Container (desktop) — only when scrolled, since Tier 1 (with the logo) has scrolled away -->
+          <div
+            v-if="isScrolled"
+            class="absolute left-0 z-50 hidden lg:flex items-center pl-4 xl:pl-6"
+            style="top: 4px; height: 48px;"
           >
-            <!-- Dark gradient behind logo - full height coverage -->
-            <div 
-              class="absolute -left-4 xl:-left-6 transition-all duration-300 ease-out"
-              :style="{ 
-                background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%)', 
-                width: isScrolled ? '300px' : '420px',
-                height: isScrolled ? '56px' : '92px',
-                top: isScrolled ? '-4px' : '0'
-              }"
+            <!-- Dark gradient behind logo -->
+            <div
+              class="absolute -left-4 xl:-left-6"
+              style="background: linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%); width: 300px; height: 56px; top: -4px;"
             ></div>
             <img
               src="/brand/ufd-primary-dark.png"
               alt="Ultimate Fantasy Dashboard"
-              class="relative z-10 object-contain transition-all duration-300 ease-out"
-              :style="{ height: isScrolled ? '36px' : '48px' }"
+              class="relative z-10 object-contain"
+              style="height: 36px;"
             />
           </div>
 
-          <!-- Dark gradient on left when scrolled (for nav background) -->
-          <div 
-            class="absolute left-0 top-0 bottom-0 hidden lg:block pointer-events-none transition-opacity duration-300"
-            :class="isScrolled ? 'opacity-100' : 'opacity-0'"
-            style="background: linear-gradient(to right, #0a0c14 0%, #0a0c14 55%, transparent 100%); width: 300px;"
-          ></div>
-          
-          <div class="flex items-center justify-end h-14 px-4 xl:px-8 relative">
+          <div class="flex items-center justify-start h-14 px-4 xl:px-8 relative">
             <!-- Mobile/Tablet: Logo + Dashboards Button + League Dropdown -->
             <div class="lg:hidden flex items-center justify-between w-full">
               <!-- Mobile logo with gradient background -->
@@ -617,29 +638,29 @@
               </div>
             </div>
             
-            <!-- Desktop: Menu Items in rounded container with proper spacing -->
-            <div class="hidden lg:flex items-center">
-              <div class="inline-flex items-center gap-1 bg-black/30 rounded-full px-2 py-1.5">
+            <!-- Desktop: left-aligned section tabs (underline active state) -->
+            <div
+              class="hidden lg:flex items-center flex-1 transition-all duration-300"
+              :class="isScrolled ? 'pl-[260px] xl:pl-[280px]' : ''"
+            >
+              <div class="flex items-stretch h-14 gap-1 xl:gap-2">
                 <router-link
-                  v-for="tab in tabs"
+                  v-for="tab in sectionTabs"
                   :key="tab.path"
                   :to="tab.path"
-                  class="px-3 xl:px-4 py-1.5 text-sm font-semibold rounded-full transition-all duration-200"
+                  class="relative flex items-center px-2 xl:px-3 text-sm font-semibold border-b-2 transition-colors duration-200"
                   :class="[
-                    tab.isUltimate
-                      ? ($route.path === tab.path
-                          ? 'bg-primary text-dark-bg shadow-md'
-                          : 'text-primary border border-primary/50 hover:bg-primary/15')
-                      : ($route.path === tab.path
-                          ? 'bg-primary text-dark-bg shadow-md'
-                          : 'text-dark-textSecondary hover:text-dark-text hover:bg-white/10')
+                    $route.path === tab.path
+                      ? 'text-primary border-primary'
+                      : 'text-dark-textSecondary border-transparent hover:text-dark-text'
                   ]"
                 >
                   {{ tab.name }}
                 </router-link>
               </div>
-              
+
               <!-- League & User controls when scrolled (since top header is hidden) -->
+              <div class="flex-1"></div>
               <div v-if="isScrolled" class="ml-4 flex items-center gap-2">
                 <!-- Compact League Selector with Dropdown -->
                 <div class="relative" ref="scrolledLeagueDropdownRef">
@@ -1197,9 +1218,14 @@ const tabs = computed(() => [
   { name: 'Power Rankings', path: '/power-rankings' },
   { name: 'Draft', path: '/draft' },
   { name: 'History', path: '/history' },
-  { name: 'Free Tools', path: '/free-tools' },
-  { name: 'Ultimate Tools', path: '/ultimate-tools', isUltimate: true }
+  { name: 'Free Tools', path: '/free-tools', isTool: true },
+  { name: 'Ultimate Tools', path: '/ultimate-tools', isUltimate: true, isTool: true }
 ])
+
+// Section tabs (Tier 2 nav) — exclude the tools, which live in Tier 1
+const sectionTabs = computed(() => tabs.value.filter((t: any) => !t.isTool))
+// Tool tabs (Tier 1 utility bar): Free Tools + Ultimate Tools
+const toolTabs = computed(() => tabs.value.filter((t: any) => (t as any).isTool))
 
 // Available sports for grouping leagues
 const sportOrder = ['football', 'basketball', 'baseball', 'hockey']
