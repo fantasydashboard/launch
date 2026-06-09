@@ -18,20 +18,19 @@ interface ProfileRow {
   gapUp: number | null
 }
 
-// Lower tier index = higher in the list. Winnable first (actionable), then lost,
-// then safe, then strong.
+// Winnable rows first (actionable); all others sorted by rank ascending.
 const TIER_ORDER: Record<CategoryGap['tier'], number> = {
   winnable: 0,
+  strong: 1,
+  safe: 1,
   lost: 1,
-  safe: 2,
-  strong: 3,
 }
 
 const MARKER_COLOR: Record<CategoryGap['tier'], string> = {
   strong: 'bg-primary',
   winnable: 'bg-[#F2B33A]',
   safe: 'bg-dark-textMuted',
-  lost: 'bg-[#FF5C5C]',
+  lost: 'bg-dark-textMuted',
 }
 
 const rows = computed<ProfileRow[]>(() => {
@@ -66,7 +65,6 @@ function gapNote(row: ProfileRow): string {
     if (row.gapUp === 0) return `tied with ${ordinal(row.rank - 1)}`
     return `${row.gapUp} from ${ordinal(row.rank - 1)}`
   }
-  if (row.tier === 'lost') return 'punt?'
   return ''
 }
 </script>
@@ -98,8 +96,7 @@ function gapNote(row: ProfileRow): string {
       </span>
       <span
         v-if="gapNote(row)"
-        class="w-24 shrink-0 text-right text-[11px] font-mono"
-        :class="row.tier === 'winnable' ? 'text-[#F2B33A]' : 'text-[#FF5C5C]/70'"
+        class="w-24 shrink-0 text-right text-[11px] font-mono text-[#F2B33A]"
       >
         {{ gapNote(row) }}
       </span>
@@ -116,8 +113,7 @@ function gapNote(row: ProfileRow): string {
       class="px-4 py-2 text-[11px] font-mono text-dark-textMuted border-t border-dark-border/40"
     >
       <span class="text-primary">lime</span> strong ·
-      <span class="text-[#F2B33A]">amber</span> winnable ·
-      <span class="text-[#FF5C5C]">red</span> lost
+      <span class="text-[#F2B33A]">amber</span> winnable
     </p>
   </div>
 </template>

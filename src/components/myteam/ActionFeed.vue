@@ -43,10 +43,6 @@ const severityDot: Record<Recommendation['severity'], string> = {
             class="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-mono font-semibold leading-none"
             style="background: rgba(242,179,58,0.15); color: #F2B33A;"
           >winnable</span>
-          <span
-            v-else-if="tierByStatId && tierByStatId[rec.statId] === 'lost'"
-            class="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-mono font-semibold leading-none text-dark-textMuted opacity-60"
-          >punt?</span>
         </span>
         <span class="block text-xs text-dark-textMuted">{{ rec.detail }}</span>
         <span
