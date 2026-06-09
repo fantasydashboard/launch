@@ -14,7 +14,11 @@ export function rankAddsForHoles(
   return holes.map((hole) => {
     const pct = percentileInPool(players, hole.statId, hole.lowerIsBetter)
     const adds: Add[] = players
-      .filter((pl) => (pct.get(pl.playerKey) ?? 0) > 0)
+      .filter(
+        (pl) =>
+          (pct.get(pl.playerKey) ?? 0) > 0 &&
+          (hole.lowerIsBetter || (pl.stats[hole.statId] ?? 0) > 0),
+      )
       .map((pl) => ({
         player: pl,
         statId: hole.statId,

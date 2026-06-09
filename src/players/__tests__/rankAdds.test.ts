@@ -28,12 +28,12 @@ describe('rankAddsForHoles', () => {
     expect(sv.adds[0].percentile).toBeGreaterThan(sv.adds[1].percentile)
   })
 
-  it('respects perHole limit and excludes zero-value players', () => {
+  it('excludes zero-value players in higher-is-better holes and missing-stat players', () => {
     const result = rankAddsForHoles(pool, holes, { perHole: 5 })
     const sv = result.find((h) => h.hole.statId === 'SV')!
-    // starter has SV:0 -> still has a stat value 0, but percentile is lowest;
-    // hitter has no SV -> percentile 0 -> excluded.
-    expect(sv.adds.some((a) => a.player.playerKey === 'hitter')).toBe(false)
+    // starter has SV:0 -> excluded (higher-is-better, zero value is useless)
+    // hitter has no SV -> percentile 0 -> excluded
+    expect(sv.adds.map((a) => a.player.playerKey)).toEqual(['closer1', 'closer2'])
   })
 
   it('returns empty adds for a hole no one supplies', () => {

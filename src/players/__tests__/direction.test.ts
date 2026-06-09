@@ -7,9 +7,14 @@ describe('isLowerBetter', () => {
     expect(isLowerBetter('whip')).toBe(true)
     expect(isLowerBetter('L')).toBe(true)
   })
+  it('is true for Yahoo MLB numeric stat_ids for ratio categories', () => {
+    expect(isLowerBetter('26')).toBe(true)
+    expect(isLowerBetter('27')).toBe(true)
+  })
   it('is false for counting/positive cats', () => {
     expect(isLowerBetter('HR')).toBe(false)
     expect(isLowerBetter('SV')).toBe(false)
     expect(isLowerBetter('AVG')).toBe(false)
+    expect(isLowerBetter('BB')).toBe(false)
   })
 })

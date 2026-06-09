@@ -9,6 +9,6 @@ export function normalizeFreeAgent(raw: any): AvailablePlayer {
     headshot: raw.headshot ? String(raw.headshot) : undefined,
     percentOwned: typeof raw.percent_owned === 'number' ? raw.percent_owned : 0,
     status: raw.status ? String(raw.status) : '',
-    stats: raw.stats && typeof raw.stats === 'object' ? raw.stats : {},
+    stats: raw.stats && typeof raw.stats === 'object' ? { ...raw.stats } : {},
   }
 }
