@@ -29,14 +29,20 @@ const { seasonMatchups, categoryLabels, loaded: seasonLoaded, load: loadSeasonDa
   useFullSeasonCategoryData()
 
 // True when the active league is a Yahoo H2H category league (roto is out of scope).
+// Mirrors the wrapper predicate: currentLeague?.scoring_type first, then the saved
+// league for activeLeagueId, then falls back to matchup data when scoring_type is
+// unknown (kept so the view still loads when the saved record hasn't synced yet).
 const isYahooCategoryLeague = computed(() => {
   const id = leagueStore.activeLeagueId
   if (!id) return false
+  // 1. currentLeague signal (same first branch as MyTeamWrapper / MatchupWrapper).
+  if (isYahooCategoryScoringType(leagueStore.currentLeague?.scoring_type)) return true
+  // 2. Saved-league signal.
   const saved = leagueStore.savedLeagues?.find((l: any) => l.league_id === id)
   if (saved?.platform && saved.platform !== 'yahoo') return false
   const st = saved?.scoring_type || ''
   if (st) return isYahooCategoryScoringType(st)
-  // Fall back to inspecting matchup data when scoring_type is unknown.
+  // 3. Fall back to inspecting matchup data when scoring_type is unknown.
   return (leagueStore.yahooMatchups || []).some(
     (m: any) => m?.is_category_league || m?.stat_winners?.length
   )
