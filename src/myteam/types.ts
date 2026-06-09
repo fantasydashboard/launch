@@ -12,6 +12,10 @@ export interface PlayerContribution {
   contribs: PlayerCategoryContrib[]
   plusCount: number
   minusCount: number
+  /** Mean of this player's per-category percentiles across only the categories they contribute to (0..1). */
+  overallValue: number
+  /** statId of the player's highest-percentile contributed category (null if none). */
+  topStatId: string | null
 }
 
 export interface CategoryGap {

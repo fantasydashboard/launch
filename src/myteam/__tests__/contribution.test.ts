@@ -77,4 +77,90 @@ describe('computePlayerContributions', () => {
     const result = computePlayerContributions(pool, ['m1', 'm2'], [{ statId: 'HR', lowerIsBetter: false }])
     expect(result.map((r) => r.playerKey).sort()).toEqual(['m1', 'm2'])
   })
+
+  it('overallValue = mean of contributed-category percentiles; balanced mid player is sensible', () => {
+    // 3 hitting cats. "mid" is squarely middle in each across a 5-player pool.
+    const cats = [
+      { statId: 'HR', lowerIsBetter: false },
+      { statId: 'R', lowerIsBetter: false },
+      { statId: 'RBI', lowerIsBetter: false },
+    ]
+    const pool = [
+      p('mid', { HR: 15, R: 50, RBI: 50 }),
+      p('a', { HR: 5, R: 30, RBI: 30 }),
+      p('b', { HR: 10, R: 40, RBI: 40 }),
+      p('c', { HR: 20, R: 60, RBI: 60 }),
+      p('d', { HR: 25, R: 70, RBI: 70 }),
+    ]
+    const result = computePlayerContributions(pool, ['mid'], cats)
+    const mid = result.find((r) => r.playerKey === 'mid')!
+    // mid is ranked 3rd of 5 in each cat → percentile (5-2)/5 = 0.6 each → mean 0.6.
+    expect(mid.overallValue).toBeCloseTo(0.6, 5)
+    expect(mid.overallValue).toBeGreaterThan(0.4)
+    expect(mid.overallValue).toBeLessThan(0.8)
+  })
+
+  it('scrub low everywhere has a low overallValue', () => {
+    const cats = [
+      { statId: 'HR', lowerIsBetter: false },
+      { statId: 'R', lowerIsBetter: false },
+    ]
+    const pool = [
+      p('scrub', { HR: 1, R: 5 }),
+      p('a', { HR: 20, R: 60 }),
+      p('b', { HR: 30, R: 70 }),
+      p('c', { HR: 40, R: 80 }),
+      p('d', { HR: 50, R: 90 }),
+    ]
+    const result = computePlayerContributions(pool, ['scrub'], cats)
+    const scrub = result.find((r) => r.playerKey === 'scrub')!
+    // last of 5 in each → percentile (5-4)/5 = 0.2 each → mean 0.2.
+    expect(scrub.overallValue).toBeCloseTo(0.2, 5)
+    expect(scrub.overallValue).toBeLessThan(0.35)
+  })
+
+  it('topStatId is the highest-percentile contributed category', () => {
+    const cats = [
+      { statId: 'HR', lowerIsBetter: false },
+      { statId: 'SB', lowerIsBetter: false },
+    ]
+    const pool = [
+      // mine: best in SB (1st of 4), worst in HR (last of 4)
+      p('mine', { HR: 1, SB: 40 }),
+      p('a', { HR: 10, SB: 5 }),
+      p('b', { HR: 20, SB: 10 }),
+      p('c', { HR: 30, SB: 15 }),
+    ]
+    const result = computePlayerContributions(pool, ['mine'], cats)
+    const mine = result.find((r) => r.playerKey === 'mine')!
+    expect(mine.topStatId).toBe('SB')
+  })
+
+  it('overallValue only counts categories the player actually has (pitcher not penalized for hitting)', () => {
+    const cats = [
+      { statId: 'HR', lowerIsBetter: false }, // hitting
+      { statId: 'K', lowerIsBetter: false }, // pitching
+    ]
+    const pool = [
+      // pitcher: no HR (absent), strong K
+      p('pitcher', { K: 200 }),
+      p('hitterA', { HR: 30, K: 50 }),
+      p('hitterB', { HR: 20, K: 100 }),
+      p('hitterC', { HR: 10, K: 150 }),
+    ]
+    const result = computePlayerContributions(pool, ['pitcher'], cats)
+    const pitcher = result.find((r) => r.playerKey === 'pitcher')!
+    // Only K counted. Among 4 with K, pitcher has 200 → 1st → percentile (4-0)/4 = 1.0.
+    expect(pitcher.overallValue).toBeCloseTo(1.0, 5)
+    expect(pitcher.topStatId).toBe('K')
+  })
+
+  it('player with no contributed category → overallValue 0, topStatId null', () => {
+    const cats = [{ statId: 'HR', lowerIsBetter: false }]
+    const pool = [p('mine', {}), p('a', { HR: 10 }), p('b', { HR: 20 })]
+    const result = computePlayerContributions(pool, ['mine'], cats)
+    const mine = result.find((r) => r.playerKey === 'mine')!
+    expect(mine.overallValue).toBe(0)
+    expect(mine.topStatId).toBeNull()
+  })
 })

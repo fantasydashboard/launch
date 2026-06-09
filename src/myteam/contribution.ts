@@ -60,6 +60,12 @@ export function computePlayerContributions(
     let plusCount = 0
     let minusCount = 0
 
+    // Track percentiles only for categories the player actually contributes to,
+    // so a hitter is judged on hitting cats and a pitcher on pitching cats.
+    const contributedPercentiles: number[] = []
+    let topStatId: string | null = null
+    let topPercentile = -Infinity
+
     for (const cat of cats) {
       const hasIt = hasStat(player, cat.statId)
       const value = typeof player.stats[cat.statId] === 'number' ? player.stats[cat.statId] : 0
@@ -77,8 +83,19 @@ export function computePlayerContributions(
         minusCount++
       }
       contribs.push({ statId: cat.statId, tier, value, percentile })
+
+      contributedPercentiles.push(percentile)
+      if (percentile > topPercentile) {
+        topPercentile = percentile
+        topStatId = cat.statId
+      }
     }
 
-    return { playerKey: player.playerKey, contribs, plusCount, minusCount }
+    const overallValue =
+      contributedPercentiles.length === 0
+        ? 0
+        : contributedPercentiles.reduce((sum, p) => sum + p, 0) / contributedPercentiles.length
+
+    return { playerKey: player.playerKey, contribs, plusCount, minusCount, overallValue, topStatId }
   })
 }

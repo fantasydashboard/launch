@@ -16,19 +16,20 @@ interface CatSpec {
   lowerIsBetter: boolean
 }
 
-const WINNABLE_GAP = 2 // gapUp this small (and not already strong) = worth attacking
-const LOST_GAP = 3 // bottom-third AND gapUp larger than this = punt candidate
+const WINNABLE_GAP = 1 // gapUp this small (tied or one win away) = eligible to attack
+const MAX_WINNABLE = 3 // cap winnable on the few genuinely-close opportunities
 
 /**
  * Per-category position + gap relative to the teams directly above/below me by
  * `perCategoryWins[statId]`. gapUp = wins needed to pass the team ranked above
- * (null if I'm 1st); gapDown = my cushion over the team below (null if last).
+ * (null if I'm 1st, 0 if tied); gapDown = my cushion over the team below (null if last).
  *
- * Tier:
- *  - strong:   rank <= numTeams / 3 (top third)
- *  - winnable: not strong and gapUp is small (<= WINNABLE_GAP)
- *  - lost:     bottom third (rank > numTeams * 2/3) and gapUp is large (> LOST_GAP)
- *  - safe:     otherwise
+ * Winnable is assigned SELECTIVELY across the whole set, not per-category independently:
+ *  - strong:   rank <= numTeams / 3 (top third), assigned first.
+ *  - eligible-winnable: NON-strong, behind (gapUp !== null), gapUp <= 1, and not dead-last
+ *      (rank === numTeams) unless tied (gapUp === 0). Sort eligible by gapUp asc then rank asc;
+ *      take the top 3 → winnable.
+ *  - of the remaining behind categories: lost if rank > numTeams * 2/3 (bottom third), else safe.
  */
 export function computeCategoryGaps(
   standings: StandingRow[],
@@ -39,7 +40,8 @@ export function computeCategoryGaps(
   const topThird = numTeams / 3
   const bottomThird = (numTeams * 2) / 3
 
-  return cats.map((cat) => {
+  // First pass: rank, gaps, and the base 'strong' classification.
+  const base = cats.map((cat) => {
     const rank = profile.categories.find((c) => c.statId === cat.statId)?.rank ?? numTeams
 
     // Sort teams by per-category wins, best first. Higher wins = better rank.
@@ -55,17 +57,36 @@ export function computeCategoryGaps(
     if (myIdx > 0) gapUp = sorted[myIdx - 1].wins - myWins
     if (myIdx >= 0 && myIdx < sorted.length - 1) gapDown = myWins - sorted[myIdx + 1].wins
 
+    const strong = rank <= topThird
+
+    return { statId: cat.statId, rank, numTeams, gapUp, gapDown, strong }
+  })
+
+  // Select winnable across the whole non-strong, behind set.
+  const eligible = base
+    .filter((b) => {
+      if (b.strong) return false
+      if (b.gapUp === null) return false // 1st place (not behind)
+      if (b.gapUp > WINNABLE_GAP) return false
+      // dead-last only qualifies if tied
+      if (b.rank === numTeams && b.gapUp !== 0) return false
+      return true
+    })
+    .sort((a, b) => (a.gapUp! - b.gapUp!) || (a.rank - b.rank))
+
+  const winnableSet = new Set(eligible.slice(0, MAX_WINNABLE).map((b) => b.statId))
+
+  return base.map((b) => {
     let tier: CategoryGap['tier']
-    if (rank <= topThird) {
+    if (b.strong) {
       tier = 'strong'
-    } else if (gapUp !== null && gapUp <= WINNABLE_GAP) {
+    } else if (winnableSet.has(b.statId)) {
       tier = 'winnable'
-    } else if (rank > bottomThird && gapUp !== null && gapUp > LOST_GAP) {
+    } else if (b.rank > bottomThird) {
       tier = 'lost'
     } else {
       tier = 'safe'
     }
-
-    return { statId: cat.statId, rank, numTeams, tier, gapUp, gapDown }
+    return { statId: b.statId, rank: b.rank, numTeams: b.numTeams, tier, gapUp: b.gapUp, gapDown: b.gapDown }
   })
 }
