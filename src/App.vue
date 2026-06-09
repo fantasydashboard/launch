@@ -132,9 +132,9 @@
         <LeaguePassBanner />
       <div class="relative z-40">
         <!-- Top Header Bar (Dark) - Short, scrolls away naturally -->
-        <header 
+        <header
           class="relative hidden lg:block"
-          style="background: #0a0c14; height: 36px;"
+          style="background: #0B0E13; height: 36px;"
         >
           <div class="flex items-center justify-end h-9 px-4 xl:px-8">
             <!-- Sport Title (Desktop) -->
@@ -387,7 +387,7 @@
         <nav 
           class="z-40 overflow-visible transition-all duration-300"
           :class="isScrolled ? 'fixed left-0 right-0' : 'relative'"
-          :style="{ background: sportColor, height: '56px', top: isScrolled ? (((isOnActiveTrial || isTrialExpired) && !isPaid) ? '33px' : '0') : 'auto' }"
+          :style="{ background: '#12161F', height: '56px', top: isScrolled ? (((isOnActiveTrial || isTrialExpired) && !isPaid) ? '33px' : '0') : 'auto' }"
         >
           <!-- Logo Container - Fits within combined headers, never goes below green menu -->
           <div 
@@ -407,11 +407,11 @@
                 top: isScrolled ? '-4px' : '0'
               }"
             ></div>
-            <img 
-              src="/UFD_V8.png" 
-              alt="Ultimate Fantasy Dashboard" 
+            <img
+              src="/brand/ufd-primary-dark.png"
+              alt="Ultimate Fantasy Dashboard"
               class="relative z-10 object-contain transition-all duration-300 ease-out"
-              :style="{ height: isScrolled ? '44px' : '82px' }"
+              :style="{ height: isScrolled ? '32px' : '40px' }"
             />
           </div>
 
@@ -431,7 +431,7 @@
                   class="absolute -left-4 top-1/2 -translate-y-1/2"
                   style="background: linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%); width: 160px; height: 56px;"
                 ></div>
-                <img src="/UFD_V8.png" alt="UFD" class="h-10 object-contain relative z-10" />
+                <img src="/brand/ufd-primary-dark.png" alt="UFD" class="h-9 object-contain relative z-10" />
               </div>
               <div class="flex items-center gap-2">
                 <button 
@@ -626,13 +626,13 @@
                   :to="tab.path"
                   class="px-3 xl:px-4 py-1.5 text-sm font-semibold rounded-full transition-all duration-200"
                   :class="[
-                    tab.isUltimate 
-                      ? ($route.path === tab.path 
-                          ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 shadow-md' 
-                          : 'text-yellow-300 border border-yellow-400/50 hover:bg-yellow-500/20')
+                    tab.isUltimate
+                      ? ($route.path === tab.path
+                          ? 'bg-primary text-dark-bg shadow-md'
+                          : 'text-primary border border-primary/50 hover:bg-primary/15')
                       : ($route.path === tab.path
-                          ? 'bg-white text-gray-900 shadow-md'
-                          : 'text-white hover:bg-white/15')
+                          ? 'bg-primary text-dark-bg shadow-md'
+                          : 'text-dark-textSecondary hover:text-dark-text hover:bg-white/10')
                   ]"
                 >
                   {{ tab.name }}
@@ -825,7 +825,7 @@
         >
           <!-- Header -->
           <div class="flex items-center justify-between p-4 border-b border-dark-border">
-            <img src="/UFD_V8.png" alt="UFD" class="h-10 object-contain" />
+            <img src="/brand/ufd-primary-dark.png" alt="UFD" class="h-9 object-contain" />
             <button 
               @click="showMobileMenu = false"
               class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors"
@@ -852,10 +852,10 @@
               @click="showMobileMenu = false"
               class="flex items-center justify-between p-4 rounded-xl transition-all"
               :class="[
-                tab.isUltimate 
-                  ? ($route.path === tab.path 
-                      ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30' 
-                      : 'border border-yellow-500/20 hover:bg-yellow-500/10')
+                tab.isUltimate
+                  ? ($route.path === tab.path
+                      ? 'bg-primary/15 border border-primary/40'
+                      : 'border border-primary/30 hover:bg-primary/10')
                   : ($route.path === tab.path
                       ? 'bg-primary/10 border border-primary/30'
                       : 'border border-dark-border hover:bg-dark-border/30')
@@ -864,7 +864,7 @@
               <span 
                 class="text-lg font-bold"
                 :class="[
-                  tab.isUltimate ? 'text-yellow-500' : ($route.path === tab.path ? 'text-primary' : 'text-dark-text')
+                  tab.isUltimate ? 'text-primary' : ($route.path === tab.path ? 'text-primary' : 'text-dark-text')
                 ]"
               >
                 {{ tab.name }}
@@ -872,7 +872,7 @@
               <svg 
                 class="w-5 h-5"
                 :class="[
-                  tab.isUltimate ? 'text-yellow-500' : ($route.path === tab.path ? 'text-primary' : 'text-dark-textMuted')
+                  tab.isUltimate ? 'text-primary' : ($route.path === tab.path ? 'text-primary' : 'text-dark-textMuted')
                 ]"
                 fill="none" 
                 stroke="currentColor" 
