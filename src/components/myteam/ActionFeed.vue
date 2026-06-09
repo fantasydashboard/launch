@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import type { Recommendation } from '@/recommendations/types'
 
-defineProps<{ recommendations: Recommendation[] }>()
+defineProps<{
+  recommendations: Recommendation[]
+  // Optional: top available add per category, keyed by statId. When a row's
+  // statId has an entry, a muted "Add: {name} ({statValue} {label})" line is
+  // rendered beneath the headline (weakness feed only).
+  addsByStatId?: Record<string, { name: string; statValue: number; label: string }>
+}>()
 
 const severityDot: Record<Recommendation['severity'], string> = {
   high: 'bg-red-500',
@@ -30,6 +36,13 @@ const severityDot: Record<Recommendation['severity'], string> = {
           :class="rec.kind === 'category-strength' ? 'text-primary' : 'text-dark-text'"
         >{{ rec.headline }}</span>
         <span class="block text-xs text-dark-textMuted">{{ rec.detail }}</span>
+        <span
+          v-if="addsByStatId && addsByStatId[rec.statId]"
+          class="block text-xs text-dark-textMuted"
+        >Add:
+          <span class="text-dark-text">{{ addsByStatId[rec.statId].name }}</span>
+          <span class="font-mono tabular-nums">({{ addsByStatId[rec.statId].statValue }} {{ addsByStatId[rec.statId].label }})</span>
+        </span>
       </span>
       <span class="shrink-0 text-dark-textMuted" aria-hidden="true">&rarr;</span>
     </router-link>

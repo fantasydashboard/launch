@@ -6,10 +6,15 @@ import { computeCategoryWeaknesses, computeCategoryStrengths } from '@/recommend
 import type { CategoryDef } from '@/recommendations/types'
 import { useFullSeasonCategoryData } from '@/composables/useFullSeasonCategoryData'
 import { isYahooCategoryLeague as isYahooCategoryScoringType } from '@/composables/useIsCategoryLeague'
+import { useAvailablePlayers } from '@/composables/useAvailablePlayers'
+import { rankAddsForHoles } from '@/players/rankAdds'
+import { isLowerBetter } from '@/players/direction'
+import type { Hole } from '@/players/types'
 import ActionFeed from '@/components/myteam/ActionFeed.vue'
 import SituationStrip from '@/components/myteam/SituationStrip.vue'
 
 const leagueStore = useLeagueStore()
+const { players, load: loadPlayers } = useAvailablePlayers()
 
 // === Wired from the sources recorded in docs/superpowers/my-team-data-sources.md (Task 9 + Task 10) ===
 // No reusable store getter / composable yields the verified StandingsEntryLike[]
@@ -55,9 +60,23 @@ function maybeLoadSeasonData() {
   }
 }
 
-onMounted(maybeLoadSeasonData)
+// Load the FA pool alongside the season data (same Yahoo-category gate) so we can
+// surface the top available add per weak category inline on each weakness row.
+function maybeLoadPlayers() {
+  if (isYahooCategoryLeague.value) {
+    loadPlayers()
+  }
+}
+
+onMounted(() => {
+  maybeLoadSeasonData()
+  maybeLoadPlayers()
+})
 // Reload when the active league changes (e.g. switching into a category league).
-watch(() => leagueStore.activeLeagueId, maybeLoadSeasonData)
+watch(() => leagueStore.activeLeagueId, () => {
+  maybeLoadSeasonData()
+  maybeLoadPlayers()
+})
 
 // Matchups to derive from: full-season when loaded, else the single-week store state.
 const sourceMatchups = computed(() =>
@@ -182,6 +201,53 @@ const weaknesses = computed(() => {
     .slice(0, 4)
 })
 
+// === Close the loop: top available add per weak category ===
+// Map each weakness Recommendation to a Hole (exactly as PlayersView does), then
+// rank the FA pool for those holes (1 add per hole). Reuses rankAddsForHoles so the
+// "Add: …" line on a weakness row matches the #1 player on /players?cat=<statId>.
+const holes = computed<Hole[]>(() => {
+  if (!profile.value) return []
+  return weaknesses.value.map((rec) => {
+    const cat = categories.value.find((c) => c.statId === rec.statId)
+    const teamCat = profile.value!.categories.find((c) => c.statId === rec.statId)
+    return {
+      statId: rec.statId,
+      name: cat?.name ?? rec.statId,
+      rank: teamCat?.rank ?? 0,
+      lowerIsBetter: cat ? isLowerBetter(cat.label || cat.name || cat.statId) : false,
+    }
+  })
+})
+
+// statId -> top add (for the inline "Add: {name} ({statValue} {label})" line).
+const addsByStatId = computed<Record<string, { name: string; statValue: number; label: string }>>(() => {
+  if (!holes.value.length || !players.value.length) return {}
+  const groups = rankAddsForHoles(players.value, holes.value, { perHole: 1 })
+  const map: Record<string, { name: string; statValue: number; label: string }> = {}
+  for (const group of groups) {
+    const top = group.adds[0]
+    if (!top) continue
+    const cat = categories.value.find((c) => c.statId === group.hole.statId)
+    map[group.hole.statId] = {
+      name: top.player.name,
+      statValue: top.statValue,
+      label: cat?.label ?? group.hole.statId,
+    }
+  }
+  return map
+})
+
+// Weakness rows with deep-link routes: /players?cat=<statId> when an add exists for
+// that category, else plain /players (no anchor). Headline/severity/etc. unchanged.
+const weaknessRecommendations = computed(() =>
+  weaknesses.value.map((rec) => ({
+    ...rec,
+    evidenceRoute: addsByStatId.value[rec.statId]
+      ? `/players?cat=${rec.statId}`
+      : '/players',
+  })),
+)
+
 const strengths = computed(() => {
   if (!profile.value) return []
   return computeCategoryStrengths(profile.value, categories.value)
@@ -245,7 +311,7 @@ const verdict = computed<string | null>(() => {
     >
       <section v-if="weaknesses.length > 0" class="space-y-2">
         <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Where you're losing</h2>
-        <ActionFeed :recommendations="weaknesses" />
+        <ActionFeed :recommendations="weaknessRecommendations" :adds-by-stat-id="addsByStatId" />
       </section>
 
       <section v-if="strengths.length > 0" class="space-y-2">
