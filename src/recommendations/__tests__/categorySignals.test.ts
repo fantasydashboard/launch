@@ -30,7 +30,7 @@ describe('computeCategoryWeaknesses', () => {
     expect(rec.headline).toBe('11th in Saves')
     expect(rec.kind).toBe('category-weakness')
     expect(rec.severity).toBe('high')
-    expect(rec.evidenceRoute).toBe('/league')
+    expect(rec.evidenceRoute).toBe('/')
     expect(rec.leverage).toBeGreaterThan(0.5)
   })
 })

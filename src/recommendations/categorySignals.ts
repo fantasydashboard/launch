@@ -21,7 +21,7 @@ export function computeCategoryWeaknesses(
         statId: c.statId,
         headline: `${ordinal(c.rank)} in ${catName(c.statId, cats)}`,
         detail: `You rank ${ordinal(c.rank)} of ${profile.numTeams} in ${catName(c.statId, cats)}.`,
-        evidenceRoute: '/league',
+        evidenceRoute: '/',
         leverage: c.rank / profile.numTeams,
       }
     })
@@ -41,7 +41,7 @@ export function computeCategoryStrengths(
       statId: c.statId,
       headline: `${ordinal(c.rank)} in ${catName(c.statId, cats)}`,
       detail: `You rank ${ordinal(c.rank)} of ${profile.numTeams} in ${catName(c.statId, cats)}.`,
-      evidenceRoute: '/league',
+      evidenceRoute: '/',
       leverage: 1 - c.rank / profile.numTeams,
     }))
 }

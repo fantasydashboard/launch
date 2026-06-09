@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useLeagueStore } from '@/stores/league'
+import { isYahooCategoryLeague } from '@/composables/useIsCategoryLeague'
 import CategoryMatchupsView from '@/views/CategoryMatchupsView.vue'
 
 const leagueStore = useLeagueStore()
 
 const isCategoryLeague = computed(() => {
-  const st = (leagueStore.currentLeague?.scoring_type || '').toLowerCase()
-  if (st === 'head' || st.includes('category') || st === 'headcategory' || st === 'h2h_category') return true
+  if (isYahooCategoryLeague(leagueStore.currentLeague?.scoring_type)) return true
   const saved = leagueStore.savedLeagues.find((l) => l.league_id === leagueStore.activeLeagueId)
-  const savedSt = (saved?.scoring_type || '').toLowerCase()
-  return savedSt === 'head' || savedSt.includes('category') || savedSt === 'headcategory' || savedSt === 'h2h_category'
+  return isYahooCategoryLeague(saved?.scoring_type)
 })
 </script>
 

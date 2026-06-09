@@ -11,7 +11,7 @@ const recs: Recommendation[] = [
     statId: 'SV',
     headline: '12th in Saves',
     detail: 'You rank 12th of 12 in Saves.',
-    evidenceRoute: '/league',
+    evidenceRoute: '/',
     leverage: 1,
   },
 ]
@@ -26,7 +26,7 @@ describe('ActionFeed', () => {
     expect(wrapper.text()).toContain('12th in Saves')
     expect(wrapper.text()).toContain('You rank 12th of 12 in Saves.')
     const link = wrapper.findComponent(RouterLinkStub)
-    expect(link.props('to')).toBe('/league')
+    expect(link.props('to')).toBe('/')
   })
 
   it('shows an empty state when there are no recommendations', () => {

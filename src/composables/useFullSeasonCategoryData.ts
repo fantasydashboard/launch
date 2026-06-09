@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { useLeagueStore } from '@/stores/league'
 
 /**
  * Full-season Yahoo category data loader (Task 10 — MyTeamView).
@@ -37,7 +38,7 @@ export function useFullSeasonCategoryData() {
    * Load real category names from Yahoo league settings.
    * Mirrors UnifiedSeasonView.vue:1338-1365 (same getLeagueSettings().stat_categories source).
    */
-  async function loadCategoryLabels(leagueKey: string) {
+  async function loadCategoryLabels(leagueKey: string): Promise<Map<string, CategoryLabel>> {
     try {
       const { yahooService } = await import('@/services/yahoo')
       const settings = await yahooService.getLeagueSettings(leagueKey)
@@ -53,9 +54,10 @@ export function useFullSeasonCategoryData() {
           label: s?.abbr || s?.display_name || s?.name || `S${sid}`
         })
       }
-      categoryLabels.value = map
+      return map
     } catch (e) {
       console.warn('[useFullSeasonCategoryData] Failed to load category labels:', e)
+      return new Map<string, CategoryLabel>()
     }
   }
 
@@ -64,7 +66,7 @@ export function useFullSeasonCategoryData() {
    * Mirrors the multi-week getCategoryMatchups loop used by CategoryMatchupsView.vue:1438-1443,
    * but only collects the raw matchups (with stat_winners) — no derivation here.
    */
-  async function loadSeasonMatchups(leagueKey: string) {
+  async function loadSeasonMatchups(leagueKey: string): Promise<any[]> {
     const { yahooService } = await import('@/services/yahoo')
     const metadata = await yahooService.getLeagueMetadata(leagueKey)
 
@@ -93,7 +95,7 @@ export function useFullSeasonCategoryData() {
         if (m?.stat_winners?.length) flattened.push(m)
       }
     }
-    seasonMatchups.value = flattened
+    return flattened
   }
 
   /**
@@ -101,12 +103,26 @@ export function useFullSeasonCategoryData() {
    */
   async function load(leagueKey: string) {
     if (!leagueKey) return
+    const leagueStore = useLeagueStore()
+    // Capture the active league at the start so a slow, stale load can't overwrite
+    // a newer league's data when it eventually resolves.
+    const requestedLeague = leagueKey
     loading.value = true
     try {
-      await Promise.all([loadCategoryLabels(leagueKey), loadSeasonMatchups(leagueKey)])
+      const [labels, matchups] = await Promise.all([
+        loadCategoryLabels(leagueKey),
+        loadSeasonMatchups(leagueKey),
+      ])
+      // Bail out if the active league changed while this load was in flight.
+      if (leagueStore.activeLeagueId !== requestedLeague) return
+      categoryLabels.value = labels
+      seasonMatchups.value = matchups
       loaded.value = true
     } finally {
-      loading.value = false
+      // Only clear the loading flag for the most recent (non-stale) request.
+      if (leagueStore.activeLeagueId === requestedLeague) {
+        loading.value = false
+      }
     }
   }
 
