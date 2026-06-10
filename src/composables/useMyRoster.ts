@@ -27,15 +27,17 @@ function normalizeRosterPlayer(raw: any): RosterPlayer {
 }
 
 /** A rostered player anywhere in the league, normalized to the minimum the
- * contribution engine needs (playerKey + season-total stats). */
+ * contribution engine needs (playerKey + position + season-total stats). */
 export interface PoolPlayer {
   playerKey: string
+  position: string
   stats: Record<string, number>
 }
 
 function normalizePoolPlayer(raw: any): PoolPlayer {
   return {
     playerKey: String(raw.player_key ?? raw.player_id ?? ''),
+    position: String(raw.position ?? ''),
     stats: raw.stats && typeof raw.stats === 'object' ? { ...raw.stats } : {},
   }
 }

@@ -12,7 +12,9 @@ import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { rankAddsForHoles } from '@/players/rankAdds'
 import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
-import { computePlayerContributions } from '@/myteam/contribution'
+import { computeRosterValue, type CatSpec } from '@/myteam/value'
+import { toEffectiveStats } from '@/myteam/effectiveStats'
+import { classifyCategory } from '@/myteam/categorySide'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
 import { computeCategoryGaps } from '@/myteam/categoryGaps'
 import ActionFeed from '@/components/myteam/ActionFeed.vue'
@@ -391,13 +393,53 @@ const cats = computed(() =>
       })),
 )
 
+// Lookup map: statId -> lowerIsBetter, derived from the platform-correct `cats` computed.
+const lowerBetterByStatId = computed(() => {
+  const m = new Map<string, boolean>()
+  for (const c of cats.value) m.set(c.statId, c.lowerIsBetter)
+  return m
+})
+function isLowerBetterFor(statId: string): boolean {
+  return lowerBetterByStatId.value.get(statId) ?? false
+}
+
+// Full CatSpec array (side + isRatio + volumeStatId) built on top of the existing `cats` computed.
+const catSpecs = computed<CatSpec[]>(() => {
+  const findStatId = (names: string[]): string | undefined => {
+    for (const c of categories.value) {
+      const label = (c.label || c.name || '').toUpperCase().trim()
+      if (names.includes(label)) return c.statId
+    }
+    return undefined
+  }
+  const ipStatId = findStatId(['IP', 'INNINGS PITCHED'])
+  const abStatId = findStatId(['AB', 'AT BATS', 'PA', 'PLATE APPEARANCES'])
+  return categories.value.map((c) => {
+    const { side, isRatio } = classifyCategory(c.label || c.name || c.statId, isLowerBetterFor(c.statId))
+    const lowerIsBetter = isLowerBetterFor(c.statId)
+    return {
+      statId: c.statId,
+      lowerIsBetter,
+      side,
+      isRatio,
+      volumeStatId: isRatio ? (side === 'pit' ? ipStatId : abStatId) : undefined,
+    }
+  })
+})
+
 // My players' keys (matches the playerKey shape used by the pool/contribution engine).
 const myPlayerKeys = computed(() => rosterPlayers.value.map((p) => p.playerKey))
 
 // Contribution per my player: which categories they help (plus) / hurt (minus).
+// Slice 1: effective stats = season-to-date (fgStats=null, fraction=1).
 const contributions = computed(() => {
-  if (!rosterPool.value.length || !myPlayerKeys.value.length || !cats.value.length) return []
-  return computePlayerContributions(rosterPool.value, myPlayerKeys.value, cats.value)
+  if (!rosterPool.value.length || !myPlayerKeys.value.length || !catSpecs.value.length) return []
+  const effectivePool = rosterPool.value.map((p) => ({
+    playerKey: p.playerKey,
+    position: p.position,
+    stats: toEffectiveStats(p.stats, null, catSpecs.value, 1),
+  }))
+  return computeRosterValue(effectivePool, myPlayerKeys.value, catSpecs.value)
 })
 
 // Drop candidates + weak link, derived from the contribution tiers.

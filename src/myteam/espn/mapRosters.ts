@@ -37,6 +37,7 @@ export function mapRostersToPool(teams: EspnTeamRosterLike[]): PoolPlayer[] {
   return teams.flatMap((t) =>
     (t.roster ?? []).map((p) => ({
       playerKey: String(p.playerId),
+      position: p.position ?? '',
       stats: p.stats && typeof p.stats === 'object' ? { ...p.stats } : {},
     })),
   )

@@ -26,7 +26,7 @@ interface RosterRow {
   // Single muted chip for a player's best category when they have no plus chips
   // (so the row isn't blank). Null when they have plus chips or no contributed cat.
   topChip: ContribChip | null
-  overallValue: number
+  valueScore: number
   dropReason: string | null
   isWeakLink: boolean
 }
@@ -58,9 +58,9 @@ const dropReasonByKey = computed(() => {
   return map
 })
 
-// Build rows with per-category plus/minus chips, drop/weak-link tags, and an
-// overall value (mean percentile across contributed cats). Sort best contributors
-// first by overallValue; drop candidates fall to the bottom (lowest value).
+// Build rows with per-category plus/minus chips, drop/weak-link tags, and a
+// role-aware VOR value score. Sort best contributors first by valueScore;
+// drop candidates fall to the bottom (lowest value).
 const rows = computed<RosterRow[]>(() => {
   const weakLink = props.drops?.weakLink ?? null
 
@@ -98,13 +98,13 @@ const rows = computed<RosterRow[]>(() => {
       minus,
       plusOverflow,
       topChip,
-      overallValue: contrib?.overallValue ?? 0,
+      valueScore: contrib?.valueScore ?? 0,
       dropReason: dropReasonByKey.value.get(player.playerKey) ?? null,
       isWeakLink: weakLink !== null && player.playerKey === weakLink,
     }
   })
 
-  return built.sort((a, b) => b.overallValue - a.overallValue)
+  return built.sort((a, b) => b.valueScore - a.valueScore)
 })
 </script>
 
