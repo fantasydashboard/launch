@@ -169,7 +169,7 @@ export function computeRosterValue(
       let tier: PlayerCategoryContrib['tier'] = 'neutral'
       if (percentileVal >= PLUS_THRESHOLD) { tier = 'plus'; plusCount++ }
       else if (cat.lowerIsBetter && percentileVal <= MINUS_THRESHOLD) { tier = 'minus'; minusCount++ }
-      contribs.push({ statId: cat.statId, tier, value, percentile: percentileVal })
+      contribs.push({ statId: cat.statId, tier, value, percentile: percentileVal, z } as PlayerCategoryContrib)
       contributedPercentiles.push(percentileVal)
       if (percentileVal > topPercentile) { topPercentile = percentileVal; topStatId = cat.statId }
     }

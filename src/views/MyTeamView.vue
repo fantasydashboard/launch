@@ -520,10 +520,11 @@ const mtDebug = computed(() => {
     .filter((c) => c.role === 'pitcher')
     .slice(0, 4)
     .map((c) => {
-      const p = rosterPool.value.find((pp) => pp.playerKey === c.playerKey)
-      const eff = toEffectiveStats(p?.stats ?? {}, fgStatsByKey.value[c.playerKey] ?? null, catSpecs.value, SEASON_FRACTION)
-      const vals = pitCats.map((cat) => `${cat.statId}:${p?.stats[cat.statId] ?? '∅'}→${eff[cat.statId] ?? '∅'}`).join(' ')
-      return `  ${c.playerKey} pos=${p?.position ?? '?'} vs=${c.valueScore.toFixed(2)} rv=${c.roleValue} [${vals}]`
+      const zs = c.contribs
+        .filter((cc) => pitCats.some((pc) => pc.statId === cc.statId) && cc.tier !== 'neutral')
+        .map((cc) => `${cc.statId}:z=${((cc as { z?: number }).z ?? 0).toFixed(2)}`)
+        .join(' ')
+      return `  ${c.playerKey} pos=${rosterPool.value.find((pp) => pp.playerKey === c.playerKey)?.position ?? '?'} vs=${c.valueScore.toFixed(2)} rv=${c.roleValue} | partZ: ${zs || '(none participated)'}`
     })
   // For each hole: how many FA actually carry that stat (>0) — explains adds=NONE.
   const faHas = holes.value.map((h) => `${h.statId}:${players.value.filter((p) => (p.stats[h.statId] ?? 0) > 0).length}`).join(' ')
