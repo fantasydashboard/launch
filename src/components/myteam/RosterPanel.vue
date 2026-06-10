@@ -20,6 +20,9 @@ interface RosterRow {
   player: RosterPlayer
   plus: ContribChip[]
   minus: ContribChip[]
+  // Helping categories beyond the displayed cap (shown as "+N"). Keeps rows
+  // scannable in deep, many-category leagues where a stud helps 8+ categories.
+  plusOverflow: number
   // Single muted chip for a player's best category when they have no plus chips
   // (so the row isn't blank). Null when they have plus chips or no contributed cat.
   topChip: ContribChip | null
@@ -27,6 +30,12 @@ interface RosterRow {
   dropReason: string | null
   isWeakLink: boolean
 }
+
+// Cap how many contribution chips render per player so a row stays readable
+// even in 15-20 category leagues. We show a player's strongest helping cats and
+// worst hurting cats; the rest collapse into a "+N" count.
+const MAX_PLUS_CHIPS = 4
+const MAX_MINUS_CHIPS = 3
 
 // statId -> short category label (e.g. "HR", "ERA") for chip text.
 const labelByStatId = computed(() => {
@@ -57,15 +66,23 @@ const rows = computed<RosterRow[]>(() => {
 
   const built = props.players.map((player) => {
     const contrib = contribByKey.value.get(player.playerKey)
-    const plus: ContribChip[] = []
-    const minus: ContribChip[] = []
+    const allPlus: { chip: ContribChip; percentile: number }[] = []
+    const allMinus: { chip: ContribChip; percentile: number }[] = []
     if (contrib) {
       for (const c of contrib.contribs) {
         const label = labelByStatId.value.get(c.statId) || c.statId
-        if (c.tier === 'plus') plus.push({ statId: c.statId, label })
-        else if (c.tier === 'minus') minus.push({ statId: c.statId, label })
+        const entry = { chip: { statId: c.statId, label }, percentile: c.percentile }
+        if (c.tier === 'plus') allPlus.push(entry)
+        else if (c.tier === 'minus') allMinus.push(entry)
       }
     }
+    // Strongest helping cats first (highest percentile); worst hurting cats first
+    // (lowest percentile). Cap each so deep leagues don't flood the row.
+    allPlus.sort((a, b) => b.percentile - a.percentile)
+    allMinus.sort((a, b) => a.percentile - b.percentile)
+    const plus = allPlus.slice(0, MAX_PLUS_CHIPS).map((x) => x.chip)
+    const minus = allMinus.slice(0, MAX_MINUS_CHIPS).map((x) => x.chip)
+    const plusOverflow = Math.max(0, allPlus.length - MAX_PLUS_CHIPS)
     // When a player has no plus chips, surface their best category as a muted chip
     // so the row reads as something other than "—". Null topStatId => truly blank.
     let topChip: ContribChip | null = null
@@ -79,6 +96,7 @@ const rows = computed<RosterRow[]>(() => {
       player,
       plus,
       minus,
+      plusOverflow,
       topChip,
       overallValue: contrib?.overallValue ?? 0,
       dropReason: dropReasonByKey.value.get(player.playerKey) ?? null,
@@ -143,6 +161,11 @@ const rows = computed<RosterRow[]>(() => {
           :key="'p-' + chip.statId"
           class="rounded px-1.5 py-0.5 font-mono text-xs text-primary bg-primary/10"
         >{{ chip.label }}</span>
+        <span
+          v-if="row.plusOverflow > 0"
+          :title="row.plusOverflow + ' more helping categories'"
+          class="rounded px-1.5 py-0.5 font-mono text-xs text-primary/70 bg-primary/5"
+        >+{{ row.plusOverflow }}</span>
         <span
           v-for="chip in row.minus"
           :key="'m-' + chip.statId"
