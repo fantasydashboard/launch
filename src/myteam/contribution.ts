@@ -96,6 +96,6 @@ export function computePlayerContributions(
         ? 0
         : contributedPercentiles.reduce((sum, p) => sum + p, 0) / contributedPercentiles.length
 
-    return { playerKey: player.playerKey, contribs, plusCount, minusCount, overallValue, topStatId }
+    return { playerKey: player.playerKey, contribs, plusCount, minusCount, overallValue, valueScore: 0, topStatId }
   })
 }
