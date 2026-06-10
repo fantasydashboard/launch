@@ -47,6 +47,27 @@ describe('computeRosterValue', () => {
     expect(sp1.valueScore).toBeGreaterThan(0) // good ERA -> positive
   })
 
+  it('does not penalize a starter for reliever-only counting cats (SV/HLD)', () => {
+    const pitchCats: CatSpec[] = [
+      { statId: 'W', lowerIsBetter: false, side: 'pit', isRatio: false },
+      { statId: 'SV', lowerIsBetter: false, side: 'pit', isRatio: false },
+      { statId: 'K', lowerIsBetter: false, side: 'pit', isRatio: false },
+    ]
+    const pool: ValuePoolPlayer[] = [
+      { playerKey: 'starter', position: 'SP', stats: { W: 12, SV: 0, K: 180 } },
+      { playerKey: 'closer', position: 'RP', stats: { W: 3, SV: 30, K: 70 } },
+      { playerKey: 'setup', position: 'RP', stats: { W: 4, SV: 15, K: 65 } },
+    ]
+    const res = computeRosterValue(pool, ['starter'], pitchCats)
+    const starter = res.find((r) => r.playerKey === 'starter')!
+    // 0 SV => the starter does not participate in SV, so it stays neutral and is
+    // excluded from the value sum (no penalty for a category they cannot accrue).
+    const svContrib = starter.contribs.find((c) => c.statId === 'SV')!
+    expect(svContrib.tier).toBe('neutral')
+    // Value reflects only W + K, where the starter leads -> clearly positive.
+    expect(starter.valueScore).toBeGreaterThan(0)
+  })
+
   it('volume-weights ratios: a tiny-sample great ERA does not dominate a workhorse', () => {
     const pool: ValuePoolPlayer[] = [
       { playerKey: 'tiny', position: 'RP', stats: { ERA: 0.0, IP: 2 } },

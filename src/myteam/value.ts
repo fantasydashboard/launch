@@ -16,8 +16,25 @@ function isHitterPos(position: string): boolean {
   const tokens = (position || '').split(/[,/|]/).map((t) => t.trim().toUpperCase()).filter(Boolean)
   return tokens.some((t) => !['SP', 'RP', 'P'].includes(t))
 }
-function participates(position: string, side: 'hit' | 'pit'): boolean {
+function participatesBySide(position: string, side: 'hit' | 'pit'): boolean {
   return side === 'pit' ? isPitcherPos(position) : isHitterPos(position)
+}
+
+/**
+ * Whether a player participates (accumulates value) in a category.
+ *  - Ratio cats: gated by VOLUME (IP for pitching ratios, AB/PA for batting), so a
+ *    0.00 ERA still counts and a hitter with no innings is excluded. Falls back to
+ *    role/side when no volume stat could be resolved.
+ *  - Counting cats: gated by ACCUMULATION (non-zero value), so a starting pitcher is
+ *    not penalized in SV/HLD and a reliever is not penalized in W — the same way a
+ *    hitter is never penalized in pitching cats. This is what keeps SP/RP fair.
+ */
+function participatesIn(player: ValuePoolPlayer, cat: CatSpec): boolean {
+  if (cat.isRatio) {
+    if (cat.volumeStatId) return (player.stats[cat.volumeStatId] ?? 0) > 0
+    return participatesBySide(player.position, cat.side)
+  }
+  return (player.stats[cat.statId] ?? 0) !== 0
 }
 
 function clamp(z: number): number {
@@ -41,7 +58,7 @@ export function computeRosterValue(
   const pctByCat = new Map<string, Map<string, number>>()
 
   for (const cat of cats) {
-    const participants = pool.filter((p) => participates(p.position, cat.side))
+    const participants = pool.filter((p) => participatesIn(p, cat))
     const dir = cat.lowerIsBetter ? -1 : 1
     const zMap = new Map<string, number>()
     const pctMap = new Map<string, number>()
@@ -94,7 +111,7 @@ export function computeRosterValue(
 
     for (const cat of cats) {
       const value = typeof player.stats[cat.statId] === 'number' ? player.stats[cat.statId] : 0
-      if (!participates(player.position, cat.side)) {
+      if (!participatesIn(player, cat)) {
         contribs.push({ statId: cat.statId, tier: 'neutral', value, percentile: 0 })
         continue
       }
