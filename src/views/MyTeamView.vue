@@ -521,13 +521,16 @@ const mtDebug = computed(() => {
     .slice(0, 4)
     .map((c) => {
       const p = rosterPool.value.find((pp) => pp.playerKey === c.playerKey)
-      const vals = pitCats.map((cat) => `${cat.statId}:${p?.stats[cat.statId] ?? '∅'}`).join(' ')
+      const eff = toEffectiveStats(p?.stats ?? {}, fgStatsByKey.value[c.playerKey] ?? null, catSpecs.value, SEASON_FRACTION)
+      const vals = pitCats.map((cat) => `${cat.statId}:${p?.stats[cat.statId] ?? '∅'}→${eff[cat.statId] ?? '∅'}`).join(' ')
       return `  ${c.playerKey} pos=${p?.position ?? '?'} vs=${c.valueScore.toFixed(2)} rv=${c.roleValue} [${vals}]`
     })
+  // For each hole: how many FA actually carry that stat (>0) — explains adds=NONE.
+  const faHas = holes.value.map((h) => `${h.statId}:${players.value.filter((p) => (p.stats[h.statId] ?? 0) > 0).length}`).join(' ')
   return [
     `platform=${leagueStore.activePlatform} poolN=${rosterPool.value.length} poolPit~=${poolPit}`,
     `pitCatSpecs=${pitCats.map((c) => c.statId + (c.isRatio ? 'r' : '') + '/' + (c.lowerIsBetter ? 'L' : 'H')).join(',')}`,
-    `FA=${players.value.length} holes=${holes.value.map((h) => h.statId).join(',')} adds=${Object.keys(addsByStatId.value).join(',') || 'NONE'}`,
+    `FA=${players.value.length} holes=${holes.value.map((h) => h.statId).join(',')} adds=${Object.keys(addsByStatId.value).join(',') || 'NONE'} | FAhas ${faHas}`,
     ...myPit,
   ].join('\n')
 })
