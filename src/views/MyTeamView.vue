@@ -8,6 +8,7 @@ import { useFullSeasonCategoryData } from '@/composables/useFullSeasonCategoryDa
 import { isYahooCategoryLeague as isYahooCategoryScoringType } from '@/composables/useIsCategoryLeague'
 import { useAvailablePlayers } from '@/composables/useAvailablePlayers'
 import { useMyRoster } from '@/composables/useMyRoster'
+import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { rankAddsForHoles } from '@/players/rankAdds'
 import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
@@ -20,8 +21,49 @@ import CategoryProfile from '@/components/myteam/CategoryProfile.vue'
 import RosterPanel from '@/components/myteam/RosterPanel.vue'
 
 const leagueStore = useLeagueStore()
-const { players, load: loadPlayers } = useAvailablePlayers()
-const { players: rosterPlayers, pool: rosterPool, loading: rosterLoading, loaded: rosterLoaded, load: loadRoster } = useMyRoster()
+const { players: yahooFreeAgents, load: loadPlayers } = useAvailablePlayers()
+const {
+  players: yahooRosterPlayers,
+  pool: yahooRosterPool,
+  loading: yahooRosterLoading,
+  loaded: yahooRosterLoaded,
+  load: loadRoster,
+} = useMyRoster()
+
+const espn = useEspnCategoryTeamData()
+const isEspnCategoryLeague = computed(
+  () => leagueStore.activePlatform === 'espn' && espn.supported.value === true,
+)
+
+// Canonical base inputs: select between ESPN and Yahoo based on the active platform.
+// All downstream computeds (profile, record, weaknesses, holes, etc.) reference these.
+const standings = computed<StandingsEntryLike[]>(() =>
+  isEspnCategoryLeague.value ? espn.standings.value : yahooStandings_.value,
+)
+const categories = computed<CategoryDef[]>(() =>
+  isEspnCategoryLeague.value ? espn.categories.value : yahooCategories.value,
+)
+const myTeamId = computed<string | null>(() =>
+  isEspnCategoryLeague.value ? espn.myTeamId.value : yahooMyTeamId.value,
+)
+const myOverallRank = computed<number>(() =>
+  isEspnCategoryLeague.value ? espn.myOverallRank.value : yahooMyOverallRank.value,
+)
+const rosterPlayers = computed(() =>
+  isEspnCategoryLeague.value ? espn.rosterPlayers.value : yahooRosterPlayers.value,
+)
+const rosterPool = computed(() =>
+  isEspnCategoryLeague.value ? espn.pool.value : yahooRosterPool.value,
+)
+const rosterLoading = computed(() =>
+  isEspnCategoryLeague.value ? espn.loading.value : yahooRosterLoading.value,
+)
+const rosterLoaded = computed(() =>
+  isEspnCategoryLeague.value ? espn.loaded.value : yahooRosterLoaded.value,
+)
+const players = computed(() =>
+  isEspnCategoryLeague.value ? espn.freeAgents.value : yahooFreeAgents.value,
+)
 
 // === Wired from the sources recorded in docs/superpowers/my-team-data-sources.md (Task 9 + Task 10) ===
 // No reusable store getter / composable yields the verified StandingsEntryLike[]
@@ -82,16 +124,26 @@ function maybeLoadRoster() {
   }
 }
 
+// Load ESPN category data when the active league is ESPN (the composable itself
+// verifies it's an H2H_CATEGORY league and no-ops otherwise).
+function maybeLoadEspn() {
+  if (leagueStore.activePlatform === 'espn') {
+    espn.load()
+  }
+}
+
 onMounted(() => {
   maybeLoadSeasonData()
   maybeLoadPlayers()
   maybeLoadRoster()
+  maybeLoadEspn()
 })
 // Reload when the active league changes (e.g. switching into a category league).
 watch(() => leagueStore.activeLeagueId, () => {
   maybeLoadSeasonData()
   maybeLoadPlayers()
   maybeLoadRoster()
+  maybeLoadEspn()
 })
 
 // Matchups to derive from: full-season when loaded, else the single-week store state.
@@ -146,7 +198,7 @@ const perCategory = computed(() => {
 })
 
 // Standings array in the verified StandingsEntryLike shape (UnifiedSeasonView.vue:1400-1411).
-const standings = computed<StandingsEntryLike[]>(() => {
+const yahooStandings_ = computed<StandingsEntryLike[]>(() => {
   const teams = leagueStore.yahooStandings?.length
     ? leagueStore.yahooStandings
     : leagueStore.yahooTeams || []
@@ -172,7 +224,7 @@ const standings = computed<StandingsEntryLike[]>(() => {
 // The engine only reads statId + name + per-category ranks; side/higherIsBetter are
 // best-effort defaults (see docs/superpowers/my-team-data-sources.md). Falls back to "Stat <id>" only when
 // a real name is genuinely unavailable (settings not yet loaded or stat missing).
-const categories = computed<CategoryDef[]>(() => {
+const yahooCategories = computed<CategoryDef[]>(() => {
   const labels = categoryLabels.value
   return [...perCategory.value.statIds].map((statId) => {
     const meta = labels.get(statId)
@@ -187,7 +239,7 @@ const categories = computed<CategoryDef[]>(() => {
 })
 
 // Logged-in user's teamId (team with is_my_team === true) — UnifiedSeasonView.vue:701-717.
-const myTeamId = computed<string | null>(() => {
+const yahooMyTeamId = computed<string | null>(() => {
   const myTeam = leagueStore.yahooTeams?.find((t: any) => t.is_my_team)
   if (myTeam) return String(myTeam.team_id ?? myTeam.team_key)
   if (leagueStore.currentUserId) {
@@ -209,21 +261,23 @@ const profile = computed(() => {
   }
 })
 
-// Honest empty/loading copy. The intelligence here is built on Yahoo H2H
-// category data; an active league that isn't a supported Yahoo category league
-// (e.g. an ESPN category league) should say so rather than imply nothing is
-// selected.
 const emptyStateMessage = computed(() => {
-  if (isYahooCategoryLeague.value && !seasonLoaded.value) return 'Loading your team’s edge…'
+  // ESPN branch
+  if (leagueStore.activePlatform === 'espn') {
+    if (!espn.loaded.value) return "Loading your team's edge..."
+    if (espn.supported.value === false)
+      return "My Team supports head-to-head category leagues. This ESPN league isn't a category league."
+    if (!espn.myTeamId.value)
+      return "Connect your ESPN account to see your team's edge."
+    return 'No category data yet for this league. Check back once weeks have been scored.'
+  }
+  // Yahoo branch (unchanged behavior)
+  if (isYahooCategoryLeague.value && !seasonLoaded.value) return "Loading your team's edge..."
   const id = leagueStore.activeLeagueId
   if (id && !isYahooCategoryLeague.value) {
-    const platform = leagueStore.activePlatform
-    if (platform && platform !== 'yahoo') {
-      return 'My Team currently supports Yahoo category leagues. Support for this league is on the way.'
-    }
-    return 'My Team is built for head-to-head category leagues. This league type isn’t supported here yet.'
+    return "My Team is built for head-to-head category leagues. This league type isn't supported here yet."
   }
-  return 'Connect or select a category league to see your team’s edge.'
+  return "Connect or select a category league to see your team's edge."
 })
 
 const weaknesses = computed(() => {
@@ -237,7 +291,7 @@ const weaknesses = computed(() => {
 // === Close the loop: top available add per weak category ===
 // Map each weakness Recommendation to a Hole (exactly as PlayersView does), then
 // rank the FA pool for those holes (1 add per hole). Reuses rankAddsForHoles so the
-// "Add: …" line on a weakness row matches the #1 player on /players?cat=<statId>.
+// "Add: ..." line on a weakness row matches the #1 player on /players?cat=<statId>.
 const holes = computed<Hole[]>(() => {
   if (!profile.value) return []
   return weaknesses.value.map((rec) => {
@@ -247,7 +301,7 @@ const holes = computed<Hole[]>(() => {
       statId: rec.statId,
       name: cat?.name ?? rec.statId,
       rank: teamCat?.rank ?? 0,
-      lowerIsBetter: cat ? isLowerBetter(cat.label || cat.name || cat.statId) : false,
+      lowerIsBetter: cats.value.find((c) => c.statId === rec.statId)?.lowerIsBetter ?? false,
     }
   })
 })
@@ -293,7 +347,7 @@ const strengths = computed(() => {
 // yahooStandings entries carry a numeric `rank` field (set by yahoo.ts:476/648).
 // If that field is missing or zero, fall back to the team's 1-based index in the
 // standings array (which Yahoo returns sorted by position).
-const myOverallRank = computed<number>(() => {
+const yahooMyOverallRank = computed<number>(() => {
   if (!myTeamId.value) return 0
   const entry = (leagueStore.yahooStandings || []).find(
     (s: any) => String(s.team_id ?? s.team_key) === myTeamId.value
@@ -329,10 +383,12 @@ const verdict = computed<string | null>(() => {
 // === Per-player contribution (season-to-date) vs the league's rostered pool ===
 // Direction-aware spec for each scoring category (lowerIsBetter for rate cats).
 const cats = computed(() =>
-  categories.value.map((c) => ({
-    statId: c.statId,
-    lowerIsBetter: isLowerBetter(c.label || c.name || c.statId),
-  })),
+  isEspnCategoryLeague.value
+    ? espn.cats.value
+    : categories.value.map((c) => ({
+        statId: c.statId,
+        lowerIsBetter: isLowerBetter(c.label || c.name || c.statId),
+      })),
 )
 
 // My players' keys (matches the playerKey shape used by the pool/contribution engine).
@@ -406,7 +462,7 @@ const tierByStatId = computed<Record<string, 'strong' | 'winnable' | 'safe' | 'l
     <section v-if="profile" class="space-y-2">
       <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Your Roster</h2>
       <p v-if="rosterLoading && rosterPlayers.length === 0" class="text-sm text-dark-textMuted">
-        Loading your roster…
+        Loading your roster...
       </p>
       <RosterPanel
         v-else-if="rosterPlayers.length > 0"
