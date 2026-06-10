@@ -148,7 +148,7 @@ export function computeRosterValue(
   const mine = pool.filter((p) => myKeys.has(p.playerKey))
 
   // TEMP DIAGNOSTIC (remove): why do Yahoo pitchers all show roleValue 50?
-  console.debug(
+  console.log(
     '[mt-debug] poolN', pool.length,
     '| hitN', scoresByRole.hitter.length, '| pitN', scoresByRole.pitcher.length,
     '| poolPitScores', scoresByRole.pitcher.slice(0, 16).map((v) => Math.round(v * 100) / 100),
