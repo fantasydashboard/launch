@@ -147,7 +147,7 @@ export function computeRosterValue(
   const myKeys = new Set(myPlayerKeys)
   const mine = pool.filter((p) => myKeys.has(p.playerKey))
 
-  return mine.map((player) => {
+  const result = mine.map((player) => {
     const contribs: PlayerCategoryContrib[] = []
     let plusCount = 0
     let minusCount = 0
@@ -183,6 +183,29 @@ export function computeRosterValue(
 
     return { playerKey: player.playerKey, contribs, plusCount, minusCount, overallValue, valueScore, role, roleValue, topStatId }
   })
+
+  // TEMP DIAGNOSTIC (remove): capture pitcher value breakdown from the actual run,
+  // decoupled from reactive pool flapping.
+  __valDebug.poolN = pool.length
+  __valDebug.pitPoolN = scoresByRole.pitcher.length
+  __valDebug.poolPitScores = scoresByRole.pitcher.slice(0, 8).map((v) => Math.round(v * 100) / 100)
+  __valDebug.pit = result
+    .filter((c) => c.role === 'pitcher')
+    .slice(0, 5)
+    .map((c) => {
+      const zs = c.contribs
+        .filter((cc) => (cc as { z?: number }).z !== undefined)
+        .map((cc) => `${cc.statId}=${((cc as { z?: number }).z ?? 0).toFixed(2)}`)
+        .join(',')
+      return `${c.playerKey} vs=${c.valueScore.toFixed(2)} rv=${c.roleValue} sbk=${(scoreByKey.get(c.playerKey) ?? 0).toFixed(2)} z[${zs}]`
+    })
+
+  return result
+}
+
+// TEMP DIAGNOSTIC (remove).
+export const __valDebug: { poolN: number; pitPoolN: number; poolPitScores: number[]; pit: string[] } = {
+  poolN: 0, pitPoolN: 0, poolPitScores: [], pit: [],
 }
 
 export function valueTier(roleValue: number): 'core' | 'solid' | 'fringe' {

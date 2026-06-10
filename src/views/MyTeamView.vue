@@ -13,7 +13,7 @@ import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
 import { rankAddsForHoles } from '@/players/rankAdds'
 import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
-import { computeRosterValue, type CatSpec } from '@/myteam/value'
+import { computeRosterValue, __valDebug, type CatSpec } from '@/myteam/value'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
 import { mapToEspnStats } from '@/services/projectionService'
 import { classifyCategory } from '@/myteam/categorySide'
@@ -528,11 +528,15 @@ const mtDebug = computed(() => {
     })
   // For each hole: how many FA actually carry that stat (>0) — explains adds=NONE.
   const faHas = holes.value.map((h) => `${h.statId}:${players.value.filter((p) => (p.stats[h.statId] ?? 0) > 0).length}`).join(' ')
+  // contributions.value is read to force this debug to recompute when the value model reruns.
+  void contributions.value.length
+  void myPit
   return [
     `platform=${leagueStore.activePlatform} poolN=${rosterPool.value.length} poolPit~=${poolPit}`,
     `pitCatSpecs=${pitCats.map((c) => c.statId + (c.isRatio ? 'r' : '') + '/' + (c.lowerIsBetter ? 'L' : 'H')).join(',')}`,
     `FA=${players.value.length} holes=${holes.value.map((h) => h.statId).join(',')} adds=${Object.keys(addsByStatId.value).join(',') || 'NONE'} | FAhas ${faHas}`,
-    ...myPit,
+    `LAST-RUN poolN=${__valDebug.poolN} pitPool=${__valDebug.pitPoolN} poolPitScores=${JSON.stringify(__valDebug.poolPitScores)}`,
+    ...__valDebug.pit,
   ].join('\n')
 })
 
