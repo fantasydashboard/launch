@@ -14,6 +14,7 @@ import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
 import { computeRosterValue, type CatSpec } from '@/myteam/value'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
+import { mapToEspnStats, type FGProjection } from '@/services/projectionService'
 import { classifyCategory } from '@/myteam/categorySide'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
 import { computeCategoryGaps } from '@/myteam/categoryGaps'
@@ -27,6 +28,7 @@ const { players: yahooFreeAgents, load: loadPlayers } = useAvailablePlayers()
 const {
   players: yahooRosterPlayers,
   pool: yahooRosterPool,
+  fgByKey: yahooFgByKey,
   loading: yahooRosterLoading,
   loaded: yahooRosterLoaded,
   load: loadRoster,
@@ -56,6 +58,9 @@ const rosterPlayers = computed(() =>
 )
 const rosterPool = computed(() =>
   isEspnCategoryLeague.value ? espn.pool.value : yahooRosterPool.value,
+)
+const fgByKey = computed(() =>
+  isEspnCategoryLeague.value ? espn.fgByKey.value : yahooFgByKey.value,
 )
 const rosterLoading = computed(() =>
   isEspnCategoryLeague.value ? espn.loading.value : yahooRosterLoading.value,
@@ -430,14 +435,38 @@ const catSpecs = computed<CatSpec[]>(() => {
 // My players' keys (matches the playerKey shape used by the pool/contribution engine).
 const myPlayerKeys = computed(() => rosterPlayers.value.map((p) => p.playerKey))
 
+// Slice 2: blend FanGraphs rest-of-season projections into roster value.
+const SEASON_FRACTION = 0.6 // baseball, ~mid-late season; only scales unmatched players' counting stats
+
+// Map each matched FGProjection to league stat_ids, keyed by playerKey. Empty
+// when FanGraphs returns no rows (degrades to extrapolated YTD downstream).
+const fgStatsByKey = computed<Record<string, Record<string, number>>>(() => {
+  const fgMap = fgByKey.value
+  if (!fgMap || !catSpecs.value.length) return {}
+  const labelByStatId = new Map(categories.value.map((c) => [c.statId, c.label || c.name || c.statId]))
+  const fgCats = catSpecs.value.map((c) => ({
+    stat_id: c.statId,
+    display_name: labelByStatId.get(c.statId),
+    isPitching: c.side === 'pit',
+  }))
+  const out: Record<string, Record<string, number>> = {}
+  for (const key of Object.keys(fgMap)) {
+    const fg = fgMap[key]
+    if (fg) out[key] = mapToEspnStats(fg, fgCats)
+  }
+  return out
+})
+
 // Contribution per my player: which categories they help (plus) / hurt (minus).
-// Slice 1: effective stats = season-to-date (fgStats=null, fraction=1).
+// Slice 2: effective stats blend FanGraphs ROS projections (when matched) with
+// extrapolated season-to-date totals; toEffectiveStats falls back to YTD when no FG row.
 const contributions = computed(() => {
   if (!rosterPool.value.length || !myPlayerKeys.value.length || !catSpecs.value.length) return []
+  const fgMap = fgStatsByKey.value
   const effectivePool = rosterPool.value.map((p) => ({
     playerKey: p.playerKey,
     position: p.position,
-    stats: toEffectiveStats(p.stats, null, catSpecs.value, 1),
+    stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, SEASON_FRACTION),
   }))
   return computeRosterValue(effectivePool, myPlayerKeys.value, catSpecs.value)
 })

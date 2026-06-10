@@ -11,6 +11,7 @@ import type { AvailablePlayer } from '@/players/types'
 import { mapBreakdownToCategoryData } from '@/myteam/espn/mapStandings'
 import { mapRostersToPool, mapRosterToPlayers } from '@/myteam/espn/mapRosters'
 import { mapEspnFreeAgents } from '@/myteam/espn/mapFreeAgents'
+import { buildPlayerMatchers, type FGProjection } from '@/services/projectionService'
 
 /** Parse an ESPN league key `espn_{sport}_{leagueId}_{season}`. */
 function parseEspnKey(key: string): { sport: Sport; leagueId: string; season: number } | null {
@@ -32,6 +33,7 @@ export function useEspnCategoryTeamData() {
   const myTeamId = ref<string | null>(null)
   const myOverallRank = ref(0)
   const pool = ref<PoolPlayer[]>([])
+  const fgByKey = ref<Record<string, FGProjection | null>>({})
   const rosterPlayers = ref<RosterPlayer[]>([])
   const freeAgents = ref<AvailablePlayer[]>([])
   const supported = ref<boolean | null>(null)
@@ -45,6 +47,7 @@ export function useEspnCategoryTeamData() {
     myTeamId.value = null
     myOverallRank.value = 0
     pool.value = []
+    fgByKey.value = {}
     rosterPlayers.value = []
     freeAgents.value = []
     supported.value = null
@@ -93,6 +96,17 @@ export function useEspnCategoryTeamData() {
       cats.value = mapped.cats
       pool.value = mapRostersToPool(teams)
 
+      // Match every rostered player to a raw FanGraphs rest-of-season projection.
+      const { matchFG } = await buildPlayerMatchers()
+      if (leagueStore.activeLeagueId !== requestedId) return
+      const fg: Record<string, FGProjection | null> = {}
+      for (const t of teams) {
+        for (const pl of t.roster ?? []) {
+          fg[String(pl.playerId)] = matchFG({ full_name: pl.fullName, mlb_team: pl.proTeam })
+        }
+      }
+      fgByKey.value = fg
+
       if (myTeam) {
         myTeamId.value = `espn_${myTeam.id}`
         const myTeamWithRoster = teams.find((t) => t.id === myTeam.id) ?? myTeam
@@ -127,6 +141,7 @@ export function useEspnCategoryTeamData() {
     myTeamId,
     myOverallRank,
     pool,
+    fgByKey,
     rosterPlayers,
     freeAgents,
     supported,

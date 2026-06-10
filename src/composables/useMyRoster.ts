@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { useLeagueStore } from '@/stores/league'
+import { buildPlayerMatchers, type FGProjection } from '@/services/projectionService'
 
 /** A rostered player on the logged-in user's team, normalized from the Yahoo service shape. */
 export interface RosterPlayer {
@@ -45,6 +46,7 @@ function normalizePoolPlayer(raw: any): PoolPlayer {
 export function useMyRoster() {
   const players = ref<RosterPlayer[]>([])
   const pool = ref<PoolPlayer[]>([])
+  const fgByKey = ref<Record<string, FGProjection | null>>({})
   const loading = ref(false)
   const loaded = ref(false)
 
@@ -72,6 +74,17 @@ export function useMyRoster() {
       const all = raw || []
       // Expose the full unfiltered rostered pool (used for league-wide percentiles).
       pool.value = all.map(normalizePoolPlayer)
+
+      // Match each rostered player to a raw FanGraphs rest-of-season projection.
+      const { matchFG } = await buildPlayerMatchers()
+      if (leagueStore.activeLeagueId !== requestedId) return
+      const fg: Record<string, FGProjection | null> = {}
+      for (const p of all) {
+        const key = String(p.player_key ?? p.player_id ?? '')
+        fg[key] = matchFG({ full_name: p.full_name, mlb_team: p.mlb_team })
+      }
+      fgByKey.value = fg
+
       // Filter to the logged-in user's team via fantasy_team_key (the full Yahoo
       // team_key). Fall back to the team name when a team_key is unavailable.
       let mine: any[] = []
@@ -92,5 +105,5 @@ export function useMyRoster() {
     }
   }
 
-  return { players, pool, loading, loaded, load }
+  return { players, pool, fgByKey, loading, loaded, load }
 }

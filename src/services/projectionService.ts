@@ -279,7 +279,7 @@ function matchPlayer(
 // name (platform-agnostic) and skips categories that belong to the opposite
 // player type (e.g. a pitching category on a batter's row). Falls back to the
 // legacy ESPN stat_id mapping only when display_name isn't available.
-function mapToEspnStats(
+export function mapToEspnStats(
   fg: FGProjection,
   categories: Array<{ stat_id: string; display_name?: string; isPitching?: boolean }>
 ): Record<string, number> {
