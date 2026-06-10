@@ -511,6 +511,27 @@ const tierByStatId = computed<Record<string, 'strong' | 'winnable' | 'safe' | 'l
   return map
 })
 
+// TEMP DIAGNOSTIC (remove): Yahoo pitchers all show roleValue 50 + ESPN weakness rows lack adds.
+const mtDebug = computed(() => {
+  const pitCats = catSpecs.value.filter((c) => c.side === 'pit')
+  const isPit = (pos: string) => /(^|[,\/|])\s*(SP|RP|P)\s*([,\/|]|$)/i.test(pos || '')
+  const poolPit = rosterPool.value.filter((p) => isPit(p.position)).length
+  const myPit = contributions.value
+    .filter((c) => c.role === 'pitcher')
+    .slice(0, 4)
+    .map((c) => {
+      const p = rosterPool.value.find((pp) => pp.playerKey === c.playerKey)
+      const vals = pitCats.map((cat) => `${cat.statId}:${p?.stats[cat.statId] ?? '∅'}`).join(' ')
+      return `  ${c.playerKey} pos=${p?.position ?? '?'} vs=${c.valueScore.toFixed(2)} rv=${c.roleValue} [${vals}]`
+    })
+  return [
+    `platform=${leagueStore.activePlatform} poolN=${rosterPool.value.length} poolPit~=${poolPit}`,
+    `pitCatSpecs=${pitCats.map((c) => c.statId + (c.isRatio ? 'r' : '') + '/' + (c.lowerIsBetter ? 'L' : 'H')).join(',')}`,
+    `FA=${players.value.length} holes=${holes.value.map((h) => h.statId).join(',')} adds=${Object.keys(addsByStatId.value).join(',') || 'NONE'}`,
+    ...myPit,
+  ].join('\n')
+})
+
 // Categories load asynchronously after the league data resolves; (re)load the
 // snapshot once they're available so it doesn't no-op on first mount. Declared
 // here (after the base computeds) because `watch` evaluates its source eagerly
@@ -522,6 +543,7 @@ watch(categories, () => {
 
 <template>
   <div class="mx-auto max-w-6xl px-4 py-6 space-y-8">
+    <pre v-if="profile" class="whitespace-pre-wrap rounded border border-yellow-500/40 bg-yellow-500/5 p-2 font-mono text-[10px] leading-tight text-yellow-300">{{ mtDebug }}</pre>
     <SituationStrip
       v-if="profile"
       :team-name="profile.teamName"
