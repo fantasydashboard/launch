@@ -1,8 +1,19 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { ThisWeekSnapshot } from '@/composables/useThisWeekMatchup'
 const props = defineProps<{ snapshot: ThisWeekSnapshot | null }>()
 const byStatus = (s: 'safe' | 'tossup' | 'loss') =>
   (props.snapshot?.categories ?? []).filter((c) => c.status === s)
+
+// Coin-flips are the decision content, but with many categories early in the
+// week almost everything sits near 50%. Show only the genuinely-closest ones
+// (nearest to a 50/50) so the band points at the few swing categories.
+const MAX_TOSSUPS = 4
+const tossupsSorted = computed(() =>
+  byStatus('tossup').slice().sort((a, b) => Math.abs(a.myWinPct - 50) - Math.abs(b.myWinPct - 50)),
+)
+const tossupsShown = computed(() => tossupsSorted.value.slice(0, MAX_TOSSUPS))
+const tossupsExtra = computed(() => Math.max(0, tossupsSorted.value.length - MAX_TOSSUPS))
 </script>
 <template>
   <router-link
@@ -25,14 +36,15 @@ const byStatus = (s: 'safe' | 'tossup' | 'loss') =>
       <span class="font-mono text-sm text-dark-textSecondary">projected {{ snapshot.projWins }}-{{ snapshot.projLosses }}</span>
     </div>
     <div class="mt-2 space-y-1 text-xs">
-      <div v-if="byStatus('tossup').length" class="flex flex-wrap items-center gap-1">
+      <div v-if="tossupsShown.length" class="flex flex-wrap items-center gap-1">
         <span class="font-mono uppercase tracking-wider text-[#F2B33A]">coin-flips</span>
         <span
-          v-for="c in byStatus('tossup')"
+          v-for="c in tossupsShown"
           :key="c.statId"
           class="rounded px-1.5 py-0.5 font-mono text-[#F2B33A] bg-[#F2B33A]/10"
           >{{ c.label }}</span
         >
+        <span v-if="tossupsExtra" class="font-mono text-[#F2B33A]/70">+{{ tossupsExtra }} more</span>
       </div>
       <div v-if="byStatus('safe').length" class="flex flex-wrap items-center gap-1">
         <span class="font-mono uppercase tracking-wider text-primary">safe</span>
@@ -53,5 +65,8 @@ const byStatus = (s: 'safe' | 'tossup' | 'loss') =>
         >
       </div>
     </div>
+    <p class="mt-2 font-mono text-[10px] text-dark-textMuted">
+      this week's matchup odds · season ranks below
+    </p>
   </router-link>
 </template>
