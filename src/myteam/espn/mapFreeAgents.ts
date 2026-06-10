@@ -1,0 +1,20 @@
+import type { AvailablePlayer } from '@/players/types'
+import type { Sport } from '@/types/supabase'
+import { espnHeadshotUrl, type EspnPlayerLike } from './mapRosters'
+
+/** Map ESPN free agents into the AvailablePlayer shape rankAddsForHoles consumes. */
+export function mapEspnFreeAgents(
+  freeAgents: (EspnPlayerLike & { percentOwned?: number })[],
+  sport: Sport,
+): AvailablePlayer[] {
+  return freeAgents.map((p) => ({
+    playerKey: String(p.playerId),
+    name: p.fullName ?? '',
+    position: p.position ?? '',
+    team: p.proTeam ?? '',
+    headshot: espnHeadshotUrl(p.playerId, sport),
+    percentOwned: typeof p.percentOwned === 'number' ? p.percentOwned : 0,
+    status: p.injuryStatus && p.injuryStatus !== 'ACTIVE' ? p.injuryStatus : '',
+    stats: p.stats && typeof p.stats === 'object' ? { ...p.stats } : {},
+  }))
+}
