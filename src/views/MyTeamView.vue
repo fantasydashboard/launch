@@ -9,6 +9,7 @@ import { isYahooCategoryLeague as isYahooCategoryScoringType } from '@/composabl
 import { useAvailablePlayers } from '@/composables/useAvailablePlayers'
 import { useMyRoster } from '@/composables/useMyRoster'
 import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
+import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
 import { rankAddsForHoles } from '@/players/rankAdds'
 import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
@@ -22,6 +23,7 @@ import ActionFeed from '@/components/myteam/ActionFeed.vue'
 import SituationStrip from '@/components/myteam/SituationStrip.vue'
 import CategoryProfile from '@/components/myteam/CategoryProfile.vue'
 import RosterPanel from '@/components/myteam/RosterPanel.vue'
+import MatchupSnapshot from '@/components/myteam/MatchupSnapshot.vue'
 
 const leagueStore = useLeagueStore()
 const { players: yahooFreeAgents, load: loadPlayers } = useAvailablePlayers()
@@ -35,6 +37,7 @@ const {
 } = useMyRoster()
 
 const espn = useEspnCategoryTeamData()
+const thisWeek = useThisWeekMatchup()
 const isEspnCategoryLeague = computed(
   () => leagueStore.activePlatform === 'espn' && espn.supported.value === true,
 )
@@ -139,11 +142,21 @@ function maybeLoadEspn() {
   }
 }
 
+// Load the this-week win-probability snapshot for the current matchup. Needs the
+// category list (statId + label), which loads async, so this is also re-run by a
+// watch on `categories` once they're available. The composable degrades to a null
+// snapshot (band renders nothing) on any fetch failure / missing week / offseason.
+function maybeLoadThisWeek() {
+  if (!categories.value.length) return
+  thisWeek.load(categories.value.map((c) => ({ statId: c.statId, label: c.label })))
+}
+
 onMounted(() => {
   maybeLoadSeasonData()
   maybeLoadPlayers()
   maybeLoadRoster()
   maybeLoadEspn()
+  maybeLoadThisWeek()
 })
 // Reload when the active league changes (e.g. switching into a category league).
 watch(() => leagueStore.activeLeagueId, () => {
@@ -151,6 +164,12 @@ watch(() => leagueStore.activeLeagueId, () => {
   maybeLoadPlayers()
   maybeLoadRoster()
   maybeLoadEspn()
+  maybeLoadThisWeek()
+})
+// Categories load asynchronously after the league data resolves; (re)load the
+// snapshot once they're available so it doesn't no-op on first mount.
+watch(categories, () => {
+  maybeLoadThisWeek()
 })
 
 // Matchups to derive from: full-season when loaded, else the single-week store state.
@@ -509,6 +528,8 @@ const tierByStatId = computed<Record<string, 'strong' | 'winnable' | 'safe' | 'l
       :num-teams="profile.numTeams"
       :verdict="verdict"
     />
+
+    <MatchupSnapshot :snapshot="thisWeek.snapshot.value" />
 
     <div
       v-if="weaknesses.length > 0 || strengths.length > 0"
