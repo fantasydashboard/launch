@@ -79,4 +79,29 @@ describe('computeRosterValue', () => {
     const horse = res.find((r) => r.playerKey === 'horse')!
     expect(horse.valueScore).toBeGreaterThan(tiny.valueScore)
   })
+
+  it('roleValue is a within-role percentile, fair across roles with different cat counts', () => {
+    // 4 hitters touch 5 cats; 4 pitchers touch only ERA (1 cat). Each role's best
+    // should get a high roleValue even though pitchers' raw valueScore is smaller.
+    const pool: ValuePoolPlayer[] = [
+      hitter('h1', 40, 30, 100, 100, 0.320), // best hitter
+      hitter('h2', 20, 15, 80, 80, 0.270),
+      hitter('h3', 12, 8, 60, 60, 0.255),
+      hitter('h4', 5, 2, 45, 45, 0.240),     // worst hitter
+      { playerKey: 'p1', position: 'SP', stats: { ERA: 2.0, IP: 180 } }, // best pitcher
+      { playerKey: 'p2', position: 'SP', stats: { ERA: 3.2, IP: 170 } },
+      { playerKey: 'p3', position: 'SP', stats: { ERA: 4.0, IP: 150 } },
+      { playerKey: 'p4', position: 'SP', stats: { ERA: 5.2, IP: 120 } }, // worst pitcher
+    ]
+    const res = computeRosterValue(pool, ['h1', 'p1', 'h4', 'p4'], cats)
+    const byKey = Object.fromEntries(res.map((r) => [r.playerKey, r]))
+    expect(byKey.h1.role).toBe('hitter')
+    expect(byKey.p1.role).toBe('pitcher')
+    // best of each role ranks high within role; worst of each ranks low
+    expect(byKey.h1.roleValue).toBeGreaterThan(byKey.h4.roleValue)
+    expect(byKey.p1.roleValue).toBeGreaterThan(byKey.p4.roleValue)
+    // the best pitcher is NOT buried under hitters: top-of-role is comparably high
+    expect(byKey.p1.roleValue).toBeGreaterThanOrEqual(75)
+    expect(byKey.h1.roleValue).toBeGreaterThanOrEqual(75)
+  })
 })

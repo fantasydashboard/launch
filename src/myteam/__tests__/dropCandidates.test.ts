@@ -3,7 +3,7 @@ import { computeDropCandidates } from '../dropCandidates'
 import type { PlayerContribution } from '../types'
 
 function pc(playerKey: string, valueScore: number): PlayerContribution {
-  return { playerKey, contribs: [], plusCount: 0, minusCount: 0, overallValue: 0, valueScore, topStatId: null }
+  return { playerKey, contribs: [], plusCount: 0, minusCount: 0, overallValue: 0, valueScore, role: 'hitter', roleValue: 0, topStatId: null }
 }
 
 describe('computeDropCandidates', () => {

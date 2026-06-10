@@ -41,6 +41,23 @@ function clamp(z: number): number {
   return Math.max(-Z_CLAMP, Math.min(Z_CLAMP, z))
 }
 
+/** Classify a player's role. Two-way (both pitcher and hitter eligible) is assigned
+ *  to whichever side they participate in more categories (tie -> hitter). */
+function playerRole(player: ValuePoolPlayer, cats: CatSpec[]): 'hitter' | 'pitcher' {
+  const pitcher = isPitcherPos(player.position)
+  const hitter = isHitterPos(player.position)
+  if (pitcher && !hitter) return 'pitcher'
+  if (hitter && !pitcher) return 'hitter'
+  // two-way: count participated cats per side
+  let pit = 0, hit = 0
+  for (const c of cats) {
+    if (!participatesIn(player, c)) continue
+    if (c.side === 'pit') pit++
+    else hit++
+  }
+  return pit > hit ? 'pitcher' : 'hitter'
+}
+
 /**
  * Role-aware value-above-replacement. For each category, only role-matching
  * players participate. Counting cats z-score the value directly; ratio cats
@@ -97,6 +114,36 @@ export function computeRosterValue(
     pctByCat.set(cat.statId, pctMap)
   }
 
+  // valueScore for EVERY pool player (cheap: z's already computed per category).
+  const scoreOf = (player: ValuePoolPlayer): number => {
+    let s = 0
+    for (const cat of cats) {
+      if (!participatesIn(player, cat)) continue
+      s += zByCat.get(cat.statId)?.get(player.playerKey) ?? 0
+    }
+    return s
+  }
+  const roleOf = new Map<string, 'hitter' | 'pitcher'>()
+  const scoreByKey = new Map<string, number>()
+  const scoresByRole: Record<'hitter' | 'pitcher', number[]> = { hitter: [], pitcher: [] }
+  for (const p of pool) {
+    const role = playerRole(p, cats)
+    const score = scoreOf(p)
+    roleOf.set(p.playerKey, role)
+    scoreByKey.set(p.playerKey, score)
+    scoresByRole[role].push(score)
+  }
+  for (const k of ['hitter', 'pitcher'] as const) scoresByRole[k].sort((a, b) => a - b)
+  // Percentile (0-100) of a value within a sorted ascending array: fraction strictly
+  // below + half of ties, so a lone player is 50 and the max is ~100.
+  const percentile = (arr: number[], v: number): number => {
+    const n = arr.length
+    if (n === 0) return 50
+    let below = 0, equal = 0
+    for (const x of arr) { if (x < v) below++; else if (x === v) equal++ }
+    return Math.round(((below + equal / 2) / n) * 100)
+  }
+
   const myKeys = new Set(myPlayerKeys)
   const mine = pool.filter((p) => myKeys.has(p.playerKey))
 
@@ -116,30 +163,30 @@ export function computeRosterValue(
         continue
       }
       const z = zByCat.get(cat.statId)?.get(player.playerKey) ?? 0
-      const percentile = pctByCat.get(cat.statId)?.get(player.playerKey) ?? 0
+      const percentileVal = pctByCat.get(cat.statId)?.get(player.playerKey) ?? 0
       valueScore += z
 
       let tier: PlayerCategoryContrib['tier'] = 'neutral'
-      if (percentile >= PLUS_THRESHOLD) {
-        tier = 'plus'
-        plusCount++
-      } else if (cat.lowerIsBetter && percentile <= MINUS_THRESHOLD) {
-        tier = 'minus'
-        minusCount++
-      }
-      contribs.push({ statId: cat.statId, tier, value, percentile })
-      contributedPercentiles.push(percentile)
-      if (percentile > topPercentile) {
-        topPercentile = percentile
-        topStatId = cat.statId
-      }
+      if (percentileVal >= PLUS_THRESHOLD) { tier = 'plus'; plusCount++ }
+      else if (cat.lowerIsBetter && percentileVal <= MINUS_THRESHOLD) { tier = 'minus'; minusCount++ }
+      contribs.push({ statId: cat.statId, tier, value, percentile: percentileVal })
+      contributedPercentiles.push(percentileVal)
+      if (percentileVal > topPercentile) { topPercentile = percentileVal; topStatId = cat.statId }
     }
 
     const overallValue =
-      contributedPercentiles.length === 0
-        ? 0
+      contributedPercentiles.length === 0 ? 0
         : contributedPercentiles.reduce((s, p) => s + p, 0) / contributedPercentiles.length
 
-    return { playerKey: player.playerKey, contribs, plusCount, minusCount, overallValue, valueScore, topStatId }
+    const role = roleOf.get(player.playerKey) ?? 'hitter'
+    const roleValue = percentile(scoresByRole[role], scoreByKey.get(player.playerKey) ?? 0)
+
+    return { playerKey: player.playerKey, contribs, plusCount, minusCount, overallValue, valueScore, role, roleValue, topStatId }
   })
+}
+
+export function valueTier(roleValue: number): 'core' | 'solid' | 'fringe' {
+  if (roleValue >= 67) return 'core'
+  if (roleValue >= 34) return 'solid'
+  return 'fringe'
 }

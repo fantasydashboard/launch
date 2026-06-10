@@ -30,6 +30,10 @@ export interface PlayerContribution {
   overallValue: number
   /** Sum of clamped per-category z-scores across the categories the player participates in (role-aware VOR). */
   valueScore: number
+  /** 'hitter' | 'pitcher', from position (two-way assigned by majority participated cats). */
+  role: 'hitter' | 'pitcher'
+  /** Percentile (0-100) of valueScore among rostered POOL players of the same role. */
+  roleValue: number
   /** statId of the player's highest-percentile contributed category (null if none). */
   topStatId: string | null
 }
