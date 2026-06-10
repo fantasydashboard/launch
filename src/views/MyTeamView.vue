@@ -521,7 +521,7 @@ const mtDebug = computed(() => {
     .slice(0, 4)
     .map((c) => {
       const zs = c.contribs
-        .filter((cc) => pitCats.some((pc) => pc.statId === cc.statId) && cc.tier !== 'neutral')
+        .filter((cc) => pitCats.some((pc) => pc.statId === cc.statId) && (cc as { z?: number }).z !== undefined)
         .map((cc) => `${cc.statId}:z=${((cc as { z?: number }).z ?? 0).toFixed(2)}`)
         .join(' ')
       return `  ${c.playerKey} pos=${rosterPool.value.find((pp) => pp.playerKey === c.playerKey)?.position ?? '?'} vs=${c.valueScore.toFixed(2)} rv=${c.roleValue} | partZ: ${zs || '(none participated)'}`
