@@ -166,12 +166,6 @@ watch(() => leagueStore.activeLeagueId, () => {
   maybeLoadEspn()
   maybeLoadThisWeek()
 })
-// Categories load asynchronously after the league data resolves; (re)load the
-// snapshot once they're available so it doesn't no-op on first mount.
-watch(categories, () => {
-  maybeLoadThisWeek()
-})
-
 // Matchups to derive from: full-season when loaded, else the single-week store state.
 const sourceMatchups = computed(() =>
   seasonLoaded.value && seasonMatchups.value.length
@@ -515,6 +509,14 @@ const tierByStatId = computed<Record<string, 'strong' | 'winnable' | 'safe' | 'l
     map[gap.statId] = gap.tier
   }
   return map
+})
+
+// Categories load asynchronously after the league data resolves; (re)load the
+// snapshot once they're available so it doesn't no-op on first mount. Declared
+// here (after the base computeds) because `watch` evaluates its source eagerly
+// during setup, and `categories` reads later-declared computeds.
+watch(categories, () => {
+  maybeLoadThisWeek()
 })
 </script>
 
