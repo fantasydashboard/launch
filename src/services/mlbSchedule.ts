@@ -16,6 +16,25 @@ export interface WeekSchedule {
   startsByPitcher: Record<string, ProbableStart[]>
 }
 
+// Team-abbreviation variants across data sources. statsapi (the schedule) uses
+// ATH / AZ where ESPN and Yahoo carry OAK / ARI on the rostered players, and a few
+// other clubs differ by source. We key gamesByTeam by EVERY variant so a player's
+// team abbr always resolves to its games — otherwise the daily "plays today" layer
+// silently misses those teams (this was killing ESPN's today layer for OAK/ARI).
+const TEAM_ABBR_VARIANTS: Record<string, string[]> = {
+  ATH: ['ATH', 'OAK'],
+  AZ: ['AZ', 'ARI'],
+  CWS: ['CWS', 'CHW'],
+  WSH: ['WSH', 'WAS'],
+  SD: ['SD', 'SDP'],
+  SF: ['SF', 'SFG'],
+  TB: ['TB', 'TBR'],
+  KC: ['KC', 'KCR'],
+}
+export function teamAbbrVariants(abbr: string): string[] {
+  return TEAM_ABBR_VARIANTS[abbr] ?? [abbr]
+}
+
 /** Normalize a player name for matching (lowercase, strip accents + punctuation). */
 export function normalizePitcherName(name: string): string {
   // NFD decomposes accents into base letter + combining mark; the [^a-z\s] strip
@@ -38,8 +57,9 @@ export function parseSchedule(data: unknown): WeekSchedule {
       const home = game?.teams?.home?.team?.abbreviation as string | undefined
       const away = game?.teams?.away?.team?.abbreviation as string | undefined
       const date = (game?.gameDate as string) ?? ''
-      if (home) gamesByTeam[home] = (gamesByTeam[home] ?? 0) + 1
-      if (away) gamesByTeam[away] = (gamesByTeam[away] ?? 0) + 1
+      // Key by every abbreviation variant so ESPN/Yahoo team codes resolve too.
+      if (home) for (const v of teamAbbrVariants(home)) gamesByTeam[v] = (gamesByTeam[v] ?? 0) + 1
+      if (away) for (const v of teamAbbrVariants(away)) gamesByTeam[v] = (gamesByTeam[v] ?? 0) + 1
       const record = (
         side: 'home' | 'away',
         teamAbbr: string | undefined,

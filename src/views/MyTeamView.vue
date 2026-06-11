@@ -331,24 +331,26 @@ const holes = computed<Hole[]>(() => {
   })
 })
 
-// statId -> top add (for the inline "Add: {name} ({statValue} {label})" line).
-const addsByStatId = computed<Record<string, { name: string; statValue: number; label: string }>>(() => {
+// statId -> top add (for the inline "Add {name} {statValue} {label}" line).
+const addsByStatId = computed<Record<string, { name: string; statValue: number; label: string; isRatio: boolean }>>(() => {
   if (!holes.value.length || !players.value.length) return {}
   const groups = rankAddsForHoles(players.value, holes.value, { perHole: 1 })
-  const map: Record<string, { name: string; statValue: number; label: string }> = {}
+  const map: Record<string, { name: string; statValue: number; label: string; isRatio: boolean }> = {}
   for (const group of groups) {
     const top = group.adds[0]
     if (!top) continue
     const cat = categories.value.find((c) => c.statId === group.hole.statId)
     const spec = catSpecs.value.find((c) => c.statId === group.hole.statId)
+    const isRatio = spec?.isRatio ?? false
     // Ratio cats (ERA/WHIP/OBA) read as 2 decimals; counting cats as whole numbers.
-    const statValue = spec?.isRatio ? Math.round(top.statValue * 100) / 100 : Math.round(top.statValue)
+    const statValue = isRatio ? Math.round(top.statValue * 100) / 100 : Math.round(top.statValue)
     // A rounded-to-zero improvement is not a real suggestion.
     if (statValue === 0) continue
     map[group.hole.statId] = {
       name: top.player.name,
       statValue,
       label: cat?.label ?? group.hole.statId,
+      isRatio,
     }
   }
   return map
@@ -413,7 +415,7 @@ const verdict = computed<string | null>(() => {
 // The single best available add for the biggest hole, so the headline weakness
 // carries a "do this next" step (it was previously named but never actioned).
 // Reuses addsByStatId (same top-add-per-category as the season weakness rows).
-const holeAdd = computed<{ name: string; statValue: number; label: string } | null>(() => {
+const holeAdd = computed<{ name: string; statValue: number; label: string; isRatio: boolean } | null>(() => {
   const hole = weaknesses.value[0]
   if (!hole) return null
   return addsByStatId.value[hole.statId] ?? null

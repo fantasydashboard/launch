@@ -4,9 +4,11 @@ import type { Recommendation } from '@/recommendations/types'
 defineProps<{
   recommendations: Recommendation[]
   // Optional: top available add per category, keyed by statId. When a row's
-  // statId has an entry, the delta line "Add {name} -> +{value} {label}" is
-  // rendered beneath the headline (weakness feed only).
-  addsByStatId?: Record<string, { name: string; statValue: number; label: string }>
+  // statId has an entry, the delta line "Add {name} -> {value} {label}" is
+  // rendered beneath the headline (weakness feed only). isRatio rows (ERA/WHIP/
+  // OBA/AVG) show the value as a level, not a "+" delta (a "+" reads as worse on
+  // a lower-is-better rate).
+  addsByStatId?: Record<string, { name: string; statValue: number; label: string; isRatio: boolean }>
   // Optional: gap tier per statId, used to show "winnable" / "punt?" inline tags.
   tierByStatId?: Record<string, 'strong' | 'winnable' | 'safe' | 'lost'>
 }>()
@@ -49,7 +51,7 @@ const severityDot: Record<Recommendation['severity'], string> = {
           v-if="addsByStatId && addsByStatId[rec.statId]"
           class="block text-xs text-dark-textMuted mt-0.5"
         >Add <span class="text-dark-text">{{ addsByStatId[rec.statId].name }}</span>
-          <span class="text-dark-textMuted"> &#x2192; </span><span class="font-mono tabular-nums text-primary font-semibold">+{{ addsByStatId[rec.statId].statValue }}</span>
+          <span class="text-dark-textMuted"> &#x2192; </span><span class="font-mono tabular-nums text-primary font-semibold">{{ addsByStatId[rec.statId].isRatio ? '' : '+' }}{{ addsByStatId[rec.statId].statValue }}</span>
           <span class="text-dark-textMuted"> {{ addsByStatId[rec.statId].label }}</span>
         </span>
       </span>

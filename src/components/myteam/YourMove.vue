@@ -20,12 +20,21 @@ const label = (statId: string) => props.labelByStatId?.[statId] ?? statId
 
 // Group into the Today layer (daily plays) and the longer-term layer. In a weekly
 // league there is no Today layer, and the longer-term layer is the set-your-week list.
+// The longer-term label follows its CONTENT: "Worth rostering" only when it holds a
+// waiver add/stream; when every move is a start/sit (e.g. ESPN, no add layer), it's
+// a lineup action, so call it "Set your lineup" rather than mislabel it as a pickup.
+const longTermLabel = computed(() => {
+  if (props.cadence === 'weekly') return 'Set your week'
+  const longTerm = props.moves.filter((m) => m.layer !== 'today')
+  const hasPickup = longTerm.some((m) => m.kind === 'add' || m.kind === 'stream')
+  return hasPickup ? 'Worth rostering' : 'Set your lineup'
+})
 const groups = computed(() =>
   [
     { key: 'today', label: 'Today · daily plays', moves: props.moves.filter((m) => m.layer === 'today') },
     {
       key: 'longTerm',
-      label: props.cadence === 'weekly' ? 'Set your week' : 'Worth rostering',
+      label: longTermLabel.value,
       moves: props.moves.filter((m) => m.layer !== 'today'),
     },
   ].filter((g) => g.moves.length > 0),

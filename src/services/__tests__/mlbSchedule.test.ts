@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseSchedule, normalizePitcherName } from '../mlbSchedule'
+import { parseSchedule, normalizePitcherName, teamAbbrVariants } from '../mlbSchedule'
 
 describe('mlbSchedule', () => {
   it('normalizePitcherName strips accents and punctuation', () => {
@@ -40,6 +40,35 @@ describe('mlbSchedule', () => {
     // Luzardo has a two-start week (matched by normalized name)
     expect(sched.startsByPitcher['jesus luzardo']).toHaveLength(2)
     expect(sched.startsByPitcher['jesus luzardo'][0].opponentAbbr).toBe('NYM')
+  })
+
+  it('keys gamesByTeam by every abbreviation variant (statsapi ATH/AZ <-> ESPN OAK/ARI)', () => {
+    const raw = {
+      dates: [
+        {
+          games: [
+            {
+              gameDate: '2026-06-11T23:05:00Z',
+              teams: {
+                home: { team: { abbreviation: 'ATH' } }, // statsapi for Athletics
+                away: { team: { abbreviation: 'AZ' } }, // statsapi for Diamondbacks
+              },
+            },
+          ],
+        },
+      ],
+    }
+    const sched = parseSchedule(raw)
+    // A roster carrying the ESPN/Yahoo codes still resolves to the game.
+    expect(sched.gamesByTeam.OAK).toBe(1)
+    expect(sched.gamesByTeam.ATH).toBe(1)
+    expect(sched.gamesByTeam.ARI).toBe(1)
+    expect(sched.gamesByTeam.AZ).toBe(1)
+  })
+
+  it('teamAbbrVariants returns the abbr itself when there is no known variant', () => {
+    expect(teamAbbrVariants('PHI')).toEqual(['PHI'])
+    expect(teamAbbrVariants('ATH')).toContain('OAK')
   })
 
   it('parseSchedule tolerates missing fields', () => {

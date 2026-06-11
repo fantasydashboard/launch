@@ -6,8 +6,9 @@ defineProps<{
   numTeams: number
   verdict: string | null // terse one-line read, or null to omit
   // Top available add for the biggest hole — the "do this next" step for the
-  // weakness the verdict names. Null when no meaningful add exists.
-  holeAdd?: { name: string; statValue: number; label: string } | null
+  // weakness the verdict names. Null when no meaningful add exists. isRatio rows
+  // show the value as a level, not a "+" delta (a "+" reads as worse on a rate).
+  holeAdd?: { name: string; statValue: number; label: string; isRatio: boolean } | null
 }>()
 </script>
 
@@ -32,7 +33,7 @@ defineProps<{
     >
       <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Fix it</span>
       <span>Add <span class="font-semibold text-dark-text">{{ holeAdd.name }}</span></span>
-      <span class="font-mono tabular-nums text-primary">+{{ holeAdd.statValue }} {{ holeAdd.label }}</span>
+      <span class="font-mono tabular-nums text-primary">{{ holeAdd.isRatio ? '' : '+' }}{{ holeAdd.statValue }} {{ holeAdd.label }}</span>
     </router-link>
   </header>
 </template>
