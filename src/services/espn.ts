@@ -1708,9 +1708,13 @@ export class EspnFantasyService {
         }
       }
       
-      const data = await this.apiRequestWithFilter(sport, leagueId, season, [ESPN_VIEWS.PLAYERS], filterObj)
+      // players_wl gives the unowned-player list + filter, but its stats array is
+      // empty; kona_player_info carries the actual season-stat split (statSourceId=0,
+      // statSplitTypeId=0). Request both so free agents arrive with real stats —
+      // otherwise weakness "add" recommendations have nothing to rank.
+      const data = await this.apiRequestWithFilter(sport, leagueId, season, [ESPN_VIEWS.PLAYERS, ESPN_VIEWS.PLAYER_INFO], filterObj)
       const players = data.players || []
-      
+
       console.log('[ESPN getFreeAgents] Got', players.length, 'free agents from players_wl')
       
       for (const entry of players) {
