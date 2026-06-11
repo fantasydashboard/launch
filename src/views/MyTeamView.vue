@@ -536,6 +536,8 @@ const mtDebug = computed(() => {
     `pitCatSpecs=${pitCats.map((c) => c.statId + (c.isRatio ? 'r' : '') + '/' + (c.lowerIsBetter ? 'L' : 'H')).join(',')}`,
     `FA=${players.value.length} holes=${holes.value.map((h) => h.statId).join(',')} adds=${Object.keys(addsByStatId.value).join(',') || 'NONE'} | FAhas ${faHas}`,
     `LAST-RUN poolN=${__valDebug.poolN} pitPool=${__valDebug.pitPoolN} poolPitScores=${JSON.stringify(__valDebug.poolPitScores)}`,
+    `samplePit ${__valDebug.samplePit}`,
+    `sampleCat ${__valDebug.sampleCat}`,
     ...__valDebug.pit,
   ].join('\n')
 })

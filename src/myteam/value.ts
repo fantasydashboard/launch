@@ -70,6 +70,7 @@ export function computeRosterValue(
   myPlayerKeys: string[],
   cats: CatSpec[],
 ): PlayerContribution[] {
+  __valDebug.sampleCat = '' // TEMP: reset each run
   // Per category: z by playerKey, percentile by playerKey (both over participants).
   const zByCat = new Map<string, Map<string, number>>()
   const pctByCat = new Map<string, Map<string, number>>()
@@ -101,6 +102,11 @@ export function computeRosterValue(
     const mean = n > 0 ? quantities.reduce((s, x) => s + x.q, 0) / n : 0
     const variance = n > 0 ? quantities.reduce((s, x) => s + (x.q - mean) ** 2, 0) / n : 0
     const std = Math.sqrt(variance)
+    // TEMP DIAGNOSTIC (remove): capture the first pitching category's participant
+    // distribution so we can see whether pitchers have stats / zero variance.
+    if (cat.side === 'pit' && !__valDebug.sampleCat) {
+      __valDebug.sampleCat = `cat${cat.statId}${cat.isRatio ? 'r' : ''} parts=${quantities.length} std=${std.toFixed(3)} q6=[${quantities.slice(0, 6).map((x) => Math.round(x.q * 100) / 100).join(',')}]`
+    }
     for (const { key, q } of quantities) {
       zMap.set(key, std > 0 ? clamp((q - mean) / std) : 0)
     }
@@ -186,6 +192,11 @@ export function computeRosterValue(
 
   // TEMP DIAGNOSTIC (remove): capture pitcher value breakdown from the actual run,
   // decoupled from reactive pool flapping.
+  // Also probe whether a sample pool pitcher has raw stats at all.
+  const samplePit = pool.find((p) => /(^|[,/|])\s*(SP|RP|P)\s*([,/|]|$)/i.test(p.position || ''))
+  __valDebug.samplePit = samplePit
+    ? `${samplePit.playerKey} statKeys=${Object.keys(samplePit.stats).length} [${cats.filter((c) => c.side === 'pit').map((c) => `${c.statId}:${samplePit.stats[c.statId] ?? '∅'}`).join(' ')}]`
+    : 'none'
   __valDebug.poolN = pool.length
   __valDebug.pitPoolN = scoresByRole.pitcher.length
   __valDebug.poolPitScores = scoresByRole.pitcher.slice(0, 8).map((v) => Math.round(v * 100) / 100)
@@ -204,8 +215,8 @@ export function computeRosterValue(
 }
 
 // TEMP DIAGNOSTIC (remove).
-export const __valDebug: { poolN: number; pitPoolN: number; poolPitScores: number[]; pit: string[] } = {
-  poolN: 0, pitPoolN: 0, poolPitScores: [], pit: [],
+export const __valDebug: { poolN: number; pitPoolN: number; poolPitScores: number[]; pit: string[]; sampleCat: string; samplePit: string } = {
+  poolN: 0, pitPoolN: 0, poolPitScores: [], pit: [], sampleCat: '', samplePit: '',
 }
 
 export function valueTier(roleValue: number): 'core' | 'solid' | 'fringe' {
