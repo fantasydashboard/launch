@@ -80,6 +80,29 @@ describe('computeRosterValue', () => {
     expect(horse.valueScore).toBeGreaterThan(tiny.valueScore)
   })
 
+  it('a single NaN stat does not collapse a category (poisoned mean/std)', () => {
+    // Regression: Yahoo returns "-" -> parseFloat NaN for a pitcher with no
+    // decisions. One NaN used to poison mean/std for the whole category, zeroing
+    // every z and flattening all roleValues to 50.
+    const pitchCats: CatSpec[] = [
+      { statId: 'W', lowerIsBetter: false, side: 'pit', isRatio: false },
+    ]
+    const pool: ValuePoolPlayer[] = [
+      { playerKey: 'ace', position: 'SP', stats: { W: 12 } },
+      { playerKey: 'mid', position: 'SP', stats: { W: 6 } },
+      { playerKey: 'bad', position: 'SP', stats: { W: 2 } },
+      // A rostered pitcher whose W came back non-numeric (NaN).
+      { playerKey: 'nodecision', position: 'RP', stats: { W: NaN } },
+    ]
+    const res = computeRosterValue(pool, ['ace', 'bad'], pitchCats)
+    const ace = res.find((r) => r.playerKey === 'ace')!
+    const bad = res.find((r) => r.playerKey === 'bad')!
+    // The NaN player is dropped from the distribution; the rest still spread.
+    expect(ace.valueScore).toBeGreaterThan(bad.valueScore)
+    expect(ace.roleValue).toBeGreaterThan(bad.roleValue)
+    expect(ace.roleValue).not.toBe(50)
+  })
+
   it('roleValue is a within-role percentile, fair across roles with different cat counts', () => {
     // 4 hitters touch 5 cats; 4 pitchers touch only ERA (1 cat). Each role's best
     // should get a high roleValue even though pitchers' raw valueScore is smaller.

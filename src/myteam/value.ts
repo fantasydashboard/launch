@@ -70,7 +70,6 @@ export function computeRosterValue(
   myPlayerKeys: string[],
   cats: CatSpec[],
 ): PlayerContribution[] {
-  __valDebug.sampleCat = '' // TEMP: reset each run
   // Per category: z by playerKey, percentile by playerKey (both over participants).
   const zByCat = new Map<string, Map<string, number>>()
   const pctByCat = new Map<string, Map<string, number>>()
@@ -98,15 +97,15 @@ export function computeRosterValue(
       quantities = participants.map((p) => ({ key: p.playerKey, q: (p.stats[cat.statId] ?? 0) * dir }))
     }
 
+    // A single non-finite stat (e.g. Yahoo returns "-" for a pitcher with no
+    // decisions -> parseFloat NaN) would poison mean/std and collapse the whole
+    // category's z-scores to 0. Drop non-finite quantities so the rest score.
+    quantities = quantities.filter((x) => Number.isFinite(x.q))
+
     const n = quantities.length
     const mean = n > 0 ? quantities.reduce((s, x) => s + x.q, 0) / n : 0
     const variance = n > 0 ? quantities.reduce((s, x) => s + (x.q - mean) ** 2, 0) / n : 0
     const std = Math.sqrt(variance)
-    // TEMP DIAGNOSTIC (remove): capture the first pitching category's participant
-    // distribution so we can see whether pitchers have stats / zero variance.
-    if (cat.side === 'pit' && !__valDebug.sampleCat) {
-      __valDebug.sampleCat = `cat${cat.statId}${cat.isRatio ? 'r' : ''} parts=${quantities.length} std=${std.toFixed(3)} q6=[${quantities.slice(0, 6).map((x) => Math.round(x.q * 100) / 100).join(',')}]`
-    }
     for (const { key, q } of quantities) {
       zMap.set(key, std > 0 ? clamp((q - mean) / std) : 0)
     }
@@ -153,7 +152,7 @@ export function computeRosterValue(
   const myKeys = new Set(myPlayerKeys)
   const mine = pool.filter((p) => myKeys.has(p.playerKey))
 
-  const result = mine.map((player) => {
+  return mine.map((player) => {
     const contribs: PlayerCategoryContrib[] = []
     let plusCount = 0
     let minusCount = 0
@@ -175,7 +174,7 @@ export function computeRosterValue(
       let tier: PlayerCategoryContrib['tier'] = 'neutral'
       if (percentileVal >= PLUS_THRESHOLD) { tier = 'plus'; plusCount++ }
       else if (cat.lowerIsBetter && percentileVal <= MINUS_THRESHOLD) { tier = 'minus'; minusCount++ }
-      contribs.push({ statId: cat.statId, tier, value, percentile: percentileVal, z } as PlayerCategoryContrib)
+      contribs.push({ statId: cat.statId, tier, value, percentile: percentileVal })
       contributedPercentiles.push(percentileVal)
       if (percentileVal > topPercentile) { topPercentile = percentileVal; topStatId = cat.statId }
     }
@@ -189,34 +188,6 @@ export function computeRosterValue(
 
     return { playerKey: player.playerKey, contribs, plusCount, minusCount, overallValue, valueScore, role, roleValue, topStatId }
   })
-
-  // TEMP DIAGNOSTIC (remove): capture pitcher value breakdown from the actual run,
-  // decoupled from reactive pool flapping.
-  // Also probe whether a sample pool pitcher has raw stats at all.
-  const samplePit = pool.find((p) => /(^|[,/|])\s*(SP|RP|P)\s*([,/|]|$)/i.test(p.position || ''))
-  __valDebug.samplePit = samplePit
-    ? `${samplePit.playerKey} statKeys=${Object.keys(samplePit.stats).length} [${cats.filter((c) => c.side === 'pit').map((c) => `${c.statId}:${samplePit.stats[c.statId] ?? '∅'}`).join(' ')}]`
-    : 'none'
-  __valDebug.poolN = pool.length
-  __valDebug.pitPoolN = scoresByRole.pitcher.length
-  __valDebug.poolPitScores = scoresByRole.pitcher.slice(0, 8).map((v) => Math.round(v * 100) / 100)
-  __valDebug.pit = result
-    .filter((c) => c.role === 'pitcher')
-    .slice(0, 5)
-    .map((c) => {
-      const zs = c.contribs
-        .filter((cc) => (cc as { z?: number }).z !== undefined)
-        .map((cc) => `${cc.statId}=${((cc as { z?: number }).z ?? 0).toFixed(2)}`)
-        .join(',')
-      return `${c.playerKey} vs=${c.valueScore.toFixed(2)} rv=${c.roleValue} sbk=${(scoreByKey.get(c.playerKey) ?? 0).toFixed(2)} z[${zs}]`
-    })
-
-  return result
-}
-
-// TEMP DIAGNOSTIC (remove).
-export const __valDebug: { poolN: number; pitPoolN: number; poolPitScores: number[]; pit: string[]; sampleCat: string; samplePit: string } = {
-  poolN: 0, pitPoolN: 0, poolPitScores: [], pit: [], sampleCat: '', samplePit: '',
 }
 
 export function valueTier(roleValue: number): 'core' | 'solid' | 'fringe' {

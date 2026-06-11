@@ -1306,7 +1306,11 @@ export class YahooFantasyService {
           if (playerStats?.stats) {
             for (const stat of playerStats.stats) {
               if (stat?.stat) {
-                statValues[stat.stat.stat_id] = parseFloat(stat.stat.value || '0')
+                // Yahoo sends "-" for stats a player has not accrued (e.g. a pitcher
+                // with no decisions). parseFloat("-") is NaN, which poisons every
+                // downstream aggregate, so coerce non-numeric values to 0.
+                const v = parseFloat(stat.stat.value || '0')
+                statValues[stat.stat.stat_id] = Number.isFinite(v) ? v : 0
               }
             }
           }
