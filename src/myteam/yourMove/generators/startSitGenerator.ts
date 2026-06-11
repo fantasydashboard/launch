@@ -1,6 +1,7 @@
-import type { CandidateAction, ScoredContext } from '../types'
+import type { CatSpec } from '@/myteam/value'
+import type { MoveCandidate } from '../types'
 import { projectRemainingWeek } from '../projectRemainingWeek'
-import { scoreCandidate } from '../scoreCandidate'
+import { sideOf } from '../helpedCats'
 
 /** Minimum shape needed to evaluate a benched roster player. */
 export interface BenchPlayer {
@@ -12,34 +13,20 @@ export interface BenchPlayer {
 }
 
 /**
- * Propose start/sit moves: for each benched player on my roster who would help a
- * flippable cat if active, propose starting them. The win-prob lift is the value of
- * adding their projected remaining-week contribution to my active totals.
+ * Propose start/sit moves: each benched roster player, projected over the horizon.
+ * buildMoves pairs the started player they'd replace and scores the net swap.
  */
 export function startSitGenerator(
   benched: BenchPlayer[],
-  flippableCatIds: string[],
-  ctx: ScoredContext,
+  cats: CatSpec[],
+  days: number,
   seasonFraction = 0.6,
-): CandidateAction[] {
-  if (flippableCatIds.length === 0) return []
-  const flippable = new Set(flippableCatIds)
-  const out: CandidateAction[] = []
-  for (const p of benched) {
-    const delta = projectRemainingWeek(p.stats, null, ctx.cats, ctx.days, seasonFraction)
-    const helps = ctx.cats
-      .filter((c) => flippable.has(c.statId))
-      .filter((c) => (c.lowerIsBetter ? (delta[c.statId] ?? 0) < 0 : (delta[c.statId] ?? 0) > 0))
-      .map((c) => c.statId)
-    if (helps.length === 0) continue
-    const winProbLift = scoreCandidate(delta, ctx)
-    out.push({
-      kind: 'startSit',
-      player: { key: p.playerKey, name: p.name, team: p.team, position: p.position },
-      categories: helps,
-      winProbLift,
-      rationale: 'On your bench',
-    })
-  }
-  return out
+): MoveCandidate[] {
+  return benched.map((p) => ({
+    kind: 'startSit' as const,
+    player: { key: p.playerKey, name: p.name, team: p.team, position: p.position },
+    side: sideOf(p.position),
+    addDelta: projectRemainingWeek(p.stats, null, cats, days, seasonFraction),
+    detail: 'On your bench',
+  }))
 }

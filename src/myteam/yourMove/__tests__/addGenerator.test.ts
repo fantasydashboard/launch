@@ -1,31 +1,22 @@
 import { describe, it, expect } from 'vitest'
 import { addGenerator } from '../generators/addGenerator'
-import type { ScoredContext } from '../types'
+import type { CatSpec } from '@/myteam/value'
 import type { AvailablePlayer } from '@/players/types'
 
-const ctx: ScoredContext = {
-  cats: [{ statId: 'HR', lowerIsBetter: false, side: 'hit', isRatio: false }],
-  categoryIds: ['HR'],
-  myStats: { HR: 8 },
-  oppStats: { HR: 11 },
-  days: 5,
-  platform: 'yahoo',
-}
+const cats: CatSpec[] = [{ statId: 'HR', lowerIsBetter: false, side: 'hit', isRatio: false }]
 const fas: AvailablePlayer[] = [
   { playerKey: 'fa1', name: 'Power Bat', position: 'OF', team: 'NYY', percentOwned: 20, stats: { HR: 24 } },
-  { playerKey: 'fa2', name: 'Slap Hitter', position: '2B', team: 'SF', percentOwned: 5, stats: { HR: 2 } },
+  { playerKey: 'sp1', name: 'A Pitcher', position: 'SP', team: 'SF', percentOwned: 5, stats: { K: 150 } },
 ]
 
 describe('addGenerator', () => {
-  it('produces add candidates for flippable cats, tagged with helped cats', () => {
-    const cands = addGenerator(fas, ['HR'], ctx, 0.6)
-    const power = cands.find((c) => c.player.key === 'fa1')!
-    expect(power.kind).toBe('add')
-    expect(power.categories).toContain('HR')
-    expect(power.winProbLift).toBeGreaterThan(0)
-  })
-
-  it('returns nothing when there are no flippable cats', () => {
-    expect(addGenerator(fas, [], ctx, 0.6)).toEqual([])
+  it('emits a MoveCandidate per FA with side + projected delta, no scoring', () => {
+    const cands = addGenerator(fas, cats, 5, 0.6)
+    expect(cands).toHaveLength(2)
+    const bat = cands.find((c) => c.player.key === 'fa1')!
+    expect(bat.kind).toBe('add')
+    expect(bat.side).toBe('hit')
+    expect(bat.addDelta.HR).toBeGreaterThan(0)
+    expect(cands.find((c) => c.player.key === 'sp1')!.side).toBe('pit')
   })
 })

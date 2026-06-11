@@ -1,6 +1,20 @@
 import type { CatSpec } from '@/myteam/value'
 
 export type ActionKind = 'add' | 'stream' | 'startSit'
+export type Side = 'hit' | 'pit'
+
+/**
+ * A proposed move before drop-cost netting: which player, their projected
+ * contribution over the horizon, and a contextual detail line. Generators emit
+ * these; buildMoves pairs the drop/sit and scores the net swap.
+ */
+export interface MoveCandidate {
+  kind: ActionKind
+  player: { key: string; name: string; team: string; position: string }
+  side: Side
+  addDelta: Record<string, number>
+  detail: string
+}
 
 /** A single recommended action, scored by its this-week win-probability lift. */
 export interface CandidateAction {

@@ -14,6 +14,8 @@ const rest = computed(() => props.moves.slice(1))
 
 const VERB: Record<CandidateAction['kind'], string> = { add: 'Add', stream: 'Stream', startSit: 'Start' }
 const verb = (m: CandidateAction) => VERB[m.kind]
+// What you give up: a roster drop for add/stream, a lineup sit for start/sit.
+const counterVerb = (m: CandidateAction) => (m.kind === 'startSit' ? 'sit' : 'drop')
 const lift = (m: CandidateAction) => Math.max(0, Math.round(m.winProbLift))
 const label = (statId: string) => props.labelByStatId?.[statId] ?? statId
 </script>
@@ -46,8 +48,11 @@ const label = (statId: string) => props.labelByStatId?.[statId] ?? statId
         class="block rounded-xl border border-primary/40 bg-primary/5 px-4 py-3 transition-colors hover:border-primary"
       >
         <div class="flex items-baseline justify-between gap-3">
-          <span class="font-display text-lg font-bold text-dark-text">
+          <span class="min-w-0 truncate font-display text-lg font-bold text-dark-text">
             {{ verb(hero) }} {{ hero.player.name }}
+            <span v-if="hero.counterparty" class="font-sans text-xs font-normal text-dark-textMuted"
+              >· {{ counterVerb(hero) }} {{ hero.counterparty.name }}</span
+            >
           </span>
           <span class="shrink-0 font-mono text-lg font-bold text-primary tabular-nums">+{{ lift(hero) }}%</span>
         </div>
@@ -72,6 +77,7 @@ const label = (statId: string) => props.labelByStatId?.[statId] ?? statId
       >
         <span class="min-w-0 truncate text-sm text-dark-textSecondary">
           <span class="font-semibold text-dark-text">{{ verb(m) }} {{ m.player.name }}</span>
+          <span v-if="m.counterparty" class="text-xs text-dark-textMuted">· {{ counterVerb(m) }} {{ m.counterparty.name }}</span>
           <span class="ml-2 font-mono text-[11px] text-dark-textMuted">{{ m.categories.map(label).join(' ') }}</span>
         </span>
         <span class="shrink-0 font-mono text-sm text-primary tabular-nums">+{{ lift(m) }}%</span>

@@ -11,7 +11,7 @@ import { useMyRoster } from '@/composables/useMyRoster'
 import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
 import { useYourMove } from '@/composables/useYourMove'
-import type { BenchPlayer } from '@/myteam/yourMove/generators/startSitGenerator'
+import type { RosterSlotPlayer } from '@/myteam/yourMove/pairDrop'
 import { rankAddsForHoles } from '@/players/rankAdds'
 import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
@@ -526,19 +526,26 @@ const tierByStatId = computed<Record<string, 'strong' | 'winnable' | 'safe' | 'l
   return map
 })
 
-// My benched players (lineup data only present on Yahoo for now; other platforms
-// report started=undefined, so this is empty and start/sit calls degrade away).
-const myBenchedPlayers = computed<BenchPlayer[]>(() =>
-  rosterPlayers.value
-    .filter((p) => (p as { started?: boolean }).started === false)
-    .map((p) => ({
+// My roster as drop/sit counterparties + start-sit seeds: join the value model
+// (role + roleValue) with the roster (name, lineup slot, stats). Yahoo carries the
+// `started` flag; other platforms default to started, so start/sit degrades away
+// there but adds/streams still get drop-cost netting.
+const rosterSlotPlayers = computed<RosterSlotPlayer[]>(() => {
+  const byKey = new Map(contributions.value.map((c) => [c.playerKey, c]))
+  return rosterPlayers.value.map((p) => {
+    const c = byKey.get(p.playerKey)
+    return {
       playerKey: p.playerKey,
       name: p.name,
       team: (p as { team?: string }).team ?? '',
       position: (p as { position?: string }).position ?? '',
+      side: (c?.role === 'pitcher' ? 'pit' : 'hit') as 'hit' | 'pit',
+      roleValue: c?.roleValue ?? 50,
+      started: (p as { started?: boolean }).started ?? true,
       stats: (p as { stats?: Record<string, number> }).stats ?? {},
-    })),
-)
+    }
+  })
+})
 
 // "Your Move" — ranked short stack of this-week recommendations. Instantiated
 // here (after catSpecs / players / SEASON_FRACTION are declared) because it reads
@@ -546,7 +553,7 @@ const myBenchedPlayers = computed<BenchPlayer[]>(() =>
 const yourMove = useYourMove({
   catSpecs,
   freeAgents: players,
-  benchedPlayers: myBenchedPlayers,
+  roster: rosterSlotPlayers,
   snapshot: thisWeek.snapshot,
   seasonFraction: computed(() => SEASON_FRACTION),
 })

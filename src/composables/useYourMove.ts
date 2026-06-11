@@ -2,11 +2,13 @@ import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import type { CatSpec } from '@/myteam/value'
 import type { AvailablePlayer } from '@/players/types'
 import type { ThisWeekSnapshot } from '@/composables/useThisWeekMatchup'
-import type { CandidateAction, ScoredContext } from '@/myteam/yourMove/types'
+import type { CandidateAction, MoveCandidate, ScoredContext } from '@/myteam/yourMove/types'
 import { addGenerator } from '@/myteam/yourMove/generators/addGenerator'
 import { streamGenerator } from '@/myteam/yourMove/generators/streamGenerator'
-import { startSitGenerator, type BenchPlayer } from '@/myteam/yourMove/generators/startSitGenerator'
+import { startSitGenerator } from '@/myteam/yourMove/generators/startSitGenerator'
+import { buildMoves } from '@/myteam/yourMove/buildMoves'
 import { rankMoves } from '@/myteam/yourMove/rankMoves'
+import type { RosterSlotPlayer } from '@/myteam/yourMove/pairDrop'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 
 // A this-week category is worth chasing if it's a coin-flip, or a loss still within
@@ -19,19 +21,17 @@ function ymd(d: Date): string {
 }
 
 /**
- * Surface the ranked short stack of "Your Move" recommendations for this week's
- * matchup: waiver adds (always) plus streaming starters (when the MLB schedule
- * loads). Start/sit slots in here in Phase 3.
+ * Surface the ranked short stack of "Your Move" recommendations. Generators emit
+ * raw candidates (adds, streams, start/sit); buildMoves nets each against the
+ * player you'd drop or sit and keeps only believable, honestly-flipped swaps.
  */
 export function useYourMove(inputs: {
   catSpecs: Ref<CatSpec[]>
   freeAgents: Ref<AvailablePlayer[]>
-  benchedPlayers: Ref<BenchPlayer[]>
+  roster: Ref<RosterSlotPlayer[]>
   snapshot: Ref<ThisWeekSnapshot | null>
   seasonFraction: Ref<number>
 }): { moves: ComputedRef<CandidateAction[]> } {
-  // The week's probable-pitcher schedule, loaded async; empty until then so the
-  // add-only stack renders immediately and streaming fills in when ready.
   const schedule = ref<WeekSchedule>(EMPTY_SCHEDULE)
 
   watch(
@@ -54,27 +54,33 @@ export function useYourMove(inputs: {
     if (!snap || snap.completed) return []
     if (snap.platform !== 'yahoo' && snap.platform !== 'espn') return []
 
+    const cats = inputs.catSpecs.value
+    const days = snap.daysRemaining
+    const fraction = inputs.seasonFraction.value
     const ctx: ScoredContext = {
-      cats: inputs.catSpecs.value,
+      cats,
       categoryIds: snap.categories.map((c) => c.statId),
       myStats: snap.myStats,
       oppStats: snap.oppStats,
-      days: snap.daysRemaining,
+      days,
       platform: snap.platform,
     }
-
     const flippableCatIds = snap.categories
       .filter((c) => c.status === 'tossup' || (c.status === 'loss' && c.myWinPct >= LOSS_IN_REACH_PCT))
       .map((c) => c.statId)
 
-    const fraction = inputs.seasonFraction.value
-    const candidates = [
-      ...addGenerator(inputs.freeAgents.value, flippableCatIds, ctx, fraction),
-      ...streamGenerator(inputs.freeAgents.value, schedule.value.startsByPitcher, flippableCatIds, ctx, fraction),
-      ...startSitGenerator(inputs.benchedPlayers.value, flippableCatIds, ctx, fraction),
+    const benched = inputs.roster.value
+      .filter((p) => !p.started)
+      .map((p) => ({ playerKey: p.playerKey, name: p.name, team: p.team, position: p.position, stats: p.stats }))
+
+    const candidates: MoveCandidate[] = [
+      ...addGenerator(inputs.freeAgents.value, cats, days, fraction),
+      ...streamGenerator(inputs.freeAgents.value, schedule.value.startsByPitcher, cats, fraction),
+      ...startSitGenerator(benched, cats, days, fraction),
     ]
 
-    return rankMoves(candidates, { maxMoves: 4, liftFloor: 1 })
+    const built = buildMoves(candidates, inputs.roster.value, flippableCatIds, cats, ctx, fraction)
+    return rankMoves(built, { maxMoves: 4, liftFloor: 1 })
   })
 
   return { moves }
