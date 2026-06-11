@@ -28,11 +28,13 @@ export function pickCounterparty(
   roster: RosterSlotPlayer[],
   side: Side,
   kind: ActionKind,
+  exclude?: Set<string>,
 ): RosterSlotPlayer | null {
   const pool = roster
     .filter((p) => p.side === side)
     .filter((p) => (kind === 'startSit' ? p.started : true))
     .filter((p) => p.roleValue < KEEPER_FLOOR)
+    .filter((p) => !exclude?.has(p.playerKey))
     .sort((a, b) => a.roleValue - b.roleValue)
   return pool[0] ?? null
 }

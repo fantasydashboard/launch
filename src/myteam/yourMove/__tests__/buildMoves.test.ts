@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildMoves } from '../buildMoves'
+import { buildMoves, buildRankedMoves } from '../buildMoves'
 import { pickCounterparty, type RosterSlotPlayer } from '../pairDrop'
 import { projectRemainingWeek } from '../projectRemainingWeek'
 import type { MoveCandidate, ScoredContext } from '../types'
@@ -59,5 +59,40 @@ describe('buildMoves', () => {
     const offToday = buildMoves([addBigBat], roster, ['HR'], cats, ctx, zeroCost)
     const fullCost = buildMoves([addBigBat], roster, ['HR'], cats, ctx, weekProjector)
     expect(offToday[0].winProbLift).toBeGreaterThanOrEqual(fullCost[0].winProbLift)
+  })
+})
+
+describe('buildRankedMoves', () => {
+  it('assigns a distinct counterparty to each move (no repeated drop)', () => {
+    const twoBigBats: MoveCandidate[] = [
+      { ...addBigBat, player: { key: 'fa1', name: 'Bat One', team: 'NYY', position: 'OF' } },
+      { ...addBigBat, player: { key: 'fa2', name: 'Bat Two', team: 'LAD', position: 'OF' } },
+    ]
+    const rosterTwoDrops: RosterSlotPlayer[] = [
+      ...roster,
+      { playerKey: 'scrub2', name: 'Scrub Two', team: 'KC', position: 'OF', side: 'hit', roleValue: 20, started: true, stats: { HR: 2 } },
+    ]
+    const moves = buildRankedMoves(twoBigBats, rosterTwoDrops, ['HR'], cats, ctx, weekProjector, {
+      maxMoves: 4,
+      liftFloor: 1,
+      usedCounterparties: new Set(),
+      usedPlayers: new Set(),
+    })
+    expect(moves).toHaveLength(2)
+    const drops = moves.map((m) => m.counterparty?.key)
+    expect(new Set(drops).size).toBe(2) // distinct
+    expect(drops).toContain('scrub') // weakest goes to the top move
+  })
+
+  it('respects counterparties already used by an earlier layer', () => {
+    const used = new Set<string>(['scrub'])
+    const moves = buildRankedMoves([addBigBat], roster, ['HR'], cats, ctx, weekProjector, {
+      maxMoves: 4,
+      liftFloor: 1,
+      usedCounterparties: used,
+      usedPlayers: new Set(),
+    })
+    // 'scrub' is taken and 'stud' is a keeper -> no acceptable counterparty -> no move
+    expect(moves).toEqual([])
   })
 })
