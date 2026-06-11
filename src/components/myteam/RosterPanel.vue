@@ -220,5 +220,12 @@ const sections = computed<RosterSection[]>(() => {
         </div>
       </template>
     </div>
+
+    <!-- Legend: what the chips and the rightmost number mean -->
+    <p v-if="sections.length > 0" class="px-4 py-3 font-mono text-[10px] leading-relaxed text-dark-textMuted">
+      <span class="text-primary">green</span> = a category this player helps ·
+      <span class="text-[#FF5C5C]">red</span> = one they hurt ·
+      number = their value vs other rostered players at the position (0-100)
+    </p>
   </div>
 </template>

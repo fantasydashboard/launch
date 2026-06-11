@@ -44,8 +44,8 @@ export function streamGenerator(
       categories: helps,
       winProbLift,
       rationale: twoStart
-        ? `Two-start week${opp ? ` (vs ${opp})` : ''} -> ${helps.join(', ')}`
-        : `Spot start${opp ? ` vs ${opp}` : ''} -> ${helps.join(', ')}`,
+        ? `Two-start week${opp ? ` vs ${opp}` : ''}`
+        : `Spot start${opp ? ` vs ${opp}` : ''}`,
     })
   }
   return out

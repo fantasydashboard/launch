@@ -38,7 +38,7 @@ export function startSitGenerator(
       player: { key: p.playerKey, name: p.name, team: p.team, position: p.position },
       categories: helps,
       winProbLift,
-      rationale: `On your bench — start for ${helps.join(', ')}`,
+      rationale: 'On your bench',
     })
   }
   return out

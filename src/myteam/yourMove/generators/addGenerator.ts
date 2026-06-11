@@ -33,7 +33,8 @@ export function addGenerator(
       player: { key: fa.playerKey, name: fa.name, team: fa.team ?? '', position: fa.position ?? '' },
       categories: helps,
       winProbLift,
-      rationale: `Adds ${helps.join(', ')} you need this week`,
+      // Detail is the contextual bit only; the flipped cats render as labeled chips.
+      rationale: fa.percentOwned > 0 ? `Rostered in ${Math.round(fa.percentOwned)}% of leagues` : 'Free agent',
     })
   }
   return out

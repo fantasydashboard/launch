@@ -6,6 +6,7 @@ const props = defineProps<{
   moves: CandidateAction[]
   loading?: boolean
   record?: { wins: number; losses: number } | null
+  labelByStatId?: Record<string, string>
 }>()
 
 const hero = computed(() => props.moves[0] ?? null)
@@ -14,6 +15,7 @@ const rest = computed(() => props.moves.slice(1))
 const VERB: Record<CandidateAction['kind'], string> = { add: 'Add', stream: 'Stream', startSit: 'Start' }
 const verb = (m: CandidateAction) => VERB[m.kind]
 const lift = (m: CandidateAction) => Math.max(0, Math.round(m.winProbLift))
+const label = (statId: string) => props.labelByStatId?.[statId] ?? statId
 </script>
 
 <template>
@@ -55,10 +57,10 @@ const lift = (m: CandidateAction) => Math.max(0, Math.round(m.winProbLift))
             v-for="c in hero.categories"
             :key="c"
             class="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary"
-            >{{ c }}</span
+            >{{ label(c) }}</span
           >
         </div>
-        <p class="mt-1 font-mono text-[11px] text-dark-textMuted">{{ hero.rationale }}</p>
+        <p v-if="hero.rationale" class="mt-1 font-mono text-[11px] text-dark-textMuted">{{ hero.rationale }}</p>
       </router-link>
 
       <!-- Next-best: de-emphasized -->
@@ -70,7 +72,7 @@ const lift = (m: CandidateAction) => Math.max(0, Math.round(m.winProbLift))
       >
         <span class="min-w-0 truncate text-sm text-dark-textSecondary">
           <span class="font-semibold text-dark-text">{{ verb(m) }} {{ m.player.name }}</span>
-          <span class="ml-2 font-mono text-[11px] text-dark-textMuted">{{ m.categories.join(' ') }}</span>
+          <span class="ml-2 font-mono text-[11px] text-dark-textMuted">{{ m.categories.map(label).join(' ') }}</span>
         </span>
         <span class="shrink-0 font-mono text-sm text-primary tabular-nums">+{{ lift(m) }}%</span>
       </router-link>

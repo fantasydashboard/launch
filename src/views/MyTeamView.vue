@@ -338,9 +338,14 @@ const addsByStatId = computed<Record<string, { name: string; statValue: number; 
     const top = group.adds[0]
     if (!top) continue
     const cat = categories.value.find((c) => c.statId === group.hole.statId)
+    const spec = catSpecs.value.find((c) => c.statId === group.hole.statId)
+    // Ratio cats (ERA/WHIP/OBA) read as 2 decimals; counting cats as whole numbers.
+    const statValue = spec?.isRatio ? Math.round(top.statValue * 100) / 100 : Math.round(top.statValue)
+    // A rounded-to-zero improvement is not a real suggestion.
+    if (statValue === 0) continue
     map[group.hole.statId] = {
       name: top.player.name,
-      statValue: top.statValue,
+      statValue,
       label: cat?.label ?? group.hole.statId,
     }
   }
@@ -505,6 +510,13 @@ const gapCategories = computed(() =>
   categories.value.map((c) => ({ statId: c.statId, label: c.label })),
 )
 
+// statId -> short label (HR, ERA, ...) so Your Move shows category names, not ids.
+const labelByStatId = computed<Record<string, string>>(() => {
+  const m: Record<string, string> = {}
+  for (const c of categories.value) m[c.statId] = c.label
+  return m
+})
+
 // Tier lookup for the weakness ActionFeed (winnable/lost tags).
 const tierByStatId = computed<Record<string, 'strong' | 'winnable' | 'safe' | 'lost'>>(() => {
   const map: Record<string, 'strong' | 'winnable' | 'safe' | 'lost'> = {}
@@ -563,6 +575,7 @@ watch(categories, () => {
       v-if="profile"
       :moves="yourMove.moves.value"
       :loading="rosterLoading"
+      :label-by-stat-id="labelByStatId"
     />
 
     <MatchupSnapshot :snapshot="thisWeek.snapshot.value" />
