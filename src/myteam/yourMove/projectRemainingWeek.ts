@@ -35,3 +35,37 @@ export function projectRemainingWeek(
   }
   return out
 }
+
+// A full season is ~32 starts for a healthy starting pitcher. Used to turn a
+// season counting total into a per-start rate for stream projections.
+const SEASON_STARTS = 32
+
+/**
+ * Project a starting pitcher's contribution over `numStarts` scheduled starts this
+ * week. Counting stats (W, K, ...) scale by per-start rate × starts; ratio stats
+ * (ERA, WHIP) pass through (the scorer volume-weights them). FG ROS preferred.
+ */
+export function projectStarts(
+  seasonStats: Record<string, number>,
+  fgStats: Record<string, number> | null,
+  cats: CatSpec[],
+  numStarts: number,
+  seasonFractionComplete: number,
+): Record<string, number> {
+  const out: Record<string, number> = {}
+  const frac = seasonFractionComplete > 0 ? seasonFractionComplete : 1
+  for (const cat of cats) {
+    if (cat.isRatio) {
+      const fg = fgStats?.[cat.statId]
+      out[cat.statId] = fg !== undefined && Number.isFinite(fg) ? fg : (seasonStats[cat.statId] ?? 0)
+      continue
+    }
+    const fgCount = fgStats?.[cat.statId]
+    const fullSeason =
+      fgCount !== undefined && Number.isFinite(fgCount)
+        ? fgCount
+        : (seasonStats[cat.statId] ?? 0) / frac
+    out[cat.statId] = (fullSeason / SEASON_STARTS) * numStarts
+  }
+  return out
+}
