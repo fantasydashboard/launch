@@ -5,6 +5,7 @@ import type { ThisWeekSnapshot } from '@/composables/useThisWeekMatchup'
 import type { CandidateAction, ScoredContext } from '@/myteam/yourMove/types'
 import { addGenerator } from '@/myteam/yourMove/generators/addGenerator'
 import { streamGenerator } from '@/myteam/yourMove/generators/streamGenerator'
+import { startSitGenerator, type BenchPlayer } from '@/myteam/yourMove/generators/startSitGenerator'
 import { rankMoves } from '@/myteam/yourMove/rankMoves'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 
@@ -25,6 +26,7 @@ function ymd(d: Date): string {
 export function useYourMove(inputs: {
   catSpecs: Ref<CatSpec[]>
   freeAgents: Ref<AvailablePlayer[]>
+  benchedPlayers: Ref<BenchPlayer[]>
   snapshot: Ref<ThisWeekSnapshot | null>
   seasonFraction: Ref<number>
 }): { moves: ComputedRef<CandidateAction[]> } {
@@ -69,6 +71,7 @@ export function useYourMove(inputs: {
     const candidates = [
       ...addGenerator(inputs.freeAgents.value, flippableCatIds, ctx, fraction),
       ...streamGenerator(inputs.freeAgents.value, schedule.value.startsByPitcher, flippableCatIds, ctx, fraction),
+      ...startSitGenerator(inputs.benchedPlayers.value, flippableCatIds, ctx, fraction),
     ]
 
     return rankMoves(candidates, { maxMoves: 4, liftFloor: 1 })

@@ -12,9 +12,17 @@ export interface RosterPlayer {
   status?: string // injury/IL status, '' if healthy
   totalPoints: number
   stats: Record<string, number> // keyed by Yahoo stat_id (season totals)
+  started: boolean // in the active lineup this period (false = bench/IL)
 }
 
+// Yahoo lineup slots that are NOT accruing stats this period.
+const BENCH_SLOTS = new Set(['BN', 'IL', 'IL+', 'IL60', 'NA', 'DL'])
+
 function normalizeRosterPlayer(raw: any): RosterPlayer {
+  const selected = String(raw.selected_position ?? '').toUpperCase()
+  // Default to started when the slot is unknown, so platforms without lineup data
+  // never produce spurious "bench this player" calls.
+  const started = selected === '' ? true : !BENCH_SLOTS.has(selected)
   return {
     playerKey: String(raw.player_key ?? raw.player_id ?? ''),
     name: String(raw.full_name ?? ''),
@@ -24,6 +32,7 @@ function normalizeRosterPlayer(raw: any): RosterPlayer {
     status: raw.status ? String(raw.status) : '',
     totalPoints: typeof raw.total_points === 'number' ? raw.total_points : Number(raw.total_points) || 0,
     stats: raw.stats && typeof raw.stats === 'object' ? { ...raw.stats } : {},
+    started,
   }
 }
 

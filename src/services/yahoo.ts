@@ -1343,6 +1343,7 @@ export class YahooFantasyService {
   async getAllRosteredPlayers(leagueKey: string): Promise<any[]> {
     const allPlayers: any[] = []
     const playerOwnership = new Map<string, { teamKey: string; teamName: string; managerName: string }>()
+    const selectedPositionByKey = new Map<string, string>()
     
     try {
       // First get all teams and their rosters
@@ -1387,18 +1388,29 @@ export class YahooFantasyService {
         
         for (const playerWrapper of Object.values(rosterData) as any[]) {
           if (typeof playerWrapper !== 'object' || !playerWrapper.player) continue
-          
+
           const playerInfo = playerWrapper.player[0]
           if (!Array.isArray(playerInfo)) continue
-          
+
           let playerKey = ''
           for (const item of playerInfo) {
             if (item?.player_key) playerKey = item.player_key
           }
-          
+
+          // The roster context (player[1]) carries the player's lineup slot for the
+          // current period, e.g. {selected_position:[{coverage_type...},{position:'BN'}]}.
+          let selectedPosition = ''
+          const sp = playerWrapper.player[1]?.selected_position
+          if (Array.isArray(sp)) {
+            for (const item of sp) if (item?.position) selectedPosition = String(item.position)
+          } else if (sp?.position) {
+            selectedPosition = String(sp.position)
+          }
+
           if (playerKey) {
             playerKeys.push(playerKey)
             playerOwnership.set(playerKey, { teamKey, teamName, managerName })
+            selectedPositionByKey.set(playerKey, selectedPosition)
           }
         }
       }
@@ -1429,7 +1441,8 @@ export class YahooFantasyService {
             fantasy_team_key: ownership?.teamKey || null,
             manager_name: ownership?.managerName || null,
             status: details.status || '',
-            injury_note: details.injury_note || ''
+            injury_note: details.injury_note || '',
+            selected_position: selectedPositionByKey.get(playerKey) || ''
           })
         }
       }
