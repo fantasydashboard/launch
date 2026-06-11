@@ -8,6 +8,10 @@ export interface EligiblePlayer {
   team: string
   eligiblePositions: string[] // e.g. ['1B','OF']
   stats: Record<string, number>
+  // 0-100 within-role value — the SAME number shown on the roster badge. Lineup
+  // Leaks ranks by this so it can never contradict the roster ordering (a player
+  // can't be flagged "weaker" than someone the badge rates lower).
+  roleValue: number
   status?: string // injury/IL status ('' / 'ACTIVE' = available)
 }
 

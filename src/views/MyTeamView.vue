@@ -410,6 +410,15 @@ const verdict = computed<string | null>(() => {
   return parts.length ? parts.join(' ') : null
 })
 
+// The single best available add for the biggest hole, so the headline weakness
+// carries a "do this next" step (it was previously named but never actioned).
+// Reuses addsByStatId (same top-add-per-category as the season weakness rows).
+const holeAdd = computed<{ name: string; statValue: number; label: string } | null>(() => {
+  const hole = weaknesses.value[0]
+  if (!hole) return null
+  return addsByStatId.value[hole.statId] ?? null
+})
+
 // === Per-player contribution (season-to-date) vs the league's rostered pool ===
 // Direction-aware spec for each scoring category (lowerIsBetter for rate cats).
 const cats = computed(() =>
@@ -589,7 +598,10 @@ const yourMoveKeys = computed(() => {
   }
   return s
 })
-const lineupLeaks = useLineupLeaks({ rosterPlayers, catSpecs, snapshot: thisWeek.snapshot, excludeKeys: yourMoveKeys })
+// Single value model: the 0-100 roleValue the roster badge shows, keyed by player.
+// Lineup Leaks ranks by this so badge / weak-tag / leak ordering can't disagree.
+const roleValueByKey = computed(() => new Map(contributions.value.map((c) => [c.playerKey, c.roleValue])))
+const lineupLeaks = useLineupLeaks({ rosterPlayers, catSpecs, snapshot: thisWeek.snapshot, roleValueByKey, excludeKeys: yourMoveKeys })
 const weakStarterTags = computed(() => {
   const m = new Map<string, string>()
   for (const leak of lineupLeaks.leaks.value) m.set(leak.starter.key, leak.position)
@@ -614,6 +626,7 @@ watch(categories, () => {
       :rank="myOverallRank"
       :num-teams="profile.numTeams"
       :verdict="verdict"
+      :hole-add="holeAdd"
     />
 
     <YourMove

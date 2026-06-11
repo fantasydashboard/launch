@@ -5,12 +5,20 @@ import type { ThisWeekSnapshot } from '@/composables/useThisWeekMatchup'
 import { detectLeaks, type LineupLeak } from '@/myteam/lineupLeaks/detectLeaks'
 import { needWeightsFromSnapshot, type EligiblePlayer } from '@/myteam/lineupLeaks/positionalValue'
 
-function toEligible(p: RosterPlayer): EligiblePlayer {
+function toEligible(p: RosterPlayer, roleValueByKey: Map<string, number>): EligiblePlayer {
   const eligible =
     p.eligiblePositions && p.eligiblePositions.length
       ? p.eligiblePositions
       : String(p.position).split(/[,/]/).map((s) => s.trim()).filter(Boolean)
-  return { playerKey: p.playerKey, name: p.name, team: p.team ?? '', eligiblePositions: eligible, stats: p.stats ?? {}, status: p.status }
+  return {
+    playerKey: p.playerKey,
+    name: p.name,
+    team: p.team ?? '',
+    eligiblePositions: eligible,
+    stats: p.stats ?? {},
+    roleValue: roleValueByKey.get(p.playerKey) ?? 0,
+    status: p.status,
+  }
 }
 
 /**
@@ -24,18 +32,21 @@ export function useLineupLeaks(inputs: {
   rosterPlayers: Ref<RosterPlayer[]>
   catSpecs: Ref<CatSpec[]>
   snapshot: Ref<ThisWeekSnapshot | null>
+  // 0-100 roster-badge value per player key — Leaks ranks by this single model so
+  // it never contradicts the roster ordering.
+  roleValueByKey: Ref<Map<string, number>>
   // player keys Your Move already surfaces, so we don't double-flag them.
   excludeKeys?: Ref<Set<string>>
 }): { leaks: ComputedRef<LineupLeak[]> } {
   const leaks = computed<LineupLeak[]>(() => {
     const snap = inputs.snapshot.value
     if (!snap) return []
+    const rv = inputs.roleValueByKey.value
     const needWeights = needWeightsFromSnapshot(snap.categories)
-    const starters = inputs.rosterPlayers.value.filter((p) => p.started === true).map(toEligible)
-    const bench = inputs.rosterPlayers.value.filter((p) => p.started === false).map(toEligible)
+    const starters = inputs.rosterPlayers.value.filter((p) => p.started === true).map((p) => toEligible(p, rv))
+    const bench = inputs.rosterPlayers.value.filter((p) => p.started === false).map((p) => toEligible(p, rv))
     if (starters.length === 0 || bench.length === 0) return []
     return detectLeaks(starters, bench, [], inputs.catSpecs.value, needWeights, {
-      materiality: 0.5,
       excludeKeys: inputs.excludeKeys?.value,
     })
   })

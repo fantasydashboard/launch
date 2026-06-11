@@ -13,6 +13,7 @@ const mk = (key: string, pos: string[], hr: number, sb: number): EligiblePlayer 
   team: 'X',
   eligiblePositions: pos,
   stats: { HR: hr, SB: sb },
+  roleValue: 0, // unused by positionalValue; required by the interface
 })
 
 describe('needWeightsFromSnapshot', () => {
