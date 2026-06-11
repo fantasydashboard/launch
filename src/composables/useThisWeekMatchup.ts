@@ -13,6 +13,11 @@ export interface ThisWeekSnapshot {
   daysRemaining: number
   completed: boolean
   categories: SnapshotCategory[]
+  // Raw this-week team totals + platform — the baseline the Your Move scorer
+  // perturbs to measure each candidate action's win-probability lift.
+  myStats: Record<string, number>
+  oppStats: Record<string, number>
+  platform: 'yahoo' | 'espn'
 }
 
 // Days left until the end of the standard fantasy week (Sun). Snapshot-grade
@@ -122,6 +127,9 @@ export function useThisWeekMatchup() {
         daysRemaining: days,
         completed: days <= 0,
         categories,
+        myStats,
+        oppStats,
+        platform,
       }
       loaded.value = true
     } catch (e) {
