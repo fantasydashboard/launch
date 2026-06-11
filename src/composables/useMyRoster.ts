@@ -68,20 +68,26 @@ export function useMyRoster() {
     try {
       const { yahooService } = await import('@/services/yahoo')
       // getAllRosteredPlayers is a heavy multi-chunk Yahoo call that intermittently
-      // returns empty (rate-limiting). Retry a few times before accepting an empty
-      // result, so the pool doesn't flap to zero and blank the roster / collapse the
-      // role-relative value percentiles.
+      // returns either an empty array OR rows-without-stats (the inner getPlayerStats
+      // chunks get rate-limited). Either case collapses the role-relative percentiles
+      // to a flat 50, so retry until we get a load that actually carries stats.
+      const statCoverage = (rows: any[]): number =>
+        rows.length === 0 ? 0 : rows.filter((p) => p.stats && Object.keys(p.stats).length > 0).length / rows.length
       let all: any[] = []
-      for (let attempt = 0; attempt < 3; attempt++) {
+      let coverage = 0
+      for (let attempt = 0; attempt < 4; attempt++) {
         all = (await yahooService.getAllRosteredPlayers(String(leagueKey))) || []
         // Bail out if the active league changed while fetching (stale-league guard).
         if (leagueStore.activeLeagueId !== requestedId) return
-        if (all.length > 0) break
+        coverage = statCoverage(all)
+        if (all.length > 0 && coverage >= 0.5) break
         await new Promise((r) => setTimeout(r, 700 * (attempt + 1)))
       }
-      // Never overwrite an already-loaded pool with an empty response.
-      if (all.length === 0) {
-        if (pool.value.length === 0) console.warn('[useMyRoster] rostered-player pool empty after retries')
+      // Never overwrite an already-loaded pool with an empty / statless response.
+      if (all.length === 0 || coverage < 0.5) {
+        if (pool.value.length === 0) {
+          console.warn('[useMyRoster] rostered pool unusable after retries (rows=%d, statCoverage=%s)', all.length, coverage.toFixed(2))
+        }
         return
       }
 
