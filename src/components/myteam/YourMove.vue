@@ -57,12 +57,13 @@ const groups = computed(() =>
       class="h-16 animate-pulse rounded-xl border border-dark-border bg-dark-card"
     ></div>
 
-    <!-- Empty: calm, never a forced bad action -->
-    <div
-      v-else-if="moves.length === 0"
-      class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted"
-    >
-      No swing moves right now.<template v-if="record"> You're {{ record.wins }}-{{ record.losses }} this week.</template>
+    <!-- Empty: calm and explicit, never a forced bad action or a blank box -->
+    <div v-else-if="moves.length === 0" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
+      <p class="text-sm text-dark-text">No swing moves right now.</p>
+      <p class="mt-0.5 text-xs text-dark-textMuted">
+        Nothing on the wire clearly beats your roster this {{ (cadence ?? 'daily') === 'weekly' ? 'week' : 'day' }} —
+        stand pat.<template v-if="record"> You're {{ record.wins }}-{{ record.losses }} this week.</template>
+      </p>
     </div>
 
     <template v-else>

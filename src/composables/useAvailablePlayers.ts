@@ -19,11 +19,22 @@ export function useAvailablePlayers() {
     loading.value = true
     try {
       const { yahooService } = await import('@/services/yahoo')
-      const raw = await yahooService.getTopFreeAgents(String(leagueKey), count)
-      // Bail out if the active league changed while fetching (stale-league guard,
-      // mirroring the guard in useFullSeasonCategoryData.load).
-      if (leagueStore.activeLeagueId !== requestedId) return
-      players.value = (raw || []).map(normalizeFreeAgent)
+      // The free-agent fetch intermittently returns empty (Yahoo rate-limiting);
+      // an empty pool starves the Your Move recommendations. Retry a few times and
+      // never overwrite an already-loaded pool with an empty result.
+      let raw: any[] = []
+      for (let attempt = 0; attempt < 3; attempt++) {
+        raw = (await yahooService.getTopFreeAgents(String(leagueKey), count)) || []
+        // Bail out if the active league changed while fetching (stale-league guard).
+        if (leagueStore.activeLeagueId !== requestedId) return
+        if (raw.length > 0) break
+        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)))
+      }
+      if (raw.length === 0) {
+        if (players.value.length === 0) console.warn('[useAvailablePlayers] free-agent pool empty after retries')
+        return
+      }
+      players.value = raw.map(normalizeFreeAgent)
       loaded.value = true
     } catch (e) {
       console.error('[useAvailablePlayers] load failed', e)
