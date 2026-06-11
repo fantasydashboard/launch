@@ -48,10 +48,20 @@ describe('detectLeaks', () => {
     expect(detectLeaks(starters, bench, [], cats, needHR)).toEqual([])
   })
 
-  it('excludes pitchers (hitters-only in P2)', () => {
-    const starters = [p('weakSP', ['SP'], 0)]
-    const bench = [p('betterSP', ['SP'], 0)]
-    expect(detectLeaks(starters, bench, [], cats, needHR)).toEqual([])
+  it('flags pitching positions too (P3) using pitching needs', () => {
+    const pitCats: CatSpec[] = [{ statId: 'K', lowerIsBetter: false, side: 'pit', isRatio: false }]
+    const starters = [{ playerKey: 'weakSP', name: 'weakSP', team: 'X', eligiblePositions: ['SP'], stats: { K: 40 } }]
+    const bench = [{ playerKey: 'betterSP', name: 'betterSP', team: 'X', eligiblePositions: ['SP'], stats: { K: 180 } }]
+    const leaks = detectLeaks(starters, bench, [], pitCats, { K: 1 })
+    expect(leaks).toHaveLength(1)
+    expect(leaks[0].better.key).toBe('betterSP')
+  })
+
+  it('de-overlaps: skips a better player Your Move already surfaces', () => {
+    const starters = [p('weakStart1B', ['1B'], 6)]
+    const bench = [p('strongBench1B', ['1B'], 34)]
+    const exclude = new Set(['strongBench1B'])
+    expect(detectLeaks(starters, bench, [], cats, needHR, { excludeKeys: exclude })).toEqual([])
   })
 
   it('respects need-weighting: no flag in a category you do not need', () => {

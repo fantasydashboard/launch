@@ -9,10 +9,6 @@ export interface LineupLeak {
   gap: number // need-weighted positional-value gap
 }
 
-// P2 is hitters-only; SP/RP are a streaming game handled by Your Move, not a stable
-// "weak at position" slot (P3 extends to pitchers carefully).
-const isHittingPosition = (pos: string): boolean => !/^(SP|RP|P)$/i.test(pos.trim())
-
 // Exclude IL / NA / OUT alternatives — never recommend swapping in someone unavailable.
 function isAvailable(p: EligiblePlayer): boolean {
   const s = (p.status ?? '').toUpperCase()
@@ -48,9 +44,10 @@ export function detectLeaks(
   freeAgents: EligiblePlayer[],
   cats: CatSpec[],
   needWeights: NeedWeights,
-  opts: { materiality?: number } = {},
+  opts: { materiality?: number; excludeKeys?: Set<string> } = {},
 ): LineupLeak[] {
   const materiality = opts.materiality ?? 0.5
+  const exclude = opts.excludeKeys ?? new Set<string>()
   const pool = [...starters, ...bench, ...freeAgents]
   const leaks: LineupLeak[] = []
 
@@ -63,6 +60,9 @@ export function detectLeaks(
     let best: { p: EligiblePlayer; val: number } | null = null
     for (const p of candidates) {
       if (p.playerKey === starter.playerKey) continue
+      // De-overlap with Your Move: don't re-suggest a player it already surfaces
+      // (e.g. an SP it would stream/start), so the two features never contradict.
+      if (exclude.has(p.playerKey)) continue
       if (!p.eligiblePositions.includes(position) || !isAvailable(p)) continue
       const val = positionalValue(p, position, pool, cats, needWeights)
       if (val > starterVal + materiality && (!best || val > best.val)) best = { p, val }
@@ -71,7 +71,7 @@ export function detectLeaks(
   }
 
   for (const starter of starters) {
-    const positions = starter.eligiblePositions.filter(isHittingPosition)
+    const positions = starter.eligiblePositions
     if (positions.length === 0) continue
     const position = positions[0] // primary eligible position (v1)
     const starterVal = positionalValue(starter, position, pool, cats, needWeights)

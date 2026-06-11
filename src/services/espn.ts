@@ -256,6 +256,8 @@ export interface EspnPlayer {
   positionId: number
   lineupSlotId: number
   lineupSlot: string
+  started?: boolean // in the active lineup (not BE/IL)
+  eligiblePositions?: string[] // multi-position eligibility, e.g. ['1B','OF']
   injuryStatus: string
   projectedPoints: number
   actualPoints: number
@@ -1736,6 +1738,16 @@ export class EspnFantasyService {
           proTeamId: player.proTeamId || 0,
           position: this.getPositionName(player.defaultPositionId, sport),
           positionId: player.defaultPositionId || 0,
+          eligiblePositions: [
+            ...new Set(
+              ((player.eligibleSlots as number[]) || [])
+                .map((id) => (sport === 'baseball' ? BASEBALL_LINEUP_SLOTS : LINEUP_SLOTS)[id])
+                .filter(
+                  (pos): pos is string =>
+                    !!pos && !['BE', 'Bench', 'IR', 'IL', 'IL+', 'NA', 'DL', 'UTIL', 'FLEX', 'OP', 'Rookie'].includes(pos),
+                ),
+            ),
+          ],
           lineupSlotId: 0,
           lineupSlot: 'FA',
           injuryStatus: player.injuryStatus || 'ACTIVE',
@@ -3403,7 +3415,22 @@ export class EspnFantasyService {
     
     // Get correct team mapping based on sport
     const teamMapping = sport === 'baseball' ? MLB_TEAMS : sport === 'hockey' ? NHL_TEAMS : sport === 'basketball' ? NBA_TEAMS : PRO_TEAMS
-    
+
+    // Active vs bench, and the player's multi-position eligibility (mirrors the
+    // draft path). Used by Lineup Leaks to compare like-for-like at each slot.
+    const slotMapping = sport === 'baseball' ? BASEBALL_LINEUP_SLOTS : LINEUP_SLOTS
+    const INACTIVE_SLOTS = new Set(['BE', 'Bench', 'IR', 'IL', 'IL+', 'NA', 'DL'])
+    const slotName = slotMapping[entry.lineupSlotId] || ''
+    const started = entry.lineupSlotId !== undefined && entry.lineupSlotId !== null && !INACTIVE_SLOTS.has(slotName)
+    const excludedSlots = ['BE', 'Bench', 'IR', 'IL', 'IL+', 'NA', 'DL', 'UTIL', 'FLEX', 'OP', 'Rookie']
+    const eligiblePositions = [
+      ...new Set(
+        ((player.eligibleSlots as number[]) || [])
+          .map((id) => slotMapping[id])
+          .filter((pos): pos is string => !!pos && !excludedSlots.includes(pos)),
+      ),
+    ]
+
     return {
       id: entry.playerId,
       playerId: entry.playerId,
@@ -3415,7 +3442,9 @@ export class EspnFantasyService {
       position: this.getPositionName(player.defaultPositionId, sport),
       positionId: player.defaultPositionId || 0,
       lineupSlotId: entry.lineupSlotId,
-      lineupSlot: LINEUP_SLOTS[entry.lineupSlotId] || 'Unknown',
+      lineupSlot: slotMapping[entry.lineupSlotId] || 'Unknown',
+      started,
+      eligiblePositions,
       injuryStatus: player.injuryStatus || 'ACTIVE',
       projectedPoints: projectedStats.appliedTotal || 0,
       actualPoints: seasonStats.appliedTotal || 0,

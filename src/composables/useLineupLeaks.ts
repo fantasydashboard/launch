@@ -24,6 +24,8 @@ export function useLineupLeaks(inputs: {
   rosterPlayers: Ref<RosterPlayer[]>
   catSpecs: Ref<CatSpec[]>
   snapshot: Ref<ThisWeekSnapshot | null>
+  // player keys Your Move already surfaces, so we don't double-flag them.
+  excludeKeys?: Ref<Set<string>>
 }): { leaks: ComputedRef<LineupLeak[]> } {
   const leaks = computed<LineupLeak[]>(() => {
     const snap = inputs.snapshot.value
@@ -32,7 +34,10 @@ export function useLineupLeaks(inputs: {
     const starters = inputs.rosterPlayers.value.filter((p) => p.started === true).map(toEligible)
     const bench = inputs.rosterPlayers.value.filter((p) => p.started === false).map(toEligible)
     if (starters.length === 0 || bench.length === 0) return []
-    return detectLeaks(starters, bench, [], inputs.catSpecs.value, needWeights, { materiality: 0.5 })
+    return detectLeaks(starters, bench, [], inputs.catSpecs.value, needWeights, {
+      materiality: 0.5,
+      excludeKeys: inputs.excludeKeys?.value,
+    })
   })
   return { leaks }
 }

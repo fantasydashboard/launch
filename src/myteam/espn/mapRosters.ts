@@ -7,6 +7,8 @@ export interface EspnPlayerLike {
   fullName: string
   proTeam: string
   position: string
+  started?: boolean
+  eligiblePositions?: string[]
   injuryStatus?: string
   actualPoints?: number
   stats: Record<string, number>
@@ -32,9 +34,10 @@ export function espnHeadshotUrl(playerId: number, sport: Sport): string {
   return `https://a.espncdn.com/i/headshots/${path}/players/full/${playerId}.png`
 }
 
-// ESPN exposes a single defaultPosition on rosters (multi-slot eligibleSlots is a
-// fast-follow). Fall back to the single position so within-position grouping works.
+// Multi-position eligibility from eligibleSlots (parsed upstream), falling back to
+// the single default position when absent.
 export function espnEligible(p: EspnPlayerLike): string[] {
+  if (p.eligiblePositions && p.eligiblePositions.length) return p.eligiblePositions
   return p.position ? [p.position] : []
 }
 
@@ -62,5 +65,6 @@ export function mapRosterToPlayers(team: EspnTeamRosterLike, sport: Sport): Rost
     status: p.injuryStatus && p.injuryStatus !== 'ACTIVE' ? p.injuryStatus : '',
     totalPoints: typeof p.actualPoints === 'number' ? p.actualPoints : 0,
     stats: p.stats && typeof p.stats === 'object' ? { ...p.stats } : {},
+    started: p.started,
   }))
 }

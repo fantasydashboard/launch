@@ -578,9 +578,18 @@ const yourMove = useYourMove({
   cadence,
 })
 
-// "Lineup Leaks" — started hitters who are weak for the position vs a better bench
+// "Lineup Leaks" — started players who are weak for the position vs a better bench
 // option. Drives the callout above the roster and the "weak [pos]" tags within it.
-const lineupLeaks = useLineupLeaks({ rosterPlayers, catSpecs, snapshot: thisWeek.snapshot })
+// Exclude players Your Move already surfaces so the two never contradict.
+const yourMoveKeys = computed(() => {
+  const s = new Set<string>()
+  for (const m of yourMove.moves.value) {
+    s.add(m.player.key)
+    if (m.counterparty) s.add(m.counterparty.key)
+  }
+  return s
+})
+const lineupLeaks = useLineupLeaks({ rosterPlayers, catSpecs, snapshot: thisWeek.snapshot, excludeKeys: yourMoveKeys })
 const weakStarterTags = computed(() => {
   const m = new Map<string, string>()
   for (const leak of lineupLeaks.leaks.value) m.set(leak.starter.key, leak.position)
