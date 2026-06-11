@@ -1263,22 +1263,29 @@ export class YahooFantasyService {
     
     console.log(`Fetching player stats for ${playerKeys.length} players in ${chunks.length} chunks`)
     
-    for (const chunk of chunks) {
-      try {
-        const keysParam = chunk.join(',')
-        // Use league context to get fantasy points, not just raw stats
-        const data = await this.apiRequest(
-          `/league/${leagueKey}/players;player_keys=${keysParam}/stats?format=json`
-        )
-        
-        console.log('Player stats response sample:', JSON.stringify(data, null, 2).substring(0, 2000))
-        
-        const playersData = data.fantasy_content?.league?.[1]?.players
-        if (!playersData) {
-          console.log('No players data in response')
-          continue
+    for (let ci = 0; ci < chunks.length; ci++) {
+      const chunk = chunks[ci]
+      const keysParam = chunk.join(',')
+      // Yahoo rate-limits this endpoint when many chunks fire back-to-back, which
+      // silently drops whole chunks (e.g. all the pitchers), so retry each chunk and
+      // pace the requests. A dropped chunk means those players come back stat-less.
+      let playersData: any = null
+      for (let attempt = 0; attempt < 3 && !playersData; attempt++) {
+        try {
+          const data = await this.apiRequest(
+            `/league/${leagueKey}/players;player_keys=${keysParam}/stats?format=json`
+          )
+          playersData = data.fantasy_content?.league?.[1]?.players || null
+        } catch (e) {
+          console.error(`Error fetching player stats chunk ${ci} (attempt ${attempt + 1}):`, e)
         }
-        
+        if (!playersData) await new Promise((r) => setTimeout(r, 400 * (attempt + 1)))
+      }
+      if (!playersData) {
+        console.warn(`[getPlayerStats] chunk ${ci} returned no data after retries`)
+        continue
+      }
+      try {
         for (const playerWrapper of Object.values(playersData) as any[]) {
           if (typeof playerWrapper !== 'object' || !playerWrapper.player) continue
           
@@ -1313,16 +1320,15 @@ export class YahooFantasyService {
             total_points: totalPoints
           })
           
-          if (stats.size <= 3) {
-            console.log(`Player ${player_key} stats:`, { totalPoints, hasPlayerPoints: !!playerPoints, hasPlayerStats: !!playerStats })
-          }
         }
       } catch (e) {
-        console.error('Error fetching player stats chunk:', e)
+        console.error(`[getPlayerStats] parse error chunk ${ci}:`, e)
       }
+      // Pace requests so Yahoo doesn't throttle the next chunk.
+      if (ci < chunks.length - 1) await new Promise((r) => setTimeout(r, 120))
     }
-    
-    console.log(`Got stats for ${stats.size} players`)
+
+    console.log(`Got stats for ${stats.size}/${playerKeys.length} players`)
     return stats
   }
 
