@@ -67,11 +67,24 @@ export function useMyRoster() {
     loading.value = true
     try {
       const { yahooService } = await import('@/services/yahoo')
-      const raw = await yahooService.getAllRosteredPlayers(String(leagueKey))
-      // Bail out if the active league changed while fetching (stale-league guard).
-      if (leagueStore.activeLeagueId !== requestedId) return
+      // getAllRosteredPlayers is a heavy multi-chunk Yahoo call that intermittently
+      // returns empty (rate-limiting). Retry a few times before accepting an empty
+      // result, so the pool doesn't flap to zero and blank the roster / collapse the
+      // role-relative value percentiles.
+      let all: any[] = []
+      for (let attempt = 0; attempt < 3; attempt++) {
+        all = (await yahooService.getAllRosteredPlayers(String(leagueKey))) || []
+        // Bail out if the active league changed while fetching (stale-league guard).
+        if (leagueStore.activeLeagueId !== requestedId) return
+        if (all.length > 0) break
+        await new Promise((r) => setTimeout(r, 700 * (attempt + 1)))
+      }
+      // Never overwrite an already-loaded pool with an empty response.
+      if (all.length === 0) {
+        if (pool.value.length === 0) console.warn('[useMyRoster] rostered-player pool empty after retries')
+        return
+      }
 
-      const all = raw || []
       // Expose the full unfiltered rostered pool (used for league-wide percentiles).
       pool.value = all.map(normalizePoolPlayer)
 
