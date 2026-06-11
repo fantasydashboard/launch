@@ -581,7 +581,7 @@ watch(categories, () => {
     <YourMove
       v-if="profile"
       :moves="yourMove.moves.value"
-      :loading="rosterLoading"
+      :loading="rosterLoading && rosterPlayers.length === 0"
       :label-by-stat-id="labelByStatId"
     />
 
