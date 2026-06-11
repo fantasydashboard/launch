@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { profileFromStandings, type StandingsEntryLike } from '@/recommendations/fromStandings'
 import { computeCategoryWeaknesses, computeCategoryStrengths } from '@/recommendations/categorySignals'
