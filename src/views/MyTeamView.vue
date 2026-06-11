@@ -547,6 +547,23 @@ const rosterSlotPlayers = computed<RosterSlotPlayer[]>(() => {
   })
 })
 
+// Lineup cadence (daily vs weekly), remembered per league. Daily is the baseball
+// default; the user can flip it (and weekly leagues should). No fragile auto-detect.
+const cadenceKey = (id: string | null | undefined) => `ufd_ym_cadence_${id ?? ''}`
+const cadence = ref<'daily' | 'weekly'>('daily')
+watch(
+  () => leagueStore.activeLeagueId,
+  (id) => {
+    const stored = id ? localStorage.getItem(cadenceKey(id)) : null
+    cadence.value = stored === 'weekly' ? 'weekly' : 'daily'
+  },
+  { immediate: true },
+)
+watch(cadence, (v) => {
+  const id = leagueStore.activeLeagueId
+  if (id) localStorage.setItem(cadenceKey(id), v)
+})
+
 // "Your Move" — ranked short stack of this-week recommendations. Instantiated
 // here (after catSpecs / players / SEASON_FRACTION are declared) because it reads
 // those refs eagerly; declaring it earlier would hit a temporal-dead-zone error.
@@ -556,6 +573,7 @@ const yourMove = useYourMove({
   roster: rosterSlotPlayers,
   snapshot: thisWeek.snapshot,
   seasonFraction: computed(() => SEASON_FRACTION),
+  cadence,
 })
 
 // Categories load asynchronously after the league data resolves; (re)load the
@@ -580,6 +598,7 @@ watch(categories, () => {
 
     <YourMove
       v-if="profile"
+      v-model:cadence="cadence"
       :moves="yourMove.moves.value"
       :loading="rosterLoading && rosterPlayers.length === 0"
       :label-by-stat-id="labelByStatId"

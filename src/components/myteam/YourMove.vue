@@ -7,7 +7,9 @@ const props = defineProps<{
   loading?: boolean
   record?: { wins: number; losses: number } | null
   labelByStatId?: Record<string, string>
+  cadence?: 'daily' | 'weekly'
 }>()
+const emit = defineEmits<{ 'update:cadence': ['daily' | 'weekly'] }>()
 
 const VERB: Record<CandidateAction['kind'], string> = { add: 'Add', stream: 'Stream', startSit: 'Start' }
 const verb = (m: CandidateAction) => VERB[m.kind]
@@ -16,20 +18,38 @@ const counterVerb = (m: CandidateAction) => (m.kind === 'startSit' ? 'sit' : 'dr
 const lift = (m: CandidateAction) => Math.max(0, Math.round(m.winProbLift))
 const label = (statId: string) => props.labelByStatId?.[statId] ?? statId
 
-// Group into the Today layer (daily plays) and the longer-term roster-upgrade layer.
+// Group into the Today layer (daily plays) and the longer-term layer. In a weekly
+// league there is no Today layer, and the longer-term layer is the set-your-week list.
 const groups = computed(() =>
   [
     { key: 'today', label: 'Today · daily plays', moves: props.moves.filter((m) => m.layer === 'today') },
-    { key: 'longTerm', label: 'Worth rostering', moves: props.moves.filter((m) => m.layer !== 'today') },
+    {
+      key: 'longTerm',
+      label: props.cadence === 'weekly' ? 'Set your week' : 'Worth rostering',
+      moves: props.moves.filter((m) => m.layer !== 'today'),
+    },
   ].filter((g) => g.moves.length > 0),
 )
 </script>
 
 <template>
   <section>
-    <h2 class="mb-2 text-xs font-display font-semibold uppercase tracking-wide text-dark-textMuted">
-      Your Move
-    </h2>
+    <div class="mb-2 flex items-center justify-between gap-2">
+      <h2 class="text-xs font-display font-semibold uppercase tracking-wide text-dark-textMuted">Your Move</h2>
+      <!-- Daily leagues get a Today layer; weekly leagues set the lineup for the week. -->
+      <div class="flex overflow-hidden rounded-md border border-dark-border font-mono text-[10px] uppercase tracking-wider">
+        <button
+          v-for="opt in (['daily', 'weekly'] as const)"
+          :key="opt"
+          type="button"
+          class="px-2 py-0.5 transition-colors"
+          :class="(cadence ?? 'daily') === opt ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-textSecondary'"
+          @click="emit('update:cadence', opt)"
+        >
+          {{ opt }}
+        </button>
+      </div>
+    </div>
 
     <!-- Loading: a single skeleton, never blank -->
     <div

@@ -33,6 +33,9 @@ export function useYourMove(inputs: {
   roster: Ref<RosterSlotPlayer[]>
   snapshot: Ref<ThisWeekSnapshot | null>
   seasonFraction: Ref<number>
+  // 'daily' surfaces a Today layer (stream/fill for one day); 'weekly' leagues lock
+  // lineups for the week, so only the set-your-week (longer-term) layer applies.
+  cadence: Ref<'daily' | 'weekly'>
 }): { moves: ComputedRef<CandidateAction[]> } {
   const weekSchedule = ref<WeekSchedule>(EMPTY_SCHEDULE)
   const todaySchedule = ref<WeekSchedule>(EMPTY_SCHEDULE)
@@ -89,15 +92,19 @@ export function useYourMove(inputs: {
     const usedPlayers = new Set<string>()
 
     // Today: a one-day play costs only the counterparty's today (often 0 if off).
-    const todayMoves = buildRankedMoves(
-      dailyCandidates(inputs.freeAgents.value, benched, todaySchedule.value, cats, fraction),
-      inputs.roster.value,
-      flippableCatIds,
-      cats,
-      ctx,
-      (p) => projectGames(p.stats, null, cats, playsToday(p.team) ? 1 : 0, fraction),
-      { layer: 'today', maxMoves: 3, liftFloor: 1, usedCounterparties, usedPlayers },
-    )
+    // Weekly leagues lock lineups for the week, so there is no daily layer.
+    const todayMoves =
+      inputs.cadence.value === 'weekly'
+        ? []
+        : buildRankedMoves(
+            dailyCandidates(inputs.freeAgents.value, benched, todaySchedule.value, cats, fraction),
+            inputs.roster.value,
+            flippableCatIds,
+            cats,
+            ctx,
+            (p) => projectGames(p.stats, null, cats, playsToday(p.team) ? 1 : 0, fraction),
+            { layer: 'today', maxMoves: 3, liftFloor: 1, usedCounterparties, usedPlayers },
+          )
 
     // Longer term: a real roster upgrade over the rest of the week.
     const weekCandidates: MoveCandidate[] = [
