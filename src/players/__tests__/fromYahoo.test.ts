@@ -22,6 +22,7 @@ describe('normalizeFreeAgent', () => {
       playerKey: '431.p.123',
       name: 'Some Closer',
       position: 'RP',
+      eligiblePositions: ['RP'],
       team: 'NYY',
       headshot: 'http://img/x.png',
       percentOwned: 45.2,

@@ -170,6 +170,20 @@ interface YahooMatchup {
   is_tied?: boolean
 }
 
+/**
+ * Normalize Yahoo's eligible_positions (an array or object-indexed map of
+ * {position} entries, sometimes bare strings) into an array of position codes,
+ * dropping bench/IL/utility pseudo-slots.
+ */
+function parseEligiblePositions(raw: any): string[] {
+  if (!raw) return []
+  const entries = Array.isArray(raw) ? raw : typeof raw === 'object' ? Object.values(raw) : []
+  const skip = new Set(['BN', 'IL', 'IL+', 'NA', 'DL', 'UTIL', 'Util'])
+  return entries
+    .map((e: any) => (typeof e === 'string' ? e : e?.position))
+    .filter((p: any): p is string => typeof p === 'string' && p.length > 0 && !skip.has(p))
+}
+
 export class YahooFantasyService {
   private userId: string | null = null
   private supabaseUrl: string
@@ -1153,19 +1167,21 @@ export class YahooFantasyService {
                 let headshot = ''
                 let status = ''
                 let injury_note = ''
-                
+                let eligible_positions: string[] = []
+
                 for (const item of playerInfo) {
                   if (item?.player_key) player_key = item.player_key
                   if (item?.player_id) player_id = item.player_id
                   if (item?.name) name = item.name.full || (item.name.first + ' ' + item.name.last)
                   if (item?.editorial_team_abbr) team = item.editorial_team_abbr
                   if (item?.display_position) position = item.display_position
+                  if (item?.eligible_positions) eligible_positions = parseEligiblePositions(item.eligible_positions)
                   if (item?.headshot) headshot = item.headshot.url || ''
                   if (item?.status) status = item.status
                   if (item?.status_full) status = item.status_full || status
                   if (item?.injury_note) injury_note = item.injury_note
                 }
-                
+
                 if (player_key && name) {
                   players.set(player_key, {
                     player_key,
@@ -1173,6 +1189,7 @@ export class YahooFantasyService {
                     name,
                     team,
                     position,
+                    eligible_positions,
                     headshot,
                     status,
                     injury_note
@@ -1213,19 +1230,21 @@ export class YahooFantasyService {
           let headshot = ''
           let status = ''
           let injury_note = ''
-          
+          let eligible_positions: string[] = []
+
           for (const item of playerInfo) {
             if (item?.player_key) player_key = item.player_key
             if (item?.player_id) player_id = item.player_id
             if (item?.name) name = item.name.full || (item.name.first + ' ' + item.name.last)
             if (item?.editorial_team_abbr) team = item.editorial_team_abbr
             if (item?.display_position) position = item.display_position
+            if (item?.eligible_positions) eligible_positions = parseEligiblePositions(item.eligible_positions)
             if (item?.headshot) headshot = item.headshot.url || ''
             if (item?.status) status = item.status
             if (item?.status_full) status = item.status_full || status
             if (item?.injury_note) injury_note = item.injury_note
           }
-          
+
           if (player_key && name) {
             players.set(player_key, {
               player_key,
@@ -1233,6 +1252,7 @@ export class YahooFantasyService {
               name,
               team,
               position,
+              eligible_positions,
               headshot,
               status,
               injury_note
@@ -1433,6 +1453,7 @@ export class YahooFantasyService {
             player_id: details.player_id,
             full_name: details.name,
             position: details.position,
+            eligible_positions: (details as { eligible_positions?: string[] }).eligible_positions || [],
             mlb_team: details.team,
             headshot: details.headshot,
             total_points: stats?.total_points || 0,
@@ -1490,6 +1511,7 @@ export class YahooFantasyService {
         let percentDelta = 0
         let status = ''
         let injury_note = ''
+        let eligible_positions: string[] = []
 
         for (const item of playerInfo) {
           if (item?.player_key) playerKey = item.player_key
@@ -1497,6 +1519,7 @@ export class YahooFantasyService {
           if (item?.name) name = item.name.full || `${item.name.first} ${item.name.last}`
           if (item?.editorial_team_abbr) team = item.editorial_team_abbr
           if (item?.display_position) position = item.display_position
+          if (item?.eligible_positions) eligible_positions = parseEligiblePositions(item.eligible_positions)
           if (item?.headshot) headshot = item.headshot.url || ''
           if (item?.percent_owned) {
             percentOwned = parseFloat(item.percent_owned.value || '0')
@@ -1514,6 +1537,7 @@ export class YahooFantasyService {
             player_id: playerId,
             full_name: name,
             position,
+            eligible_positions,
             mlb_team: team,
             headshot,
             percent_owned: percentOwned,

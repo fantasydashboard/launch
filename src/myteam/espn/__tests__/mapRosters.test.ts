@@ -30,8 +30,8 @@ describe('mapRosters', () => {
   it('mapRostersToPool flattens all teams to {playerKey, position, stats}', () => {
     const pool = mapRostersToPool(teams)
     expect(pool).toHaveLength(3)
-    expect(pool).toContainEqual({ playerKey: '10', position: 'OF', stats: { '20': 30 } })
-    expect(pool).toContainEqual({ playerKey: '20', position: 'OF', stats: { '20': 5 } })
+    expect(pool).toContainEqual({ playerKey: '10', position: 'OF', eligiblePositions: ['OF'], stats: { '20': 30 } })
+    expect(pool).toContainEqual({ playerKey: '20', position: 'OF', eligiblePositions: ['OF'], stats: { '20': 5 } })
   })
 
   it('mapRosterToPlayers maps one team to RosterPlayer rows with headshots', () => {

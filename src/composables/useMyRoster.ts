@@ -13,6 +13,19 @@ export interface RosterPlayer {
   totalPoints: number
   stats: Record<string, number> // keyed by Yahoo stat_id (season totals)
   started: boolean // in the active lineup this period (false = bench/IL)
+  eligiblePositions?: string[] // every position this player qualifies for, e.g. ['1B','OF']
+}
+
+// Eligible positions: prefer the parsed eligible_positions, else split the
+// comma/slash-separated display position ("1B,OF").
+function eligibleFrom(raw: any): string[] {
+  if (Array.isArray(raw.eligible_positions) && raw.eligible_positions.length) {
+    return raw.eligible_positions.map((p: any) => String(p)).filter(Boolean)
+  }
+  return String(raw.position ?? '')
+    .split(/[,/]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
 }
 
 // Yahoo lineup slots that are NOT accruing stats this period.
@@ -33,6 +46,7 @@ function normalizeRosterPlayer(raw: any): RosterPlayer {
     totalPoints: typeof raw.total_points === 'number' ? raw.total_points : Number(raw.total_points) || 0,
     stats: raw.stats && typeof raw.stats === 'object' ? { ...raw.stats } : {},
     started,
+    eligiblePositions: eligibleFrom(raw),
   }
 }
 
@@ -42,6 +56,7 @@ export interface PoolPlayer {
   playerKey: string
   position: string
   stats: Record<string, number>
+  eligiblePositions?: string[]
 }
 
 function normalizePoolPlayer(raw: any): PoolPlayer {
@@ -49,6 +64,7 @@ function normalizePoolPlayer(raw: any): PoolPlayer {
     playerKey: String(raw.player_key ?? raw.player_id ?? ''),
     position: String(raw.position ?? ''),
     stats: raw.stats && typeof raw.stats === 'object' ? { ...raw.stats } : {},
+    eligiblePositions: eligibleFrom(raw),
   }
 }
 

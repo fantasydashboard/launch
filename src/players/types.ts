@@ -3,6 +3,7 @@ export interface AvailablePlayer {
   playerKey: string
   name: string
   position: string
+  eligiblePositions?: string[] // every position this player qualifies for, e.g. ['1B','OF']
   team: string // MLB team abbr
   headshot?: string
   percentOwned: number

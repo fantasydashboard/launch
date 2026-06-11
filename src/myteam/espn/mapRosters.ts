@@ -32,12 +32,19 @@ export function espnHeadshotUrl(playerId: number, sport: Sport): string {
   return `https://a.espncdn.com/i/headshots/${path}/players/full/${playerId}.png`
 }
 
+// ESPN exposes a single defaultPosition on rosters (multi-slot eligibleSlots is a
+// fast-follow). Fall back to the single position so within-position grouping works.
+export function espnEligible(p: EspnPlayerLike): string[] {
+  return p.position ? [p.position] : []
+}
+
 /** Flatten every team's roster into the league-wide percentile pool. */
 export function mapRostersToPool(teams: EspnTeamRosterLike[]): PoolPlayer[] {
   return teams.flatMap((t) =>
     (t.roster ?? []).map((p) => ({
       playerKey: String(p.playerId),
       position: p.position ?? '',
+      eligiblePositions: espnEligible(p),
       stats: p.stats && typeof p.stats === 'object' ? { ...p.stats } : {},
     })),
   )
@@ -49,6 +56,7 @@ export function mapRosterToPlayers(team: EspnTeamRosterLike, sport: Sport): Rost
     playerKey: String(p.playerId),
     name: p.fullName ?? '',
     position: p.position ?? '',
+    eligiblePositions: espnEligible(p),
     team: p.proTeam ?? '',
     headshot: espnHeadshotUrl(p.playerId, sport),
     status: p.injuryStatus && p.injuryStatus !== 'ACTIVE' ? p.injuryStatus : '',
