@@ -16,6 +16,10 @@ export interface MoveCandidate {
   detail: string
 }
 
+/** Which decision layer a move belongs to: a one-day daily play, or a longer-term
+ * roster upgrade. */
+export type MoveLayer = 'today' | 'longTerm'
+
 /** A single recommended action, scored by its this-week win-probability lift. */
 export interface CandidateAction {
   kind: ActionKind
@@ -25,6 +29,7 @@ export interface CandidateAction {
   categories: string[] // the flippable this-week cats this move helps
   winProbLift: number // percentage points vs the baseline matchup
   rationale: string // human-readable, opinionated
+  layer?: MoveLayer
 }
 
 /** Everything the scorer needs to evaluate a candidate against the live matchup. */

@@ -6,8 +6,10 @@ import type { CandidateAction, MoveCandidate, ScoredContext } from '@/myteam/you
 import { addGenerator } from '@/myteam/yourMove/generators/addGenerator'
 import { streamGenerator } from '@/myteam/yourMove/generators/streamGenerator'
 import { startSitGenerator } from '@/myteam/yourMove/generators/startSitGenerator'
+import { dailyCandidates } from '@/myteam/yourMove/dailyCandidates'
 import { buildMoves } from '@/myteam/yourMove/buildMoves'
 import { rankMoves } from '@/myteam/yourMove/rankMoves'
+import { projectGames, projectRemainingWeek } from '@/myteam/yourMove/projectRemainingWeek'
 import type { RosterSlotPlayer } from '@/myteam/yourMove/pairDrop'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 
@@ -21,9 +23,10 @@ function ymd(d: Date): string {
 }
 
 /**
- * Surface the ranked short stack of "Your Move" recommendations. Generators emit
- * raw candidates (adds, streams, start/sit); buildMoves nets each against the
- * player you'd drop or sit and keeps only believable, honestly-flipped swaps.
+ * "Your Move" recommendations in two layers: Today (daily-league plays — stream a
+ * starter pitching today, fill an open slot for one game) and longer-term roster
+ * upgrades over the rest of the week. Each candidate is a believable swap, netted
+ * against the player you'd drop/sit projected over the SAME horizon.
  */
 export function useYourMove(inputs: {
   catSpecs: Ref<CatSpec[]>
@@ -32,19 +35,25 @@ export function useYourMove(inputs: {
   snapshot: Ref<ThisWeekSnapshot | null>
   seasonFraction: Ref<number>
 }): { moves: ComputedRef<CandidateAction[]> } {
-  const schedule = ref<WeekSchedule>(EMPTY_SCHEDULE)
+  const weekSchedule = ref<WeekSchedule>(EMPTY_SCHEDULE)
+  const todaySchedule = ref<WeekSchedule>(EMPTY_SCHEDULE)
 
   watch(
     () => inputs.snapshot.value,
     async (snap) => {
       if (!snap || snap.completed) {
-        schedule.value = EMPTY_SCHEDULE
+        weekSchedule.value = EMPTY_SCHEDULE
+        todaySchedule.value = EMPTY_SCHEDULE
         return
       }
       const start = new Date()
       const end = new Date(start)
       end.setDate(end.getDate() + Math.max(0, snap.daysRemaining))
-      schedule.value = await getWeekSchedule(ymd(start), ymd(end))
+      const todayStr = ymd(start)
+      ;[todaySchedule.value, weekSchedule.value] = await Promise.all([
+        getWeekSchedule(todayStr, todayStr),
+        getWeekSchedule(todayStr, ymd(end)),
+      ])
     },
     { immediate: true },
   )
@@ -72,15 +81,44 @@ export function useYourMove(inputs: {
     const benched = inputs.roster.value
       .filter((p) => !p.started)
       .map((p) => ({ playerKey: p.playerKey, name: p.name, team: p.team, position: p.position, stats: p.stats }))
+    const playsToday = (team: string) => (todaySchedule.value.gamesByTeam[team] ?? 0) > 0
 
-    const candidates: MoveCandidate[] = [
+    // Today: a one-day play costs only the counterparty's today (often 0 if off).
+    const todayMoves = rankMoves(
+      buildMoves(
+        dailyCandidates(inputs.freeAgents.value, benched, todaySchedule.value, cats, fraction),
+        inputs.roster.value,
+        flippableCatIds,
+        cats,
+        ctx,
+        (p) => projectGames(p.stats, null, cats, playsToday(p.team) ? 1 : 0, fraction),
+        'today',
+      ),
+      { maxMoves: 3, liftFloor: 1 },
+    )
+
+    // Longer term: a real roster upgrade over the rest of the week.
+    const weekCandidates: MoveCandidate[] = [
       ...addGenerator(inputs.freeAgents.value, cats, days, fraction),
-      ...streamGenerator(inputs.freeAgents.value, schedule.value.startsByPitcher, cats, fraction),
+      ...streamGenerator(inputs.freeAgents.value, weekSchedule.value.startsByPitcher, cats, fraction),
       ...startSitGenerator(benched, cats, days, fraction),
     ]
+    const longTermMoves = rankMoves(
+      buildMoves(
+        weekCandidates,
+        inputs.roster.value,
+        flippableCatIds,
+        cats,
+        ctx,
+        (p) => projectRemainingWeek(p.stats, null, cats, days, fraction),
+        'longTerm',
+      ),
+      { maxMoves: 3, liftFloor: 1 },
+    )
 
-    const built = buildMoves(candidates, inputs.roster.value, flippableCatIds, cats, ctx, fraction)
-    return rankMoves(built, { maxMoves: 4, liftFloor: 1 })
+    // Don't repeat a player across layers (Today wins).
+    const seen = new Set(todayMoves.map((m) => m.player.key))
+    return [...todayMoves, ...longTermMoves.filter((m) => !seen.has(m.player.key))]
   })
 
   return { moves }

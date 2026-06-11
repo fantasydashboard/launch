@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { buildMoves } from '../buildMoves'
 import { pickCounterparty, type RosterSlotPlayer } from '../pairDrop'
+import { projectRemainingWeek } from '../projectRemainingWeek'
 import type { MoveCandidate, ScoredContext } from '../types'
 import type { CatSpec } from '@/myteam/value'
 
@@ -14,8 +15,8 @@ const ctx: ScoredContext = {
   platform: 'yahoo',
 }
 const roster: RosterSlotPlayer[] = [
-  { playerKey: 'stud', name: 'Stud', side: 'hit', roleValue: 90, started: true, stats: { HR: 40 } },
-  { playerKey: 'scrub', name: 'Scrub', side: 'hit', roleValue: 12, started: true, stats: { HR: 1 } },
+  { playerKey: 'stud', name: 'Stud', team: 'LAD', position: 'OF', side: 'hit', roleValue: 90, started: true, stats: { HR: 40 } },
+  { playerKey: 'scrub', name: 'Scrub', team: 'COL', position: '1B', side: 'hit', roleValue: 12, started: true, stats: { HR: 1 } },
 ]
 const addBigBat: MoveCandidate = {
   kind: 'add',
@@ -24,33 +25,39 @@ const addBigBat: MoveCandidate = {
   addDelta: { HR: 30 },
   detail: 'Free agent',
 }
+const weekProjector = (p: RosterSlotPlayer) => projectRemainingWeek(p.stats, null, cats, ctx.days, 0.6)
 
 describe('pickCounterparty', () => {
   it('drops the weakest droppable same-side player; never a keeper', () => {
     expect(pickCounterparty(roster, 'hit', 'add')!.playerKey).toBe('scrub')
-    const allKeepers: RosterSlotPlayer[] = [{ ...roster[0] }]
+    const allKeepers = [roster[0]]
     expect(pickCounterparty(allKeepers, 'hit', 'add')).toBeNull()
   })
 })
 
 describe('buildMoves', () => {
-  it('nets the swap, names the drop, and keeps only honestly-flipped cats', () => {
-    const moves = buildMoves([addBigBat], roster, ['HR'], cats, ctx, 0.6)
+  it('nets the swap, names the drop, keeps only honestly-flipped cats, tags the layer', () => {
+    const moves = buildMoves([addBigBat], roster, ['HR'], cats, ctx, weekProjector, 'longTerm')
     expect(moves).toHaveLength(1)
     expect(moves[0].counterparty?.name).toBe('Scrub')
     expect(moves[0].categories).toContain('HR')
     expect(moves[0].winProbLift).toBeGreaterThan(0)
+    expect(moves[0].layer).toBe('longTerm')
   })
 
   it('suppresses moves when the only counterparty would be a keeper', () => {
-    const keepersOnly: RosterSlotPlayer[] = [
-      { playerKey: 'stud', name: 'Stud', side: 'hit', roleValue: 90, started: true, stats: { HR: 40 } },
-    ]
-    expect(buildMoves([addBigBat], keepersOnly, ['HR'], cats, ctx, 0.6)).toEqual([])
+    expect(buildMoves([addBigBat], [roster[0]], ['HR'], cats, ctx, weekProjector)).toEqual([])
   })
 
   it('suppresses a swap that flips nothing (add no better than the drop)', () => {
     const weakAdd: MoveCandidate = { ...addBigBat, addDelta: { HR: 1 } }
-    expect(buildMoves([weakAdd], roster, ['HR'], cats, ctx, 0.6)).toEqual([])
+    expect(buildMoves([weakAdd], roster, ['HR'], cats, ctx, weekProjector)).toEqual([])
+  })
+
+  it('a zero-cost (off-today) counterparty makes the swap more valuable', () => {
+    const zeroCost = () => ({ HR: 0 })
+    const offToday = buildMoves([addBigBat], roster, ['HR'], cats, ctx, zeroCost)
+    const fullCost = buildMoves([addBigBat], roster, ['HR'], cats, ctx, weekProjector)
+    expect(offToday[0].winProbLift).toBeGreaterThanOrEqual(fullCost[0].winProbLift)
   })
 })

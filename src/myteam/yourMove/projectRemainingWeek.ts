@@ -36,6 +36,38 @@ export function projectRemainingWeek(
   return out
 }
 
+// A full season is ~162 team games. Used to turn a season counting total into a
+// per-game rate for single-day (daily-league) projections.
+const SEASON_GAMES = 162
+
+/**
+ * Project a hitter's contribution over `numGames` games (daily horizon: usually 1
+ * if their team plays today, 0 if off). Counting stats scale by per-game rate;
+ * ratio stats pass through (the scorer volume-weights them). FG ROS preferred.
+ */
+export function projectGames(
+  seasonStats: Record<string, number>,
+  fgStats: Record<string, number> | null,
+  cats: CatSpec[],
+  numGames: number,
+  seasonFractionComplete: number,
+): Record<string, number> {
+  const out: Record<string, number> = {}
+  const frac = seasonFractionComplete > 0 ? seasonFractionComplete : 1
+  for (const cat of cats) {
+    if (cat.isRatio) {
+      const fg = fgStats?.[cat.statId]
+      out[cat.statId] = fg !== undefined && Number.isFinite(fg) ? fg : (seasonStats[cat.statId] ?? 0)
+      continue
+    }
+    const fgCount = fgStats?.[cat.statId]
+    const fullSeason =
+      fgCount !== undefined && Number.isFinite(fgCount) ? fgCount : (seasonStats[cat.statId] ?? 0) / frac
+    out[cat.statId] = (fullSeason / SEASON_GAMES) * numGames
+  }
+  return out
+}
+
 // A full season is ~32 starts for a healthy starting pitcher. Used to turn a
 // season counting total into a per-start rate for stream projections.
 const SEASON_STARTS = 32
