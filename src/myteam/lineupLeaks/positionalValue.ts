@@ -8,6 +8,7 @@ export interface EligiblePlayer {
   team: string
   eligiblePositions: string[] // e.g. ['1B','OF']
   stats: Record<string, number>
+  status?: string // injury/IL status ('' / 'ACTIVE' = available)
 }
 
 /** Per-category team need weight: categories you're losing / can still flip get

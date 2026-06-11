@@ -11,6 +11,7 @@ import { useMyRoster } from '@/composables/useMyRoster'
 import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
 import { useYourMove } from '@/composables/useYourMove'
+import { useLineupLeaks } from '@/composables/useLineupLeaks'
 import type { RosterSlotPlayer } from '@/myteam/yourMove/pairDrop'
 import { rankAddsForHoles } from '@/players/rankAdds'
 import { isLowerBetter } from '@/players/direction'
@@ -27,6 +28,7 @@ import CategoryProfile from '@/components/myteam/CategoryProfile.vue'
 import RosterPanel from '@/components/myteam/RosterPanel.vue'
 import MatchupSnapshot from '@/components/myteam/MatchupSnapshot.vue'
 import YourMove from '@/components/myteam/YourMove.vue'
+import LineupLeaks from '@/components/myteam/LineupLeaks.vue'
 
 const leagueStore = useLeagueStore()
 const { players: yahooFreeAgents, load: loadPlayers } = useAvailablePlayers()
@@ -576,6 +578,15 @@ const yourMove = useYourMove({
   cadence,
 })
 
+// "Lineup Leaks" — started hitters who are weak for the position vs a better bench
+// option. Drives the callout above the roster and the "weak [pos]" tags within it.
+const lineupLeaks = useLineupLeaks({ rosterPlayers, catSpecs, snapshot: thisWeek.snapshot })
+const weakStarterTags = computed(() => {
+  const m = new Map<string, string>()
+  for (const leak of lineupLeaks.leaks.value) m.set(leak.starter.key, leak.position)
+  return m
+})
+
 // Categories load asynchronously after the league data resolves; (re)load the
 // snapshot once they're available so it doesn't no-op on first mount. Declared
 // here (after the base computeds) because `watch` evaluates its source eagerly
@@ -635,6 +646,8 @@ watch(categories, () => {
       <CategoryProfile :gaps="gaps" :categories="gapCategories" />
     </section>
 
+    <LineupLeaks v-if="profile" :leaks="lineupLeaks.leaks.value" :label-by-stat-id="labelByStatId" />
+
     <section v-if="profile" class="space-y-2">
       <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Your Roster</h2>
       <p v-if="rosterLoading && rosterPlayers.length === 0" class="text-sm text-dark-textMuted">
@@ -646,6 +659,7 @@ watch(categories, () => {
         :categories="categories"
         :contributions="contributions"
         :drops="drops"
+        :weak-starters="weakStarterTags"
       />
       <p v-else-if="rosterLoaded" class="text-sm text-dark-textMuted">
         No roster found for your team.

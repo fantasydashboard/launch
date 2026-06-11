@@ -10,6 +10,8 @@ const props = defineProps<{
   categories: { statId: string; label: string; name: string }[]
   contributions?: PlayerContribution[]
   drops?: DropAnalysis
+  // playerKey -> position where this started player is a "lineup leak" (weak for the slot).
+  weakStarters?: Map<string, string>
 }>()
 
 interface ContribChip {
@@ -182,6 +184,11 @@ const sections = computed<RosterSection[]>(() => {
                 :title="row.dropReason"
                 class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-dark-textMuted bg-dark-border/60"
               >drop?</span>
+              <span
+                v-if="props.weakStarters?.has(row.player.playerKey)"
+                :title="'A stronger ' + props.weakStarters.get(row.player.playerKey) + ' is on your bench'"
+                class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-[#F2B33A] bg-[#F2B33A]/10"
+              >weak {{ props.weakStarters.get(row.player.playerKey) }}</span>
             </span>
             <span class="block text-xs text-dark-textMuted">
               {{ row.player.position }}<template v-if="row.player.team"> · {{ row.player.team }}</template>
