@@ -1,4 +1,4 @@
-import { calcOverallWinProb } from '@/services/categoryWinProbability'
+import { overallWinProbClosed } from '@/services/categoryWinProbability'
 import type { ScoredContext } from './types'
 
 /**
@@ -9,7 +9,7 @@ import type { ScoredContext } from './types'
  * (Phase 2 volume-weights precisely).
  */
 export function scoreCandidate(delta: Record<string, number>, ctx: ScoredContext): number {
-  const base = calcOverallWinProb(ctx.myStats, ctx.oppStats, ctx.categoryIds, ctx.days, ctx.platform)
+  const base = overallWinProbClosed(ctx.myStats, ctx.oppStats, ctx.categoryIds, ctx.days, ctx.platform)
   const adjusted: Record<string, number> = { ...ctx.myStats }
   for (const cat of ctx.cats) {
     const d = delta[cat.statId]
@@ -20,6 +20,6 @@ export function scoreCandidate(delta: Record<string, number>, ctx: ScoredContext
       adjusted[cat.statId] = (ctx.myStats[cat.statId] ?? 0) + d
     }
   }
-  const next = calcOverallWinProb(adjusted, ctx.oppStats, ctx.categoryIds, ctx.days, ctx.platform)
-  return next.team1 - base.team1
+  const next = overallWinProbClosed(adjusted, ctx.oppStats, ctx.categoryIds, ctx.days, ctx.platform)
+  return next - base
 }

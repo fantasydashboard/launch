@@ -10,6 +10,7 @@ import { useAvailablePlayers } from '@/composables/useAvailablePlayers'
 import { useMyRoster } from '@/composables/useMyRoster'
 import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
+import { useYourMove } from '@/composables/useYourMove'
 import { rankAddsForHoles } from '@/players/rankAdds'
 import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
@@ -24,6 +25,7 @@ import SituationStrip from '@/components/myteam/SituationStrip.vue'
 import CategoryProfile from '@/components/myteam/CategoryProfile.vue'
 import RosterPanel from '@/components/myteam/RosterPanel.vue'
 import MatchupSnapshot from '@/components/myteam/MatchupSnapshot.vue'
+import YourMove from '@/components/myteam/YourMove.vue'
 
 const leagueStore = useLeagueStore()
 const { players: yahooFreeAgents, load: loadPlayers } = useAvailablePlayers()
@@ -511,6 +513,16 @@ const tierByStatId = computed<Record<string, 'strong' | 'winnable' | 'safe' | 'l
   return map
 })
 
+// "Your Move" — ranked short stack of this-week recommendations. Instantiated
+// here (after catSpecs / players / SEASON_FRACTION are declared) because it reads
+// those refs eagerly; declaring it earlier would hit a temporal-dead-zone error.
+const yourMove = useYourMove({
+  catSpecs,
+  freeAgents: players,
+  snapshot: thisWeek.snapshot,
+  seasonFraction: computed(() => SEASON_FRACTION),
+})
+
 // Categories load asynchronously after the league data resolves; (re)load the
 // snapshot once they're available so it doesn't no-op on first mount. Declared
 // here (after the base computeds) because `watch` evaluates its source eagerly
@@ -531,7 +543,22 @@ watch(categories, () => {
       :verdict="verdict"
     />
 
+    <YourMove
+      v-if="profile"
+      :moves="yourMove.moves.value"
+      :loading="rosterLoading"
+    />
+
     <MatchupSnapshot :snapshot="thisWeek.snapshot.value" />
+
+    <!-- Season-long context lives below the this-week decision layer. -->
+    <div
+      v-if="profile && (weaknesses.length > 0 || strengths.length > 0)"
+      class="flex items-center gap-2 pt-2"
+    >
+      <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Season · full-year ranks</span>
+      <span class="h-px flex-1 bg-dark-border/50"></span>
+    </div>
 
     <div
       v-if="weaknesses.length > 0 || strengths.length > 0"

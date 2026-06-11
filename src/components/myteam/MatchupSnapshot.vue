@@ -65,8 +65,5 @@ const tossupsExtra = computed(() => Math.max(0, tossupsSorted.value.length - MAX
         >
       </div>
     </div>
-    <p class="mt-2 font-mono text-[10px] text-dark-textMuted">
-      this week's matchup odds · season ranks below
-    </p>
   </router-link>
 </template>

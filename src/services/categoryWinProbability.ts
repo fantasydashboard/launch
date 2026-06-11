@@ -70,6 +70,68 @@ export function calcOverallWinProb(
   }
 }
 
+// === Deterministic closed-form win probability ===========================
+// The Monte-Carlo functions above are perfect for the once-per-load snapshot, but
+// the "Your Move" scorer evaluates ~150 candidates on every recompute and needs a
+// stable (non-flickering) answer. These closed-form versions give the same model
+// (per-category normal shocks) with zero simulations and zero run-to-run noise.
+
+// Standard normal CDF via the Abramowitz-Stegun erf approximation (max error ~1e-7).
+function erf(x: number): number {
+  const t = 1 / (1 + 0.3275911 * Math.abs(x))
+  const y =
+    1 -
+    ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) *
+      t *
+      Math.exp(-x * x)
+  return x >= 0 ? y : -y
+}
+function normalCdf(z: number): number {
+  return 0.5 * (1 + erf(z / Math.SQRT2))
+}
+
+/** Deterministic probability that team1 wins one category [0..1]. */
+export function catWinProbClosed(v1: number, v2: number, id: string, days: number, platform: Platform): number {
+  const inv = INVERSE_STATS[platform].includes(id)
+  if (days <= 0) {
+    const t1Better = inv ? v1 < v2 : v1 > v2
+    const t2Better = inv ? v2 < v1 : v2 > v1
+    return t1Better ? 1 : t2Better ? 0 : 0.5
+  }
+  const totalVol = (STAT_VOLATILITY[platform][id] || 5) * Math.sqrt(Math.max(0.5, days))
+  // f1 - f2 ~ Normal(v1 - v2, sqrt(2)*totalVol). For inverse cats, lower wins.
+  const z = (inv ? v2 - v1 : v1 - v2) / (Math.SQRT2 * totalVol)
+  return normalCdf(z)
+}
+
+/**
+ * Deterministic overall matchup win probability (0..100) for team1, via the
+ * Poisson-binomial distribution of categories won (ties split 50/50, matching the
+ * Monte-Carlo engine's convention).
+ */
+export function overallWinProbClosed(
+  team1Stats: Record<string, number>, team2Stats: Record<string, number>,
+  categoryIds: string[], days: number, platform: Platform,
+): number {
+  const ps = categoryIds.map((id) => catWinProbClosed(team1Stats[id] || 0, team2Stats[id] || 0, id, days, platform))
+  let dist = [1]
+  for (const p of ps) {
+    const next = new Array(dist.length + 1).fill(0)
+    for (let k = 0; k < dist.length; k++) {
+      next[k] += dist[k] * (1 - p)
+      next[k + 1] += dist[k] * p
+    }
+    dist = next
+  }
+  const n = ps.length
+  let winProb = 0
+  for (let k = 0; k <= n; k++) {
+    if (k > n - k) winProb += dist[k]
+    else if (k === n - k) winProb += dist[k] * 0.5
+  }
+  return winProb * 100
+}
+
 export type CatStatus = 'safe' | 'tossup' | 'loss'
 export function bucketCategory(myWinPct: number): CatStatus {
   if (myWinPct >= 70) return 'safe'

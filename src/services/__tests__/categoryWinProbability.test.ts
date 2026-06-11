@@ -1,7 +1,23 @@
 import { describe, it, expect } from 'vitest'
-import { calcOverallWinProb, calcCatWinProb, clampWinProb, bucketCategory } from '../categoryWinProbability'
+import { calcOverallWinProb, calcCatWinProb, clampWinProb, bucketCategory, catWinProbClosed, overallWinProbClosed } from '../categoryWinProbability'
 
 describe('categoryWinProbability', () => {
+  it('catWinProbClosed: deterministic, direction-aware, ~0.5 when tied', () => {
+    expect(catWinProbClosed(10, 10, '12', 4, 'yahoo')).toBeCloseTo(0.5, 6)
+    const ahead = catWinProbClosed(20, 10, '12', 4, 'yahoo')
+    expect(ahead).toBeGreaterThan(0.5)
+    expect(catWinProbClosed(20, 10, '12', 4, 'yahoo')).toBe(ahead) // deterministic
+    expect(catWinProbClosed(2.5, 4.0, '26', 4, 'yahoo')).toBeGreaterThan(0.5) // inverse (ERA)
+  })
+
+  it('overallWinProbClosed: deterministic and monotonic in your stats', () => {
+    const opp = { '12': 10, '60': 30 }
+    const a = overallWinProbClosed({ '12': 10, '60': 30 }, opp, ['12', '60'], 4, 'yahoo')
+    const b = overallWinProbClosed({ '12': 16, '60': 40 }, opp, ['12', '60'], 4, 'yahoo')
+    expect(a).toBeCloseTo(overallWinProbClosed({ '12': 10, '60': 30 }, opp, ['12', '60'], 4, 'yahoo'), 9)
+    expect(b).toBeGreaterThan(a)
+  })
+
   it('bucketCategory thresholds', () => {
     expect(bucketCategory(85)).toBe('safe')
     expect(bucketCategory(70)).toBe('safe')
