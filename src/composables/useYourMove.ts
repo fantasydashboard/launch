@@ -90,17 +90,22 @@ export function useYourMove(inputs: {
     // ESPN "Today" group can be diagnosed (no FA SP starting today vs a name
     // mismatch vs an empty schedule). Stripped from production builds.
     if (import.meta.env.DEV) {
+      const isStarter = (pos: string) =>
+        pos.split(/[,/|]/).map((t) => t.trim().toUpperCase()).some((t) => t === 'SP' || t === 'P')
       const faPit = inputs.freeAgents.value.filter((fa) => sideOf(fa.position ?? '') === 'pit')
+      const faStarters = faPit.filter((fa) => isStarter(fa.position ?? ''))
       const matched = faPit.filter((fa) => lookupStarts(todaySchedule.value, fa.name).length > 0)
+      const probableNames = [
+        ...new Set(Object.values(todaySchedule.value.startsByPitcher).flat().map((s) => s.pitcherName)),
+      ]
       // console.log (not .debug) so it shows at the default console level, not Verbose.
+      // Full lists (not samples) so a name mismatch vs "genuinely none starting" is decidable.
       // eslint-disable-next-line no-console
       console.log(`[YourMove/daily · ${snap.platform}]`, {
-        todayTeamsWithGames: Object.keys(todaySchedule.value.gamesByTeam).length,
-        todayProbableStarters: Object.keys(todaySchedule.value.startsByPitcher).length,
         faPitchersInPool: faPit.length,
-        faPitchersStartingToday: matched.map((m) => m.name),
-        sampleFaPitchers: faPit.slice(0, 12).map((m) => m.name),
-        sampleProbablesToday: Object.keys(todaySchedule.value.startsByPitcher).slice(0, 12),
+        faStartersInPool: faStarters.map((f) => `${f.name} (${f.position})`),
+        matchedStartingToday: matched.map((m) => m.name),
+        probableStartersToday: probableNames,
       })
     }
 
