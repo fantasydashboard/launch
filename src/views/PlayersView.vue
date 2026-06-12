@@ -55,15 +55,23 @@ const isYahooCategoryLeague = computed(() => {
   )
 })
 
+// v1 is Yahoo category only. The wrapper admits any category league (incl. ESPN), and
+// isYahooCategoryLeague can read true off an ESPN league's scoring_type — so gate on the
+// actual platform here, or ESPN leagues fire Yahoo-only loaders that never resolve and
+// the page hangs on "Ranking the wire…".
+const supported = computed(() => leagueStore.activePlatform === 'yahoo' && isYahooCategoryLeague.value)
+// A definitively non-Yahoo platform: show the unsupported message immediately (no spinner).
+const unsupported = computed(() => leagueStore.activePlatform === 'espn' || leagueStore.activePlatform === 'sleeper')
+
 function maybeLoadSeasonData() {
   const id = leagueStore.activeLeagueId
-  if (id && isYahooCategoryLeague.value) loadSeasonData(id)
+  if (id && supported.value) loadSeasonData(id)
 }
 function maybeLoadPlayers() {
-  if (isYahooCategoryLeague.value) loadPlayers()
+  if (supported.value) loadPlayers()
 }
 function maybeLoadRoster() {
-  if (isYahooCategoryLeague.value) loadRoster()
+  if (supported.value) loadRoster()
 }
 function maybeLoadThisWeek() {
   if (!categories.value.length) return
@@ -333,7 +341,7 @@ const ready = computed(() => playersLoaded.value && rosterLoaded.value && thisWe
 const heroFaceFailed = ref(new Set<string>())
 const noMatchup = computed(() => ready.value && (!thisWeek.snapshot.value || thisWeek.snapshot.value.completed))
 const hasAny = computed(() => strongViews.value.length > 0 || smallerViews.value.length > 0)
-const isLoading = computed(() => !ready.value && !hasAny.value)
+const isLoading = computed(() => !unsupported.value && !ready.value && !hasAny.value)
 const empty = computed(() => ready.value && !noMatchup.value && !hasAny.value)
 
 function ordinal(n: number): string {
@@ -353,7 +361,7 @@ function ordinal(n: number): string {
     </header>
 
     <!-- Lens: this week active; season fit is the fast-follow. -->
-    <div class="flex items-center justify-between gap-2">
+    <div v-if="!unsupported" class="flex items-center justify-between gap-2">
       <div class="flex overflow-hidden rounded-md border border-dark-border font-mono text-[10px] uppercase tracking-wider">
         <span class="bg-primary/15 px-2.5 py-1 text-primary">This week</span>
         <span class="px-2.5 py-1 text-dark-textMuted/60">Season fit <span class="text-[8px]">soon</span></span>
@@ -366,10 +374,13 @@ function ordinal(n: number): string {
       (you're {{ ordinal(topWeakness.rank) }} in <span class="text-dark-textSecondary">{{ topWeakness.label }}</span>)?
       That lives under <span class="text-primary">Season fit</span> — coming soon.
     </p>
-    <p class="font-mono text-[10px] text-dark-textMuted">% = added chance to win this week · each add is netted against the drop</p>
+    <p v-if="!unsupported" class="font-mono text-[10px] text-dark-textMuted">% = added chance to win this week · each add is netted against the drop</p>
 
     <!-- States -->
-    <p v-if="isLoading" class="text-sm text-dark-textMuted">Ranking the wire for your matchup…</p>
+    <p v-if="unsupported" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
+      The ranked wire is Yahoo category leagues only in this preview. ESPN support is coming.
+    </p>
+    <p v-else-if="isLoading" class="text-sm text-dark-textMuted">Ranking the wire for your matchup…</p>
     <p v-else-if="noMatchup" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
       No live matchup this week, so there's nothing to rank against yet. Season-long add value is coming with the Season fit lens.
     </p>
