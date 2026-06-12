@@ -51,20 +51,25 @@ function normalizeRosterPlayer(raw: any): RosterPlayer {
 }
 
 /** A rostered player anywhere in the league, normalized to the minimum the
- * contribution engine needs (playerKey + position + season-total stats). */
+ * contribution engine needs (playerKey + position + season-total stats). teamKey/name
+ * let league-wide consumers (Trades) group the pool by team and label players. */
 export interface PoolPlayer {
   playerKey: string
+  name: string
   position: string
   stats: Record<string, number>
   eligiblePositions?: string[]
+  teamKey: string // owning fantasy team_key
 }
 
 function normalizePoolPlayer(raw: any): PoolPlayer {
   return {
     playerKey: String(raw.player_key ?? raw.player_id ?? ''),
+    name: String(raw.full_name ?? ''),
     position: String(raw.position ?? ''),
     stats: raw.stats && typeof raw.stats === 'object' ? { ...raw.stats } : {},
     eligiblePositions: eligibleFrom(raw),
+    teamKey: String(raw.fantasy_team_key ?? ''),
   }
 }
 

@@ -108,6 +108,11 @@ const router = createRouter({
       component: () => import('@/views/PlayersWrapper.vue')
     },
     {
+      path: '/trades',
+      name: 'trades',
+      component: () => import('@/views/TradesWrapper.vue')
+    },
+    {
       path: '/ultimate-tools',
       name: 'ultimate-tools',
       component: () => import('@/views/ProjectionsWrapper.vue'),
