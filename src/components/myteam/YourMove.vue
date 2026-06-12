@@ -76,6 +76,11 @@ const groups = computed(() =>
         </button>
       </div>
     </div>
+    <!-- The % is each move's added chance to win THIS WEEK's matchup — same metric as
+         the band below, so they read as one story. -->
+    <p v-if="moves.length" class="-mt-1 mb-2.5 font-mono text-[10px] text-dark-textMuted">
+      % = added chance to win this week
+    </p>
 
     <!-- Loading: a single skeleton, never blank -->
     <div

@@ -42,7 +42,7 @@ export function calcCatWinProb(v1: number, v2: number, id: string, days: number,
 export function calcOverallWinProb(
   team1Stats: Record<string, number>, team2Stats: Record<string, number>,
   categoryIds: string[], days: number, platform: Platform,
-): { team1: number; team2: number; avgT1Cats: number; avgT2Cats: number } {
+): { team1: number; team2: number; avgT1Cats: number; avgT2Cats: number; winPct: number; tiePct: number; lossPct: number } {
   const SIMULATIONS = 10000
   let team1Wins = 0, team2Wins = 0, ties = 0, totalT1 = 0, totalT2 = 0
   const inverse = INVERSE_STATS[platform]
@@ -67,6 +67,11 @@ export function calcOverallWinProb(
     team1: Math.round(t1Prob * 100) / 100, team2: Math.round(t2Prob * 100) / 100,
     avgT1Cats: Math.round((totalT1 / SIMULATIONS) * 10) / 10,
     avgT2Cats: Math.round((totalT2 / SIMULATIONS) * 10) / 10,
+    // Raw matchup-outcome split (a category matchup can WIN, TIE, or LOSE — a tie is
+    // not a loss). team1 above folds half the tie into the win share; these don't.
+    winPct: (team1Wins / SIMULATIONS) * 100,
+    tiePct: (ties / SIMULATIONS) * 100,
+    lossPct: (team2Wins / SIMULATIONS) * 100,
   }
 }
 

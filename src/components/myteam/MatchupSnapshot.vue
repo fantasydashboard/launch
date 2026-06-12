@@ -26,13 +26,20 @@ const tossupsShown = computed(() =>
       </span>
       <span class="font-mono text-xs text-dark-textMuted">{{ snapshot.completed ? 'Final' : snapshot.daysRemaining + 'd left' }} →</span>
     </div>
-    <div class="mt-1 flex items-baseline gap-3">
+    <div class="mt-1 flex items-baseline gap-2">
       <span
         class="font-display text-3xl font-bold tabular-nums"
-        :class="snapshot.myWinPct >= 50 ? 'text-primary' : 'text-dark-text'"
-        >{{ snapshot.myWinPct }}%</span
+        :class="snapshot.winPct >= 50 ? 'text-primary' : 'text-dark-text'"
+        >{{ snapshot.winPct }}%</span
       >
-      <span class="font-mono text-sm text-dark-textSecondary">projected {{ snapshot.projWins }}-{{ snapshot.projLosses }}</span>
+      <span class="font-mono text-[11px] uppercase tracking-wider text-dark-textMuted">to win</span>
+    </div>
+    <!-- A category matchup can win, TIE, or lose; a tie isn't a loss, so show all three. -->
+    <div class="mt-0.5 font-mono text-xs text-dark-textSecondary">
+      <span class="text-dark-textMuted">{{ snapshot.tiePct }}% tie</span>
+      <span class="text-dark-textMuted"> · </span>
+      <span class="text-[#FF5C5C]">{{ snapshot.lossPct }}% loss</span>
+      <span class="text-dark-textMuted"> · projected {{ snapshot.projWins }}-{{ snapshot.projLosses }}</span>
     </div>
     <div class="mt-2 space-y-1 text-xs">
       <div v-if="tossupsShown.length" class="flex flex-wrap items-center gap-1">

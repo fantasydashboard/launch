@@ -8,7 +8,10 @@ import type { Sport } from '@/types/supabase'
 export interface SnapshotCategory { statId: string; label: string; status: CatStatus; myWinPct: number }
 export interface ThisWeekSnapshot {
   opponentName: string
-  myWinPct: number
+  myWinPct: number // win share with half-ties folded in (legacy; used by signals)
+  // Raw matchup-outcome split — these sum to ~100. A 6-6 category split is a TIE,
+  // not a loss, so the band surfaces all three instead of one ambiguous number.
+  winPct: number; tiePct: number; lossPct: number
   projWins: number; projLosses: number; projTies: number
   daysRemaining: number
   completed: boolean
@@ -118,9 +121,15 @@ export function useThisWeekMatchup() {
         return { statId, label: labelByStat.get(statId) || statId, status: bucketCategory(p.team1), myWinPct: Math.round(p.team1) }
       })
       if (leagueStore.activeLeagueId !== requestedId) return
+      // Round win + tie, derive loss as the remainder so the three always sum to 100.
+      const winPct = Math.round(overall.winPct)
+      const tiePct = Math.round(overall.tiePct)
       snapshot.value = {
         opponentName,
         myWinPct: Math.round(overall.team1),
+        winPct,
+        tiePct,
+        lossPct: Math.max(0, 100 - winPct - tiePct),
         projWins: Math.round(overall.avgT1Cats),
         projLosses: Math.round(overall.avgT2Cats),
         projTies: Math.max(0, catIds.length - Math.round(overall.avgT1Cats) - Math.round(overall.avgT2Cats)),
