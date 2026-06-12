@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { rankAddsForHoles } from '@/players/rankAdds'
 import type { AvailablePlayer, Hole } from '@/players/types'
 
-function p(key: string, stats: Record<string, number>): AvailablePlayer {
-  return { playerKey: key, name: key, position: 'P', team: 'X', percentOwned: 0, stats }
+function p(key: string, stats: Record<string, number>, position = 'P'): AvailablePlayer {
+  return { playerKey: key, name: key, position, team: 'X', percentOwned: 0, stats }
 }
 
 const pool: AvailablePlayer[] = [
@@ -39,5 +39,25 @@ describe('rankAddsForHoles', () => {
   it('returns empty adds for a hole no one supplies', () => {
     const result = rankAddsForHoles([p('x', { HR: 10 })], holes, { perHole: 3 })
     expect(result.every((h) => h.adds.length === 0)).toBe(true)
+  })
+
+  it('side-gates: a pitching hole never surfaces a hitter (no "hitter fixes Saves")', () => {
+    // A hitter carries a stray SV value; without the side gate the ranker would
+    // surface them for the Saves hole. With side: 'pit' set, only pitchers qualify.
+    const sided: AvailablePlayer[] = [
+      p('reliever', { SV: 28 }, 'RP'),
+      p('slugger', { SV: 99, HR: 40 }, 'OF'), // bogus SV value, wrong side
+    ]
+    const result = rankAddsForHoles(sided, [{ statId: 'SV', name: 'Saves', rank: 11, lowerIsBetter: false, side: 'pit' }])
+    expect(result[0].adds.map((a) => a.player.playerKey)).toEqual(['reliever'])
+  })
+
+  it('side-gates: a Runs hole never surfaces a reliever (no "reliever fixes Runs")', () => {
+    const sided: AvailablePlayer[] = [
+      p('leadoff', { R: 70 }, 'OF'),
+      p('reliever', { R: 27 }, 'RP'), // runs allowed, wrong side for Runs scored
+    ]
+    const result = rankAddsForHoles(sided, [{ statId: 'R', name: 'Runs', rank: 9, lowerIsBetter: false, side: 'hit' }])
+    expect(result[0].adds.map((a) => a.player.playerKey)).toEqual(['leadoff'])
   })
 })

@@ -56,10 +56,19 @@ export function detectLeaks(
   freeAgents: EligiblePlayer[],
   cats: CatSpec[],
   needWeights: NeedWeights,
-  opts: { materiality?: number; excludeKeys?: Set<string> } = {},
+  opts: {
+    materiality?: number
+    excludeKeys?: Set<string>
+    // Gate for time-sensitivity: return false for a candidate who can't actually be
+    // started today (e.g. a bench pitcher with no probable start in a daily-lineup
+    // league). Defaults to always-startable, so hitters and weekly leagues are
+    // unaffected. Prevents "start a SP who isn't pitching today" advice.
+    isStartableToday?: (p: EligiblePlayer) => boolean
+  } = {},
 ): LineupLeak[] {
   const materiality = opts.materiality ?? 8 // roleValue points (0-100 scale)
   const exclude = opts.excludeKeys ?? new Set<string>()
+  const startableToday = opts.isStartableToday ?? (() => true)
   const used = new Set<string>() // a bench/waiver arm fills one slot: assign it once
 
   // Best eligible, available alternative whose badge value clears the starter by a
@@ -74,6 +83,7 @@ export function detectLeaks(
     for (const p of candidates) {
       if (p.playerKey === starter.playerKey) continue
       if (exclude.has(p.playerKey) || used.has(p.playerKey)) continue
+      if (!startableToday(p)) continue // skip a SP not actually pitching today
       if (!p.eligiblePositions.includes(position) || !isAvailable(p)) continue
       if (p.roleValue <= starter.roleValue + materiality) continue
       if (categoriesAhead(p, starter, cats, needWeights).length === 0) continue

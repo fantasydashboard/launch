@@ -17,6 +17,10 @@ export interface Hole {
   name: string // human label, e.g. "Saves"
   rank: number // team's league rank in this category (higher = weaker)
   lowerIsBetter: boolean
+  // Side of the ball this category accrues on. When set, only same-side players are
+  // eligible adds — a hitter can't fix Saves, a reliever can't fix Runs scored.
+  // Absent = no side gate (back-compat for callers/tests that don't classify cats).
+  side?: 'hit' | 'pit'
 }
 
 /** A suggested add for a specific hole category. */

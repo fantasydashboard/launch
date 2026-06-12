@@ -326,6 +326,9 @@ const holes = computed<Hole[]>(() => {
       name: categories.value.find((c) => c.statId === g.statId)?.name ?? g.statId,
       rank: g.rank,
       lowerIsBetter: cats.value.find((c) => c.statId === g.statId)?.lowerIsBetter ?? false,
+      // Side gate for adds: a hitter can't fix a pitching hole (Saves/BF) and a
+      // reliever can't fix Runs scored. catSpecs classifies each category's side.
+      side: catSpecs.value.find((c) => c.statId === g.statId)?.side,
     }))
 })
 
@@ -599,7 +602,7 @@ const helpsByKey = computed(() => {
   }
   return m
 })
-const lineupLeaks = useLineupLeaks({ rosterPlayers, catSpecs, snapshot: thisWeek.snapshot, roleValueByKey, helpsByKey, excludeKeys: yourMoveKeys })
+const lineupLeaks = useLineupLeaks({ rosterPlayers, catSpecs, snapshot: thisWeek.snapshot, roleValueByKey, helpsByKey, excludeKeys: yourMoveKeys, cadence })
 const weakStarterTags = computed(() => {
   const m = new Map<string, string>()
   for (const leak of lineupLeaks.leaks.value) m.set(leak.starter.key, leak.position)

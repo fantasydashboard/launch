@@ -64,6 +64,15 @@ const groups = computed(() =>
     },
   ].filter((g) => g.moves.length > 0),
 )
+// In a daily league with moves but no Today layer, the daily/weekly toggle would look
+// broken (same list either way). Say so plainly: nothing is time-sensitive today, the
+// moves below set up the week. Only in daily mode — weekly intentionally has no Today.
+const noTodayPlay = computed(
+  () =>
+    (props.cadence ?? 'daily') === 'daily' &&
+    props.moves.length > 0 &&
+    !groups.value.some((g) => g.key === 'today'),
+)
 </script>
 
 <template>
@@ -106,6 +115,10 @@ const groups = computed(() =>
     </div>
 
     <template v-else>
+      <!-- Daily league, but nothing to do TODAY — be explicit so the toggle reads true. -->
+      <p v-if="noTodayPlay" class="mb-2.5 font-mono text-[11px] text-dark-textMuted">
+        No time-sensitive plays today — the moves below set up your week.
+      </p>
       <div v-for="(g, gi) in groups" :key="g.key" :class="gi > 0 ? 'mt-4' : ''">
         <p class="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">{{ g.label }}</p>
 

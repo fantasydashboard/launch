@@ -110,4 +110,29 @@ describe('detectLeaks', () => {
     // weak1B is being dropped/sat by Your Move -> no point flagging a lineup fix for it.
     expect(detectLeaks(starters, bench, [], cats, needHR, { excludeKeys: new Set(['weak1B']) })).toEqual([])
   })
+
+  it('isStartableToday gate: never recommends a bench SP not pitching today', () => {
+    // The Michael King case: King (81) beats Wrobleski (48) on the season, but he has
+    // no start today, so "start King today" accrues nothing. The gate suppresses it.
+    const pitCats: CatSpec[] = [{ statId: 'K', lowerIsBetter: false, side: 'pit', isRatio: false }]
+    const starters = [{ playerKey: 'wrobleski', name: 'wrobleski', team: 'X', eligiblePositions: ['SP'], stats: { K: 90 }, roleValue: 48 }]
+    const bench = [{ playerKey: 'king', name: 'king', team: 'X', eligiblePositions: ['SP'], stats: { K: 200 }, roleValue: 81 }]
+    const startsToday = new Set<string>() // King is NOT pitching today
+    const leaks = detectLeaks(starters, bench, [], pitCats, { K: 1 }, {
+      isStartableToday: (pl) => startsToday.has(pl.playerKey),
+    })
+    expect(leaks).toEqual([])
+  })
+
+  it('isStartableToday gate: still flags a bench SP who IS pitching today', () => {
+    const pitCats: CatSpec[] = [{ statId: 'K', lowerIsBetter: false, side: 'pit', isRatio: false }]
+    const starters = [{ playerKey: 'wrobleski', name: 'wrobleski', team: 'X', eligiblePositions: ['SP'], stats: { K: 90 }, roleValue: 48 }]
+    const bench = [{ playerKey: 'king', name: 'king', team: 'X', eligiblePositions: ['SP'], stats: { K: 200 }, roleValue: 81 }]
+    const startsToday = new Set<string>(['king'])
+    const leaks = detectLeaks(starters, bench, [], pitCats, { K: 1 }, {
+      isStartableToday: (pl) => startsToday.has(pl.playerKey),
+    })
+    expect(leaks).toHaveLength(1)
+    expect(leaks[0].better.key).toBe('king')
+  })
 })
