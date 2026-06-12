@@ -126,6 +126,7 @@ export function useTradeTargets(inputs: {
     const toFix = statIds
       .filter((c) => (myStanding.get(c)?.rank ?? 0) >= weakCut)
       .sort((a, b) => (myStanding.get(b)!.rank) - (myStanding.get(a)!.rank))
+      .slice(0, 5) // you can't fix ten holes — show the worst handful
       .map(tag)
 
     const partnerScores = rankPartners(landscape, myKey, statIds).slice(0, TOP_PARTNERS)
@@ -137,13 +138,18 @@ export function useTradeTargets(inputs: {
       .slice(CORE_PROTECT)
 
     // Build the best 1-for-1 with each partner, then keep the strongest across partners.
-    const candidates: TradeTarget[] = []
+    interface Cand { t: TradeTarget; gain: number; giveKey: string }
+    const candidates: Cand[] = []
     for (const ps of partnerScores) {
-      const theirPlayers = byTeam.get(ps.teamId) ?? []
       const theirNeed = needVec(ps.teamId)
-      let best: { t: TradeTarget; gain: number } | null = null
+      // Protect THEIR core too — you can't pry a team's best players (symmetric to ours),
+      // so the deals stay realistic and tilt toward win-win rather than fantasy fleeces.
+      const getCandidates = [...(byTeam.get(ps.teamId) ?? [])]
+        .sort((a, b) => (marketValue.get(b.playerKey) ?? 0) - (marketValue.get(a.playerKey) ?? 0))
+        .slice(CORE_PROTECT)
+      let best: Cand | null = null
       for (const give of giveCandidates) {
-        for (const get of theirPlayers) {
+        for (const get of getCandidates) {
           const gv = marketValue.get(give.playerKey) ?? 0
           const tv = marketValue.get(get.playerKey) ?? 0
           if (Math.abs(tv - gv) > VALUE_BAND) continue
@@ -156,9 +162,12 @@ export function useTradeTargets(inputs: {
             const g = (myNeed[c] ?? 0) * ((strengths.get(get.playerKey)?.[c] ?? 0) - (strengths.get(give.playerKey)?.[c] ?? 0))
             if (g > maxg) { maxg = g; fixId = c }
           }
+          // Only surface a deal that fixes a GENUINE hole (no "fixes W · 4th").
+          if ((myStanding.get(fixId)?.rank ?? 0) < weakCut) continue
           if (!best || ev.yourGain > best.gain) {
             best = {
               gain: ev.yourGain,
+              giveKey: give.playerKey,
               t: {
                 fix: tag(fixId),
                 get: { name: get.name, pos: get.position, value: Math.round(tv) },
@@ -170,10 +179,17 @@ export function useTradeTargets(inputs: {
           }
         }
       }
-      if (best) candidates.push(best.t)
+      if (best) candidates.push(best)
     }
-    // Lead with the deals that fix your worst categories (highest fix rank), gain as tiebreak.
-    candidates.sort((a, b) => b.fix.rank - a.fix.rank)
+    // Lead with the deals fixing your worst holes; dedupe so no give player repeats.
+    candidates.sort((a, b) => b.t.fix.rank - a.t.fix.rank)
+    const usedGive = new Set<string>()
+    const targets: TradeTarget[] = []
+    for (const c of candidates) {
+      if (usedGive.has(c.giveKey)) continue
+      usedGive.add(c.giveKey)
+      targets.push(c.t)
+    }
 
     const partners: PartnerView[] = partnerScores.map((ps) => {
       const m = landscape.get(ps.teamId)!
@@ -185,7 +201,7 @@ export function useTradeTargets(inputs: {
       }
     })
 
-    return { tradeFrom, toFix, targets: candidates, partners }
+    return { tradeFrom, toFix, targets, partners }
   })
 
   return { view }
