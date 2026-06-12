@@ -6,7 +6,7 @@ import { toEffectiveStats } from '@/myteam/effectiveStats'
 import type { PoolPlayer } from '@/composables/useMyRoster'
 import type { FGProjection } from '@/services/projectionService'
 import { aggregateTeamCats, playerStrengths, type AggPlayer } from '@/trades/aggregate'
-import { buildLandscape } from '@/trades/landscape'
+import { buildLandscape, type TeamTotals } from '@/trades/landscape'
 import { rankPartners } from '@/trades/partners'
 import { evalDeal, type DealClass } from '@/trades/deals'
 
@@ -54,6 +54,9 @@ export function useTradeTargets(inputs: {
   pool: Ref<PoolPlayer[]>
   fgByKey: Ref<Record<string, FGProjection | null>>
   catSpecs: Ref<CatSpec[]>
+  // Per-team category WIN counts (from the season standings) — the reliable measure of
+  // each team's category strength. Falls back to a ROS-aggregate before this loads.
+  teamCatWins?: Ref<TeamTotals[]>
   seasonFraction: number
   labelOf: (statId: string) => string
 }): { view: ComputedRef<TradeView | null> } {
@@ -84,7 +87,15 @@ export function useTradeTargets(inputs: {
     if (!byTeam.has(myKey)) return null
 
     const playersByTeam = [...byTeam.entries()].map(([teamId, ps]) => ({ teamId, players: ps.map((p) => eff.get(p.playerKey)!) }))
-    const { landscape } = buildLandscape(aggregateTeamCats(playersByTeam, cats), cats)
+    // Team category STRENGTH from the real per-category standings (win records) when
+    // available — reliable and consistent with My Team — falling back to the ROS-aggregate
+    // only before standings load. Win counts already read higher-is-better in every cat
+    // (Yahoo's stat_winners encode direction), so rank them without direction flips.
+    const wins = inputs.teamCatWins?.value ?? []
+    const useWins = wins.length >= 2 && wins.some((w) => Object.keys(w.totals).length > 0)
+    const teamTotals = useWins ? wins : aggregateTeamCats(playersByTeam, cats)
+    const landscapeCats = useWins ? cats.map((c) => ({ ...c, lowerIsBetter: false })) : cats
+    const { landscape } = buildLandscape(teamTotals, landscapeCats)
     const strengths = playerStrengths([...eff.values()], cats)
     const marketValue = new Map(
       computeRosterValue(

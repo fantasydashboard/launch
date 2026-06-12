@@ -9,9 +9,11 @@ import { classifyCategory } from '@/myteam/categorySide'
 import type { CatSpec } from '@/myteam/value'
 import { useTradeTargets } from '@/composables/useTradeTargets'
 
+import type { TeamTotals } from '@/trades/landscape'
+
 const SEASON_FRACTION = 0.6
 const leagueStore = useLeagueStore()
-const { categoryLabels, loaded: catsLoaded, load: loadSeasonData } = useFullSeasonCategoryData()
+const { seasonMatchups, categoryLabels, loaded: catsLoaded, load: loadSeasonData } = useFullSeasonCategoryData()
 const { pool, fgByKey, loading: rosterLoading, loaded: rosterLoaded, load: loadRoster } = useMyRoster()
 
 const supported = computed(() => leagueStore.activePlatform === 'yahoo' && isYahooCategoryLeague.value)
@@ -57,7 +59,30 @@ const catSpecs = computed<CatSpec[]>(() => {
 })
 const labelOf = (statId: string) => categories.value.find((c) => c.statId === statId)?.label ?? statId
 
-const { view } = useTradeTargets({ pool, fgByKey, catSpecs, seasonFraction: SEASON_FRACTION, labelOf })
+// Per-team category WIN counts from the season's matchup stat_winners — the reliable,
+// direction-correct measure of each team's category strength (same source as My Team's
+// ranks). Keyed by team_key to match the roster pool's fantasy_team_key.
+const teamCatWins = computed<TeamTotals[]>(() => {
+  const wins = new Map<string, Record<string, number>>()
+  for (const m of seasonMatchups.value) {
+    if (!m?.stat_winners?.length) continue
+    const k1 = String(m.teams?.[0]?.team_key || m.teams?.[0]?.team_id || '')
+    const k2 = String(m.teams?.[1]?.team_key || m.teams?.[1]?.team_id || '')
+    if (!k1 || !k2) continue
+    if (!wins.has(k1)) wins.set(k1, {})
+    if (!wins.has(k2)) wins.set(k2, {})
+    for (const sw of m.stat_winners) {
+      if (sw.is_tied === true || sw.is_tied === '1') continue
+      const statId = String(sw.stat_id)
+      const w = String(sw.winner_team_key ?? '')
+      if (w === k1) wins.get(k1)![statId] = (wins.get(k1)![statId] || 0) + 1
+      else if (w === k2) wins.get(k2)![statId] = (wins.get(k2)![statId] || 0) + 1
+    }
+  }
+  return [...wins.entries()].map(([teamId, totals]) => ({ teamId, totals }))
+})
+
+const { view } = useTradeTargets({ pool, fgByKey, catSpecs, teamCatWins, seasonFraction: SEASON_FRACTION, labelOf })
 
 const settling = computed(() => !attempted.value || rosterLoading.value || !catsLoaded.value)
 const loadFailed = computed(() => supported.value && attempted.value && !rosterLoading.value && pool.value.length === 0)
