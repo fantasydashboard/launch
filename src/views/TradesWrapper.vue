@@ -7,6 +7,8 @@ import TradesView from '@/views/TradesView.vue'
 const leagueStore = useLeagueStore()
 
 const isCategoryLeague = computed(() => {
+  // ESPN leagues pass through; TradesView detects H2H_CATEGORY via the ESPN composable.
+  if (leagueStore.activePlatform === 'espn') return true
   if (isYahooCategoryLeague(leagueStore.currentLeague?.scoring_type)) return true
   const saved = leagueStore.savedLeagues.find((l) => l.league_id === leagueStore.activeLeagueId)
   return isYahooCategoryLeague(saved?.scoring_type)

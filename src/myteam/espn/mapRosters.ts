@@ -41,14 +41,18 @@ export function espnEligible(p: EspnPlayerLike): string[] {
   return p.position ? [p.position] : []
 }
 
-/** Flatten every team's roster into the league-wide percentile pool. */
+/** Flatten every team's roster into the league-wide percentile pool. teamKey/name let
+ *  league-wide consumers (Trades) group the pool by team and label players, keyed
+ *  `espn_<id>` to match the standings/myTeamId keys. */
 export function mapRostersToPool(teams: EspnTeamRosterLike[]): PoolPlayer[] {
   return teams.flatMap((t) =>
     (t.roster ?? []).map((p) => ({
       playerKey: String(p.playerId),
+      name: p.fullName ?? '',
       position: p.position ?? '',
       eligiblePositions: espnEligible(p),
       stats: p.stats && typeof p.stats === 'object' ? { ...p.stats } : {},
+      teamKey: `espn_${t.id}`,
     })),
   )
 }

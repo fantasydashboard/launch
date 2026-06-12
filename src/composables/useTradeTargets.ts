@@ -1,5 +1,4 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
-import { useLeagueStore } from '@/stores/league'
 import type { CatSpec } from '@/myteam/value'
 import { computeRosterValue } from '@/myteam/value'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
@@ -69,22 +68,21 @@ export function useTradeTargets(inputs: {
   // Per-team category WIN counts (from the season standings) — the reliable measure of
   // each team's category strength. Falls back to a ROS-aggregate before this loads.
   teamCatWins?: Ref<TeamTotals[]>
+  // The logged-in team's key (matches the pool's teamKey), and team key -> display name.
+  // Supplied by the view so the engine is platform-neutral (Yahoo or ESPN).
+  myTeamKey: Ref<string | null>
+  teamNameByKey: Ref<Map<string, string>>
   seasonFraction: number
   labelOf: (statId: string) => string
 }): { view: ComputedRef<TradeView | null> } {
-  const leagueStore = useLeagueStore()
-
   const view = computed<TradeView | null>(() => {
     const cats = inputs.catSpecs.value
     const pool = inputs.pool.value
     if (!cats.length || pool.length < 2) return null
-    const myKey = leagueStore.yahooTeams?.find((t: any) => t.is_my_team)?.team_key
-      ? String(leagueStore.yahooTeams.find((t: any) => t.is_my_team).team_key)
-      : null
+    const myKey = inputs.myTeamKey.value
     if (!myKey) return null
 
-    const teamName = (key: string): string =>
-      String(leagueStore.yahooTeams?.find((t: any) => String(t.team_key) === key)?.name ?? 'Team')
+    const teamName = (key: string): string => inputs.teamNameByKey.value.get(key) ?? 'Team'
     const statIds = cats.map((c) => c.statId)
     const fg = inputs.fgByKey.value
 

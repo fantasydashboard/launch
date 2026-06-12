@@ -4,6 +4,7 @@ import { useLeagueStore } from '@/stores/league'
 import { useFullSeasonCategoryData } from '@/composables/useFullSeasonCategoryData'
 import { isYahooCategoryLeague as isYahooCategoryScoringType } from '@/composables/useIsCategoryLeague'
 import { useMyRoster } from '@/composables/useMyRoster'
+import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { isLowerBetter } from '@/players/direction'
 import { classifyCategory } from '@/myteam/categorySide'
 import type { CatSpec } from '@/myteam/value'
@@ -13,11 +14,14 @@ import type { TeamTotals } from '@/trades/landscape'
 
 const SEASON_FRACTION = 0.6
 const leagueStore = useLeagueStore()
-const { seasonMatchups, categoryLabels, loaded: catsLoaded, load: loadSeasonData } = useFullSeasonCategoryData()
-const { pool, fgByKey, loading: rosterLoading, loaded: rosterLoaded, load: loadRoster } = useMyRoster()
+const isEspn = computed(() => leagueStore.activePlatform === 'espn')
 
-const supported = computed(() => leagueStore.activePlatform === 'yahoo' && isYahooCategoryLeague.value)
-const unsupported = computed(() => leagueStore.activePlatform === 'espn' || leagueStore.activePlatform === 'sleeper')
+// Yahoo sources.
+const { seasonMatchups, categoryLabels, loaded: yCatsLoaded, load: loadSeasonData } = useFullSeasonCategoryData()
+const { pool: yPool, fgByKey: yFg, loading: yRosterLoading, loaded: yRosterLoaded, load: loadRoster } = useMyRoster()
+// ESPN source (self-detects H2H_CATEGORY).
+const espn = useEspnCategoryTeamData()
+
 const isYahooCategoryLeague = computed(() => {
   const id = leagueStore.activeLeagueId
   if (!id) return false
@@ -28,10 +32,21 @@ const isYahooCategoryLeague = computed(() => {
   if (st) return isYahooCategoryScoringType(st)
   return (leagueStore.yahooMatchups || []).some((m: any) => m?.is_category_league || m?.stat_winners?.length)
 })
+const supported = computed(() =>
+  isEspn.value ? espn.supported.value === true : leagueStore.activePlatform === 'yahoo' && isYahooCategoryLeague.value,
+)
+const unsupported = computed(() =>
+  leagueStore.activePlatform === 'sleeper' || (isEspn.value && espn.supported.value === false),
+)
 
 const attempted = ref(false)
 function runLoads() {
-  if (!supported.value) return
+  if (isEspn.value) {
+    espn.load() // self-detects category and identifies the user's team
+    attempted.value = true
+    return
+  }
+  if (leagueStore.activePlatform !== 'yahoo' || !isYahooCategoryLeague.value) return
   const id = leagueStore.activeLeagueId
   if (id) loadSeasonData(id)
   loadRoster()
@@ -39,30 +54,43 @@ function runLoads() {
 }
 onMounted(runLoads)
 watch(() => leagueStore.activeLeagueId, () => { attempted.value = false; runLoads() })
-watch(supported, (s) => { if (s && !attempted.value) runLoads() })
+watch([isEspn, isYahooCategoryLeague], () => { if (!attempted.value) runLoads() })
 
-// League scoring categories straight from settings (statId + label).
-const categories = computed(() => {
+// === Unified, platform-neutral inputs into the trade engine ===
+const pool = computed(() => (isEspn.value ? espn.pool.value : yPool.value))
+const fgByKey = computed(() => (isEspn.value ? espn.fgByKey.value : yFg.value))
+
+const categories = computed<{ statId: string; label: string; name: string }[]>(() => {
+  if (isEspn.value) return espn.categories.value.map((c) => ({ statId: c.statId, label: c.label, name: c.name }))
   const out: { statId: string; label: string; name: string }[] = []
   for (const [statId, meta] of categoryLabels.value) out.push({ statId, label: meta.label, name: meta.name })
   return out
+})
+const lowerBetterByStat = computed(() => {
+  const m = new Map<string, boolean>()
+  if (isEspn.value) for (const c of espn.cats.value) m.set(c.statId, c.lowerIsBetter)
+  else for (const c of categories.value) m.set(c.statId, isLowerBetter(c.label || c.name || c.statId))
+  return m
 })
 const catSpecs = computed<CatSpec[]>(() => {
   const findStatId = (names: string[]) => categories.value.find((c) => names.includes((c.label || c.name || '').toUpperCase().trim()))?.statId
   const ipStatId = findStatId(['IP', 'INNINGS PITCHED'])
   const abStatId = findStatId(['AB', 'AT BATS', 'PA', 'PLATE APPEARANCES'])
   return categories.value.map((c) => {
-    const lowerIsBetter = isLowerBetter(c.label || c.name || c.statId)
+    const lowerIsBetter = lowerBetterByStat.value.get(c.statId) ?? isLowerBetter(c.label || c.name || c.statId)
     const { side, isRatio } = classifyCategory(c.label || c.name || c.statId, lowerIsBetter)
     return { statId: c.statId, lowerIsBetter, side, isRatio, volumeStatId: isRatio ? (side === 'pit' ? ipStatId : abStatId) : undefined }
   })
 })
 const labelOf = (statId: string) => categories.value.find((c) => c.statId === statId)?.label ?? statId
 
-// Per-team category WIN counts from the season's matchup stat_winners — the reliable,
-// direction-correct measure of each team's category strength (same source as My Team's
-// ranks). Keyed by team_key to match the roster pool's fantasy_team_key.
+// Per-team category WIN counts — ESPN from standings (perCategoryWins), Yahoo from the
+// season's matchup stat_winners. Both are direction-correct measures of category strength,
+// keyed to match the roster pool's teamKey (`espn_<id>` / Yahoo team_key).
 const teamCatWins = computed<TeamTotals[]>(() => {
+  if (isEspn.value) {
+    return espn.standings.value.map((s) => ({ teamId: s.team.teamId, totals: s.perCategoryWins ?? {} }))
+  }
   const wins = new Map<string, Record<string, number>>()
   for (const m of seasonMatchups.value) {
     if (!m?.stat_winners?.length) continue
@@ -82,9 +110,27 @@ const teamCatWins = computed<TeamTotals[]>(() => {
   return [...wins.entries()].map(([teamId, totals]) => ({ teamId, totals }))
 })
 
-const { view } = useTradeTargets({ pool, fgByKey, catSpecs, teamCatWins, seasonFraction: SEASON_FRACTION, labelOf })
+const myTeamKey = computed<string | null>(() => {
+  if (isEspn.value) return espn.myTeamId.value
+  const t = leagueStore.yahooTeams?.find((x: any) => x.is_my_team)
+  return t ? String(t.team_key) : null
+})
+const teamNameByKey = computed(() => {
+  const m = new Map<string, string>()
+  if (isEspn.value) for (const s of espn.standings.value) m.set(s.team.teamId, s.team.name)
+  else for (const t of leagueStore.yahooTeams ?? []) m.set(String(t.team_key), String(t.name))
+  return m
+})
 
-const settling = computed(() => !attempted.value || rosterLoading.value || !catsLoaded.value)
+const { view } = useTradeTargets({ pool, fgByKey, catSpecs, teamCatWins, myTeamKey, teamNameByKey, seasonFraction: SEASON_FRACTION, labelOf })
+
+const rosterLoading = computed(() => (isEspn.value ? espn.loading.value : yRosterLoading.value))
+const rosterLoaded = computed(() => (isEspn.value ? espn.loaded.value : yRosterLoaded.value))
+const settling = computed(() => {
+  if (!attempted.value) return true
+  if (isEspn.value) return espn.loading.value
+  return yRosterLoading.value || !yCatsLoaded.value
+})
 const loadFailed = computed(() => supported.value && attempted.value && !rosterLoading.value && pool.value.length === 0)
 const isLoading = computed(() => !unsupported.value && !loadFailed.value && settling.value && !view.value)
 const empty = computed(() => !loadFailed.value && rosterLoaded.value && !view.value)
@@ -114,7 +160,7 @@ function ordinal(n: number): string {
     </header>
 
     <p v-if="unsupported" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
-      Trade targets are Yahoo category leagues only in this preview. ESPN support is coming.
+      Trade targets need a head-to-head category league (Yahoo or ESPN). This league isn't one.
     </p>
     <div v-else-if="loadFailed" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
       <p class="text-sm text-dark-text">Couldn't load the league rosters from Yahoo just now.</p>
