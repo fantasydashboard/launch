@@ -10,7 +10,8 @@ import { dailyCandidates } from '@/myteam/yourMove/dailyCandidates'
 import { buildRankedMoves } from '@/myteam/yourMove/buildMoves'
 import { projectGames, projectRemainingWeek } from '@/myteam/yourMove/projectRemainingWeek'
 import type { RosterSlotPlayer } from '@/myteam/yourMove/pairDrop'
-import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
+import { sideOf } from '@/myteam/yourMove/helpedCats'
+import { getWeekSchedule, lookupStarts, type WeekSchedule } from '@/services/mlbSchedule'
 
 // A this-week category is worth chasing if it's a coin-flip, or a loss still within
 // reach (we're not yet hopelessly behind). Hopeless cats aren't "moves."
@@ -84,6 +85,23 @@ export function useYourMove(inputs: {
       .filter((p) => !p.started)
       .map((p) => ({ playerKey: p.playerKey, name: p.name, team: p.team, position: p.position, stats: p.stats }))
     const playsToday = (team: string) => (todaySchedule.value.gamesByTeam[team] ?? 0) > 0
+
+    // DEV-only: surface exactly what the daily streaming layer sees, so an empty
+    // ESPN "Today" group can be diagnosed (no FA SP starting today vs a name
+    // mismatch vs an empty schedule). Stripped from production builds.
+    if (import.meta.env.DEV) {
+      const faPit = inputs.freeAgents.value.filter((fa) => sideOf(fa.position ?? '') === 'pit')
+      const matched = faPit.filter((fa) => lookupStarts(todaySchedule.value, fa.name).length > 0)
+      // eslint-disable-next-line no-console
+      console.debug(`[YourMove/daily · ${snap.platform}]`, {
+        todayTeamsWithGames: Object.keys(todaySchedule.value.gamesByTeam).length,
+        todayProbableStarters: Object.keys(todaySchedule.value.startsByPitcher).length,
+        faPitchersInPool: faPit.length,
+        faPitchersStartingToday: matched.map((m) => m.name),
+        sampleFaPitchers: faPit.slice(0, 12).map((m) => m.name),
+        sampleProbablesToday: Object.keys(todaySchedule.value.startsByPitcher).slice(0, 12),
+      })
+    }
 
     // Shared across both layers so no two surfaced moves drop/sit the same player,
     // and no player is suggested twice. Today is built first, so it claims the
