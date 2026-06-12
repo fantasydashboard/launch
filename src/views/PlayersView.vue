@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { profileFromStandings, type StandingsEntryLike } from '@/recommendations/fromStandings'
 import { computeCategoryWeaknesses } from '@/recommendations/categorySignals'
@@ -8,92 +7,92 @@ import type { CategoryDef } from '@/recommendations/types'
 import { useFullSeasonCategoryData } from '@/composables/useFullSeasonCategoryData'
 import { isYahooCategoryLeague as isYahooCategoryScoringType } from '@/composables/useIsCategoryLeague'
 import { useAvailablePlayers } from '@/composables/useAvailablePlayers'
-import { rankAddsForHoles } from '@/players/rankAdds'
+import { useMyRoster } from '@/composables/useMyRoster'
+import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
+import { usePlayersAdds } from '@/composables/usePlayersAdds'
 import { isLowerBetter } from '@/players/direction'
-import type { Hole } from '@/players/types'
-import AddCard from '@/components/players/AddCard.vue'
+import { classifyCategory } from '@/myteam/categorySide'
+import { computeRosterValue, type CatSpec } from '@/myteam/value'
+import { toEffectiveStats } from '@/myteam/effectiveStats'
+import { computeDropCandidates } from '@/myteam/dropCandidates'
+import { mapToEspnStats, buildPlayerMatchers, type FGProjection } from '@/services/projectionService'
+import { sideOf } from '@/myteam/yourMove/helpedCats'
+import { displayLift } from '@/myteam/yourMove/displayLift'
+import type { RosterSlotPlayer } from '@/myteam/yourMove/pairDrop'
+import type { CandidateAction } from '@/myteam/yourMove/types'
+import { tierAdds } from '@/players/tierAdds'
+import { projectionLine } from '@/players/projectionLine'
 
 const leagueStore = useLeagueStore()
-const route = useRoute()
 const { players, loaded: playersLoaded, load: loadPlayers } = useAvailablePlayers()
+const {
+  players: rosterPlayers,
+  pool: rosterPool,
+  fgByKey: rosterFgByKey,
+  loaded: rosterLoaded,
+  load: loadRoster,
+} = useMyRoster()
+const thisWeek = useThisWeekMatchup()
+
+const SEASON_FRACTION = 0.6 // baseball, ~mid-late season; scales unmatched players' counting stats
 
 // === BEGIN copied-from-MyTeamView derivation (standings/categories/myTeamId + season load) ===
-// Copied VERBATIM from src/views/MyTeamView.vue so Players and My Team share identical
-// league context. (A future refactor will hoist this into a shared composable.)
-
-// === Wired from the sources recorded in docs/superpowers/my-team-data-sources.md (Task 9 + Task 10) ===
-// No reusable store getter / composable yields the verified StandingsEntryLike[]
-// or CategoryDef[] for the active category league (those are built as local refs
-// inside UnifiedSeasonView.vue). The single source of truth they derive from is
-// matchup .stat_winners + leagueStore.yahooTeams. We reproduce the verified
-// derivation (UnifiedSeasonView.vue:1290-1411) here as computeds.
-//
-// FULL-SEASON FIX: leagueStore.yahooMatchups only ever holds ONE week (the store's
-// loadYahooLeagueData fetches a single week of category matchups), so deriving from
-// it would under-count. useFullSeasonCategoryData loops getCategoryMatchups across
-// every completed week to give the full-season picture, and also fetches the real
-// stat-category display names from Yahoo league settings (same source as
-// UnifiedSeasonView.vue:1338-1340). We prefer the full-season matchups when loaded
-// and fall back to the single-week store state until then.
+// Kept identical to My Team so the two pages share league context. (A future refactor
+// will hoist this — and the catSpecs/contributions block below — into a shared composable.)
 const { seasonMatchups, categoryLabels, loaded: seasonLoaded, load: loadSeasonData } =
   useFullSeasonCategoryData()
 
-// True when the active league is a Yahoo H2H category league (roto is out of scope).
-// Mirrors the wrapper predicate: currentLeague?.scoring_type first, then the saved
-// league for activeLeagueId, then falls back to matchup data when scoring_type is
-// unknown (kept so the view still loads when the saved record hasn't synced yet).
 const isYahooCategoryLeague = computed(() => {
   const id = leagueStore.activeLeagueId
   if (!id) return false
-  // 1. currentLeague signal (same first branch as MyTeamWrapper / MatchupWrapper).
   if (isYahooCategoryScoringType(leagueStore.currentLeague?.scoring_type)) return true
-  // 2. Saved-league signal.
   const saved = leagueStore.savedLeagues?.find((l: any) => l.league_id === id)
   if (saved?.platform && saved.platform !== 'yahoo') return false
   const st = saved?.scoring_type || ''
   if (st) return isYahooCategoryScoringType(st)
-  // 3. Fall back to inspecting matchup data when scoring_type is unknown.
   return (leagueStore.yahooMatchups || []).some(
-    (m: any) => m?.is_category_league || m?.stat_winners?.length
+    (m: any) => m?.is_category_league || m?.stat_winners?.length,
   )
 })
 
 function maybeLoadSeasonData() {
   const id = leagueStore.activeLeagueId
-  if (id && isYahooCategoryLeague.value) {
-    loadSeasonData(id)
-  }
+  if (id && isYahooCategoryLeague.value) loadSeasonData(id)
 }
-
 function maybeLoadPlayers() {
-  if (isYahooCategoryLeague.value) {
-    loadPlayers()
-  }
+  if (isYahooCategoryLeague.value) loadPlayers()
+}
+function maybeLoadRoster() {
+  if (isYahooCategoryLeague.value) loadRoster()
+}
+function maybeLoadThisWeek() {
+  if (!categories.value.length) return
+  thisWeek.load(categories.value.map((c) => ({ statId: c.statId, label: c.label })))
 }
 
 onMounted(() => {
   maybeLoadSeasonData()
   maybeLoadPlayers()
+  maybeLoadRoster()
+  maybeLoadThisWeek()
 })
-// Reload when the active league changes (e.g. switching into a category league).
 watch(() => leagueStore.activeLeagueId, () => {
   maybeLoadSeasonData()
   maybeLoadPlayers()
+  maybeLoadRoster()
+  maybeLoadThisWeek()
 })
 
-// Matchups to derive from: full-season when loaded, else the single-week store state.
 const sourceMatchups = computed(() =>
   seasonLoaded.value && seasonMatchups.value.length
     ? seasonMatchups.value
-    : leagueStore.yahooMatchups || []
+    : leagueStore.yahooMatchups || [],
 )
 
-// Per-category wins/losses accumulated from matchup stat_winners, keyed by team key/id.
 const perCategory = computed(() => {
   const wins = new Map<string, Record<string, number>>()
   const losses = new Map<string, Record<string, number>>()
   const statIds = new Set<string>()
-
   for (const m of sourceMatchups.value) {
     if (!m?.stat_winners?.length) continue
     const team1 = m.teams?.[0]
@@ -101,14 +100,12 @@ const perCategory = computed(() => {
     const team1Key = team1?.team_key || team1?.team_id
     const team2Key = team2?.team_key || team2?.team_id
     if (!team1Key || !team2Key) continue
-
     for (const key of [team1Key, team2Key]) {
       if (!wins.has(key)) {
         wins.set(key, {})
         losses.set(key, {})
       }
     }
-
     for (const sw of m.stat_winners) {
       const statId = String(sw.stat_id)
       statIds.add(statId)
@@ -116,7 +113,6 @@ const perCategory = computed(() => {
       const t1Losses = losses.get(team1Key)!
       const t2Wins = wins.get(team2Key)!
       const t2Losses = losses.get(team2Key)!
-
       if (sw.is_tied === true || sw.is_tied === '1') {
         // tie — no credit
       } else if (sw.winner_team_key === team1Key) {
@@ -128,11 +124,9 @@ const perCategory = computed(() => {
       }
     }
   }
-
   return { wins, losses, statIds }
 })
 
-// Standings array in the verified StandingsEntryLike shape (UnifiedSeasonView.vue:1400-1411).
 const standings = computed<StandingsEntryLike[]>(() => {
   const teams = leagueStore.yahooStandings?.length
     ? leagueStore.yahooStandings
@@ -142,50 +136,30 @@ const standings = computed<StandingsEntryLike[]>(() => {
     const byKey = wins.get(team.team_key) || wins.get(team.team_id) || {}
     const byKeyLoss = losses.get(team.team_key) || losses.get(team.team_id) || {}
     return {
-      team: {
-        teamId: String(team.team_id || team.team_key),
-        name: team.name,
-        avatar: team.logo_url || team.logo || team.avatar
-      },
+      team: { teamId: String(team.team_id || team.team_key), name: team.name, avatar: team.logo_url || team.logo || team.avatar },
       perCategoryWins: byKey,
-      perCategoryLosses: byKeyLoss
+      perCategoryLosses: byKeyLoss,
     }
   })
 })
 
-// League scoring categories mapped to CategoryDef (stat_id -> statId, etc.).
-// Real display names come from Yahoo league settings via useFullSeasonCategoryData
-// (same getLeagueSettings().stat_categories source as UnifiedSeasonView.vue:1338-1340).
-// The engine only reads statId + name + per-category ranks; side/higherIsBetter are
-// best-effort defaults (see docs/superpowers/my-team-data-sources.md). Falls back to "Stat <id>" only when
-// a real name is genuinely unavailable (settings not yet loaded or stat missing).
 const categories = computed<CategoryDef[]>(() => {
   const labels = categoryLabels.value
   return [...perCategory.value.statIds].map((statId) => {
     const meta = labels.get(statId)
-    return {
-      statId,
-      label: meta?.label || `S${statId}`,
-      name: meta?.name || `Stat ${statId}`,
-      side: 'hit' as const,
-      higherIsBetter: true
-    }
+    return { statId, label: meta?.label || `S${statId}`, name: meta?.name || `Stat ${statId}`, side: 'hit' as const, higherIsBetter: true }
   })
 })
 
-// Logged-in user's teamId (team with is_my_team === true) — UnifiedSeasonView.vue:701-717.
 const myTeamId = computed<string | null>(() => {
   const myTeam = leagueStore.yahooTeams?.find((t: any) => t.is_my_team)
   if (myTeam) return String(myTeam.team_id ?? myTeam.team_key)
   if (leagueStore.currentUserId) {
-    const myRoster = leagueStore.leagueRosters?.find(
-      (r: any) => r.owner_id === leagueStore.currentUserId
-    )
+    const myRoster = leagueStore.leagueRosters?.find((r: any) => r.owner_id === leagueStore.currentUserId)
     if (myRoster) return String(myRoster.roster_id)
   }
   return null
 })
-// ================================================================================
 // === END copied derivation ===
 
 const profile = computed(() => {
@@ -197,101 +171,288 @@ const profile = computed(() => {
   }
 })
 
-const holes = computed<Hole[]>(() => {
-  if (!profile.value) return []
-  // Weak categories, worst first, top 4. Reuse the Slice 1 weakness rule for consistency.
-  const weak = computeCategoryWeaknesses(profile.value, categories.value)
-    .sort((a, b) => b.leverage - a.leverage)
-    .slice(0, 4)
-  return weak.map((rec) => {
-    const cat = categories.value.find((c) => c.statId === rec.statId)
-    const teamCat = profile.value!.categories.find((c) => c.statId === rec.statId)
+// Reload the matchup snapshot once categories resolve (same pattern as My Team).
+watch(categories, () => maybeLoadThisWeek())
+
+// === Category specs (side / isRatio / volume) — parallels MyTeamView (Yahoo branch) ===
+const cats = computed(() =>
+  categories.value.map((c) => ({ statId: c.statId, lowerIsBetter: isLowerBetter(c.label || c.name || c.statId) })),
+)
+const lowerBetterByStatId = computed(() => {
+  const m = new Map<string, boolean>()
+  for (const c of cats.value) m.set(c.statId, c.lowerIsBetter)
+  return m
+})
+const catSpecs = computed<CatSpec[]>(() => {
+  const findStatId = (names: string[]): string | undefined => {
+    for (const c of categories.value) {
+      const label = (c.label || c.name || '').toUpperCase().trim()
+      if (names.includes(label)) return c.statId
+    }
+    return undefined
+  }
+  const ipStatId = findStatId(['IP', 'INNINGS PITCHED'])
+  const abStatId = findStatId(['AB', 'AT BATS', 'PA', 'PLATE APPEARANCES'])
+  return categories.value.map((c) => {
+    const lowerIsBetter = lowerBetterByStatId.value.get(c.statId) ?? false
+    const { side, isRatio } = classifyCategory(c.label || c.name || c.statId, lowerIsBetter)
+    return { statId: c.statId, lowerIsBetter, side, isRatio, volumeStatId: isRatio ? (side === 'pit' ? ipStatId : abStatId) : undefined }
+  })
+})
+const labelFor = (statId: string) => categories.value.find((c) => c.statId === statId)?.label ?? statId
+
+// FanGraphs ROS stats mapped to league stat ids, for a given key->FGProjection map.
+function mapFg(fgMap: Record<string, FGProjection | null>): Record<string, Record<string, number> | null> {
+  if (!catSpecs.value.length) return {}
+  const labelByStatId = new Map(categories.value.map((c) => [c.statId, c.label || c.name || c.statId]))
+  const fgCats = catSpecs.value.map((c) => ({ stat_id: c.statId, display_name: labelByStatId.get(c.statId), isPitching: c.side === 'pit' }))
+  const out: Record<string, Record<string, number> | null> = {}
+  for (const key of Object.keys(fgMap)) {
+    const fg = fgMap[key]
+    out[key] = fg ? mapToEspnStats(fg, fgCats) : null
+  }
+  return out
+}
+
+// === My roster contributions (for drop pairing's roleValue) — parallels MyTeamView ===
+const myPlayerKeys = computed(() => rosterPlayers.value.map((p) => p.playerKey))
+const rosterFgStatsByKey = computed(() => mapFg(rosterFgByKey.value))
+const contributions = computed(() => {
+  if (!rosterPool.value.length || !myPlayerKeys.value.length || !catSpecs.value.length) return []
+  const fgMap = rosterFgStatsByKey.value
+  const effectivePool = rosterPool.value.map((p) => ({
+    playerKey: p.playerKey,
+    position: p.position,
+    stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, SEASON_FRACTION),
+  }))
+  return computeRosterValue(effectivePool, myPlayerKeys.value, catSpecs.value)
+})
+const weakLinkKey = computed(() => computeDropCandidates(contributions.value).weakLink?.playerKey ?? null)
+const rosterSlotPlayers = computed<RosterSlotPlayer[]>(() => {
+  const byKey = new Map(contributions.value.map((c) => [c.playerKey, c]))
+  return rosterPlayers.value.map((p) => {
+    const c = byKey.get(p.playerKey)
     return {
-      statId: rec.statId,
-      name: cat?.name ?? rec.statId,
-      rank: teamCat?.rank ?? 0,
-      lowerIsBetter: cat ? isLowerBetter(cat.label || cat.name || cat.statId) : false,
+      playerKey: p.playerKey,
+      name: p.name,
+      team: (p as { team?: string }).team ?? '',
+      position: (p as { position?: string }).position ?? '',
+      side: (c?.role === 'pitcher' ? 'pit' : 'hit') as 'hit' | 'pit',
+      roleValue: c?.roleValue ?? 50,
+      started: (p as { started?: boolean }).started ?? true,
+      stats: (p as { stats?: Record<string, number> }).stats ?? {},
     }
   })
 })
 
-const holeAdds = computed(() =>
-  holes.value.length && players.value.length
-    ? rankAddsForHoles(players.value, holes.value, { perHole: 4 })
-    : [],
-)
-
-// True while we don't yet have a usable profile AND at least one data source is
-// still in flight. Once both data sources report loaded (or profile is available),
-// the loading state ends.
-const isLoading = computed(() =>
-  !profile.value && (!playersLoaded.value || !seasonLoaded.value)
-)
-
-function labelFor(statId: string): string {
-  return categories.value.find((c) => c.statId === statId)?.label ?? statId
+// === Free-agent FanGraphs ROS enrichment (the credibility fix) ===
+const faFg = ref<Record<string, FGProjection | null>>({})
+async function loadFaFg() {
+  if (!players.value.length) return
+  const { matchFG } = await buildPlayerMatchers()
+  const out: Record<string, FGProjection | null> = {}
+  for (const fa of players.value) out[fa.playerKey] = matchFG({ full_name: fa.name, mlb_team: fa.team })
+  faFg.value = out
 }
+watch(() => players.value, loadFaFg, { immediate: true })
+const faFgStatsByKey = computed(() => mapFg(faFg.value))
+const fgMatched = computed(() => {
+  const s = new Set<string>()
+  const fg = faFgStatsByKey.value
+  for (const k of Object.keys(fg)) if (fg[k]) s.add(k)
+  return s
+})
+const faByKey = computed(() => new Map(players.value.map((fa) => [fa.playerKey, fa])))
+// ROS-blended (display) stats per free agent.
+const effectiveByKey = computed(() => {
+  const fg = faFgStatsByKey.value
+  const m = new Map<string, Record<string, number>>()
+  for (const fa of players.value) m.set(fa.playerKey, toEffectiveStats(fa.stats, fg[fa.playerKey] ?? null, catSpecs.value, SEASON_FRACTION))
+  return m
+})
 
-// === Task 1: ?cat= anchor — scroll to and briefly highlight the target category ===
-// When the route carries ?cat=<statId> (e.g. deep-linked from a My Team weakness
-// row), scroll its per-hole section into view and toggle a transient lime ring.
-async function focusCategory(statId: string) {
-  if (!statId) return
-  await nextTick()
-  const el = document.getElementById(`cat-${statId}`)
-  if (!el) return // guard: section not rendered (no adds for that cat)
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  el.classList.add('ring-2', 'ring-primary', 'rounded-xl')
-  setTimeout(() => el.classList.remove('ring-2', 'ring-primary', 'rounded-xl'), 1500)
+// === The ranked add universe ===
+const playersAdds = usePlayersAdds({
+  catSpecs,
+  freeAgents: players,
+  fgStatsByKey: faFgStatsByKey,
+  roster: rosterSlotPlayers,
+  snapshot: thisWeek.snapshot,
+  seasonFraction: computed(() => SEASON_FRACTION),
+})
+const tiered = computed(() => tierAdds(playersAdds.adds.value))
+
+interface AddView {
+  key: string
+  name: string
+  pos: string
+  team: string
+  headshot?: string
+  lift: number
+  flips: string[]
+  drop: string | null
+  dropWeakLink: boolean
+  segs: ReturnType<typeof projectionLine>
+  matched: boolean
 }
+function buildView(a: CandidateAction): AddView {
+  const fa = faByKey.value.get(a.player.key)
+  const side = sideOf(a.player.position)
+  const stats = effectiveByKey.value.get(a.player.key) ?? {}
+  return {
+    key: a.player.key,
+    name: a.player.name,
+    pos: a.player.position,
+    team: fa?.team ?? a.player.team,
+    headshot: fa?.headshot,
+    lift: displayLift(a.winProbLift),
+    flips: a.categories.map(labelFor),
+    drop: a.counterparty?.name ?? null,
+    dropWeakLink: !!a.counterparty?.key && a.counterparty.key === weakLinkKey.value,
+    segs: projectionLine(stats, catSpecs.value, side, a.categories, labelFor, 3),
+    matched: fgMatched.value.has(a.player.key),
+  }
+}
+const strongViews = computed(() => tiered.value.strong.map(buildView))
+const smallerViews = computed(() => tiered.value.smaller.slice(0, 6).map(buildView))
+const hero = computed(() => strongViews.value[0] ?? null)
+const restStrong = computed(() => strongViews.value.slice(1))
 
-// Run once the adds populate (the sections must exist before we can scroll/highlight).
-watch(
-  () => [holeAdds.value.length, route.query.cat] as const,
-  () => {
-    const cat = route.query.cat
-    if (cat && holeAdds.value.length) focusCategory(String(cat))
-  },
-  { immediate: true },
-)
+const oppName = computed(() => thisWeek.snapshot.value?.opponentName ?? '')
+const topWeakness = computed(() => {
+  if (!profile.value) return null
+  const w = computeCategoryWeaknesses(profile.value, categories.value).slice().sort((a, b) => b.leverage - a.leverage)[0]
+  if (!w) return null
+  const cat = categories.value.find((c) => c.statId === w.statId)
+  const teamCat = profile.value.categories.find((c) => c.statId === w.statId)
+  return { label: cat?.label ?? w.statId, rank: teamCat?.rank ?? 0 }
+})
+
+// States
+const ready = computed(() => playersLoaded.value && rosterLoaded.value && thisWeek.loaded.value)
+const heroFaceFailed = ref(new Set<string>())
+const noMatchup = computed(() => ready.value && (!thisWeek.snapshot.value || thisWeek.snapshot.value.completed))
+const hasAny = computed(() => strongViews.value.length > 0 || smallerViews.value.length > 0)
+const isLoading = computed(() => !ready.value && !hasAny.value)
+const empty = computed(() => ready.value && !noMatchup.value && !hasAny.value)
+
+function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return n + (s[(v - 20) % 10] || s[v] || s[0])
+}
 </script>
 
 <template>
-  <div class="mx-auto max-w-4xl px-4 py-6 space-y-6">
-    <h1 class="font-display text-2xl font-bold text-dark-text">Players</h1>
-    <p class="text-sm text-dark-textMuted">Top available players for your weakest categories.</p>
+  <div class="mx-auto max-w-3xl px-4 py-6 space-y-4">
+    <header class="space-y-1">
+      <h1 class="font-display text-2xl font-bold text-dark-text">Players</h1>
+      <p class="font-mono text-xs text-dark-textMuted">
+        The wire, ranked by added chance to win this week<template v-if="oppName"> · vs {{ oppName }}</template>
+      </p>
+    </header>
 
-    <!-- Loading state: data still arriving -->
-    <p v-if="isLoading" class="text-sm text-dark-textMuted">
-      Finding your best available adds…
-    </p>
-
-    <!-- No weaknesses: data loaded, but no holes found -->
-    <p v-else-if="holeAdds.length === 0 && profile" class="text-sm text-dark-textMuted">
-      No weak categories right now. You're competitive across the board.
-    </p>
-
-    <!-- Hard data failure: loaded but no profile (should be rare given the wrapper) -->
-    <p v-else-if="holeAdds.length === 0 && !profile" class="text-sm text-dark-textMuted">
-      No data yet — category standings will appear once matchup results are in.
-    </p>
-
-    <!-- Results: per-hole add groups -->
-    <section v-for="group in holeAdds" :key="group.hole.statId" :id="'cat-' + group.hole.statId" class="space-y-2 scroll-mt-6 transition-shadow">
-      <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-dark-textMuted">
-        Adds for {{ group.hole.name }} <span class="text-dark-textMuted/70">(you're {{ group.hole.rank }}th)</span>
-      </h2>
-      <div class="rounded-xl bg-dark-card border border-dark-border divide-y divide-dark-border/60">
-        <p v-if="group.adds.length === 0" class="px-4 py-6 text-sm text-dark-textMuted">
-          No standout free agents in {{ group.hole.name }} right now.
-        </p>
-        <AddCard
-          v-for="add in group.adds"
-          :key="add.player.playerKey"
-          :add="add"
-          :stat-label="labelFor(group.hole.statId)"
-        />
+    <!-- Lens: this week active; season fit is the fast-follow. -->
+    <div class="flex items-center justify-between gap-2">
+      <div class="flex overflow-hidden rounded-md border border-dark-border font-mono text-[10px] uppercase tracking-wider">
+        <span class="bg-primary/15 px-2.5 py-1 text-primary">This week</span>
+        <span class="px-2.5 py-1 text-dark-textMuted/60">Season fit <span class="text-[8px]">soon</span></span>
       </div>
-    </section>
+    </div>
+
+    <!-- The frame that reconciles with My Team's season hole. -->
+    <p v-if="topWeakness" class="font-mono text-[11px] leading-relaxed text-dark-textMuted">
+      Your best moves for <span class="text-dark-textSecondary">this week's matchup</span>. Chasing a season-long hole
+      (you're {{ ordinal(topWeakness.rank) }} in <span class="text-dark-textSecondary">{{ topWeakness.label }}</span>)?
+      That lives under <span class="text-primary">Season fit</span> — coming soon.
+    </p>
+    <p class="font-mono text-[10px] text-dark-textMuted">% = added chance to win this week · each add is netted against the drop</p>
+
+    <!-- States -->
+    <p v-if="isLoading" class="text-sm text-dark-textMuted">Ranking the wire for your matchup…</p>
+    <p v-else-if="noMatchup" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
+      No live matchup this week, so there's nothing to rank against yet. Season-long add value is coming with the Season fit lens.
+    </p>
+    <p v-else-if="empty" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-text">
+      The wire's quiet — nothing available clearly moves your matchup this week. Stand pat.
+    </p>
+
+    <template v-else-if="hero">
+      <!-- HERO (the only card) -->
+      <div class="flex items-start gap-3 rounded-xl border border-primary/40 bg-primary/5 px-4 py-3">
+        <img
+          v-if="hero.headshot && !heroFaceFailed.has(hero.key)"
+          :src="hero.headshot"
+          :alt="hero.name"
+          @error="heroFaceFailed.add(hero.key)"
+          class="mt-0.5 h-10 w-10 shrink-0 rounded-full bg-dark-border object-cover"
+        />
+        <span v-else aria-hidden="true" class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-dark-border font-display text-base font-bold text-dark-textSecondary">{{ hero.name.charAt(0) }}</span>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-baseline justify-between gap-3">
+            <span class="min-w-0 truncate font-display text-lg font-bold text-dark-text">
+              {{ hero.name }}
+              <span class="font-sans text-xs font-normal text-dark-textMuted">{{ hero.pos }} · {{ hero.team }}<template v-if="hero.drop"> · drop {{ hero.drop }}</template><span v-if="hero.dropWeakLink" class="text-dark-textMuted/70"> (weak link)</span></span>
+            </span>
+            <span class="shrink-0 font-mono text-lg font-bold text-primary tabular-nums">+{{ hero.lift }}%</span>
+          </div>
+          <div v-if="hero.flips.length" class="mt-1 flex flex-wrap items-center gap-1">
+            <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">flips</span>
+            <span v-for="c in hero.flips" :key="c" class="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary">{{ c }}</span>
+          </div>
+          <p class="mt-1.5 font-mono text-[11px] text-dark-textMuted">
+            ROS<template v-for="s in hero.segs" :key="s.statId"> {{ s.value }} {{ s.label }} ·</template>
+            <span v-if="hero.matched" class="text-dark-textMuted/60"> FanGraphs</span>
+            <span v-else class="text-dark-textMuted/60"> projected</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- MEANINGFUL MOVES — de-carded list (hairline-separated, no per-row border) -->
+      <div v-if="restStrong.length" class="divide-y divide-dark-border/50 rounded-xl border border-dark-border bg-dark-card/40">
+        <div
+          v-for="v in restStrong"
+          :key="v.key"
+          class="flex items-center gap-3 px-4 py-2.5"
+        >
+          <span class="w-11 shrink-0 font-mono text-sm font-bold text-primary tabular-nums">+{{ v.lift }}%</span>
+          <span class="min-w-0 flex-1">
+            <span class="block truncate text-sm">
+              <span class="font-semibold text-dark-text">{{ v.name }}</span>
+              <span class="font-mono text-[11px] text-dark-textMuted"> {{ v.pos }} · {{ v.team }}<template v-if="v.drop"> · drop {{ v.drop }}</template><span v-if="v.dropWeakLink" class="text-dark-textMuted/70"> (weak link)</span></span>
+            </span>
+            <span class="mt-0.5 block font-mono text-[11px]">
+              <template v-for="(s, i) in v.segs" :key="s.statId"><span v-if="i > 0" class="text-dark-textMuted/40"> · </span><span :class="s.helped ? 'text-primary' : 'text-dark-textMuted'">{{ s.label }}</span><span class="text-dark-textMuted"> {{ s.value }}</span></template>
+            </span>
+          </span>
+        </div>
+      </div>
+
+      <!-- SMALLER EDGES — tiered, dimmed -->
+      <template v-if="smallerViews.length">
+        <div class="flex items-center gap-2 pt-1">
+          <span class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Smaller edges</span>
+          <span class="h-px flex-1 bg-dark-border/50"></span>
+        </div>
+        <div class="divide-y divide-dark-border/40 rounded-xl border border-dark-border/60 bg-dark-card/20 opacity-70">
+          <div
+            v-for="v in smallerViews"
+            :key="v.key"
+            class="flex items-center gap-3 px-4 py-2"
+          >
+            <span class="w-11 shrink-0 font-mono text-sm font-semibold text-primary/80 tabular-nums">+{{ v.lift }}%</span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm">
+                <span class="font-semibold text-dark-text">{{ v.name }}</span>
+                <span class="font-mono text-[11px] text-dark-textMuted"> {{ v.pos }} · {{ v.team }}<template v-if="v.drop"> · drop {{ v.drop }}</template></span>
+              </span>
+              <span class="mt-0.5 block font-mono text-[11px]">
+                <template v-for="(s, i) in v.segs" :key="s.statId"><span v-if="i > 0" class="text-dark-textMuted/40"> · </span><span :class="s.helped ? 'text-primary' : 'text-dark-textMuted'">{{ s.label }}</span><span class="text-dark-textMuted"> {{ s.value }}</span></template>
+              </span>
+            </span>
+          </div>
+        </div>
+      </template>
+    </template>
   </div>
 </template>

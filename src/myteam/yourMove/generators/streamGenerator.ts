@@ -19,6 +19,8 @@ export function streamGenerator(
   startsByPitcher: Record<string, ProbableStart[]>,
   cats: CatSpec[],
   seasonFraction = 0.6,
+  // Per-player FanGraphs rest-of-season stats, keyed by playerKey (see addGenerator).
+  fgStatsByKey: Record<string, Record<string, number> | null> = {},
 ): MoveCandidate[] {
   const out: MoveCandidate[] = []
   const schedule: WeekSchedule = { gamesByTeam: {}, startsByPitcher }
@@ -32,7 +34,7 @@ export function streamGenerator(
       kind: 'stream',
       player: { key: fa.playerKey, name: fa.name, team: fa.team ?? '', position: fa.position ?? '' },
       side: sideOf(fa.position ?? ''),
-      addDelta: projectStarts(fa.stats, null, cats, starts.length, seasonFraction),
+      addDelta: projectStarts(fa.stats, fgStatsByKey[fa.playerKey] ?? null, cats, starts.length, seasonFraction),
       detail: twoStart ? `Two-start week${opp ? ` vs ${opp}` : ''}` : `Spot start${opp ? ` vs ${opp}` : ''}`,
     })
   }

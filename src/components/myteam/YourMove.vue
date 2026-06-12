@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { CandidateAction } from '@/myteam/yourMove/types'
+import { displayLift } from '@/myteam/yourMove/displayLift'
 
 const props = defineProps<{
   moves: CandidateAction[]
@@ -24,18 +25,9 @@ const verb = (m: CandidateAction) => VERB[m.kind]
 // What you give up: a roster drop for add/stream, a lineup sit for start/sit.
 const counterVerb = (m: CandidateAction) => (m.kind === 'startSit' ? 'sit' : 'drop')
 
-// The raw win-prob lift is model-consistent but overstates confidence in a dead-even
-// matchup (flipping two coin-flip cats with one swap can read as +24%). The projections
-// feeding it are point estimates, not certainties, so we compress lifts above a
-// believable single-swap ceiling — small/mid lifts pass through unchanged, and ORDER is
-// preserved (we only shape the displayed number, never the ranking).
-const LIFT_SOFT_CAP = 10 // pp; linear regime below this
-const LIFT_COMPRESS = 0.35 // slope above the cap
-const lift = (m: CandidateAction) => {
-  const raw = Math.max(0, m.winProbLift)
-  const shaped = raw <= LIFT_SOFT_CAP ? raw : LIFT_SOFT_CAP + (raw - LIFT_SOFT_CAP) * LIFT_COMPRESS
-  return Math.round(shaped)
-}
+// Displayed lift is shaped (compressed above a believable single-swap ceiling); see
+// displayLift. Shared with the Players page so the same move reads the same number.
+const lift = (m: CandidateAction) => displayLift(m.winProbLift)
 const label = (statId: string) => props.labelByStatId?.[statId] ?? statId
 
 // Group into the Today layer (daily plays) and the longer-term layer. In a weekly
