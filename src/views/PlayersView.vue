@@ -26,15 +26,20 @@ import { tierAdds } from '@/players/tierAdds'
 import { projectionLine } from '@/players/projectionLine'
 
 const leagueStore = useLeagueStore()
-const { players, loaded: playersLoaded, load: loadPlayers } = useAvailablePlayers()
+const { players, loading: playersLoading, loaded: playersLoaded, load: loadPlayers } = useAvailablePlayers()
 const {
   players: rosterPlayers,
   pool: rosterPool,
   fgByKey: rosterFgByKey,
+  loading: rosterLoading,
   loaded: rosterLoaded,
   load: loadRoster,
 } = useMyRoster()
 const thisWeek = useThisWeekMatchup()
+
+// True once we've fired the (Yahoo) loaders for the active league, so we can tell
+// "still loading" from "loaded and empty" from "the load failed". Reset on league switch.
+const attempted = ref(false)
 
 const SEASON_FRACTION = 0.6 // baseball, ~mid-late season; scales unmatched players' counting stats
 
@@ -80,17 +85,22 @@ function maybeLoadThisWeek() {
   thisWeek.load(categories.value.map((c) => ({ statId: c.statId, label: c.label })))
 }
 
-onMounted(() => {
+function runLoads() {
   maybeLoadSeasonData()
   maybeLoadPlayers()
   maybeLoadRoster()
   maybeLoadThisWeek()
-})
+  if (supported.value) attempted.value = true
+}
+onMounted(runLoads)
 watch(() => leagueStore.activeLeagueId, () => {
-  maybeLoadSeasonData()
-  maybeLoadPlayers()
-  maybeLoadRoster()
-  maybeLoadThisWeek()
+  attempted.value = false
+  runLoads()
+})
+// `supported` can resolve true a tick after mount/switch (it waits on league metadata).
+// Fire the loaders the moment it does, so we never sit on the spinner unattempted.
+watch(supported, (s) => {
+  if (s && !attempted.value) runLoads()
 })
 
 const sourceMatchups = computed(() =>
@@ -427,14 +437,24 @@ const ready = computed(() => playersLoaded.value && rosterLoaded.value && thisWe
 const heroFaceFailed = ref(new Set<string>())
 const noMatchup = computed(() => ready.value && (!thisWeek.snapshot.value || thisWeek.snapshot.value.completed))
 const hasAny = computed(() => strongViews.value.length > 0 || smallerViews.value.length > 0)
-const isLoading = computed(() => !unsupported.value && !ready.value && !hasAny.value)
-const empty = computed(() => ready.value && !noMatchup.value && !hasAny.value)
+
+// A settled attempt that produced no free agents means the Yahoo load failed (every
+// real league has a free-agent pool). Distinguish that from "still loading" so the
+// page shows an error instead of an endless spinner on a Yahoo 500 / rate-limit.
+const settling = computed(() => !attempted.value || playersLoading.value || rosterLoading.value || thisWeek.loading.value)
+const seasonSettling = computed(() => !attempted.value || playersLoading.value || rosterLoading.value)
+const loadFailed = computed(
+  () => supported.value && attempted.value && !playersLoading.value && !rosterLoading.value && !thisWeek.loading.value && players.value.length === 0,
+)
+
+const isLoading = computed(() => !unsupported.value && !loadFailed.value && settling.value && !hasAny.value)
+const empty = computed(() => !loadFailed.value && ready.value && !noMatchup.value && !hasAny.value)
 
 // Season-fit lens needs roster + FA pools (not the live matchup), so it works even
 // when there's no active matchup.
 const seasonReady = computed(() => playersLoaded.value && rosterLoaded.value && catSpecs.value.length > 0)
-const seasonLoading = computed(() => !unsupported.value && !seasonReady.value && upgradeViews.value.length === 0)
-const seasonEmpty = computed(() => seasonReady.value && upgradeViews.value.length === 0)
+const seasonLoading = computed(() => !unsupported.value && !loadFailed.value && seasonSettling.value && upgradeViews.value.length === 0)
+const seasonEmpty = computed(() => !loadFailed.value && seasonReady.value && upgradeViews.value.length === 0)
 
 function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd']
@@ -476,6 +496,15 @@ function ordinal(n: number): string {
     <p v-if="unsupported" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
       The ranked wire is Yahoo category leagues only in this preview. ESPN support is coming.
     </p>
+
+    <!-- Shared: the Yahoo load failed (e.g. a 500 / rate-limit) — never hang on the spinner. -->
+    <div v-else-if="loadFailed" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
+      <p class="text-sm text-dark-text">Couldn't load your league from Yahoo just now.</p>
+      <p class="mt-0.5 text-xs text-dark-textMuted">Yahoo returned an error (often a brief rate-limit). Try again in a moment.</p>
+      <button type="button" class="mt-2 rounded-md border border-dark-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-primary transition-colors hover:bg-primary/10" @click="runLoads">
+        Retry
+      </button>
+    </div>
 
     <!-- ===== SEASON FIT: your roster vs the wire ===== -->
     <template v-else-if="lens === 'seasonFit'">
