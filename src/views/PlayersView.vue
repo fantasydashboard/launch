@@ -432,7 +432,11 @@ const upgradeViews = computed(() => {
         needRank: primaryId ? (rankByStat.value.get(primaryId) ?? 0) : 0,
       }
     })
-    .filter((v) => v.needLabel !== '')
+    // Weakness gate: only show an upgrade if the category it leads with is one you're
+    // GENUINELY weak in (worse than the league median). Without it the list surfaces
+    // upgrades whose only "need" is a category you're already strong in (e.g. "W · 4th"),
+    // which oversells them and re-introduces the This-week pitcher overlap.
+    .filter((v) => v.needLabel !== '' && v.needRank > (profile.value?.numTeams ?? 0) / 2)
     // Lead with your biggest need (worst rank in a category this fills), gap as tiebreak.
     .sort((a, b) => b.needRank - a.needRank || b.gap - a.gap)
 })
@@ -525,7 +529,7 @@ function ordinal(n: number): string {
     <template v-else-if="lens === 'seasonFit'">
       <p v-if="seasonLoading" class="text-sm text-dark-textMuted">Valuing your roster against the wire…</p>
       <p v-else-if="seasonEmpty" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-text">
-        Your roster is ahead of the wire at every spot. No clear upgrades available right now.
+        No clear waiver upgrades for the categories you're weak in right now. Your holes aren't fixable from the wire today.
       </p>
       <div v-else class="divide-y divide-dark-border/50 rounded-xl border border-dark-border bg-dark-card/40">
         <div v-for="u in upgradeViews" :key="u.position + u.upName" class="flex items-center gap-3 px-4 py-2.5">
