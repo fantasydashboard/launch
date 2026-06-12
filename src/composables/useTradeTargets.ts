@@ -43,8 +43,12 @@ export interface TradeView {
 // scrub "trade" isn't believable even when need-weighting says you'd win.
 const VALUE_BAND = 24
 const TOP_PARTNERS = 5
-const SURPLUS_SHOW = 0.45 // a category counts as tradeable surplus / a real need at/above
-const NEED_SHOW = 0.45
+// No category is ever "free" to lose. Without this floor, a category you're hopelessly
+// last in reads need≈0, so giving away your star there looks free — the bug that had it
+// offering Fernando Tatis Jr. for a streamer. The floor makes lost production cost value.
+const NEED_FLOOR = 0.25
+const DOMINANCE_RANK = 2 // a real "trade from" surplus = top-2 in the league, not a mid-pack gap
+const CORE_PROTECT = 5 // never offer your N most valuable players in a "fix your holes" tool
 
 export function useTradeTargets(inputs: {
   pool: Ref<PoolPlayer[]>
@@ -91,26 +95,35 @@ export function useTradeTargets(inputs: {
     )
 
     const myStanding = landscape.get(myKey)!
+    const numTeams = byTeam.size
+    const weakCut = Math.ceil((numTeams * 2) / 3) // rank at/below this = a genuine hole
+    // Need vector with a FLOOR for deal scoring (no category fully free).
     const needVec = (key: string): Record<string, number> => {
       const m = landscape.get(key)
       const out: Record<string, number> = {}
-      for (const c of statIds) out[c] = m?.get(c)?.need ?? 0
+      for (const c of statIds) out[c] = Math.max(NEED_FLOOR, m?.get(c)?.need ?? 0)
       return out
     }
     const tag = (statId: string): CatTag => ({ label: inputs.labelOf(statId), rank: myStanding.get(statId)?.rank ?? 0 })
 
+    // "Trade from" is genuine dominance (top-2), not a mid-pack gap; "to fix" is a genuine
+    // bottom-tier hole, not a close race near the top.
     const tradeFrom = statIds
-      .filter((c) => (myStanding.get(c)?.surplus ?? 0) >= SURPLUS_SHOW)
-      .sort((a, b) => (myStanding.get(b)!.surplus) - (myStanding.get(a)!.surplus))
+      .filter((c) => (myStanding.get(c)?.rank ?? 99) <= DOMINANCE_RANK)
+      .sort((a, b) => (myStanding.get(a)!.rank) - (myStanding.get(b)!.rank))
       .map(tag)
     const toFix = statIds
-      .filter((c) => (myStanding.get(c)?.need ?? 0) >= NEED_SHOW)
-      .sort((a, b) => (myStanding.get(b)!.need) - (myStanding.get(a)!.need))
+      .filter((c) => (myStanding.get(c)?.rank ?? 0) >= weakCut)
+      .sort((a, b) => (myStanding.get(b)!.rank) - (myStanding.get(a)!.rank))
       .map(tag)
 
     const partnerScores = rankPartners(landscape, myKey, statIds).slice(0, TOP_PARTNERS)
     const myNeed = needVec(myKey)
+    // Protect your core: never offer your most valuable players in a "fix your holes" tool.
     const myPlayers = byTeam.get(myKey)!
+    const giveCandidates = [...myPlayers]
+      .sort((a, b) => (marketValue.get(b.playerKey) ?? 0) - (marketValue.get(a.playerKey) ?? 0))
+      .slice(CORE_PROTECT)
 
     // Build the best 1-for-1 with each partner, then keep the strongest across partners.
     const candidates: TradeTarget[] = []
@@ -118,7 +131,7 @@ export function useTradeTargets(inputs: {
       const theirPlayers = byTeam.get(ps.teamId) ?? []
       const theirNeed = needVec(ps.teamId)
       let best: { t: TradeTarget; gain: number } | null = null
-      for (const give of myPlayers) {
+      for (const give of giveCandidates) {
         for (const get of theirPlayers) {
           const gv = marketValue.get(give.playerKey) ?? 0
           const tv = marketValue.get(get.playerKey) ?? 0
@@ -156,7 +169,7 @@ export function useTradeTargets(inputs: {
       return {
         team: teamName(ps.teamId),
         strong: statIds.filter((c) => (m.get(c)?.rank ?? 99) <= 3).map((c) => inputs.labelOf(c)).slice(0, 4),
-        weak: statIds.filter((c) => (m.get(c)?.need ?? 0) >= NEED_SHOW).map((c) => inputs.labelOf(c)).slice(0, 4),
+        weak: statIds.filter((c) => (m.get(c)?.rank ?? 0) >= weakCut).map((c) => inputs.labelOf(c)).slice(0, 4),
         score: ps.score,
       }
     })

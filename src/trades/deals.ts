@@ -13,15 +13,21 @@ export const LEVERAGE_RATIO = 1.5
 /**
  * Score a 1-for-1 trade by NEED-WEIGHTED value transfer, not balanced raw value — the
  * whole point of category leagues. Each player is a per-category strength vector
- * (direction-normalized: higher = better contribution in that cat). You GET `getter` and
- * GIVE `giver`, so your roster changes by (getter − giver) per cat and theirs by the
- * opposite. Weighting by each side's NEED is what makes a "lopsided" raw trade
- * positive-sum: giving a category you're 1st in costs ~0 because your need there is ~0.
+ * (direction-normalized: higher = better contribution). Only POSITIVE contributions count
+ * (a player's weaknesses aren't value you trade), and each side weights by its own need:
+ *
+ *   yourGain  = Σ need(you,c)·max(0, getter[c])  −  Σ need(you,c)·max(0, giver[c])
+ *   theirGain = Σ need(them,c)·max(0, giver[c])  −  Σ need(them,c)·max(0, getter[c])
+ *
+ * The need vectors are expected to carry a FLOOR (no category fully free): otherwise
+ * giving away a star in a category you've "given up" reads as free, which is how a naive
+ * scorer recommends trading your best hitter. With the floor, his lost production costs
+ * real value, so the deal is rejected.
  *
  *  - winWin   — both gains clearly positive, roughly balanced.
- *  - leverage — both positive but yours ≫ theirs (you press their desperation / your
- *               scarcity, and they still benefit). The product's edge.
- *  - fleece   — their gain is ~0 or negative (little reason to accept). Surfaced, flagged.
+ *  - leverage — both positive but yours ≫ theirs (you press their need / your scarcity,
+ *               and they still benefit). The product's edge.
+ *  - fleece   — their gain ~0 or negative (little reason to accept). Surfaced, flagged.
  */
 export function evalDeal(
   getterStrength: Record<string, number>,
@@ -30,13 +36,20 @@ export function evalDeal(
   theirNeed: Record<string, number>,
   statIds: string[],
 ): DealEval {
-  let yourGain = 0
-  let theirGain = 0
+  let getValue = 0
+  let giveCost = 0
+  let theirGet = 0
+  let theirGive = 0
   for (const c of statIds) {
-    const delta = (getterStrength[c] ?? 0) - (giverStrength[c] ?? 0) // your roster's change in c
-    yourGain += (myNeed[c] ?? 0) * delta
-    theirGain += (theirNeed[c] ?? 0) * -delta // they receive giver, lose getter
+    const g = Math.max(0, getterStrength[c] ?? 0)
+    const v = Math.max(0, giverStrength[c] ?? 0)
+    getValue += (myNeed[c] ?? 0) * g
+    giveCost += (myNeed[c] ?? 0) * v
+    theirGet += (theirNeed[c] ?? 0) * v // they receive the giver
+    theirGive += (theirNeed[c] ?? 0) * g // they lose the getter
   }
+  const yourGain = getValue - giveCost
+  const theirGain = theirGet - theirGive
   const klass: DealClass =
     theirGain <= 0 ? 'fleece' : yourGain >= theirGain * LEVERAGE_RATIO ? 'leverage' : 'winWin'
   return { yourGain, theirGain, klass }

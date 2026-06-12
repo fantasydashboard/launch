@@ -52,4 +52,16 @@ describe('evalDeal — need-weighted, not raw value', () => {
     expect(d.yourGain).toBeGreaterThan(d.theirGain)
     expect(d.klass).toBe('leverage')
   })
+
+  it('a need FLOOR makes giving a star in a "hopeless" category NOT free', () => {
+    // The Tatis bug: you're hopeless in HR/RBI, a streamer fills your K need.
+    const cats3 = ['HR', 'RBI', 'K']
+    const star = { HR: 2, RBI: 1.5 } // your multi-cat slugger
+    const streamer = { K: 1.5 } // the pitcher you'd GET
+    const theirNeed = { HR: 0.9, RBI: 0.9, K: 0 }
+    // WITHOUT a floor (need 0 in your hopeless cats), giving the star reads as free.
+    expect(evalDeal(streamer, star, { HR: 0, RBI: 0, K: 0.5 }, theirNeed, cats3).yourGain).toBeGreaterThan(0)
+    // WITH the floor, his lost production costs real value -> the deal is rejected.
+    expect(evalDeal(streamer, star, { HR: 0.25, RBI: 0.25, K: 0.5 }, theirNeed, cats3).yourGain).toBeLessThan(0)
+  })
 })
