@@ -26,6 +26,13 @@ export interface TradeTarget {
   fromTeam: string
   klass: Exclude<DealClass, 'fleece'>
 }
+export interface ConsolidateTarget {
+  fix: CatTag
+  get: TradeSide // the stud you'd land
+  give: TradeSide[] // the two depth pieces you'd package
+  fromTeam: string
+  klass: Exclude<DealClass, 'fleece'>
+}
 export interface PartnerView {
   team: string
   strong: string[] // their strengths (your needs)
@@ -35,8 +42,11 @@ export interface PartnerView {
 export interface TradeView {
   tradeFrom: CatTag[] // your surplus — dead value to spend
   toFix: CatTag[] // your genuine needs
-  targets: TradeTarget[]
   partners: PartnerView[]
+  // Trade INTENT modes:
+  winWin: TradeTarget[] // both teams clearly improve — most likely to be accepted
+  reach: TradeTarget[] // lopsided in your favor — the overpay you'd extract from a reacher
+  consolidate: ConsolidateTarget[] // package two depth pieces for one stud (2-for-1)
 }
 
 // Don't propose a 1-for-1 whose 0..100 values are further apart than this — a stud-for-
@@ -49,6 +59,7 @@ const TOP_PARTNERS = 5
 const NEED_FLOOR = 0.25
 const DOMINANCE_RANK = 2 // a real "trade from" surplus = top-2 in the league, not a mid-pack gap
 const CORE_PROTECT = 5 // never offer your N most valuable players in a "fix your holes" tool
+const CONSOLIDATE_PROTECT = 2 // a 2-for-1 CAN pry a better player, but not their very top
 
 export function useTradeTargets(inputs: {
   pool: Ref<PoolPlayer[]>
@@ -137,59 +148,134 @@ export function useTradeTargets(inputs: {
       .sort((a, b) => (marketValue.get(b.playerKey) ?? 0) - (marketValue.get(a.playerKey) ?? 0))
       .slice(CORE_PROTECT)
 
-    // Build the best 1-for-1 with each partner, then keep the strongest across partners.
-    interface Cand { t: TradeTarget; gain: number; giveKey: string }
-    const candidates: Cand[] = []
+    // Shared helpers across the modes.
+    const isHole = (statId: string) => (myStanding.get(statId)?.rank ?? 0) >= weakCut
+    const combineStr = (keys: string[]): Record<string, number> => {
+      const out: Record<string, number> = {}
+      for (const k of keys) {
+        const s = strengths.get(k) ?? {}
+        for (const c of statIds) out[c] = (out[c] ?? 0) + (s[c] ?? 0)
+      }
+      return out
+    }
+    // The category you improve most = what the trade fixes (getter minus what you give up).
+    const bestFix = (getKey: string, giveKeys: string[]): string => {
+      const gs = strengths.get(getKey) ?? {}
+      const gv = combineStr(giveKeys)
+      let fixId = statIds[0]
+      let maxg = -Infinity
+      for (const c of statIds) {
+        const g = (myNeed[c] ?? 0) * ((gs[c] ?? 0) - (gv[c] ?? 0))
+        if (g > maxg) { maxg = g; fixId = c }
+      }
+      return fixId
+    }
+
+    // --- All viable 1-for-1 deals (gated to your real holes, value-banded, both cores
+    //     protected), bucketed into the Win-win and Make-them-reach modes. ---
+    interface Raw {
+      klass: DealClass
+      yourGain: number
+      theirGain: number
+      giveKey: string
+      fixId: string
+      get: TradeSide
+      give: TradeSide
+      fromTeam: string
+    }
+    const oneForOne: Raw[] = []
     for (const ps of partnerScores) {
       const theirNeed = needVec(ps.teamId)
-      // Protect THEIR core too — you can't pry a team's best players (symmetric to ours),
-      // so the deals stay realistic and tilt toward win-win rather than fantasy fleeces.
+      // Protect THEIR core too — you can't pry a team's best players (symmetric to ours).
       const getCandidates = [...(byTeam.get(ps.teamId) ?? [])]
         .sort((a, b) => (marketValue.get(b.playerKey) ?? 0) - (marketValue.get(a.playerKey) ?? 0))
         .slice(CORE_PROTECT)
-      let best: Cand | null = null
       for (const give of giveCandidates) {
+        const gv = marketValue.get(give.playerKey) ?? 0
         for (const get of getCandidates) {
-          const gv = marketValue.get(give.playerKey) ?? 0
           const tv = marketValue.get(get.playerKey) ?? 0
           if (Math.abs(tv - gv) > VALUE_BAND) continue
           const ev = evalDeal(strengths.get(get.playerKey) ?? {}, strengths.get(give.playerKey) ?? {}, myNeed, theirNeed, statIds)
           if (ev.klass === 'fleece' || ev.yourGain <= 0) continue
-          // The category you gain most in = what this trade fixes.
-          let fixId = statIds[0]
-          let maxg = -Infinity
-          for (const c of statIds) {
-            const g = (myNeed[c] ?? 0) * ((strengths.get(get.playerKey)?.[c] ?? 0) - (strengths.get(give.playerKey)?.[c] ?? 0))
-            if (g > maxg) { maxg = g; fixId = c }
-          }
-          // Only surface a deal that fixes a GENUINE hole (no "fixes W · 4th").
-          if ((myStanding.get(fixId)?.rank ?? 0) < weakCut) continue
-          if (!best || ev.yourGain > best.gain) {
-            best = {
-              gain: ev.yourGain,
-              giveKey: give.playerKey,
-              t: {
-                fix: tag(fixId),
-                get: { name: get.name, pos: get.position, value: Math.round(tv) },
-                give: { name: give.name, pos: give.position, value: Math.round(gv) },
-                fromTeam: teamName(ps.teamId),
-                klass: ev.klass,
-              },
+          const fixId = bestFix(get.playerKey, [give.playerKey])
+          if (!isHole(fixId)) continue // no "fixes W · 4th"
+          oneForOne.push({
+            klass: ev.klass,
+            yourGain: ev.yourGain,
+            theirGain: ev.theirGain,
+            giveKey: give.playerKey,
+            fixId,
+            get: { name: get.name, pos: get.position, value: Math.round(tv) },
+            give: { name: give.name, pos: give.position, value: Math.round(gv) },
+            fromTeam: teamName(ps.teamId),
+          })
+        }
+      }
+    }
+    const toTarget = (d: Raw): TradeTarget => ({ fix: tag(d.fixId), get: d.get, give: d.give, fromTeam: d.fromTeam, klass: d.klass === 'leverage' ? 'leverage' : 'winWin' })
+    const dedupeTop = (deals: Raw[], cmp: (a: Raw, b: Raw) => number, n = 6): TradeTarget[] => {
+      const used = new Set<string>()
+      const out: TradeTarget[] = []
+      for (const d of [...deals].sort(cmp)) {
+        if (used.has(d.giveKey)) continue
+        used.add(d.giveKey)
+        out.push(toTarget(d))
+        if (out.length >= n) break
+      }
+      return out
+    }
+    // Win-win: rank by SHARED benefit (most likely accepted). Make-them-reach: rank by
+    // YOUR gain (the overpay you'd extract from a desperate/reaching counterparty).
+    const winWin = dedupeTop(oneForOne.filter((d) => d.klass === 'winWin'), (a, b) => Math.min(b.yourGain, b.theirGain) - Math.min(a.yourGain, a.theirGain))
+    const reach = dedupeTop(oneForOne.filter((d) => d.klass === 'leverage'), (a, b) => b.yourGain - a.yourGain)
+
+    // --- Consolidate (2-for-1): package two depth pieces for one stud that fixes a hole.
+    //     A 2-for-1 can pry a better player (protect only their very top), and you pay a
+    //     bounded total-value premium for the upgrade plus the freed roster spot. ---
+    const consolidate: ConsolidateTarget[] = []
+    for (const ps of partnerScores) {
+      const theirNeed = needVec(ps.teamId)
+      const getCandidates = [...(byTeam.get(ps.teamId) ?? [])]
+        .sort((a, b) => (marketValue.get(b.playerKey) ?? 0) - (marketValue.get(a.playerKey) ?? 0))
+        .slice(CONSOLIDATE_PROTECT)
+      let best: { gain: number; t: ConsolidateTarget } | null = null
+      for (let i = 0; i < giveCandidates.length; i++) {
+        for (let j = i + 1; j < giveCandidates.length; j++) {
+          const g1 = giveCandidates[i]
+          const g2 = giveCandidates[j]
+          const v1 = marketValue.get(g1.playerKey) ?? 0
+          const v2 = marketValue.get(g2.playerKey) ?? 0
+          const combinedVal = v1 + v2
+          const combined = combineStr([g1.playerKey, g2.playerKey])
+          for (const get of getCandidates) {
+            const tv = marketValue.get(get.playerKey) ?? 0
+            if (tv < Math.max(v1, v2)) continue // the stud must upgrade over each piece
+            if (combinedVal < tv || combinedVal - tv > VALUE_BAND) continue // bounded premium
+            const ev = evalDeal(strengths.get(get.playerKey) ?? {}, combined, myNeed, theirNeed, statIds)
+            if (ev.yourGain <= 0 || ev.theirGain <= 0) continue
+            const fixId = bestFix(get.playerKey, [g1.playerKey, g2.playerKey])
+            if (!isHole(fixId)) continue
+            if (!best || ev.yourGain > best.gain) {
+              best = {
+                gain: ev.yourGain,
+                t: {
+                  fix: tag(fixId),
+                  get: { name: get.name, pos: get.position, value: Math.round(tv) },
+                  give: [
+                    { name: g1.name, pos: g1.position, value: Math.round(v1) },
+                    { name: g2.name, pos: g2.position, value: Math.round(v2) },
+                  ],
+                  fromTeam: teamName(ps.teamId),
+                  klass: ev.klass === 'leverage' ? 'leverage' : 'winWin',
+                },
+              }
             }
           }
         }
       }
-      if (best) candidates.push(best)
+      if (best) consolidate.push(best.t)
     }
-    // Lead with the deals fixing your worst holes; dedupe so no give player repeats.
-    candidates.sort((a, b) => b.t.fix.rank - a.t.fix.rank)
-    const usedGive = new Set<string>()
-    const targets: TradeTarget[] = []
-    for (const c of candidates) {
-      if (usedGive.has(c.giveKey)) continue
-      usedGive.add(c.giveKey)
-      targets.push(c.t)
-    }
+    consolidate.sort((a, b) => b.fix.rank - a.fix.rank)
 
     const partners: PartnerView[] = partnerScores.map((ps) => {
       const m = landscape.get(ps.teamId)!
@@ -201,7 +287,7 @@ export function useTradeTargets(inputs: {
       }
     })
 
-    return { tradeFrom, toFix, targets, partners }
+    return { tradeFrom, toFix, partners, winWin, reach, consolidate }
   })
 
   return { view }

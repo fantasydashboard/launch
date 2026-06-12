@@ -87,7 +87,17 @@ const { view } = useTradeTargets({ pool, fgByKey, catSpecs, teamCatWins, seasonF
 const settling = computed(() => !attempted.value || rosterLoading.value || !catsLoaded.value)
 const loadFailed = computed(() => supported.value && attempted.value && !rosterLoading.value && pool.value.length === 0)
 const isLoading = computed(() => !unsupported.value && !loadFailed.value && settling.value && !view.value)
-const empty = computed(() => !loadFailed.value && rosterLoaded.value && (!view.value || view.value.targets.length === 0))
+const empty = computed(() => !loadFailed.value && rosterLoaded.value && !view.value)
+
+// Trade intent modes.
+type Mode = 'winWin' | 'reach' | 'consolidate'
+const mode = ref<Mode>('winWin')
+const MODES: { key: Mode; label: string; blurb: string }[] = [
+  { key: 'winWin', label: 'Win-win', blurb: 'Both teams improve — the deals most likely to be accepted.' },
+  { key: 'reach', label: 'Make them reach', blurb: 'Lopsided in your favor — the overpay to press from a team chasing a hole.' },
+  { key: 'consolidate', label: 'Consolidate', blurb: 'Package two depth pieces for one stud (2-for-1) — quality over quantity.' },
+]
+const modeBlurb = computed(() => MODES.find((m) => m.key === mode.value)?.blurb ?? '')
 
 function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd']
@@ -116,7 +126,7 @@ function ordinal(n: number): string {
       No clear trade leverage right now — no partner's surplus lines up with your holes at a believable value.
     </p>
 
-    <template v-else-if="view">
+    <template v-if="view && !unsupported && !loadFailed && !isLoading">
       <!-- YOUR LEVERAGE -->
       <section class="rounded-xl border border-dark-border bg-dark-card/40 px-4 py-3">
         <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Your leverage</p>
@@ -137,13 +147,28 @@ function ordinal(n: number): string {
         </p>
       </section>
 
-      <!-- TRADE TARGETS -->
-      <section v-if="view.targets.length" class="space-y-3">
-        <div class="flex items-center gap-2">
-          <span class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Trade targets</span>
-          <span class="h-px flex-1 bg-dark-border/50"></span>
+      <!-- MODE TOGGLE: trade intent -->
+      <div class="space-y-2">
+        <div class="flex w-max overflow-hidden rounded-md border border-dark-border font-mono text-[10px] uppercase tracking-wider">
+          <button
+            v-for="m in MODES"
+            :key="m.key"
+            type="button"
+            class="px-3 py-1 transition-colors"
+            :class="mode === m.key ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-textSecondary'"
+            @click="mode = m.key"
+          >{{ m.label }}</button>
         </div>
-        <div v-for="(t, i) in view.targets" :key="i" class="overflow-hidden rounded-xl border border-dark-border bg-dark-card">
+        <p class="font-mono text-[10px] text-dark-textMuted">{{ modeBlurb }}</p>
+      </div>
+
+      <!-- 1-FOR-1 MODES: win-win + make them reach -->
+      <section v-if="mode !== 'consolidate'" class="space-y-3">
+        <p v-if="!(mode === 'winWin' ? view.winWin : view.reach).length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
+          <template v-if="mode === 'winWin'">No clean mutual deals right now — try Make them reach or Consolidate.</template>
+          <template v-else>No leverage deals right now — no reaching partner lines up with your holes.</template>
+        </p>
+        <div v-for="(t, i) in (mode === 'winWin' ? view.winWin : view.reach)" :key="i" class="overflow-hidden rounded-xl border border-dark-border bg-dark-card">
           <div class="flex items-center justify-between gap-2 border-b border-dark-border/60 bg-[#F2B33A]/[0.04] px-4 py-2">
             <span class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">Fixes <b class="text-[#ffd98a]">{{ t.fix.label }}</b> · you're {{ ordinal(t.fix.rank) }}</span>
             <span class="font-mono text-[10px] uppercase tracking-wider" :class="t.klass === 'leverage' ? 'text-primary' : 'text-dark-textMuted'">{{ t.klass === 'leverage' ? 'leverage' : 'win-win' }}</span>
@@ -158,6 +183,32 @@ function ordinal(n: number): string {
             <span class="w-11 shrink-0 font-mono text-[10px] font-bold tracking-wider text-dark-textMuted">GIVE</span>
             <span class="text-sm font-semibold text-dark-textSecondary">{{ t.give.name }}</span>
             <span class="font-mono text-[11px] text-dark-textMuted">{{ t.give.pos }} · {{ t.give.value }}</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- CONSOLIDATE: 2-for-1 -->
+      <section v-else class="space-y-3">
+        <p v-if="!view.consolidate.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
+          No 2-for-1 upgrade available — no partner has a stud your depth can package for at a believable value.
+        </p>
+        <div v-for="(t, i) in view.consolidate" :key="i" class="overflow-hidden rounded-xl border border-dark-border bg-dark-card">
+          <div class="flex items-center justify-between gap-2 border-b border-dark-border/60 bg-[#F2B33A]/[0.04] px-4 py-2">
+            <span class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">Fixes <b class="text-[#ffd98a]">{{ t.fix.label }}</b> · you're {{ ordinal(t.fix.rank) }}</span>
+            <span class="font-mono text-[10px] uppercase tracking-wider" :class="t.klass === 'leverage' ? 'text-primary' : 'text-dark-textMuted'">{{ t.klass === 'leverage' ? 'leverage' : 'win-win' }}</span>
+          </div>
+          <div class="flex items-center gap-2 px-4 pt-2.5">
+            <span class="w-11 shrink-0 font-mono text-[10px] font-bold tracking-wider text-primary">GET</span>
+            <span class="font-display text-[15px] font-bold text-dark-text">{{ t.get.name }}</span>
+            <span class="font-mono text-[11px] text-dark-textMuted">{{ t.get.pos }} · {{ t.get.value }}</span>
+            <span class="ml-auto font-mono text-[11px] text-dark-textMuted">from {{ t.fromTeam }}</span>
+          </div>
+          <div class="space-y-1 px-4 pb-3 pt-1.5">
+            <div v-for="(g, gi) in t.give" :key="gi" class="flex items-center gap-2">
+              <span class="w-11 shrink-0 font-mono text-[10px] font-bold tracking-wider text-dark-textMuted">{{ gi === 0 ? 'GIVE' : '' }}</span>
+              <span class="text-sm font-semibold text-dark-textSecondary">{{ g.name }}</span>
+              <span class="font-mono text-[11px] text-dark-textMuted">{{ g.pos }} · {{ g.value }}</span>
+            </div>
           </div>
         </div>
       </section>
