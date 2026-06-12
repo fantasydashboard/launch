@@ -41,6 +41,11 @@ const longTermLabel = computed(() => {
   const hasPickup = longTerm.some((m) => m.kind === 'add' || m.kind === 'stream')
   return hasPickup ? 'Worth rostering' : 'Set your lineup'
 })
+// Moves within a layer already arrive lift-desc (buildRankedMoves). We order the two
+// GROUPS by their best lift so the featured (boxed) hero — always the first move of the
+// first group — is the highest-lift move overall. Otherwise a lower-lift Today play
+// could be boxed above a higher-lift worth-rostering row, which reads as a ranking bug.
+const maxLift = (ms: CandidateAction[]) => ms.reduce((mx, m) => Math.max(mx, m.winProbLift), -Infinity)
 const groups = computed(() =>
   [
     { key: 'today', label: 'Today · daily plays', moves: props.moves.filter((m) => m.layer === 'today') },
@@ -49,7 +54,9 @@ const groups = computed(() =>
       label: longTermLabel.value,
       moves: props.moves.filter((m) => m.layer !== 'today'),
     },
-  ].filter((g) => g.moves.length > 0),
+  ]
+    .filter((g) => g.moves.length > 0)
+    .sort((a, b) => maxLift(b.moves) - maxLift(a.moves)),
 )
 </script>
 

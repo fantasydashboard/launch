@@ -6,7 +6,10 @@ const byStatus = (s: 'safe' | 'tossup' | 'loss') =>
   (props.snapshot?.categories ?? []).filter((c) => c.status === s)
 
 // Coin-flips are where the matchup is won — the one line we never truncate. Show
-// them all, ordered closest-to-50 first so the tightest swings read first.
+// them all, ordered closest-to-50 first so the tightest swings read first. When the
+// matchup is wide open (many tossups), dim everything past the closest few so the eye
+// still lands on the genuine swing cats without hiding any.
+const TOSSUP_EMPHASIS = 6
 const tossupsShown = computed(() =>
   byStatus('tossup').slice().sort((a, b) => Math.abs(a.myWinPct - 50) - Math.abs(b.myWinPct - 50)),
 )
@@ -35,9 +38,10 @@ const tossupsShown = computed(() =>
       <div v-if="tossupsShown.length" class="flex flex-wrap items-center gap-1">
         <span class="font-mono uppercase tracking-wider text-[#F2B33A]">coin-flips</span>
         <span
-          v-for="c in tossupsShown"
+          v-for="(c, i) in tossupsShown"
           :key="c.statId"
-          class="rounded px-1.5 py-0.5 font-mono text-[#F2B33A] bg-[#F2B33A]/10"
+          class="rounded px-1.5 py-0.5 font-mono text-[#F2B33A] bg-[#F2B33A]/10 transition-opacity"
+          :class="{ 'opacity-45': i >= TOSSUP_EMPHASIS }"
           >{{ c.label }}</span
         >
       </div>

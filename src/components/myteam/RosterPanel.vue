@@ -169,8 +169,10 @@ const sections = computed<RosterSection[]>(() => {
             aria-hidden="true"
           >{{ row.player.position || '—' }}</span>
 
-          <!-- Name + position · team, with drop / weak-link tags -->
-          <span class="min-w-0 flex-1">
+          <!-- Name + position · team, with drop / weak-link tags. No flex-grow, so the
+               contribution chips sit right beside the name instead of being flung to the
+               far edge on wide screens (the value keeps its own right rail below). -->
+          <span class="min-w-0">
             <span class="flex items-center gap-2">
               <span class="truncate text-sm font-sans font-semibold text-dark-text">
                 {{ row.player.name }}
@@ -195,8 +197,8 @@ const sections = computed<RosterSection[]>(() => {
             </span>
           </span>
 
-          <!-- Per-category contribution chips -->
-          <span class="flex shrink-0 flex-wrap items-center justify-end gap-1 max-w-[55%]">
+          <!-- Per-category contribution chips, hugging the name -->
+          <span class="flex shrink-0 flex-wrap items-center gap-1">
             <span
               v-for="chip in row.plus"
               :key="'p-' + chip.statId"
@@ -222,8 +224,8 @@ const sections = computed<RosterSection[]>(() => {
             >—</span>
           </span>
 
-          <!-- Muted 0-100 roleValue at the far right -->
-          <span class="ml-2 w-8 shrink-0 text-right font-mono text-xs text-dark-textMuted tabular-nums">{{ row.roleValue }}</span>
+          <!-- Muted 0-100 roleValue, pinned to a right rail -->
+          <span class="ml-auto w-8 shrink-0 text-right font-mono text-xs text-dark-textMuted tabular-nums">{{ row.roleValue }}</span>
         </div>
       </template>
     </div>
