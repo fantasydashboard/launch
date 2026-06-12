@@ -99,14 +99,13 @@ export function useYourMove(inputs: {
         ...new Set(Object.values(todaySchedule.value.startsByPitcher).flat().map((s) => s.pitcherName)),
       ]
       // console.log (not .debug) so it shows at the default console level, not Verbose.
-      // Full lists (not samples) so a name mismatch vs "genuinely none starting" is decidable.
-      // eslint-disable-next-line no-console
-      console.log(`[YourMove/daily · ${snap.platform}]`, {
-        faPitchersInPool: faPit.length,
-        faStartersInPool: faStarters.map((f) => `${f.name} (${f.position})`),
-        matchedStartingToday: matched.map((m) => m.name),
-        probableStartersToday: probableNames,
-      })
+      // Print the two lists as plain strings (arrays truncate in the console preview) so
+      // a name mismatch vs "genuinely none starting today" is decidable at a glance.
+      /* eslint-disable no-console */
+      console.log(`[YourMove/daily · ${snap.platform}] faPitchers=${faPit.length} matched=${matched.length}`)
+      console.log(`[YM faStarters] ${faStarters.map((f) => f.name).join(' | ')}`)
+      console.log(`[YM probablesToday] ${probableNames.join(' | ')}`)
+      /* eslint-enable no-console */
     }
 
     // Shared across both layers so no two surfaced moves drop/sit the same player,
