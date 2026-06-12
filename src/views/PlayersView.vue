@@ -396,6 +396,11 @@ const sideByStat = computed(() => {
   for (const c of catSpecs.value) m.set(c.statId, c.side)
   return m
 })
+const rankByStat = computed(() => {
+  const m = new Map<string, number>()
+  for (const tc of profile.value?.categories ?? []) m.set(tc.statId, tc.rank)
+  return m
+})
 const upgradeViews = computed(() => {
   if (!rosterPlayers.value.length || !players.value.length || !catSpecs.value.length || !marketValueByKey.value.size) return []
   const mine = rosterPlayers.value.map((p) => toEligibleFor(p, rosterFgStatsByKey.value))
@@ -407,6 +412,14 @@ const upgradeViews = computed(() => {
       // Side-gate displayed cats to the upgrade's own side — no batter K on a hitter row.
       const upSide = sideOf(faByKey.value.get(l.better.key)?.position ?? '')
       const helpedIds = l.categories.filter((id) => (sideByStat.value.get(id) ?? upSide) === upSide)
+      // The row leads with the single biggest need it addresses (the helped category you
+      // rank worst in), so the ordering and the headline agree.
+      let primaryId = ''
+      let maxW = -1
+      for (const id of helpedIds) {
+        const w = need.get(id) ?? 0
+        if (w > maxW) { maxW = w; primaryId = id }
+      }
       return {
         position: l.position,
         yourName: l.starter.name,
@@ -415,11 +428,13 @@ const upgradeViews = computed(() => {
         upValue: Math.round(marketValueByKey.value.get(l.better.key) ?? 0),
         gap: Math.round(l.gap),
         cats: helpedIds.map(labelFor),
-        needScore: helpedIds.reduce((s, id) => s + (need.get(id) ?? 0), 0),
+        needLabel: primaryId ? labelFor(primaryId) : '',
+        needRank: primaryId ? (rankByStat.value.get(primaryId) ?? 0) : 0,
       }
     })
-    // Roster need first (does it help your WEAK categories?), value gap as the tiebreak.
-    .sort((a, b) => b.needScore - a.needScore || b.gap - a.gap)
+    .filter((v) => v.needLabel !== '')
+    // Lead with your biggest need (worst rank in a category this fills), gap as tiebreak.
+    .sort((a, b) => b.needRank - a.needRank || b.gap - a.gap)
 })
 
 const oppName = computed(() => thisWeek.snapshot.value?.opponentName ?? '')
@@ -489,7 +504,7 @@ function ordinal(n: number): string {
     </p>
     <p v-if="!unsupported && lens === 'thisWeek'" class="font-mono text-[10px] text-dark-textMuted">% = added chance to win this week · each add is netted against the drop</p>
     <p v-else-if="!unsupported" class="font-mono text-[10px] leading-relaxed text-dark-textMuted">
-      Your weak spots where the wire beats you, your biggest needs first · (n) = rest-of-season value, 0–100 · <span class="text-primary">+n</span> = value you'd gain
+      Each row: a category you're weak in, and the best available upgrade · (n) = rest-of-season value, 0–100 · <span class="text-primary">+n</span> = value you'd gain
     </p>
 
     <!-- Shared: unsupported platform -->
@@ -514,16 +529,22 @@ function ordinal(n: number): string {
       </p>
       <div v-else class="divide-y divide-dark-border/50 rounded-xl border border-dark-border bg-dark-card/40">
         <div v-for="u in upgradeViews" :key="u.position + u.upName" class="flex items-center gap-3 px-4 py-2.5">
-          <span class="w-9 shrink-0 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">{{ u.position }}</span>
+          <!-- Lead with the need this fills: the category you're weakest in + your rank. -->
+          <span class="w-12 shrink-0">
+            <span class="block font-mono text-xs font-semibold uppercase text-[#F2B33A]">{{ u.needLabel }}</span>
+            <span class="block font-mono text-[10px] text-dark-textMuted">{{ ordinal(u.needRank) }}</span>
+          </span>
           <span class="min-w-0 flex-1">
             <span class="block truncate text-sm">
-              <span class="text-dark-textMuted">{{ u.yourName }} <span class="font-mono text-[11px]">({{ u.yourValue }})</span></span>
-              <span class="px-1 text-dark-textMuted/50">→</span>
               <span class="font-semibold text-dark-text">{{ u.upName }} <span class="font-mono text-[11px] text-dark-textMuted">({{ u.upValue }})</span></span>
+              <span class="text-dark-textMuted"> over {{ u.yourName }} <span class="font-mono text-[11px]">({{ u.yourValue }})</span></span>
             </span>
             <span v-if="u.cats.length" class="mt-0.5 block font-mono text-[11px] text-primary">{{ u.cats.join(' ') }}</span>
           </span>
-          <span class="shrink-0 font-mono text-sm font-bold text-primary tabular-nums">+{{ u.gap }}</span>
+          <span class="shrink-0 text-right">
+            <span class="block font-mono text-sm font-bold text-primary tabular-nums">+{{ u.gap }}</span>
+            <span class="block font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">value</span>
+          </span>
         </div>
       </div>
     </template>
