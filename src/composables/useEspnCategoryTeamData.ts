@@ -120,8 +120,11 @@ export function useEspnCategoryTeamData() {
         myOverallRank.value = idx >= 0 ? idx + 1 : 0
       }
 
-      // Free agents for the inline "top add per weak category" line.
-      const fa = await espnService.getFreeAgents(sport, leagueId, season, 150)
+      // Free agents for the weakness "top add" line AND Your Move's daily streaming
+      // layer. The pool is sorted most-owned first, but streamable spot-start SPs are
+      // low-owned — so we pull a wider pool (300) to bring them in range; the daily
+      // layer then matches FA pitchers against today's probable starters.
+      const fa = await espnService.getFreeAgents(sport, leagueId, season, 300)
       if (leagueStore.activeLeagueId !== requestedId) return
       freeAgents.value = mapEspnFreeAgents(fa, sport)
 

@@ -641,13 +641,20 @@ watch(categories, () => {
 
     <MatchupSnapshot :snapshot="thisWeek.snapshot.value" />
 
-    <!-- Season-long context lives below the this-week decision layer. -->
+    <!-- Season-long context lives below the this-week decision layer. The caption
+         makes the horizon switch explicit so a season strength that's a weekly loss
+         (different opponent each week) doesn't read as a contradiction. -->
     <div
       v-if="profile && (weaknesses.length > 0 || strengths.length > 0)"
-      class="flex items-center gap-2 pt-2"
+      class="space-y-1 pt-2"
     >
-      <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Season · full-year ranks</span>
-      <span class="h-px flex-1 bg-dark-border/50"></span>
+      <div class="flex items-center gap-2">
+        <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Season · full-year ranks</span>
+        <span class="h-px flex-1 bg-dark-border/50"></span>
+      </div>
+      <p class="font-mono text-[10px] text-dark-textMuted/70">
+        How you rank all season vs the league — your live matchup is above.
+      </p>
     </div>
 
     <div
