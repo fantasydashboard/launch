@@ -22,7 +22,6 @@ import { mapToEspnStats } from '@/services/projectionService'
 import { classifyCategory } from '@/myteam/categorySide'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
 import { computeCategoryGaps } from '@/myteam/categoryGaps'
-import ActionFeed from '@/components/myteam/ActionFeed.vue'
 import SituationStrip from '@/components/myteam/SituationStrip.vue'
 import CategoryProfile from '@/components/myteam/CategoryProfile.vue'
 import RosterPanel from '@/components/myteam/RosterPanel.vue'
@@ -313,22 +312,21 @@ const weaknesses = computed(() => {
     .slice(0, 4)
 })
 
-// === Close the loop: top available add per weak category ===
-// Map each weakness Recommendation to a Hole (exactly as PlayersView does), then
-// rank the FA pool for those holes (1 add per hole). Reuses rankAddsForHoles so the
-// "Add: ..." line on a weakness row matches the #1 player on /players?cat=<statId>.
+// === Close the loop: top available add per category we'd want to improve ===
+// Every NON-strong category (winnable / holding / out-of-reach) gets a top-add, so
+// the Category Profile can carry an actionable "Add X" right on its weak rows — the
+// merge that retires the separate "Where you're losing" block. Strengths need no add.
+// (References `gaps` lazily — fine, Vue computeds evaluate on access, like `cats` below.)
 const holes = computed<Hole[]>(() => {
   if (!profile.value) return []
-  return weaknesses.value.map((rec) => {
-    const cat = categories.value.find((c) => c.statId === rec.statId)
-    const teamCat = profile.value!.categories.find((c) => c.statId === rec.statId)
-    return {
-      statId: rec.statId,
-      name: cat?.name ?? rec.statId,
-      rank: teamCat?.rank ?? 0,
-      lowerIsBetter: cats.value.find((c) => c.statId === rec.statId)?.lowerIsBetter ?? false,
-    }
-  })
+  return gaps.value
+    .filter((g) => g.tier !== 'strong')
+    .map((g) => ({
+      statId: g.statId,
+      name: categories.value.find((c) => c.statId === g.statId)?.name ?? g.statId,
+      rank: g.rank,
+      lowerIsBetter: cats.value.find((c) => c.statId === g.statId)?.lowerIsBetter ?? false,
+    }))
 })
 
 // statId -> top add (for the inline "Add {name} {statValue} {label}" line).
@@ -355,17 +353,6 @@ const addsByStatId = computed<Record<string, { name: string; statValue: number; 
   }
   return map
 })
-
-// Weakness rows with deep-link routes: /players?cat=<statId> when an add exists for
-// that category, else plain /players (no anchor). Headline/severity/etc. unchanged.
-const weaknessRecommendations = computed(() =>
-  weaknesses.value.map((rec) => ({
-    ...rec,
-    evidenceRoute: addsByStatId.value[rec.statId]
-      ? `/players?cat=${rec.statId}`
-      : '/players',
-  })),
-)
 
 const strengths = computed(() => {
   if (!profile.value) return []
@@ -530,15 +517,6 @@ const labelByStatId = computed<Record<string, string>>(() => {
   return m
 })
 
-// Tier lookup for the weakness ActionFeed (winnable/lost tags).
-const tierByStatId = computed<Record<string, 'strong' | 'winnable' | 'safe' | 'lost'>>(() => {
-  const map: Record<string, 'strong' | 'winnable' | 'safe' | 'lost'> = {}
-  for (const gap of gaps.value) {
-    map[gap.statId] = gap.tier
-  }
-  return map
-})
-
 // My roster as drop/sit counterparties + start-sit seeds: join the value model
 // (role + roleValue) with the roster (name, lineup slot, stats). Yahoo carries the
 // `started` flag; other platforms default to started, so start/sit degrades away
@@ -650,13 +628,11 @@ watch(categories, () => {
 
     <MatchupSnapshot :snapshot="thisWeek.snapshot.value" />
 
-    <!-- Season-long context lives below the this-week decision layer. The caption
-         makes the horizon switch explicit so a season strength that's a weekly loss
-         (different opponent each week) doesn't read as a contradiction. -->
-    <div
-      v-if="profile && (weaknesses.length > 0 || strengths.length > 0)"
-      class="space-y-1 pt-2"
-    >
+    <!-- Season-long category picture lives below the this-week decision layer. The
+         Category Profile is the complete ranking AND carries the top add for each
+         category worth improving — the merge that retired the separate "Where you're
+         losing / Your edge" block (it was the same season data, twice). -->
+    <div v-if="profile" class="space-y-1 pt-2">
       <div class="flex items-center gap-2">
         <span class="rounded bg-dark-border/70 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-dark-textSecondary">Season</span>
         <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">full-year ranks</span>
@@ -667,24 +643,9 @@ watch(categories, () => {
       </p>
     </div>
 
-    <div
-      v-if="weaknesses.length > 0 || strengths.length > 0"
-      class="grid gap-6 md:grid-cols-2"
-    >
-      <section v-if="weaknesses.length > 0" class="space-y-2">
-        <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Where you're losing</h2>
-        <ActionFeed :recommendations="weaknessRecommendations" :adds-by-stat-id="addsByStatId" :tier-by-stat-id="tierByStatId" />
-      </section>
-
-      <section v-if="strengths.length > 0" class="space-y-2">
-        <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Your edge</h2>
-        <ActionFeed :recommendations="strengths" />
-      </section>
-    </div>
-
     <section v-if="profile" class="space-y-2">
       <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Category Profile</h2>
-      <CategoryProfile :gaps="gaps" :categories="gapCategories" />
+      <CategoryProfile :gaps="gaps" :categories="gapCategories" :adds-by-stat-id="addsByStatId" />
     </section>
 
     <LineupLeaks v-if="profile" :leaks="lineupLeaks.leaks.value" :label-by-stat-id="labelByStatId" />
