@@ -92,8 +92,9 @@ export function useYourMove(inputs: {
     if (import.meta.env.DEV) {
       const faPit = inputs.freeAgents.value.filter((fa) => sideOf(fa.position ?? '') === 'pit')
       const matched = faPit.filter((fa) => lookupStarts(todaySchedule.value, fa.name).length > 0)
+      // console.log (not .debug) so it shows at the default console level, not Verbose.
       // eslint-disable-next-line no-console
-      console.debug(`[YourMove/daily · ${snap.platform}]`, {
+      console.log(`[YourMove/daily · ${snap.platform}]`, {
         todayTeamsWithGames: Object.keys(todaySchedule.value.gamesByTeam).length,
         todayProbableStarters: Object.keys(todaySchedule.value.startsByPitcher).length,
         faPitchersInPool: faPit.length,
