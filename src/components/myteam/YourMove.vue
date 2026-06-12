@@ -41,11 +41,11 @@ const longTermLabel = computed(() => {
   const hasPickup = longTerm.some((m) => m.kind === 'add' || m.kind === 'stream')
   return hasPickup ? 'Worth rostering' : 'Set your lineup'
 })
-// Moves within a layer already arrive lift-desc (buildRankedMoves). We order the two
-// GROUPS by their best lift so the featured (boxed) hero — always the first move of the
-// first group — is the highest-lift move overall. Otherwise a lower-lift Today play
-// could be boxed above a higher-lift worth-rostering row, which reads as a ranking bug.
-const maxLift = (ms: CandidateAction[]) => ms.reduce((mx, m) => Math.max(mx, m.winProbLift), -Infinity)
+// Today stays first — in a daily league the time-sensitive play is the priority, even
+// when a longer-term add has a bigger lift. Moves within a layer arrive lift-desc
+// (buildRankedMoves), and EACH group features its own top move (see template), so no
+// group ever shows a compact row beating its own boxed hero — the old "lower number in
+// the big card" problem — without burying the urgent Today play.
 const groups = computed(() =>
   [
     { key: 'today', label: 'Today · daily plays', moves: props.moves.filter((m) => m.layer === 'today') },
@@ -54,9 +54,7 @@ const groups = computed(() =>
       label: longTermLabel.value,
       moves: props.moves.filter((m) => m.layer !== 'today'),
     },
-  ]
-    .filter((g) => g.moves.length > 0)
-    .sort((a, b) => maxLift(b.moves) - maxLift(a.moves)),
+  ].filter((g) => g.moves.length > 0),
 )
 </script>
 
@@ -99,9 +97,10 @@ const groups = computed(() =>
         <p class="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">{{ g.label }}</p>
 
         <template v-for="(m, mi) in g.moves" :key="m.player.key">
-          <!-- Hero: the single top move (first move of the first group) -->
+          <!-- Hero: each group features its own top move (first move = highest lift in
+               that layer), so Today and Worth-rostering each get a standout card. -->
           <router-link
-            v-if="gi === 0 && mi === 0"
+            v-if="mi === 0"
             to="/players"
             class="block rounded-xl border border-primary/40 bg-primary/5 px-4 py-3 transition-colors hover:border-primary"
           >
