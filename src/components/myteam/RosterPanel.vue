@@ -225,7 +225,11 @@ const sections = computed<RosterSection[]>(() => {
           </span>
 
           <!-- Muted 0-100 roleValue, pinned to a right rail -->
-          <span class="ml-auto w-8 shrink-0 text-right font-mono text-xs text-dark-textMuted tabular-nums">{{ row.roleValue }}</span>
+          <span
+            :title="`Overall value vs other rostered ${section.role === 'hitter' ? 'hitters' : 'pitchers'} (0–100), from this player's category z-scores`"
+            class="ml-auto w-8 shrink-0 cursor-help text-right font-mono text-xs text-dark-textMuted tabular-nums"
+            >{{ row.roleValue }}</span
+          >
         </div>
       </template>
     </div>
@@ -234,7 +238,7 @@ const sections = computed<RosterSection[]>(() => {
     <p v-if="sections.length > 0" class="px-4 py-3 font-mono text-[10px] leading-relaxed text-dark-textMuted">
       <span class="text-primary">green</span> = a category this player helps ·
       <span class="text-[#FF5C5C]">red</span> = one they hurt ·
-      number = their value vs other rostered players at the position (0-100)
+      number = overall value vs other rostered players in their role — hitters or pitchers (0–100)
     </p>
   </div>
 </template>

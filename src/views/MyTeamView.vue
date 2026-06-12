@@ -658,7 +658,8 @@ watch(categories, () => {
       class="space-y-1 pt-2"
     >
       <div class="flex items-center gap-2">
-        <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Season · full-year ranks</span>
+        <span class="rounded bg-dark-border/70 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-dark-textSecondary">Season</span>
+        <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">full-year ranks</span>
         <span class="h-px flex-1 bg-dark-border/50"></span>
       </div>
       <p class="font-mono text-[10px] text-dark-textMuted/70">

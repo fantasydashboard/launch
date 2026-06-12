@@ -16,9 +16,12 @@ const verb = (leak: LineupLeak) => (leak.better.source === 'bench' ? 'Start' : '
 <template>
   <!-- Supplementary callout: only renders when there's a real positional leak. -->
   <section v-if="shown.length">
-    <h2 class="mb-2 text-xs font-display font-semibold uppercase tracking-wide text-dark-textMuted">
+    <h2 class="text-xs font-display font-semibold uppercase tracking-wide text-dark-textMuted">
       Lineup Leaks
     </h2>
+    <p class="mb-2 mt-0.5 font-mono text-[10px] text-dark-textMuted">
+      A stronger player is on your bench than in your lineup — start them.
+    </p>
     <router-link
       v-for="leak in shown"
       :key="leak.starter.key"
