@@ -18,6 +18,8 @@ import { computeDropCandidates } from '@/myteam/dropCandidates'
 import { mapToEspnStats, buildPlayerMatchers, type FGProjection } from '@/services/projectionService'
 import { sideOf } from '@/myteam/yourMove/helpedCats'
 import { displayLift } from '@/myteam/yourMove/displayLift'
+import { detectLeaks } from '@/myteam/lineupLeaks/detectLeaks'
+import type { EligiblePlayer } from '@/myteam/lineupLeaks/positionalValue'
 import type { RosterSlotPlayer } from '@/myteam/yourMove/pairDrop'
 import type { CandidateAction } from '@/myteam/yourMove/types'
 import { tierAdds } from '@/players/tierAdds'
@@ -326,6 +328,63 @@ const smallerViews = computed(() => tiered.value.smaller.slice(0, 6).map(buildVi
 const hero = computed(() => strongViews.value[0] ?? null)
 const restStrong = computed(() => strongViews.value.slice(1))
 
+// === Season-fit lens: your roster vs the wire ===
+// The cure for "this is just Your Move extended": instead of a ranked add feed, measure
+// your roster against the market, slot by slot, and surface where a better player is
+// available. Both your players and free agents are valued on ONE shared scale (the
+// market = all rostered players + the FA pool, run through computeRosterValue), then
+// detectLeaks — the same "a stronger player is available for this spot" engine that
+// powers Lineup Leaks — is pointed at the waiver pool instead of your bench.
+const lens = ref<'thisWeek' | 'seasonFit'>('thisWeek')
+
+const UPGRADE_MATERIALITY = 6 // shared 0-100 value points a wire upgrade must clear
+
+const marketPool = computed(() => {
+  if (!catSpecs.value.length) return []
+  const fgR = rosterFgStatsByKey.value
+  const fgF = faFgStatsByKey.value
+  const rosterEff = rosterPool.value.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: toEffectiveStats(p.stats, fgR[p.playerKey] ?? null, catSpecs.value, SEASON_FRACTION) }))
+  const faEff = players.value.map((fa) => ({ playerKey: fa.playerKey, position: fa.position, stats: toEffectiveStats(fa.stats, fgF[fa.playerKey] ?? null, catSpecs.value, SEASON_FRACTION) }))
+  return [...rosterEff, ...faEff]
+})
+const marketValueByKey = computed(() => {
+  if (!marketPool.value.length) return new Map<string, number>()
+  const keys = marketPool.value.map((p) => p.playerKey)
+  return new Map(computeRosterValue(marketPool.value, keys, catSpecs.value).map((c) => [c.playerKey, c.roleValue]))
+})
+function toEligibleFor(p: { playerKey: string; name: string; team?: string; position?: string; eligiblePositions?: string[]; stats?: Record<string, number>; status?: string }, fg: Record<string, Record<string, number> | null>): EligiblePlayer {
+  const eligible = p.eligiblePositions?.length ? p.eligiblePositions : String(p.position ?? '').split(/[,/]/).map((s) => s.trim()).filter(Boolean)
+  return {
+    playerKey: p.playerKey,
+    name: p.name,
+    team: p.team ?? '',
+    eligiblePositions: eligible,
+    stats: toEffectiveStats(p.stats ?? {}, fg[p.playerKey] ?? null, catSpecs.value, SEASON_FRACTION),
+    roleValue: marketValueByKey.value.get(p.playerKey) ?? 0,
+    status: p.status,
+  }
+}
+const allNeedWeights = computed(() => {
+  const w: Record<string, number> = {}
+  for (const c of catSpecs.value) w[c.statId] = 1 // season value: every category counts
+  return w
+})
+const upgradeViews = computed(() => {
+  if (!rosterPlayers.value.length || !players.value.length || !catSpecs.value.length || !marketValueByKey.value.size) return []
+  const mine = rosterPlayers.value.map((p) => toEligibleFor(p, rosterFgStatsByKey.value))
+  const wire = players.value.map((fa) => toEligibleFor(fa, faFgStatsByKey.value))
+  const leaks = detectLeaks(mine, [], wire, catSpecs.value, allNeedWeights.value, { materiality: UPGRADE_MATERIALITY })
+  return leaks.map((l) => ({
+    position: l.position,
+    yourName: l.starter.name,
+    yourValue: Math.round(marketValueByKey.value.get(l.starter.key) ?? 0),
+    upName: l.better.name,
+    upValue: Math.round(marketValueByKey.value.get(l.better.key) ?? 0),
+    gap: Math.round(l.gap),
+    cats: l.categories.map(labelFor),
+  }))
+})
+
 const oppName = computed(() => thisWeek.snapshot.value?.opponentName ?? '')
 const topWeakness = computed(() => {
   if (!profile.value) return null
@@ -344,6 +403,12 @@ const hasAny = computed(() => strongViews.value.length > 0 || smallerViews.value
 const isLoading = computed(() => !unsupported.value && !ready.value && !hasAny.value)
 const empty = computed(() => ready.value && !noMatchup.value && !hasAny.value)
 
+// Season-fit lens needs roster + FA pools (not the live matchup), so it works even
+// when there's no active matchup.
+const seasonReady = computed(() => playersLoaded.value && rosterLoaded.value && catSpecs.value.length > 0)
+const seasonLoading = computed(() => !unsupported.value && !seasonReady.value && upgradeViews.value.length === 0)
+const seasonEmpty = computed(() => seasonReady.value && upgradeViews.value.length === 0)
+
 function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd']
   const v = n % 100
@@ -356,33 +421,59 @@ function ordinal(n: number): string {
     <header class="space-y-1">
       <h1 class="font-display text-2xl font-bold text-dark-text">Players</h1>
       <p class="font-mono text-xs text-dark-textMuted">
-        The wire, ranked by added chance to win this week<template v-if="oppName"> · vs {{ oppName }}</template>
+        <template v-if="lens === 'seasonFit'">Your roster vs the wire, by rest-of-season value</template>
+        <template v-else>The wire, ranked by added chance to win this week<template v-if="oppName"> · vs {{ oppName }}</template></template>
       </p>
     </header>
 
-    <!-- Lens: this week active; season fit is the fast-follow. -->
+    <!-- Lens: this-week tactical adds vs season-long roster-vs-wire comparison. -->
     <div v-if="!unsupported" class="flex items-center justify-between gap-2">
       <div class="flex overflow-hidden rounded-md border border-dark-border font-mono text-[10px] uppercase tracking-wider">
-        <span class="bg-primary/15 px-2.5 py-1 text-primary">This week</span>
-        <span class="px-2.5 py-1 text-dark-textMuted/60">Season fit <span class="text-[8px]">soon</span></span>
+        <button type="button" class="px-2.5 py-1 transition-colors" :class="lens === 'thisWeek' ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-textSecondary'" @click="lens = 'thisWeek'">This week</button>
+        <button type="button" class="px-2.5 py-1 transition-colors" :class="lens === 'seasonFit' ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-textSecondary'" @click="lens = 'seasonFit'">Season fit</button>
       </div>
     </div>
 
-    <!-- The frame that reconciles with My Team's season hole. -->
-    <p v-if="topWeakness" class="font-mono text-[11px] leading-relaxed text-dark-textMuted">
+    <!-- This-week frame: points a season-hole chaser at the Season-fit lens. -->
+    <p v-if="lens === 'thisWeek' && topWeakness" class="font-mono text-[11px] leading-relaxed text-dark-textMuted">
       Your best moves for <span class="text-dark-textSecondary">this week's matchup</span>. Chasing a season-long hole
       (you're {{ ordinal(topWeakness.rank) }} in <span class="text-dark-textSecondary">{{ topWeakness.label }}</span>)?
-      That lives under <span class="text-primary">Season fit</span> — coming soon.
+      Switch to the <button type="button" class="text-primary underline-offset-2 hover:underline" @click="lens = 'seasonFit'">Season fit</button> lens.
     </p>
-    <p v-if="!unsupported" class="font-mono text-[10px] text-dark-textMuted">% = added chance to win this week · each add is netted against the drop</p>
+    <p v-if="!unsupported && lens === 'thisWeek'" class="font-mono text-[10px] text-dark-textMuted">% = added chance to win this week · each add is netted against the drop</p>
+    <p v-else-if="!unsupported" class="font-mono text-[10px] text-dark-textMuted">Where a better player is available on waivers · number = rest-of-season value gain</p>
 
-    <!-- States -->
+    <!-- Shared: unsupported platform -->
     <p v-if="unsupported" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
       The ranked wire is Yahoo category leagues only in this preview. ESPN support is coming.
     </p>
+
+    <!-- ===== SEASON FIT: your roster vs the wire ===== -->
+    <template v-else-if="lens === 'seasonFit'">
+      <p v-if="seasonLoading" class="text-sm text-dark-textMuted">Valuing your roster against the wire…</p>
+      <p v-else-if="seasonEmpty" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-text">
+        Your roster is ahead of the wire at every spot. No clear upgrades available right now.
+      </p>
+      <div v-else class="divide-y divide-dark-border/50 rounded-xl border border-dark-border bg-dark-card/40">
+        <div v-for="u in upgradeViews" :key="u.position + u.upName" class="flex items-center gap-3 px-4 py-2.5">
+          <span class="w-9 shrink-0 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">{{ u.position }}</span>
+          <span class="min-w-0 flex-1">
+            <span class="block truncate text-sm">
+              <span class="text-dark-textMuted">{{ u.yourName }} <span class="font-mono text-[11px]">({{ u.yourValue }})</span></span>
+              <span class="px-1 text-dark-textMuted/50">→</span>
+              <span class="font-semibold text-dark-text">{{ u.upName }} <span class="font-mono text-[11px] text-dark-textMuted">({{ u.upValue }})</span></span>
+            </span>
+            <span v-if="u.cats.length" class="mt-0.5 block font-mono text-[11px] text-primary">{{ u.cats.join(' ') }}</span>
+          </span>
+          <span class="shrink-0 font-mono text-sm font-bold text-primary tabular-nums">+{{ u.gap }}</span>
+        </div>
+      </div>
+    </template>
+
+    <!-- ===== THIS WEEK: ranked tactical adds ===== -->
     <p v-else-if="isLoading" class="text-sm text-dark-textMuted">Ranking the wire for your matchup…</p>
     <p v-else-if="noMatchup" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
-      No live matchup this week, so there's nothing to rank against yet. Season-long add value is coming with the Season fit lens.
+      No live matchup this week, so there's nothing to rank against yet. Switch to the Season fit lens for roster-vs-wire value.
     </p>
     <p v-else-if="empty" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-text">
       The wire's quiet — nothing available clearly moves your matchup this week. Stand pat.
