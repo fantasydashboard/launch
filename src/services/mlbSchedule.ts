@@ -35,7 +35,8 @@ export function teamAbbrVariants(abbr: string): string[] {
   return TEAM_ABBR_VARIANTS[abbr] ?? [abbr]
 }
 
-/** Normalize a player name for matching (lowercase, strip accents + punctuation). */
+/** Normalize a player name for matching (lowercase, strip accents + punctuation,
+ *  drop a trailing generational suffix so "Hunter Brown Jr" == "Hunter Brown"). */
 export function normalizePitcherName(name: string): string {
   // NFD decomposes accents into base letter + combining mark; the [^a-z\s] strip
   // then drops the combining marks, so "Jesús" -> "jesus" without a unicode literal.
@@ -45,6 +46,38 @@ export function normalizePitcherName(name: string): string {
     .replace(/[^a-z\s]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
+    .replace(/ (jr|sr|ii|iii|iv)$/, '')
+}
+
+/** First-initial + last-name key, e.g. "hunter brown" -> "h brown". Used as a
+ *  fallback when two sources spell the first name differently (ESPN "Cristopher"
+ *  vs a feed's "Christopher"). */
+function initialLastKey(normalized: string): string {
+  const parts = normalized.split(' ').filter(Boolean)
+  if (parts.length < 2) return normalized
+  return `${parts[0][0]} ${parts[parts.length - 1]}`
+}
+
+/**
+ * Probable starts for a pitcher, tolerant of cross-source name differences:
+ * exact normalized match first, then a first-initial + last-name fallback — but the
+ * fallback is used ONLY when it resolves to exactly one pitcher in the schedule, so we
+ * never stream the wrong arm on an ambiguous last name.
+ */
+export function lookupStarts(schedule: WeekSchedule, name: string): ProbableStart[] {
+  const norm = normalizePitcherName(name)
+  const exact = schedule.startsByPitcher[norm]
+  if (exact) return exact
+  const want = initialLastKey(norm)
+  let hit: ProbableStart[] | null = null
+  let count = 0
+  for (const key of Object.keys(schedule.startsByPitcher)) {
+    if (initialLastKey(key) === want) {
+      hit = schedule.startsByPitcher[key]
+      count++
+    }
+  }
+  return count === 1 && hit ? hit : []
 }
 
 /** Parse a raw statsapi /schedule response into our WeekSchedule shape. Pure; tested. */

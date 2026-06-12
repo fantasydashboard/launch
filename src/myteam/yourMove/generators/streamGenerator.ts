@@ -3,7 +3,7 @@ import type { CatSpec } from '@/myteam/value'
 import type { MoveCandidate } from '../types'
 import { projectStarts } from '../projectRemainingWeek'
 import { sideOf } from '../helpedCats'
-import { normalizePitcherName, type ProbableStart } from '@/services/mlbSchedule'
+import { lookupStarts, type ProbableStart, type WeekSchedule } from '@/services/mlbSchedule'
 
 const isPitcher = (pos: string): boolean =>
   (pos || '')
@@ -21,9 +21,10 @@ export function streamGenerator(
   seasonFraction = 0.6,
 ): MoveCandidate[] {
   const out: MoveCandidate[] = []
+  const schedule: WeekSchedule = { gamesByTeam: {}, startsByPitcher }
   for (const fa of freeAgents) {
     if (!isPitcher(fa.position)) continue
-    const starts = startsByPitcher[normalizePitcherName(fa.name)] ?? []
+    const starts = lookupStarts(schedule, fa.name)
     if (starts.length === 0) continue
     const twoStart = starts.length >= 2
     const opp = starts.map((s) => s.opponentAbbr).filter(Boolean).join(', ')

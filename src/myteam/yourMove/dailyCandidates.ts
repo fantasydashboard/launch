@@ -2,7 +2,7 @@ import type { AvailablePlayer } from '@/players/types'
 import type { CatSpec } from '@/myteam/value'
 import type { MoveCandidate } from './types'
 import type { WeekSchedule } from '@/services/mlbSchedule'
-import { normalizePitcherName } from '@/services/mlbSchedule'
+import { lookupStarts } from '@/services/mlbSchedule'
 import { projectGames, projectStarts } from './projectRemainingWeek'
 import { sideOf } from './helpedCats'
 import type { BenchPlayer } from './generators/startSitGenerator'
@@ -27,7 +27,7 @@ export function dailyCandidates(
   for (const fa of freeAgents) {
     const side = sideOf(fa.position ?? '')
     if (side === 'pit') {
-      const starts = today.startsByPitcher[normalizePitcherName(fa.name)] ?? []
+      const starts = lookupStarts(today, fa.name)
       if (starts.length === 0) continue
       out.push({
         kind: 'stream',

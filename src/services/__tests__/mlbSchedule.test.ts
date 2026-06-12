@@ -1,10 +1,62 @@
 import { describe, it, expect } from 'vitest'
-import { parseSchedule, normalizePitcherName, teamAbbrVariants } from '../mlbSchedule'
+import { parseSchedule, normalizePitcherName, teamAbbrVariants, lookupStarts } from '../mlbSchedule'
 
 describe('mlbSchedule', () => {
   it('normalizePitcherName strips accents and punctuation', () => {
     expect(normalizePitcherName('Jesús Luzardo')).toBe('jesus luzardo')
     expect(normalizePitcherName('Hunter Brown')).toBe('hunter brown')
+  })
+
+  it('normalizePitcherName drops a trailing generational suffix', () => {
+    expect(normalizePitcherName('Hunter Brown Jr.')).toBe('hunter brown')
+    expect(normalizePitcherName('Luis Garcia III')).toBe('luis garcia')
+    // not a suffix mid-name
+    expect(normalizePitcherName('Jr Reynolds')).toBe('jr reynolds')
+  })
+
+  it('lookupStarts matches exact, then falls back to initial+last when unambiguous', () => {
+    const sched = parseSchedule({
+      dates: [
+        {
+          games: [
+            {
+              gameDate: '2026-06-11T23:05:00Z',
+              teams: {
+                home: { team: { abbreviation: 'PHI' }, probablePitcher: { fullName: 'Cristopher Sánchez' } },
+                away: { team: { abbreviation: 'NYM' }, probablePitcher: { fullName: 'Kodai Senga' } },
+              },
+            },
+          ],
+        },
+      ],
+    })
+    // exact (after accent-normalization)
+    expect(lookupStarts(sched, 'Cristopher Sanchez')).toHaveLength(1)
+    // first-name spelling differs -> initial+last fallback resolves uniquely
+    expect(lookupStarts(sched, 'Christopher Sanchez')).toHaveLength(1)
+    // genuinely absent
+    expect(lookupStarts(sched, 'Tarik Skubal')).toEqual([])
+  })
+
+  it('lookupStarts refuses an ambiguous initial+last fallback', () => {
+    const sched = parseSchedule({
+      dates: [
+        {
+          games: [
+            {
+              teams: {
+                home: { team: { abbreviation: 'SD' }, probablePitcher: { fullName: 'Michael King' } },
+                away: { team: { abbreviation: 'SF' }, probablePitcher: { fullName: 'Mason King' } },
+              },
+            },
+          ],
+        },
+      ],
+    })
+    // "M. King" is ambiguous (two of them) -> no guess
+    expect(lookupStarts(sched, 'Marcus King')).toEqual([])
+    // but an exact name still resolves
+    expect(lookupStarts(sched, 'Michael King')).toHaveLength(1)
   })
 
   it('parseSchedule counts games per team and collects probable starts', () => {
