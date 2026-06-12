@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useFullSeasonCategoryData } from '@/composables/useFullSeasonCategoryData'
 import { isYahooCategoryLeague as isYahooCategoryScoringType } from '@/composables/useIsCategoryLeague'
@@ -39,22 +39,27 @@ const unsupported = computed(() =>
   leagueStore.activePlatform === 'sleeper' || (isEspn.value && espn.supported.value === false),
 )
 
-const attempted = ref(false)
+// Track the league id we've kicked loads for, so the immediate watch re-fires when the
+// platform/category signal resolves (it can lag a tick after a league switch) without
+// re-loading the same league.
+const attemptedFor = ref('')
 function runLoads() {
+  const id = leagueStore.activeLeagueId
+  if (!id || attemptedFor.value === id) return
   if (isEspn.value) {
     espn.load() // self-detects category and identifies the user's team
-    attempted.value = true
-    return
+    attemptedFor.value = id
+  } else if (leagueStore.activePlatform === 'yahoo' && isYahooCategoryLeague.value) {
+    loadSeasonData(id)
+    loadRoster()
+    attemptedFor.value = id
   }
-  if (leagueStore.activePlatform !== 'yahoo' || !isYahooCategoryLeague.value) return
-  const id = leagueStore.activeLeagueId
-  if (id) loadSeasonData(id)
-  loadRoster()
-  attempted.value = true
 }
-onMounted(runLoads)
-watch(() => leagueStore.activeLeagueId, () => { attempted.value = false; runLoads() })
-watch([isEspn, isYahooCategoryLeague], () => { if (!attempted.value) runLoads() })
+watch(
+  () => [leagueStore.activeLeagueId, isEspn.value, isYahooCategoryLeague.value] as const,
+  () => runLoads(),
+  { immediate: true },
+)
 
 // === Unified, platform-neutral inputs into the trade engine ===
 const pool = computed(() => (isEspn.value ? espn.pool.value : yPool.value))
@@ -124,16 +129,19 @@ const teamNameByKey = computed(() => {
 
 const { view } = useTradeTargets({ pool, fgByKey, catSpecs, teamCatWins, myTeamKey, teamNameByKey, seasonFraction: SEASON_FRACTION, labelOf })
 
+const hasAttempted = computed(() => attemptedFor.value === leagueStore.activeLeagueId)
 const rosterLoading = computed(() => (isEspn.value ? espn.loading.value : yRosterLoading.value))
 const rosterLoaded = computed(() => (isEspn.value ? espn.loaded.value : yRosterLoaded.value))
 const settling = computed(() => {
-  if (!attempted.value) return true
+  if (!hasAttempted.value) return true
   if (isEspn.value) return espn.loading.value
   return yRosterLoading.value || !yCatsLoaded.value
 })
-const loadFailed = computed(() => supported.value && attempted.value && !rosterLoading.value && pool.value.length === 0)
+const loadFailed = computed(() => supported.value && hasAttempted.value && !rosterLoading.value && pool.value.length === 0)
+// Settled, supported, rosters loaded, but we couldn't identify your team in the league.
+const noTeam = computed(() => !settling.value && !loadFailed.value && supported.value && pool.value.length > 0 && !myTeamKey.value)
 const isLoading = computed(() => !unsupported.value && !loadFailed.value && settling.value && !view.value)
-const empty = computed(() => !loadFailed.value && rosterLoaded.value && !view.value)
+const empty = computed(() => !loadFailed.value && !noTeam.value && rosterLoaded.value && !view.value)
 
 // Trade intent modes.
 type Mode = 'winWin' | 'reach' | 'consolidate'
@@ -168,6 +176,9 @@ function ordinal(n: number): string {
       <button type="button" class="mt-2 rounded-md border border-dark-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-primary hover:bg-primary/10" @click="runLoads">Retry</button>
     </div>
     <p v-else-if="isLoading" class="text-sm text-dark-textMuted">Reading every roster in your league…</p>
+    <p v-else-if="noTeam" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
+      Couldn't identify your team in this league. Reconnect the platform under settings and try again.
+    </p>
     <p v-else-if="empty" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-text">
       No clear trade leverage right now — no partner's surplus lines up with your holes at a believable value.
     </p>
