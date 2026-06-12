@@ -35,6 +35,7 @@ export function profileFromStandings(
   return {
     teamId: mine.team.teamId,
     teamName: mine.team.name,
+    teamAvatar: mine.team.avatar,
     numTeams: allStandings.length,
     categories,
   }

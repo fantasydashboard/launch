@@ -22,6 +22,7 @@ export interface TeamCategoryRecord {
 export interface MyTeamCategoryProfile {
   teamId: string
   teamName: string
+  teamAvatar?: string // team logo URL (often user-uploaded; may be missing/ugly)
   numTeams: number
   categories: TeamCategoryRecord[]
 }

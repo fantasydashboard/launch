@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 defineProps<{
   teamName: string
+  teamAvatar?: string // team logo URL; falls back to a monogram when missing/broken
   record: string // e.g. "57-64-11"
   rank: number // 0 = unknown / not yet wired
   numTeams: number
@@ -10,11 +12,28 @@ defineProps<{
   // show the value as a level, not a "+" delta (a "+" reads as worse on a rate).
   holeAdd?: { name: string; statValue: number; label: string; isRatio: boolean } | null
 }>()
+
+// Fantasy team logos are frequently missing or broken (user uploads); fall back to a
+// clean monogram on load error rather than a broken-image icon.
+const logoFailed = ref(false)
 </script>
 
 <template>
   <header class="space-y-3">
-    <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <img
+        v-if="teamAvatar && !logoFailed"
+        :src="teamAvatar"
+        :alt="teamName"
+        @error="logoFailed = true"
+        class="h-9 w-9 shrink-0 rounded-lg bg-dark-border object-cover"
+      />
+      <span
+        v-else
+        aria-hidden="true"
+        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-dark-border font-display text-base font-bold text-dark-textSecondary"
+        >{{ teamName.charAt(0) }}</span
+      >
       <h1 class="text-xl sm:text-2xl font-display font-bold text-dark-text">{{ teamName }}</h1>
       <span class="text-sm font-mono tabular-nums text-dark-textSecondary">{{ record }}</span>
     </div>

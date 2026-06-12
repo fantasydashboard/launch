@@ -8,6 +8,7 @@ import type { Sport } from '@/types/supabase'
 export interface SnapshotCategory { statId: string; label: string; status: CatStatus; myWinPct: number }
 export interface ThisWeekSnapshot {
   opponentName: string
+  oppAvatar?: string // opponent logo URL; falls back to a monogram when missing/broken
   myWinPct: number // win share with half-ties folded in (legacy; used by signals)
   // Raw matchup-outcome split — these sum to ~100. A 6-6 category split is a TIE,
   // not a loss, so the band surfaces all three instead of one ambiguous number.
@@ -50,6 +51,7 @@ export function useThisWeekMatchup() {
       let myStats: Record<string, number> = {}
       let oppStats: Record<string, number> = {}
       let opponentName = ''
+      let opponentAvatar = ''
 
       if (platform === 'yahoo') {
         const week = leagueStore.currentWeek
@@ -77,6 +79,12 @@ export function useThisWeekMatchup() {
         myStats = toNum(me.stats)
         oppStats = toNum(opp.stats)
         opponentName = opp.name || 'Opponent'
+        // Matchup teams may omit the logo; fall back to the standings team by key.
+        opponentAvatar =
+          (opp as any).logo_url ||
+          (opp as any).logo ||
+          (leagueStore.yahooTeams?.find((t: any) => t.team_key === opp.team_key)?.logo_url) ||
+          ''
       } else {
         const parts = String(leagueKey).split('_') // espn_{sport}_{id}_{season}
         if (parts.length < 4 || parts[0] !== 'espn') return
@@ -112,6 +120,7 @@ export function useThisWeekMatchup() {
         oppStats = flat(oppBy)
         const oppTeam = iAmHome ? mine.awayTeam : mine.homeTeam
         opponentName = oppTeam?.name || 'Opponent'
+        opponentAvatar = (oppTeam as any)?.logo || ''
       }
 
       const days = daysUntilWeekEnd()
@@ -126,6 +135,7 @@ export function useThisWeekMatchup() {
       const tiePct = Math.round(overall.tiePct)
       snapshot.value = {
         opponentName,
+        oppAvatar: opponentAvatar || undefined,
         myWinPct: Math.round(overall.team1),
         winPct,
         tiePct,

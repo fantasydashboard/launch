@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { ThisWeekSnapshot } from '@/composables/useThisWeekMatchup'
 const props = defineProps<{ snapshot: ThisWeekSnapshot | null }>()
+// Opponent logo with monogram fallback (fantasy logos are often missing/broken).
+const oppLogoFailed = ref(false)
 const byStatus = (s: 'safe' | 'tossup' | 'loss') =>
   (props.snapshot?.categories ?? []).filter((c) => c.status === s)
 
@@ -20,11 +22,25 @@ const tossupsShown = computed(() =>
     to="/matchup"
     class="block rounded-xl bg-dark-card border border-dark-border px-4 py-3 hover:border-primary/50 transition-colors"
   >
-    <div class="flex items-center justify-between">
-      <span class="text-xs font-display font-semibold uppercase tracking-wide text-dark-textMuted">
-        This Week · vs {{ snapshot.opponentName }}
+    <div class="flex items-center justify-between gap-2">
+      <span class="flex min-w-0 items-center gap-2 text-xs font-display font-semibold uppercase tracking-wide text-dark-textMuted">
+        <span class="shrink-0 normal-case">This Week · vs</span>
+        <img
+          v-if="snapshot.oppAvatar && !oppLogoFailed"
+          :src="snapshot.oppAvatar"
+          :alt="snapshot.opponentName"
+          @error="oppLogoFailed = true"
+          class="h-5 w-5 shrink-0 rounded bg-dark-border object-cover"
+        />
+        <span
+          v-else
+          aria-hidden="true"
+          class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-dark-border text-[10px] font-bold text-dark-textSecondary"
+          >{{ snapshot.opponentName.charAt(0) }}</span
+        >
+        <span class="truncate">{{ snapshot.opponentName }}</span>
       </span>
-      <span class="font-mono text-xs text-dark-textMuted">{{ snapshot.completed ? 'Final' : snapshot.daysRemaining + 'd left' }} →</span>
+      <span class="shrink-0 font-mono text-xs text-dark-textMuted">{{ snapshot.completed ? 'Final' : snapshot.daysRemaining + 'd left' }} →</span>
     </div>
     <div class="mt-1 flex items-baseline gap-2">
       <span

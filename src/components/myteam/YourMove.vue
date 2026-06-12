@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { CandidateAction } from '@/myteam/yourMove/types'
 
 const props = defineProps<{
@@ -7,8 +7,16 @@ const props = defineProps<{
   loading?: boolean
   record?: { wins: number; losses: number } | null
   labelByStatId?: Record<string, string>
+  // playerKey -> headshot URL, for the featured (hero) move's face.
+  headshotByKey?: Map<string, string>
   cadence?: 'daily' | 'weekly'
 }>()
+
+// Player headshots are only shown on the hero card (the compact rows stay terse).
+// Fall back to a monogram when the URL is missing or fails to load.
+const failedHeadshots = ref(new Set<string>())
+const face = (m: CandidateAction): string | null =>
+  failedHeadshots.value.has(m.player.key) ? null : props.headshotByKey?.get(m.player.key) ?? null
 const emit = defineEmits<{ 'update:cadence': ['daily' | 'weekly'] }>()
 
 const VERB: Record<CandidateAction['kind'], string> = { add: 'Add', stream: 'Stream', startSit: 'Start' }
@@ -107,27 +115,43 @@ const groups = computed(() =>
           <router-link
             v-if="mi === 0"
             to="/players"
-            class="block rounded-xl border border-primary/40 bg-primary/5 px-4 py-3 transition-colors hover:border-primary"
+            class="flex items-start gap-3 rounded-xl border border-primary/40 bg-primary/5 px-4 py-3 transition-colors hover:border-primary"
           >
-            <div class="flex items-baseline justify-between gap-3">
-              <span class="min-w-0 truncate font-display text-lg font-bold text-dark-text">
-                {{ verb(m) }} {{ m.player.name }}
-                <span v-if="m.counterparty" class="font-sans text-xs font-normal text-dark-textMuted"
-                  >· {{ counterVerb(m) }} {{ m.counterparty.name }}</span
+            <!-- Featured player's face (hero only); monogram fallback. -->
+            <img
+              v-if="face(m)"
+              :src="face(m) || ''"
+              :alt="m.player.name"
+              @error="failedHeadshots.add(m.player.key)"
+              class="mt-0.5 h-9 w-9 shrink-0 rounded-full bg-dark-border object-cover"
+            />
+            <span
+              v-else
+              aria-hidden="true"
+              class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-dark-border font-display text-sm font-bold text-dark-textSecondary"
+              >{{ m.player.name.charAt(0) }}</span
+            >
+            <div class="min-w-0 flex-1">
+              <div class="flex items-baseline justify-between gap-3">
+                <span class="min-w-0 truncate font-display text-lg font-bold text-dark-text">
+                  {{ verb(m) }} {{ m.player.name }}
+                  <span v-if="m.counterparty" class="font-sans text-xs font-normal text-dark-textMuted"
+                    >· {{ counterVerb(m) }} {{ m.counterparty.name }}</span
+                  >
+                </span>
+                <span class="shrink-0 font-mono text-lg font-bold text-primary tabular-nums">+{{ lift(m) }}%</span>
+              </div>
+              <div class="mt-1 flex flex-wrap items-center gap-1">
+                <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">flips</span>
+                <span
+                  v-for="c in m.categories"
+                  :key="c"
+                  class="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary"
+                  >{{ label(c) }}</span
                 >
-              </span>
-              <span class="shrink-0 font-mono text-lg font-bold text-primary tabular-nums">+{{ lift(m) }}%</span>
+              </div>
+              <p v-if="m.rationale" class="mt-1 font-mono text-[11px] text-dark-textMuted">{{ m.rationale }}</p>
             </div>
-            <div class="mt-1 flex flex-wrap items-center gap-1">
-              <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">flips</span>
-              <span
-                v-for="c in m.categories"
-                :key="c"
-                class="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary"
-                >{{ label(c) }}</span
-              >
-            </div>
-            <p v-if="m.rationale" class="mt-1 font-mono text-[11px] text-dark-textMuted">{{ m.rationale }}</p>
           </router-link>
 
           <!-- Next-best: compact row -->

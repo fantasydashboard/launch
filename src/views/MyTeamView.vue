@@ -517,6 +517,15 @@ const labelByStatId = computed<Record<string, string>>(() => {
   return m
 })
 
+// playerKey -> headshot URL, from the roster + FA pools, so Your Move's hero card can
+// show the player's face (falls back to a monogram when missing/broken).
+const headshotByKey = computed(() => {
+  const m = new Map<string, string>()
+  for (const p of rosterPlayers.value) if (p.headshot) m.set(p.playerKey, p.headshot)
+  for (const p of players.value) if (p.headshot) m.set(p.playerKey, p.headshot)
+  return m
+})
+
 // My roster as drop/sit counterparties + start-sit seeds: join the value model
 // (role + roleValue) with the roster (name, lineup slot, stats). Yahoo carries the
 // `started` flag; other platforms default to started, so start/sit degrades away
@@ -611,6 +620,7 @@ watch(categories, () => {
     <SituationStrip
       v-if="profile"
       :team-name="profile.teamName"
+      :team-avatar="profile.teamAvatar"
       :record="record"
       :rank="myOverallRank"
       :num-teams="profile.numTeams"
@@ -624,6 +634,7 @@ watch(categories, () => {
       :moves="yourMove.moves.value"
       :loading="rosterLoading && rosterPlayers.length === 0"
       :label-by-stat-id="labelByStatId"
+      :headshot-by-key="headshotByKey"
     />
 
     <MatchupSnapshot :snapshot="thisWeek.snapshot.value" />
