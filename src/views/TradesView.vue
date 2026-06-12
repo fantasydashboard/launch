@@ -39,27 +39,35 @@ const unsupported = computed(() =>
   leagueStore.activePlatform === 'sleeper' || (isEspn.value && espn.supported.value === false),
 )
 
-// Track the league id we've kicked loads for, so the immediate watch re-fires when the
-// platform/category signal resolves (it can lag a tick after a league switch) without
-// re-loading the same league.
+// Kick the loaders off PLATFORM (reliable) rather than the category predicate (which can
+// lag and leave the page hung). The composables self-gate: ESPN detects H2H_CATEGORY, and
+// a non-category Yahoo league never reaches this view (the wrapper blocks it). Tracks the
+// league we've loaded so the immediate watch doesn't re-fetch the same league.
 const attemptedFor = ref('')
-function runLoads() {
-  const id = leagueStore.activeLeagueId
-  if (!id || attemptedFor.value === id) return
-  if (isEspn.value) {
-    espn.load() // self-detects category and identifies the user's team
-    attemptedFor.value = id
-  } else if (leagueStore.activePlatform === 'yahoo' && isYahooCategoryLeague.value) {
-    loadSeasonData(id)
-    loadRoster()
-    attemptedFor.value = id
-  }
-}
 watch(
-  () => [leagueStore.activeLeagueId, isEspn.value, isYahooCategoryLeague.value] as const,
-  () => runLoads(),
+  () => [leagueStore.activeLeagueId, leagueStore.activePlatform] as const,
+  ([id, platform]) => {
+    if (!id || !platform || attemptedFor.value === id) return
+    attemptedFor.value = id
+    if (platform === 'espn') espn.load()
+    else if (platform === 'yahoo') {
+      loadSeasonData(id)
+      loadRoster()
+    }
+  },
   { immediate: true },
 )
+function retry() {
+  attemptedFor.value = ''
+  const id = leagueStore.activeLeagueId
+  if (!id) return
+  attemptedFor.value = id
+  if (leagueStore.activePlatform === 'espn') espn.load()
+  else {
+    loadSeasonData(id)
+    loadRoster()
+  }
+}
 
 // === Unified, platform-neutral inputs into the trade engine ===
 const pool = computed(() => (isEspn.value ? espn.pool.value : yPool.value))
@@ -137,7 +145,16 @@ const settling = computed(() => {
   if (isEspn.value) return espn.loading.value
   return yRosterLoading.value || !yCatsLoaded.value
 })
-const loadFailed = computed(() => supported.value && hasAttempted.value && !rosterLoading.value && pool.value.length === 0)
+// Settled but no rosters loaded = the platform fetch failed (every league has rosters).
+// For ESPN treat "not explicitly a non-category league" as a failure so it shows retry
+// rather than a misleading "no leverage".
+const loadFailed = computed(
+  () =>
+    hasAttempted.value &&
+    !rosterLoading.value &&
+    pool.value.length === 0 &&
+    (isEspn.value ? espn.supported.value !== false : supported.value),
+)
 // Settled, supported, rosters loaded, but we couldn't identify your team in the league.
 const noTeam = computed(() => !settling.value && !loadFailed.value && supported.value && pool.value.length > 0 && !myTeamKey.value)
 const isLoading = computed(() => !unsupported.value && !loadFailed.value && settling.value && !view.value)
@@ -173,7 +190,7 @@ function ordinal(n: number): string {
     <div v-else-if="loadFailed" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
       <p class="text-sm text-dark-text">Couldn't load the league rosters from Yahoo just now.</p>
       <p class="mt-0.5 text-xs text-dark-textMuted">Often a brief rate-limit. Try again in a moment.</p>
-      <button type="button" class="mt-2 rounded-md border border-dark-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-primary hover:bg-primary/10" @click="runLoads">Retry</button>
+      <button type="button" class="mt-2 rounded-md border border-dark-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-primary hover:bg-primary/10" @click="retry">Retry</button>
     </div>
     <p v-else-if="isLoading" class="text-sm text-dark-textMuted">Reading every roster in your league…</p>
     <p v-else-if="noTeam" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
