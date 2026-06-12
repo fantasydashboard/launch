@@ -10,8 +10,7 @@ import { dailyCandidates } from '@/myteam/yourMove/dailyCandidates'
 import { buildRankedMoves } from '@/myteam/yourMove/buildMoves'
 import { projectGames, projectRemainingWeek } from '@/myteam/yourMove/projectRemainingWeek'
 import type { RosterSlotPlayer } from '@/myteam/yourMove/pairDrop'
-import { sideOf } from '@/myteam/yourMove/helpedCats'
-import { getWeekSchedule, lookupStarts, type WeekSchedule } from '@/services/mlbSchedule'
+import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 
 // A this-week category is worth chasing if it's a coin-flip, or a loss still within
 // reach (we're not yet hopelessly behind). Hopeless cats aren't "moves."
@@ -85,28 +84,6 @@ export function useYourMove(inputs: {
       .filter((p) => !p.started)
       .map((p) => ({ playerKey: p.playerKey, name: p.name, team: p.team, position: p.position, stats: p.stats }))
     const playsToday = (team: string) => (todaySchedule.value.gamesByTeam[team] ?? 0) > 0
-
-    // DEV-only: surface exactly what the daily streaming layer sees, so an empty
-    // ESPN "Today" group can be diagnosed (no FA SP starting today vs a name
-    // mismatch vs an empty schedule). Stripped from production builds.
-    if (import.meta.env.DEV) {
-      const isStarter = (pos: string) =>
-        pos.split(/[,/|]/).map((t) => t.trim().toUpperCase()).some((t) => t === 'SP' || t === 'P')
-      const faPit = inputs.freeAgents.value.filter((fa) => sideOf(fa.position ?? '') === 'pit')
-      const faStarters = faPit.filter((fa) => isStarter(fa.position ?? ''))
-      const matched = faPit.filter((fa) => lookupStarts(todaySchedule.value, fa.name).length > 0)
-      const probableNames = [
-        ...new Set(Object.values(todaySchedule.value.startsByPitcher).flat().map((s) => s.pitcherName)),
-      ]
-      // console.log (not .debug) so it shows at the default console level, not Verbose.
-      // Print the two lists as plain strings (arrays truncate in the console preview) so
-      // a name mismatch vs "genuinely none starting today" is decidable at a glance.
-      /* eslint-disable no-console */
-      console.log(`[YourMove/daily · ${snap.platform}] faPitchers=${faPit.length} matched=${matched.length}`)
-      console.log(`[YM faStarters] ${faStarters.map((f) => f.name).join(' | ')}`)
-      console.log(`[YM probablesToday] ${probableNames.join(' | ')}`)
-      /* eslint-enable no-console */
-    }
 
     // Shared across both layers so no two surfaced moves drop/sit the same player,
     // and no player is suggested twice. Today is built first, so it claims the

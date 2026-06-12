@@ -122,5 +122,10 @@ export function buildRankedMoves(
     opts.usedCounterparties.add(cp.playerKey)
     opts.usedPlayers.add(c.player.key)
   }
-  return out
+  // Candidates are SELECTED in best-case-lift order (so the best move claims the
+  // cheapest counterparty), but each is then re-scored against its ACTUALLY-assigned
+  // counterparty — which can reorder the lifts. Sort the emitted moves by that actual
+  // lift so the displayed order matches the displayed numbers (no smaller % above a
+  // larger one, e.g. a +3% hero over a +13% row).
+  return out.sort((a, b) => b.winProbLift - a.winProbLift)
 }
