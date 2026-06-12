@@ -46,7 +46,7 @@ export function buildMoves(
   if (flippableCatIds.length === 0) return []
   const out: CandidateAction[] = []
   for (const c of candidates) {
-    const counterparty = pickCounterparty(roster, c.side, c.kind)
+    const counterparty = pickCounterparty(roster, c.side, c.kind, undefined, c.player.position)
     if (!counterparty || counterparty.playerKey === c.player.key) continue
     const ev = evaluateSwap(c, counterparty, projectCounterparty, flippableCatIds, cats, ctx)
     if (!ev) continue
@@ -94,7 +94,7 @@ export function buildRankedMoves(
   // Rank by best-case lift (each against the currently-weakest available drop).
   const ranked = candidates
     .map((c) => {
-      const cp = pickCounterparty(roster, c.side, c.kind, opts.usedCounterparties)
+      const cp = pickCounterparty(roster, c.side, c.kind, opts.usedCounterparties, c.player.position)
       if (!cp || cp.playerKey === c.player.key) return null
       const ev = evaluateSwap(c, cp, projectCounterparty, flippableCatIds, cats, ctx)
       return ev ? { c, bestLift: ev.winProbLift } : null
@@ -106,7 +106,7 @@ export function buildRankedMoves(
   for (const { c } of ranked) {
     if (out.length >= opts.maxMoves) break
     if (opts.usedPlayers.has(c.player.key)) continue
-    const cp = pickCounterparty(roster, c.side, c.kind, opts.usedCounterparties)
+    const cp = pickCounterparty(roster, c.side, c.kind, opts.usedCounterparties, c.player.position)
     if (!cp || cp.playerKey === c.player.key) continue
     const ev = evaluateSwap(c, cp, projectCounterparty, flippableCatIds, cats, ctx)
     if (!ev || ev.winProbLift < opts.liftFloor) continue

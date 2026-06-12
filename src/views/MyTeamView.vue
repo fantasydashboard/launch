@@ -603,7 +603,16 @@ const yourMoveKeys = computed(() => {
 // Single value model: the 0-100 roleValue the roster badge shows, keyed by player.
 // Lineup Leaks ranks by this so badge / weak-tag / leak ordering can't disagree.
 const roleValueByKey = computed(() => new Map(contributions.value.map((c) => [c.playerKey, c.roleValue])))
-const lineupLeaks = useLineupLeaks({ rosterPlayers, catSpecs, snapshot: thisWeek.snapshot, roleValueByKey, excludeKeys: yourMoveKeys })
+// The green-chip categories per player (tier 'plus'), so a leak cites only strengths
+// the roster row also shows green — never a category that's red there.
+const helpsByKey = computed(() => {
+  const m = new Map<string, Set<string>>()
+  for (const c of contributions.value) {
+    m.set(c.playerKey, new Set(c.contribs.filter((x) => x.tier === 'plus').map((x) => x.statId)))
+  }
+  return m
+})
+const lineupLeaks = useLineupLeaks({ rosterPlayers, catSpecs, snapshot: thisWeek.snapshot, roleValueByKey, helpsByKey, excludeKeys: yourMoveKeys })
 const weakStarterTags = computed(() => {
   const m = new Map<string, string>()
   for (const leak of lineupLeaks.leaks.value) m.set(leak.starter.key, leak.position)

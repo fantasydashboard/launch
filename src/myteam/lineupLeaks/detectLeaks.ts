@@ -15,7 +15,10 @@ function isAvailable(p: EligiblePlayer): boolean {
   return s === '' || s === 'ACTIVE' || s === 'DTD'
 }
 
-/** Contested categories where `better` projects ahead of `starter` (for the rationale). */
+/** Contested categories where `better` projects ahead of `starter` AND is a genuine
+ *  strength for `better` (a green chip on its roster row) — so the leak never cites a
+ *  category the same player shows red in. When helpsCats is absent, the strength gate
+ *  is skipped (back-compat for callers/tests that don't supply chip tiers). */
 function categoriesAhead(
   better: EligiblePlayer,
   starter: EligiblePlayer,
@@ -24,6 +27,7 @@ function categoriesAhead(
 ): string[] {
   return cats
     .filter((c) => (needWeights[c.statId] ?? 0) > 0)
+    .filter((c) => !better.helpsCats || better.helpsCats.has(c.statId))
     .filter((c) => {
       const dir = c.lowerIsBetter ? -1 : 1
       return (better.stats[c.statId] ?? 0) * dir > (starter.stats[c.statId] ?? 0) * dir
@@ -79,8 +83,11 @@ export function detectLeaks(
   }
 
   // Rank starters by the size of their best available leak (bench or waiver, before
-  // contention), so the worst leak gets first pick of a shared upgrade.
+  // contention), so the worst leak gets first pick of a shared upgrade. A starter Your
+  // Move is already handling (dropping/sitting) is skipped — no point flagging a lineup
+  // fix for a player you're being told elsewhere to move off.
   const order = starters
+    .filter((s) => !exclude.has(s.playerKey))
     .filter((s) => s.eligiblePositions.length > 0)
     .map((s) => {
       const position = s.eligiblePositions[0] // primary eligible position (v1)

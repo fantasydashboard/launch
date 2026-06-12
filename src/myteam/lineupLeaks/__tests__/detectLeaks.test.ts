@@ -95,4 +95,19 @@ describe('detectLeaks', () => {
     const bench = [p('strongBench1B', ['1B'], 80, 34)]
     expect(detectLeaks(starters, bench, [], cats, { HR: 0 })).toEqual([])
   })
+
+  it('cites only categories the better player helps (no green-here/red-there)', () => {
+    // The bench bat is ahead in HR but HR is NOT one of its green chips (helpsCats).
+    // The leak must not cite HR — it would contradict the player's red roster chip.
+    const starters = [p('weak1B', ['1B'], 20, 6)]
+    const bench = [{ ...p('bench1B', ['1B'], 80, 34), helpsCats: new Set<string>() }]
+    expect(detectLeaks(starters, bench, [], cats, needHR)).toEqual([])
+  })
+
+  it('skips a leak whose flagged starter Your Move already handles', () => {
+    const starters = [p('weak1B', ['1B'], 20, 6)]
+    const bench = [p('strong1B', ['1B'], 80, 34)]
+    // weak1B is being dropped/sat by Your Move -> no point flagging a lineup fix for it.
+    expect(detectLeaks(starters, bench, [], cats, needHR, { excludeKeys: new Set(['weak1B']) })).toEqual([])
+  })
 })

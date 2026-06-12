@@ -12,6 +12,10 @@ export interface EligiblePlayer {
   // Leaks ranks by this so it can never contradict the roster ordering (a player
   // can't be flagged "weaker" than someone the badge rates lower).
   roleValue: number
+  // Categories this player genuinely HELPS — the green chips on the roster row. The
+  // leak cites only these, so a category is never shown as a strength here while it's
+  // red (a weakness) on the same player's roster row. Absent = don't filter.
+  helpsCats?: Set<string>
   status?: string // injury/IL status ('' / 'ACTIVE' = available)
 }
 
