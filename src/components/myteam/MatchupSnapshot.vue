@@ -5,15 +5,11 @@ const props = defineProps<{ snapshot: ThisWeekSnapshot | null }>()
 const byStatus = (s: 'safe' | 'tossup' | 'loss') =>
   (props.snapshot?.categories ?? []).filter((c) => c.status === s)
 
-// Coin-flips are the decision content, but with many categories early in the
-// week almost everything sits near 50%. Show only the genuinely-closest ones
-// (nearest to a 50/50) so the band points at the few swing categories.
-const MAX_TOSSUPS = 4
-const tossupsSorted = computed(() =>
+// Coin-flips are where the matchup is won — the one line we never truncate. Show
+// them all, ordered closest-to-50 first so the tightest swings read first.
+const tossupsShown = computed(() =>
   byStatus('tossup').slice().sort((a, b) => Math.abs(a.myWinPct - 50) - Math.abs(b.myWinPct - 50)),
 )
-const tossupsShown = computed(() => tossupsSorted.value.slice(0, MAX_TOSSUPS))
-const tossupsExtra = computed(() => Math.max(0, tossupsSorted.value.length - MAX_TOSSUPS))
 </script>
 <template>
   <router-link
@@ -44,7 +40,6 @@ const tossupsExtra = computed(() => Math.max(0, tossupsSorted.value.length - MAX
           class="rounded px-1.5 py-0.5 font-mono text-[#F2B33A] bg-[#F2B33A]/10"
           >{{ c.label }}</span
         >
-        <span v-if="tossupsExtra" class="font-mono text-[#F2B33A]/70">+{{ tossupsExtra }} more</span>
       </div>
       <div v-if="byStatus('safe').length" class="flex flex-wrap items-center gap-1">
         <span class="font-mono uppercase tracking-wider text-primary">safe</span>
