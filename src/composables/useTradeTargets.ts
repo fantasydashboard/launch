@@ -59,7 +59,8 @@ const TOP_PARTNERS = 5
 const NEED_FLOOR = 0.25
 const DOMINANCE_RANK = 2 // a real "trade from" surplus = top-2 in the league, not a mid-pack gap
 const CORE_PROTECT = 5 // never offer your N most valuable players in a "fix your holes" tool
-const CONSOLIDATE_PROTECT = 2 // a 2-for-1 CAN pry a better player, but not their very top
+const CONSOLIDATE_PROTECT = 3 // a 2-for-1 CAN pry a better player, but not a team's top few
+const EVEN_BAND = 12 // win-win values must be within this; "reach" requires you to gain value
 
 export function useTradeTargets(inputs: {
   pool: Ref<PoolPlayer[]>
@@ -158,13 +159,16 @@ export function useTradeTargets(inputs: {
       }
       return out
     }
-    // The category you improve most = what the trade fixes (getter minus what you give up).
-    const bestFix = (getKey: string, giveKeys: string[]): string => {
+    const sideByStat = new Map(cats.map((c) => [c.statId, c.side]))
+    // The category you improve most ON THE GET PLAYER'S SIDE = what the trade fixes (a
+    // pitcher can't "fix" stolen bases). Returns '' if it improves no same-side category.
+    const bestFix = (getKey: string, giveKeys: string[], getSide: 'hit' | 'pit'): string => {
       const gs = strengths.get(getKey) ?? {}
       const gv = combineStr(giveKeys)
-      let fixId = statIds[0]
+      let fixId = ''
       let maxg = -Infinity
       for (const c of statIds) {
+        if (sideByStat.get(c) !== getSide) continue
         const g = (myNeed[c] ?? 0) * ((gs[c] ?? 0) - (gv[c] ?? 0))
         if (g > maxg) { maxg = g; fixId = c }
       }
@@ -178,6 +182,9 @@ export function useTradeTargets(inputs: {
       yourGain: number
       theirGain: number
       giveKey: string
+      getKey: string
+      gv: number
+      tv: number
       fixId: string
       get: TradeSide
       give: TradeSide
@@ -197,13 +204,16 @@ export function useTradeTargets(inputs: {
           if (Math.abs(tv - gv) > VALUE_BAND) continue
           const ev = evalDeal(strengths.get(get.playerKey) ?? {}, strengths.get(give.playerKey) ?? {}, myNeed, theirNeed, statIds)
           if (ev.klass === 'fleece' || ev.yourGain <= 0) continue
-          const fixId = bestFix(get.playerKey, [give.playerKey])
-          if (!isHole(fixId)) continue // no "fixes W · 4th"
+          const fixId = bestFix(get.playerKey, [give.playerKey], sideOf(get.position))
+          if (!fixId || !isHole(fixId)) continue // no "fixes W · 4th"; side-gated
           oneForOne.push({
             klass: ev.klass,
             yourGain: ev.yourGain,
             theirGain: ev.theirGain,
             giveKey: give.playerKey,
+            getKey: get.playerKey,
+            gv: Math.round(gv),
+            tv: Math.round(tv),
             fixId,
             get: { name: get.name, pos: get.position, value: Math.round(tv) },
             give: { name: give.name, pos: give.position, value: Math.round(gv) },
@@ -213,32 +223,41 @@ export function useTradeTargets(inputs: {
       }
     }
     const toTarget = (d: Raw): TradeTarget => ({ fix: tag(d.fixId), get: d.get, give: d.give, fromTeam: d.fromTeam, klass: d.klass === 'leverage' ? 'leverage' : 'winWin' })
+    // Dedupe by BOTH the give and the get player (no repeated targets), and cap to two
+    // deals per hole so you see variety across your needs rather than five SV cards.
     const dedupeTop = (deals: Raw[], cmp: (a: Raw, b: Raw) => number, n = 6): TradeTarget[] => {
-      const used = new Set<string>()
+      const usedGive = new Set<string>()
+      const usedGet = new Set<string>()
+      const perFix = new Map<string, number>()
       const out: TradeTarget[] = []
       for (const d of [...deals].sort(cmp)) {
-        if (used.has(d.giveKey)) continue
-        used.add(d.giveKey)
+        if (usedGive.has(d.giveKey) || usedGet.has(d.getKey)) continue
+        if ((perFix.get(d.fixId) ?? 0) >= 2) continue
+        usedGive.add(d.giveKey)
+        usedGet.add(d.getKey)
+        perFix.set(d.fixId, (perFix.get(d.fixId) ?? 0) + 1)
         out.push(toTarget(d))
         if (out.length >= n) break
       }
       return out
     }
-    // Win-win: rank by SHARED benefit (most likely accepted). Make-them-reach: rank by
-    // YOUR gain (the overpay you'd extract from a desperate/reaching counterparty).
-    const winWin = dedupeTop(oneForOne.filter((d) => d.klass === 'winWin'), (a, b) => Math.min(b.yourGain, b.theirGain) - Math.min(a.yourGain, a.theirGain))
-    const reach = dedupeTop(oneForOne.filter((d) => d.klass === 'leverage'), (a, b) => b.yourGain - a.yourGain)
+    // Win-win: near-even value, ranked by SHARED benefit (most likely accepted).
+    // Make-them-reach: YOU gain value too (getValue ≥ giveValue — they overpay), ranked
+    // by your gain. The value direction is what makes "reach" mean they reached, not you.
+    const winWin = dedupeTop(oneForOne.filter((d) => d.klass === 'winWin' && Math.abs(d.tv - d.gv) <= EVEN_BAND), (a, b) => Math.min(b.yourGain, b.theirGain) - Math.min(a.yourGain, a.theirGain))
+    const reach = dedupeTop(oneForOne.filter((d) => d.klass === 'leverage' && d.tv >= d.gv), (a, b) => b.yourGain - a.yourGain)
 
     // --- Consolidate (2-for-1): package two depth pieces for one stud that fixes a hole.
     //     A 2-for-1 can pry a better player (protect only their very top), and you pay a
     //     bounded total-value premium for the upgrade plus the freed roster spot. ---
-    const consolidate: ConsolidateTarget[] = []
+    interface ConsCand { gain: number; t: ConsolidateTarget; giveKeys: string[]; getKey: string }
+    const consCands: ConsCand[] = []
     for (const ps of partnerScores) {
       const theirNeed = needVec(ps.teamId)
       const getCandidates = [...(byTeam.get(ps.teamId) ?? [])]
         .sort((a, b) => (marketValue.get(b.playerKey) ?? 0) - (marketValue.get(a.playerKey) ?? 0))
         .slice(CONSOLIDATE_PROTECT)
-      let best: { gain: number; t: ConsolidateTarget } | null = null
+      let best: ConsCand | null = null
       for (let i = 0; i < giveCandidates.length; i++) {
         for (let j = i + 1; j < giveCandidates.length; j++) {
           const g1 = giveCandidates[i]
@@ -253,11 +272,13 @@ export function useTradeTargets(inputs: {
             if (combinedVal < tv || combinedVal - tv > VALUE_BAND) continue // bounded premium
             const ev = evalDeal(strengths.get(get.playerKey) ?? {}, combined, myNeed, theirNeed, statIds)
             if (ev.yourGain <= 0 || ev.theirGain <= 0) continue
-            const fixId = bestFix(get.playerKey, [g1.playerKey, g2.playerKey])
-            if (!isHole(fixId)) continue
+            const fixId = bestFix(get.playerKey, [g1.playerKey, g2.playerKey], sideOf(get.position))
+            if (!fixId || !isHole(fixId)) continue
             if (!best || ev.yourGain > best.gain) {
               best = {
                 gain: ev.yourGain,
+                giveKeys: [g1.playerKey, g2.playerKey],
+                getKey: get.playerKey,
                 t: {
                   fix: tag(fixId),
                   get: { name: get.name, pos: get.position, value: Math.round(tv) },
@@ -273,9 +294,20 @@ export function useTradeTargets(inputs: {
           }
         }
       }
-      if (best) consolidate.push(best.t)
+      if (best) consCands.push(best)
     }
-    consolidate.sort((a, b) => b.fix.rank - a.fix.rank)
+    // Lead with deals fixing your worst holes; dedupe the get AND both give pieces so no
+    // player appears in two packages.
+    consCands.sort((a, b) => b.t.fix.rank - a.t.fix.rank || b.gain - a.gain)
+    const usedGiveC = new Set<string>()
+    const usedGetC = new Set<string>()
+    const consolidate: ConsolidateTarget[] = []
+    for (const c of consCands) {
+      if (usedGetC.has(c.getKey) || c.giveKeys.some((k) => usedGiveC.has(k))) continue
+      usedGetC.add(c.getKey)
+      c.giveKeys.forEach((k) => usedGiveC.add(k))
+      consolidate.push(c.t)
+    }
 
     const partners: PartnerView[] = partnerScores.map((ps) => {
       const m = landscape.get(ps.teamId)!
