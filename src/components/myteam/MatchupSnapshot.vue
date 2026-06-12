@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { ThisWeekSnapshot } from '@/composables/useThisWeekMatchup'
+import { matchupPath } from '@/myteam/matchupPath'
 const props = defineProps<{ snapshot: ThisWeekSnapshot | null }>()
+
+// "Your path": the strategic read of the matchup (which coin-flips to win, what to
+// punt). Hidden once the week is final — there's nothing left to steer.
+const path = computed(() =>
+  props.snapshot && !props.snapshot.completed ? matchupPath(props.snapshot.categories) : null,
+)
 // Opponent logo with monogram fallback (fantasy logos are often missing/broken).
 const oppLogoFailed = ref(false)
 const byStatus = (s: 'safe' | 'tossup' | 'loss') =>
@@ -57,6 +64,10 @@ const tossupsShown = computed(() =>
       <span class="text-[#FF5C5C]">{{ snapshot.lossPct }}% loss</span>
       <span class="text-dark-textMuted"> · projected {{ snapshot.projWins }}-{{ snapshot.projLosses }}</span>
     </div>
+    <!-- Your path: the directive that turns the status chips below into a plan. -->
+    <p v-if="path" class="mt-2 text-sm text-dark-text">
+      <span class="mr-1.5 font-mono text-[10px] uppercase tracking-wider text-primary">Path</span>{{ path }}
+    </p>
     <div class="mt-2 space-y-1 text-xs">
       <div v-if="tossupsShown.length" class="flex flex-wrap items-center gap-1">
         <span class="font-mono uppercase tracking-wider text-[#F2B33A]">coin-flips</span>
