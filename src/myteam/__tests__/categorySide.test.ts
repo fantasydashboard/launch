@@ -18,4 +18,11 @@ describe('classifyCategory', () => {
   it('defaults unknown to hitting, non-ratio', () => {
     expect(classifyCategory('Mystery Stat', false)).toEqual({ side: 'hit', isRatio: false })
   })
+  it('disambiguates strikeouts (K/SO) by direction', () => {
+    // Pitcher strikeouts: the usual category-league K, higher-is-better -> pitching.
+    expect(classifyCategory('K', false)).toEqual({ side: 'pit', isRatio: false })
+    expect(classifyCategory('SO', false)).toEqual({ side: 'pit', isRatio: false })
+    // Batter strikeouts: lower-is-better -> hitting.
+    expect(classifyCategory('K', true)).toEqual({ side: 'hit', isRatio: false })
+  })
 })

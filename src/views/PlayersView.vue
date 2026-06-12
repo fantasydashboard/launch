@@ -366,23 +366,50 @@ function toEligibleFor(p: { playerKey: string; name: string; team?: string; posi
 }
 const allNeedWeights = computed(() => {
   const w: Record<string, number> = {}
-  for (const c of catSpecs.value) w[c.statId] = 1 // season value: every category counts
+  for (const c of catSpecs.value) w[c.statId] = 1 // gate: any category an upgrade leads in counts
   return w
+})
+// How much your roster NEEDS each category: worse season rank = higher weight. This is
+// what makes Season fit about YOUR roster shape (lead with your weak cats) rather than
+// raw value gap (which just surfaces your scrubs vs the best available arms).
+const needWeightByStat = computed(() => {
+  const m = new Map<string, number>()
+  for (const c of catSpecs.value) m.set(c.statId, 0.5)
+  const n = profile.value?.numTeams ?? 0
+  if (profile.value && n > 0) {
+    for (const tc of profile.value.categories) m.set(tc.statId, Math.min(1, Math.max(0, tc.rank / n)))
+  }
+  return m
+})
+const sideByStat = computed(() => {
+  const m = new Map<string, 'hit' | 'pit'>()
+  for (const c of catSpecs.value) m.set(c.statId, c.side)
+  return m
 })
 const upgradeViews = computed(() => {
   if (!rosterPlayers.value.length || !players.value.length || !catSpecs.value.length || !marketValueByKey.value.size) return []
   const mine = rosterPlayers.value.map((p) => toEligibleFor(p, rosterFgStatsByKey.value))
   const wire = players.value.map((fa) => toEligibleFor(fa, faFgStatsByKey.value))
   const leaks = detectLeaks(mine, [], wire, catSpecs.value, allNeedWeights.value, { materiality: UPGRADE_MATERIALITY })
-  return leaks.map((l) => ({
-    position: l.position,
-    yourName: l.starter.name,
-    yourValue: Math.round(marketValueByKey.value.get(l.starter.key) ?? 0),
-    upName: l.better.name,
-    upValue: Math.round(marketValueByKey.value.get(l.better.key) ?? 0),
-    gap: Math.round(l.gap),
-    cats: l.categories.map(labelFor),
-  }))
+  const need = needWeightByStat.value
+  return leaks
+    .map((l) => {
+      // Side-gate displayed cats to the upgrade's own side — no batter K on a hitter row.
+      const upSide = sideOf(faByKey.value.get(l.better.key)?.position ?? '')
+      const helpedIds = l.categories.filter((id) => (sideByStat.value.get(id) ?? upSide) === upSide)
+      return {
+        position: l.position,
+        yourName: l.starter.name,
+        yourValue: Math.round(marketValueByKey.value.get(l.starter.key) ?? 0),
+        upName: l.better.name,
+        upValue: Math.round(marketValueByKey.value.get(l.better.key) ?? 0),
+        gap: Math.round(l.gap),
+        cats: helpedIds.map(labelFor),
+        needScore: helpedIds.reduce((s, id) => s + (need.get(id) ?? 0), 0),
+      }
+    })
+    // Roster need first (does it help your WEAK categories?), value gap as the tiebreak.
+    .sort((a, b) => b.needScore - a.needScore || b.gap - a.gap)
 })
 
 const oppName = computed(() => thisWeek.snapshot.value?.opponentName ?? '')
@@ -441,7 +468,9 @@ function ordinal(n: number): string {
       Switch to the <button type="button" class="text-primary underline-offset-2 hover:underline" @click="lens = 'seasonFit'">Season fit</button> lens.
     </p>
     <p v-if="!unsupported && lens === 'thisWeek'" class="font-mono text-[10px] text-dark-textMuted">% = added chance to win this week · each add is netted against the drop</p>
-    <p v-else-if="!unsupported" class="font-mono text-[10px] text-dark-textMuted">Where a better player is available on waivers · number = rest-of-season value gain</p>
+    <p v-else-if="!unsupported" class="font-mono text-[10px] leading-relaxed text-dark-textMuted">
+      Your weak spots where the wire beats you, your biggest needs first · (n) = rest-of-season value, 0–100 · <span class="text-primary">+n</span> = value you'd gain
+    </p>
 
     <!-- Shared: unsupported platform -->
     <p v-if="unsupported" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
