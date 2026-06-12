@@ -412,9 +412,9 @@ function ordinal(n: number): string {
             <span v-for="c in hero.flips" :key="c" class="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary">{{ c }}</span>
           </div>
           <p class="mt-1.5 font-mono text-[11px] text-dark-textMuted">
-            ROS<template v-for="s in hero.segs" :key="s.statId"> {{ s.value }} {{ s.label }} ·</template>
-            <span v-if="hero.matched" class="text-dark-textMuted/60"> FanGraphs</span>
-            <span v-else class="text-dark-textMuted/60"> projected</span>
+            <span>ROS</span>
+            <span v-for="s in hero.segs" :key="s.statId">{{ s.value }} {{ s.label }} <span class="text-dark-textMuted/40">· </span></span>
+            <span class="text-dark-textMuted/60">{{ hero.matched ? 'FanGraphs' : 'projected' }}</span>
           </p>
         </div>
       </div>
@@ -433,7 +433,7 @@ function ordinal(n: number): string {
               <span class="font-mono text-[11px] text-dark-textMuted"> {{ v.pos }} · {{ v.team }}<template v-if="v.drop"> · drop {{ v.drop }}</template><span v-if="v.dropWeakLink" class="text-dark-textMuted/70"> (weak link)</span></span>
             </span>
             <span class="mt-0.5 block font-mono text-[11px]">
-              <template v-for="(s, i) in v.segs" :key="s.statId"><span v-if="i > 0" class="text-dark-textMuted/40"> · </span><span :class="s.helped ? 'text-primary' : 'text-dark-textMuted'">{{ s.label }}</span><span class="text-dark-textMuted"> {{ s.value }}</span></template>
+              <template v-for="(s, i) in v.segs" :key="s.statId"><span v-if="i > 0" class="text-dark-textMuted/40"> · </span><span :class="s.helped ? 'text-primary' : 'text-dark-textMuted'">{{ s.label }}</span>&nbsp;<span class="text-dark-textMuted">{{ s.value }}</span></template>
             </span>
           </span>
         </div>
@@ -458,7 +458,7 @@ function ordinal(n: number): string {
                 <span class="font-mono text-[11px] text-dark-textMuted"> {{ v.pos }} · {{ v.team }}<template v-if="v.drop"> · drop {{ v.drop }}</template></span>
               </span>
               <span class="mt-0.5 block font-mono text-[11px]">
-                <template v-for="(s, i) in v.segs" :key="s.statId"><span v-if="i > 0" class="text-dark-textMuted/40"> · </span><span :class="s.helped ? 'text-primary' : 'text-dark-textMuted'">{{ s.label }}</span><span class="text-dark-textMuted"> {{ s.value }}</span></template>
+                <template v-for="(s, i) in v.segs" :key="s.statId"><span v-if="i > 0" class="text-dark-textMuted/40"> · </span><span :class="s.helped ? 'text-primary' : 'text-dark-textMuted'">{{ s.label }}</span>&nbsp;<span class="text-dark-textMuted">{{ s.value }}</span></template>
               </span>
             </span>
           </div>

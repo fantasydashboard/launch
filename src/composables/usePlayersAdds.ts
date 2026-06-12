@@ -8,6 +8,7 @@ import { addGenerator } from '@/myteam/yourMove/generators/addGenerator'
 import { streamGenerator } from '@/myteam/yourMove/generators/streamGenerator'
 import { buildMoves } from '@/myteam/yourMove/buildMoves'
 import { projectRemainingWeek } from '@/myteam/yourMove/projectRemainingWeek'
+import { toEffectiveStats } from '@/myteam/effectiveStats'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 
 // A this-week category is worth chasing if it's a coin-flip or a loss still within
@@ -84,8 +85,7 @@ export function usePlayersAdds(inputs: {
       ...streamGenerator(inputs.freeAgents.value, weekSchedule.value.startsByPitcher, cats, fraction, fg),
     ]
 
-    // Each candidate netted against the weakest same-side droppable (recurring), then
-    // sorted best first. tierAdds (in the view) applies the lift floor + tiers.
+    // Each candidate netted against the weakest same-side droppable (recurring).
     const moves = buildMoves(
       candidates,
       inputs.roster.value,
@@ -95,7 +95,36 @@ export function usePlayersAdds(inputs: {
       (p) => projectRemainingWeek(p.stats, null, cats, days, fraction),
       'longTerm',
     )
-    return moves.slice().sort((a, b) => b.winProbLift - a.winProbLift)
+
+    // A pitcher with a probable start is generated as BOTH an add and a stream, so the
+    // same player can surface twice. Keep one row per player — the higher-lift version,
+    // preferring the schedule-aware stream on a tie.
+    const byPlayer = new Map<string, CandidateAction>()
+    for (const mv of moves) {
+      const prev = byPlayer.get(mv.player.key)
+      const better = !prev || mv.winProbLift > prev.winProbLift || (mv.winProbLift === prev.winProbLift && mv.kind === 'stream' && prev.kind !== 'stream')
+      if (better) byPlayer.set(mv.player.key, mv)
+    }
+
+    // The win-prob model saturates: over one week any decent start flips ERA/WHIP
+    // decisively, so every same-category arm ties on lift. Break ties by projected
+    // quality in the flipped cats (direction-aware) so the BEST arm leads — otherwise
+    // the hero is arbitrary (a 4.56 ERA arm above a 3.90 one).
+    const faByKey = new Map(inputs.freeAgents.value.map((f) => [f.playerKey, f]))
+    const lowerByStat = new Map(cats.map((c) => [c.statId, c.lowerIsBetter]))
+    const quality = (a: CandidateAction): number => {
+      const fa = faByKey.get(a.player.key)
+      if (!fa) return 0
+      const eff = toEffectiveStats(fa.stats, fg[a.player.key] ?? null, cats, fraction)
+      let q = 0
+      for (const statId of a.categories) {
+        const v = eff[statId]
+        if (v === undefined || !Number.isFinite(v)) continue
+        q += lowerByStat.get(statId) ? -v : v
+      }
+      return q
+    }
+    return [...byPlayer.values()].sort((a, b) => b.winProbLift - a.winProbLift || quality(b) - quality(a))
   })
 
   return { adds }
