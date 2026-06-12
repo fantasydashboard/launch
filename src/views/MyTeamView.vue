@@ -22,6 +22,7 @@ import { mapToEspnStats } from '@/services/projectionService'
 import { classifyCategory } from '@/myteam/categorySide'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
 import { computeCategoryGaps } from '@/myteam/categoryGaps'
+import { holeFixNote } from '@/myteam/holeFix'
 import SituationStrip from '@/components/myteam/SituationStrip.vue'
 import CategoryProfile from '@/components/myteam/CategoryProfile.vue'
 import RosterPanel from '@/components/myteam/RosterPanel.vue'
@@ -411,6 +412,18 @@ const holeAdd = computed<{ name: string; statValue: number; label: string; isRat
   return addsByStatId.value[hole.statId] ?? null
 })
 
+// Fallback for the "Fix it" line when no clean same-side add exists (e.g. ESPN's
+// roster-wide Runs hole): an honest, category-aware note instead of silence — without
+// inventing a player target. Null when an add exists (the add takes precedence) or
+// there's no weakness at all.
+const holeNote = computed<string | null>(() => {
+  const hole = weaknesses.value[0]
+  if (!hole || holeAdd.value) return null
+  const label = categories.value.find((c) => c.statId === hole.statId)?.label ?? hole.statId
+  const isRatio = catSpecs.value.find((c) => c.statId === hole.statId)?.isRatio ?? false
+  return holeFixNote(label, isRatio)
+})
+
 // === Per-player contribution (season-to-date) vs the league's rostered pool ===
 // Direction-aware spec for each scoring category (lowerIsBetter for rate cats).
 const cats = computed(() =>
@@ -629,6 +642,7 @@ watch(categories, () => {
       :num-teams="profile.numTeams"
       :verdict="verdict"
       :hole-add="holeAdd"
+      :hole-note="holeNote"
     />
 
     <YourMove

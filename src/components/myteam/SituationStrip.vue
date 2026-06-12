@@ -11,6 +11,9 @@ defineProps<{
   // weakness the verdict names. Null when no meaningful add exists. isRatio rows
   // show the value as a level, not a "+" delta (a "+" reads as worse on a rate).
   holeAdd?: { name: string; statValue: number; label: string; isRatio: boolean } | null
+  // Honest fallback shown when no clean add exists for the hole (holeAdd is null):
+  // a category-aware note, not a manufactured next-step. Null to omit.
+  holeNote?: string | null
 }>()
 
 // Fantasy team logos are frequently missing or broken (user uploads); fall back to a
@@ -54,5 +57,7 @@ const logoFailed = ref(false)
       <span>Add <span class="font-semibold text-dark-text">{{ holeAdd.name }}</span></span>
       <span class="font-mono tabular-nums text-primary">{{ holeAdd.isRatio ? '' : '+' }}{{ holeAdd.statValue }} {{ holeAdd.label }}</span>
     </router-link>
+
+    <p v-else-if="holeNote" class="text-sm text-dark-textMuted">{{ holeNote }}</p>
   </header>
 </template>
