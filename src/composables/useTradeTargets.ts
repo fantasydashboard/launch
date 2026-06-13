@@ -259,19 +259,21 @@ export function useTradeTargets(inputs: {
       }
       return fixId
     }
-    // Show your work: the categories this deal NETS you, need-weighted, on the get player's
-    // side (get strength minus what you give up), strongest first. Trust comes from naming them.
-    const helpsFor = (getKey: string, giveKeys: string[], getSide: 'hit' | 'pit'): string[] => {
+    // Categories this deal NETS you, need-weighted (get strength minus what you give up), on
+    // the get player's side, strongest first. The top one is the category you most improve —
+    // which the timing mode uses as its label (it may be a CONTESTED race, not a bottom hole).
+    const rankHelps = (getKey: string, giveKeys: string[], getSide: 'hit' | 'pit'): { statId: string; gain: number }[] => {
       const gs = strengths.get(getKey) ?? {}
       const gv = combineStr(giveKeys)
       return statIds
         .filter((c) => sideByStat.get(c) === getSide)
-        .map((c) => ({ c, g: (myNeed[c] ?? 0) * ((gs[c] ?? 0) - (gv[c] ?? 0)) }))
-        .filter((x) => x.g > 0.01)
-        .sort((a, b) => b.g - a.g)
-        .slice(0, 3)
-        .map((x) => inputs.labelOf(x.c))
+        .map((c) => ({ statId: c, gain: (myNeed[c] ?? 0) * ((gs[c] ?? 0) - (gv[c] ?? 0)) }))
+        .filter((x) => x.gain > 0.01)
+        .sort((a, b) => b.gain - a.gain)
     }
+    // Show your work: name the categories you net (used on every card).
+    const helpsFor = (getKey: string, giveKeys: string[], getSide: 'hit' | 'pit'): string[] =>
+      rankHelps(getKey, giveKeys, getSide).slice(0, 3).map((x) => inputs.labelOf(x.statId))
 
     // --- All viable 1-for-1 deals (gated to your real holes, value-banded, both cores
     //     protected), bucketed into the Win-win and Make-them-reach modes. ---
@@ -409,9 +411,63 @@ export function useTradeTargets(inputs: {
       }
       return out
     })()
-    // Buy-low / sell-high: same need-fit deals, but only those with a timing edge (you GET an
-    // underperformer due to rebound and/or GIVE an overperformer due to cool off), best first.
-    const timing = dedupeTop(oneForOne.filter((d) => d.timingEdge > 0), (a, b) => b.timingEdge - a.timingEdge)
+    // Buy-low / sell-high — the objective is the TIMING edge, NOT a bottom-tier hole fix. Surface
+    // deals where you GET a buy-low (rebound coming) and/or GIVE a sell-high (cool-off coming),
+    // value-banded and acceptable to them (theirGain > 0), that still help you in a category with
+    // real marginal value (yourGain > 0 — contested races count, not only holes). Labeled by the
+    // category you most improve (which may be contested), ranked by timing edge.
+    interface TimeRaw { edge: number; giveKey: string; getKey: string; improveCat: string; t: TradeTarget }
+    const timeRaws: TimeRaw[] = []
+    for (const ps of partnerScores) {
+      const theirNeed = needVec(ps.teamId)
+      const getCandidates = [...(byTeam.get(ps.teamId) ?? [])]
+        .sort((a, b) => (marketValue.get(b.playerKey) ?? 0) - (marketValue.get(a.playerKey) ?? 0))
+        .slice(CORE_PROTECT)
+      for (const give of giveCandidates) {
+        const gv = marketValue.get(give.playerKey) ?? 0
+        for (const get of getCandidates) {
+          const tv = marketValue.get(get.playerKey) ?? 0
+          if (Math.abs(tv - gv) > VALUE_BAND) continue
+          const edge = timingEdgeOf(get.playerKey, [give.playerKey])
+          if (edge <= 0) continue // must have a buy-low get and/or sell-high give
+          const ev = evalDeal(strengths.get(get.playerKey) ?? {}, strengths.get(give.playerKey) ?? {}, myNeed, theirNeed, statIds)
+          if (ev.klass === 'fleece' || ev.theirGain <= 0 || ev.yourGain <= 0) continue
+          const improveCat = rankHelps(get.playerKey, [give.playerKey], sideOf(get.position))[0]?.statId
+          if (!improveCat) continue // the return must actually help you somewhere
+          timeRaws.push({
+            edge,
+            giveKey: give.playerKey,
+            getKey: get.playerKey,
+            improveCat,
+            t: {
+              fix: tag(improveCat),
+              get: { name: get.name, pos: get.position, value: Math.round(tv), headshot: get.headshot, proLogo: mlbTeamLogo(get.proTeam), ...sideTiming(get.playerKey, 'buy') },
+              give: { name: give.name, pos: give.position, value: Math.round(gv), headshot: give.headshot, proLogo: mlbTeamLogo(give.proTeam), ...sideTiming(give.playerKey, 'sell') },
+              fromTeam: teamName(ps.teamId),
+              fromTeamLogo: teamLogo(ps.teamId),
+              klass: ev.klass === 'leverage' ? 'leverage' : 'winWin',
+              helps: helpsFor(get.playerKey, [give.playerKey], sideOf(get.position)),
+            },
+          })
+        }
+      }
+    }
+    const timing = (() => {
+      const usedGive = new Set<string>()
+      const usedGet = new Set<string>()
+      const perCat = new Map<string, number>()
+      const out: TradeTarget[] = []
+      for (const d of timeRaws.sort((a, b) => b.edge - a.edge)) {
+        if (usedGive.has(d.giveKey) || usedGet.has(d.getKey)) continue
+        if ((perCat.get(d.improveCat) ?? 0) >= 2) continue
+        usedGive.add(d.giveKey)
+        usedGet.add(d.getKey)
+        perCat.set(d.improveCat, (perCat.get(d.improveCat) ?? 0) + 1)
+        out.push(d.t)
+        if (out.length >= 6) break
+      }
+      return out
+    })()
 
     // --- Consolidate (2-for-1): package two depth pieces for one stud that fixes a hole.
     //     A 2-for-1 can pry a better player (protect only their very top), and you pay a
@@ -440,28 +496,33 @@ export function useTradeTargets(inputs: {
             if (combinedVal < tv || combinedVal - tv > VALUE_BAND) continue // bounded premium
             const ev = evalDeal(strengths.get(get.playerKey) ?? {}, combined, myNeed, theirNeed, statIds)
             if (ev.yourGain <= 0 || ev.theirGain <= 0) continue
-            const fixId = bestFix(get.playerKey, [g1.playerKey, g2.playerKey], sideOf(get.position))
-            if (!fixId || !isHole(fixId)) continue
-            const cand: ConsCand = {
-              gain: ev.yourGain,
-              timingEdge: timingEdgeOf(get.playerKey, [g1.playerKey, g2.playerKey]),
-              giveKeys: [g1.playerKey, g2.playerKey],
-              getKey: get.playerKey,
-              t: {
-                fix: tag(fixId),
-                get: { name: get.name, pos: get.position, value: Math.round(tv), headshot: get.headshot, proLogo: mlbTeamLogo(get.proTeam), ...sideTiming(get.playerKey, 'buy') },
-                give: [
-                  { name: g1.name, pos: g1.position, value: Math.round(v1), headshot: g1.headshot, proLogo: mlbTeamLogo(g1.proTeam), ...sideTiming(g1.playerKey, 'sell') },
-                  { name: g2.name, pos: g2.position, value: Math.round(v2), headshot: g2.headshot, proLogo: mlbTeamLogo(g2.proTeam), ...sideTiming(g2.playerKey, 'sell') },
-                ],
-                fromTeam: teamName(ps.teamId),
-                fromTeamLogo: teamLogo(ps.teamId),
-                klass: ev.klass === 'leverage' ? 'leverage' : 'winWin',
-                helps: helpsFor(get.playerKey, [g1.playerKey, g2.playerKey], sideOf(get.position)),
-              },
+            const gives = [g1.playerKey, g2.playerKey]
+            const side = sideOf(get.position)
+            const fixId = bestFix(get.playerKey, gives, side)
+            if (!fixId) continue // the stud must be genuinely strong in some same-side cat
+            // Sides are identical across both modes; only the header `fix` label differs.
+            const getSide: TradeSide = { name: get.name, pos: get.position, value: Math.round(tv), headshot: get.headshot, proLogo: mlbTeamLogo(get.proTeam), ...sideTiming(get.playerKey, 'buy') }
+            const giveSides: TradeSide[] = [
+              { name: g1.name, pos: g1.position, value: Math.round(v1), headshot: g1.headshot, proLogo: mlbTeamLogo(g1.proTeam), ...sideTiming(g1.playerKey, 'sell') },
+              { name: g2.name, pos: g2.position, value: Math.round(v2), headshot: g2.headshot, proLogo: mlbTeamLogo(g2.proTeam), ...sideTiming(g2.playerKey, 'sell') },
+            ]
+            const helps = helpsFor(get.playerKey, gives, side)
+            const klass: Exclude<DealClass, 'fleece'> = ev.klass === 'leverage' ? 'leverage' : 'winWin'
+            // Consolidate: the stud must fix a bottom-tier HOLE.
+            if (isHole(fixId)) {
+              const candC: ConsCand = { gain: ev.yourGain, timingEdge: 0, giveKeys: gives, getKey: get.playerKey,
+                t: { fix: tag(fixId), get: getSide, give: giveSides, fromTeam: teamName(ps.teamId), fromTeamLogo: teamLogo(ps.teamId), klass, helps } }
+              if (!best || candC.gain > best.gain) best = candC
             }
-            if (!best || cand.gain > best.gain) best = cand
-            if (cand.timingEdge > 0 && (!bestT || cand.timingEdge > bestT.timingEdge)) bestT = cand
+            // Timing 2-for-1: objective is the timing edge — NO hole gate. Label by the category
+            // you most improve (may be contested), so a sell-high package isn't dropped for missing a hole.
+            const tEdge = timingEdgeOf(get.playerKey, gives)
+            if (tEdge > 0) {
+              const improveCat = rankHelps(get.playerKey, gives, side)[0]?.statId ?? fixId
+              const candT: ConsCand = { gain: ev.yourGain, timingEdge: tEdge, giveKeys: gives, getKey: get.playerKey,
+                t: { fix: tag(improveCat), get: getSide, give: giveSides, fromTeam: teamName(ps.teamId), fromTeamLogo: teamLogo(ps.teamId), klass, helps } }
+              if (!bestT || candT.timingEdge > bestT.timingEdge) bestT = candT
+            }
           }
         }
       }
