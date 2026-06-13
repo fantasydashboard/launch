@@ -285,6 +285,7 @@ function onLogoError(e: Event) {
             <span class="font-mono text-[11px] text-dark-textMuted">{{ t.give.pos }}</span>
             <ValueBadge :value="t.give.value" />
           </div>
+          <div v-if="t.helps.length" class="border-t border-dark-border/40 px-4 py-1.5 font-mono text-[10px] text-dark-textMuted">nets you <span class="text-primary">{{ t.helps.join(' · ') }}</span></div>
         </div>
       </section>
 
@@ -317,6 +318,7 @@ function onLogoError(e: Event) {
               <ValueBadge :value="g.value" />
             </div>
           </div>
+          <div v-if="t.helps.length" class="border-t border-dark-border/40 px-4 py-1.5 font-mono text-[10px] text-dark-textMuted">nets you <span class="text-primary">{{ t.helps.join(' · ') }}</span></div>
         </div>
       </section>
 

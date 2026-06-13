@@ -29,6 +29,7 @@ export interface TradeTarget {
   fromTeam: string
   fromTeamLogo?: string
   klass: Exclude<DealClass, 'fleece'>
+  helps: string[] // the categories you NET (need-weighted), e.g. ['SB','SV'] — show your work
 }
 export interface ConsolidateTarget {
   fix: CatTag
@@ -37,6 +38,7 @@ export interface ConsolidateTarget {
   fromTeam: string
   fromTeamLogo?: string
   klass: Exclude<DealClass, 'fleece'>
+  helps: string[]
 }
 export interface PartnerView {
   team: string
@@ -187,6 +189,19 @@ export function useTradeTargets(inputs: {
       }
       return fixId
     }
+    // Show your work: the categories this deal NETS you, need-weighted, on the get player's
+    // side (get strength minus what you give up), strongest first. Trust comes from naming them.
+    const helpsFor = (getKey: string, giveKeys: string[], getSide: 'hit' | 'pit'): string[] => {
+      const gs = strengths.get(getKey) ?? {}
+      const gv = combineStr(giveKeys)
+      return statIds
+        .filter((c) => sideByStat.get(c) === getSide)
+        .map((c) => ({ c, g: (myNeed[c] ?? 0) * ((gs[c] ?? 0) - (gv[c] ?? 0)) }))
+        .filter((x) => x.g > 0.01)
+        .sort((a, b) => b.g - a.g)
+        .slice(0, 3)
+        .map((x) => inputs.labelOf(x.c))
+    }
 
     // --- All viable 1-for-1 deals (gated to your real holes, value-banded, both cores
     //     protected), bucketed into the Win-win and Make-them-reach modes. ---
@@ -237,7 +252,7 @@ export function useTradeTargets(inputs: {
         }
       }
     }
-    const toTarget = (d: Raw): TradeTarget => ({ fix: tag(d.fixId), get: d.get, give: d.give, fromTeam: d.fromTeam, fromTeamLogo: d.fromTeamLogo, klass: d.klass === 'leverage' ? 'leverage' : 'winWin' })
+    const toTarget = (d: Raw): TradeTarget => ({ fix: tag(d.fixId), get: d.get, give: d.give, fromTeam: d.fromTeam, fromTeamLogo: d.fromTeamLogo, klass: d.klass === 'leverage' ? 'leverage' : 'winWin', helps: helpsFor(d.getKey, [d.giveKey], sideOf(d.get.pos)) })
     // Dedupe by BOTH the give and the get player (no repeated targets), and cap to two
     // deals per hole so you see variety across your needs rather than five SV cards.
     const dedupeTop = (deals: Raw[], cmp: (a: Raw, b: Raw) => number, n = 6): TradeTarget[] => {
@@ -304,6 +319,7 @@ export function useTradeTargets(inputs: {
                   fromTeam: teamName(ps.teamId),
                   fromTeamLogo: teamLogo(ps.teamId),
                   klass: ev.klass === 'leverage' ? 'leverage' : 'winWin',
+                  helps: helpsFor(get.playerKey, [g1.playerKey, g2.playerKey], sideOf(get.position)),
                 },
               }
             }
