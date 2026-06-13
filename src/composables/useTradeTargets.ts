@@ -69,6 +69,10 @@ const DOMINANCE_RANK = 2 // a real "trade from" surplus = top-2 in the league, n
 const CORE_PROTECT = 5 // never offer your N most valuable players in a "fix your holes" tool
 const CONSOLIDATE_PROTECT = 3 // a 2-for-1 CAN pry a better player, but not a team's top few
 const EVEN_BAND = 12 // win-win values must be within this; "reach" requires you to gain value
+// The get player must be GENUINELY strong (this z, ~70th+ pct) in the category a deal claims
+// to fix — not merely less-bad than the give. Kills scrub-for-scrub "fixes ERA" noise deals
+// while keeping real upgrades (an elite closer's SV z clears it easily). Tunable.
+const MIN_FIX_STRENGTH = 0.5
 
 export function useTradeTargets(inputs: {
   pool: Ref<PoolPlayer[]>
@@ -184,6 +188,7 @@ export function useTradeTargets(inputs: {
       let maxg = -Infinity
       for (const c of statIds) {
         if (sideByStat.get(c) !== getSide) continue
+        if ((gs[c] ?? 0) < MIN_FIX_STRENGTH) continue // get player must actually be GOOD here
         const g = (myNeed[c] ?? 0) * ((gs[c] ?? 0) - (gv[c] ?? 0))
         if (g > maxg) { maxg = g; fixId = c }
       }

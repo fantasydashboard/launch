@@ -168,24 +168,28 @@ export function computeRosterValue(
     pitcher: quantile(scoresByRole.pitcher, REPLACEMENT_QUANTILE),
   }
   const budgetShare = { hitter: HIT_BUDGET_SHARE, pitcher: PIT_BUDGET_SHARE }
-  const vorByKey = new Map<string, number>()
   const sumVorByRole = { hitter: 0, pitcher: 0 }
   for (const p of pool) {
     const role = roleOf.get(p.playerKey)!
-    const vor = Math.max(0, (scoreByKey.get(p.playerKey) ?? 0) - replacementByRole[role])
-    vorByKey.set(p.playerKey, vor)
-    sumVorByRole[role] += vor
+    sumVorByRole[role] += Math.max(0, (scoreByKey.get(p.playerKey) ?? 0) - replacementByRole[role])
   }
+  // crossValue: floored at 0 (a non-negative budget-share currency). crossRaw: the SAME
+  // metric but UNfloored, so below-replacement players keep a continuous (negative) ordering
+  // instead of all collapsing onto one percentile — otherwise the display meter shows a big
+  // plateau (every depth player reads the same number, and closers look like scrubs).
   const crossValueByKey = new Map<string, number>()
-  const allCrossValues: number[] = []
+  const crossRawByKey = new Map<string, number>()
+  const allCrossRaw: number[] = []
   for (const p of pool) {
     const role = roleOf.get(p.playerKey)!
-    const denom = sumVorByRole[role]
-    const cross = denom > 0 ? (vorByKey.get(p.playerKey)! / denom) * budgetShare[role] : 0
-    crossValueByKey.set(p.playerKey, cross)
-    allCrossValues.push(cross)
+    const denom = sumVorByRole[role] || 1
+    const above = (scoreByKey.get(p.playerKey) ?? 0) - replacementByRole[role]
+    crossValueByKey.set(p.playerKey, (Math.max(0, above) / denom) * budgetShare[role])
+    const raw = (above / denom) * budgetShare[role]
+    crossRawByKey.set(p.playerKey, raw)
+    allCrossRaw.push(raw)
   }
-  allCrossValues.sort((a, b) => a - b)
+  allCrossRaw.sort((a, b) => a - b)
 
   const myKeys = new Set(myPlayerKeys)
   const mine = pool.filter((p) => myKeys.has(p.playerKey))
@@ -225,7 +229,7 @@ export function computeRosterValue(
     const roleValue = percentile(scoresByRole[role], scoreByKey.get(player.playerKey) ?? 0)
 
     const crossValue = crossValueByKey.get(player.playerKey) ?? 0
-    const crossPercentile = percentile(allCrossValues, crossValue)
+    const crossPercentile = percentile(allCrossRaw, crossRawByKey.get(player.playerKey) ?? 0)
     return { playerKey: player.playerKey, contribs, plusCount, minusCount, overallValue, valueScore, role, roleValue, crossValue, crossPercentile, topStatId }
   })
 }

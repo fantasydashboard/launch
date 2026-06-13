@@ -138,6 +138,25 @@ describe('computeRosterValue', () => {
     expect(byKey.pStud.crossPercentile).toBeGreaterThanOrEqual(75)
   })
 
+  it('crossPercentile spreads below-replacement players (no big plateau at one value)', () => {
+    // Regression: flooring VOR at 0 made every depth player share ONE percentile (the "18"
+    // plateau), so an elite closer read the same as a scrub. crossPercentile must order them.
+    const pool: ValuePoolPlayer[] = [
+      hitter('stud', 38, 28, 100, 100, 0.310),
+      hitter('good', 20, 14, 78, 78, 0.270),
+      hitter('depthA', 8, 4, 52, 50, 0.248),
+      hitter('depthB', 6, 3, 48, 46, 0.243),
+      hitter('depthC', 3, 1, 40, 38, 0.235),
+    ]
+    const res = computeRosterValue(pool, pool.map((p) => p.playerKey), cats)
+    const byKey = Object.fromEntries(res.map((r) => [r.playerKey, r]))
+    // The three below-replacement depth players must NOT all collapse to one percentile.
+    const depths = [byKey.depthA.crossPercentile, byKey.depthB.crossPercentile, byKey.depthC.crossPercentile]
+    expect(new Set(depths).size).toBeGreaterThan(1)
+    // and they stay ordered by strength
+    expect(byKey.depthA.crossPercentile).toBeGreaterThanOrEqual(byKey.depthC.crossPercentile)
+  })
+
   it('roleValue is a within-role percentile, fair across roles with different cat counts', () => {
     // 4 hitters touch 5 cats; 4 pitchers touch only ERA (1 cat). Each role's best
     // should get a high roleValue even though pitchers' raw valueScore is smaller.
