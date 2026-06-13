@@ -221,6 +221,12 @@ export function useTradeTargets(inputs: {
 
     const partnerScores = rankPartners(landscape, myKey, statIds).slice(0, TOP_PARTNERS)
     const myNeed = needVec(myKey)
+    // RAW need (no floor) for deciding what a deal IMPROVES: a category you dominate has ~0
+    // need, so getting value there is dead value and must NOT headline a card or count as help.
+    // (The floor stays on myNeed only to keep the deal scorer from treating a punted-category
+    // star as free to give away.)
+    const myNeedRaw: Record<string, number> = {}
+    for (const c of statIds) myNeedRaw[c] = myStanding.get(c)?.need ?? 0
     const myPlayers = byTeam.get(myKey)!
     // Give from SURPLUS, not holes: a candidate's value must sit at least as much in the
     // categories you dominate as in the ones you're fixing — else you'd ship away help in a
@@ -267,7 +273,7 @@ export function useTradeTargets(inputs: {
       const gv = combineStr(giveKeys)
       return statIds
         .filter((c) => sideByStat.get(c) === getSide)
-        .map((c) => ({ statId: c, gain: (myNeed[c] ?? 0) * ((gs[c] ?? 0) - (gv[c] ?? 0)) }))
+        .map((c) => ({ statId: c, gain: (myNeedRaw[c] ?? 0) * ((gs[c] ?? 0) - (gv[c] ?? 0)) }))
         .filter((x) => x.gain > 0.01)
         .sort((a, b) => b.gain - a.gain)
     }
@@ -517,8 +523,8 @@ export function useTradeTargets(inputs: {
             // Timing 2-for-1: objective is the timing edge — NO hole gate. Label by the category
             // you most improve (may be contested), so a sell-high package isn't dropped for missing a hole.
             const tEdge = timingEdgeOf(get.playerKey, gives)
-            if (tEdge > 0) {
-              const improveCat = rankHelps(get.playerKey, gives, side)[0]?.statId ?? fixId
+            const improveCat = rankHelps(get.playerKey, gives, side)[0]?.statId
+            if (tEdge > 0 && improveCat) {
               const candT: ConsCand = { gain: ev.yourGain, timingEdge: tEdge, giveKeys: gives, getKey: get.playerKey,
                 t: { fix: tag(improveCat), get: getSide, give: giveSides, fromTeam: teamName(ps.teamId), fromTeamLogo: teamLogo(ps.teamId), klass, helps } }
               if (!bestT || candT.timingEdge > bestT.timingEdge) bestT = candT
