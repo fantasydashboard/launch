@@ -8,6 +8,7 @@ import { aggregateTeamCats, playerStrengths, type AggPlayer } from '@/trades/agg
 import { buildLandscape, type TeamTotals } from '@/trades/landscape'
 import { rankPartners } from '@/trades/partners'
 import { evalDeal, type DealClass } from '@/trades/deals'
+import { sideOf } from '@/myteam/yourMove/helpedCats'
 
 export interface CatTag {
   label: string
