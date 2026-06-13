@@ -16,6 +16,7 @@ import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 export interface CatTag {
   label: string
   rank: number
+  hole?: boolean // a bottom-tier hole ("Fixes") vs a contested race ("Improves")
 }
 export interface TradeSide {
   name: string
@@ -81,6 +82,10 @@ const EVEN_BAND = 12 // win-win values must be within this; "reach" requires you
 // to fix — not merely less-bad than the give. Kills scrub-for-scrub "fixes ERA" noise deals
 // while keeping real upgrades (an elite closer's SV z clears it easily). Tunable.
 const MIN_FIX_STRENGTH = 0.5
+// A category counts as worth improving (beyond bottom-tier holes) once its hump need clears
+// this — i.e. it's genuinely contested (within ~half a spread of the team above). Matches the
+// landscape's DEMAND threshold. Lets Win-win/Consolidate surface close-race upgrades.
+const MARGINAL_NEED = 0.5
 // "Make them reach" is one-sided: the get must be at least this much MORE valuable than the
 // give (a believable overpay), capped by VALUE_BAND. The return need not fix your hole — the
 // edge is their desperation, not a category match.
@@ -205,7 +210,7 @@ export function useTradeTargets(inputs: {
       for (const c of statIds) out[c] = Math.max(NEED_FLOOR, m?.get(c)?.need ?? 0)
       return out
     }
-    const tag = (statId: string): CatTag => ({ label: inputs.labelOf(statId), rank: myStanding.get(statId)?.rank ?? 0 })
+    const tag = (statId: string): CatTag => ({ label: inputs.labelOf(statId), rank: myStanding.get(statId)?.rank ?? 0, hole: (myStanding.get(statId)?.rank ?? 0) >= weakCut })
 
     // "Trade from" is genuine dominance (top-2), not a mid-pack gap; "to fix" is a genuine
     // bottom-tier hole, not a close race near the top.
@@ -251,7 +256,8 @@ export function useTradeTargets(inputs: {
     }
     const sideByStat = new Map(cats.map((c) => [c.statId, c.side]))
     // The category you improve most ON THE GET PLAYER'S SIDE = what the trade fixes (a
-    // pitcher can't "fix" stolen bases). Returns '' if it improves no same-side category.
+    // pitcher can't "fix" stolen bases). Weighted by RAW need so it picks the most-FLIPPABLE
+    // category (contested or close hole), never a dominated one. Returns '' if none qualifies.
     const bestFix = (getKey: string, giveKeys: string[], getSide: 'hit' | 'pit'): string => {
       const gs = strengths.get(getKey) ?? {}
       const gv = combineStr(giveKeys)
@@ -260,11 +266,15 @@ export function useTradeTargets(inputs: {
       for (const c of statIds) {
         if (sideByStat.get(c) !== getSide) continue
         if ((gs[c] ?? 0) < MIN_FIX_STRENGTH) continue // get player must actually be GOOD here
-        const g = (myNeed[c] ?? 0) * ((gs[c] ?? 0) - (gv[c] ?? 0))
+        const g = (myNeedRaw[c] ?? 0) * ((gs[c] ?? 0) - (gv[c] ?? 0))
         if (g > maxg) { maxg = g; fixId = c }
       }
       return fixId
     }
+    // A category is worth improving if it's a bottom-tier HOLE *or* genuinely CONTESTED — i.e.
+    // within ~half a category-spread of the team above (need >= DEMAND). This is the broadening:
+    // value lives in close races, not only your deepest holes (where the hump says ~0 anyway).
+    const worthImproving = (statId: string) => isHole(statId) || (myNeedRaw[statId] ?? 0) >= MARGINAL_NEED
     // Categories this deal NETS you, need-weighted (get strength minus what you give up), on
     // the get player's side, strongest first. The top one is the category you most improve —
     // which the timing mode uses as its label (it may be a CONTESTED race, not a bottom hole).
@@ -313,7 +323,7 @@ export function useTradeTargets(inputs: {
           const ev = evalDeal(strengths.get(get.playerKey) ?? {}, strengths.get(give.playerKey) ?? {}, myNeed, theirNeed, statIds)
           if (ev.klass === 'fleece' || ev.yourGain <= 0) continue
           const fixId = bestFix(get.playerKey, [give.playerKey], sideOf(get.position))
-          if (!fixId || !isHole(fixId)) continue // no "fixes W · 4th"; side-gated
+          if (!fixId || !worthImproving(fixId)) continue // a hole OR a contested race; side-gated
           oneForOne.push({
             klass: ev.klass,
             yourGain: ev.yourGain,
@@ -517,8 +527,8 @@ export function useTradeTargets(inputs: {
             ]
             const helps = helpsFor(get.playerKey, gives, side)
             const klass: Exclude<DealClass, 'fleece'> = ev.klass === 'leverage' ? 'leverage' : 'winWin'
-            // Consolidate: the stud must fix a bottom-tier HOLE.
-            if (isHole(fixId)) {
+            // Consolidate: the stud must improve a HOLE or a contested race.
+            if (worthImproving(fixId)) {
               const candC: ConsCand = { gain: ev.yourGain, timingEdge: 0, giveKeys: gives, getKey: get.playerKey,
                 t: { fix: tag(fixId), get: getSide, give: giveSides, fromTeam: teamName(ps.teamId), fromTeamLogo: teamLogo(ps.teamId), klass, helps } }
               if (!best || candC.gain > best.gain) best = candC

@@ -320,7 +320,7 @@ function onLogoError(e: Event) {
         </p>
         <div v-for="(t, i) in consolidateList" :key="i" class="overflow-hidden rounded-xl border border-dark-border bg-dark-card">
           <div class="flex items-center justify-between gap-2 border-b border-dark-border/60 bg-[#F2B33A]/[0.04] px-4 py-2">
-            <span class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">Fixes <b class="text-[#ffd98a]">{{ t.fix.label }}</b> · you're {{ ordinal(t.fix.rank) }}</span>
+            <span class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">{{ t.fix.hole === false ? 'Improves' : 'Fixes' }} <b class="text-[#ffd98a]">{{ t.fix.label }}</b> · you're {{ ordinal(t.fix.rank) }}</span>
             <span class="font-mono text-[10px] uppercase tracking-wider" :class="t.klass === 'leverage' ? 'text-primary' : 'text-dark-textMuted'">{{ t.klass === 'leverage' ? 'leverage' : 'win-win' }}</span>
           </div>
           <div class="flex items-center gap-2 px-4 pt-2.5">
