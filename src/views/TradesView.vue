@@ -10,6 +10,7 @@ import { classifyCategory } from '@/myteam/categorySide'
 import type { CatSpec } from '@/myteam/value'
 import { useTradeTargets } from '@/composables/useTradeTargets'
 import Avatar from '@/components/trades/Avatar.vue'
+import ValueBadge from '@/components/trades/ValueBadge.vue'
 import type { TeamTotals } from '@/trades/landscape'
 
 const SEASON_FRACTION = 0.6
@@ -250,6 +251,10 @@ function onLogoError(e: Event) {
           >{{ m.label }}</button>
         </div>
         <p class="font-mono text-[10px] text-dark-textMuted">{{ modeBlurb }}</p>
+        <p class="flex items-center gap-1.5 font-mono text-[10px] text-dark-textMuted/70">
+          <ValueBadge :value="82" />
+          <span>value 0–100 · higher = better · vs same position</span>
+        </p>
       </div>
 
       <!-- 1-FOR-1 MODES: win-win + make them reach -->
@@ -268,7 +273,8 @@ function onLogoError(e: Event) {
             <Avatar :src="t.get.headshot" :label="t.get.name" cls="h-7 w-7 rounded-full" />
             <span class="font-display text-[15px] font-bold text-dark-text">{{ t.get.name }}</span>
             <img v-if="t.get.proLogo" :src="t.get.proLogo" alt="" @error="onLogoError" class="h-4 w-4 shrink-0 object-contain" />
-            <span class="font-mono text-[11px] text-dark-textMuted">{{ t.get.pos }} · {{ t.get.value }}</span>
+            <span class="font-mono text-[11px] text-dark-textMuted">{{ t.get.pos }}</span>
+            <ValueBadge :value="t.get.value" />
             <span class="ml-auto flex items-center gap-1.5 font-mono text-[11px] text-dark-textMuted">from <Avatar :src="t.fromTeamLogo" :label="t.fromTeam" cls="h-4 w-4 rounded" /> {{ t.fromTeam }}</span>
           </div>
           <div class="flex items-center gap-2 px-4 pb-3 pt-1.5">
@@ -276,7 +282,8 @@ function onLogoError(e: Event) {
             <Avatar :src="t.give.headshot" :label="t.give.name" cls="h-6 w-6 rounded-full" />
             <span class="text-sm font-semibold text-dark-textSecondary">{{ t.give.name }}</span>
             <img v-if="t.give.proLogo" :src="t.give.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
-            <span class="font-mono text-[11px] text-dark-textMuted">{{ t.give.pos }} · {{ t.give.value }}</span>
+            <span class="font-mono text-[11px] text-dark-textMuted">{{ t.give.pos }}</span>
+            <ValueBadge :value="t.give.value" />
           </div>
         </div>
       </section>
@@ -296,7 +303,8 @@ function onLogoError(e: Event) {
             <Avatar :src="t.get.headshot" :label="t.get.name" cls="h-7 w-7 rounded-full" />
             <span class="font-display text-[15px] font-bold text-dark-text">{{ t.get.name }}</span>
             <img v-if="t.get.proLogo" :src="t.get.proLogo" alt="" @error="onLogoError" class="h-4 w-4 shrink-0 object-contain" />
-            <span class="font-mono text-[11px] text-dark-textMuted">{{ t.get.pos }} · {{ t.get.value }}</span>
+            <span class="font-mono text-[11px] text-dark-textMuted">{{ t.get.pos }}</span>
+            <ValueBadge :value="t.get.value" />
             <span class="ml-auto flex items-center gap-1.5 font-mono text-[11px] text-dark-textMuted">from <Avatar :src="t.fromTeamLogo" :label="t.fromTeam" cls="h-4 w-4 rounded" /> {{ t.fromTeam }}</span>
           </div>
           <div class="space-y-1 px-4 pb-3 pt-1.5">
@@ -305,7 +313,8 @@ function onLogoError(e: Event) {
               <Avatar :src="g.headshot" :label="g.name" cls="h-6 w-6 rounded-full" />
               <span class="text-sm font-semibold text-dark-textSecondary">{{ g.name }}</span>
               <img v-if="g.proLogo" :src="g.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
-              <span class="font-mono text-[11px] text-dark-textMuted">{{ g.pos }} · {{ g.value }}</span>
+              <span class="font-mono text-[11px] text-dark-textMuted">{{ g.pos }}</span>
+              <ValueBadge :value="g.value" />
             </div>
           </div>
         </div>
