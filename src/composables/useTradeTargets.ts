@@ -81,6 +81,10 @@ const EVEN_BAND = 12 // win-win values must be within this; "reach" requires you
 // to fix — not merely less-bad than the give. Kills scrub-for-scrub "fixes ERA" noise deals
 // while keeping real upgrades (an elite closer's SV z clears it easily). Tunable.
 const MIN_FIX_STRENGTH = 0.5
+// "Make them reach" is one-sided: the get must be at least this much MORE valuable than the
+// give (a believable overpay), capped by VALUE_BAND. The return need not fix your hole — the
+// edge is their desperation, not a category match.
+const REACH_MIN_OVERPAY = 6
 
 export function useTradeTargets(inputs: {
   pool: Ref<PoolPlayer[]>
@@ -343,7 +347,68 @@ export function useTradeTargets(inputs: {
     // Make-them-reach: YOU gain value too (getValue ≥ giveValue — they overpay), ranked
     // by your gain. The value direction is what makes "reach" mean they reached, not you.
     const winWin = dedupeTop(oneForOne.filter((d) => d.klass === 'winWin' && Math.abs(d.tv - d.gv) <= EVEN_BAND), (a, b) => Math.min(b.yourGain, b.theirGain) - Math.min(a.yourGain, a.theirGain))
-    const reach = dedupeTop(oneForOne.filter((d) => d.klass === 'leverage' && d.tv >= d.gv), (a, b) => b.yourGain - a.yourGain)
+    // Make them reach — ONE-SIDED leverage, not a mutual match. Press a category where THEY're
+    // desperate (a hole) and YOU dominate (surplus): sell that surplus into their need, and take
+    // the most valuable player you can extract. The return need NOT fix your hole — it only has
+    // to help you in a category with real marginal value (yourGain > 0, which the hump weights
+    // toward contested races, not just bottom-tier holes) while they overpay (tv > gv) yet still
+    // benefit enough to accept (theirGain > 0). fix here = the category you PRESS, at THEIR rank.
+    interface PressRaw { edge: number; giveKey: string; getKey: string; t: TradeTarget }
+    const pressRaws: PressRaw[] = []
+    for (const ps of partnerScores) {
+      const theirNeed = needVec(ps.teamId)
+      const theirLand = landscape.get(ps.teamId)
+      if (!theirLand) continue
+      const pressCats = statIds.filter((c) => surplusCats.includes(c) && (theirLand.get(c)?.rank ?? 0) >= weakCut)
+      if (!pressCats.length) continue
+      const getCandidates = [...(byTeam.get(ps.teamId) ?? [])]
+        .sort((a, b) => (marketValue.get(b.playerKey) ?? 0) - (marketValue.get(a.playerKey) ?? 0))
+        .slice(CORE_PROTECT)
+      for (const give of giveCandidates) {
+        const gs = strengths.get(give.playerKey) ?? {}
+        const pressCat = pressCats
+          .filter((c) => (gs[c] ?? 0) >= MIN_FIX_STRENGTH) // the give must actually press this cat
+          .sort((a, b) => (gs[b] ?? 0) - (gs[a] ?? 0))[0]
+        if (!pressCat) continue
+        const gv = marketValue.get(give.playerKey) ?? 0
+        for (const get of getCandidates) {
+          const tv = marketValue.get(get.playerKey) ?? 0
+          if (tv - gv < REACH_MIN_OVERPAY || tv - gv > VALUE_BAND) continue // believable overpay
+          const ev = evalDeal(strengths.get(get.playerKey) ?? {}, gs, myNeed, theirNeed, statIds)
+          if (ev.theirGain <= 0 || ev.yourGain <= 0) continue // they accept; the return helps you
+          pressRaws.push({
+            edge: (tv - gv) + ev.yourGain,
+            giveKey: give.playerKey,
+            getKey: get.playerKey,
+            t: {
+              fix: { label: inputs.labelOf(pressCat), rank: theirLand.get(pressCat)?.rank ?? 0 },
+              get: { name: get.name, pos: get.position, value: Math.round(tv), headshot: get.headshot, proLogo: mlbTeamLogo(get.proTeam), ...sideTiming(get.playerKey, 'buy') },
+              give: { name: give.name, pos: give.position, value: Math.round(gv), headshot: give.headshot, proLogo: mlbTeamLogo(give.proTeam), ...sideTiming(give.playerKey, 'sell') },
+              fromTeam: teamName(ps.teamId),
+              fromTeamLogo: teamLogo(ps.teamId),
+              klass: 'leverage',
+              helps: helpsFor(get.playerKey, [give.playerKey], sideOf(get.position)),
+            },
+          })
+        }
+      }
+    }
+    const reach = (() => {
+      const usedGive = new Set<string>()
+      const usedGet = new Set<string>()
+      const perCat = new Map<string, number>()
+      const out: TradeTarget[] = []
+      for (const d of pressRaws.sort((a, b) => b.edge - a.edge)) {
+        if (usedGive.has(d.giveKey) || usedGet.has(d.getKey)) continue
+        if ((perCat.get(d.t.fix.label) ?? 0) >= 2) continue
+        usedGive.add(d.giveKey)
+        usedGet.add(d.getKey)
+        perCat.set(d.t.fix.label, (perCat.get(d.t.fix.label) ?? 0) + 1)
+        out.push(d.t)
+        if (out.length >= 6) break
+      }
+      return out
+    })()
     // Buy-low / sell-high: same need-fit deals, but only those with a timing edge (you GET an
     // underperformer due to rebound and/or GIVE an overperformer due to cool off), best first.
     const timing = dedupeTop(oneForOne.filter((d) => d.timingEdge > 0), (a, b) => b.timingEdge - a.timingEdge)

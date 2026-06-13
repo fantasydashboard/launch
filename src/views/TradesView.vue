@@ -281,11 +281,12 @@ function onLogoError(e: Event) {
         <p v-if="!oneForOneList.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
           <template v-if="mode === 'winWin'">No clean mutual deals right now — try Make them reach or Consolidate.</template>
           <template v-else-if="mode === 'timing'">No buy-low / sell-high 1-for-1s right now — check the 2-for-1 packages below.</template>
-          <template v-else>No leverage deals right now — no reaching partner lines up with your holes.</template>
+          <template v-else>No leverage right now — no partner is desperate in a category you dominate.</template>
         </p>
         <div v-for="(t, i) in oneForOneList" :key="i" class="overflow-hidden rounded-xl border border-dark-border bg-dark-card">
           <div class="flex items-center justify-between gap-2 border-b border-dark-border/60 bg-[#F2B33A]/[0.04] px-4 py-2">
-            <span class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">Fixes <b class="text-[#ffd98a]">{{ t.fix.label }}</b> · you're {{ ordinal(t.fix.rank) }}</span>
+            <span v-if="mode === 'reach'" class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">Press <b class="text-[#ffd98a]">{{ t.fix.label }}</b> · they're {{ ordinal(t.fix.rank) }}</span>
+            <span v-else class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">Fixes <b class="text-[#ffd98a]">{{ t.fix.label }}</b> · you're {{ ordinal(t.fix.rank) }}</span>
             <span class="font-mono text-[10px] uppercase tracking-wider" :class="t.klass === 'leverage' ? 'text-primary' : 'text-dark-textMuted'">{{ t.klass === 'leverage' ? 'leverage' : 'win-win' }}</span>
           </div>
           <div class="flex items-center gap-2 px-4 pt-2.5">
