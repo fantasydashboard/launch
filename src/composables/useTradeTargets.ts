@@ -433,7 +433,10 @@ export function useTradeTargets(inputs: {
         const gv = marketValue.get(give.playerKey) ?? 0
         for (const get of getCandidates) {
           const tv = marketValue.get(get.playerKey) ?? 0
-          if (Math.abs(tv - gv) > VALUE_BAND) continue
+          // Asymmetric band: a real sell-high EXPLOITS the other manager overvaluing your hot
+          // player — you should come out ahead, or near-even. Extract up to VALUE_BAND when you
+          // gain value; give away at most EVEN_BAND (a surplus→need premium), never 20+ points.
+          if (tv - gv > VALUE_BAND || gv - tv > EVEN_BAND) continue
           const edge = timingEdgeOf(get.playerKey, [give.playerKey])
           if (edge <= 0) continue // must have a buy-low get and/or sell-high give
           const ev = evalDeal(strengths.get(get.playerKey) ?? {}, strengths.get(give.playerKey) ?? {}, myNeed, theirNeed, statIds)
