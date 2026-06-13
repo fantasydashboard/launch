@@ -103,6 +103,41 @@ describe('computeRosterValue', () => {
     expect(ace.roleValue).not.toBe(50)
   })
 
+  it('exposes a volume-weighted per-cat z so a tiny-sample reliever cannot "fix" ERA', () => {
+    // The trade scorer reads contrib.z. A 2-IP scoreless reliever must NOT carry a big ERA
+    // z (he barely moves a team's ERA), while a 140-IP workhorse with a good ERA must.
+    const pool: ValuePoolPlayer[] = [
+      { playerKey: 'tiny', position: 'RP', stats: { ERA: 0.0, IP: 2 } },
+      { playerKey: 'horse', position: 'SP', stats: { ERA: 2.6, IP: 140 } },
+      { playerKey: 'mid', position: 'SP', stats: { ERA: 3.8, IP: 120 } },
+    ]
+    const res = computeRosterValue(pool, ['tiny', 'horse'], cats)
+    const tinyEraZ = res.find((r) => r.playerKey === 'tiny')!.contribs.find((c) => c.statId === 'ERA')!.z
+    const horseEraZ = res.find((r) => r.playerKey === 'horse')!.contribs.find((c) => c.statId === 'ERA')!.z
+    expect(horseEraZ).toBeGreaterThan(tinyEraZ) // workhorse's ERA contribution dominates
+  })
+
+  it('crossValue is one comparable currency across roles; replacement-level ≈ 0', () => {
+    const pool: ValuePoolPlayer[] = [
+      hitter('hStud', 40, 30, 100, 100, 0.320),
+      hitter('hMid', 18, 12, 75, 75, 0.265),
+      hitter('hRepl', 4, 1, 40, 40, 0.235), // depth
+      { playerKey: 'pStud', position: 'SP', stats: { ERA: 2.0, IP: 190 } },
+      { playerKey: 'pMid', position: 'SP', stats: { ERA: 3.6, IP: 160 } },
+      { playerKey: 'pRepl', position: 'SP', stats: { ERA: 5.4, IP: 110 } }, // depth
+    ]
+    const res = computeRosterValue(pool, pool.map((p) => p.playerKey), cats)
+    const byKey = Object.fromEntries(res.map((r) => [r.playerKey, r]))
+    // A stud of EITHER role carries real cross-role value; the bottom-tier depth ≈ 0.
+    expect(byKey.hStud.crossValue).toBeGreaterThan(0)
+    expect(byKey.pStud.crossValue).toBeGreaterThan(0)
+    expect(byKey.hRepl.crossValue).toBe(0)
+    expect(byKey.pRepl.crossValue).toBe(0)
+    // Both studs read as high on the shared 0-100 meter (not buried by the other role).
+    expect(byKey.hStud.crossPercentile).toBeGreaterThanOrEqual(75)
+    expect(byKey.pStud.crossPercentile).toBeGreaterThanOrEqual(75)
+  })
+
   it('roleValue is a within-role percentile, fair across roles with different cat counts', () => {
     // 4 hitters touch 5 cats; 4 pitchers touch only ERA (1 cat). Each role's best
     // should get a high roleValue even though pitchers' raw valueScore is smaller.

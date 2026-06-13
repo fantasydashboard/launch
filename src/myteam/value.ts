@@ -6,6 +6,13 @@ export type { CatSpec, ValuePoolPlayer } from './types'
 const PLUS_THRESHOLD = 0.66
 const MINUS_THRESHOLD = 0.33
 const Z_CLAMP = 3
+// Cross-role trade value: standard auction-style hitting/pitching budget split, applied to
+// value-over-replacement so a hitter's and a pitcher's number land on one comparable scale.
+const HIT_BUDGET_SHARE = 0.7
+const PIT_BUDGET_SHARE = 0.3
+// Replacement level = this quantile of each role's rostered pool. Players below it carry ≈0
+// trade value (freely replaceable depth), so studs aren't compared against bench filler.
+const REPLACEMENT_QUANTILE = 0.35
 
 function isPitcherPos(position: string): boolean {
   return (position || '')
@@ -149,6 +156,37 @@ export function computeRosterValue(
     return Math.round(((below + equal / 2) / n) * 100)
   }
 
+  // Cross-role trade value: value-over-replacement per role, scaled so each role's positive
+  // VOR sums to its budget share — so a hitter's and a pitcher's number are comparable.
+  const quantile = (sortedAsc: number[], q: number): number => {
+    if (sortedAsc.length === 0) return 0
+    const idx = Math.min(sortedAsc.length - 1, Math.max(0, Math.round(q * (sortedAsc.length - 1))))
+    return sortedAsc[idx]
+  }
+  const replacementByRole = {
+    hitter: quantile(scoresByRole.hitter, REPLACEMENT_QUANTILE),
+    pitcher: quantile(scoresByRole.pitcher, REPLACEMENT_QUANTILE),
+  }
+  const budgetShare = { hitter: HIT_BUDGET_SHARE, pitcher: PIT_BUDGET_SHARE }
+  const vorByKey = new Map<string, number>()
+  const sumVorByRole = { hitter: 0, pitcher: 0 }
+  for (const p of pool) {
+    const role = roleOf.get(p.playerKey)!
+    const vor = Math.max(0, (scoreByKey.get(p.playerKey) ?? 0) - replacementByRole[role])
+    vorByKey.set(p.playerKey, vor)
+    sumVorByRole[role] += vor
+  }
+  const crossValueByKey = new Map<string, number>()
+  const allCrossValues: number[] = []
+  for (const p of pool) {
+    const role = roleOf.get(p.playerKey)!
+    const denom = sumVorByRole[role]
+    const cross = denom > 0 ? (vorByKey.get(p.playerKey)! / denom) * budgetShare[role] : 0
+    crossValueByKey.set(p.playerKey, cross)
+    allCrossValues.push(cross)
+  }
+  allCrossValues.sort((a, b) => a - b)
+
   const myKeys = new Set(myPlayerKeys)
   const mine = pool.filter((p) => myKeys.has(p.playerKey))
 
@@ -164,7 +202,7 @@ export function computeRosterValue(
     for (const cat of cats) {
       const value = typeof player.stats[cat.statId] === 'number' ? player.stats[cat.statId] : 0
       if (!participatesIn(player, cat)) {
-        contribs.push({ statId: cat.statId, tier: 'neutral', value, percentile: 0 })
+        contribs.push({ statId: cat.statId, tier: 'neutral', value, percentile: 0, z: 0 })
         continue
       }
       const z = zByCat.get(cat.statId)?.get(player.playerKey) ?? 0
@@ -174,7 +212,7 @@ export function computeRosterValue(
       let tier: PlayerCategoryContrib['tier'] = 'neutral'
       if (percentileVal >= PLUS_THRESHOLD) { tier = 'plus'; plusCount++ }
       else if (cat.lowerIsBetter && percentileVal <= MINUS_THRESHOLD) { tier = 'minus'; minusCount++ }
-      contribs.push({ statId: cat.statId, tier, value, percentile: percentileVal })
+      contribs.push({ statId: cat.statId, tier, value, percentile: percentileVal, z })
       contributedPercentiles.push(percentileVal)
       if (percentileVal > topPercentile) { topPercentile = percentileVal; topStatId = cat.statId }
     }
@@ -186,7 +224,9 @@ export function computeRosterValue(
     const role = roleOf.get(player.playerKey) ?? 'hitter'
     const roleValue = percentile(scoresByRole[role], scoreByKey.get(player.playerKey) ?? 0)
 
-    return { playerKey: player.playerKey, contribs, plusCount, minusCount, overallValue, valueScore, role, roleValue, topStatId }
+    const crossValue = crossValueByKey.get(player.playerKey) ?? 0
+    const crossPercentile = percentile(allCrossValues, crossValue)
+    return { playerKey: player.playerKey, contribs, plusCount, minusCount, overallValue, valueScore, role, roleValue, crossValue, crossPercentile, topStatId }
   })
 }
 

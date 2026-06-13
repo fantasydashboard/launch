@@ -4,7 +4,7 @@ import { computeRosterValue } from '@/myteam/value'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
 import type { PoolPlayer } from '@/composables/useMyRoster'
 import type { FGProjection } from '@/services/projectionService'
-import { aggregateTeamCats, playerStrengths, type AggPlayer } from '@/trades/aggregate'
+import { aggregateTeamCats, type AggPlayer } from '@/trades/aggregate'
 import { buildLandscape, type TeamTotals } from '@/trades/landscape'
 import { rankPartners } from '@/trades/partners'
 import { evalDeal, type DealClass } from '@/trades/deals'
@@ -115,13 +115,19 @@ export function useTradeTargets(inputs: {
     const teamTotals = useWins ? wins : aggregateTeamCats(playersByTeam, cats)
     const landscapeCats = useWins ? cats.map((c) => ({ ...c, lowerIsBetter: false })) : cats
     const { landscape } = buildLandscape(teamTotals, landscapeCats)
-    const strengths = playerStrengths([...eff.values()], cats)
-    const marketValue = new Map(
-      computeRosterValue(
-        pool.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: eff.get(p.playerKey)!.stats })),
-        pool.map((p) => p.playerKey),
-        cats,
-      ).map((c) => [c.playerKey, c.roleValue]),
+    // ONE valuation pass feeds both the trade scorer and the displayed value:
+    //  - strengths: the per-category VOLUME-WEIGHTED z (so a low-IP reliever can't "fix" a
+    //    ratio cat like ERA, but keeps full credit for counting cats like SV/HLD/K).
+    //  - marketValue: the CROSS-ROLE percentile (hitter and pitcher on one scale), so deal
+    //    evenness and the value meter are comparable across positions.
+    const valued = computeRosterValue(
+      pool.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: eff.get(p.playerKey)!.stats })),
+      pool.map((p) => p.playerKey),
+      cats,
+    )
+    const marketValue = new Map(valued.map((c) => [c.playerKey, c.crossPercentile]))
+    const strengths = new Map(
+      valued.map((c) => [c.playerKey, Object.fromEntries(c.contribs.map((k) => [k.statId, k.z]))]),
     )
 
     const myStanding = landscape.get(myKey)!

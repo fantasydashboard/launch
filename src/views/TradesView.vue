@@ -253,7 +253,7 @@ function onLogoError(e: Event) {
         <p class="font-mono text-[10px] text-dark-textMuted">{{ modeBlurb }}</p>
         <p class="flex items-center gap-1.5 font-mono text-[10px] text-dark-textMuted/70">
           <ValueBadge :value="82" />
-          <span>value 0–100 · higher = better · vs same position</span>
+          <span>value 0–100 · higher = better · rest-of-season, all rostered players</span>
         </p>
       </div>
 
