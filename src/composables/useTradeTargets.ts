@@ -9,6 +9,7 @@ import { buildLandscape, type TeamTotals } from '@/trades/landscape'
 import { rankPartners } from '@/trades/partners'
 import { evalDeal, type DealClass } from '@/trades/deals'
 import { sideOf } from '@/myteam/yourMove/helpedCats'
+import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
 export interface CatTag {
   label: string
@@ -19,6 +20,7 @@ export interface TradeSide {
   pos: string
   value: number
   headshot?: string
+  proLogo?: string // MLB pro-team logo (omitted when unknown)
 }
 export interface TradeTarget {
   fix: CatTag // the category this trade fixes for you
@@ -221,8 +223,8 @@ export function useTradeTargets(inputs: {
             gv: Math.round(gv),
             tv: Math.round(tv),
             fixId,
-            get: { name: get.name, pos: get.position, value: Math.round(tv), headshot: get.headshot },
-            give: { name: give.name, pos: give.position, value: Math.round(gv), headshot: give.headshot },
+            get: { name: get.name, pos: get.position, value: Math.round(tv), headshot: get.headshot, proLogo: mlbTeamLogo(get.proTeam) },
+            give: { name: give.name, pos: give.position, value: Math.round(gv), headshot: give.headshot, proLogo: mlbTeamLogo(give.proTeam) },
             fromTeam: teamName(ps.teamId),
             fromTeamLogo: teamLogo(ps.teamId),
           })
@@ -288,10 +290,10 @@ export function useTradeTargets(inputs: {
                 getKey: get.playerKey,
                 t: {
                   fix: tag(fixId),
-                  get: { name: get.name, pos: get.position, value: Math.round(tv), headshot: get.headshot },
+                  get: { name: get.name, pos: get.position, value: Math.round(tv), headshot: get.headshot, proLogo: mlbTeamLogo(get.proTeam) },
                   give: [
-                    { name: g1.name, pos: g1.position, value: Math.round(v1), headshot: g1.headshot },
-                    { name: g2.name, pos: g2.position, value: Math.round(v2), headshot: g2.headshot },
+                    { name: g1.name, pos: g1.position, value: Math.round(v1), headshot: g1.headshot, proLogo: mlbTeamLogo(g1.proTeam) },
+                    { name: g2.name, pos: g2.position, value: Math.round(v2), headshot: g2.headshot, proLogo: mlbTeamLogo(g2.proTeam) },
                   ],
                   fromTeam: teamName(ps.teamId),
                   fromTeamLogo: teamLogo(ps.teamId),

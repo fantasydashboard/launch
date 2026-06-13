@@ -54,6 +54,7 @@ export function mapRostersToPool(teams: EspnTeamRosterLike[], sport?: Sport): Po
       stats: p.stats && typeof p.stats === 'object' ? { ...p.stats } : {},
       teamKey: `espn_${t.id}`,
       headshot: sport ? espnHeadshotUrl(p.playerId, sport) : undefined,
+      proTeam: p.proTeam || undefined,
     })),
   )
 }

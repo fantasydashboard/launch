@@ -61,6 +61,7 @@ export interface PoolPlayer {
   eligiblePositions?: string[]
   teamKey: string // owning fantasy team_key
   headshot?: string
+  proTeam?: string // MLB team abbr, for the pro-team logo
 }
 
 function normalizePoolPlayer(raw: any): PoolPlayer {
@@ -72,6 +73,7 @@ function normalizePoolPlayer(raw: any): PoolPlayer {
     eligiblePositions: eligibleFrom(raw),
     teamKey: String(raw.fantasy_team_key ?? ''),
     headshot: raw.headshot ? String(raw.headshot) : undefined,
+    proTeam: raw.mlb_team ? String(raw.mlb_team) : undefined,
   }
 }
 

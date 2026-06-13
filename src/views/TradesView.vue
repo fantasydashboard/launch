@@ -187,6 +187,10 @@ function ordinal(n: number): string {
   const v = n % 100
   return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
+// The MLB pro-team logo is decorative — hide it on a broken load rather than fall back.
+function onLogoError(e: Event) {
+  ;(e.target as HTMLImageElement).style.display = 'none'
+}
 </script>
 
 <template>
@@ -263,6 +267,7 @@ function ordinal(n: number): string {
             <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-primary">GET</span>
             <Avatar :src="t.get.headshot" :label="t.get.name" cls="h-7 w-7 rounded-full" />
             <span class="font-display text-[15px] font-bold text-dark-text">{{ t.get.name }}</span>
+            <img v-if="t.get.proLogo" :src="t.get.proLogo" alt="" @error="onLogoError" class="h-4 w-4 shrink-0 object-contain" />
             <span class="font-mono text-[11px] text-dark-textMuted">{{ t.get.pos }} · {{ t.get.value }}</span>
             <span class="ml-auto flex items-center gap-1.5 font-mono text-[11px] text-dark-textMuted">from <Avatar :src="t.fromTeamLogo" :label="t.fromTeam" cls="h-4 w-4 rounded" /> {{ t.fromTeam }}</span>
           </div>
@@ -270,6 +275,7 @@ function ordinal(n: number): string {
             <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-dark-textMuted">GIVE</span>
             <Avatar :src="t.give.headshot" :label="t.give.name" cls="h-6 w-6 rounded-full" />
             <span class="text-sm font-semibold text-dark-textSecondary">{{ t.give.name }}</span>
+            <img v-if="t.give.proLogo" :src="t.give.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
             <span class="font-mono text-[11px] text-dark-textMuted">{{ t.give.pos }} · {{ t.give.value }}</span>
           </div>
         </div>
@@ -289,6 +295,7 @@ function ordinal(n: number): string {
             <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-primary">GET</span>
             <Avatar :src="t.get.headshot" :label="t.get.name" cls="h-7 w-7 rounded-full" />
             <span class="font-display text-[15px] font-bold text-dark-text">{{ t.get.name }}</span>
+            <img v-if="t.get.proLogo" :src="t.get.proLogo" alt="" @error="onLogoError" class="h-4 w-4 shrink-0 object-contain" />
             <span class="font-mono text-[11px] text-dark-textMuted">{{ t.get.pos }} · {{ t.get.value }}</span>
             <span class="ml-auto flex items-center gap-1.5 font-mono text-[11px] text-dark-textMuted">from <Avatar :src="t.fromTeamLogo" :label="t.fromTeam" cls="h-4 w-4 rounded" /> {{ t.fromTeam }}</span>
           </div>
@@ -297,6 +304,7 @@ function ordinal(n: number): string {
               <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-dark-textMuted">{{ gi === 0 ? 'GIVE' : '' }}</span>
               <Avatar :src="g.headshot" :label="g.name" cls="h-6 w-6 rounded-full" />
               <span class="text-sm font-semibold text-dark-textSecondary">{{ g.name }}</span>
+              <img v-if="g.proLogo" :src="g.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
               <span class="font-mono text-[11px] text-dark-textMuted">{{ g.pos }} · {{ g.value }}</span>
             </div>
           </div>
