@@ -8,6 +8,7 @@ import { aggregateTeamCats, type AggPlayer } from '@/trades/aggregate'
 import { buildLandscape, type TeamTotals } from '@/trades/landscape'
 import { rankPartners } from '@/trades/partners'
 import { evalDeal, type DealClass } from '@/trades/deals'
+import { isGiveable } from '@/trades/giveable'
 import { sideOf } from '@/myteam/yourMove/helpedCats'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
@@ -162,11 +163,17 @@ export function useTradeTargets(inputs: {
 
     const partnerScores = rankPartners(landscape, myKey, statIds).slice(0, TOP_PARTNERS)
     const myNeed = needVec(myKey)
-    // Protect your core: never offer your most valuable players in a "fix your holes" tool.
     const myPlayers = byTeam.get(myKey)!
+    // Give from SURPLUS, not holes: a candidate's value must sit at least as much in the
+    // categories you dominate as in the ones you're fixing — else you'd ship away help in a
+    // category you need (e.g. trading an ace while you're weak in ERA). See trades/giveable.
+    const surplusCats = statIds.filter((c) => (myStanding.get(c)?.rank ?? 99) <= DOMINANCE_RANK)
+    const holeCats = statIds.filter((c) => (myStanding.get(c)?.rank ?? 0) >= weakCut)
+    // Protect your core (your most valuable players) AND anything that helps your holes.
     const giveCandidates = [...myPlayers]
       .sort((a, b) => (marketValue.get(b.playerKey) ?? 0) - (marketValue.get(a.playerKey) ?? 0))
       .slice(CORE_PROTECT)
+      .filter((p) => isGiveable(strengths.get(p.playerKey) ?? {}, surplusCats, holeCats))
 
     // Shared helpers across the modes.
     const isHole = (statId: string) => (myStanding.get(statId)?.rank ?? 0) >= weakCut
