@@ -11,7 +11,7 @@ import type { AvailablePlayer } from '@/players/types'
 import { mapBreakdownToCategoryData } from '@/myteam/espn/mapStandings'
 import { mapRostersToPool, mapRosterToPlayers } from '@/myteam/espn/mapRosters'
 import { mapEspnFreeAgents } from '@/myteam/espn/mapFreeAgents'
-import { buildPlayerMatchers, type FGProjection } from '@/services/projectionService'
+import { buildPlayerMatchers, type FGProjection, type StatcastData } from '@/services/projectionService'
 
 /** Parse an ESPN league key `espn_{sport}_{leagueId}_{season}`. */
 function parseEspnKey(key: string): { sport: Sport; leagueId: string; season: number } | null {
@@ -34,6 +34,7 @@ export function useEspnCategoryTeamData() {
   const myOverallRank = ref(0)
   const pool = ref<PoolPlayer[]>([])
   const fgByKey = ref<Record<string, FGProjection | null>>({})
+  const statcastByKey = ref<Record<string, StatcastData | null>>({})
   const rosterPlayers = ref<RosterPlayer[]>([])
   const freeAgents = ref<AvailablePlayer[]>([])
   const supported = ref<boolean | null>(null)
@@ -48,6 +49,7 @@ export function useEspnCategoryTeamData() {
     myOverallRank.value = 0
     pool.value = []
     fgByKey.value = {}
+    statcastByKey.value = {}
     rosterPlayers.value = []
     freeAgents.value = []
     supported.value = null
@@ -97,15 +99,18 @@ export function useEspnCategoryTeamData() {
       pool.value = mapRostersToPool(teams, sport)
 
       // Match every rostered player to a raw FanGraphs rest-of-season projection.
-      const { matchFG } = await buildPlayerMatchers()
+      const { matchFG, matchStatcast } = await buildPlayerMatchers()
       if (leagueStore.activeLeagueId !== requestedId) return
       const fg: Record<string, FGProjection | null> = {}
+      const sc: Record<string, StatcastData | null> = {}
       for (const t of teams) {
         for (const pl of t.roster ?? []) {
           fg[String(pl.playerId)] = matchFG({ full_name: pl.fullName, mlb_team: pl.proTeam })
+          sc[String(pl.playerId)] = matchStatcast({ full_name: pl.fullName, mlb_team: pl.proTeam })
         }
       }
       fgByKey.value = fg
+      statcastByKey.value = sc
 
       if (myTeam) {
         myTeamId.value = `espn_${myTeam.id}`
@@ -145,6 +150,7 @@ export function useEspnCategoryTeamData() {
     myOverallRank,
     pool,
     fgByKey,
+    statcastByKey,
     rosterPlayers,
     freeAgents,
     supported,

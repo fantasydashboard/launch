@@ -11,6 +11,7 @@ import type { CatSpec } from '@/myteam/value'
 import { useTradeTargets } from '@/composables/useTradeTargets'
 import Avatar from '@/components/trades/Avatar.vue'
 import ValueBadge from '@/components/trades/ValueBadge.vue'
+import TimingTag from '@/components/trades/TimingTag.vue'
 import type { TeamTotals } from '@/trades/landscape'
 
 const SEASON_FRACTION = 0.6
@@ -19,7 +20,7 @@ const isEspn = computed(() => leagueStore.activePlatform === 'espn')
 
 // Yahoo sources.
 const { seasonMatchups, categoryLabels, loaded: yCatsLoaded, load: loadSeasonData } = useFullSeasonCategoryData()
-const { pool: yPool, fgByKey: yFg, loading: yRosterLoading, loaded: yRosterLoaded, load: loadRoster } = useMyRoster()
+const { pool: yPool, fgByKey: yFg, statcastByKey: yStatcast, loading: yRosterLoading, loaded: yRosterLoaded, load: loadRoster } = useMyRoster()
 // ESPN source (self-detects H2H_CATEGORY).
 const espn = useEspnCategoryTeamData()
 
@@ -73,6 +74,7 @@ function retry() {
 // === Unified, platform-neutral inputs into the trade engine ===
 const pool = computed(() => (isEspn.value ? espn.pool.value : yPool.value))
 const fgByKey = computed(() => (isEspn.value ? espn.fgByKey.value : yFg.value))
+const statcastByKey = computed(() => (isEspn.value ? espn.statcastByKey.value : yStatcast.value))
 
 const categories = computed<{ statId: string; label: string; name: string }[]>(() => {
   if (isEspn.value) return espn.categories.value.map((c) => ({ statId: c.statId, label: c.label, name: c.name }))
@@ -148,7 +150,7 @@ const teamLogoByKey = computed(() => {
   return m
 })
 
-const { view } = useTradeTargets({ pool, fgByKey, catSpecs, teamCatWins, myTeamKey, teamNameByKey, teamLogoByKey, seasonFraction: SEASON_FRACTION, labelOf })
+const { view } = useTradeTargets({ pool, fgByKey, statcastByKey, catSpecs, teamCatWins, myTeamKey, teamNameByKey, teamLogoByKey, seasonFraction: SEASON_FRACTION, labelOf })
 
 const hasAttempted = computed(() => attemptedFor.value === leagueStore.activeLeagueId)
 const rosterLoading = computed(() => (isEspn.value ? espn.loading.value : yRosterLoading.value))
@@ -174,14 +176,22 @@ const isLoading = computed(() => !unsupported.value && !loadFailed.value && sett
 const empty = computed(() => !loadFailed.value && !noTeam.value && rosterLoaded.value && !view.value)
 
 // Trade intent modes.
-type Mode = 'winWin' | 'reach' | 'consolidate'
+type Mode = 'winWin' | 'reach' | 'consolidate' | 'timing'
 const mode = ref<Mode>('winWin')
 const MODES: { key: Mode; label: string; blurb: string }[] = [
   { key: 'winWin', label: 'Win-win', blurb: 'Both teams improve — the deals most likely to be accepted.' },
   { key: 'reach', label: 'Make them reach', blurb: 'Lopsided in your favor — the overpay to press from a team chasing a hole.' },
   { key: 'consolidate', label: 'Consolidate', blurb: 'Package two depth pieces for one stud (2-for-1) — quality over quantity.' },
+  { key: 'timing', label: 'Buy-low / Sell-high', blurb: 'Time the market — get an underperformer due to rebound, give an overperformer due to cool off (expected stats confirm).' },
 ]
 const modeBlurb = computed(() => MODES.find((m) => m.key === mode.value)?.blurb ?? '')
+// 1-for-1 list by mode; consolidate list (timing has its own 2-for-1 packages).
+const oneForOneList = computed(() => {
+  const v = view.value
+  if (!v) return []
+  return mode.value === 'reach' ? v.reach : mode.value === 'timing' ? v.timing : v.winWin
+})
+const consolidateList = computed(() => (mode.value === 'timing' ? view.value?.timingConsolidate : view.value?.consolidate) ?? [])
 
 function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd']
@@ -259,11 +269,12 @@ function onLogoError(e: Event) {
 
       <!-- 1-FOR-1 MODES: win-win + make them reach -->
       <section v-if="mode !== 'consolidate'" class="space-y-3">
-        <p v-if="!(mode === 'winWin' ? view.winWin : view.reach).length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
+        <p v-if="!oneForOneList.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
           <template v-if="mode === 'winWin'">No clean mutual deals right now — try Make them reach or Consolidate.</template>
+          <template v-else-if="mode === 'timing'">No buy-low / sell-high 1-for-1s right now — check the 2-for-1 packages below.</template>
           <template v-else>No leverage deals right now — no reaching partner lines up with your holes.</template>
         </p>
-        <div v-for="(t, i) in (mode === 'winWin' ? view.winWin : view.reach)" :key="i" class="overflow-hidden rounded-xl border border-dark-border bg-dark-card">
+        <div v-for="(t, i) in oneForOneList" :key="i" class="overflow-hidden rounded-xl border border-dark-border bg-dark-card">
           <div class="flex items-center justify-between gap-2 border-b border-dark-border/60 bg-[#F2B33A]/[0.04] px-4 py-2">
             <span class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">Fixes <b class="text-[#ffd98a]">{{ t.fix.label }}</b> · you're {{ ordinal(t.fix.rank) }}</span>
             <span class="font-mono text-[10px] uppercase tracking-wider" :class="t.klass === 'leverage' ? 'text-primary' : 'text-dark-textMuted'">{{ t.klass === 'leverage' ? 'leverage' : 'win-win' }}</span>
@@ -275,6 +286,7 @@ function onLogoError(e: Event) {
             <img v-if="t.get.proLogo" :src="t.get.proLogo" alt="" @error="onLogoError" class="h-4 w-4 shrink-0 object-contain" />
             <span class="font-mono text-[11px] text-dark-textMuted">{{ t.get.pos }}</span>
             <ValueBadge :value="t.get.value" />
+            <TimingTag v-if="mode === 'timing' && t.get.timing" :dir="t.get.timing" :confirmed="t.get.timingConfirmed" />
             <span class="ml-auto flex items-center gap-1.5 font-mono text-[11px] text-dark-textMuted">from <Avatar :src="t.fromTeamLogo" :label="t.fromTeam" cls="h-4 w-4 rounded" /> {{ t.fromTeam }}</span>
           </div>
           <div class="flex items-center gap-2 px-4 pb-3 pt-1.5">
@@ -284,17 +296,19 @@ function onLogoError(e: Event) {
             <img v-if="t.give.proLogo" :src="t.give.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
             <span class="font-mono text-[11px] text-dark-textMuted">{{ t.give.pos }}</span>
             <ValueBadge :value="t.give.value" />
+            <TimingTag v-if="mode === 'timing' && t.give.timing" :dir="t.give.timing" :confirmed="t.give.timingConfirmed" />
           </div>
           <div v-if="t.helps.length" class="border-t border-dark-border/40 px-4 py-1.5 font-mono text-[10px] text-dark-textMuted">nets you <span class="text-primary">{{ t.helps.join(' · ') }}</span></div>
         </div>
       </section>
 
-      <!-- CONSOLIDATE: 2-for-1 -->
-      <section v-else class="space-y-3">
-        <p v-if="!view.consolidate.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
+      <!-- CONSOLIDATE / TIMING 2-for-1 -->
+      <section v-if="mode === 'consolidate' || mode === 'timing'" class="space-y-3">
+        <p v-if="mode === 'timing' && consolidateList.length" class="pt-1 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted/70">2-for-1 packages</p>
+        <p v-if="mode === 'consolidate' && !consolidateList.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
           No 2-for-1 upgrade available — no partner has a stud your depth can package for at a believable value.
         </p>
-        <div v-for="(t, i) in view.consolidate" :key="i" class="overflow-hidden rounded-xl border border-dark-border bg-dark-card">
+        <div v-for="(t, i) in consolidateList" :key="i" class="overflow-hidden rounded-xl border border-dark-border bg-dark-card">
           <div class="flex items-center justify-between gap-2 border-b border-dark-border/60 bg-[#F2B33A]/[0.04] px-4 py-2">
             <span class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">Fixes <b class="text-[#ffd98a]">{{ t.fix.label }}</b> · you're {{ ordinal(t.fix.rank) }}</span>
             <span class="font-mono text-[10px] uppercase tracking-wider" :class="t.klass === 'leverage' ? 'text-primary' : 'text-dark-textMuted'">{{ t.klass === 'leverage' ? 'leverage' : 'win-win' }}</span>
@@ -306,6 +320,7 @@ function onLogoError(e: Event) {
             <img v-if="t.get.proLogo" :src="t.get.proLogo" alt="" @error="onLogoError" class="h-4 w-4 shrink-0 object-contain" />
             <span class="font-mono text-[11px] text-dark-textMuted">{{ t.get.pos }}</span>
             <ValueBadge :value="t.get.value" />
+            <TimingTag v-if="mode === 'timing' && t.get.timing" :dir="t.get.timing" :confirmed="t.get.timingConfirmed" />
             <span class="ml-auto flex items-center gap-1.5 font-mono text-[11px] text-dark-textMuted">from <Avatar :src="t.fromTeamLogo" :label="t.fromTeam" cls="h-4 w-4 rounded" /> {{ t.fromTeam }}</span>
           </div>
           <div class="space-y-1 px-4 pb-3 pt-1.5">
@@ -316,6 +331,7 @@ function onLogoError(e: Event) {
               <img v-if="g.proLogo" :src="g.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
               <span class="font-mono text-[11px] text-dark-textMuted">{{ g.pos }}</span>
               <ValueBadge :value="g.value" />
+              <TimingTag v-if="mode === 'timing' && g.timing" :dir="g.timing" :confirmed="g.timingConfirmed" />
             </div>
           </div>
           <div v-if="t.helps.length" class="border-t border-dark-border/40 px-4 py-1.5 font-mono text-[10px] text-dark-textMuted">nets you <span class="text-primary">{{ t.helps.join(' · ') }}</span></div>
