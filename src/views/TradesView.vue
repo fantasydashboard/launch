@@ -9,6 +9,9 @@ import { isLowerBetter } from '@/players/direction'
 import { classifyCategory } from '@/myteam/categorySide'
 import type { CatSpec } from '@/myteam/value'
 import { useTradeTargets } from '@/composables/useTradeTargets'
+import { buildEngine } from '@/trades/engine'
+import { analyzeTrade } from '@/trades/analyzeTrade'
+import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import Avatar from '@/components/trades/Avatar.vue'
 import ValueBadge from '@/components/trades/ValueBadge.vue'
 import TimingTag from '@/components/trades/TimingTag.vue'
@@ -152,6 +155,49 @@ const teamLogoByKey = computed(() => {
 
 const { view } = useTradeTargets({ pool, fgByKey, statcastByKey, catSpecs, teamCatWins, myTeamKey, teamNameByKey, teamLogoByKey, seasonFraction: SEASON_FRACTION, labelOf })
 
+// --- Custom trade analyzer: evaluate a SPECIFIC deal you have in mind ---
+const analyzerOpen = ref(false)
+const anGive = ref<string[]>([])
+const anPartner = ref<string | null>(null)
+const anGet = ref<string[]>([])
+const engine = computed(() =>
+  analyzerOpen.value
+    ? buildEngine({ pool: pool.value, fgByKey: fgByKey.value, statcastByKey: statcastByKey.value, cats: catSpecs.value, teamCatWins: teamCatWins.value, seasonFraction: SEASON_FRACTION, labelOf })
+    : null,
+)
+const valOf = (key: string): number => Math.round(engine.value?.valueByKey.get(key) ?? 0)
+const byVal = (a: { playerKey: string }, b: { playerKey: string }) => valOf(b.playerKey) - valOf(a.playerKey)
+const myRoster = computed(() => pool.value.filter((p) => p.teamKey && p.teamKey === myTeamKey.value).sort(byVal))
+const partnerOptions = computed(() => {
+  const e = engine.value
+  if (!e || !myTeamKey.value) return []
+  return [...e.byTeam.keys()].filter((k) => k !== myTeamKey.value).map((k) => ({ key: k, name: teamNameByKey.value.get(k) ?? 'Team' }))
+})
+const partnerRoster = computed(() => (anPartner.value ? pool.value.filter((p) => p.teamKey === anPartner.value).sort(byVal) : []))
+const analysis = computed(() => {
+  const e = engine.value
+  const mk = myTeamKey.value
+  if (!e || !mk || !anPartner.value) return null
+  return analyzeTrade(e, { myKey: mk, partnerKey: anPartner.value, giveKeys: anGive.value, getKeys: anGet.value, labelOf })
+})
+function pinfo(key: string) {
+  const p = pool.value.find((x) => x.playerKey === key)
+  const t = engine.value?.timingByKey.get(key)
+  return { name: p?.name ?? '', pos: p?.position ?? '', headshot: p?.headshot, proLogo: mlbTeamLogo(p?.proTeam), value: valOf(key), timing: t?.dir ?? undefined, timingConfirmed: t?.luckConfirmed ?? false }
+}
+const toggleGive = (key: string) => { const i = anGive.value.indexOf(key); if (i >= 0) anGive.value.splice(i, 1); else anGive.value.push(key) }
+const toggleGet = (key: string) => { const i = anGet.value.indexOf(key); if (i >= 0) anGet.value.splice(i, 1); else anGet.value.push(key) }
+const verdictClass = computed(() => {
+  switch (analysis.value?.klass) {
+    case 'winWin': return 'text-primary'
+    case 'leverage': return 'text-primary'
+    case 'fleece': return 'text-[#F2B33A]'
+    case 'badForYou': return 'text-[#f26d6d]'
+    default: return 'text-dark-text'
+  }
+})
+watch(anPartner, () => { anGet.value = [] })
+
 const hasAttempted = computed(() => attemptedFor.value === leagueStore.activeLeagueId)
 const rosterLoading = computed(() => (isEspn.value ? espn.loading.value : yRosterLoading.value))
 const rosterLoaded = computed(() => (isEspn.value ? espn.loaded.value : yRosterLoaded.value))
@@ -255,6 +301,88 @@ function onLogoError(e: Event) {
         <p v-if="view.tradeFrom.length && view.toFix.length" class="mt-2 font-mono text-[11px] text-dark-textMuted">
           ↳ Spend your surplus (dead value — winning a category by a mile scores nothing extra) to plug your holes.
         </p>
+      </section>
+
+      <!-- CUSTOM TRADE ANALYZER -->
+      <section class="overflow-hidden rounded-xl border border-dark-border bg-dark-card/40">
+        <button type="button" class="flex w-full items-center justify-between px-4 py-2.5 text-left" @click="analyzerOpen = !analyzerOpen">
+          <span class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Analyze a specific trade</span>
+          <span class="font-mono text-xs text-dark-textMuted">{{ analyzerOpen ? '–' : '+' }}</span>
+        </button>
+        <div v-if="analyzerOpen" class="space-y-3 border-t border-dark-border/60 px-4 py-3">
+          <!-- You give -->
+          <div>
+            <div class="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">You give</div>
+            <div class="flex flex-wrap gap-1.5">
+              <button v-for="p in myRoster" :key="p.playerKey" type="button" @click="toggleGive(p.playerKey)"
+                class="rounded border px-2 py-1 font-mono text-[11px] transition-colors"
+                :class="anGive.includes(p.playerKey) ? 'border-primary/40 bg-primary/15 text-primary' : 'border-dark-border text-dark-textMuted hover:text-dark-text'">
+                {{ p.name }} <span class="opacity-50">{{ valOf(p.playerKey) }}</span>
+              </button>
+            </div>
+          </div>
+          <!-- Partner -->
+          <div>
+            <div class="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Partner</div>
+            <select v-model="anPartner" class="w-full max-w-xs rounded border border-dark-border bg-dark-bg px-2 py-1.5 font-mono text-xs text-dark-text focus:border-primary focus:outline-none">
+              <option :value="null">Select a team…</option>
+              <option v-for="o in partnerOptions" :key="o.key" :value="o.key">{{ o.name }}</option>
+            </select>
+          </div>
+          <!-- You get -->
+          <div v-if="anPartner">
+            <div class="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">You get</div>
+            <div class="flex flex-wrap gap-1.5">
+              <button v-for="p in partnerRoster" :key="p.playerKey" type="button" @click="toggleGet(p.playerKey)"
+                class="rounded border px-2 py-1 font-mono text-[11px] transition-colors"
+                :class="anGet.includes(p.playerKey) ? 'border-primary/40 bg-primary/15 text-primary' : 'border-dark-border text-dark-textMuted hover:text-dark-text'">
+                {{ p.name }} <span class="opacity-50">{{ valOf(p.playerKey) }}</span>
+              </button>
+            </div>
+          </div>
+          <!-- Verdict -->
+          <div v-if="analysis" class="overflow-hidden rounded-lg border border-dark-border bg-dark-card">
+            <div class="flex items-center justify-between gap-2 border-b border-dark-border/60 px-4 py-2">
+              <span class="text-sm font-semibold" :class="verdictClass">{{ analysis.headline }}</span>
+              <span class="shrink-0 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">they accept · {{ analysis.accept }}</span>
+            </div>
+            <div class="flex items-center gap-2 px-4 pt-2.5">
+              <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-primary">GET</span>
+              <span class="font-mono text-[11px] text-dark-textMuted">{{ analysis.getVal }}</span>
+            </div>
+            <div v-for="k in anGet" :key="k" class="flex items-center gap-2 px-4 pt-1">
+              <span class="w-9 shrink-0"></span>
+              <Avatar :src="pinfo(k).headshot" :label="pinfo(k).name" cls="h-6 w-6 rounded-full" />
+              <span class="text-sm font-semibold text-dark-text">{{ pinfo(k).name }}</span>
+              <img v-if="pinfo(k).proLogo" :src="pinfo(k).proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
+              <span class="font-mono text-[11px] text-dark-textMuted">{{ pinfo(k).pos }}</span>
+              <ValueBadge :value="pinfo(k).value" />
+              <TimingTag v-if="pinfo(k).timing === 'sell'" dir="sell" :confirmed="pinfo(k).timingConfirmed" />
+            </div>
+            <div class="mt-1.5 flex items-center gap-2 px-4 pt-1.5">
+              <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-dark-textMuted">GIVE</span>
+              <span class="font-mono text-[11px] text-dark-textMuted">{{ analysis.giveVal }}</span>
+            </div>
+            <div v-for="k in anGive" :key="k" class="flex items-center gap-2 px-4 pb-1 pt-1">
+              <span class="w-9 shrink-0"></span>
+              <Avatar :src="pinfo(k).headshot" :label="pinfo(k).name" cls="h-6 w-6 rounded-full" />
+              <span class="text-sm font-semibold text-dark-textSecondary">{{ pinfo(k).name }}</span>
+              <img v-if="pinfo(k).proLogo" :src="pinfo(k).proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
+              <span class="font-mono text-[11px] text-dark-textMuted">{{ pinfo(k).pos }}</span>
+              <ValueBadge :value="pinfo(k).value" />
+              <TimingTag v-if="pinfo(k).timing === 'buy'" dir="buy" :confirmed="pinfo(k).timingConfirmed" />
+            </div>
+            <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-0.5 border-t border-dark-border/40 px-4 py-1.5 font-mono text-[10px] text-dark-textMuted">
+              <span v-if="analysis.helps.length">nets you <span class="text-primary">{{ analysis.helps.join(' · ') }}</span></span>
+              <span v-if="analysis.costs.length">costs you <span class="text-[#f26d6d]">{{ analysis.costs.join(' · ') }}</span></span>
+              <span v-if="analysis.pitch.length">gives them <span class="text-[#F2B33A]">{{ analysis.pitch.join(' · ') }}</span></span>
+            </div>
+            <div v-if="analysis.warnings.length" class="space-y-0.5 px-4 pb-2 pt-0.5">
+              <p v-for="(w, wi) in analysis.warnings" :key="wi" class="font-mono text-[10px] text-[#F2B33A]">⚠ {{ w }}</p>
+            </div>
+          </div>
+          <p v-else class="font-mono text-[10px] text-dark-textMuted">Pick a partner and at least one player on each side.</p>
+        </div>
       </section>
 
       <!-- MODE TOGGLE: trade intent -->
