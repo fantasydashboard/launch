@@ -192,6 +192,15 @@ const oneForOneList = computed(() => {
   return mode.value === 'reach' ? v.reach : mode.value === 'timing' ? v.timing : v.winWin
 })
 const consolidateList = computed(() => (mode.value === 'timing' ? view.value?.timingConsolidate : view.value?.consolidate) ?? [])
+// Partner framing names the direction that matters for the active mode (it goes both ways).
+const partnerBlurb = computed(() => {
+  switch (mode.value) {
+    case 'reach': return 'Teams desperate in a category you dominate — press the overpay.'
+    case 'consolidate': return "Teams who'd take your depth for a stud you need."
+    case 'timing': return 'Where your sell-highs meet their needs, and their buy-lows meet yours.'
+    default: return 'It goes both ways — they hold what you need, you hold what they need.'
+  }
+})
 
 function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd']
@@ -344,14 +353,15 @@ function onLogoError(e: Event) {
           <span class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Best trade partners</span>
           <span class="h-px flex-1 bg-dark-border/50"></span>
         </div>
-        <p class="font-mono text-[10px] text-dark-textMuted">Teams whose strengths mirror your holes — start the conversation here.</p>
+        <p class="font-mono text-[10px] text-dark-textMuted">{{ partnerBlurb }}</p>
         <div class="divide-y divide-dark-border/50 rounded-xl border border-dark-border bg-dark-card/40">
           <div v-for="p in view.partners" :key="p.team" class="flex items-center gap-2.5 px-4 py-2.5">
             <Avatar :src="p.logo" :label="p.team" cls="h-6 w-6 rounded-md" />
             <span class="w-40 shrink-0 truncate text-sm font-semibold text-dark-text">{{ p.team }}</span>
             <span class="min-w-0 flex-1 font-mono text-[11px] text-dark-textMuted">
-              <span v-if="p.strong.length"><span class="text-dark-textMuted/60">strong</span> <span class="text-primary">{{ p.strong.join(' ') }}</span></span>
-              <span v-if="p.weak.length" class="ml-3"><span class="text-dark-textMuted/60">weak</span> <span class="text-[#F2B33A]">{{ p.weak.join(' ') }}</span></span>
+              <span v-if="p.buyFrom.length"><span class="text-dark-textMuted/60">you buy</span> <span class="text-primary">{{ p.buyFrom.join(' ') }}</span></span>
+              <span v-if="p.sellTo.length" class="ml-3"><span class="text-dark-textMuted/60">they need</span> <span class="text-[#F2B33A]">{{ p.sellTo.join(' ') }}</span></span>
+              <span v-if="!p.buyFrom.length && !p.sellTo.length"><span class="text-dark-textMuted/60">strong</span> <span class="text-primary">{{ p.strong.join(' ') }}</span></span>
             </span>
           </div>
         </div>

@@ -47,8 +47,10 @@ export interface ConsolidateTarget {
 export interface PartnerView {
   team: string
   logo?: string
-  strong: string[] // their strengths (your needs)
-  weak: string[] // their holes (your surplus)
+  strong: string[] // their strengths (overall)
+  weak: string[] // their holes (overall)
+  buyFrom: string[] // their strength ∩ YOUR holes — what you'd acquire from them
+  sellTo: string[] // their holes ∩ YOUR surplus — where they're desperate and you press
   score: number
 }
 export interface TradeView {
@@ -418,13 +420,21 @@ export function useTradeTargets(inputs: {
     const consolidate = dedupeCons(consCands, (a, b) => b.t.fix.rank - a.t.fix.rank || b.gain - a.gain)
     const timingConsolidate = dedupeCons(consTimingCands, (a, b) => b.timingEdge - a.timingEdge)
 
+    // Two-way fit, contextualized to YOU: buyFrom = their strength where you're weak (you
+    // acquire); sellTo = their hole where you're strong (you press / make them reach).
+    const myStrongSet = new Set(statIds.filter((c) => (myStanding.get(c)?.rank ?? 99) <= 3))
+    const myHoleSet = new Set(holeCats)
     const partners: PartnerView[] = partnerScores.map((ps) => {
       const m = landscape.get(ps.teamId)!
+      const theirStrong = statIds.filter((c) => (m.get(c)?.rank ?? 99) <= 3)
+      const theirWeak = statIds.filter((c) => (m.get(c)?.rank ?? 0) >= weakCut)
       return {
         team: teamName(ps.teamId),
         logo: teamLogo(ps.teamId),
-        strong: statIds.filter((c) => (m.get(c)?.rank ?? 99) <= 3).map((c) => inputs.labelOf(c)).slice(0, 4),
-        weak: statIds.filter((c) => (m.get(c)?.rank ?? 0) >= weakCut).map((c) => inputs.labelOf(c)).slice(0, 4),
+        strong: theirStrong.map((c) => inputs.labelOf(c)).slice(0, 4),
+        weak: theirWeak.map((c) => inputs.labelOf(c)).slice(0, 4),
+        buyFrom: theirStrong.filter((c) => myHoleSet.has(c)).map((c) => inputs.labelOf(c)).slice(0, 4),
+        sellTo: theirWeak.filter((c) => myStrongSet.has(c)).map((c) => inputs.labelOf(c)).slice(0, 4),
         score: ps.score,
       }
     })
