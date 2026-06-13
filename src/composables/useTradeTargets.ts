@@ -18,12 +18,14 @@ export interface TradeSide {
   name: string
   pos: string
   value: number
+  headshot?: string
 }
 export interface TradeTarget {
   fix: CatTag // the category this trade fixes for you
   get: TradeSide
   give: TradeSide
   fromTeam: string
+  fromTeamLogo?: string
   klass: Exclude<DealClass, 'fleece'>
 }
 export interface ConsolidateTarget {
@@ -31,10 +33,12 @@ export interface ConsolidateTarget {
   get: TradeSide // the stud you'd land
   give: TradeSide[] // the two depth pieces you'd package
   fromTeam: string
+  fromTeamLogo?: string
   klass: Exclude<DealClass, 'fleece'>
 }
 export interface PartnerView {
   team: string
+  logo?: string
   strong: string[] // their strengths (your needs)
   weak: string[] // their holes (your surplus)
   score: number
@@ -69,10 +73,11 @@ export function useTradeTargets(inputs: {
   // Per-team category WIN counts (from the season standings) — the reliable measure of
   // each team's category strength. Falls back to a ROS-aggregate before this loads.
   teamCatWins?: Ref<TeamTotals[]>
-  // The logged-in team's key (matches the pool's teamKey), and team key -> display name.
-  // Supplied by the view so the engine is platform-neutral (Yahoo or ESPN).
+  // The logged-in team's key (matches the pool's teamKey), and team key -> display name
+  // / logo. Supplied by the view so the engine is platform-neutral (Yahoo or ESPN).
   myTeamKey: Ref<string | null>
   teamNameByKey: Ref<Map<string, string>>
+  teamLogoByKey?: Ref<Map<string, string>>
   seasonFraction: number
   labelOf: (statId: string) => string
 }): { view: ComputedRef<TradeView | null> } {
@@ -84,6 +89,7 @@ export function useTradeTargets(inputs: {
     if (!myKey) return null
 
     const teamName = (key: string): string => inputs.teamNameByKey.value.get(key) ?? 'Team'
+    const teamLogo = (key: string): string | undefined => inputs.teamLogoByKey?.value.get(key)
     const statIds = cats.map((c) => c.statId)
     const fg = inputs.fgByKey.value
 
@@ -188,6 +194,7 @@ export function useTradeTargets(inputs: {
       get: TradeSide
       give: TradeSide
       fromTeam: string
+      fromTeamLogo?: string
     }
     const oneForOne: Raw[] = []
     for (const ps of partnerScores) {
@@ -214,14 +221,15 @@ export function useTradeTargets(inputs: {
             gv: Math.round(gv),
             tv: Math.round(tv),
             fixId,
-            get: { name: get.name, pos: get.position, value: Math.round(tv) },
-            give: { name: give.name, pos: give.position, value: Math.round(gv) },
+            get: { name: get.name, pos: get.position, value: Math.round(tv), headshot: get.headshot },
+            give: { name: give.name, pos: give.position, value: Math.round(gv), headshot: give.headshot },
             fromTeam: teamName(ps.teamId),
+            fromTeamLogo: teamLogo(ps.teamId),
           })
         }
       }
     }
-    const toTarget = (d: Raw): TradeTarget => ({ fix: tag(d.fixId), get: d.get, give: d.give, fromTeam: d.fromTeam, klass: d.klass === 'leverage' ? 'leverage' : 'winWin' })
+    const toTarget = (d: Raw): TradeTarget => ({ fix: tag(d.fixId), get: d.get, give: d.give, fromTeam: d.fromTeam, fromTeamLogo: d.fromTeamLogo, klass: d.klass === 'leverage' ? 'leverage' : 'winWin' })
     // Dedupe by BOTH the give and the get player (no repeated targets), and cap to two
     // deals per hole so you see variety across your needs rather than five SV cards.
     const dedupeTop = (deals: Raw[], cmp: (a: Raw, b: Raw) => number, n = 6): TradeTarget[] => {
@@ -280,12 +288,13 @@ export function useTradeTargets(inputs: {
                 getKey: get.playerKey,
                 t: {
                   fix: tag(fixId),
-                  get: { name: get.name, pos: get.position, value: Math.round(tv) },
+                  get: { name: get.name, pos: get.position, value: Math.round(tv), headshot: get.headshot },
                   give: [
-                    { name: g1.name, pos: g1.position, value: Math.round(v1) },
-                    { name: g2.name, pos: g2.position, value: Math.round(v2) },
+                    { name: g1.name, pos: g1.position, value: Math.round(v1), headshot: g1.headshot },
+                    { name: g2.name, pos: g2.position, value: Math.round(v2), headshot: g2.headshot },
                   ],
                   fromTeam: teamName(ps.teamId),
+                  fromTeamLogo: teamLogo(ps.teamId),
                   klass: ev.klass === 'leverage' ? 'leverage' : 'winWin',
                 },
               }
@@ -312,6 +321,7 @@ export function useTradeTargets(inputs: {
       const m = landscape.get(ps.teamId)!
       return {
         team: teamName(ps.teamId),
+        logo: teamLogo(ps.teamId),
         strong: statIds.filter((c) => (m.get(c)?.rank ?? 99) <= 3).map((c) => inputs.labelOf(c)).slice(0, 4),
         weak: statIds.filter((c) => (m.get(c)?.rank ?? 0) >= weakCut).map((c) => inputs.labelOf(c)).slice(0, 4),
         score: ps.score,

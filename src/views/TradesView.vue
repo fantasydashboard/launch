@@ -9,7 +9,7 @@ import { isLowerBetter } from '@/players/direction'
 import { classifyCategory } from '@/myteam/categorySide'
 import type { CatSpec } from '@/myteam/value'
 import { useTradeTargets } from '@/composables/useTradeTargets'
-
+import Avatar from '@/components/trades/Avatar.vue'
 import type { TeamTotals } from '@/trades/landscape'
 
 const SEASON_FRACTION = 0.6
@@ -134,8 +134,20 @@ const teamNameByKey = computed(() => {
   else for (const t of leagueStore.yahooTeams ?? []) m.set(String(t.team_key), String(t.name))
   return m
 })
+const teamLogoByKey = computed(() => {
+  const m = new Map<string, string>()
+  if (isEspn.value) {
+    for (const s of espn.standings.value) if (s.team.avatar) m.set(s.team.teamId, s.team.avatar)
+  } else {
+    for (const t of leagueStore.yahooTeams ?? []) {
+      const logo = (t as any).logo_url || (t as any).logo
+      if (logo) m.set(String(t.team_key), String(logo))
+    }
+  }
+  return m
+})
 
-const { view } = useTradeTargets({ pool, fgByKey, catSpecs, teamCatWins, myTeamKey, teamNameByKey, seasonFraction: SEASON_FRACTION, labelOf })
+const { view } = useTradeTargets({ pool, fgByKey, catSpecs, teamCatWins, myTeamKey, teamNameByKey, teamLogoByKey, seasonFraction: SEASON_FRACTION, labelOf })
 
 const hasAttempted = computed(() => attemptedFor.value === leagueStore.activeLeagueId)
 const rosterLoading = computed(() => (isEspn.value ? espn.loading.value : yRosterLoading.value))
@@ -248,13 +260,15 @@ function ordinal(n: number): string {
             <span class="font-mono text-[10px] uppercase tracking-wider" :class="t.klass === 'leverage' ? 'text-primary' : 'text-dark-textMuted'">{{ t.klass === 'leverage' ? 'leverage' : 'win-win' }}</span>
           </div>
           <div class="flex items-center gap-2 px-4 pt-2.5">
-            <span class="w-11 shrink-0 font-mono text-[10px] font-bold tracking-wider text-primary">GET</span>
+            <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-primary">GET</span>
+            <Avatar :src="t.get.headshot" :label="t.get.name" cls="h-7 w-7 rounded-full" />
             <span class="font-display text-[15px] font-bold text-dark-text">{{ t.get.name }}</span>
             <span class="font-mono text-[11px] text-dark-textMuted">{{ t.get.pos }} · {{ t.get.value }}</span>
-            <span class="ml-auto font-mono text-[11px] text-dark-textMuted">from {{ t.fromTeam }}</span>
+            <span class="ml-auto flex items-center gap-1.5 font-mono text-[11px] text-dark-textMuted">from <Avatar :src="t.fromTeamLogo" :label="t.fromTeam" cls="h-4 w-4 rounded" /> {{ t.fromTeam }}</span>
           </div>
           <div class="flex items-center gap-2 px-4 pb-3 pt-1.5">
-            <span class="w-11 shrink-0 font-mono text-[10px] font-bold tracking-wider text-dark-textMuted">GIVE</span>
+            <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-dark-textMuted">GIVE</span>
+            <Avatar :src="t.give.headshot" :label="t.give.name" cls="h-6 w-6 rounded-full" />
             <span class="text-sm font-semibold text-dark-textSecondary">{{ t.give.name }}</span>
             <span class="font-mono text-[11px] text-dark-textMuted">{{ t.give.pos }} · {{ t.give.value }}</span>
           </div>
@@ -272,14 +286,16 @@ function ordinal(n: number): string {
             <span class="font-mono text-[10px] uppercase tracking-wider" :class="t.klass === 'leverage' ? 'text-primary' : 'text-dark-textMuted'">{{ t.klass === 'leverage' ? 'leverage' : 'win-win' }}</span>
           </div>
           <div class="flex items-center gap-2 px-4 pt-2.5">
-            <span class="w-11 shrink-0 font-mono text-[10px] font-bold tracking-wider text-primary">GET</span>
+            <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-primary">GET</span>
+            <Avatar :src="t.get.headshot" :label="t.get.name" cls="h-7 w-7 rounded-full" />
             <span class="font-display text-[15px] font-bold text-dark-text">{{ t.get.name }}</span>
             <span class="font-mono text-[11px] text-dark-textMuted">{{ t.get.pos }} · {{ t.get.value }}</span>
-            <span class="ml-auto font-mono text-[11px] text-dark-textMuted">from {{ t.fromTeam }}</span>
+            <span class="ml-auto flex items-center gap-1.5 font-mono text-[11px] text-dark-textMuted">from <Avatar :src="t.fromTeamLogo" :label="t.fromTeam" cls="h-4 w-4 rounded" /> {{ t.fromTeam }}</span>
           </div>
           <div class="space-y-1 px-4 pb-3 pt-1.5">
             <div v-for="(g, gi) in t.give" :key="gi" class="flex items-center gap-2">
-              <span class="w-11 shrink-0 font-mono text-[10px] font-bold tracking-wider text-dark-textMuted">{{ gi === 0 ? 'GIVE' : '' }}</span>
+              <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-dark-textMuted">{{ gi === 0 ? 'GIVE' : '' }}</span>
+              <Avatar :src="g.headshot" :label="g.name" cls="h-6 w-6 rounded-full" />
               <span class="text-sm font-semibold text-dark-textSecondary">{{ g.name }}</span>
               <span class="font-mono text-[11px] text-dark-textMuted">{{ g.pos }} · {{ g.value }}</span>
             </div>
@@ -295,8 +311,9 @@ function ordinal(n: number): string {
         </div>
         <p class="font-mono text-[10px] text-dark-textMuted">Teams whose strengths mirror your holes — start the conversation here.</p>
         <div class="divide-y divide-dark-border/50 rounded-xl border border-dark-border bg-dark-card/40">
-          <div v-for="p in view.partners" :key="p.team" class="flex items-center gap-3 px-4 py-2.5">
-            <span class="w-44 shrink-0 truncate text-sm font-semibold text-dark-text">{{ p.team }}</span>
+          <div v-for="p in view.partners" :key="p.team" class="flex items-center gap-2.5 px-4 py-2.5">
+            <Avatar :src="p.logo" :label="p.team" cls="h-6 w-6 rounded-md" />
+            <span class="w-40 shrink-0 truncate text-sm font-semibold text-dark-text">{{ p.team }}</span>
             <span class="min-w-0 flex-1 font-mono text-[11px] text-dark-textMuted">
               <span v-if="p.strong.length"><span class="text-dark-textMuted/60">strong</span> <span class="text-primary">{{ p.strong.join(' ') }}</span></span>
               <span v-if="p.weak.length" class="ml-3"><span class="text-dark-textMuted/60">weak</span> <span class="text-[#F2B33A]">{{ p.weak.join(' ') }}</span></span>

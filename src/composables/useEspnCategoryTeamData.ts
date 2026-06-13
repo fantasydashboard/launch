@@ -94,7 +94,7 @@ export function useEspnCategoryTeamData() {
       standings.value = mapped.standings
       categories.value = mapped.categories
       cats.value = mapped.cats
-      pool.value = mapRostersToPool(teams)
+      pool.value = mapRostersToPool(teams, sport)
 
       // Match every rostered player to a raw FanGraphs rest-of-season projection.
       const { matchFG } = await buildPlayerMatchers()

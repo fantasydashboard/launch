@@ -60,6 +60,7 @@ export interface PoolPlayer {
   stats: Record<string, number>
   eligiblePositions?: string[]
   teamKey: string // owning fantasy team_key
+  headshot?: string
 }
 
 function normalizePoolPlayer(raw: any): PoolPlayer {
@@ -70,6 +71,7 @@ function normalizePoolPlayer(raw: any): PoolPlayer {
     stats: raw.stats && typeof raw.stats === 'object' ? { ...raw.stats } : {},
     eligiblePositions: eligibleFrom(raw),
     teamKey: String(raw.fantasy_team_key ?? ''),
+    headshot: raw.headshot ? String(raw.headshot) : undefined,
   }
 }
 
