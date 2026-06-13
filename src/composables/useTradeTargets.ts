@@ -35,6 +35,7 @@ export interface TradeTarget {
   fromTeamLogo?: string
   klass: Exclude<DealClass, 'fleece'>
   helps: string[] // the categories you NET (need-weighted), e.g. ['SB','SV'] — show your work
+  pitch: string[] // what it gives THEM (their need that your give fills) — your negotiating angle
 }
 export interface ConsolidateTarget {
   fix: CatTag
@@ -44,6 +45,7 @@ export interface ConsolidateTarget {
   fromTeamLogo?: string
   klass: Exclude<DealClass, 'fleece'>
   helps: string[]
+  pitch: string[]
 }
 export interface PartnerView {
   team: string
@@ -210,6 +212,14 @@ export function useTradeTargets(inputs: {
       for (const c of statIds) out[c] = Math.max(NEED_FLOOR, m?.get(c)?.need ?? 0)
       return out
     }
+    // RAW need (no floor) — used to name the categories a deal genuinely fills for the OTHER
+    // team (your negotiating angle), so we don't pitch a category they don't actually need.
+    const rawNeedVec = (key: string): Record<string, number> => {
+      const m = landscape.get(key)
+      const out: Record<string, number> = {}
+      for (const c of statIds) out[c] = m?.get(c)?.need ?? 0
+      return out
+    }
     const tag = (statId: string): CatTag => ({ label: inputs.labelOf(statId), rank: myStanding.get(statId)?.rank ?? 0, hole: (myStanding.get(statId)?.rank ?? 0) >= weakCut })
 
     // "Trade from" is genuine dominance (top-2), not a mid-pack gap; "to fix" is a genuine
@@ -290,6 +300,17 @@ export function useTradeTargets(inputs: {
     // Show your work: name the categories you net (used on every card).
     const helpsFor = (getKey: string, giveKeys: string[], getSide: 'hit' | 'pit'): string[] =>
       rankHelps(getKey, giveKeys, getSide).slice(0, 3).map((x) => inputs.labelOf(x.statId))
+    // The OTHER side's angle: the categories your give player(s) fill for THEM, weighted by
+    // THEIR raw need. This is what you pitch when you message them ("helps your SV, ERA").
+    const pitchFor = (giveKeys: string[], theirRawNeed: Record<string, number>): string[] => {
+      const gv = combineStr(giveKeys)
+      return statIds
+        .map((c) => ({ statId: c, gain: (theirRawNeed[c] ?? 0) * Math.max(0, gv[c] ?? 0) }))
+        .filter((x) => x.gain > 0.01)
+        .sort((a, b) => b.gain - a.gain)
+        .slice(0, 3)
+        .map((x) => inputs.labelOf(x.statId))
+    }
 
     // --- All viable 1-for-1 deals (gated to your real holes, value-banded, both cores
     //     protected), bucketed into the Win-win and Make-them-reach modes. ---
@@ -307,10 +328,12 @@ export function useTradeTargets(inputs: {
       fromTeam: string
       fromTeamLogo?: string
       timingEdge: number
+      pitch: string[]
     }
     const oneForOne: Raw[] = []
     for (const ps of partnerScores) {
       const theirNeed = needVec(ps.teamId)
+      const theirRawNeed = rawNeedVec(ps.teamId)
       // Protect THEIR core too — you can't pry a team's best players (symmetric to ours).
       const getCandidates = [...(byTeam.get(ps.teamId) ?? [])]
         .sort((a, b) => (marketValue.get(b.playerKey) ?? 0) - (marketValue.get(a.playerKey) ?? 0))
@@ -338,11 +361,12 @@ export function useTradeTargets(inputs: {
             fromTeam: teamName(ps.teamId),
             fromTeamLogo: teamLogo(ps.teamId),
             timingEdge: timingEdgeOf(get.playerKey, [give.playerKey]),
+            pitch: pitchFor([give.playerKey], theirRawNeed),
           })
         }
       }
     }
-    const toTarget = (d: Raw): TradeTarget => ({ fix: tag(d.fixId), get: d.get, give: d.give, fromTeam: d.fromTeam, fromTeamLogo: d.fromTeamLogo, klass: d.klass === 'leverage' ? 'leverage' : 'winWin', helps: helpsFor(d.getKey, [d.giveKey], sideOf(d.get.pos)) })
+    const toTarget = (d: Raw): TradeTarget => ({ fix: tag(d.fixId), get: d.get, give: d.give, fromTeam: d.fromTeam, fromTeamLogo: d.fromTeamLogo, klass: d.klass === 'leverage' ? 'leverage' : 'winWin', helps: helpsFor(d.getKey, [d.giveKey], sideOf(d.get.pos)), pitch: d.pitch })
     // Dedupe by BOTH the give and the get player (no repeated targets), and cap to two
     // deals per hole so you see variety across your needs rather than five SV cards.
     const dedupeTop = (deals: Raw[], cmp: (a: Raw, b: Raw) => number, n = 6): TradeTarget[] => {
@@ -375,6 +399,7 @@ export function useTradeTargets(inputs: {
     const pressRaws: PressRaw[] = []
     for (const ps of partnerScores) {
       const theirNeed = needVec(ps.teamId)
+      const theirRawNeed = rawNeedVec(ps.teamId)
       const theirLand = landscape.get(ps.teamId)
       if (!theirLand) continue
       const pressCats = statIds.filter((c) => surplusCats.includes(c) && (theirLand.get(c)?.rank ?? 0) >= weakCut)
@@ -406,6 +431,7 @@ export function useTradeTargets(inputs: {
               fromTeamLogo: teamLogo(ps.teamId),
               klass: 'leverage',
               helps: helpsFor(get.playerKey, [give.playerKey], sideOf(get.position)),
+              pitch: pitchFor([give.playerKey], theirRawNeed),
             },
           })
         }
@@ -436,6 +462,7 @@ export function useTradeTargets(inputs: {
     const timeRaws: TimeRaw[] = []
     for (const ps of partnerScores) {
       const theirNeed = needVec(ps.teamId)
+      const theirRawNeed = rawNeedVec(ps.teamId)
       const getCandidates = [...(byTeam.get(ps.teamId) ?? [])]
         .sort((a, b) => (marketValue.get(b.playerKey) ?? 0) - (marketValue.get(a.playerKey) ?? 0))
         .slice(CORE_PROTECT)
@@ -466,6 +493,7 @@ export function useTradeTargets(inputs: {
               fromTeamLogo: teamLogo(ps.teamId),
               klass: ev.klass === 'leverage' ? 'leverage' : 'winWin',
               helps: helpsFor(get.playerKey, [give.playerKey], sideOf(get.position)),
+              pitch: pitchFor([give.playerKey], theirRawNeed),
             },
           })
         }
@@ -496,6 +524,7 @@ export function useTradeTargets(inputs: {
     const consTimingCands: ConsCand[] = [] // best by timing edge (for the buy-low/sell-high mode)
     for (const ps of partnerScores) {
       const theirNeed = needVec(ps.teamId)
+      const theirRawNeed = rawNeedVec(ps.teamId)
       const getCandidates = [...(byTeam.get(ps.teamId) ?? [])]
         .sort((a, b) => (marketValue.get(b.playerKey) ?? 0) - (marketValue.get(a.playerKey) ?? 0))
         .slice(CONSOLIDATE_PROTECT)
@@ -526,11 +555,12 @@ export function useTradeTargets(inputs: {
               { name: g2.name, pos: g2.position, value: Math.round(v2), headshot: g2.headshot, proLogo: mlbTeamLogo(g2.proTeam), ...sideTiming(g2.playerKey, 'sell') },
             ]
             const helps = helpsFor(get.playerKey, gives, side)
+            const pitch = pitchFor(gives, theirRawNeed)
             const klass: Exclude<DealClass, 'fleece'> = ev.klass === 'leverage' ? 'leverage' : 'winWin'
             // Consolidate: the stud must improve a HOLE or a contested race.
             if (worthImproving(fixId)) {
               const candC: ConsCand = { gain: ev.yourGain, timingEdge: 0, giveKeys: gives, getKey: get.playerKey,
-                t: { fix: tag(fixId), get: getSide, give: giveSides, fromTeam: teamName(ps.teamId), fromTeamLogo: teamLogo(ps.teamId), klass, helps } }
+                t: { fix: tag(fixId), get: getSide, give: giveSides, fromTeam: teamName(ps.teamId), fromTeamLogo: teamLogo(ps.teamId), klass, helps, pitch } }
               if (!best || candC.gain > best.gain) best = candC
             }
             // Timing 2-for-1: objective is the timing edge — NO hole gate. Label by the category
@@ -539,7 +569,7 @@ export function useTradeTargets(inputs: {
             const improveCat = rankHelps(get.playerKey, gives, side)[0]?.statId
             if (tEdge > 0 && improveCat) {
               const candT: ConsCand = { gain: ev.yourGain, timingEdge: tEdge, giveKeys: gives, getKey: get.playerKey,
-                t: { fix: tag(improveCat), get: getSide, give: giveSides, fromTeam: teamName(ps.teamId), fromTeamLogo: teamLogo(ps.teamId), klass, helps } }
+                t: { fix: tag(improveCat), get: getSide, give: giveSides, fromTeam: teamName(ps.teamId), fromTeamLogo: teamLogo(ps.teamId), klass, helps, pitch } }
               if (!bestT || candT.timingEdge > bestT.timingEdge) bestT = candT
             }
           }
