@@ -43,3 +43,28 @@ describe('usePositionalTargets — reach', () => {
     expect(deal.fromTeam).toBe('Them')
   })
 })
+
+describe('usePositionalTargets — win-win tiering', () => {
+  // ME deep 3B / thin SS; THEM deep SS / thin 3B -> mutual positional fit (win-win).
+  const mk = (key: string, teamKey: string, pos: string, value: number): PoolPlayer & { value: number } => ({
+    playerKey: key, name: key, position: pos, stats: {}, eligiblePositions: [pos],
+    teamKey, headshot: undefined, proTeam: 'OAK', value,
+  })
+  const mirror = (): (PoolPlayer & { value: number })[] => [
+    mk('my3Ba', 'me', '3B', 80), mk('my3Bb', 'me', '3B', 70), // deep 3B, no SS -> SS hole
+    mk('thSSa', 'them', 'SS', 78), mk('thSSb', 'them', 'SS', 68), // deep SS, no 3B -> 3B hole
+  ]
+  it('classifies a mutual positional swap as win-win and tags a tier', () => {
+    const inp = base(fixture())
+    const pool = mirror()
+    inp.pool = ref(pool as PoolPlayer[])
+    inp.valueByKey = ref(new Map(pool.map((p) => [p.playerKey, p.value])))
+    inp.strengthByKey = ref(new Map(pool.map((p) => [p.playerKey, {} as Record<string, number>])))
+    inp.slots = ref({ '3B': 1, SS: 1 } as Record<string, number>)
+    const { view } = usePositionalTargets(inp)
+    const ww = view.value!.winWin
+    expect(ww.length).toBeGreaterThan(0)
+    expect(['both', 'one']).toContain(ww[0].tier)
+    expect(ww[0].position === 'SS' || ww[0].position === '3B').toBe(true)
+  })
+})

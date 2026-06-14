@@ -140,7 +140,37 @@ export function usePositionalTargets(inputs: {
       }
     }
 
-    return { myDeep, myThin, reach, winWin: [], consolidate: [] }
+    // WIN-WIN: a position I need (my hole) where THEY have surplus, AND a position they need where I
+    // have surplus — each fills the other's hole, values even. Tier by the secondary (category)
+    // effect: 'both' if the swap also helps a category you need, else 'one'.
+    const winWin: PositionalTarget[] = []
+    for (const [teamKey, m] of ls) {
+      if (teamKey === myKey) continue
+      for (const myHole of myThin) {
+        if ((m.get(myHole)?.surplus ?? 0) < EDGE) continue // they aren't deep at my hole
+        for (const theirHole of positions) {
+          if ((m.get(theirHole)?.need ?? 0) < EDGE) continue // not their hole
+          if ((mine?.get(theirHole)?.surplus ?? 0) < EDGE) continue // I'm not deep there
+          // I get their best body at my hole; I give my worst extra at their hole.
+          const getKey = depth.filter((p) => p.teamKey === teamKey && eligibleAt(p.playerKey, myHole) && p.value > 0)
+            .sort((a, b) => b.value - a.value)[0]?.playerKey
+          const giveKey = myGiveablesAt(theirHole)[0]
+          if (!getKey || !giveKey) continue
+          const getVal = valueByKey.get(getKey) ?? 0
+          const giveVal = valueByKey.get(giveKey) ?? 0
+          if (Math.abs(getVal - giveVal) > VALUE_BAND) continue // must be even
+          const g = guardrail(getKey, giveKey)
+          if (!g.ok) continue
+          winWin.push({ position: myHole, get: sideOf(getKey), give: sideOf(giveKey),
+            fromTeam: teamName(teamKey), fromTeamLogo: teamLogo(teamKey),
+            tier: g.secondaryHelps.length ? 'both' : 'one', secondaryHelps: g.secondaryHelps })
+        }
+      }
+    }
+    // Tier 1 (both) before Tier 2 (one); within a tier, closest value first.
+    winWin.sort((a, b) => (a.tier === b.tier ? 0 : a.tier === 'both' ? -1 : 1))
+
+    return { myDeep, myThin, reach, winWin, consolidate: [] }
   })
   return { view }
 }
