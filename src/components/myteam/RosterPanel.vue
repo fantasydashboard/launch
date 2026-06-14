@@ -241,8 +241,13 @@ function onLogoErr(e: Event) {
           </span>
 
           <!-- Cross-role rest-of-season trade value (0-100) — same number as the Trades page,
-               comparable across positions. Sections/tiers stay role-relative. -->
-          <ValueBadge :value="row.crossValue" class="ml-auto shrink-0" />
+               comparable across positions. The "vs all" tag flags that this number ranks against
+               the WHOLE league pool, while the section header / tiers rank within the role —
+               two different frames that otherwise read as a contradiction. -->
+          <span class="ml-auto flex shrink-0 items-center gap-1.5">
+            <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/60">vs all</span>
+            <ValueBadge :value="row.crossValue" />
+          </span>
         </div>
       </template>
     </div>
@@ -251,7 +256,7 @@ function onLogoErr(e: Event) {
     <p v-if="sections.length > 0" class="px-4 py-3 font-mono text-[10px] leading-relaxed text-dark-textMuted">
       <span class="text-primary">green</span> = a category this player helps ·
       <span class="text-[#FF5C5C]">red</span> = one they hurt ·
-      number = rest-of-season trade value vs all rostered players (0–100, same as Trades) ·
+      <span class="text-dark-textMuted/80">vs all</span> number = rest-of-season trade value vs all rostered players (0–100, same as Trades) ·
       sections &amp; tiers rank within each role
     </p>
   </div>

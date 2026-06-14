@@ -18,7 +18,7 @@ import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
 import { computeRosterValue, type CatSpec } from '@/myteam/value'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
-import { mapToEspnStats } from '@/services/projectionService'
+import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 import { classifyCategory } from '@/myteam/categorySide'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
 import { computeCategoryGaps } from '@/myteam/categoryGaps'
@@ -481,17 +481,7 @@ const fgStatsByKey = computed<Record<string, Record<string, number>>>(() => {
   const fgMap = fgByKey.value
   if (!fgMap || !catSpecs.value.length) return {}
   const labelByStatId = new Map(categories.value.map((c) => [c.statId, c.label || c.name || c.statId]))
-  const fgCats = catSpecs.value.map((c) => ({
-    stat_id: c.statId,
-    display_name: labelByStatId.get(c.statId),
-    isPitching: c.side === 'pit',
-  }))
-  const out: Record<string, Record<string, number>> = {}
-  for (const key of Object.keys(fgMap)) {
-    const fg = fgMap[key]
-    if (fg) out[key] = mapToEspnStats(fg, fgCats)
-  }
-  return out
+  return mapFgStatsByKey(fgMap, catSpecs.value, (id) => labelByStatId.get(id) ?? id)
 })
 
 // Contribution per my player: which categories they help (plus) / hurt (minus).

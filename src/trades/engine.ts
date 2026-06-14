@@ -1,6 +1,7 @@
 import type { CatSpec } from '@/myteam/value'
 import { computeRosterValue } from '@/myteam/value'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
+import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 import type { PoolPlayer } from '@/composables/useMyRoster'
 import { computeLuck, type FGProjection, type StatcastData } from '@/services/projectionService'
 import { aggregateTeamCats, type AggPlayer } from './aggregate'
@@ -40,12 +41,14 @@ export function buildEngine(input: BuildEngineInput): TradeEngine | null {
   const { pool, fgByKey, cats, teamCatWins, seasonFraction, labelOf } = input
   if (!cats.length || pool.length < 2) return null
   const statIds = cats.map((c) => c.statId)
+  // Rekey raw FanGraphs projections onto league stat_ids before blending (see mapFgStatsByKey).
+  const fg = mapFgStatsByKey(fgByKey, cats, labelOf)
 
   const eff = new Map<string, AggPlayer>()
   const byTeam = new Map<string, PoolPlayer[]>()
   for (const p of pool) {
     if (!p.teamKey) continue
-    eff.set(p.playerKey, { playerKey: p.playerKey, stats: toEffectiveStats(p.stats, fgByKey[p.playerKey] ?? null, cats, seasonFraction) })
+    eff.set(p.playerKey, { playerKey: p.playerKey, stats: toEffectiveStats(p.stats, fg[p.playerKey] ?? null, cats, seasonFraction) })
     ;(byTeam.get(p.teamKey) ?? byTeam.set(p.teamKey, []).get(p.teamKey)!).push(p)
   }
 

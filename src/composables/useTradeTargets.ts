@@ -2,6 +2,7 @@ import { computed, type ComputedRef, type Ref } from 'vue'
 import type { CatSpec } from '@/myteam/value'
 import { computeRosterValue } from '@/myteam/value'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
+import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 import type { PoolPlayer } from '@/composables/useMyRoster'
 import { computeLuck, type FGProjection, type StatcastData } from '@/services/projectionService'
 import { computeTiming } from '@/trades/timing'
@@ -121,7 +122,9 @@ export function useTradeTargets(inputs: {
     const teamName = (key: string): string => inputs.teamNameByKey.value.get(key) ?? 'Team'
     const teamLogo = (key: string): string | undefined => inputs.teamLogoByKey?.value.get(key)
     const statIds = cats.map((c) => c.statId)
-    const fg = inputs.fgByKey.value
+    // Rekey raw FanGraphs projections onto league stat_ids BEFORE blending — otherwise
+    // toEffectiveStats can't find them and the ROS projection silently never applies.
+    const fg = mapFgStatsByKey(inputs.fgByKey.value, cats, inputs.labelOf)
 
     // ROS-blended stats for every rostered player, grouped by team.
     const eff = new Map<string, AggPlayer>()
