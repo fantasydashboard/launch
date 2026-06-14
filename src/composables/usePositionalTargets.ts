@@ -170,7 +170,34 @@ export function usePositionalTargets(inputs: {
     // Tier 1 (both) before Tier 2 (one); within a tier, closest value first.
     winWin.sort((a, b) => (a.tier === b.tier ? 0 : a.tier === 'both' ? -1 : 1))
 
-    return { myDeep, myThin, reach, winWin, consolidate: [] }
+    // CONSOLIDATE: package two of my surplus-position bodies for one stud at a position I need.
+    // Frees a roster spot (valuable in a daily league). The stud must clear each piece individually
+    // (a real upgrade) and not be far more than the two combined.
+    // NOTE: cross-role percentiles aren't strictly additive, so `giveSum` is a rough fairness rail,
+    // not exact value math — the headline is positional (fills your hole). Tunable in Task 6.
+    const consolidate: PositionalConsolidate[] = []
+    for (const [teamKey, m] of ls) {
+      if (teamKey === myKey) continue
+      for (const myHole of myThin) {
+        const stud = depth.filter((p) => p.teamKey === teamKey && eligibleAt(p.playerKey, myHole) && p.value > 0)
+          .sort((a, b) => b.value - a.value)[0]
+        if (!stud) continue
+        const givePool = [...new Set(myDeep.flatMap((pos) => myGiveablesAt(pos)))]
+        const giveTwo = givePool.map((k) => ({ k, v: valueByKey.get(k) ?? 0 }))
+          .sort((a, b) => a.v - b.v).slice(0, 2)
+        if (giveTwo.length < 2) continue
+        const studVal = valueByKey.get(stud.playerKey) ?? 0
+        const giveSum = giveTwo.reduce((s, x) => s + x.v, 0)
+        if (giveSum < studVal - VALUE_BAND || studVal < Math.max(...giveTwo.map((x) => x.v))) continue
+        const g = guardrail(stud.playerKey, giveTwo[0].k)
+        if (!g.ok) continue
+        consolidate.push({ position: myHole, get: sideOf(stud.playerKey),
+          give: giveTwo.map((x) => sideOf(x.k)), fromTeam: teamName(teamKey),
+          fromTeamLogo: teamLogo(teamKey), secondaryHelps: g.secondaryHelps })
+      }
+    }
+
+    return { myDeep, myThin, reach, winWin, consolidate }
   })
   return { view }
 }

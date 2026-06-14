@@ -68,3 +68,28 @@ describe('usePositionalTargets — win-win tiering', () => {
     expect(ww[0].position === 'SS' || ww[0].position === '3B').toBe(true)
   })
 })
+
+describe('usePositionalTargets — consolidate', () => {
+  const mk = (key: string, teamKey: string, pos: string, value: number): PoolPlayer & { value: number } => ({
+    playerKey: key, name: key, position: pos, stats: {}, eligiblePositions: [pos],
+    teamKey, headshot: undefined, proTeam: 'OAK', value,
+  })
+  it('packages two of my depth bodies for one stud at my hole', () => {
+    const pool = [
+      mk('d1', 'me', 'OF', 55), mk('d2', 'me', 'OF', 52), mk('d3', 'me', 'OF', 50), // deep OF
+      // no SS -> SS hole
+      mk('stud', 'them', 'SS', 88), mk('thOFa', 'them', 'OF', 60), mk('thOFb', 'them', 'OF', 58),
+    ]
+    const inp = base(fixture())
+    inp.pool = ref(pool as PoolPlayer[])
+    inp.valueByKey = ref(new Map(pool.map((p) => [p.playerKey, p.value])))
+    inp.strengthByKey = ref(new Map(pool.map((p) => [p.playerKey, {} as Record<string, number>])))
+    inp.slots = ref({ OF: 2, SS: 1 } as Record<string, number>)
+    const { view } = usePositionalTargets(inp)
+    const c = view.value!.consolidate
+    expect(c.length).toBeGreaterThan(0)
+    expect(c[0].position).toBe('SS')
+    expect(c[0].give.length).toBe(2)
+    expect(c[0].get.playerKey).toBe('stud')
+  })
+})
