@@ -94,16 +94,30 @@ league-wide injury into the pool is a possible later upgrade.)
 A parallel `usePositionalTargets` (mirrors `useTradeTargets`) producing the three intents on
 positional need/surplus:
 
-- **Win-win:** my surplus position ↔ their surplus position where each fills the other's `need`,
-  values within the existing even-band. (Expected to be the thinnest output — mutual positional
-  fit is a tight double-coincidence; that's fine.)
+- **Win-win (tiered — handles the thin-output problem):** my surplus position ↔ their surplus
+  position where each fills the other's `need`, values within the even-band. Because every deal is
+  *also* scored on the secondary dimension (the same scoring the guardrail needs — computed once,
+  reused), win-win results are bucketed:
+  - **Tier 1 "Fits both":** win-win on the primary lens that *also helps* the secondary dimension
+    (a positional swap that also nets a category, or vice versa). Strongest, rarest — shown first.
+  - **Tier 2 "Fits one":** win-win on the primary lens, *neutral* on the secondary. The fallback so
+    the user always sees a clean option when Tier 1 is empty/sparse.
+  - The tier label is shown to the user ("Fits both" / "Fits one") — it explains *why* a deal is
+    good (a twofer vs a clean single), not just padding.
+  - **Decision (settled):** a deal that fits the primary lens but *hurts* the secondary is
+    **rejected** (the guardrail), never shown as a fallback — the feature exists to stop
+    "win on paper, lose your lineup," so a warned-but-harmful tier would reintroduce it. Tier 2
+    (neutral) supplies the fallback. (A last-resort warned "Tier 3" was considered and declined.)
 - **Make them reach:** their `need` at P (thin/inferred-injured) + my `surplus` at P → a believable
   positional overpay (reuse `REACH_MIN_OVERPAY`/`VALUE_BAND`). Highest-value of the three.
 - **Consolidate:** package two of my surplus-position bodies for one stud at a `need` position;
   credit the **freed roster spot** (valuable in this daily-transaction league).
 
 Every emitted deal passes the **category guardrail**: reject if `evalDeal` shows it loses a
-category the team is contesting (need ≥ `DEMAND_THRESHOLD` and the deal worsens it).
+category the team is contesting (need ≥ `DEMAND_THRESHOLD` and the deal worsens it). The secondary-
+dimension score this produces is also what buckets win-win into Tier 1 (helps) vs Tier 2 (neutral),
+so guardrail + tiering are one computation. The same secondary-effect score tags reach/consolidate
+deals too ("also helps your SB"), though only win-win is formally tiered.
 
 Each deal reuses the existing GET/GIVE card + value meter. Headline is positional
 ("Fills their 3B hole"); category side-effects shown secondarily ("also nets you SB").
@@ -146,6 +160,9 @@ TradesView: dimension toggle ('categories' | 'position') selects which generator
   same `Record<position, count>`; missing settings → baseball defaults.
 - **Generation:** fixtures produce a positional win-win, a reach (their thin / my deep), and a
   consolidate (2 depth → 1 stud); empty when no positional edge exists.
+- **Win-win tiering:** a deal that helps the secondary dimension lands in Tier 1; a secondary-
+  neutral deal lands in Tier 2 and appears as a fallback when Tier 1 is empty; a deal that hurts
+  the secondary dimension is rejected, not surfaced as a fallback.
 - **Category guardrail:** a positionally-sound deal that loses a contested category is rejected.
 
 ## Out of scope (follow-ups, noted not built)
@@ -164,4 +181,6 @@ TradesView: dimension toggle ('categories' | 'position') selects which generator
   combo slots) must parse sanely; the parser needs platform fixtures and a safe default.
 - **`STARTABLE_BAR` tuning.** Too low → everyone looks deep everywhere; too high → false holes.
   Validate against the user's real Yahoo + ESPN rosters before trusting output.
-- **Thin win-win output** is expected, not a bug — communicate in the empty state.
+- **Thin win-win output** is mitigated by the Tier 1 / Tier 2 bucketing (Tier 2 = fits-one
+  fallback). True emptiness (no clean fallback either) is still communicated in the empty state,
+  with a cross-link to the other lens.
