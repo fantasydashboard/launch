@@ -26,6 +26,7 @@ function engine(opts: {
       ['them', stand(opts.theirNeed)],
     ]),
     valueByKey: new Map(Object.entries(opts.values)),
+    roleValueByKey: new Map(Object.entries(opts.values)),
     strengthByKey: new Map(Object.entries(opts.strengths)),
     timingByKey: new Map(),
   }

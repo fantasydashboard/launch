@@ -181,11 +181,12 @@ const myStatuses = computed(() => {
   return m
 })
 const valueByKey = computed(() => engine.value?.valueByKey ?? new Map<string, number>())
+const roleValueByKey = computed(() => engine.value?.roleValueByKey ?? new Map<string, number>())
 const strengthByKey = computed(() => engine.value?.strengthByKey ?? new Map<string, Record<string, number>>())
 const catLandscape = computed<Landscape>(() => engine.value?.landscape ?? new Map())
 const statIdsRef = computed(() => catSpecs.value.map((c) => c.statId))
 const { view: posView } = usePositionalTargets({
-  pool, valueByKey, strengthByKey, slots: rosterSlots, myStatuses,
+  pool, valueByKey, roleValueByKey, strengthByKey, slots: rosterSlots, myStatuses,
   catLandscape, statIds: statIdsRef, myTeamKey, teamNameByKey, teamLogoByKey, labelOf,
 })
 // Positional 1-for-1 list by intent (reach vs win-win). Consolidate has its own 2-for-1 list.

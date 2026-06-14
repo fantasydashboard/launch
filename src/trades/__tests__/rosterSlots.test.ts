@@ -30,6 +30,21 @@ describe('parseRosterSlots', () => {
     expect(parseRosterSlots('espn', {})).toEqual(DEFAULT_SLOTS)
   })
 
+  it('folds granular LF/CF/RF slots into a single OF pool', () => {
+    const settings = {
+      roster_positions: [
+        { roster_position: { position: 'OF', count: 1 } },
+        { roster_position: { position: 'LF', count: 1 } },
+        { roster_position: { position: 'CF', count: 1 } },
+        { roster_position: { position: 'RF', count: 1 } },
+        { roster_position: { position: '2B', count: 1 } },
+      ],
+    }
+    const slots = parseRosterSlots('yahoo', settings)
+    expect(slots).toEqual({ OF: 4, '2B': 1 })
+    expect(slots.LF).toBeUndefined()
+  })
+
   it('exposes flex eligibility so UTIL accepts any hitter sub-position', () => {
     expect(FLEX_ELIGIBILITY.UTIL).toContain('3B')
     expect(FLEX_ELIGIBILITY.P).toEqual(expect.arrayContaining(['SP', 'RP']))

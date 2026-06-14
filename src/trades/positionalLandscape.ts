@@ -29,12 +29,17 @@ const isInjured = (s?: string): boolean => {
 }
 
 /** Which concrete sub-positions a slot accepts (flex slots expand; concrete slots are themselves). */
-function slotAccepts(slot: string): string[] {
+export function slotAccepts(slot: string): string[] {
   return FLEX_ELIGIBILITY[slot] ?? [slot]
 }
-function eligibleForSlot(player: DepthPlayer, slot: string): boolean {
+/** Whether a player's eligible positions can fill the given slot. Shared so the landscape and the
+ *  generator judge eligibility identically (no drift between "who's a hole" and "who can fill it"). */
+export function coversSlot(eligiblePositions: string[], slot: string): boolean {
   const accepted = slotAccepts(slot)
-  return player.eligiblePositions.some((p) => accepted.includes(p) || p === slot)
+  return eligiblePositions.some((p) => accepted.includes(p) || p === slot)
+}
+function eligibleForSlot(player: DepthPlayer, slot: string): boolean {
+  return coversSlot(player.eligiblePositions, slot)
 }
 
 export interface SlotAssignment {
@@ -100,15 +105,14 @@ export function buildPositionalLandscape(
     const a = assignSlots(players, slots, bar)
     const m = new Map<string, PosStanding>()
     for (const pos of positions) {
-      const accepted = slotAccepts(pos)
       const eligibleStartable = players.filter(
-        (p) => p.value >= bar && p.eligiblePositions.some((e) => accepted.includes(e) || e === pos),
+        (p) => p.value >= bar && coversSlot(p.eligiblePositions, pos),
       )
       const startableCount = eligibleStartable.length
       const unmet = a.unfilled.filter((u) => u.position === pos).length
       // bench-bound startable bodies eligible here = surplus supply at this position.
       const surplusBodies = a.benchStartable.filter(
-        (p) => p.eligiblePositions.some((e) => accepted.includes(e) || e === pos),
+        (p) => coversSlot(p.eligiblePositions, pos),
       ).length
       const surplus = Math.min(1, surplusBodies / SAT)
       const need = Math.min(1, unmet / SAT)

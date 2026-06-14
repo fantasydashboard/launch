@@ -47,5 +47,11 @@ export function parseRosterSlots(
       out[pos] = (out[pos] ?? 0) + n
     }
   }
+  // Fold granular outfield slots into one OF pool. Managers think in "OF", and an
+  // OF-eligible player fills any of LF/CF/RF — keeping them separate only manufactured
+  // phantom holes (an OF player couldn't "fill" an LF slot) and noisy Deep/Thin chips.
+  for (const g of ['LF', 'CF', 'RF']) {
+    if (out[g]) { out['OF'] = (out['OF'] ?? 0) + out[g]; delete out[g] }
+  }
   return Object.keys(out).length ? out : { ...DEFAULT_SLOTS }
 }

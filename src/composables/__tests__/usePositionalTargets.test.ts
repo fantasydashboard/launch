@@ -21,6 +21,7 @@ function fixture() {
 const base = (f: ReturnType<typeof fixture>) => ({
   pool: ref(f.pool as PoolPlayer[]),
   valueByKey: ref(f.valueByKey),
+  roleValueByKey: ref(f.valueByKey), // role-relative == cross in these single-pool fixtures
   strengthByKey: ref(f.strengthByKey),
   slots: ref({ '3B': 1, SS: 1, OF: 1 } as Record<string, number>),
   myStatuses: ref(new Map<string, string>()),
@@ -57,8 +58,10 @@ describe('usePositionalTargets — win-win tiering', () => {
   it('classifies a mutual positional swap as win-win and tags a tier', () => {
     const inp = base(fixture())
     const pool = mirror()
+    const vals = new Map(pool.map((p) => [p.playerKey, p.value]))
     inp.pool = ref(pool as PoolPlayer[])
-    inp.valueByKey = ref(new Map(pool.map((p) => [p.playerKey, p.value])))
+    inp.valueByKey = ref(vals)
+    inp.roleValueByKey = ref(vals)
     inp.strengthByKey = ref(new Map(pool.map((p) => [p.playerKey, {} as Record<string, number>])))
     inp.slots = ref({ '3B': 1, SS: 1 } as Record<string, number>)
     const { view } = usePositionalTargets(inp)
@@ -74,15 +77,19 @@ describe('usePositionalTargets — consolidate', () => {
     playerKey: key, name: key, position: pos, stats: {}, eligiblePositions: [pos],
     teamKey, headshot: undefined, proTeam: 'OAK', value,
   })
-  it('packages two of my depth bodies for one stud at my hole', () => {
+  it('packages two of my surplus bodies for one stud at my hole', () => {
     const pool = [
-      mk('d1', 'me', 'OF', 55), mk('d2', 'me', 'OF', 52), mk('d3', 'me', 'OF', 50), // deep OF
+      // 4 startable OF for 2 OF slots -> TWO genuine surplus bodies (d3, d4) to package
+      // without opening a hole.
+      mk('d1', 'me', 'OF', 55), mk('d2', 'me', 'OF', 52), mk('d3', 'me', 'OF', 50), mk('d4', 'me', 'OF', 48),
       // no SS -> SS hole
       mk('stud', 'them', 'SS', 88), mk('thOFa', 'them', 'OF', 60), mk('thOFb', 'them', 'OF', 58),
     ]
     const inp = base(fixture())
+    const vals = new Map(pool.map((p) => [p.playerKey, p.value]))
     inp.pool = ref(pool as PoolPlayer[])
-    inp.valueByKey = ref(new Map(pool.map((p) => [p.playerKey, p.value])))
+    inp.valueByKey = ref(vals)
+    inp.roleValueByKey = ref(vals)
     inp.strengthByKey = ref(new Map(pool.map((p) => [p.playerKey, {} as Record<string, number>])))
     inp.slots = ref({ OF: 2, SS: 1 } as Record<string, number>)
     const { view } = usePositionalTargets(inp)

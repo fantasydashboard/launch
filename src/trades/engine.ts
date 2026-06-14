@@ -23,6 +23,7 @@ export interface TradeEngine {
   byTeam: Map<string, PoolPlayer[]>
   landscape: Landscape
   valueByKey: Map<string, number> // cross-role percentile, 0-100
+  roleValueByKey: Map<string, number> // within-role percentile, 0-100 (pitcher-vs-pitcher etc.)
   strengthByKey: Map<string, Record<string, number>> // per-category z
   timingByKey: Map<string, PlayerTiming>
 }
@@ -65,6 +66,7 @@ export function buildEngine(input: BuildEngineInput): TradeEngine | null {
     cats,
   )
   const valueByKey = new Map(valued.map((c) => [c.playerKey, c.crossPercentile]))
+  const roleValueByKey = new Map(valued.map((c) => [c.playerKey, c.roleValue]))
   const strengthByKey = new Map(valued.map((c) => [c.playerKey, Object.fromEntries(c.contribs.map((k) => [k.statId, k.z]))]))
 
   // Timing: perceived (season-pace) value vs ROS value + Statcast luck.
@@ -93,5 +95,5 @@ export function buildEngine(input: BuildEngineInput): TradeEngine | null {
     timingByKey.set(p.playerKey, computeTiming(perceivedPct.get(p.playerKey) ?? 50, rosPct.get(p.playerKey) ?? 50, luck, luckStrong))
   }
 
-  return { pool, cats, statIds, byTeam, landscape, valueByKey, strengthByKey, timingByKey }
+  return { pool, cats, statIds, byTeam, landscape, valueByKey, roleValueByKey, strengthByKey, timingByKey }
 }
