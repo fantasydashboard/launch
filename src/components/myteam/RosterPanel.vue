@@ -4,6 +4,8 @@ import type { RosterPlayer } from '@/composables/useMyRoster'
 import type { PlayerContribution } from '@/myteam/types'
 import type { DropAnalysis } from '@/myteam/dropCandidates'
 import { valueTier } from '@/myteam/value'
+import { mlbTeamLogo } from '@/players/mlbTeamLogo'
+import ValueBadge from '@/components/trades/ValueBadge.vue'
 
 const props = defineProps<{
   players: RosterPlayer[]
@@ -31,7 +33,9 @@ interface RosterRow {
   // Single muted chip for a player's best category when they have no plus chips
   // (so the row isn't blank). Null when they have plus chips or no contributed cat.
   topChip: ContribChip | null
-  roleValue: number
+  roleValue: number // role-relative percentile — drives the within-role tier + sort
+  crossValue: number // cross-role trade value (0-100) — the displayed number, matches Trades
+  proLogo?: string // MLB team logo
   tier: Tier
   dropReason: string | null
   isWeakLink: boolean
@@ -107,6 +111,8 @@ const sections = computed<RosterSection[]>(() => {
       plusOverflow,
       topChip,
       roleValue,
+      crossValue: contrib?.crossPercentile ?? 0,
+      proLogo: mlbTeamLogo(player.team),
       tier: valueTier(roleValue),
       dropReason: dropReasonByKey.value.get(player.playerKey) ?? null,
       isWeakLink: weakLink !== null && player.playerKey === weakLink,
@@ -124,6 +130,11 @@ const sections = computed<RosterSection[]>(() => {
     { role: 'pitcher', label: 'Pitchers', rows: split('pitcher') },
   ].filter((s) => s.rows.length > 0)
 })
+
+// The MLB team logo is decorative — hide it on a broken load.
+function onLogoErr(e: Event) {
+  ;(e.target as HTMLImageElement).style.display = 'none'
+}
 </script>
 
 <template>
@@ -192,8 +203,13 @@ const sections = computed<RosterSection[]>(() => {
                 class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-[#F2B33A] bg-[#F2B33A]/10"
               >weak {{ props.weakStarters.get(row.player.playerKey) }}</span>
             </span>
-            <span class="block text-xs text-dark-textMuted">
-              {{ row.player.position }}<template v-if="row.player.team"> · {{ row.player.team }}</template>
+            <span class="flex items-center gap-1 text-xs text-dark-textMuted">
+              {{ row.player.position }}
+              <template v-if="row.player.team">
+                ·
+                <img v-if="row.proLogo" :src="row.proLogo" alt="" @error="onLogoErr" class="h-3.5 w-3.5 shrink-0 object-contain" />
+                {{ row.player.team }}
+              </template>
             </span>
           </span>
 
@@ -224,12 +240,9 @@ const sections = computed<RosterSection[]>(() => {
             >—</span>
           </span>
 
-          <!-- Muted 0-100 roleValue, pinned to a right rail -->
-          <span
-            :title="`Overall value vs other rostered ${section.role === 'hitter' ? 'hitters' : 'pitchers'} (0–100), from this player's category z-scores`"
-            class="ml-auto w-8 shrink-0 cursor-help text-right font-mono text-xs text-dark-textMuted tabular-nums"
-            >{{ row.roleValue }}</span
-          >
+          <!-- Cross-role rest-of-season trade value (0-100) — same number as the Trades page,
+               comparable across positions. Sections/tiers stay role-relative. -->
+          <ValueBadge :value="row.crossValue" class="ml-auto shrink-0" />
         </div>
       </template>
     </div>
@@ -238,7 +251,8 @@ const sections = computed<RosterSection[]>(() => {
     <p v-if="sections.length > 0" class="px-4 py-3 font-mono text-[10px] leading-relaxed text-dark-textMuted">
       <span class="text-primary">green</span> = a category this player helps ·
       <span class="text-[#FF5C5C]">red</span> = one they hurt ·
-      number = overall value vs other rostered players in their role — hitters or pitchers (0–100)
+      number = rest-of-season trade value vs all rostered players (0–100, same as Trades) ·
+      sections &amp; tiers rank within each role
     </p>
   </div>
 </template>
