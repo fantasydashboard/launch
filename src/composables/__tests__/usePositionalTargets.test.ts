@@ -11,7 +11,9 @@ function fixture() {
   })
   const pool = [
     mk('myA', 'me', '3B', 80), mk('myB', 'me', '3B', 70), mk('mySS', 'me', 'SS', 75),
-    mk('theirSS', 'them', 'SS', 78), mk('theirOF', 'them', 'OF', 72),
+    // them: thin at 3B; top-4 are core (protected), their1B (78) is the believable non-core return.
+    mk('theirSS', 'them', 'SS', 90), mk('theirOF', 'them', 'OF', 85),
+    mk('their2B', 'them', '2B', 82), mk('theirC', 'them', 'C', 80), mk('their1B', 'them', '1B', 78),
   ]
   const valueByKey = new Map(pool.map((p) => [p.playerKey, p.value]))
   const strengthByKey = new Map(pool.map((p) => [p.playerKey, {} as Record<string, number>]))
@@ -82,7 +84,9 @@ describe('usePositionalTargets — consolidate', () => {
       // 4 startable OF for 2 OF slots -> TWO genuine surplus bodies (d3, d4) to package
       // without opening a hole.
       mk('d1', 'me', 'OF', 55), mk('d2', 'me', 'OF', 52), mk('d3', 'me', 'OF', 50), mk('d4', 'me', 'OF', 48),
-      // no SS -> SS hole
+      // no SS -> SS hole. stud is them's #3 (bigA/bigB are core, top-2 protected), so it's a
+      // believable 2-for-1 target rather than prying their cornerstone.
+      mk('bigA', 'them', 'OF', 95), mk('bigB', 'them', '1B', 92),
       mk('stud', 'them', 'SS', 88), mk('thOFa', 'them', 'OF', 60), mk('thOFb', 'them', 'OF', 58),
     ]
     const inp = base(fixture())

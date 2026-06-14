@@ -545,8 +545,8 @@ function onLogoError(e: Event) {
           <div v-for="(t, i) in posOneForOne" :key="i" class="overflow-hidden rounded-xl border border-dark-border bg-dark-card">
             <div class="flex items-center justify-between gap-2 border-b border-dark-border/60 bg-[#F2B33A]/[0.04] px-4 py-2">
               <span class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">
-                {{ mode === 'reach' ? 'Press' : 'Fills' }} <b class="text-[#ffd98a]">{{ t.position }}</b>
-                <span v-if="t.tier" class="text-dark-textMuted"> · {{ t.tier === 'both' ? 'fits both' : 'fits one' }}</span>
+                <template v-if="mode === 'reach'">they're thin at <b class="text-[#ffd98a]">{{ t.position }}</b></template>
+                <template v-else>Fills <b class="text-[#ffd98a]">{{ t.position }}</b><span v-if="t.tier" class="text-dark-textMuted"> · {{ t.tier === 'both' ? 'fits both' : 'fits one' }}</span></template>
               </span>
               <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">{{ mode === 'reach' ? 'leverage' : 'win-win' }}</span>
             </div>

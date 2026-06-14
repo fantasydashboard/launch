@@ -48,12 +48,37 @@ export interface PositionalView {
 
 // A deal is "even enough" to be believable as 1-for-1 when cross-role values are within this band.
 const VALUE_BAND = 24
-// A reach must extract a meaningfully more valuable body than you give (they're desperate).
+// A reach must extract a meaningfully more valuable body than you give (they're desperate)...
 const REACH_MIN_OVERPAY = 6
+// ...but a MODEST one. A team patches a positional hole with a slightly-better body, it doesn't
+// hand you a franchise player — so the reach overpay is capped well below VALUE_BAND.
+const REACH_MAX_GAIN = 16
+// A team won't trade its best few players to patch a position. Exclude each team's top-N (by value)
+// as a reach return; a smaller protection on the consolidate stud (a 2-for-1 CAN pry a good player,
+// just not their cornerstone).
+const CORE_PROTECT = 4
+const CONSOLIDATE_PROTECT = 2
 // surplus/need must clear this to count as real depth / a real hole.
 const EDGE = 0.5
 // Don't flood the list — show the strongest handful per intent.
 const MAX_PER_MODE = 8
+const MAX_CONSOLIDATE = 4
+// A single surplus body can't be promised to everyone — cap how many cards reuse the same give.
+const MAX_GIVE_REUSE = 2
+
+// Friendlier labels for the Deep/Thin summary, and pitching collapsed to one chip.
+const PRETTY_POS: Record<string, string> = { UTIL: 'Util', '2B/SS': 'MI', '1B/3B': 'CI' }
+function prettyPositions(list: string[]): string[] {
+  const out: string[] = []
+  let pitch = false
+  for (const p of list) {
+    if (p === 'SP' || p === 'RP' || p === 'P') { pitch = true; continue }
+    const label = PRETTY_POS[p] ?? p
+    if (!out.includes(label)) out.push(label)
+  }
+  if (pitch) out.push('P')
+  return out
+}
 
 export function usePositionalTargets(inputs: {
   pool: Ref<PoolPlayer[]>
@@ -106,6 +131,13 @@ export function usePositionalTargets(inputs: {
     }
     const myBench = benchByTeam.get(myKey) ?? new Set<string>()
 
+    // Each team's most valuable few players — the cornerstones they won't move to patch a position.
+    const coreByTeam = new Map<string, string[]>()
+    for (const [team, players] of depthByTeam) {
+      coreByTeam.set(team, [...players].sort((a, b) => crossVal(b.playerKey) - crossVal(a.playerKey)).map((p) => p.playerKey))
+    }
+    const isCore = (team: string, key: string, n: number) => (coreByTeam.get(team) ?? []).slice(0, n).includes(key)
+
     const sideOf = (key: string): PosSide => {
       const p = byKey.get(key)!
       return { playerKey: key, name: p.name, pos: p.position, value: Math.round(crossVal(key)),
@@ -116,6 +148,9 @@ export function usePositionalTargets(inputs: {
     const positions = Object.keys(slots)
     const myDeep = positions.filter((pos) => (mine?.get(pos)?.surplus ?? 0) >= EDGE)
     const myThin = positions.filter((pos) => (mine?.get(pos)?.need ?? 0) >= EDGE)
+    // Does a player cover any slot I'm thin at? Used to prefer reach returns that fill a real hole
+    // instead of piling onto a position I'm already deep in.
+    const fillsMyThin = (key: string) => myThin.some((t) => coversSlot(eligOf(key), t))
 
     // My giveable bodies for a slot: my surplus starters that can fill it, cheapest (cross-value) first.
     const myGiveablesAt = (pos: string): string[] =>
@@ -150,11 +185,25 @@ export function usePositionalTargets(inputs: {
       }
       return [...best.values()].sort((a, b) => rank(b) - rank(a)).slice(0, MAX_PER_MODE)
     }
+    // A single surplus body can't be promised to everyone — keep at most MAX_GIVE_REUSE cards per
+    // give player (input already sorted best-first).
+    const capGiveReuse = (deals: PositionalTarget[]): PositionalTarget[] => {
+      const used = new Map<string, number>()
+      const out: PositionalTarget[] = []
+      for (const d of deals) {
+        const n = used.get(d.give.playerKey) ?? 0
+        if (n >= MAX_GIVE_REUSE) continue
+        used.set(d.give.playerKey, n + 1)
+        out.push(d)
+      }
+      return out
+    }
 
     // REACH: they're thin at a slot you're deep in. You GIVE a startable surplus body that fills
-    // their hole; because they're desperate they overpay — you GET a more valuable body of theirs
-    // (not one of their own holes), gain in [REACH_MIN_OVERPAY, VALUE_BAND]. Lopsided your way.
-    const reachRaw: (PositionalTarget & { gain: number })[] = []
+    // their hole; because they're desperate they overpay — you GET a more valuable body of theirs,
+    // gain in [REACH_MIN_OVERPAY, REACH_MAX_GAIN]. NOT one of their cornerstones (CORE_PROTECT), and
+    // preferring a return that fills a slot YOU'RE thin at over one that piles onto your strength.
+    const reachRaw: (PositionalTarget & { rank: number })[] = []
     for (const [teamKey, m] of ls) {
       if (teamKey === myKey) continue
       for (const pos of positions) {
@@ -164,18 +213,20 @@ export function usePositionalTargets(inputs: {
         if (!giveKey) continue
         const giveVal = crossVal(giveKey)
         const ret = (depthByTeam.get(teamKey) ?? [])
-          .filter((p) => !coversSlot(p.eligiblePositions, pos) && crossVal(p.playerKey) > 0)
-          .map((p) => ({ key: p.playerKey, gain: crossVal(p.playerKey) - giveVal }))
-          .filter((x) => x.gain >= REACH_MIN_OVERPAY && x.gain <= VALUE_BAND)
-          .sort((a, b) => b.gain - a.gain)[0]
+          .filter((p) => !coversSlot(p.eligiblePositions, pos) && crossVal(p.playerKey) > 0 && !isCore(teamKey, p.playerKey, CORE_PROTECT))
+          .map((p) => ({ key: p.playerKey, gain: crossVal(p.playerKey) - giveVal, thin: fillsMyThin(p.playerKey) }))
+          .filter((x) => x.gain >= REACH_MIN_OVERPAY && x.gain <= REACH_MAX_GAIN)
+          // a return that fills your hole beats a bigger overpay that piles onto a strength.
+          .sort((a, b) => (Number(b.thin) - Number(a.thin)) || (b.gain - a.gain))[0]
         if (!ret) continue
         const g = guardrail(ret.key, giveKey)
         if (!g.ok) continue
-        reachRaw.push({ position: pos, get: sideOf(ret.key), give: sideOf(giveKey), gain: ret.gain,
+        reachRaw.push({ position: pos, get: sideOf(ret.key), give: sideOf(giveKey),
+          rank: (ret.thin ? 100 : 0) + ret.gain,
           fromTeam: teamName(teamKey), fromTeamLogo: teamLogo(teamKey), secondaryHelps: g.secondaryHelps })
       }
     }
-    const reach = dedupeByGet(reachRaw, (t) => t.gain)
+    const reach = capGiveReuse(dedupeByGet(reachRaw, (t) => t.rank))
 
     // WIN-WIN: a slot you need where THEY have surplus, AND a slot they need where YOU have surplus —
     // each fills the other's hole from spare parts, values even. Tier by the secondary (category) effect.
@@ -210,7 +261,7 @@ export function usePositionalTargets(inputs: {
       if (teamKey === myKey) continue
       for (const myHole of myThin) {
         const stud = (depthByTeam.get(teamKey) ?? [])
-          .filter((p) => coversSlot(p.eligiblePositions, myHole) && roleScore(p.playerKey) >= STARTABLE_BAR)
+          .filter((p) => coversSlot(p.eligiblePositions, myHole) && roleScore(p.playerKey) >= STARTABLE_BAR && !isCore(teamKey, p.playerKey, CONSOLIDATE_PROTECT))
           .sort((a, b) => crossVal(b.playerKey) - crossVal(a.playerKey))[0]
         if (!stud) continue
         const giveTwo = [...myBench].map((k) => ({ k, v: crossVal(k) })).sort((a, b) => a.v - b.v).slice(0, 2)
@@ -228,11 +279,11 @@ export function usePositionalTargets(inputs: {
     const consolidate = (() => {
       const best = new Map<string, (typeof consolidateRaw)[number]>()
       for (const d of consolidateRaw) if (!best.has(d.get.playerKey)) best.set(d.get.playerKey, d)
-      return [...best.values()].sort((a, b) => b.studVal - a.studVal).slice(0, MAX_PER_MODE)
+      return [...best.values()].sort((a, b) => b.studVal - a.studVal).slice(0, MAX_CONSOLIDATE)
         .map(({ studVal: _studVal, ...rest }) => rest)
     })()
 
-    return { myDeep, myThin, reach, winWin, consolidate }
+    return { myDeep: prettyPositions(myDeep), myThin: prettyPositions(myThin), reach, winWin, consolidate }
   })
   return { view }
 }
