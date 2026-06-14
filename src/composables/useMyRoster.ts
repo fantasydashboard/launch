@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { buildPlayerMatchers, type FGProjection, type StatcastData } from '@/services/projectionService'
+import { parseRosterSlots } from '@/trades/rosterSlots'
 
 /** A rostered player on the logged-in user's team, normalized from the Yahoo service shape. */
 export interface RosterPlayer {
@@ -82,6 +83,8 @@ export function useMyRoster() {
   const pool = ref<PoolPlayer[]>([])
   const fgByKey = ref<Record<string, FGProjection | null>>({})
   const statcastByKey = ref<Record<string, StatcastData | null>>({})
+  // Required starting-slot counts per position (for the positional trade dimension).
+  const rosterSlots = ref<Record<string, number>>({})
   const loading = ref(false)
   const loaded = ref(false)
 
@@ -142,6 +145,16 @@ export function useMyRoster() {
       fgByKey.value = fg
       statcastByKey.value = sc
 
+      // League roster-slot requirements for the positional dimension. Best-effort: a settings
+      // failure must not break the roster load, and parseRosterSlots falls back to baseball
+      // defaults when settings are missing.
+      try {
+        const settings = await yahooService.getLeagueSettings(String(leagueKey))
+        if (leagueStore.activeLeagueId === requestedId) rosterSlots.value = parseRosterSlots('yahoo', settings)
+      } catch {
+        rosterSlots.value = parseRosterSlots('yahoo', null)
+      }
+
       // Filter to the logged-in user's team via fantasy_team_key (the full Yahoo
       // team_key). Fall back to the team name when a team_key is unavailable.
       let mine: any[] = []
@@ -162,5 +175,5 @@ export function useMyRoster() {
     }
   }
 
-  return { players, pool, fgByKey, statcastByKey, loading, loaded, load }
+  return { players, pool, fgByKey, statcastByKey, rosterSlots, loading, loaded, load }
 }
