@@ -5,6 +5,7 @@ import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 import type { PoolPlayer } from '@/composables/useMyRoster'
 import { computeLuck, type FGProjection, type StatcastData } from '@/services/projectionService'
 import { aggregateTeamCats, type AggPlayer } from './aggregate'
+import { aggregateTeamCatTotals, type TeamCategoryTotals } from './standings'
 import { buildLandscape, type Landscape, type TeamTotals } from './landscape'
 import { computeTiming, type PlayerTiming } from './timing'
 
@@ -25,6 +26,12 @@ export interface TradeEngine {
   valueByKey: Map<string, number> // cross-role percentile, 0-100
   roleValueByKey: Map<string, number> // within-role percentile, 0-100 (pitcher-vs-pitcher etc.)
   strengthByKey: Map<string, Record<string, number>> // per-category z
+  // Standings-delta inputs: per-team ROS-projected category totals (ratio cats retain num/den),
+  // each player's projected stat line, the team each player is on, and the league size.
+  teamCatTotals: TeamCategoryTotals[]
+  projByKey: Map<string, Record<string, number>>
+  teamByKey: Map<string, string>
+  numTeams: number
   timingByKey: Map<string, PlayerTiming>
 }
 
@@ -54,6 +61,12 @@ export function buildEngine(input: BuildEngineInput): TradeEngine | null {
   }
 
   const playersByTeam = [...byTeam.entries()].map(([teamId, ps]) => ({ teamId, players: ps.map((p) => eff.get(p.playerKey)!) }))
+  // Standings totals are ALWAYS the projected roster output (not the win-record landscape), because
+  // only projected output can be re-ranked under a trade preview. Ratio cats retain num/den.
+  const teamCatTotals = aggregateTeamCatTotals(playersByTeam, cats)
+  const projByKey = new Map([...eff.entries()].map(([k, v]) => [k, v.stats]))
+  const teamByKey = new Map<string, string>()
+  for (const [teamId, ps] of byTeam) for (const pl of ps) teamByKey.set(pl.playerKey, teamId)
   const wins = teamCatWins ?? []
   const useWins = wins.length >= 2 && wins.some((w) => Object.keys(w.totals).length > 0)
   const teamTotals = useWins ? wins : aggregateTeamCats(playersByTeam, cats)
@@ -95,5 +108,5 @@ export function buildEngine(input: BuildEngineInput): TradeEngine | null {
     timingByKey.set(p.playerKey, computeTiming(perceivedPct.get(p.playerKey) ?? 50, rosPct.get(p.playerKey) ?? 50, luck, luckStrong))
   }
 
-  return { pool, cats, statIds, byTeam, landscape, valueByKey, roleValueByKey, strengthByKey, timingByKey }
+  return { pool, cats, statIds, byTeam, landscape, valueByKey, roleValueByKey, strengthByKey, teamCatTotals, projByKey, teamByKey, numTeams: byTeam.size, timingByKey }
 }
