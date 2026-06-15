@@ -59,3 +59,44 @@ describe('expectedCatsWon', () => {
     expect(expectedCatsWon('C', totals, CATS)).toBeCloseTo(1.0, 5)
   })
 })
+
+import { tradeStandingsDelta, classifyPartnerRead } from '../standings'
+
+describe('tradeStandingsDelta', () => {
+  // A (HR 30 / ERA 3.0,100IP) trades its HR bat for B's arm. Stats by player:
+  const statsById = new Map<string, Record<string, number>>([
+    ['a1', { HR: 30, ERA: 3.0, IP: 100 }],
+    ['b1', { HR: 20, ERA: 4.0, IP: 100 }],
+    ['c1', { HR: 10, ERA: 2.0, IP: 50 }],
+    ['c2', { HR: 5, ERA: 5.0, IP: 50 }],
+  ])
+  const totals = aggregateTeamCatTotals([
+    team('A', [p('a1', statsById.get('a1')!)]),
+    team('B', [p('b1', statsById.get('b1')!)]),
+    team('C', [p('c1', statsById.get('c1')!), p('c2', statsById.get('c2')!)]),
+  ], CATS)
+
+  it('re-ranks both teams after the swap and returns ECW deltas + a ladder for me', () => {
+    // A gives a1 (its only player) and gets c1 from C. After: A has c1 (HR10/ERA2.0,50IP), C has a1+c2.
+    const d = tradeStandingsDelta(totals, statsById, CATS, 'A', 'C', ['a1'], ['c1'])
+    expect(typeof d.you).toBe('number')
+    expect(typeof d.them).toBe('number')
+    // A's HR collapses 30 -> 10 (now last), so A's ECW should drop: delta negative.
+    expect(d.you).toBeLessThan(0)
+    // ladder covers every scored cat with before/after ranks for team A.
+    expect(d.ladder.map((m) => m.statId).sort()).toEqual(['ERA', 'HR'])
+    const hr = d.ladder.find((m) => m.statId === 'HR')!
+    expect(hr.rankBefore).toBe(1)
+    expect(hr.rankAfter).toBeGreaterThan(1)
+    expect(hr.beatsMore).toBe(hr.rankBefore - hr.rankAfter)
+  })
+})
+
+describe('classifyPartnerRead', () => {
+  it('buckets the partner ECW delta into fair / reach / steal', () => {
+    expect(classifyPartnerRead(0.5)).toBe('fair')   // they gain
+    expect(classifyPartnerRead(-0.1)).toBe('fair')  // within eps
+    expect(classifyPartnerRead(-0.4)).toBe('reach') // between eps and big
+    expect(classifyPartnerRead(-1.2)).toBe('steal') // beyond big
+  })
+})
