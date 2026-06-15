@@ -10,6 +10,9 @@ import { classifyCategory } from '@/myteam/categorySide'
 import type { CatSpec } from '@/myteam/value'
 import { useTradeTargets } from '@/composables/useTradeTargets'
 import { usePositionalTargets } from '@/composables/usePositionalTargets'
+import { useTradeOpportunities } from '@/composables/useTradeOpportunities'
+import OpportunityCard from '@/components/trades/OpportunityCard.vue'
+import type { Intent } from '@/trades/opportunities'
 import { buildEngine } from '@/trades/engine'
 import { analyzeTrade } from '@/trades/analyzeTrade'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
@@ -157,19 +160,15 @@ const teamLogoByKey = computed(() => {
 
 const { view } = useTradeTargets({ pool, fgByKey, statcastByKey, catSpecs, teamCatWins, myTeamKey, teamNameByKey, teamLogoByKey, seasonFraction: SEASON_FRACTION, labelOf })
 
-// Trade DIMENSION: score deals by category fit or by roster-position fit.
-type Dimension = 'categories' | 'position'
-const dimension = ref<Dimension>('categories')
-
 // --- Custom trade analyzer: evaluate a SPECIFIC deal you have in mind ---
 const analyzerOpen = ref(false)
 const anGive = ref<string[]>([])
 const anPartner = ref<string | null>(null)
 const anGet = ref<string[]>([])
-// Built when the analyzer is open OR the positional dimension is active (it needs the engine's
-// value/strength/landscape for the value meters + category guardrail).
+// Always built now (the unified opportunity list needs strengths/values/landscape for every deal),
+// guarded only on an empty roster so we don't churn before data loads.
 const engine = computed(() =>
-  (analyzerOpen.value || dimension.value === 'position')
+  pool.value.length
     ? buildEngine({ pool: pool.value, fgByKey: fgByKey.value, statcastByKey: statcastByKey.value, cats: catSpecs.value, teamCatWins: teamCatWins.value, seasonFraction: SEASON_FRACTION, labelOf })
     : null,
 )
@@ -190,8 +189,16 @@ const { view: posView } = usePositionalTargets({
   pool, valueByKey, roleValueByKey, strengthByKey, slots: rosterSlots, myStatuses,
   catLandscape, statIds: statIdsRef, myTeamKey, teamNameByKey, teamLogoByKey, labelOf,
 })
-// Positional 1-for-1 list by intent (reach vs win-win). Consolidate has its own 2-for-1 list.
-const posOneForOne = computed(() => (mode.value === 'reach' ? posView.value?.reach : posView.value?.winWin) ?? [])
+// --- Unified opportunity list (merges category + positional deals, one ranked list) ---
+const { hero, ranked, lens, activeIntents, pressLeverage, toggleIntent } = useTradeOpportunities({
+  pool, engine, catView: view, posView, slots: rosterSlots, myStatuses, myTeamKey, statIds: statIdsRef, labelOf,
+})
+const INTENTS: { key: Intent; label: string }[] = [
+  { key: 'winWin', label: 'win-win' },
+  { key: 'steal', label: 'steal' },
+  { key: 'consolidate', label: 'consolidate' },
+  { key: 'buyLow', label: 'buy-low' },
+]
 
 const valOf = (key: string): number => Math.round(engine.value?.valueByKey.get(key) ?? 0)
 const byVal = (a: { playerKey: string }, b: { playerKey: string }) => valOf(b.playerKey) - valOf(a.playerKey)
@@ -249,32 +256,7 @@ const noTeam = computed(() => !settling.value && !loadFailed.value && supported.
 const isLoading = computed(() => !unsupported.value && !loadFailed.value && settling.value && !view.value)
 const empty = computed(() => !loadFailed.value && !noTeam.value && rosterLoaded.value && !view.value)
 
-// Trade intent modes.
-type Mode = 'winWin' | 'reach' | 'consolidate' | 'timing'
-const mode = ref<Mode>('winWin')
-const MODES: { key: Mode; label: string; blurb: string }[] = [
-  { key: 'winWin', label: 'Win-win', blurb: 'Both teams improve — the deals most likely to be accepted.' },
-  { key: 'reach', label: 'Make them reach', blurb: 'Lopsided in your favor — the overpay to press from a team chasing a hole.' },
-  { key: 'consolidate', label: 'Consolidate', blurb: 'Package two depth pieces for one stud (2-for-1) — quality over quantity.' },
-  { key: 'timing', label: 'Buy-low / Sell-high', blurb: 'Time the market — get an underperformer due to rebound, give an overperformer due to cool off (expected stats confirm).' },
-]
-const modeBlurb = computed(() => MODES.find((m) => m.key === mode.value)?.blurb ?? '')
-// 1-for-1 list by mode; consolidate list (timing has its own 2-for-1 packages).
-const oneForOneList = computed(() => {
-  const v = view.value
-  if (!v) return []
-  return mode.value === 'reach' ? v.reach : mode.value === 'timing' ? v.timing : v.winWin
-})
-const consolidateList = computed(() => (mode.value === 'timing' ? view.value?.timingConsolidate : view.value?.consolidate) ?? [])
-// Partner framing names the direction that matters for the active mode (it goes both ways).
-const partnerBlurb = computed(() => {
-  switch (mode.value) {
-    case 'reach': return 'Teams desperate in a category you dominate — press the overpay.'
-    case 'consolidate': return "Teams who'd take your depth for a stud you need."
-    case 'timing': return 'Where your sell-highs meet their needs, and their buy-lows meet yours.'
-    default: return 'It goes both ways — they hold what you need, you hold what they need.'
-  }
-})
+const partnerBlurb = 'It goes both ways — they hold what you need, you hold what they need.'
 
 function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd']
@@ -413,202 +395,43 @@ function onLogoError(e: Event) {
         </div>
       </section>
 
-      <!-- DIMENSION TOGGLE: score by category fit or by roster-position fit -->
-      <div class="flex items-center gap-2">
-        <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">By</span>
-        <div class="flex w-max overflow-hidden rounded-md border border-dark-border font-mono text-[10px] uppercase tracking-wider">
-          <button
-            v-for="d in (['categories', 'position'] as const)"
-            :key="d"
-            type="button"
-            class="px-3 py-1 transition-colors"
-            :class="dimension === d ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-textSecondary'"
-            @click="dimension = d"
-          >{{ d === 'categories' ? 'Categories' : 'Position' }}</button>
+      <!-- UNIFIED OPPORTUNITIES: one ranked list of trade moves -->
+      <section class="space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Best moves right now</span>
+          <label class="font-mono text-[10px] text-dark-textMuted">lens
+            <select v-model="lens" class="ml-1 bg-transparent text-primary outline-none">
+              <option value="position">position</option>
+              <option value="category">category</option>
+            </select>
+          </label>
         </div>
-      </div>
-
-      <!-- MODE TOGGLE: trade intent -->
-      <div class="space-y-2">
-        <div class="flex w-max overflow-hidden rounded-md border border-dark-border font-mono text-[10px] uppercase tracking-wider">
-          <button
-            v-for="m in MODES"
-            :key="m.key"
-            type="button"
-            class="px-3 py-1 transition-colors"
-            :class="mode === m.key ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-textSecondary'"
-            @click="mode = m.key"
-          >{{ m.label }}</button>
-        </div>
-        <p class="font-mono text-[10px] text-dark-textMuted">{{ modeBlurb }}</p>
-        <p class="flex items-center gap-1.5 font-mono text-[10px] text-dark-textMuted/70">
-          <ValueBadge :value="82" />
-          <span>value 0–100 · higher = better · rest-of-season, all rostered players</span>
+        <p v-if="!hero.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
+          No clear moves right now — toggle <b class="text-dark-textSecondary">press leverage</b> below to see one-sided plays.
         </p>
-      </div>
-
-      <!-- 1-FOR-1 MODES: win-win + make them reach -->
-      <section v-if="dimension === 'categories' && mode !== 'consolidate'" class="space-y-3">
-        <p v-if="!oneForOneList.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
-          <template v-if="mode === 'winWin'">No clean mutual deals right now — try Make them reach or Consolidate.</template>
-          <template v-else-if="mode === 'timing'">No buy-low / sell-high 1-for-1s right now — check the 2-for-1 packages below.</template>
-          <template v-else>No leverage right now — no partner is desperate in a category you dominate.</template>
-        </p>
-        <div v-for="(t, i) in oneForOneList" :key="i" class="overflow-hidden rounded-xl border border-dark-border bg-dark-card">
-          <div class="flex items-center justify-between gap-2 border-b border-dark-border/60 bg-[#F2B33A]/[0.04] px-4 py-2">
-            <span v-if="mode === 'reach'" class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">Press <b class="text-[#ffd98a]">{{ t.fix.label }}</b> · they're {{ ordinal(t.fix.rank) }}</span>
-            <span v-else class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">{{ t.fix.hole === false ? 'Improves' : 'Fixes' }} <b class="text-[#ffd98a]">{{ t.fix.label }}</b> · you're {{ ordinal(t.fix.rank) }}</span>
-            <span class="font-mono text-[10px] uppercase tracking-wider" :class="t.klass === 'leverage' ? 'text-primary' : 'text-dark-textMuted'">{{ t.klass === 'leverage' ? 'leverage' : 'win-win' }}</span>
-          </div>
-          <div class="flex items-center gap-2 px-4 pt-2.5">
-            <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-primary">GET</span>
-            <Avatar :src="t.get.headshot" :label="t.get.name" cls="h-7 w-7 rounded-full" />
-            <span class="font-display text-[15px] font-bold text-dark-text">{{ t.get.name }}</span>
-            <img v-if="t.get.proLogo" :src="t.get.proLogo" alt="" @error="onLogoError" class="h-4 w-4 shrink-0 object-contain" />
-            <span class="font-mono text-[11px] text-dark-textMuted">{{ t.get.pos }}</span>
-            <ValueBadge :value="t.get.value" />
-            <TimingTag v-if="mode === 'timing' && t.get.timing" :dir="t.get.timing" :confirmed="t.get.timingConfirmed" />
-            <span class="ml-auto flex items-center gap-1.5 font-mono text-[11px] text-dark-textMuted">from <Avatar :src="t.fromTeamLogo" :label="t.fromTeam" cls="h-4 w-4 rounded" /> {{ t.fromTeam }}</span>
-          </div>
-          <div class="flex items-center gap-2 px-4 pb-3 pt-1.5">
-            <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-dark-textMuted">GIVE</span>
-            <Avatar :src="t.give.headshot" :label="t.give.name" cls="h-6 w-6 rounded-full" />
-            <span class="text-sm font-semibold text-dark-textSecondary">{{ t.give.name }}</span>
-            <img v-if="t.give.proLogo" :src="t.give.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
-            <span class="font-mono text-[11px] text-dark-textMuted">{{ t.give.pos }}</span>
-            <ValueBadge :value="t.give.value" />
-            <TimingTag v-if="mode === 'timing' && t.give.timing" :dir="t.give.timing" :confirmed="t.give.timingConfirmed" />
-          </div>
-          <div v-if="t.helps.length || t.pitch.length" class="flex flex-wrap items-center gap-x-4 gap-y-0.5 border-t border-dark-border/40 px-4 py-1.5 font-mono text-[10px] text-dark-textMuted">
-            <span v-if="t.helps.length">nets you <span class="text-primary">{{ t.helps.join(' · ') }}</span></span>
-            <span v-if="t.pitch.length">gives them <span class="text-[#F2B33A]">{{ t.pitch.join(' · ') }}</span></span>
-          </div>
-        </div>
+        <OpportunityCard v-for="o in hero" :key="o.id" :opp="o" />
       </section>
 
-      <!-- CONSOLIDATE / TIMING 2-for-1 -->
-      <section v-if="dimension === 'categories' && (mode === 'consolidate' || mode === 'timing')" class="space-y-3">
-        <p v-if="mode === 'timing' && consolidateList.length" class="pt-1 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted/70">2-for-1 packages</p>
-        <p v-if="mode === 'consolidate' && !consolidateList.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
-          No 2-for-1 upgrade available — no partner has a stud your depth can package for at a believable value.
-        </p>
-        <div v-for="(t, i) in consolidateList" :key="i" class="overflow-hidden rounded-xl border border-dark-border bg-dark-card">
-          <div class="flex items-center justify-between gap-2 border-b border-dark-border/60 bg-[#F2B33A]/[0.04] px-4 py-2">
-            <span class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">{{ t.fix.hole === false ? 'Improves' : 'Fixes' }} <b class="text-[#ffd98a]">{{ t.fix.label }}</b> · you're {{ ordinal(t.fix.rank) }}</span>
-            <span class="font-mono text-[10px] uppercase tracking-wider" :class="t.klass === 'leverage' ? 'text-primary' : 'text-dark-textMuted'">{{ t.klass === 'leverage' ? 'leverage' : 'win-win' }}</span>
-          </div>
-          <div class="flex items-center gap-2 px-4 pt-2.5">
-            <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-primary">GET</span>
-            <Avatar :src="t.get.headshot" :label="t.get.name" cls="h-7 w-7 rounded-full" />
-            <span class="font-display text-[15px] font-bold text-dark-text">{{ t.get.name }}</span>
-            <img v-if="t.get.proLogo" :src="t.get.proLogo" alt="" @error="onLogoError" class="h-4 w-4 shrink-0 object-contain" />
-            <span class="font-mono text-[11px] text-dark-textMuted">{{ t.get.pos }}</span>
-            <ValueBadge :value="t.get.value" />
-            <TimingTag v-if="mode === 'timing' && t.get.timing" :dir="t.get.timing" :confirmed="t.get.timingConfirmed" />
-            <span class="ml-auto flex items-center gap-1.5 font-mono text-[11px] text-dark-textMuted">from <Avatar :src="t.fromTeamLogo" :label="t.fromTeam" cls="h-4 w-4 rounded" /> {{ t.fromTeam }}</span>
-          </div>
-          <div class="space-y-1 px-4 pb-3 pt-1.5">
-            <div v-for="(g, gi) in t.give" :key="gi" class="flex items-center gap-2">
-              <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-dark-textMuted">{{ gi === 0 ? 'GIVE' : '' }}</span>
-              <Avatar :src="g.headshot" :label="g.name" cls="h-6 w-6 rounded-full" />
-              <span class="text-sm font-semibold text-dark-textSecondary">{{ g.name }}</span>
-              <img v-if="g.proLogo" :src="g.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
-              <span class="font-mono text-[11px] text-dark-textMuted">{{ g.pos }}</span>
-              <ValueBadge :value="g.value" />
-              <TimingTag v-if="mode === 'timing' && g.timing" :dir="g.timing" :confirmed="g.timingConfirmed" />
-            </div>
-          </div>
-          <div v-if="t.helps.length || t.pitch.length" class="flex flex-wrap items-center gap-x-4 gap-y-0.5 border-t border-dark-border/40 px-4 py-1.5 font-mono text-[10px] text-dark-textMuted">
-            <span v-if="t.helps.length">nets you <span class="text-primary">{{ t.helps.join(' · ') }}</span></span>
-            <span v-if="t.pitch.length">gives them <span class="text-[#F2B33A]">{{ t.pitch.join(' · ') }}</span></span>
-          </div>
+      <section class="space-y-3">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">All opportunities</span>
+          <button
+            v-for="it in INTENTS"
+            :key="it.key"
+            type="button"
+            class="font-mono text-[11px] transition-colors"
+            :class="activeIntents.has(it.key) ? 'text-primary' : 'text-dark-textMuted hover:text-dark-textSecondary'"
+            @click="toggleIntent(it.key)"
+          >{{ it.label }}</button>
+          <label class="ml-auto flex items-center gap-1 font-mono text-[10px] text-dark-textMuted">
+            <input type="checkbox" v-model="pressLeverage" class="accent-primary" /> press leverage
+          </label>
         </div>
+        <p v-if="!ranked.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
+          No more opportunities match — clear a filter or toggle <b class="text-dark-textSecondary">press leverage</b>.
+        </p>
+        <OpportunityCard v-for="o in ranked" :key="o.id" :opp="o" />
       </section>
-
-      <!-- POSITIONAL DIMENSION: deals by roster slot -->
-      <template v-if="dimension === 'position'">
-        <p v-if="posView && (posView.myDeep.length || posView.myThin.length)" class="font-mono text-[11px] text-dark-textMuted">
-          <span v-if="posView.myDeep.length">Deep at <b class="text-primary">{{ posView.myDeep.join(', ') }}</b></span>
-          <span v-if="posView.myThin.length"><span v-if="posView.myDeep.length"> · </span>Thin at <b class="text-[#F2B33A]">{{ posView.myThin.join(', ') }}</b></span>
-        </p>
-
-        <!-- timing has no positional analogue -->
-        <p v-if="mode === 'timing'" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
-          Buy-low / sell-high is a market-timing signal — switch to <b class="text-dark-textSecondary">Categories</b> for it.
-        </p>
-
-        <!-- 1-for-1: reach + win-win -->
-        <section v-else-if="mode === 'reach' || mode === 'winWin'" class="space-y-3">
-          <p v-if="!posOneForOne.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
-            <template v-if="mode === 'winWin'">No mutual positional fit right now — try Make them reach or Consolidate.</template>
-            <template v-else>No positional reach right now — no team is thin where you're deep.</template>
-          </p>
-          <div v-for="(t, i) in posOneForOne" :key="i" class="overflow-hidden rounded-xl border border-dark-border bg-dark-card">
-            <div class="flex items-center justify-between gap-2 border-b border-dark-border/60 bg-[#F2B33A]/[0.04] px-4 py-2">
-              <span class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">
-                <template v-if="mode === 'reach'">they're thin at <b class="text-[#ffd98a]">{{ t.position }}</b></template>
-                <template v-else>Fills <b class="text-[#ffd98a]">{{ t.position }}</b><span v-if="t.tier" class="text-dark-textMuted"> · {{ t.tier === 'both' ? 'fits both' : 'fits one' }}</span></template>
-              </span>
-              <FitMeter :you="t.fit.you" :them="t.fit.them" />
-            </div>
-            <div class="flex items-center gap-2 px-4 pt-2.5">
-              <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-primary">GET</span>
-              <Avatar :src="t.get.headshot" :label="t.get.name" cls="h-7 w-7 rounded-full" />
-              <span class="font-display text-[15px] font-bold text-dark-text">{{ t.get.name }}</span>
-              <img v-if="t.get.proLogo" :src="t.get.proLogo" alt="" @error="onLogoError" class="h-4 w-4 shrink-0 object-contain" />
-              <span class="font-mono text-[11px] text-dark-textMuted">{{ t.get.pos }}</span>
-              <ValueBadge :value="t.get.value" />
-              <span class="ml-auto flex items-center gap-1.5 font-mono text-[11px] text-dark-textMuted">from <Avatar :src="t.fromTeamLogo" :label="t.fromTeam" cls="h-4 w-4 rounded" /> {{ t.fromTeam }}</span>
-            </div>
-            <div class="flex items-center gap-2 px-4 pb-3 pt-1.5">
-              <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-dark-textMuted">GIVE</span>
-              <Avatar :src="t.give.headshot" :label="t.give.name" cls="h-6 w-6 rounded-full" />
-              <span class="text-sm font-semibold text-dark-textSecondary">{{ t.give.name }}</span>
-              <img v-if="t.give.proLogo" :src="t.give.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
-              <span class="font-mono text-[11px] text-dark-textMuted">{{ t.give.pos }}</span>
-              <ValueBadge :value="t.give.value" />
-            </div>
-            <div v-if="t.secondaryHelps.length" class="border-t border-dark-border/40 px-4 py-1.5 font-mono text-[10px] text-dark-textMuted">
-              also helps <span class="text-primary">{{ t.secondaryHelps.join(' · ') }}</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- consolidate 2-for-1 -->
-        <section v-else class="space-y-3">
-          <p v-if="!(posView && posView.consolidate.length)" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
-            No 2-for-1 positional upgrade — no team has a stud at your thin slot your depth can package for.
-          </p>
-          <div v-for="(t, i) in (posView?.consolidate ?? [])" :key="i" class="overflow-hidden rounded-xl border border-dark-border bg-dark-card">
-            <div class="flex items-center justify-between gap-2 border-b border-dark-border/60 bg-[#F2B33A]/[0.04] px-4 py-2">
-              <span class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">Fills <b class="text-[#ffd98a]">{{ t.position }}</b> <span class="text-dark-textMuted">· 2-for-1</span></span>
-              <FitMeter :you="t.fit.you" :them="t.fit.them" />
-            </div>
-            <div class="flex items-center gap-2 px-4 pt-2.5">
-              <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-primary">GET</span>
-              <Avatar :src="t.get.headshot" :label="t.get.name" cls="h-7 w-7 rounded-full" />
-              <span class="font-display text-[15px] font-bold text-dark-text">{{ t.get.name }}</span>
-              <img v-if="t.get.proLogo" :src="t.get.proLogo" alt="" @error="onLogoError" class="h-4 w-4 shrink-0 object-contain" />
-              <span class="font-mono text-[11px] text-dark-textMuted">{{ t.get.pos }}</span>
-              <ValueBadge :value="t.get.value" />
-              <span class="ml-auto flex items-center gap-1.5 font-mono text-[11px] text-dark-textMuted">from <Avatar :src="t.fromTeamLogo" :label="t.fromTeam" cls="h-4 w-4 rounded" /> {{ t.fromTeam }}</span>
-            </div>
-            <div class="space-y-1 px-4 pb-3 pt-1.5">
-              <div v-for="(g, gi) in t.give" :key="gi" class="flex items-center gap-2">
-                <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-dark-textMuted">{{ gi === 0 ? 'GIVE' : '' }}</span>
-                <Avatar :src="g.headshot" :label="g.name" cls="h-6 w-6 rounded-full" />
-                <span class="text-sm font-semibold text-dark-textSecondary">{{ g.name }}</span>
-                <img v-if="g.proLogo" :src="g.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
-                <span class="font-mono text-[11px] text-dark-textMuted">{{ g.pos }}</span>
-                <ValueBadge :value="g.value" />
-              </div>
-            </div>
-            <div v-if="t.secondaryHelps.length" class="border-t border-dark-border/40 px-4 py-1.5 font-mono text-[10px] text-dark-textMuted">
-              also helps <span class="text-primary">{{ t.secondaryHelps.join(' · ') }}</span>
-            </div>
-          </div>
-        </section>
-      </template>
 
       <!-- BEST PARTNERS -->
       <section v-if="view.partners.length" class="space-y-2">
