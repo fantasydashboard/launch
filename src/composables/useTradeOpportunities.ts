@@ -24,13 +24,20 @@ const POS_EDGE = 0.5
 // shopped to everyone, the same 2-for-1 package offered for five studs, one thin slot dominating).
 const GIVE_CAP = 2 // max cards any one give player appears in
 const GET_CAP = 2 // max cards any one target appears in
-const PKG_CAP = 1 // max cards a given give-package (set of give players) appears in
+const PKG_CAP = 1 // max cards a give-package fills the SAME position (different positions allowed)
 const HEADLINE_CAP = 3 // max cards per headline (≈ per filled position)
 const PARTNER_CAP = 3 // max cards per partner team
 const MAX_LIST = 12 // overall length cap for the main list
+// A GET below this cross-value isn't a real rosterable upgrade — it can't "fill" a hole. Buy-lows
+// are exempt: their depressed current value is the whole point (rebound coming).
+const GET_FLOOR = 45
 
 const giveKeysOf = (o: { give: { playerKey: string }[] }) => o.give.map((s) => s.playerKey).sort().join(',')
 const getKeysOf = (o: { get: { playerKey: string }[] }) => o.get.map((s) => s.playerKey).sort().join(',')
+// Package identity is scoped to the position it fills, so the same two expendables can be offered
+// for a P stud AND a C stud (a real choice), but not shown five times for five SPs (the wall).
+const pkgKeyOf = (o: { give: { playerKey: string }[]; headline: string }) => `${giveKeysOf(o)}|${o.headline}`
+const maxGetVal = (o: { get: { value: number }[] }) => Math.max(0, ...o.get.map((s) => s.value))
 
 const eligFromPos = (pos: string): string[] =>
   pos.split(/[,/|]/).map((s) => s.trim()).filter(Boolean)
@@ -165,7 +172,7 @@ export function useTradeOpportunities(inputs: {
     const pl = posLandscape.value
     const myKey = inputs.myTeamKey.value
     if (!eng || !pl || !myKey) return []
-    return buildOpportunities(raws.value, {
+    const built = buildOpportunities(raws.value, {
       myKey,
       statIds: inputs.statIds.value,
       strengthByKey: eng.strengthByKey,
@@ -177,6 +184,9 @@ export function useTradeOpportunities(inputs: {
       hurtThreshold: HURT_THRESHOLD,
       labelOf: inputs.labelOf,
     })
+    // Stakes floor: a sub-floor GET is a scrub, not a fill — unless it's a buy-low (depressed on
+    // purpose). Keeps "FILLS YOUR UTIL → Kazuma Okamoto (15)" type noise out.
+    return built.filter((o) => o.intents.includes('buyLow') || maxGetVal(o) >= GET_FLOOR)
   })
 
   // Hero = your strongest DISTINCT moves: top acceptance-gated by your-fit, but no two heroes share
@@ -220,11 +230,11 @@ export function useTradeOpportunities(inputs: {
     const partnerUse = new Map<string, number>()
     for (const o of hero.value) {
       o.give.forEach((s) => giveUse.set(s.playerKey, (giveUse.get(s.playerKey) ?? 0) + 1))
-      pkgUse.set(giveKeysOf(o), (pkgUse.get(giveKeysOf(o)) ?? 0) + 1)
+      pkgUse.set(pkgKeyOf(o), (pkgUse.get(pkgKeyOf(o)) ?? 0) + 1)
     }
     const out: TradeOpportunity[] = []
     for (const o of pool) {
-      const pkg = giveKeysOf(o)
+      const pkg = pkgKeyOf(o)
       const get = getKeysOf(o)
       if (o.give.some((s) => (giveUse.get(s.playerKey) ?? 0) >= GIVE_CAP)) continue
       if ((getUse.get(get) ?? 0) >= GET_CAP) continue
