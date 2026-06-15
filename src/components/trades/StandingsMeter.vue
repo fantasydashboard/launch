@@ -6,10 +6,10 @@ const bands = computed(() => Math.max(0, Math.min(4, Math.round((props.delta / 2
 </script>
 
 <template>
-  <span class="inline-flex items-center gap-1" :title="`+${props.delta.toFixed(1)} categories per week`">
-    <span class="font-mono text-[10px] text-dark-textMuted">YOU</span>
+  <span class="inline-flex items-center gap-1" :title="`${props.delta >= 0 ? '+' : ''}${props.delta.toFixed(1)} categories per week`">
+    <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70">YOU</span>
     <span class="inline-flex gap-0.5">
-      <i v-for="n in 4" :key="n" class="h-1.5 w-2 rounded-[1px]"
+      <span v-for="n in 4" :key="n" class="h-1.5 w-2.5 rounded-[1px]"
         :class="n <= bands ? 'bg-primary' : 'bg-dark-border'" />
     </span>
   </span>

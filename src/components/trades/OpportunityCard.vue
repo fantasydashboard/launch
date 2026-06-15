@@ -25,7 +25,7 @@ const INTENT_LABEL: Record<Intent, string> = {
 const intentClass = (i: Intent): string =>
   i === 'winWin' ? 'text-primary' : i === 'steal' ? 'text-[#F2B33A]' : 'text-dark-textMuted'
 
-const labelOf = (s: string) => props.labelOf(s)
+const labelOf = props.labelOf
 const ordinal = (n: number): string => {
   const r = Math.round(n)
   const s = ['th', 'st', 'nd', 'rd'], v = r % 100
@@ -85,7 +85,7 @@ const partnerClass = (r: 'fair' | 'reach' | 'steal'): string =>
         <span class="text-dark-textSecondary">{{ ordinal(m.rankBefore) }} → {{ ordinal(m.rankAfter) }}</span>
         <span :class="m.beatsMore > 0 ? 'text-primary' : 'text-[#ff6b6b]'">
           {{ m.beatsMore > 0 ? '▲'.repeat(Math.min(3, m.beatsMore)) : '▼'.repeat(Math.min(3, -m.beatsMore)) }}
-          {{ m.beatsMore > 0 ? `beat ${m.beatsMore} more` : `slip ${-m.beatsMore}` }}
+          {{ m.beatsMore > 0 ? `beat ${m.beatsMore} more` : `slip ${-m.beatsMore} spots` }}
         </span>
       </div>
       <div v-if="opp.standings.ladder.every((x) => x.beatsMore === 0)" class="text-dark-textMuted">
