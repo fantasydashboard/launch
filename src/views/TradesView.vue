@@ -403,7 +403,7 @@ function onLogoError(e: Event) {
           <span class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Best moves right now</span>
         </div>
         <p v-if="!hero.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
-          No clear moves right now — toggle <b class="text-dark-textSecondary">press leverage</b> below to see one-sided plays.
+          No clear moves right now — try <b class="text-dark-textSecondary">Steals</b> below for one-sided plays.
         </p>
         <OpportunityCard v-for="o in hero" :key="o.id" :opp="o" :labelOf="labelOf" />
       </section>
@@ -419,14 +419,24 @@ function onLogoError(e: Event) {
             :class="activeIntents.has(it.key) ? 'text-primary' : 'text-dark-textMuted hover:text-dark-textSecondary'"
             @click="toggleIntent(it.key)"
           >{{ it.label }}</button>
-          <label class="ml-auto flex items-center gap-1 font-mono text-[10px] text-dark-textMuted"
-            title="Show one-sided leverage plays — great for you, a tough sell for them — instead of mutually acceptable deals.">
-            <input type="checkbox" v-model="pressLeverage" class="accent-primary" /> press leverage
-          </label>
+          <div class="ml-auto inline-flex items-center gap-0.5 rounded-md border border-dark-border p-0.5 font-mono text-[10px]"
+            title="Mutual = deals they'd plausibly accept. Steals = lopsided your way, a tougher sell.">
+            <button type="button" class="rounded px-2 py-0.5 transition-colors"
+              :class="!pressLeverage ? 'bg-dark-border text-dark-text' : 'text-dark-textMuted hover:text-dark-textSecondary'"
+              @click="pressLeverage = false">Mutual</button>
+            <button type="button" class="rounded px-2 py-0.5 transition-colors"
+              :class="pressLeverage ? 'bg-[#F2B33A]/20 text-[#F2B33A]' : 'text-dark-textMuted hover:text-dark-textSecondary'"
+              @click="pressLeverage = true">Steals</button>
+          </div>
         </div>
+        <p v-if="pressLeverage" class="font-mono text-[10px] text-dark-textMuted/80">
+          Lopsided offers — great for you, but they're unlikely to accept without leverage.
+        </p>
         <p v-if="!ranked.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
-          <template v-if="pressLeverage">No leverage plays right now — every deal that helps you is also fair to them. Uncheck <b class="text-dark-textSecondary">press leverage</b>.</template>
-          <template v-else>No mutual deals match — clear a filter, or check <b class="text-dark-textSecondary">press leverage</b> for one-sided plays.</template>
+          <template v-if="pressLeverage">No steals right now — every deal that helps you is also fair to them.</template>
+          <template v-else-if="activeIntents.size">No deals match this filter — clear it to see more.</template>
+          <template v-else-if="hero.length">That's every move that helps you right now — see <b class="text-dark-textSecondary">Best moves</b> above.</template>
+          <template v-else>No moves improve your standings right now — try <b class="text-dark-textSecondary">Steals</b> for one-sided plays.</template>
         </p>
         <OpportunityCard v-for="o in ranked" :key="o.id" :opp="o" :labelOf="labelOf" />
       </section>
