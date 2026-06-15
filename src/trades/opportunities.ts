@@ -75,6 +75,10 @@ const sumStr = (sides: OppSide[], sb: Map<string, Record<string, number>>, statI
 const sumVal = (sides: OppSide[], vb: Map<string, number>): number =>
   sides.reduce((s, x) => s + (vb.get(x.playerKey) ?? 0), 0)
 
+// A category only matters to a side if they NEED it — "winning a category by a mile scores nothing".
+// So gain/cost speak only in needed cats: gain = needs you improve, cost = needs you'd worsen.
+// Losing a category you dominate isn't a cost, it's spending dead value (the point of a trade).
+const NEED_SHOW = 0.25
 // Categories a side gains (need-weighted positive delta) and loses (negative beyond threshold).
 const catEffect = (
   getStr: Record<string, number>,
@@ -87,6 +91,7 @@ const catEffect = (
   const gain: { c: string; v: number }[] = []
   const lose: { c: string; v: number }[] = []
   for (const c of statIds) {
+    if ((need[c] ?? 0) < NEED_SHOW) continue // only categories this side actually needs
     const delta = ((getStr[c] ?? 0) - (giveStr[c] ?? 0)) * (need[c] ?? 0)
     if (delta > 0.01) gain.push({ c, v: delta })
     else if (delta < -hurtThr) lose.push({ c, v: -delta })

@@ -60,13 +60,13 @@ const intentClass = (i: Intent): string =>
     <div v-if="expanded" class="space-y-1 border-t border-dark-border/40 px-4 py-2 font-mono text-[10px]">
       <div class="flex flex-wrap items-center gap-x-3">
         <span class="w-10 text-dark-textMuted/70">YOU</span>
-        <span>fill <b class="text-[#ffd98a]">{{ opp.you.fillsPos || '—' }}</b></span>
+        <span v-if="opp.you.fillsPos">fill <b class="text-[#ffd98a]">{{ opp.you.fillsPos }}</b></span>
         <span>gain <span class="text-primary">{{ opp.you.fillsCats.join(' · ') || '—' }}</span></span>
         <span>cost <span class="text-[#F2B33A]">{{ opp.you.hurtsCats.join(' · ') || '—' }}</span></span>
       </div>
       <div class="flex flex-wrap items-center gap-x-3">
         <span class="w-10 text-dark-textMuted/70">THEM</span>
-        <span>fill <b class="text-[#ffd98a]">{{ opp.them.fillsPos || '—' }}</b></span>
+        <span v-if="opp.them.fillsPos">fill <b class="text-[#ffd98a]">{{ opp.them.fillsPos }}</b></span>
         <span>gain <span class="text-primary">{{ opp.them.fillsCats.join(' · ') || '—' }}</span></span>
         <span>cost <span class="text-[#F2B33A]">{{ opp.them.hurtsCats.join(' · ') || '—' }}</span></span>
       </div>
