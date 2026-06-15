@@ -191,8 +191,8 @@ export function useTradeOpportunities(inputs: {
     return built.filter((o) => o.intents.includes('buyLow') || maxGetVal(o) >= GET_FLOOR)
   })
 
-  // Hero = your strongest DISTINCT moves: top acceptance-gated by your-fit, but no two heroes share
-  // the same filled position (headline) or partner — three variations of one move isn't three moves.
+  // Hero = your top DISTINCT moves by standings gain (deltaYou), excluding lopsided 'steal' deals,
+  // with no two heroes sharing a filled position (headline), partner, or give player.
   const hero = computed<TradeOpportunity[]>(() => {
     const sorted = [...all.value].filter((o) => o.standings.partnerRead !== 'steal').sort((a, b) => b.standings.deltaYou - a.standings.deltaYou)
     const out: TradeOpportunity[] = []
@@ -211,14 +211,14 @@ export function useTradeOpportunities(inputs: {
     return out
   })
 
-  // Main list: gated by acceptance (unless pressing leverage), filtered by intent chips, sorted by
-  // your-fit, hero-excluded, then CURATED so no single give player / package / position / partner
-  // floods the list — the fix for the repetitive wall.
+  // Main list: gated to deals they'd plausibly accept (unless pressing leverage), filtered by intent
+  // chips, sorted by your standings gain (deltaYou), hero-excluded, then CURATED so no single give
+  // player / package / position / partner floods the list — the fix for the repetitive wall.
   const ranked = computed<TradeOpportunity[]>(() => {
     const heroIds = new Set(hero.value.map((o) => o.id))
     const intents = activeIntents.value
-    // Mutually-exclusive toggle: OFF = deals they'd plausibly accept (mutual); ON = leverage plays
-    // that fall BELOW the acceptance bar (lopsided your way, a tougher sell). Two distinct sets.
+    // Mutually-exclusive toggle: OFF = deals the partner would plausibly accept (partnerRead fair or
+    // reach); ON = lopsided 'steal' plays the partner clearly loses — a tougher sell. Two distinct sets.
     const pool = [...all.value]
       .filter((o) => (pressLeverage.value ? o.standings.partnerRead === 'steal' : o.standings.partnerRead !== 'steal'))
       .filter((o) => !intents.size || o.intents.some((i) => intents.has(i)))
