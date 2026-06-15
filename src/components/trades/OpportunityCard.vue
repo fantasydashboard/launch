@@ -5,10 +5,18 @@ import ValueBadge from '@/components/trades/ValueBadge.vue'
 import FitMeter from '@/components/trades/FitMeter.vue'
 import type { TradeOpportunity, Intent } from '@/trades/opportunities'
 
-defineProps<{ opp: TradeOpportunity }>()
-
+const props = defineProps<{ opp: TradeOpportunity }>()
 const expanded = ref(false)
+const copied = ref(false)
 const onLogoError = (e: Event) => { (e.target as HTMLImageElement).style.display = 'none' }
+async function copyPitch() {
+  if (!props.opp.pitch) return
+  try {
+    await navigator.clipboard?.writeText(props.opp.pitch)
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 1500)
+  } catch { /* clipboard unavailable — no-op */ }
+}
 
 const INTENT_LABEL: Record<Intent, string> = {
   winWin: 'win-win', steal: 'steal', consolidate: '2-for-1', buyLow: 'buy-low', sellHigh: 'sell-high',
@@ -70,11 +78,12 @@ const intentClass = (i: Intent): string =>
         <span>gain <span class="text-primary">{{ opp.them.fillsCats.join(' · ') || '—' }}</span></span>
         <span>cost <span class="text-[#F2B33A]">{{ opp.them.hurtsCats.join(' · ') || '—' }}</span></span>
       </div>
-      <p v-if="opp.pitch" class="flex items-start gap-2 pt-1 text-[11px] text-dark-textSecondary">
-        <span class="min-w-0 flex-1">{{ opp.pitch }}</span>
-        <button class="shrink-0 text-dark-textMuted hover:text-primary" title="copy pitch"
-          @click="opp.pitch && navigator.clipboard?.writeText(opp.pitch)">copy</button>
-      </p>
+      <div v-if="opp.pitch" class="mt-1.5 flex items-start gap-2 border-t border-dark-border/40 pt-2">
+        <span class="w-10 shrink-0 text-dark-textMuted/70">PITCH</span>
+        <span class="min-w-0 flex-1 text-[11px] text-dark-textSecondary">{{ opp.pitch }}</span>
+        <button class="shrink-0 text-dark-textMuted hover:text-primary" :title="copied ? 'copied' : 'copy pitch'"
+          @click="copyPitch">{{ copied ? '✓ copied' : 'copy' }}</button>
+      </div>
     </div>
   </div>
 </template>

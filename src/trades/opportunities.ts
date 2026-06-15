@@ -1,5 +1,6 @@
 import { computeFit, type FitPair, type FitWeights } from './fitScore'
 import { coversSlot, type PositionalLandscape } from './positionalLandscape'
+import { buildPitch } from './pitch'
 import type { Landscape } from './landscape'
 
 export type Intent = 'winWin' | 'steal' | 'consolidate' | 'buyLow' | 'sellHigh'
@@ -161,7 +162,7 @@ export function buildOpportunities(raws: RawDeal[], ctx: OppContext): TradeOppor
       },
       ctx.weights,
     )
-    byId.set(id, {
+    const opp: TradeOpportunity = {
       id,
       partnerKey: d.partnerKey,
       partner: d.partner,
@@ -174,7 +175,9 @@ export function buildOpportunities(raws: RawDeal[], ctx: OppContext): TradeOppor
       them,
       fit,
       pitch: '',
-    })
+    }
+    opp.pitch = buildPitch(opp)
+    byId.set(id, opp)
   }
   return [...byId.values()]
 }
