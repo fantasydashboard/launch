@@ -20,9 +20,11 @@ export interface PosSide {
   value: number
   headshot?: string
   proLogo?: string
+  eligible: string[] // eligible positions — lets the opportunity merge test slot coverage
 }
 export type PosTier = 'both' | 'one' // win-win only: fits-both vs fits-one(fallback)
 export interface PositionalTarget {
+  partnerKey: string
   position: string // the slot this deal addresses
   get: PosSide
   give: PosSide
@@ -33,6 +35,7 @@ export interface PositionalTarget {
   fit: FitPair // two-sided 0..1 fit (you / them)
 }
 export interface PositionalConsolidate {
+  partnerKey: string
   position: string
   get: PosSide
   give: PosSide[]
@@ -156,7 +159,7 @@ export function usePositionalTargets(inputs: {
     const sideOf = (key: string): PosSide => {
       const p = byKey.get(key)!
       return { playerKey: key, name: p.name, pos: p.position, value: Math.round(crossVal(key)),
-        headshot: p.headshot, proLogo: p.proTeam ? mlbTeamLogo(p.proTeam) : undefined }
+        headshot: p.headshot, proLogo: p.proTeam ? mlbTeamLogo(p.proTeam) : undefined, eligible: eligOf(key) }
     }
 
     const mine = ls.get(myKey)
@@ -265,7 +268,7 @@ export function usePositionalTargets(inputs: {
         const g = guardrail(ret.key, giveKey)
         if (!g.ok) continue
         const fit = fitFor({ getKeys: [ret.key], giveKeys: [giveKey], myPosNeed: myFillNeed(ret.key), theirPosNeed: m.get(pos)?.need ?? 0, theirKey: teamKey })
-        reachRaw.push({ position: pos, get: sideOf(ret.key), give: sideOf(giveKey), fit,
+        reachRaw.push({ partnerKey: teamKey, position: pos, get: sideOf(ret.key), give: sideOf(giveKey), fit,
           fromTeam: teamName(teamKey), fromTeamLogo: teamLogo(teamKey), secondaryHelps: g.secondaryHelps })
       }
     }
@@ -290,7 +293,7 @@ export function usePositionalTargets(inputs: {
           const g = guardrail(getKey, giveKey)
           if (!g.ok) continue
           const fit = fitFor({ getKeys: [getKey], giveKeys: [giveKey], myPosNeed: mine?.get(myHole)?.need ?? 0, theirPosNeed: m.get(theirHole)?.need ?? 0, theirKey: teamKey })
-          winWinRaw.push({ position: myHole, get: sideOf(getKey), give: sideOf(giveKey), fit,
+          winWinRaw.push({ partnerKey: teamKey, position: myHole, get: sideOf(getKey), give: sideOf(giveKey), fit,
             tier: g.secondaryHelps.length ? 'both' : 'one', secondaryHelps: g.secondaryHelps,
             fromTeam: teamName(teamKey), fromTeamLogo: teamLogo(teamKey) })
         }
@@ -316,7 +319,7 @@ export function usePositionalTargets(inputs: {
         const g = guardrail(stud.playerKey, giveTwo[0].k)
         if (!g.ok) continue
         const fit = fitFor({ getKeys: [stud.playerKey], giveKeys: giveTwo.map((x) => x.k), myPosNeed: mine?.get(myHole)?.need ?? 0, theirPosNeed: 0, theirKey: teamKey })
-        consolidateRaw.push({ position: myHole, get: sideOf(stud.playerKey), fit,
+        consolidateRaw.push({ partnerKey: teamKey, position: myHole, get: sideOf(stud.playerKey), fit,
           give: giveTwo.map((x) => sideOf(x.k)), fromTeam: teamName(teamKey),
           fromTeamLogo: teamLogo(teamKey), secondaryHelps: g.secondaryHelps })
       }

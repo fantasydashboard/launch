@@ -20,6 +20,7 @@ export interface CatTag {
   hole?: boolean // a bottom-tier hole ("Fixes") vs a contested race ("Improves")
 }
 export interface TradeSide {
+  playerKey: string
   name: string
   pos: string
   value: number
@@ -29,6 +30,7 @@ export interface TradeSide {
   timingConfirmed?: boolean // expected stats (Statcast luck) agree with the timing call
 }
 export interface TradeTarget {
+  partnerKey: string // the partner team id (for the unified opportunity merge)
   fix: CatTag // the category this trade fixes for you
   get: TradeSide
   give: TradeSide
@@ -39,6 +41,7 @@ export interface TradeTarget {
   pitch: string[] // what it gives THEM (their need that your give fills) — your negotiating angle
 }
 export interface ConsolidateTarget {
+  partnerKey: string
   fix: CatTag
   get: TradeSide // the stud you'd land
   give: TradeSide[] // the two depth pieces you'd package
@@ -195,6 +198,15 @@ export function useTradeTargets(inputs: {
       const t = timingByKey.get(key)
       return t?.dir === want ? { timing: want, timingConfirmed: t.luckConfirmed } : {}
     }
+    // Build a TradeSide from a pool player — single source of playerKey so no construction site
+    // can forget it (a missing key would silently break the unified-opportunity merge at runtime).
+    const mkSide = (
+      p: { playerKey: string; name: string; position: string; headshot?: string; proTeam?: string },
+      value: number, want: 'buy' | 'sell',
+    ): TradeSide => ({
+      playerKey: p.playerKey, name: p.name, pos: p.position, value: Math.round(value),
+      headshot: p.headshot, proLogo: mlbTeamLogo(p.proTeam), ...sideTiming(p.playerKey, want),
+    })
     const timingEdgeOf = (getKey: string, giveKeys: string[]): number => {
       const gt = timingByKey.get(getKey)
       const buy = gt?.dir === 'buy' ? gt.score : 0
@@ -326,6 +338,7 @@ export function useTradeTargets(inputs: {
       gv: number
       tv: number
       fixId: string
+      partnerKey: string
       get: TradeSide
       give: TradeSide
       fromTeam: string
@@ -359,8 +372,9 @@ export function useTradeTargets(inputs: {
             gv: Math.round(gv),
             tv: Math.round(tv),
             fixId,
-            get: { name: get.name, pos: get.position, value: Math.round(tv), headshot: get.headshot, proLogo: mlbTeamLogo(get.proTeam), ...sideTiming(get.playerKey, 'buy') },
-            give: { name: give.name, pos: give.position, value: Math.round(gv), headshot: give.headshot, proLogo: mlbTeamLogo(give.proTeam), ...sideTiming(give.playerKey, 'sell') },
+            partnerKey: ps.teamId,
+            get: mkSide(get, tv, 'buy'),
+            give: mkSide(give, gv, 'sell'),
             fromTeam: teamName(ps.teamId),
             fromTeamLogo: teamLogo(ps.teamId),
             timingEdge: timingEdgeOf(get.playerKey, [give.playerKey]),
@@ -369,7 +383,7 @@ export function useTradeTargets(inputs: {
         }
       }
     }
-    const toTarget = (d: Raw): TradeTarget => ({ fix: tag(d.fixId), get: d.get, give: d.give, fromTeam: d.fromTeam, fromTeamLogo: d.fromTeamLogo, klass: d.klass === 'leverage' ? 'leverage' : 'winWin', helps: helpsFor(d.getKey, [d.giveKey], sideOf(d.get.pos)), pitch: d.pitch })
+    const toTarget = (d: Raw): TradeTarget => ({ partnerKey: d.partnerKey, fix: tag(d.fixId), get: d.get, give: d.give, fromTeam: d.fromTeam, fromTeamLogo: d.fromTeamLogo, klass: d.klass === 'leverage' ? 'leverage' : 'winWin', helps: helpsFor(d.getKey, [d.giveKey], sideOf(d.get.pos)), pitch: d.pitch })
     // Dedupe by BOTH the give and the get player (no repeated targets), and cap to two
     // deals per hole so you see variety across your needs rather than five SV cards.
     const dedupeTop = (deals: Raw[], cmp: (a: Raw, b: Raw) => number, n = 6): TradeTarget[] => {
@@ -427,9 +441,10 @@ export function useTradeTargets(inputs: {
             giveKey: give.playerKey,
             getKey: get.playerKey,
             t: {
+              partnerKey: ps.teamId,
               fix: { label: inputs.labelOf(pressCat), rank: theirLand.get(pressCat)?.rank ?? 0 },
-              get: { name: get.name, pos: get.position, value: Math.round(tv), headshot: get.headshot, proLogo: mlbTeamLogo(get.proTeam), ...sideTiming(get.playerKey, 'buy') },
-              give: { name: give.name, pos: give.position, value: Math.round(gv), headshot: give.headshot, proLogo: mlbTeamLogo(give.proTeam), ...sideTiming(give.playerKey, 'sell') },
+              get: mkSide(get, tv, 'buy'),
+              give: mkSide(give, gv, 'sell'),
               fromTeam: teamName(ps.teamId),
               fromTeamLogo: teamLogo(ps.teamId),
               klass: 'leverage',
@@ -489,9 +504,10 @@ export function useTradeTargets(inputs: {
             getKey: get.playerKey,
             improveCat,
             t: {
+              partnerKey: ps.teamId,
               fix: tag(improveCat),
-              get: { name: get.name, pos: get.position, value: Math.round(tv), headshot: get.headshot, proLogo: mlbTeamLogo(get.proTeam), ...sideTiming(get.playerKey, 'buy') },
-              give: { name: give.name, pos: give.position, value: Math.round(gv), headshot: give.headshot, proLogo: mlbTeamLogo(give.proTeam), ...sideTiming(give.playerKey, 'sell') },
+              get: mkSide(get, tv, 'buy'),
+              give: mkSide(give, gv, 'sell'),
               fromTeam: teamName(ps.teamId),
               fromTeamLogo: teamLogo(ps.teamId),
               klass: ev.klass === 'leverage' ? 'leverage' : 'winWin',
@@ -552,18 +568,15 @@ export function useTradeTargets(inputs: {
             const fixId = bestFix(get.playerKey, gives, side)
             if (!fixId) continue // the stud must be genuinely strong in some same-side cat
             // Sides are identical across both modes; only the header `fix` label differs.
-            const getSide: TradeSide = { name: get.name, pos: get.position, value: Math.round(tv), headshot: get.headshot, proLogo: mlbTeamLogo(get.proTeam), ...sideTiming(get.playerKey, 'buy') }
-            const giveSides: TradeSide[] = [
-              { name: g1.name, pos: g1.position, value: Math.round(v1), headshot: g1.headshot, proLogo: mlbTeamLogo(g1.proTeam), ...sideTiming(g1.playerKey, 'sell') },
-              { name: g2.name, pos: g2.position, value: Math.round(v2), headshot: g2.headshot, proLogo: mlbTeamLogo(g2.proTeam), ...sideTiming(g2.playerKey, 'sell') },
-            ]
+            const getSide: TradeSide = mkSide(get, tv, 'buy')
+            const giveSides: TradeSide[] = [mkSide(g1, v1, 'sell'), mkSide(g2, v2, 'sell')]
             const helps = helpsFor(get.playerKey, gives, side)
             const pitch = pitchFor(gives, theirRawNeed)
             const klass: Exclude<DealClass, 'fleece'> = ev.klass === 'leverage' ? 'leverage' : 'winWin'
             // Consolidate: the stud must improve a HOLE or a contested race.
             if (worthImproving(fixId)) {
               const candC: ConsCand = { gain: ev.yourGain, timingEdge: 0, giveKeys: gives, getKey: get.playerKey,
-                t: { fix: tag(fixId), get: getSide, give: giveSides, fromTeam: teamName(ps.teamId), fromTeamLogo: teamLogo(ps.teamId), klass, helps, pitch } }
+                t: { partnerKey: ps.teamId, fix: tag(fixId), get: getSide, give: giveSides, fromTeam: teamName(ps.teamId), fromTeamLogo: teamLogo(ps.teamId), klass, helps, pitch } }
               if (!best || candC.gain > best.gain) best = candC
             }
             // Timing 2-for-1: objective is the timing edge — NO hole gate. Label by the category
@@ -572,7 +585,7 @@ export function useTradeTargets(inputs: {
             const improveCat = rankHelps(get.playerKey, gives, side)[0]?.statId
             if (tEdge > 0 && improveCat) {
               const candT: ConsCand = { gain: ev.yourGain, timingEdge: tEdge, giveKeys: gives, getKey: get.playerKey,
-                t: { fix: tag(improveCat), get: getSide, give: giveSides, fromTeam: teamName(ps.teamId), fromTeamLogo: teamLogo(ps.teamId), klass, helps, pitch } }
+                t: { partnerKey: ps.teamId, fix: tag(improveCat), get: getSide, give: giveSides, fromTeam: teamName(ps.teamId), fromTeamLogo: teamLogo(ps.teamId), klass, helps, pitch } }
               if (!bestT || candT.timingEdge > bestT.timingEdge) bestT = candT
             }
           }
