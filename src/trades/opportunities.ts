@@ -2,6 +2,8 @@ import { computeFit, type FitPair, type FitWeights } from './fitScore'
 import { coversSlot, type PositionalLandscape } from './positionalLandscape'
 import { buildPitch } from './pitch'
 import type { Landscape } from './landscape'
+import { tradeStandingsDelta, expectedCatsWon, classifyPartnerRead, type CatRankMove, type PartnerRead, type TeamCategoryTotals } from './standings'
+import type { CatSpec } from '@/myteam/value'
 
 export type Intent = 'winWin' | 'steal' | 'consolidate' | 'buyLow' | 'sellHigh'
 
@@ -20,6 +22,17 @@ export interface SideEffect {
   hurtsCats: string[] // categories this costs this team — thresholded (material losses only)
 }
 
+export interface StandingsImpact {
+  ecwYouBefore: number
+  ecwYouAfter: number
+  ecwThemBefore: number
+  ecwThemAfter: number
+  deltaYou: number
+  deltaThem: number
+  partnerRead: PartnerRead
+  ladder: CatRankMove[]
+}
+
 export interface TradeOpportunity {
   id: string
   partnerKey: string
@@ -32,6 +45,7 @@ export interface TradeOpportunity {
   you: SideEffect
   them: SideEffect
   fit: FitPair
+  standings: StandingsImpact
   pitch: string // filled in Phase 3; '' until then
 }
 
@@ -55,6 +69,11 @@ export interface OppContext {
   weights: FitWeights
   hurtThreshold: number
   labelOf: (statId: string) => string
+  cats: CatSpec[]
+  teamCatTotals: TeamCategoryTotals[]
+  projByKey: Map<string, Record<string, number>>
+  teamByKey: Map<string, string>
+  numTeams: number
 }
 
 const POS_EDGE = 0.5
@@ -115,12 +134,37 @@ const fillsPosFor = (sides: OppSide[], thin: string[]): string | undefined => {
 const posNeedAt = (pl: PositionalLandscape, team: string, pos?: string): number =>
   pos ? pl.get(team)?.get(pos)?.need ?? 0 : 0
 
-const headlineOf = (you: SideEffect, them: SideEffect, intents: Intent[]): string => {
-  if (you.fillsPos) return `Fills your ${you.fillsPos}`
-  if (intents.includes('steal') && them.fillsPos) return `Press their ${them.fillsPos} hole`
-  if (you.fillsCats.length) return `Adds ${you.fillsCats[0]}`
-  if (intents.includes('buyLow')) return 'Buy-low window'
-  return 'Upgrade'
+const headlineOf = (you: SideEffect, them: SideEffect, intents: Intent[], s: StandingsImpact): string => {
+  const ecw = `wins ${s.ecwYouAfter.toFixed(1)} cats/week`
+  let what = ''
+  if (you.fillsPos) what = `fills your ${you.fillsPos}`
+  else if (intents.includes('steal') && them.fillsPos) what = `press their ${them.fillsPos} hole`
+  else if (you.fillsCats.length) what = `adds ${you.fillsCats[0]}`
+  else if (intents.includes('buyLow')) what = 'buy-low window'
+  return what ? `${ecw} · ${what}` : ecw
+}
+
+const ecwOf = (teamId: string, ctx: OppContext): number =>
+  expectedCatsWon(teamId, ctx.teamCatTotals, ctx.cats)
+
+const standingsOf = (d: RawDeal, ctx: OppContext): StandingsImpact => {
+  const giveKeys = d.give.map((s) => s.playerKey)
+  const getKeys = d.get.map((s) => s.playerKey)
+  const delta = tradeStandingsDelta(
+    ctx.teamCatTotals, ctx.projByKey, ctx.cats, ctx.myKey, d.partnerKey, giveKeys, getKeys,
+  )
+  const ecwYouBefore = ecwOf(ctx.myKey, ctx)
+  const ecwThemBefore = ecwOf(d.partnerKey, ctx)
+  return {
+    ecwYouBefore,
+    ecwYouAfter: ecwYouBefore + delta.you,
+    ecwThemBefore,
+    ecwThemAfter: ecwThemBefore + delta.them,
+    deltaYou: delta.you,
+    deltaThem: delta.them,
+    partnerRead: classifyPartnerRead(delta.them),
+    ladder: delta.ladder,
+  }
 }
 
 const idOf = (d: RawDeal): string =>
@@ -135,7 +179,7 @@ export function buildOpportunities(raws: RawDeal[], ctx: OppContext): TradeOppor
     if (existing) {
       // same deal from the other generator — union intents, refresh headline.
       for (const it of d.intents) if (!existing.intents.includes(it)) existing.intents.push(it)
-      existing.headline = headlineOf(existing.you, existing.them, existing.intents)
+      existing.headline = headlineOf(existing.you, existing.them, existing.intents, existing.standings)
       continue
     }
     const theirNeed = needMap(ctx.catLandscape, d.partnerKey, ctx.statIds)
@@ -162,6 +206,7 @@ export function buildOpportunities(raws: RawDeal[], ctx: OppContext): TradeOppor
       },
       ctx.weights,
     )
+    const standings = standingsOf(d, ctx)
     const opp: TradeOpportunity = {
       id,
       partnerKey: d.partnerKey,
@@ -170,10 +215,11 @@ export function buildOpportunities(raws: RawDeal[], ctx: OppContext): TradeOppor
       get: d.get,
       give: d.give,
       intents: [...d.intents],
-      headline: headlineOf(you, them, d.intents),
+      headline: headlineOf(you, them, d.intents, standings),
       you,
       them,
       fit,
+      standings,
       pitch: '',
     }
     opp.pitch = buildPitch(opp)

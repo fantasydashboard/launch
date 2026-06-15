@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { buildOpportunities, type RawDeal, type OppContext } from '../opportunities'
 import { FIT_WEIGHTS_POSITION } from '../fitScore'
+import { aggregateTeamCatTotals } from '../standings'
 import type { Landscape } from '../landscape'
 import type { PositionalLandscape } from '../positionalLandscape'
 
@@ -27,6 +28,11 @@ const ctx = (over: Partial<OppContext> = {}): OppContext => ({
   weights: FIT_WEIGHTS_POSITION,
   hurtThreshold: 0.15,
   labelOf: (s) => s,
+  cats: [],
+  teamCatTotals: [],
+  projByKey: new Map(),
+  teamByKey: new Map(),
+  numTeams: 0,
   ...over,
 })
 
@@ -53,5 +59,46 @@ describe('buildOpportunities', () => {
     const raws: RawDeal[] = [{ partnerKey: 'them', partner: 'Them', get: [side('stud', '3B', 80)], give: [side('mine', 'OF', 70)], intents: ['winWin'] }]
     const out = buildOpportunities(raws, ctx())
     expect(out[0].you.hurtsCats).toEqual([])
+  })
+})
+
+describe('buildOpportunities standings impact', () => {
+  it('populates standings (ECW delta + ladder + partner read) and leads the headline with cats/week', () => {
+    const cats = [
+      { statId: 'HR', lowerIsBetter: false, side: 'hit' as const, isRatio: false },
+      { statId: 'SB', lowerIsBetter: false, side: 'hit' as const, isRatio: false },
+    ]
+    const statsById = new Map<string, Record<string, number>>([
+      ['mine', { HR: 5, SB: 25 }],     // my give: speed
+      ['theirs', { HR: 30, SB: 2 }],   // their give: power
+      ['x', { HR: 15, SB: 15 }],
+    ])
+    const projByKey = statsById
+    const teamCatTotals = aggregateTeamCatTotals([
+      { teamId: 'me', players: [{ playerKey: 'mine', stats: statsById.get('mine')! }] },
+      { teamId: 'them', players: [{ playerKey: 'theirs', stats: statsById.get('theirs')! }] },
+      { teamId: 'x', players: [{ playerKey: 'x', stats: statsById.get('x')! }] },
+    ], cats)
+    const teamByKey = new Map([['mine', 'me'], ['theirs', 'them'], ['x', 'x']])
+
+    const raw = {
+      partnerKey: 'them', partner: 'Them',
+      get: [{ playerKey: 'theirs', name: 'Power Bat', pos: '1B', value: 80, eligible: ['1B'] }],
+      give: [{ playerKey: 'mine', name: 'Speed Guy', pos: 'OF', value: 60, eligible: ['OF'] }],
+      intents: ['winWin' as const],
+    }
+    const testCtx = ctx({
+      myKey: 'me', statIds: ['HR', 'SB'],
+      strengthByKey: new Map(), valueByKey: new Map(),
+      catLandscape: new Map(), posLandscape: new Map(),
+      myThin: [], weights: { pos: 0.25, cat: 0.5, val: 0.25 },
+      hurtThreshold: 0.15, labelOf: (s: string) => s,
+      cats, teamCatTotals, projByKey, teamByKey, numTeams: 3,
+    })
+    const [opp] = buildOpportunities([raw], testCtx as any)
+    expect(opp.standings).toBeDefined()
+    expect(opp.standings.ladder.map((m) => m.statId).sort()).toEqual(['HR', 'SB'])
+    expect(['fair', 'reach', 'steal']).toContain(opp.standings.partnerRead)
+    expect(opp.headline).toMatch(/cats\/week/)
   })
 })
