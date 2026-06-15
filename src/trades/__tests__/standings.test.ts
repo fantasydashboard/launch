@@ -80,7 +80,7 @@ describe('tradeStandingsDelta', () => {
     // A gives a1 (its only player) and gets c1 from C. After: A has c1 (HR10/ERA2.0,50IP), C has a1+c2.
     const d = tradeStandingsDelta(totals, statsById, CATS, 'A', 'C', ['a1'], ['c1'])
     expect(typeof d.you).toBe('number')
-    expect(typeof d.them).toBe('number')
+    expect(d.them).toBeCloseTo(1.0, 5) // partner C: HR 3rd->1st, ERA holds 2nd → ECW 0.5 -> 1.5
     // A's HR collapses 30 -> 10 (now last), so A's ECW should drop: delta negative.
     expect(d.you).toBeLessThan(0)
     // ladder covers every scored cat with before/after ranks for team A.
@@ -88,7 +88,7 @@ describe('tradeStandingsDelta', () => {
     const hr = d.ladder.find((m) => m.statId === 'HR')!
     expect(hr.rankBefore).toBe(1)
     expect(hr.rankAfter).toBeGreaterThan(1)
-    expect(hr.beatsMore).toBe(hr.rankBefore - hr.rankAfter)
+    expect(hr.beatsMore).toBe(-2) // HR was 1st (rank 1), now last (rank 3): 1 - 3
   })
 })
 

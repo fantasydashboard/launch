@@ -149,6 +149,8 @@ export function tradeStandingsDelta(
   giveKeys: string[],
   getKeys: string[],
 ): StandingsDelta {
+  // Callers must ensure every give/get player key is present in statsById; a missing entry is
+  // treated as a zero-contribution player (conservative delta), not an error.
   const lines = (keys: string[]) => keys.map((k) => statsById.get(k) ?? {})
   const give = lines(giveKeys)
   const get = lines(getKeys)
