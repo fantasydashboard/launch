@@ -26,8 +26,9 @@ export interface TradeEngine {
   valueByKey: Map<string, number> // cross-role percentile, 0-100
   roleValueByKey: Map<string, number> // within-role percentile, 0-100 (pitcher-vs-pitcher etc.)
   strengthByKey: Map<string, Record<string, number>> // per-category z
-  // Standings-delta inputs: per-team ROS-projected category totals (ratio cats retain num/den),
-  // each player's projected stat line, the team each player is on, and the league size.
+  // Standings-delta inputs: per-team ROS-projected category totals (ratio cats retain num/den) and
+  // each player's projected stat line. teamByKey/numTeams are not consumed by the trade scorer yet —
+  // they are reserved for the upcoming league-page standings simulator (Phase 2).
   teamCatTotals: TeamCategoryTotals[]
   projByKey: Map<string, Record<string, number>>
   teamByKey: Map<string, string>

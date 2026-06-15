@@ -72,8 +72,6 @@ export interface OppContext {
   cats: CatSpec[]
   teamCatTotals: TeamCategoryTotals[]
   projByKey: Map<string, Record<string, number>>
-  teamByKey: Map<string, string>
-  numTeams: number
 }
 
 const POS_EDGE = 0.5

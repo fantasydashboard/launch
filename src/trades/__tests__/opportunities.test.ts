@@ -31,8 +31,6 @@ const ctx = (over: Partial<OppContext> = {}): OppContext => ({
   cats: [],
   teamCatTotals: [],
   projByKey: new Map(),
-  teamByKey: new Map(),
-  numTeams: 0,
   ...over,
 })
 
@@ -100,5 +98,8 @@ describe('buildOpportunities standings impact', () => {
     expect(opp.standings.ladder.map((m) => m.statId).sort()).toEqual(['HR', 'SB'])
     expect(['fair', 'reach', 'steal']).toContain(opp.standings.partnerRead)
     expect(opp.headline).toMatch(/cats\/week/)
+    expect(opp.standings.ecwYouAfter).toBeCloseTo(1.0, 5)
+    expect(opp.standings.deltaYou).toBeCloseTo(0.0, 5)
+    expect(opp.standings.partnerRead).toBe('fair')
   })
 })
