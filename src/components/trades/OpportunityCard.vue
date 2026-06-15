@@ -31,6 +31,7 @@ const ordinal = (n: number): string => {
   const s = ['th', 'st', 'nd', 'rd'], v = r % 100
   return r + (s[(v - 20) % 10] || s[v] || s[0])
 }
+const mag = (beatsMore: number): number => Math.max(1, Math.round(Math.abs(beatsMore)))
 const PARTNER_LABEL: Record<'fair' | 'reach' | 'steal', string> = {
   fair: 'fair to them', reach: 'a reach for them', steal: 'a steal',
 }
@@ -84,8 +85,8 @@ const partnerClass = (r: 'fair' | 'reach' | 'steal'): string =>
         <span class="w-10 text-dark-textMuted/70">{{ labelOf(m.statId) }}</span>
         <span class="text-dark-textSecondary">{{ ordinal(m.rankBefore) }} → {{ ordinal(m.rankAfter) }}</span>
         <span :class="m.beatsMore > 0 ? 'text-primary' : 'text-[#ff6b6b]'">
-          {{ m.beatsMore > 0 ? '▲'.repeat(Math.min(3, m.beatsMore)) : '▼'.repeat(Math.min(3, -m.beatsMore)) }}
-          {{ m.beatsMore > 0 ? `beat ${m.beatsMore} more` : `slip ${-m.beatsMore} spots` }}
+          {{ (m.beatsMore > 0 ? '▲' : '▼').repeat(Math.min(3, mag(m.beatsMore))) }}
+          {{ m.beatsMore > 0 ? `beat ${mag(m.beatsMore)} more` : `slip ${mag(m.beatsMore)} spots` }}
         </span>
       </div>
       <div v-if="opp.standings.ladder.every((x) => x.beatsMore === 0)" class="text-dark-textMuted">

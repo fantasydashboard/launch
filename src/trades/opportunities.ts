@@ -133,7 +133,7 @@ const posNeedAt = (pl: PositionalLandscape, team: string, pos?: string): number 
   pos ? pl.get(team)?.get(pos)?.need ?? 0 : 0
 
 const headlineOf = (you: SideEffect, them: SideEffect, intents: Intent[], s: StandingsImpact): string => {
-  const ecw = `wins ${s.ecwYouAfter.toFixed(1)} cats/week`
+  const ecw = `wins ${s.ecwYouBefore.toFixed(1)} → ${s.ecwYouAfter.toFixed(1)} cats/week`
   let what = ''
   if (you.fillsPos) what = `fills your ${you.fillsPos}`
   else if (intents.includes('steal') && them.fillsPos) what = `press their ${them.fillsPos} hole`

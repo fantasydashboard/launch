@@ -91,7 +91,7 @@ describe('buildOpportunities standings impact', () => {
       catLandscape: new Map(), posLandscape: new Map(),
       myThin: [], weights: { pos: 0.25, cat: 0.5, val: 0.25 },
       hurtThreshold: 0.15, labelOf: (s: string) => s,
-      cats, teamCatTotals, projByKey, teamByKey, numTeams: 3,
+      cats, teamCatTotals, projByKey,
     })
     const [opp] = buildOpportunities([raw], testCtx as any)
     expect(opp.standings).toBeDefined()
@@ -101,5 +101,11 @@ describe('buildOpportunities standings impact', () => {
     expect(opp.standings.ecwYouAfter).toBeCloseTo(1.0, 5)
     expect(opp.standings.deltaYou).toBeCloseTo(0.0, 5)
     expect(opp.standings.partnerRead).toBe('fair')
+    // headline/meter/ladder all derive from one computation — pin that they agree.
+    expect(opp.standings.ecwYouAfter).toBeCloseTo(opp.standings.ecwYouBefore + opp.standings.deltaYou, 5)
+    const hr = opp.standings.ladder.find((m) => m.statId === 'HR')!
+    const sb = opp.standings.ladder.find((m) => m.statId === 'SB')!
+    expect(hr.beatsMore).toBe(2)  // HR 3rd -> 1st after getting the power bat
+    expect(sb.beatsMore).toBe(-2) // SB 1st -> 3rd after giving the speed guy
   })
 })

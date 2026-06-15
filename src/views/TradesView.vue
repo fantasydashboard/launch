@@ -18,7 +18,6 @@ import { analyzeTrade } from '@/trades/analyzeTrade'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import Avatar from '@/components/trades/Avatar.vue'
 import ValueBadge from '@/components/trades/ValueBadge.vue'
-import FitMeter from '@/components/trades/FitMeter.vue'
 import TimingTag from '@/components/trades/TimingTag.vue'
 import type { TeamTotals, Landscape } from '@/trades/landscape'
 
