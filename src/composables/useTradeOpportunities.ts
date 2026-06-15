@@ -16,7 +16,6 @@ import { FIT_WEIGHTS_POSITION, FIT_WEIGHTS_CATEGORY } from '@/trades/fitScore'
 export type Lens = 'position' | 'category'
 
 // Tuning dials — surfaced as named constants so they can be adjusted after a screenshot pass.
-const ACCEPT_BAR = 0.4 // their-fit floor for the main list + hero (a deal they'd plausibly do)
 const HERO_COUNT = 3
 const HURT_THRESHOLD = 0.15 // min need-weighted loss to surface as a "cost"
 const POS_EDGE = 0.5
@@ -183,6 +182,9 @@ export function useTradeOpportunities(inputs: {
       weights: lens.value === 'position' ? FIT_WEIGHTS_POSITION : FIT_WEIGHTS_CATEGORY,
       hurtThreshold: HURT_THRESHOLD,
       labelOf: inputs.labelOf,
+      cats: eng.cats,
+      teamCatTotals: eng.teamCatTotals,
+      projByKey: eng.projByKey,
     })
     // Stakes floor: a sub-floor GET is a scrub, not a fill — unless it's a buy-low (depressed on
     // purpose). Keeps "FILLS YOUR UTIL → Kazuma Okamoto (15)" type noise out.
@@ -192,7 +194,7 @@ export function useTradeOpportunities(inputs: {
   // Hero = your strongest DISTINCT moves: top acceptance-gated by your-fit, but no two heroes share
   // the same filled position (headline) or partner — three variations of one move isn't three moves.
   const hero = computed<TradeOpportunity[]>(() => {
-    const sorted = [...all.value].filter((o) => o.fit.them >= ACCEPT_BAR).sort((a, b) => b.fit.you - a.fit.you)
+    const sorted = [...all.value].filter((o) => o.standings.partnerRead !== 'steal').sort((a, b) => b.standings.deltaYou - a.standings.deltaYou)
     const out: TradeOpportunity[] = []
     const heads = new Set<string>()
     const partners = new Set<string>()
@@ -218,10 +220,10 @@ export function useTradeOpportunities(inputs: {
     // Mutually-exclusive toggle: OFF = deals they'd plausibly accept (mutual); ON = leverage plays
     // that fall BELOW the acceptance bar (lopsided your way, a tougher sell). Two distinct sets.
     const pool = [...all.value]
-      .filter((o) => (pressLeverage.value ? o.fit.them < ACCEPT_BAR : o.fit.them >= ACCEPT_BAR))
+      .filter((o) => (pressLeverage.value ? o.standings.partnerRead === 'steal' : o.standings.partnerRead !== 'steal'))
       .filter((o) => !intents.size || o.intents.some((i) => intents.has(i)))
       .filter((o) => !heroIds.has(o.id))
-      .sort((a, b) => b.fit.you - a.fit.you)
+      .sort((a, b) => b.standings.deltaYou - a.standings.deltaYou)
 
     // Seed the curation budget with what the hero already spent, so the list never repeats a give
     // player or package the hero is already showing above it.
