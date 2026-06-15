@@ -1,5 +1,5 @@
 import type { CatSpec } from '@/myteam/value'
-import { computeRosterValue } from '@/myteam/value'
+import { computeRosterValue, sideCleanStats } from '@/myteam/value'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
 import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 import type { PoolPlayer } from '@/composables/useMyRoster'
@@ -64,8 +64,15 @@ export function buildEngine(input: BuildEngineInput): TradeEngine | null {
   const playersByTeam = [...byTeam.entries()].map(([teamId, ps]) => ({ teamId, players: ps.map((p) => eff.get(p.playerKey)!) }))
   // Standings totals are ALWAYS the projected roster output (not the win-record landscape), because
   // only projected output can be re-ranked under a trade preview. Ratio cats retain num/den.
-  const teamCatTotals = aggregateTeamCatTotals(playersByTeam, cats)
-  const projByKey = new Map([...eff.entries()].map(([k, v]) => [k, v.stats]))
+  // Side-clean the projected stats so ESPN cross-side junk (a hitter carrying BF, a pitcher carrying
+  // hitting stats) can't pollute team category totals or the swap preview. Position comes from `pool`.
+  const posByKey = new Map(pool.map((p) => [p.playerKey, p.position]))
+  const cleanPlayersByTeam = playersByTeam.map(({ teamId, players }) => ({
+    teamId,
+    players: players.map((pl) => ({ playerKey: pl.playerKey, stats: sideCleanStats(posByKey.get(pl.playerKey) ?? '', pl.stats, cats) })),
+  }))
+  const teamCatTotals = aggregateTeamCatTotals(cleanPlayersByTeam, cats)
+  const projByKey = new Map(cleanPlayersByTeam.flatMap((t) => t.players).map((pl) => [pl.playerKey, pl.stats]))
   const teamByKey = new Map<string, string>()
   for (const [teamId, ps] of byTeam) for (const pl of ps) teamByKey.set(pl.playerKey, teamId)
   const wins = teamCatWins ?? []

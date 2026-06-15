@@ -28,6 +28,26 @@ function participatesBySide(position: string, side: 'hit' | 'pit'): boolean {
 }
 
 /**
+ * Strip cross-side stats so a hitter never contributes to pitching categories and vice versa.
+ * ESPN attaches stray cross-side stats (a hitter carrying junk BF/K, a pitcher carrying junk
+ * hitting stats) that otherwise pollute team category totals and make a swap appear to move the
+ * wrong side. Keeps each kept ratio cat's volume stat too. Two-way players keep both sides.
+ */
+export function sideCleanStats(position: string, stats: Record<string, number>, cats: CatSpec[]): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const cat of cats) {
+    if (!participatesBySide(position, cat.side)) continue
+    const v = stats[cat.statId]
+    if (Number.isFinite(v)) out[cat.statId] = v
+    if (cat.isRatio && cat.volumeStatId) {
+      const vol = stats[cat.volumeStatId]
+      if (Number.isFinite(vol)) out[cat.volumeStatId] = vol
+    }
+  }
+  return out
+}
+
+/**
  * Whether a player participates (accumulates value) in a category.
  *  - Ratio cats: gated by VOLUME (IP for pitching ratios, AB/PA for batting), so a
  *    0.00 ERA still counts and a hitter with no innings is excluded. Falls back to
