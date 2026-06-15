@@ -414,7 +414,7 @@ function onLogoError(e: Event) {
         <p v-if="!hero.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
           No clear moves right now — toggle <b class="text-dark-textSecondary">press leverage</b> below to see one-sided plays.
         </p>
-        <OpportunityCard v-for="o in hero" :key="o.id" :opp="o" />
+        <OpportunityCard v-for="o in hero" :key="o.id" :opp="o" :labelOf="labelOf" />
       </section>
 
       <section class="space-y-3">
@@ -437,7 +437,7 @@ function onLogoError(e: Event) {
           <template v-if="pressLeverage">No leverage plays right now — every deal that helps you is also fair to them. Uncheck <b class="text-dark-textSecondary">press leverage</b>.</template>
           <template v-else>No mutual deals match — clear a filter, or check <b class="text-dark-textSecondary">press leverage</b> for one-sided plays.</template>
         </p>
-        <OpportunityCard v-for="o in ranked" :key="o.id" :opp="o" />
+        <OpportunityCard v-for="o in ranked" :key="o.id" :opp="o" :labelOf="labelOf" />
       </section>
 
       <!-- BEST PARTNERS -->

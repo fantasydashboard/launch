@@ -2,10 +2,10 @@
 import { ref } from 'vue'
 import Avatar from '@/components/trades/Avatar.vue'
 import ValueBadge from '@/components/trades/ValueBadge.vue'
-import FitMeter from '@/components/trades/FitMeter.vue'
+import StandingsMeter from '@/components/trades/StandingsMeter.vue'
 import type { TradeOpportunity, Intent } from '@/trades/opportunities'
 
-const props = defineProps<{ opp: TradeOpportunity }>()
+const props = defineProps<{ opp: TradeOpportunity; labelOf: (statId: string) => string }>()
 const expanded = ref(false)
 const copied = ref(false)
 const onLogoError = (e: Event) => { (e.target as HTMLImageElement).style.display = 'none' }
@@ -24,6 +24,18 @@ const INTENT_LABEL: Record<Intent, string> = {
 // win-win green; steal/leverage amber; the rest muted — no new colour semantics.
 const intentClass = (i: Intent): string =>
   i === 'winWin' ? 'text-primary' : i === 'steal' ? 'text-[#F2B33A]' : 'text-dark-textMuted'
+
+const labelOf = (s: string) => props.labelOf(s)
+const ordinal = (n: number): string => {
+  const r = Math.round(n)
+  const s = ['th', 'st', 'nd', 'rd'], v = r % 100
+  return r + (s[(v - 20) % 10] || s[v] || s[0])
+}
+const PARTNER_LABEL: Record<'fair' | 'reach' | 'steal', string> = {
+  fair: 'fair to them', reach: 'a reach for them', steal: 'a steal',
+}
+const partnerClass = (r: 'fair' | 'reach' | 'steal'): string =>
+  r === 'fair' ? 'text-primary' : r === 'reach' ? 'text-[#F2B33A]' : 'text-[#ff6b6b]'
 </script>
 
 <template>
@@ -33,8 +45,9 @@ const intentClass = (i: Intent): string =>
       <span class="flex flex-wrap items-center gap-x-2 font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">
         <b class="text-[#ffd98a]">{{ opp.headline }}</b>
         <span v-for="i in opp.intents" :key="i" class="text-[10px]" :class="intentClass(i)">· {{ INTENT_LABEL[i] }}</span>
+        <span class="text-[10px]" :class="partnerClass(opp.standings.partnerRead)">· {{ PARTNER_LABEL[opp.standings.partnerRead] }}</span>
       </span>
-      <FitMeter :you="opp.fit.you" :them="opp.fit.them" />
+      <StandingsMeter :delta="opp.standings.deltaYou" />
     </div>
 
     <!-- GET -->
@@ -66,17 +79,17 @@ const intentClass = (i: Intent): string =>
       <span>{{ expanded ? '▾' : '▸' }} why this works</span>
     </button>
     <div v-if="expanded" class="space-y-1 border-t border-dark-border/40 px-4 py-2 font-mono text-[10px]">
-      <div class="flex flex-wrap items-center gap-x-3">
-        <span class="w-10 text-dark-textMuted/70">YOU</span>
-        <span v-if="opp.you.fillsPos">fill <b class="text-[#ffd98a]">{{ opp.you.fillsPos }}</b></span>
-        <span>gain <span class="text-primary">{{ opp.you.fillsCats.join(' · ') || '—' }}</span></span>
-        <span>cost <span class="text-[#F2B33A]">{{ opp.you.hurtsCats.join(' · ') || '—' }}</span></span>
+      <div v-for="m in opp.standings.ladder.filter((x) => x.beatsMore !== 0)" :key="m.statId"
+        class="flex items-center gap-3">
+        <span class="w-10 text-dark-textMuted/70">{{ labelOf(m.statId) }}</span>
+        <span class="text-dark-textSecondary">{{ ordinal(m.rankBefore) }} → {{ ordinal(m.rankAfter) }}</span>
+        <span :class="m.beatsMore > 0 ? 'text-primary' : 'text-[#ff6b6b]'">
+          {{ m.beatsMore > 0 ? '▲'.repeat(Math.min(3, m.beatsMore)) : '▼'.repeat(Math.min(3, -m.beatsMore)) }}
+          {{ m.beatsMore > 0 ? `beat ${m.beatsMore} more` : `slip ${-m.beatsMore}` }}
+        </span>
       </div>
-      <div class="flex flex-wrap items-center gap-x-3">
-        <span class="w-10 text-dark-textMuted/70">THEM</span>
-        <span v-if="opp.them.fillsPos">fill <b class="text-[#ffd98a]">{{ opp.them.fillsPos }}</b></span>
-        <span>gain <span class="text-primary">{{ opp.them.fillsCats.join(' · ') || '—' }}</span></span>
-        <span>cost <span class="text-[#F2B33A]">{{ opp.them.hurtsCats.join(' · ') || '—' }}</span></span>
+      <div v-if="opp.standings.ladder.every((x) => x.beatsMore === 0)" class="text-dark-textMuted">
+        Holds your category ranks — value/depth move.
       </div>
       <div v-if="opp.pitch" class="mt-1.5 flex items-start gap-2 border-t border-dark-border/40 pt-2">
         <span class="w-10 shrink-0 text-dark-textMuted/70">PITCH</span>
