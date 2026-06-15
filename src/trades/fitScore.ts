@@ -21,9 +21,10 @@ export interface FitPair {
   them: number // 0..1
 }
 
-// Active-tab-leads presets (weights sum to 1).
-export const FIT_WEIGHTS_POSITION: FitWeights = { pos: 0.55, cat: 0.3, val: 0.15 }
-export const FIT_WEIGHTS_CATEGORY: FitWeights = { pos: 0.3, cat: 0.55, val: 0.15 }
+// Active-tab-leads presets (weights sum to 1). Value carries real weight so a deal where you ship
+// materially more than you get can't read as a top-fit move just because it plugs a hole.
+export const FIT_WEIGHTS_POSITION: FitWeights = { pos: 0.5, cat: 0.25, val: 0.25 }
+export const FIT_WEIGHTS_CATEGORY: FitWeights = { pos: 0.25, cat: 0.5, val: 0.25 }
 
 export interface FitDeal {
   getStr: Record<string, number> // category z-strengths of the player(s) you GET
@@ -41,8 +42,8 @@ const clamp01 = (x: number): number => Math.max(0, Math.min(1, x))
 
 // A z-swing of ~±2 in a needed category is a big move; map the need-weighted delta to 0..1 around 0.5.
 const CAT_SCALE = 4
-// ~±24 cross-value points is a full trade band; map the value delta to 0..1 around 0.5.
-const VAL_SCALE = 48
+// ~±18 cross-value points swings the value sub-fit across its range; overpaying bites quickly.
+const VAL_SCALE = 36
 
 function catFit(
   getStr: Record<string, number>,

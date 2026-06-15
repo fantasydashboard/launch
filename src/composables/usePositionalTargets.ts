@@ -315,7 +315,10 @@ export function usePositionalTargets(inputs: {
         if (giveTwo.length < 2) continue
         const studVal = crossVal(stud.playerKey)
         const giveSum = giveTwo.reduce((s, x) => s + x.v, 0)
-        if (giveSum < studVal - VALUE_BAND || studVal < Math.max(...giveTwo.map((x) => x.v))) continue
+        // Reject if the package under-pays (giveSum far below stud), if the stud doesn't out-value
+        // each piece, OR if you'd grossly OVER-pay (give far more than the stud is worth — the
+        // "two real players for a marginal upgrade" trap). The upper bound is the key fix.
+        if (giveSum < studVal - VALUE_BAND || studVal < Math.max(...giveTwo.map((x) => x.v)) || giveSum - studVal > VALUE_BAND) continue
         const g = guardrail(stud.playerKey, giveTwo[0].k)
         if (!g.ok) continue
         const fit = fitFor({ getKeys: [stud.playerKey], giveKeys: giveTwo.map((x) => x.k), myPosNeed: mine?.get(myHole)?.need ?? 0, theirPosNeed: 0, theirKey: teamKey })

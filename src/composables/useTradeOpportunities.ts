@@ -16,10 +16,21 @@ import { FIT_WEIGHTS_POSITION, FIT_WEIGHTS_CATEGORY } from '@/trades/fitScore'
 export type Lens = 'position' | 'category'
 
 // Tuning dials — surfaced as named constants so they can be adjusted after a screenshot pass.
-const ACCEPT_BAR = 0.45 // their-fit floor for the main list + hero (a deal they'd plausibly do)
+const ACCEPT_BAR = 0.4 // their-fit floor for the main list + hero (a deal they'd plausibly do)
 const HERO_COUNT = 3
 const HURT_THRESHOLD = 0.15 // min need-weighted loss to surface as a "cost"
 const POS_EDGE = 0.5
+// Curation caps — keep the merged list from becoming a repetitive wall (the same surplus body
+// shopped to everyone, the same 2-for-1 package offered for five studs, one thin slot dominating).
+const GIVE_CAP = 2 // max cards any one give player appears in
+const GET_CAP = 2 // max cards any one target appears in
+const PKG_CAP = 1 // max cards a given give-package (set of give players) appears in
+const HEADLINE_CAP = 3 // max cards per headline (≈ per filled position)
+const PARTNER_CAP = 3 // max cards per partner team
+const MAX_LIST = 12 // overall length cap for the main list
+
+const giveKeysOf = (o: { give: { playerKey: string }[] }) => o.give.map((s) => s.playerKey).sort().join(',')
+const getKeysOf = (o: { get: { playerKey: string }[] }) => o.get.map((s) => s.playerKey).sort().join(',')
 
 const eligFromPos = (pos: string): string[] =>
   pos.split(/[,/|]/).map((s) => s.trim()).filter(Boolean)
@@ -141,21 +152,58 @@ export function useTradeOpportunities(inputs: {
     })
   })
 
-  // Hero = the strongest acceptance-gated moves, cross-intent, ignoring chips + press-leverage.
-  const hero = computed<TradeOpportunity[]>(() =>
-    [...all.value].filter((o) => o.fit.them >= ACCEPT_BAR).sort((a, b) => b.fit.you - a.fit.you).slice(0, HERO_COUNT),
-  )
+  // Hero = your strongest DISTINCT moves: top acceptance-gated by your-fit, but no two heroes share
+  // the same filled position (headline) or partner — three variations of one move isn't three moves.
+  const hero = computed<TradeOpportunity[]>(() => {
+    const sorted = [...all.value].filter((o) => o.fit.them >= ACCEPT_BAR).sort((a, b) => b.fit.you - a.fit.you)
+    const out: TradeOpportunity[] = []
+    const heads = new Set<string>()
+    const partners = new Set<string>()
+    for (const o of sorted) {
+      if (heads.has(o.headline) || partners.has(o.partnerKey)) continue
+      out.push(o)
+      heads.add(o.headline)
+      partners.add(o.partnerKey)
+      if (out.length >= HERO_COUNT) break
+    }
+    return out
+  })
 
-  // Main list: gated by acceptance unless pressing leverage, filtered by intent chips, sorted by
-  // your-fit, excluding whatever's already in the hero so a deal never shows twice.
+  // Main list: gated by acceptance (unless pressing leverage), filtered by intent chips, sorted by
+  // your-fit, hero-excluded, then CURATED so no single give player / package / position / partner
+  // floods the list — the fix for the repetitive wall.
   const ranked = computed<TradeOpportunity[]>(() => {
     const heroIds = new Set(hero.value.map((o) => o.id))
     const intents = activeIntents.value
-    return [...all.value]
-      .filter((o) => (pressLeverage.value || o.fit.them >= ACCEPT_BAR))
+    const pool = [...all.value]
+      .filter((o) => pressLeverage.value || o.fit.them >= ACCEPT_BAR)
       .filter((o) => !intents.size || o.intents.some((i) => intents.has(i)))
       .filter((o) => !heroIds.has(o.id))
       .sort((a, b) => b.fit.you - a.fit.you)
+
+    const giveUse = new Map<string, number>()
+    const getUse = new Map<string, number>()
+    const pkgUse = new Map<string, number>()
+    const headUse = new Map<string, number>()
+    const partnerUse = new Map<string, number>()
+    const out: TradeOpportunity[] = []
+    for (const o of pool) {
+      const pkg = giveKeysOf(o)
+      const get = getKeysOf(o)
+      if (o.give.some((s) => (giveUse.get(s.playerKey) ?? 0) >= GIVE_CAP)) continue
+      if ((getUse.get(get) ?? 0) >= GET_CAP) continue
+      if ((pkgUse.get(pkg) ?? 0) >= PKG_CAP) continue
+      if ((headUse.get(o.headline) ?? 0) >= HEADLINE_CAP) continue
+      if ((partnerUse.get(o.partnerKey) ?? 0) >= PARTNER_CAP) continue
+      out.push(o)
+      o.give.forEach((s) => giveUse.set(s.playerKey, (giveUse.get(s.playerKey) ?? 0) + 1))
+      getUse.set(get, (getUse.get(get) ?? 0) + 1)
+      pkgUse.set(pkg, (pkgUse.get(pkg) ?? 0) + 1)
+      headUse.set(o.headline, (headUse.get(o.headline) ?? 0) + 1)
+      partnerUse.set(o.partnerKey, (partnerUse.get(o.partnerKey) ?? 0) + 1)
+      if (out.length >= MAX_LIST) break
+    }
+    return out
   })
 
   return { all, hero, ranked, lens, activeIntents, pressLeverage, toggleIntent }
