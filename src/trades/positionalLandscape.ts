@@ -14,9 +14,19 @@ export interface PosStanding {
   startableCount: number
   depthRank: number // cross-team rank of startableCount (1 = deepest). 0 if slot not required.
   surplus: number // 0..1 — giveable extra bodies beyond the slots
+  surplusBodies: number // raw count of giveable extras at this concrete position
   need: number // 0..1 — unmet/injured slots
 }
 export type PositionalLandscape = Map<string, Map<string, PosStanding>>
+
+/**
+ * Flex/utility slots are "best-leftover" slots, not scarce positions — a UTIL or MI slot is filled
+ * by whichever spare body you have, so it never DEFINES surplus at a concrete position. Surplus is
+ * measured only at concrete positions; flex slots can still register NEED (you couldn't field one).
+ * Without this, deep-lineup formats (ESPN: MI + CI + 2×UTIL) absorb every spare hitter into a
+ * "starting" slot and a loaded roster reads as having surplus nowhere.
+ */
+export const SURPLUS_FLEX = new Set(['UTIL', 'DH', 'IF', 'MI', 'CI', '2B/SS', '1B/3B', 'P'])
 
 /** A player below this cross-role value isn't a startable body — depth filler, not surplus. */
 export const STARTABLE_BAR = 45
@@ -110,13 +120,15 @@ export function buildPositionalLandscape(
       )
       const startableCount = eligibleStartable.length
       const unmet = a.unfilled.filter((u) => u.position === pos).length
-      // bench-bound startable bodies eligible here = surplus supply at this position.
-      const surplusBodies = a.benchStartable.filter(
-        (p) => coversSlot(p.eligiblePositions, pos),
-      ).length
+      // Surplus = concrete-position redundancy: healthy startable bodies eligible here beyond this
+      // position's own slot count, regardless of whether flex slots elsewhere absorbed them. Flex
+      // slots themselves never define surplus (see SURPLUS_FLEX).
+      const surplusBodies = SURPLUS_FLEX.has(pos)
+        ? 0
+        : Math.max(0, eligibleStartable.filter((p) => !isInjured(p.status)).length - slots[pos])
       const surplus = Math.min(1, surplusBodies / SAT)
       const need = Math.min(1, unmet / SAT)
-      m.set(pos, { slots: slots[pos], startableCount, depthRank: 0, surplus, need })
+      m.set(pos, { slots: slots[pos], startableCount, depthRank: 0, surplus, surplusBodies, need })
       ;(countByPos.get(pos) ?? countByPos.set(pos, []).get(pos)!).push({ teamKey, count: startableCount })
     }
     out.set(teamKey, m)

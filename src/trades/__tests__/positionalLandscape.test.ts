@@ -56,6 +56,19 @@ describe('buildPositionalLandscape', () => {
     expect(ls.get('t2')!.get('3B')!.surplus).toBe(0)
   })
 
+  it('surfaces concrete surplus even when flex/UTIL slots would absorb the spare (ESPN deep lineup)', () => {
+    // 4 startable OF, lineup is 3 OF + 2 UTIL. The old "leftover after greedy assignment" model
+    // dropped the 4th OF into a UTIL slot, so surplus read 0 everywhere. Concrete redundancy keeps
+    // OF surplus visible; flex UTIL never registers surplus itself.
+    const pool = mk('t1', [
+      ['of1', ['OF'], 90], ['of2', ['OF'], 80], ['of3', ['OF'], 70], ['of4', ['OF'], 60],
+    ])
+    const ls = buildPositionalLandscape(pool, { OF: 3, UTIL: 2 }, 45)
+    expect(ls.get('t1')!.get('OF')!.surplus).toBeGreaterThan(0)
+    expect(ls.get('t1')!.get('OF')!.surplusBodies).toBe(1)
+    expect(ls.get('t1')!.get('UTIL')!.surplus).toBe(0)
+  })
+
   it('an injured starter leaves the slot a hole even with a body present', () => {
     const pool = mk('t1', [['hurt', ['3B'], 80, 'IL']])
     const ls = buildPositionalLandscape(pool, { '3B': 1 }, 45)

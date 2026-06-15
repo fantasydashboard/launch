@@ -15,6 +15,7 @@ import { analyzeTrade } from '@/trades/analyzeTrade'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import Avatar from '@/components/trades/Avatar.vue'
 import ValueBadge from '@/components/trades/ValueBadge.vue'
+import FitMeter from '@/components/trades/FitMeter.vue'
 import TimingTag from '@/components/trades/TimingTag.vue'
 import type { TeamTotals, Landscape } from '@/trades/landscape'
 
@@ -548,7 +549,7 @@ function onLogoError(e: Event) {
                 <template v-if="mode === 'reach'">they're thin at <b class="text-[#ffd98a]">{{ t.position }}</b></template>
                 <template v-else>Fills <b class="text-[#ffd98a]">{{ t.position }}</b><span v-if="t.tier" class="text-dark-textMuted"> · {{ t.tier === 'both' ? 'fits both' : 'fits one' }}</span></template>
               </span>
-              <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">{{ mode === 'reach' ? 'leverage' : 'win-win' }}</span>
+              <FitMeter :you="t.fit.you" :them="t.fit.them" />
             </div>
             <div class="flex items-center gap-2 px-4 pt-2.5">
               <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-primary">GET</span>
@@ -580,8 +581,8 @@ function onLogoError(e: Event) {
           </p>
           <div v-for="(t, i) in (posView?.consolidate ?? [])" :key="i" class="overflow-hidden rounded-xl border border-dark-border bg-dark-card">
             <div class="flex items-center justify-between gap-2 border-b border-dark-border/60 bg-[#F2B33A]/[0.04] px-4 py-2">
-              <span class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">Fills <b class="text-[#ffd98a]">{{ t.position }}</b></span>
-              <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">2-for-1</span>
+              <span class="font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">Fills <b class="text-[#ffd98a]">{{ t.position }}</b> <span class="text-dark-textMuted">· 2-for-1</span></span>
+              <FitMeter :you="t.fit.you" :them="t.fit.them" />
             </div>
             <div class="flex items-center gap-2 px-4 pt-2.5">
               <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-primary">GET</span>

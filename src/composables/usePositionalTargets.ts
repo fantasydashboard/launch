@@ -1,15 +1,16 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
 import type { PoolPlayer } from '@/composables/useMyRoster'
 import {
-  assignSlots,
   buildPositionalLandscape,
   coversSlot,
   STARTABLE_BAR,
+  SURPLUS_FLEX,
   type DepthPlayer,
   type PositionalLandscape,
 } from '@/trades/positionalLandscape'
 import type { Landscape } from '@/trades/landscape'
 import { evalDeal } from '@/trades/deals'
+import { computeFit, FIT_WEIGHTS_POSITION, type FitPair } from '@/trades/fitScore'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
 export interface PosSide {
@@ -29,6 +30,7 @@ export interface PositionalTarget {
   fromTeamLogo?: string
   tier?: PosTier // set on win-win
   secondaryHelps: string[] // categories the deal also helps you (the twofer tag)
+  fit: FitPair // two-sided 0..1 fit (you / them)
 }
 export interface PositionalConsolidate {
   position: string
@@ -37,6 +39,7 @@ export interface PositionalConsolidate {
   fromTeam: string
   fromTeamLogo?: string
   secondaryHelps: string[]
+  fit: FitPair
 }
 export interface PositionalView {
   myDeep: string[] // positions you can trade from (surplus)
@@ -120,16 +123,28 @@ export function usePositionalTargets(inputs: {
     }))
     const ls: PositionalLandscape = buildPositionalLandscape(depth, slots)
 
-    // Each team's genuine SURPLUS = startable bodies that didn't make its starting lineup. The GIVE
-    // side comes from here (never a starter, never a sub-replacement scrub) — this is the fix that
-    // stops shipping a value-1 body to "fill" someone's hole.
+    // Each team's genuine SURPLUS = concrete-position redundancy: healthy startable bodies eligible
+    // at a position beyond that position's slot count. The GIVE side comes from here (never a body
+    // you actually need to start) — and unlike the old "leftover after greedy assignment" model,
+    // this still surfaces depth in deep-lineup formats where flex slots absorb every spare body.
     const depthByTeam = new Map<string, DepthPlayer[]>()
     for (const d of depth) (depthByTeam.get(d.teamKey) ?? depthByTeam.set(d.teamKey, []).get(d.teamKey)!).push(d)
-    const benchByTeam = new Map<string, Set<string>>()
+    const isInjured = (s?: string) => { const u = (s ?? '').toUpperCase(); return u !== '' && u !== 'ACTIVE' && u !== 'HEALTHY' }
+    // team -> set of surplus body keys (union across that team's deep concrete positions).
+    const surplusSetByTeam = new Map<string, string[]>()
     for (const [team, players] of depthByTeam) {
-      benchByTeam.set(team, new Set(assignSlots(players, slots).benchStartable.map((p) => p.playerKey)))
+      const seen = new Set<string>()
+      for (const pos of Object.keys(slots)) {
+        if (SURPLUS_FLEX.has(pos)) continue
+        const eligible = players
+          .filter((p) => p.value >= STARTABLE_BAR && coversSlot(p.eligiblePositions, pos) && !isInjured(p.status))
+          .sort((a, b) => crossVal(a.playerKey) - crossVal(b.playerKey)) // cheapest first
+        const surplusN = Math.max(0, eligible.length - (slots[pos] ?? 0))
+        for (const p of eligible.slice(0, surplusN)) seen.add(p.playerKey)
+      }
+      surplusSetByTeam.set(team, [...seen])
     }
-    const myBench = benchByTeam.get(myKey) ?? new Set<string>()
+    const mySurplus = surplusSetByTeam.get(myKey) ?? []
 
     // Each team's most valuable few players — the cornerstones they won't move to patch a position.
     const coreByTeam = new Map<string, string[]>()
@@ -152,11 +167,12 @@ export function usePositionalTargets(inputs: {
     // instead of piling onto a position I'm already deep in.
     const fillsMyThin = (key: string) => myThin.some((t) => coversSlot(eligOf(key), t))
 
-    // My giveable bodies for a slot: my surplus starters that can fill it, cheapest (cross-value) first.
+    // My giveable bodies for a slot: my surplus bodies that can also cover it, cheapest first.
     const myGiveablesAt = (pos: string): string[] =>
-      [...myBench].filter((k) => coversSlot(eligOf(k), pos)).sort((a, b) => crossVal(a) - crossVal(b))
+      mySurplus.filter((k) => coversSlot(eligOf(k), pos)).sort((a, b) => crossVal(a) - crossVal(b))
+    // Their surplus that can cover a slot I need: most valuable first (the best spare they'd move).
     const theirSurplusAt = (team: string, pos: string): string[] =>
-      [...(benchByTeam.get(team) ?? [])].filter((k) => coversSlot(eligOf(k), pos)).sort((a, b) => crossVal(b) - crossVal(a))
+      (surplusSetByTeam.get(team) ?? []).filter((k) => coversSlot(eligOf(k), pos)).sort((a, b) => crossVal(b) - crossVal(a))
 
     // Category guardrail: reject a net category LOSS; tag the categories the deal also helps.
     const guardrail = (getKey: string, giveKey: string): { ok: boolean; secondaryHelps: string[] } => {
@@ -175,6 +191,33 @@ export function usePositionalTargets(inputs: {
         .slice(0, 3).map((c) => inputs.labelOf(c))
       return { ok: ev.yourGain >= 0, secondaryHelps }
     }
+
+    // --- Two-sided fit (you / them), Position-tab weighting. One comparable score per deal so
+    // win-win / reach / consolidate all rank on the same axis. ---
+    const needsOf = (team: string): Record<string, number> => {
+      const cl = inputs.catLandscape.value.get(team)
+      const out: Record<string, number> = {}
+      for (const c of inputs.statIds.value) out[c] = cl?.get(c)?.need ?? 0
+      return out
+    }
+    const myNeeds = needsOf(myKey)
+    const strOf = (key: string) => inputs.strengthByKey.value.get(key) ?? {}
+    const sumStr = (keys: string[]): Record<string, number> => {
+      const out: Record<string, number> = {}
+      for (const k of keys) { const s = strOf(k); for (const c of inputs.statIds.value) out[c] = (out[c] ?? 0) + (s[c] ?? 0) }
+      return out
+    }
+    // need magnitude at the slot a GET fills for me (max over my thin slots it covers; 0 if none).
+    const myFillNeed = (key: string): number =>
+      Math.max(0, ...myThin.map((t) => (coversSlot(eligOf(key), t) ? (mine?.get(t)?.need ?? 0) : 0)))
+    const fitFor = (a: { getKeys: string[]; giveKeys: string[]; myPosNeed: number; theirPosNeed: number; theirKey: string }): FitPair =>
+      computeFit({
+        getStr: sumStr(a.getKeys), giveStr: sumStr(a.giveKeys),
+        myNeed: myNeeds, theirNeed: needsOf(a.theirKey), statIds: inputs.statIds.value,
+        myPosNeed: a.myPosNeed, theirPosNeed: a.theirPosNeed,
+        getVal: a.getKeys.reduce((s, k) => s + crossVal(k), 0),
+        giveVal: a.giveKeys.reduce((s, k) => s + crossVal(k), 0),
+      }, FIT_WEIGHTS_POSITION)
 
     // Keep only the best card per GET player (kills duplicate cards for the same target).
     const dedupeByGet = <T extends { get: PosSide }>(deals: T[], rank: (t: T) => number): T[] => {
@@ -203,7 +246,7 @@ export function usePositionalTargets(inputs: {
     // their hole; because they're desperate they overpay — you GET a more valuable body of theirs,
     // gain in [REACH_MIN_OVERPAY, REACH_MAX_GAIN]. NOT one of their cornerstones (CORE_PROTECT), and
     // preferring a return that fills a slot YOU'RE thin at over one that piles onto your strength.
-    const reachRaw: (PositionalTarget & { rank: number })[] = []
+    const reachRaw: PositionalTarget[] = []
     for (const [teamKey, m] of ls) {
       if (teamKey === myKey) continue
       for (const pos of positions) {
@@ -221,16 +264,16 @@ export function usePositionalTargets(inputs: {
         if (!ret) continue
         const g = guardrail(ret.key, giveKey)
         if (!g.ok) continue
-        reachRaw.push({ position: pos, get: sideOf(ret.key), give: sideOf(giveKey),
-          rank: (ret.thin ? 100 : 0) + ret.gain,
+        const fit = fitFor({ getKeys: [ret.key], giveKeys: [giveKey], myPosNeed: myFillNeed(ret.key), theirPosNeed: m.get(pos)?.need ?? 0, theirKey: teamKey })
+        reachRaw.push({ position: pos, get: sideOf(ret.key), give: sideOf(giveKey), fit,
           fromTeam: teamName(teamKey), fromTeamLogo: teamLogo(teamKey), secondaryHelps: g.secondaryHelps })
       }
     }
-    const reach = capGiveReuse(dedupeByGet(reachRaw, (t) => t.rank))
+    const reach = capGiveReuse(dedupeByGet(reachRaw, (t) => t.fit.you))
 
     // WIN-WIN: a slot you need where THEY have surplus, AND a slot they need where YOU have surplus —
     // each fills the other's hole from spare parts, values even. Tier by the secondary (category) effect.
-    const winWinRaw: (PositionalTarget & { closeness: number })[] = []
+    const winWinRaw: PositionalTarget[] = []
     for (const [teamKey, m] of ls) {
       if (teamKey === myKey) continue
       for (const myHole of myThin) {
@@ -246,17 +289,18 @@ export function usePositionalTargets(inputs: {
           if (diff > VALUE_BAND) continue
           const g = guardrail(getKey, giveKey)
           if (!g.ok) continue
-          winWinRaw.push({ position: myHole, get: sideOf(getKey), give: sideOf(giveKey),
+          const fit = fitFor({ getKeys: [getKey], giveKeys: [giveKey], myPosNeed: mine?.get(myHole)?.need ?? 0, theirPosNeed: m.get(theirHole)?.need ?? 0, theirKey: teamKey })
+          winWinRaw.push({ position: myHole, get: sideOf(getKey), give: sideOf(giveKey), fit,
             tier: g.secondaryHelps.length ? 'both' : 'one', secondaryHelps: g.secondaryHelps,
-            closeness: VALUE_BAND - diff, fromTeam: teamName(teamKey), fromTeamLogo: teamLogo(teamKey) })
+            fromTeam: teamName(teamKey), fromTeamLogo: teamLogo(teamKey) })
         }
       }
     }
-    const winWin = dedupeByGet(winWinRaw, (t) => (t.tier === 'both' ? 1000 : 0) + t.closeness)
+    const winWin = dedupeByGet(winWinRaw, (t) => t.fit.you)
 
     // CONSOLIDATE: package two surplus bodies for one genuine STARTER (role-startable) at a slot you
     // need. Frees a roster spot. The stud must clear the bar and out-value each piece individually.
-    const consolidateRaw: (PositionalConsolidate & { studVal: number })[] = []
+    const consolidateRaw: PositionalConsolidate[] = []
     for (const [teamKey] of ls) {
       if (teamKey === myKey) continue
       for (const myHole of myThin) {
@@ -264,23 +308,23 @@ export function usePositionalTargets(inputs: {
           .filter((p) => coversSlot(p.eligiblePositions, myHole) && roleScore(p.playerKey) >= STARTABLE_BAR && !isCore(teamKey, p.playerKey, CONSOLIDATE_PROTECT))
           .sort((a, b) => crossVal(b.playerKey) - crossVal(a.playerKey))[0]
         if (!stud) continue
-        const giveTwo = [...myBench].map((k) => ({ k, v: crossVal(k) })).sort((a, b) => a.v - b.v).slice(0, 2)
+        const giveTwo = mySurplus.map((k) => ({ k, v: crossVal(k) })).sort((a, b) => a.v - b.v).slice(0, 2)
         if (giveTwo.length < 2) continue
         const studVal = crossVal(stud.playerKey)
         const giveSum = giveTwo.reduce((s, x) => s + x.v, 0)
         if (giveSum < studVal - VALUE_BAND || studVal < Math.max(...giveTwo.map((x) => x.v))) continue
         const g = guardrail(stud.playerKey, giveTwo[0].k)
         if (!g.ok) continue
-        consolidateRaw.push({ position: myHole, get: sideOf(stud.playerKey), studVal,
+        const fit = fitFor({ getKeys: [stud.playerKey], giveKeys: giveTwo.map((x) => x.k), myPosNeed: mine?.get(myHole)?.need ?? 0, theirPosNeed: 0, theirKey: teamKey })
+        consolidateRaw.push({ position: myHole, get: sideOf(stud.playerKey), fit,
           give: giveTwo.map((x) => sideOf(x.k)), fromTeam: teamName(teamKey),
           fromTeamLogo: teamLogo(teamKey), secondaryHelps: g.secondaryHelps })
       }
     }
     const consolidate = (() => {
-      const best = new Map<string, (typeof consolidateRaw)[number]>()
+      const best = new Map<string, PositionalConsolidate>()
       for (const d of consolidateRaw) if (!best.has(d.get.playerKey)) best.set(d.get.playerKey, d)
-      return [...best.values()].sort((a, b) => b.studVal - a.studVal).slice(0, MAX_CONSOLIDATE)
-        .map(({ studVal: _studVal, ...rest }) => rest)
+      return [...best.values()].sort((a, b) => b.fit.you - a.fit.you).slice(0, MAX_CONSOLIDATE)
     })()
 
     return { myDeep: prettyPositions(myDeep), myThin: prettyPositions(myThin), reach, winWin, consolidate }
