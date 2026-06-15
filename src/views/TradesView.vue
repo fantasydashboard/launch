@@ -190,8 +190,13 @@ const { view: posView } = usePositionalTargets({
   catLandscape, statIds: statIdsRef, myTeamKey, teamNameByKey, teamLogoByKey, labelOf,
 })
 // --- Unified opportunity list (merges category + positional deals, one ranked list) ---
+const catSideById = computed(() => {
+  const m = new Map<string, 'hit' | 'pit'>()
+  for (const c of catSpecs.value) m.set(c.statId, c.side)
+  return m
+})
 const { hero, ranked, lens, activeIntents, pressLeverage, toggleIntent } = useTradeOpportunities({
-  pool, engine, catView: view, posView, slots: rosterSlots, myStatuses, myTeamKey, statIds: statIdsRef, labelOf,
+  pool, engine, catView: view, posView, slots: rosterSlots, myStatuses, myTeamKey, statIds: statIdsRef, catSideById, labelOf,
 })
 const INTENTS: { key: Intent; label: string }[] = [
   { key: 'winWin', label: 'win-win' },

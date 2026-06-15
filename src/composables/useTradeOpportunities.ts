@@ -44,6 +44,10 @@ const posSide = (s: PosSide): OppSide => ({
   headshot: s.headshot, proLogo: s.proLogo, eligible: s.eligible,
 })
 
+const PITCH_POS = new Set(['P', 'SP', 'RP'])
+const posIsPitching = (pos: string): boolean => PITCH_POS.has(pos)
+const SIDE_NEED_MIN = 0.3 // a category counts toward a side's need only above this hump value
+
 // Timing flags carried on the player sides (buy-low get / sell-high give) become opportunity tags.
 const timingIntents = (get: TradeSide[], give: TradeSide[]): Intent[] => {
   const out: Intent[] = []
@@ -61,6 +65,7 @@ export function useTradeOpportunities(inputs: {
   myStatuses: Ref<Map<string, string>>
   myTeamKey: Ref<string | null>
   statIds: Ref<string[]>
+  catSideById: Ref<Map<string, 'hit' | 'pit'>> // for tying positional need to category need by side
   labelOf: (statId: string) => string
 }): {
   all: ComputedRef<TradeOpportunity[]>
@@ -98,13 +103,35 @@ export function useTradeOpportunities(inputs: {
     return buildPositionalLandscape(depth, slots)
   })
 
+  // Do I have any unmet HITTING vs PITCHING category? A positional hole only matters competitively
+  // if filling it advances a category I need — so a hitting-rich team (1st in every hitting cat)
+  // shouldn't be told to "fill" its 2B/UTIL/MI flex slots with more dead-value bats.
+  const sideNeed = computed(() => {
+    const eng = inputs.engine.value
+    const myKey = inputs.myTeamKey.value
+    const cl = myKey ? eng?.landscape.get(myKey) : undefined
+    let hit = false
+    let pit = false
+    for (const c of inputs.statIds.value) {
+      if ((cl?.get(c)?.need ?? 0) < SIDE_NEED_MIN) continue
+      if (inputs.catSideById.value.get(c) === 'pit') pit = true
+      else hit = true
+    }
+    return { hit, pit }
+  })
+
   const myThin = computed<string[]>(() => {
     const pl = posLandscape.value
     const myKey = inputs.myTeamKey.value
     if (!pl || !myKey) return []
     const m = pl.get(myKey)
     if (!m) return []
-    return [...m.entries()].filter(([, st]) => st.need >= POS_EDGE).map(([pos]) => pos)
+    const { hit, pit } = sideNeed.value
+    return [...m.entries()]
+      .filter(([, st]) => st.need >= POS_EDGE)
+      // keep a positional hole only if I actually need that side's categories.
+      .filter(([pos]) => (posIsPitching(pos) ? pit : hit))
+      .map(([pos]) => pos)
   })
 
   // Map both generators' outputs into the common RawDeal shape.
@@ -159,11 +186,14 @@ export function useTradeOpportunities(inputs: {
     const out: TradeOpportunity[] = []
     const heads = new Set<string>()
     const partners = new Set<string>()
+    const gives = new Set<string>()
     for (const o of sorted) {
       if (heads.has(o.headline) || partners.has(o.partnerKey)) continue
+      if (o.give.some((s) => gives.has(s.playerKey))) continue // no two heroes lean on the same give
       out.push(o)
       heads.add(o.headline)
       partners.add(o.partnerKey)
+      o.give.forEach((s) => gives.add(s.playerKey))
       if (out.length >= HERO_COUNT) break
     }
     return out
@@ -181,11 +211,17 @@ export function useTradeOpportunities(inputs: {
       .filter((o) => !heroIds.has(o.id))
       .sort((a, b) => b.fit.you - a.fit.you)
 
+    // Seed the curation budget with what the hero already spent, so the list never repeats a give
+    // player or package the hero is already showing above it.
     const giveUse = new Map<string, number>()
     const getUse = new Map<string, number>()
     const pkgUse = new Map<string, number>()
     const headUse = new Map<string, number>()
     const partnerUse = new Map<string, number>()
+    for (const o of hero.value) {
+      o.give.forEach((s) => giveUse.set(s.playerKey, (giveUse.get(s.playerKey) ?? 0) + 1))
+      pkgUse.set(giveKeysOf(o), (pkgUse.get(giveKeysOf(o)) ?? 0) + 1)
+    }
     const out: TradeOpportunity[] = []
     for (const o of pool) {
       const pkg = giveKeysOf(o)
