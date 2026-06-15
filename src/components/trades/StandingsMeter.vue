@@ -1,16 +1,21 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-// Standings impact meter: how many weekly categories this swap gains you. ~+2.0 cats/week = full.
+// Signed weekly-category-win delta for this trade. Reads like a ticker: +0.4/wk (good),
+// even (wash), −0.3/wk (bad). Replaces the old 0–4 "YOU" bars, which were mislabelled and
+// mis-calibrated (most real deals are < +0.5/wk, so the bars sat empty).
 const props = defineProps<{ delta: number }>()
-const bands = computed(() => Math.max(0, Math.min(4, Math.round((props.delta / 2.0) * 4))))
+const rounded = computed(() => Math.round(props.delta * 10) / 10)
+const label = computed(() =>
+  rounded.value > 0 ? `+${rounded.value.toFixed(1)}/wk`
+    : rounded.value < 0 ? `${rounded.value.toFixed(1)}/wk`
+      : 'even',
+)
+const cls = computed(() =>
+  rounded.value > 0 ? 'text-primary' : rounded.value < 0 ? 'text-[#ff6b6b]' : 'text-dark-textMuted',
+)
 </script>
 
 <template>
-  <span class="inline-flex items-center gap-1" :title="`${props.delta >= 0 ? '+' : ''}${props.delta.toFixed(1)} categories per week`">
-    <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70">YOU</span>
-    <span class="inline-flex gap-0.5">
-      <span v-for="n in 4" :key="n" class="h-1.5 w-2.5 rounded-[1px]"
-        :class="n <= bands ? 'bg-primary' : 'bg-dark-border'" />
-    </span>
-  </span>
+  <span class="shrink-0 font-mono text-[11px] font-semibold tabular-nums" :class="cls"
+    :title="`${rounded > 0 ? '+' : ''}${rounded.toFixed(1)} categories won per week`">{{ label }}</span>
 </template>

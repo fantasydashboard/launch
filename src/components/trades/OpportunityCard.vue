@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import Avatar from '@/components/trades/Avatar.vue'
 import ValueBadge from '@/components/trades/ValueBadge.vue'
 import StandingsMeter from '@/components/trades/StandingsMeter.vue'
@@ -24,6 +24,8 @@ const INTENT_LABEL: Record<Intent, string> = {
 // win-win green; steal/leverage amber; the rest muted — no new colour semantics.
 const intentClass = (i: Intent): string =>
   i === 'winWin' ? 'text-primary' : i === 'steal' ? 'text-[#F2B33A]' : 'text-dark-textMuted'
+const HIDDEN_INTENTS = new Set<Intent>(['winWin', 'steal'])
+const shownIntents = computed(() => props.opp.intents.filter((i) => !HIDDEN_INTENTS.has(i)))
 
 const labelOf = props.labelOf
 const ordinal = (n: number): string => {
@@ -45,7 +47,7 @@ const partnerClass = (r: 'fair' | 'reach' | 'steal'): string =>
     <div class="flex items-center justify-between gap-2 border-b border-dark-border/60 bg-[#F2B33A]/[0.04] px-4 py-2">
       <span class="flex flex-wrap items-center gap-x-2 font-mono text-[11px] uppercase tracking-wide text-[#F2B33A]">
         <b class="text-[#ffd98a]">{{ opp.headline }}</b>
-        <span v-for="i in opp.intents" :key="i" class="text-[10px]" :class="intentClass(i)">· {{ INTENT_LABEL[i] }}</span>
+        <span v-for="i in shownIntents" :key="i" class="text-[10px]" :class="intentClass(i)">· {{ INTENT_LABEL[i] }}</span>
         <span class="text-[10px]" :class="partnerClass(opp.standings.partnerRead)">· {{ PARTNER_LABEL[opp.standings.partnerRead] }}</span>
       </span>
       <StandingsMeter :delta="opp.standings.deltaYou" />

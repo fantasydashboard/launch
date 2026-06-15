@@ -11,9 +11,7 @@ import {
   type TradeOpportunity,
 } from '@/trades/opportunities'
 import { buildPositionalLandscape, type DepthPlayer } from '@/trades/positionalLandscape'
-import { FIT_WEIGHTS_POSITION, FIT_WEIGHTS_CATEGORY } from '@/trades/fitScore'
-
-export type Lens = 'position' | 'category'
+import { FIT_WEIGHTS_CATEGORY } from '@/trades/fitScore'
 
 // Tuning dials — surfaced as named constants so they can be adjusted after a screenshot pass.
 const HERO_COUNT = 3
@@ -30,6 +28,7 @@ const MAX_LIST = 12 // overall length cap for the main list
 // A GET below this cross-value isn't a real rosterable upgrade — it can't "fill" a hole. Buy-lows
 // are exempt: their depressed current value is the whole point (rebound coming).
 const GET_FLOOR = 45
+const MIN_GAIN = 0.05 // only surface deals that actually improve your weekly category wins
 
 const giveKeysOf = (o: { give: { playerKey: string }[] }) => o.give.map((s) => s.playerKey).sort().join(',')
 const getKeysOf = (o: { get: { playerKey: string }[] }) => o.get.map((s) => s.playerKey).sort().join(',')
@@ -77,12 +76,10 @@ export function useTradeOpportunities(inputs: {
   all: ComputedRef<TradeOpportunity[]>
   hero: ComputedRef<TradeOpportunity[]>
   ranked: ComputedRef<TradeOpportunity[]>
-  lens: Ref<Lens>
   activeIntents: Ref<Set<Intent>>
   pressLeverage: Ref<boolean>
   toggleIntent: (i: Intent) => void
 } {
-  const lens = ref<Lens>('category')
   const activeIntents = ref<Set<Intent>>(new Set())
   const pressLeverage = ref(false)
   const toggleIntent = (i: Intent) => {
@@ -179,7 +176,7 @@ export function useTradeOpportunities(inputs: {
       catLandscape: eng.landscape,
       posLandscape: pl,
       myThin: myThin.value,
-      weights: lens.value === 'position' ? FIT_WEIGHTS_POSITION : FIT_WEIGHTS_CATEGORY,
+      weights: FIT_WEIGHTS_CATEGORY,
       hurtThreshold: HURT_THRESHOLD,
       labelOf: inputs.labelOf,
       cats: eng.cats,
@@ -194,7 +191,7 @@ export function useTradeOpportunities(inputs: {
   // Hero = your top DISTINCT moves by standings gain (deltaYou), excluding lopsided 'steal' deals,
   // with no two heroes sharing a filled position (headline), partner, or give player.
   const hero = computed<TradeOpportunity[]>(() => {
-    const sorted = [...all.value].filter((o) => o.standings.partnerRead !== 'steal').sort((a, b) => b.standings.deltaYou - a.standings.deltaYou)
+    const sorted = [...all.value].filter((o) => o.standings.partnerRead !== 'steal' && o.standings.deltaYou >= MIN_GAIN).sort((a, b) => b.standings.deltaYou - a.standings.deltaYou)
     const out: TradeOpportunity[] = []
     const heads = new Set<string>()
     const partners = new Set<string>()
@@ -220,6 +217,7 @@ export function useTradeOpportunities(inputs: {
     // Mutually-exclusive toggle: OFF = deals the partner would plausibly accept (partnerRead fair or
     // reach); ON = lopsided 'steal' plays the partner clearly loses — a tougher sell. Two distinct sets.
     const pool = [...all.value]
+      .filter((o) => o.standings.deltaYou >= MIN_GAIN)
       .filter((o) => (pressLeverage.value ? o.standings.partnerRead === 'steal' : o.standings.partnerRead !== 'steal'))
       .filter((o) => !intents.size || o.intents.some((i) => intents.has(i)))
       .filter((o) => !heroIds.has(o.id))
@@ -256,5 +254,5 @@ export function useTradeOpportunities(inputs: {
     return out
   })
 
-  return { all, hero, ranked, lens, activeIntents, pressLeverage, toggleIntent }
+  return { all, hero, ranked, activeIntents, pressLeverage, toggleIntent }
 }

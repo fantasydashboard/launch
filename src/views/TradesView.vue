@@ -194,12 +194,10 @@ const catSideById = computed(() => {
   for (const c of catSpecs.value) m.set(c.statId, c.side)
   return m
 })
-const { hero, ranked, lens, activeIntents, pressLeverage, toggleIntent } = useTradeOpportunities({
+const { hero, ranked, activeIntents, pressLeverage, toggleIntent } = useTradeOpportunities({
   pool, engine, catView: view, posView, slots: rosterSlots, myStatuses, myTeamKey, statIds: statIdsRef, catSideById, labelOf,
 })
 const INTENTS: { key: Intent; label: string }[] = [
-  { key: 'winWin', label: 'win-win' },
-  { key: 'steal', label: 'steal' },
   { key: 'consolidate', label: 'consolidate' },
   { key: 'buyLow', label: 'buy-low' },
 ]
@@ -403,12 +401,6 @@ function onLogoError(e: Event) {
       <section class="space-y-2">
         <div class="flex items-center justify-between">
           <span class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Best moves right now</span>
-          <label class="font-mono text-[10px] text-dark-textMuted">lens
-            <select v-model="lens" class="ml-1 bg-transparent text-primary outline-none">
-              <option value="position">position</option>
-              <option value="category">category</option>
-            </select>
-          </label>
         </div>
         <p v-if="!hero.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
           No clear moves right now — toggle <b class="text-dark-textSecondary">press leverage</b> below to see one-sided plays.
