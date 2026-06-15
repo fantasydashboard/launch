@@ -428,12 +428,14 @@ function onLogoError(e: Event) {
             :class="activeIntents.has(it.key) ? 'text-primary' : 'text-dark-textMuted hover:text-dark-textSecondary'"
             @click="toggleIntent(it.key)"
           >{{ it.label }}</button>
-          <label class="ml-auto flex items-center gap-1 font-mono text-[10px] text-dark-textMuted">
+          <label class="ml-auto flex items-center gap-1 font-mono text-[10px] text-dark-textMuted"
+            title="Show one-sided leverage plays — great for you, a tough sell for them — instead of mutually acceptable deals.">
             <input type="checkbox" v-model="pressLeverage" class="accent-primary" /> press leverage
           </label>
         </div>
         <p v-if="!ranked.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
-          No more opportunities match — clear a filter or toggle <b class="text-dark-textSecondary">press leverage</b>.
+          <template v-if="pressLeverage">No leverage plays right now — every deal that helps you is also fair to them. Uncheck <b class="text-dark-textSecondary">press leverage</b>.</template>
+          <template v-else>No mutual deals match — clear a filter, or check <b class="text-dark-textSecondary">press leverage</b> for one-sided plays.</template>
         </p>
         <OpportunityCard v-for="o in ranked" :key="o.id" :opp="o" />
       </section>

@@ -215,8 +215,10 @@ export function useTradeOpportunities(inputs: {
   const ranked = computed<TradeOpportunity[]>(() => {
     const heroIds = new Set(hero.value.map((o) => o.id))
     const intents = activeIntents.value
+    // Mutually-exclusive toggle: OFF = deals they'd plausibly accept (mutual); ON = leverage plays
+    // that fall BELOW the acceptance bar (lopsided your way, a tougher sell). Two distinct sets.
     const pool = [...all.value]
-      .filter((o) => pressLeverage.value || o.fit.them >= ACCEPT_BAR)
+      .filter((o) => (pressLeverage.value ? o.fit.them < ACCEPT_BAR : o.fit.them >= ACCEPT_BAR))
       .filter((o) => !intents.size || o.intents.some((i) => intents.has(i)))
       .filter((o) => !heroIds.has(o.id))
       .sort((a, b) => b.fit.you - a.fit.you)

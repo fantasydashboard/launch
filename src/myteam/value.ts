@@ -37,9 +37,13 @@ function participatesBySide(position: string, side: 'hit' | 'pit'): boolean {
  *    hitter is never penalized in pitching cats. This is what keeps SP/RP fair.
  */
 function participatesIn(player: ValuePoolPlayer, cat: CatSpec): boolean {
+  // Side gate FIRST: a pitcher never participates in a hitting category and vice versa, no matter
+  // what stray non-zero stats the platform attaches (ESPN pitchers can carry junk hitting stats,
+  // which otherwise polluted the per-category z-pool and scrambled trade helps/hurts).
+  if (!participatesBySide(player.position, cat.side)) return false
   if (cat.isRatio) {
     if (cat.volumeStatId) return (player.stats[cat.volumeStatId] ?? 0) > 0
-    return participatesBySide(player.position, cat.side)
+    return true
   }
   return (player.stats[cat.statId] ?? 0) !== 0
 }
