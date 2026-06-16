@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { buildOpportunities, type RawDeal, type OppContext } from '../opportunities'
-import { FIT_WEIGHTS_POSITION } from '../fitScore'
 import { aggregateTeamCatTotals } from '../standings'
 import type { Landscape } from '../landscape'
 import type { PositionalLandscape } from '../positionalLandscape'
@@ -21,11 +20,9 @@ const ctx = (over: Partial<OppContext> = {}): OppContext => ({
   myKey: 'me',
   statIds: ['R', 'SV'],
   strengthByKey: new Map([['stud', { R: 2 }], ['mine', { SV: 1 }]]),
-  valueByKey: new Map([['stud', 80], ['mine', 70]]),
   catLandscape,
   posLandscape,
   myThin: ['3B'],
-  weights: FIT_WEIGHTS_POSITION,
   hurtThreshold: 0.15,
   labelOf: (s) => s,
   cats: [],
@@ -87,9 +84,9 @@ describe('buildOpportunities standings impact', () => {
     }
     const testCtx = ctx({
       myKey: 'me', statIds: ['HR', 'SB'],
-      strengthByKey: new Map(), valueByKey: new Map(),
+      strengthByKey: new Map(),
       catLandscape: new Map(), posLandscape: new Map(),
-      myThin: [], weights: { pos: 0.25, cat: 0.5, val: 0.25 },
+      myThin: [],
       hurtThreshold: 0.15, labelOf: (s: string) => s,
       cats, teamCatTotals, projByKey,
     })

@@ -1,4 +1,3 @@
-import { computeFit, type FitPair, type FitWeights } from './fitScore'
 import { coversSlot, type PositionalLandscape } from './positionalLandscape'
 import { buildPitch } from './pitch'
 import type { Landscape } from './landscape'
@@ -44,7 +43,6 @@ export interface TradeOpportunity {
   headline: string
   you: SideEffect
   them: SideEffect
-  fit: FitPair
   standings: StandingsImpact
   pitch: string // filled in Phase 3; '' until then
 }
@@ -62,11 +60,9 @@ export interface OppContext {
   myKey: string
   statIds: string[]
   strengthByKey: Map<string, Record<string, number>>
-  valueByKey: Map<string, number>
   catLandscape: Landscape
   posLandscape: PositionalLandscape
   myThin: string[]
-  weights: FitWeights
   hurtThreshold: number
   labelOf: (statId: string) => string
   cats: CatSpec[]
@@ -90,9 +86,6 @@ const sumStr = (sides: OppSide[], sb: Map<string, Record<string, number>>, statI
   }
   return out
 }
-const sumVal = (sides: OppSide[], vb: Map<string, number>): number =>
-  sides.reduce((s, x) => s + (vb.get(x.playerKey) ?? 0), 0)
-
 // A category only matters to a side if they NEED it — "winning a category by a mile scores nothing".
 // So gain/cost speak only in needed cats: gain = needs you improve, cost = needs you'd worsen.
 // Losing a category you dominate isn't a cost, it's spending dead value (the point of a trade).
@@ -129,9 +122,6 @@ const fillsPosFor = (sides: OppSide[], thin: string[]): string | undefined => {
   for (const t of thin) for (const s of sides) if (coversSlot(s.eligible, t)) return t
   return undefined
 }
-const posNeedAt = (pl: PositionalLandscape, team: string, pos?: string): number =>
-  pos ? pl.get(team)?.get(pos)?.need ?? 0 : 0
-
 const headlineOf = (you: SideEffect, them: SideEffect, intents: Intent[], s: StandingsImpact): string => {
   // Derive after = before + rounded delta so the headline arrow ALWAYS equals the +X/wk pill.
   // (Rounding before/after independently made "8.4 → 8.8" disagree with a "+0.5/wk" pill.)
@@ -143,7 +133,7 @@ const headlineOf = (you: SideEffect, them: SideEffect, intents: Intent[], s: Sta
     : `holds ${b} cats/week`
   let what = ''
   if (you.fillsPos) what = `fills your ${you.fillsPos}`
-  else if (intents.includes('steal') && them.fillsPos) what = `press their ${them.fillsPos} hole`
+  else if (intents.includes('steal') && them.fillsPos) what = `targets their ${them.fillsPos}`
   else if (you.fillsCats.length) what = `adds ${you.fillsCats[0]}`
   else if (intents.includes('buyLow')) what = 'buy-low window'
   return what ? `${ecw} · ${what}` : ecw
@@ -197,20 +187,6 @@ export function buildOpportunities(raws: RawDeal[], ctx: OppContext): TradeOppor
     const themFillsPos = fillsPosFor(d.give, theirThin)
     const you: SideEffect = { fillsPos: youFillsPos, fillsCats: youCat.gain, hurtsCats: youCat.lose }
     const them: SideEffect = { fillsPos: themFillsPos, fillsCats: themCat.gain, hurtsCats: themCat.lose }
-    const fit = computeFit(
-      {
-        getStr,
-        giveStr,
-        myNeed,
-        theirNeed,
-        statIds: ctx.statIds,
-        myPosNeed: posNeedAt(ctx.posLandscape, ctx.myKey, youFillsPos),
-        theirPosNeed: posNeedAt(ctx.posLandscape, d.partnerKey, themFillsPos),
-        getVal: sumVal(d.get, ctx.valueByKey),
-        giveVal: sumVal(d.give, ctx.valueByKey),
-      },
-      ctx.weights,
-    )
     const standings = standingsOf(d, ctx)
     const opp: TradeOpportunity = {
       id,
@@ -223,7 +199,6 @@ export function buildOpportunities(raws: RawDeal[], ctx: OppContext): TradeOppor
       headline: headlineOf(you, them, d.intents, standings),
       you,
       them,
-      fit,
       standings,
       pitch: '',
     }

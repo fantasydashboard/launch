@@ -11,7 +11,6 @@ import {
   type TradeOpportunity,
 } from '@/trades/opportunities'
 import { buildPositionalLandscape, type DepthPlayer } from '@/trades/positionalLandscape'
-import { FIT_WEIGHTS_CATEGORY } from '@/trades/fitScore'
 
 // Tuning dials — surfaced as named constants so they can be adjusted after a screenshot pass.
 const HERO_COUNT = 3
@@ -155,11 +154,9 @@ export function useTradeOpportunities(inputs: {
       myKey,
       statIds: inputs.statIds.value,
       strengthByKey: eng.strengthByKey,
-      valueByKey: eng.valueByKey,
       catLandscape: eng.landscape,
       posLandscape: pl,
       myThin: myThin.value,
-      weights: FIT_WEIGHTS_CATEGORY,
       hurtThreshold: HURT_THRESHOLD,
       labelOf: inputs.labelOf,
       cats: eng.cats,
