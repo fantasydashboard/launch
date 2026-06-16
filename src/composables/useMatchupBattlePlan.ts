@@ -62,11 +62,11 @@ export function useMatchupBattlePlan(): {
   const leaguesStore = useLeaguesStore()
 
   // ── data loaders (mirror MyTeamView.vue lines 34-45) ──────────────────────
-  const { players: freeAgents, load: loadPlayers } = useAvailablePlayers()
+  const { players: yahooFreeAgents, load: loadPlayers } = useAvailablePlayers()
   const {
-    players: rosterPlayers,
-    pool: rosterPool,
-    fgByKey,
+    players: yahooRosterPlayers,
+    pool: yahooRosterPool,
+    fgByKey: yahooFgByKey,
     load: loadRoster,
   } = useMyRoster()
 
@@ -114,6 +114,25 @@ export function useMatchupBattlePlan(): {
   // ── isEspnCategoryLeague (mirror MyTeamView.vue lines 46-48) ──────────────
   const isEspnCategoryLeague = computed(
     () => leagueStore.activePlatform === 'espn' && espn.supported.value === true,
+  )
+
+  // ── platform-switched roster source (mirror MyTeamView.vue lines 65-80) ───
+  // The move (useYourMove) and volume engines read the roster, pool, FanGraphs
+  // projections and free agents from these. On ESPN the data lives in the
+  // espn.* loader; on Yahoo in useMyRoster/useAvailablePlayers. Without this
+  // switch the ESPN matchup gets an empty roster → every coin-flip reads
+  // "no move" and the volume edge never renders.
+  const rosterPlayers = computed(() =>
+    isEspnCategoryLeague.value ? espn.rosterPlayers.value : yahooRosterPlayers.value,
+  )
+  const rosterPool = computed(() =>
+    isEspnCategoryLeague.value ? espn.pool.value : yahooRosterPool.value,
+  )
+  const fgByKey = computed(() =>
+    isEspnCategoryLeague.value ? espn.fgByKey.value : yahooFgByKey.value,
+  )
+  const freeAgents = computed(() =>
+    isEspnCategoryLeague.value ? espn.freeAgents.value : yahooFreeAgents.value,
   )
 
   // ── sourceMatchups + perCategory + yahooCategories (mirror lines 175-264) ─
