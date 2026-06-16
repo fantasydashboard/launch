@@ -19,6 +19,7 @@ import Avatar from '@/components/trades/Avatar.vue'
 import ValueBadge from '@/components/trades/ValueBadge.vue'
 import TimingTag from '@/components/trades/TimingTag.vue'
 import type { TeamTotals, Landscape } from '@/trades/landscape'
+import type { TradeOpportunity } from '@/trades/opportunities'
 
 const SEASON_FRACTION = 0.6
 const leagueStore = useLeagueStore()
@@ -197,20 +198,33 @@ const { hero, ranked, pressLeverage } = useTradeOpportunities({
   pool, engine, catView: view, posView, slots: rosterSlots, myStatuses, myTeamKey, statIds: statIdsRef, catSideById, labelOf,
 })
 
-// Click a Best-Trade-Partner row to focus that team: every opportunity card except theirs fades, and
-// we scroll up to the list (the partners sit below it). Matching is by team name — cards and partner
-// rows both render the same teamName() string. Click the same row again, or "clear", to reset.
-const focusedPartner = ref<string | null>(null)
+// Focus the moves by ONE of: a partner (click a Best-Trade-Partner row) or a category hole (click a
+// "To fix" chip in Your Leverage). Everything that doesn't match fades, and we scroll the list into
+// view. A partner matches by team name; a 'cat' matches any move whose rank ladder improves that
+// category. Click the same thing again, or "clear", to reset. Mutually exclusive — one focus at a time.
+type Focus = { kind: 'partner'; key: string } | { kind: 'cat'; key: string } | null
+const focus = ref<Focus>(null)
 const oppsTop = ref<HTMLElement | null>(null)
-const focusPartner = (team: string) => {
-  focusedPartner.value = focusedPartner.value === team ? null : team
-  if (focusedPartner.value) nextTick(() => oppsTop.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+const setFocus = (f: Exclude<Focus, null>) => {
+  const same = focus.value && focus.value.kind === f.kind && focus.value.key === f.key
+  focus.value = same ? null : f
+  if (focus.value) nextTick(() => oppsTop.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
 }
-const clearFocus = () => { focusedPartner.value = null }
-const isFocused = (o: { partner: string }): boolean => !focusedPartner.value || o.partner === focusedPartner.value
+const clearFocus = () => { focus.value = null }
+const matchesFocus = (o: TradeOpportunity): boolean => {
+  const f = focus.value
+  if (!f) return true
+  if (f.kind === 'partner') return o.partner === f.key
+  return o.standings.ladder.some((m) => m.statId === f.key && m.beatsMore > 0)
+}
 const focusedCount = computed(() =>
-  focusedPartner.value ? [...hero.value, ...ranked.value].filter((o) => o.partner === focusedPartner.value).length : 0,
+  focus.value ? [...hero.value, ...ranked.value].filter(matchesFocus).length : 0,
 )
+const focusLabel = computed(() => {
+  const f = focus.value
+  if (!f) return ''
+  return f.kind === 'partner' ? `moves with ${f.key}` : `moves that fix ${labelOf(f.key)}`
+})
 
 const valOf = (key: string): number => Math.round(engine.value?.valueByKey.get(key) ?? 0)
 const byVal = (a: { playerKey: string }, b: { playerKey: string }) => valOf(b.playerKey) - valOf(a.playerKey)
@@ -409,12 +423,12 @@ function onLogoError(e: Event) {
 
       <!-- focus-on-partner: anchor we scroll to + banner -->
       <div ref="oppsTop" class="scroll-mt-4"></div>
-      <p v-if="focusedPartner" class="flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/[0.06] px-3 py-2 font-mono text-[11px] text-dark-textSecondary">
-        Showing moves with <b class="text-primary">{{ focusedPartner }}</b>
+      <p v-if="focus" class="flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/[0.06] px-3 py-2 font-mono text-[11px] text-dark-textSecondary">
+        Showing <b class="text-primary">{{ focusLabel }}</b>
         <button type="button" class="ml-auto text-dark-textMuted hover:text-primary" @click="clearFocus">clear ✕</button>
       </p>
-      <p v-if="focusedPartner && !focusedCount" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
-        No {{ pressLeverage ? 'steals' : 'mutual moves' }} with <b class="text-dark-textSecondary">{{ focusedPartner }}</b> right now<template v-if="!pressLeverage"> — try <b class="text-dark-textSecondary">Steals</b></template>.
+      <p v-if="focus && !focusedCount" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
+        No {{ focusLabel }} right now<template v-if="!pressLeverage"> — try <b class="text-dark-textSecondary">Steals</b></template>.
       </p>
 
       <!-- UNIFIED OPPORTUNITIES: one ranked list of trade moves -->
@@ -426,7 +440,7 @@ function onLogoError(e: Event) {
           No clear moves right now — try <b class="text-dark-textSecondary">Steals</b> below for one-sided plays.
         </p>
         <OpportunityCard v-for="o in hero" :key="o.id" :opp="o" :labelOf="labelOf"
-          :class="['transition-opacity', isFocused(o) ? '' : 'opacity-30']" />
+          :class="['transition-opacity', matchesFocus(o) ? '' : 'opacity-30']" />
       </section>
 
       <section class="space-y-3">
@@ -451,7 +465,7 @@ function onLogoError(e: Event) {
           <template v-else>No moves improve your standings right now — try <b class="text-dark-textSecondary">Steals</b> for one-sided plays.</template>
         </p>
         <OpportunityCard v-for="o in ranked" :key="o.id" :opp="o" :labelOf="labelOf"
-          :class="['transition-opacity', isFocused(o) ? '' : 'opacity-30']" />
+          :class="['transition-opacity', matchesFocus(o) ? '' : 'opacity-30']" />
       </section>
 
       <!-- BEST PARTNERS -->
@@ -464,8 +478,8 @@ function onLogoError(e: Event) {
         <div class="divide-y divide-dark-border/50 rounded-xl border border-dark-border bg-dark-card/40">
           <button v-for="p in view.partners" :key="p.team" type="button"
             class="flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-colors"
-            :class="focusedPartner === p.team ? 'bg-primary/10' : 'hover:bg-dark-border/30'"
-            @click="focusPartner(p.team)">
+            :class="focus?.kind === 'partner' && focus.key === p.team ? 'bg-primary/10' : 'hover:bg-dark-border/30'"
+            @click="setFocus({ kind: 'partner', key: p.team })">
             <Avatar :src="p.logo" :label="p.team" cls="h-6 w-6 rounded-md" />
             <span class="w-40 shrink-0 truncate text-sm font-semibold text-dark-text">{{ p.team }}</span>
             <span class="min-w-0 flex-1 font-mono text-[11px] text-dark-textMuted">
@@ -473,7 +487,7 @@ function onLogoError(e: Event) {
               <span v-if="p.sellTo.length" class="ml-3"><span class="text-dark-textMuted/60">they need</span> <span class="text-[#F2B33A]">{{ p.sellTo.join(' ') }}</span></span>
               <span v-if="!p.buyFrom.length && !p.sellTo.length"><span class="text-dark-textMuted/60">strong</span> <span class="text-primary">{{ p.strong.join(' ') }}</span></span>
             </span>
-            <span class="shrink-0 font-mono text-[10px]" :class="focusedPartner === p.team ? 'text-primary' : 'text-transparent'">●</span>
+            <span class="shrink-0 font-mono text-[10px]" :class="focus?.kind === 'partner' && focus.key === p.team ? 'text-primary' : 'text-transparent'">●</span>
           </button>
         </div>
       </section>
