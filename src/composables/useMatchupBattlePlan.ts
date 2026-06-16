@@ -691,6 +691,34 @@ export function useMatchupBattlePlan(): {
     }
   })
 
+  // TEMP DIAGNOSTIC — pinpoint why the Yahoo volume edge isn't populating.
+  // Logs which input is empty (light roster / heavy roster / schedule) plus a
+  // sample of team abbreviations so we can see if they resolve to schedule keys.
+  // Remove once the root cause is confirmed.
+  watch(
+    [
+      yahooVolumeRoster,
+      () => yahooRosterPlayers.value.length,
+      weekScheduleRef,
+      () => thisWeek.snapshot.value,
+    ],
+    () => {
+      if (isEspnCategoryLeague.value) return
+      if (!thisWeek.snapshot.value) return
+      const schedKeys = Object.keys(weekScheduleRef.value.gamesByTeam)
+      // eslint-disable-next-line no-console
+      console.debug('[volume-diag]', {
+        lightRosterLen: yahooVolumeRoster.value.length,
+        lightSample: yahooVolumeRoster.value.slice(0, 8).map((p) => `${p.name}:${p.teamAbbr}|${p.isPitcher ? 'P' : 'H'}`),
+        heavyRosterLen: yahooRosterPlayers.value.length,
+        heavySample: yahooRosterPlayers.value.slice(0, 8).map((p) => `${p.name}:${(p as { team?: string }).team ?? ''}`),
+        scheduleTeamCount: schedKeys.length,
+        scheduleSample: schedKeys.slice(0, 10),
+      })
+    },
+    { immediate: true },
+  )
+
   // ── win-probability trend (captured daily, projected flat to week end) ──────
   const trend = useWinProbTrend({
     leagueId: computed(() => leagueStore.activeLeagueId),

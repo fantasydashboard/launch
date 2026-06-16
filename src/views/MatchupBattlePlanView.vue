@@ -15,6 +15,22 @@ const STAKES_OPTIONS: Array<{ value: StakesMode | 'auto'; label: string }> = [
   { value: 'coast', label: 'coast' },
 ]
 
+// The page subtitle adapts to the stakes so we don't tell a coasting/eliminated
+// team to "fight" when the plan itself says to conserve.
+const subtitle = computed(() => {
+  if (!vm.value.ready) return 'Win this week — fight the contested categories.'
+  switch (vm.value.stakes.mode) {
+    case 'coast':
+      return 'Coast week — conserve your moves, no need to chase it.'
+    case 'must-win':
+      return 'Must-win — every category on the table counts.'
+    case 'maximize':
+      return 'Maximize — every extra category is seeding.'
+    default:
+      return 'Win this week — fight the contested categories.'
+  }
+})
+
 const noMatchup = computed(
   () =>
     vm.value.ready &&
@@ -33,7 +49,7 @@ const noMatchup = computed(
     <!-- Page header -->
     <header class="space-y-1">
       <h1 class="font-display text-2xl font-bold text-dark-text">Matchup</h1>
-      <p class="font-mono text-xs text-dark-textMuted">Win this week — fight the contested categories.</p>
+      <p class="font-mono text-xs text-dark-textMuted">{{ subtitle }}</p>
     </header>
 
     <!-- Loading state -->
