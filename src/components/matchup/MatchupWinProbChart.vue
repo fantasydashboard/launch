@@ -2,12 +2,16 @@
 import { computed } from 'vue'
 import type { TrendPoint } from '@/myteam/winProbTrend'
 
-const props = defineProps<{
-  points: TrendPoint[] // captured actual readings (solid)
-  projected: TrendPoint[] // flat tail to week end (dotted)
-  meName: string
-  oppName: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    points: TrendPoint[] // captured actual readings (solid)
+    projected: TrendPoint[] // flat tail to week end (dotted)
+    meName: string
+    oppName: string
+    height?: number
+  }>(),
+  { height: 160 },
+)
 
 const ME = '#5ec8e6'
 const OPP = '#e69a4a'
@@ -29,7 +33,7 @@ const series = computed(() => [
 const options = computed(() => ({
   chart: {
     type: 'line',
-    height: 160,
+    height: props.height,
     background: 'transparent',
     toolbar: { show: false },
     zoom: { enabled: false },
@@ -65,5 +69,5 @@ const options = computed(() => ({
 </script>
 
 <template>
-  <apexchart type="line" height="160" :options="options" :series="series" />
+  <apexchart type="line" :height="height" :options="options" :series="series" />
 </template>

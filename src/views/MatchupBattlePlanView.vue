@@ -107,6 +107,7 @@ const noMatchup = computed(
           :projected="trend.projected"
           :me-name="vm.me.name"
           :opp-name="vm.opp.name"
+          :height="trend.points.length >= 3 ? 160 : 92"
         />
         <p v-if="trend.points.length < 2" class="-mt-1 mb-1 text-center font-mono text-[9px] text-dark-textMuted">
           Building your history — the solid line fills in each day you check.

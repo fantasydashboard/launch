@@ -425,12 +425,37 @@ export function useMatchupBattlePlan(): {
       isYahooCategoryLeague.value &&
       !!leagueStore.yahooTeams?.find((t: any) => t.is_my_team)?.team_key,
   )
+
+  // The volume edge only needs each rostered player's MLB team + whether they
+  // pitch. On Yahoo we fetch that from the light getRoster(teamKey) call — ONE
+  // reliable request — instead of leaning on the heavy, rate-limit-prone
+  // getAllRosteredPlayers that useMyRoster uses for moves. That way the volume
+  // edge shows every load, even when the heavy call flakes and the move roster
+  // comes back empty.
+  const yahooVolumeRoster = ref<VolPlayer[]>([])
+  async function loadYahooVolumeRoster() {
+    const myTeamKey = leagueStore.yahooTeams?.find((t: any) => t.is_my_team)?.team_key
+    if (!myTeamKey) return
+    try {
+      const { yahooService } = await import('@/services/yahoo')
+      const roster = await yahooService.getRoster(String(myTeamKey))
+      yahooVolumeRoster.value = roster.map((p: any) => ({
+        name: p.name?.full ?? '',
+        teamAbbr: p.team_abbr ?? '',
+        isPitcher: /SP|RP|\bP\b/.test(p.position ?? ''),
+      }))
+    } catch {
+      /* leave empty — volume edge just won't render, same as before */
+    }
+  }
+
   watch(
     yahooRosterReady,
     (ready) => {
       if (!ready) return
       if (!yahooRosterPlayers.value.length) maybeLoadRoster()
       if (!yahooFreeAgents.value.length) maybeLoadPlayers()
+      if (!yahooVolumeRoster.value.length) loadYahooVolumeRoster()
     },
     { immediate: true },
   )
@@ -606,11 +631,17 @@ export function useMatchupBattlePlan(): {
       .map((r) => ({ ...r, dir: (r.myWinPct >= 50 ? 'win' : 'loss') as 'win' | 'loss' }))
 
     // ── volume edge ──────────────────────────────────────────────────────────
-    const mine: VolPlayer[] = rosterPlayers.value.map((p) => ({
-      name: p.name,
-      teamAbbr: (p as { team?: string }).team ?? '',
-      isPitcher: /SP|RP|\bP\b/.test((p as { position?: string }).position ?? ''),
-    }))
+    // ESPN: reuse the already-loaded espn roster. Yahoo: prefer the light
+    // getRoster fetch (reliable), falling back to the heavy move-roster if it
+    // hasn't landed yet.
+    const mine: VolPlayer[] =
+      !isEspnCategoryLeague.value && yahooVolumeRoster.value.length
+        ? yahooVolumeRoster.value
+        : rosterPlayers.value.map((p) => ({
+            name: p.name,
+            teamAbbr: (p as { team?: string }).team ?? '',
+            isPitcher: /SP|RP|\bP\b/.test((p as { position?: string }).position ?? ''),
+          }))
 
     const v = volumeEdge(mine, [] /* opponent roster unavailable */, weekScheduleRef.value)
     // Opponent roster isn't available in v1, so a comparative read would always say "volume on your
