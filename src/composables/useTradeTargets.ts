@@ -15,6 +15,7 @@ import { sideOf } from '@/myteam/yourMove/helpedCats'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
 export interface CatTag {
+  statId: string
   label: string
   rank: number
   hole?: boolean // a bottom-tier hole ("Fixes") vs a contested race ("Improves")
@@ -235,7 +236,7 @@ export function useTradeTargets(inputs: {
       for (const c of statIds) out[c] = m?.get(c)?.need ?? 0
       return out
     }
-    const tag = (statId: string): CatTag => ({ label: inputs.labelOf(statId), rank: myStanding.get(statId)?.rank ?? 0, hole: (myStanding.get(statId)?.rank ?? 0) >= weakCut })
+    const tag = (statId: string): CatTag => ({ statId, label: inputs.labelOf(statId), rank: myStanding.get(statId)?.rank ?? 0, hole: (myStanding.get(statId)?.rank ?? 0) >= weakCut })
 
     // "Trade from" is genuine dominance (top-2), not a mid-pack gap; "to fix" is a genuine
     // bottom-tier hole, not a close race near the top.
