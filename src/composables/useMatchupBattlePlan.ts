@@ -5,6 +5,7 @@ import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
 import { useAvailablePlayers } from '@/composables/useAvailablePlayers'
 import { useMyRoster } from '@/composables/useMyRoster'
 import { useFullSeasonCategoryData } from '@/composables/useFullSeasonCategoryData'
+import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { useYourMove } from '@/composables/useYourMove'
 import { isYahooCategoryLeague as isYahooCategoryScoringType } from '@/composables/useIsCategoryLeague'
 import { seasonStakes, type StakesMode } from '@/myteam/seasonStakes'
@@ -69,6 +70,9 @@ export function useMatchupBattlePlan(): {
     load: loadRoster,
   } = useMyRoster()
 
+  // ESPN category data loader (mirror MyTeamView.vue line 44)
+  const espn = useEspnCategoryTeamData()
+
   const thisWeek = useThisWeekMatchup()
 
   const { seasonMatchups, categoryLabels, loaded: seasonLoaded, load: loadSeasonData } =
@@ -106,6 +110,11 @@ export function useMatchupBattlePlan(): {
       (m: any) => m?.is_category_league || m?.stat_winners?.length,
     )
   })
+
+  // ── isEspnCategoryLeague (mirror MyTeamView.vue lines 46-48) ──────────────
+  const isEspnCategoryLeague = computed(
+    () => leagueStore.activePlatform === 'espn' && espn.supported.value === true,
+  )
 
   // ── sourceMatchups + perCategory + yahooCategories (mirror lines 175-264) ─
   const sourceMatchups = computed(() =>
@@ -171,9 +180,11 @@ export function useMatchupBattlePlan(): {
     })
   })
 
-  // Merge: prefer season-derived categories; fall back to snapshot categories
-  // (which always have statId + label once the snapshot loads).
+  // Merge: ESPN categories take priority on ESPN leagues; else prefer season-derived
+  // Yahoo categories; fall back to snapshot categories (which always have statId +
+  // label once the snapshot loads). Mirror MyTeamView.vue lines 55-57.
   const categories = computed(() => {
+    if (isEspnCategoryLeague.value) return espn.categories.value
     if (yahooCategories.value.length) return yahooCategories.value
     const snap = thisWeek.snapshot.value
     if (!snap) return []
@@ -186,11 +197,23 @@ export function useMatchupBattlePlan(): {
     }))
   })
 
-  // ── catSpecs (mirror MyTeamView.vue lines 449-470) ────────────────────────
+  // ── catSpecs (mirror MyTeamView.vue lines 429-446) ────────────────────────
+  // On ESPN use espn.cats (which carries the authoritative lowerIsBetter from ESPN's
+  // own scoring direction), on Yahoo derive it from label heuristics. Mirror the `cats`
+  // computed in MyTeamView.vue lines 429-436 and `lowerBetterByStatId` lines 439-443.
+  const cats = computed(() =>
+    isEspnCategoryLeague.value
+      ? espn.cats.value
+      : categories.value.map((c) => ({
+          statId: c.statId,
+          lowerIsBetter: isLowerBetter(c.label || c.name || c.statId),
+        })),
+  )
+
   const lowerBetterByStatId = computed(() => {
     const m = new Map<string, boolean>()
-    for (const c of categories.value) {
-      m.set(c.statId, isLowerBetter(c.label || c.name || c.statId))
+    for (const c of cats.value) {
+      m.set(c.statId, c.lowerIsBetter)
     }
     return m
   })
@@ -319,6 +342,13 @@ export function useMatchupBattlePlan(): {
     if (isYahooCategoryLeague.value) loadRoster()
   }
 
+  // Mirror MyTeamView.vue lines 144-148
+  function maybeLoadEspn() {
+    if (leagueStore.activePlatform === 'espn') {
+      espn.load()
+    }
+  }
+
   function maybeLoadThisWeek() {
     if (!categories.value.length) return
     thisWeek.load(categories.value.map((c) => ({ statId: c.statId, label: c.label })))
@@ -328,6 +358,7 @@ export function useMatchupBattlePlan(): {
     await maybeLoadSeasonData()
     maybeLoadPlayers()
     maybeLoadRoster()
+    maybeLoadEspn()
     maybeLoadThisWeek()
   }
 
@@ -336,6 +367,7 @@ export function useMatchupBattlePlan(): {
     maybeLoadSeasonData()
     maybeLoadPlayers()
     maybeLoadRoster()
+    maybeLoadEspn()
     maybeLoadThisWeek()
   }, { immediate: true })
   watch(categories, () => {
