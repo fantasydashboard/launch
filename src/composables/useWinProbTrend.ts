@@ -1,4 +1,4 @@
-import { ref, computed, watch, type Ref } from 'vue'
+import { ref, computed, reactive, watch, type Ref } from 'vue'
 import { mergePoint, projectedSegment, type TrendPoint } from '@/myteam/winProbTrend'
 
 const ymd = (d: Date) =>
@@ -66,5 +66,8 @@ export function useWinProbTrend(opts: {
     projectedSegment(points.value.length ? points.value[points.value.length - 1] : null, weekEnd.value),
   )
 
-  return { points, projected, weekEnd }
+  // Return a reactive object (not a plain object of refs) so consumers can read
+  // `trend.points` / `trend.projected` directly in templates — nested refs in a
+  // plain object are NOT auto-unwrapped, which silently makes `.length` undefined.
+  return reactive({ points, projected, weekEnd })
 }
