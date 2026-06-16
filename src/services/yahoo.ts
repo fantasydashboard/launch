@@ -563,18 +563,29 @@ export class YahooFantasyService {
     for (const playerWrapper of Object.values(rosterData) as any[]) {
       if (typeof playerWrapper !== 'object' || !playerWrapper.player) continue
       
+      // Yahoo returns player attributes as an array of single-key objects whose
+      // positions shift per player (an injured player has an extra `status`
+      // entry, etc.), so reading by fixed index drops fields — notably
+      // editorial_team_abbr came back empty for everyone. Flatten the fragments
+      // into one object and read by name.
       const playerInfo = playerWrapper.player[0]
+      const flat: Record<string, any> = {}
+      if (Array.isArray(playerInfo)) {
+        for (const part of playerInfo) {
+          if (part && typeof part === 'object' && !Array.isArray(part)) Object.assign(flat, part)
+        }
+      }
       players.push({
-        player_key: playerInfo[0]?.player_key,
-        player_id: playerInfo[1]?.player_id,
+        player_key: flat.player_key,
+        player_id: flat.player_id,
         name: {
-          full: playerInfo[2]?.name?.full,
-          first: playerInfo[2]?.name?.first,
-          last: playerInfo[2]?.name?.last
+          full: flat.name?.full,
+          first: flat.name?.first,
+          last: flat.name?.last
         },
-        team_abbr: playerInfo[6]?.editorial_team_abbr,
-        position: playerInfo[9]?.display_position,
-        status: playerInfo[10]?.status || ''
+        team_abbr: flat.editorial_team_abbr,
+        position: flat.display_position,
+        status: flat.status || ''
       })
     }
 
