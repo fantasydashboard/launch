@@ -330,7 +330,10 @@ function onLogoError(e: Event) {
           </div>
           <div class="flex flex-wrap items-center gap-1.5">
             <span class="w-16 text-dark-textMuted/70">To fix</span>
-            <span v-for="c in view.toFix" :key="c.label" class="rounded bg-[#F2B33A]/10 px-1.5 py-0.5 text-[#F2B33A]">{{ c.label }} · {{ ordinal(c.rank) }}</span>
+            <button v-for="c in view.toFix" :key="c.label" type="button"
+              class="rounded px-1.5 py-0.5 text-[#F2B33A] transition-colors hover:bg-[#F2B33A]/20"
+              :class="focus?.kind === 'cat' && focus.key === c.statId ? 'bg-[#F2B33A]/30 ring-1 ring-[#F2B33A]' : 'bg-[#F2B33A]/10'"
+              @click="setFocus({ kind: 'cat', key: c.statId })">{{ c.label }} · {{ ordinal(c.rank) }}</button>
             <span v-if="!view.toFix.length" class="text-dark-textMuted">no glaring holes</span>
           </div>
         </div>
