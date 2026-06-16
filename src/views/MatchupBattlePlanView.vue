@@ -137,25 +137,24 @@ const noMatchup = computed(
         </div>
       </section>
 
-      <!-- 5. MOVES THAT SWING IT (the to-do list — the page's hero) -->
+      <!-- 5. MOVES THAT SWING IT (the to-do list — one row per move) -->
       <section v-if="vm.swingMoves.length" class="rounded-xl border border-primary/40 bg-primary/[0.04] px-4 py-3">
         <p class="font-mono text-[10px] uppercase tracking-widest text-primary">★ Moves that swing it</p>
-        <div class="mt-2 space-y-1.5">
-          <div
-            v-for="m in vm.swingMoves"
-            :key="m.statId"
-            class="flex items-center gap-2 font-mono text-[11px]"
-          >
-            <span class="w-12 shrink-0 font-semibold text-dark-text">{{ m.label }}</span>
-            <span class="w-10 shrink-0 text-[#F2B33A]">{{ m.myWinPct }}%</span>
-            <span class="flex min-w-0 flex-1 items-center gap-1.5 text-dark-text">
+        <div class="mt-2 space-y-2">
+          <div v-for="(m, i) in vm.swingMoves" :key="i" class="font-mono text-[11px]">
+            <!-- Action + lift -->
+            <div class="flex items-center gap-1.5 text-dark-text">
               <span
-                v-if="m.move!.today"
+                v-if="m.today"
                 class="shrink-0 rounded border border-[#1f6f86] px-1 py-0.5 font-mono text-[8px] uppercase tracking-widest text-[#5ec8e6]"
               >TODAY</span>
-              <span class="min-w-0 truncate">{{ m.move!.text }}</span>
-              <span class="ml-auto shrink-0 font-bold text-primary">+{{ m.move!.lift }}%</span>
-            </span>
+              <span class="min-w-0 truncate">{{ m.text }}</span>
+              <span class="ml-auto shrink-0 font-bold text-primary">+{{ m.lift }}%</span>
+            </div>
+            <!-- Cats it swings -->
+            <div class="mt-0.5 text-[10px] text-dark-textMuted">
+              swings {{ m.cats.map((c) => `${c.label} ${c.myWinPct}%`).join(' · ') }}
+            </div>
           </div>
         </div>
       </section>

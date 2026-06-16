@@ -29,6 +29,16 @@ export interface CoinFlip {
   accumulator?: boolean // volume cat (IP/AB/BF…) won by games, not a waiver move
 }
 
+// One actionable move, with every contested category it swings. A single lineup
+// change (e.g. starting a hitter) often helps multiple cats, so the to-do list
+// is keyed by the move, not the category — never the same move twice.
+export interface SwingMove {
+  text: string
+  lift: number
+  today: boolean
+  cats: { label: string; myWinPct: number }[]
+}
+
 export interface BattlePlanVM {
   ready: boolean
   me: { name: string; avatar?: string; winPct: number }
@@ -41,7 +51,7 @@ export interface BattlePlanVM {
   cadence: 'daily' | 'weekly'
   stakes: { mode: StakesMode; reasoning: string }
   path: string
-  swingMoves: CoinFlip[] // contested cats that have a move — the to-do list
+  swingMoves: SwingMove[] // the to-do list — one row per move, with the cats it swings
   coinFlips: CoinFlip[] // tight 45–55 holds that still decide the week (no lever)
   leaning: CoinFlip[] // near-decided contested cats, de-emphasized
   volumeCats: { statId: string; label: string; myWinPct: number }[] // won by games played
@@ -400,19 +410,27 @@ export function useMatchupBattlePlan(): {
   })
 
   // useMyRoster.load() resolves the logged-in team from leagueStore.yahooTeams at
-  // call time. On a direct navigation to /matchup, activeLeagueId is restored from
-  // persistence before yahooTeams finishes loading, so the immediate roster load
-  // above reads a null my-team key, filters to an empty roster, and never retries.
-  // That leaves the Yahoo Matchup with no moves and no volume edge. Re-fire the
-  // Yahoo roster/players load once the is_my_team key appears (guarded so the heavy
-  // getAllRosteredPlayers call doesn't re-run when the roster already populated).
+  // call time. On a direct navigation to /matchup the inputs settle in an
+  // unpredictable order — activeLeagueId restores from persistence first, then
+  // yahooTeams loads, and isYahooCategoryLeague flips true off either. If the
+  // immediate load above runs before BOTH the my-team key and the category flag
+  // are ready, the roster filters to empty and never retries — no moves, no
+  // volume edge, intermittently. Gate the (re)load on a single readiness signal
+  // that's true only once both are present, so it fires regardless of order.
+  const yahooRosterReady = computed(
+    () =>
+      isYahooCategoryLeague.value &&
+      !!leagueStore.yahooTeams?.find((t: any) => t.is_my_team)?.team_key,
+  )
   watch(
-    () => leagueStore.yahooTeams?.find((t: any) => t.is_my_team)?.team_key,
-    (key) => {
-      if (!key || !isYahooCategoryLeague.value) return
+    yahooRosterReady,
+    (ready) => {
+      if (!ready) return
+      // Guarded so the heavy getAllRosteredPlayers call doesn't re-run once loaded.
       if (!yahooRosterPlayers.value.length) maybeLoadRoster()
       if (!yahooFreeAgents.value.length) maybeLoadPlayers()
     },
+    { immediate: true },
   )
 
   // ── main view-model ────────────────────────────────────────────────────────
@@ -552,9 +570,29 @@ export function useMatchupBattlePlan(): {
     const withMove = tossupRows.filter((r) => r.move)
     const noMove = tossupRows.filter((r) => !r.move)
 
-    const swingMoves: CoinFlip[] = [...withMove].sort(
-      (a, b) => (b.move?.lift ?? 0) - (a.move?.lift ?? 0),
-    )
+    // Group the move-bearing cats by the move itself (keyed by its text — player
+    // + counterparty is unique) so one lineup change is one row listing every cat
+    // it swings, not a duplicate row per cat.
+    const moveGroups = new Map<string, SwingMove>()
+    for (const r of withMove) {
+      const mv = r.move! // withMove guarantees move is defined
+      const g = moveGroups.get(mv.text)
+      if (g) {
+        g.cats.push({ label: r.label, myWinPct: r.myWinPct })
+        if (mv.lift > g.lift) g.lift = mv.lift
+        g.today = g.today || mv.today
+      } else {
+        moveGroups.set(mv.text, {
+          text: mv.text,
+          lift: mv.lift,
+          today: mv.today,
+          cats: [{ label: r.label, myWinPct: r.myWinPct }],
+        })
+      }
+    }
+    const swingMoves: SwingMove[] = [...moveGroups.values()]
+      .map((g) => ({ ...g, cats: g.cats.sort((a, b) => b.myWinPct - a.myWinPct) }))
+      .sort((a, b) => b.lift - a.lift)
     const volumeCats = noMove
       .filter((r) => r.accumulator)
       .map((r) => ({ statId: r.statId, label: r.label, myWinPct: r.myWinPct }))
