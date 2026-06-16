@@ -353,7 +353,7 @@ function onLogoError(e: Event) {
       </p>
 
       <!-- UNIFIED OPPORTUNITIES: one ranked list of trade moves -->
-      <section class="space-y-2 border-l-2 border-primary/60 pl-3">
+      <section class="space-y-2">
         <div class="flex items-center justify-between">
           <span class="font-mono text-[10px] uppercase tracking-widest text-primary">★ Best moves right now</span>
         </div>
