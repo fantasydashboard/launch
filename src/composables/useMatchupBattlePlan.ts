@@ -337,7 +337,7 @@ export function useMatchupBattlePlan(): {
     maybeLoadPlayers()
     maybeLoadRoster()
     maybeLoadThisWeek()
-  })
+  }, { immediate: true })
   watch(categories, () => {
     maybeLoadThisWeek()
   })
@@ -383,12 +383,13 @@ export function useMatchupBattlePlan(): {
       leaguesStore.activeLeague?.league_size ??
       (leagueStore.yahooTeams?.length || 12)
     const weeksLeft = Math.max(0, leagueStore.playoffWeekStart - leagueStore.currentWeek)
+    // TODO(phase-2): plumb the real playoff-spots league setting; half-league is the common default. The manual stakes override covers leagues that differ.
     const playoffSpots = Math.round(leagueSize / 2)
 
     // My team rank: from yahooTeams is_my_team entry (same source as MyTeamView yahooMyOverallRank)
     const myTeamRank: number = (() => {
       const t = myTeam.value
-      if (!t) return Math.ceil(leagueSize / 2) // default mid-table when unavailable
+      if (!t) return Math.ceil(leagueSize / 2) // ESPN standings rank isn't loaded here → falls back to mid-table, so ESPN stakes auto-detect to 'clinch' unless the user sets the manual override.
       if (t.rank && Number(t.rank) > 0) return Number(t.rank)
       const idx = (leagueStore.yahooTeams || []).indexOf(t)
       return idx >= 0 ? idx + 1 : Math.ceil(leagueSize / 2)
@@ -472,17 +473,28 @@ export function useMatchupBattlePlan(): {
       isPitcher: /SP|RP|\bP\b/.test((p as { position?: string }).position ?? ''),
     }))
 
-    const vol = volumeEdge(mine, [] /* opponent roster unavailable */, weekScheduleRef.value)
+    const v = volumeEdge(mine, [] /* opponent roster unavailable */, weekScheduleRef.value)
+    // Opponent roster isn't available in v1, so a comparative read would always say "volume on your
+    // side" (opp = 0). Show YOUR remaining volume honestly instead; opponent-vs-you is a phase-2 add.
+    const volume = {
+      myGames: v.myGames,
+      myStarts: v.myStarts,
+      oppGames: 0,
+      oppStarts: 0,
+      read: v.myGames > 0 || v.myStarts > 0
+        ? `You have ${v.myGames} hitter-games and ${v.myStarts} starts left this week — bank the counting cats.`
+        : '',
+    }
 
     // ── lineupCheck (Yahoo only) ──────────────────────────────────────────────
+    // Only a startSit today-move means a benched player who should be started.
+    // Stream/add waiver suggestions also have layer === 'today' but are not lineup errors.
     let lineupCheck: BattlePlanVM['lineupCheck'] = null
     if (snap.platform === 'yahoo') {
-      const todayMove = moves.find((m) => m.layer === 'today')
-      if (todayMove) {
-        lineupCheck = { ok: false, message: todayMove.rationale }
-      } else {
-        lineupCheck = { ok: true, message: 'Lineup set for today.' }
-      }
+      const benchedStarter = moves.find((m) => m.layer === 'today' && m.kind === 'startSit')
+      lineupCheck = benchedStarter
+        ? { ok: false, message: `${benchedStarter.player.name} is on your bench and plays today — start them.` }
+        : { ok: true, message: 'Lineup set for today.' }
     }
 
     return {
@@ -501,7 +513,7 @@ export function useMatchupBattlePlan(): {
       banked,
       conceded,
       swing,
-      volume: vol,
+      volume,
       lineupCheck,
     }
   })
