@@ -217,8 +217,10 @@ const matchesFocus = (o: TradeOpportunity): boolean => {
   if (f.kind === 'partner') return o.partner === f.key
   return o.standings.ladder.some((m) => m.statId === f.key && m.beatsMore > 0)
 }
+// Count over what's ACTUALLY on screen (visibleMoves), so the "No moves…" hint and the faded cards
+// never disagree — e.g. the combined Steals layout shows only `allMoves` (hero excluded).
 const focusedCount = computed(() =>
-  focus.value ? [...hero.value, ...ranked.value].filter(matchesFocus).length : 0,
+  focus.value ? visibleMoves.value.filter(matchesFocus).length : 0,
 )
 const focusLabel = computed(() => {
   const f = focus.value
@@ -234,6 +236,8 @@ const focusLabel = computed(() => {
 const FEW_DEALS = 5
 const fewDeals = computed(() => mutualCount.value <= FEW_DEALS)
 const allMoves = computed(() => (pressLeverage.value ? [...ranked.value] : [...hero.value, ...ranked.value]))
+// The set actually rendered: the combined list in the few-deals layout, else the two-section union.
+const visibleMoves = computed(() => (fewDeals.value ? allMoves.value : [...hero.value, ...ranked.value]))
 
 const valOf = (key: string): number => Math.round(engine.value?.valueByKey.get(key) ?? 0)
 const byVal = (a: { playerKey: string }, b: { playerKey: string }) => valOf(b.playerKey) - valOf(a.playerKey)
