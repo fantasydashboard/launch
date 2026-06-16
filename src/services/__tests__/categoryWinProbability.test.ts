@@ -1,5 +1,29 @@
 import { describe, it, expect } from 'vitest'
 import { calcOverallWinProb, calcCatWinProb, clampWinProb, bucketCategory, catWinProbClosed, overallWinProbClosed } from '../categoryWinProbability'
+import { projectFinalStats } from '../categoryWinProbability'
+
+const CATS = [
+  { statId: 'HR', isRatio: false },
+  { statId: 'ERA', isRatio: true },
+]
+
+describe('projectFinalStats', () => {
+  it('scales counting cats by daysTotal/daysPlayed and leaves ratio cats unchanged', () => {
+    const out = projectFinalStats({ HR: 6, ERA: 3.0 }, 3, 7, CATS)
+    expect(out.HR).toBeCloseTo(6 * 7 / 3, 5) // pace held to full week
+    expect(out.ERA).toBe(3.0) // ratio is pace-invariant
+  })
+  it('does not divide by zero when no days played yet (scale = 1)', () => {
+    const out = projectFinalStats({ HR: 0, ERA: 0 }, 0, 7, CATS)
+    expect(out.HR).toBe(0)
+    expect(out.ERA).toBe(0)
+  })
+  it('treats a missing stat as 0', () => {
+    const out = projectFinalStats({}, 2, 6, CATS)
+    expect(out.HR).toBe(0)
+    expect(out.ERA).toBe(0)
+  })
+})
 
 describe('categoryWinProbability', () => {
   it('catWinProbClosed: deterministic, direction-aware, ~0.5 when tied', () => {

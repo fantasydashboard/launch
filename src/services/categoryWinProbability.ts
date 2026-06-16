@@ -143,3 +143,24 @@ export function bucketCategory(myWinPct: number): CatStatus {
   if (myWinPct <= 30) return 'loss'
   return 'tossup'
 }
+
+/**
+ * Extrapolate this-week stat totals to an end-of-week projection: counting cats scale by
+ * (daysTotal / daysPlayed) — the current pace held to the full week; ratio cats are pace-invariant
+ * and kept as-is. The view feeds the result to the win-prob engine (with days=0) to draw the
+ * dotted "projected finish" point. daysPlayed=0 → scale 1 (no division by zero).
+ */
+export function projectFinalStats(
+  currentStats: Record<string, number>,
+  daysPlayed: number,
+  daysTotal: number,
+  cats: { statId: string; isRatio: boolean }[],
+): Record<string, number> {
+  const scale = daysPlayed > 0 ? daysTotal / daysPlayed : 1
+  const out: Record<string, number> = {}
+  for (const c of cats) {
+    const v = currentStats[c.statId] ?? 0
+    out[c.statId] = c.isRatio ? v : v * scale
+  }
+  return out
+}
