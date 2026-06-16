@@ -193,56 +193,39 @@ const noMatchup = computed(
         </div>
       </section>
 
-      <!-- 6. LINEUP CHECK (only when non-null) -->
+      <!-- 7. LINEUP CHECK — a card only when there's a problem to fix -->
       <section
-        v-if="vm.lineupCheck !== null"
-        class="rounded-xl border bg-dark-card px-4 py-3"
-        :class="vm.lineupCheck.ok ? 'border-dark-border' : 'border-[#F2B33A]/40'"
+        v-if="vm.lineupCheck && !vm.lineupCheck.ok"
+        class="rounded-xl border border-[#F2B33A]/40 bg-dark-card px-4 py-3"
       >
         <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Lineup check</p>
-        <p
-          class="mt-1.5 font-mono text-[11px]"
-          :class="vm.lineupCheck.ok ? 'text-primary' : 'text-[#F2B33A]'"
-        >
-          {{ vm.lineupCheck.ok ? '✓ ' : '⚠ ' }}{{ vm.lineupCheck.message }}
-        </p>
+        <p class="mt-1.5 font-mono text-[11px] text-[#F2B33A]">⚠ {{ vm.lineupCheck.message }}</p>
       </section>
 
-      <!-- 7a. BANKED -->
-      <section v-if="vm.banked.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
-        <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Banked</p>
-        <div class="mt-2 flex flex-wrap gap-1.5">
-          <span
-            v-for="b in vm.banked"
-            :key="b.statId"
-            class="inline-block rounded bg-primary/10 px-2 py-1 font-mono text-[10px] font-semibold text-primary"
-          >{{ b.label }}</span>
+      <!-- 8. LEDGER — banked / worth-a-swing / conceded, compact reference -->
+      <section
+        v-if="vm.banked.length || vm.swing.length || vm.conceded.length"
+        class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 space-y-1.5 font-mono text-[10px]"
+      >
+        <div v-if="vm.banked.length" class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span class="w-20 shrink-0 uppercase tracking-widest text-dark-textMuted">Banked</span>
+          <span class="text-primary">{{ vm.banked.map((b) => b.label).join('  ·  ') }}</span>
+        </div>
+        <div v-if="vm.swing.length" class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span class="w-20 shrink-0 uppercase tracking-widest text-dark-textMuted">Swing</span>
+          <span class="text-dark-textSecondary">{{ vm.swing.map((s) => s.label).join('  ·  ') }}</span>
+        </div>
+        <div v-if="vm.conceded.length" class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span class="w-20 shrink-0 uppercase tracking-widest text-dark-textMuted">Conceded</span>
+          <span class="text-[#ff6b6b]/70 line-through">{{ vm.conceded.map((c) => c.label).join('  ·  ') }}</span>
         </div>
       </section>
 
-      <!-- 7b. CONCEDED -->
-      <section v-if="vm.conceded.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
-        <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Conceded · don't spend here</p>
-        <div class="mt-2 flex flex-wrap gap-1.5">
-          <span
-            v-for="c in vm.conceded"
-            :key="c.statId"
-            class="inline-block rounded bg-[#ff6b6b]/10 px-2 py-1 font-mono text-[10px] font-semibold text-[#ff6b6b] line-through opacity-70"
-          >{{ c.label }}</span>
-        </div>
-      </section>
-
-      <!-- 7c. WORTH A SWING -->
-      <section v-if="vm.swing.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
-        <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Worth a swing</p>
-        <div class="mt-2 flex flex-wrap gap-1.5">
-          <span
-            v-for="s in vm.swing"
-            :key="s.statId"
-            class="inline-block rounded bg-dark-border px-2 py-1 font-mono text-[10px] font-semibold text-dark-textSecondary"
-          >{{ s.label }}</span>
-        </div>
-      </section>
+      <!-- Lineup OK: a quiet footnote, not a card -->
+      <p
+        v-if="vm.lineupCheck && vm.lineupCheck.ok"
+        class="px-1 font-mono text-[10px] text-dark-textMuted"
+      >✓ {{ vm.lineupCheck.message }}</p>
     </template>
   </div>
 </template>
