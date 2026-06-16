@@ -19,6 +19,7 @@ import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 import type { RosterSlotPlayer } from '@/myteam/yourMove/pairDrop'
 import { getWeekSchedule } from '@/services/mlbSchedule'
 import { classifyContested, isAccumulatorCat } from '@/myteam/contestedTiers'
+import { useWinProbTrend } from '@/composables/useWinProbTrend'
 
 export interface CoinFlip {
   statId: string
@@ -659,5 +660,18 @@ export function useMatchupBattlePlan(): {
     }
   })
 
-  return { vm, cadence, override, refresh }
+  // ── win-probability trend (captured daily, projected flat to week end) ──────
+  const trend = useWinProbTrend({
+    leagueId: computed(() => leagueStore.activeLeagueId),
+    week: computed(() => leagueStore.currentWeek),
+    my: computed(() => Math.round(thisWeek.snapshot.value?.winPct ?? 0)),
+    opp: computed(() => Math.round(thisWeek.snapshot.value?.lossPct ?? 0)),
+    daysRemaining: computed(() => thisWeek.snapshot.value?.daysRemaining ?? 0),
+    ready: computed(() => {
+      const s = thisWeek.snapshot.value
+      return !!s && !s.completed
+    }),
+  })
+
+  return { vm, cadence, override, refresh, trend }
 }

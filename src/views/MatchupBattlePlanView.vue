@@ -3,8 +3,9 @@ import { computed } from 'vue'
 import { useMatchupBattlePlan } from '@/composables/useMatchupBattlePlan'
 import type { StakesMode } from '@/myteam/seasonStakes'
 import Avatar from '@/components/trades/Avatar.vue'
+import MatchupWinProbChart from '@/components/matchup/MatchupWinProbChart.vue'
 
-const { vm, cadence, override } = useMatchupBattlePlan()
+const { vm, cadence, override, trend } = useMatchupBattlePlan()
 
 const STAKES_OPTIONS: Array<{ value: StakesMode | 'auto'; label: string }> = [
   { value: 'auto', label: 'auto' },
@@ -93,6 +94,23 @@ const noMatchup = computed(
         <div class="mt-1.5 text-center font-mono text-[10px] text-dark-textMuted">
           {{ vm.tiePct }}% tie · projected {{ vm.projWins }}–{{ vm.projLosses }}
         </div>
+      </section>
+
+      <!-- 1b. WIN-PROBABILITY TREND — real captured history + flat projection -->
+      <section v-if="trend.points.length" class="rounded-xl border border-dark-border bg-dark-card px-4 pt-3 pb-1">
+        <div class="flex items-center justify-between">
+          <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Win-probability trend</p>
+          <p class="font-mono text-[9px] text-dark-textMuted">solid = actual · dotted = projected</p>
+        </div>
+        <MatchupWinProbChart
+          :points="trend.points"
+          :projected="trend.projected"
+          :me-name="vm.me.name"
+          :opp-name="vm.opp.name"
+        />
+        <p v-if="trend.points.length < 2" class="-mt-1 mb-1 text-center font-mono text-[9px] text-dark-textMuted">
+          Building your history — the solid line fills in each day you check.
+        </p>
       </section>
 
       <!-- 2. STAKES READ -->
