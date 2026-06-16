@@ -393,6 +393,22 @@ export function useMatchupBattlePlan(): {
     maybeLoadThisWeek()
   })
 
+  // useMyRoster.load() resolves the logged-in team from leagueStore.yahooTeams at
+  // call time. On a direct navigation to /matchup, activeLeagueId is restored from
+  // persistence before yahooTeams finishes loading, so the immediate roster load
+  // above reads a null my-team key, filters to an empty roster, and never retries.
+  // That leaves the Yahoo Matchup with no moves and no volume edge. Re-fire the
+  // Yahoo roster/players load once the is_my_team key appears (guarded so the heavy
+  // getAllRosteredPlayers call doesn't re-run when the roster already populated).
+  watch(
+    () => leagueStore.yahooTeams?.find((t: any) => t.is_my_team)?.team_key,
+    (key) => {
+      if (!key || !isYahooCategoryLeague.value) return
+      if (!yahooRosterPlayers.value.length) maybeLoadRoster()
+      if (!yahooFreeAgents.value.length) maybeLoadPlayers()
+    },
+  )
+
   // ── main view-model ────────────────────────────────────────────────────────
   const vm = computed<BattlePlanVM>(() => {
     const snap = thisWeek.snapshot.value
