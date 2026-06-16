@@ -705,15 +705,21 @@ export function useMatchupBattlePlan(): {
     () => {
       if (isEspnCategoryLeague.value) return
       if (!thisWeek.snapshot.value) return
-      const schedKeys = Object.keys(weekScheduleRef.value.gamesByTeam)
+      const sched = weekScheduleRef.value
+      const gbt = sched.gamesByTeam
+      const roster = yahooVolumeRoster.value
+      if (!roster.length) return // wait until the roster lands; the empty logs aren't useful
+      const abbrs = roster.map((p) => p.teamAbbr || '∅')
+      const unmatched = [...new Set(abbrs.filter((a) => !(a in gbt)))]
+      const v = volumeEdge(roster, [], sched)
       // eslint-disable-next-line no-console
       console.log('[volume-diag]', {
-        lightRosterLen: yahooVolumeRoster.value.length,
-        lightSample: yahooVolumeRoster.value.slice(0, 8).map((p) => `${p.name}:${p.teamAbbr}|${p.isPitcher ? 'P' : 'H'}`),
-        heavyRosterLen: yahooRosterPlayers.value.length,
-        heavySample: yahooRosterPlayers.value.slice(0, 8).map((p) => `${p.name}:${(p as { team?: string }).team ?? ''}`),
-        scheduleTeamCount: schedKeys.length,
-        scheduleSample: schedKeys.slice(0, 10),
+        rosterLen: roster.length,
+        abbrs: abbrs.join(' '),
+        scheduleKeys: Object.keys(gbt).sort().join(' '),
+        unmatchedAbbrs: unmatched.join(' ') || '(none)',
+        computed: `myGames=${v.myGames} myStarts=${v.myStarts}`,
+        read: v.read || '(empty → section hidden)',
       })
     },
     { immediate: true },
