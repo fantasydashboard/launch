@@ -19,7 +19,8 @@ const noMatchup = computed(
     vm.value.ready &&
     vm.value.coinFlips.length === 0 &&
     vm.value.banked.length === 0 &&
-    vm.value.conceded.length === 0,
+    vm.value.conceded.length === 0 &&
+    vm.value.swing.length === 0,
 )
 </script>
 
@@ -76,7 +77,7 @@ const noMatchup = computed(
           </div>
 
           <!-- Opp (right) -->
-          <div class="flex items-center gap-2" style="flex-direction: row-reverse;">
+          <div class="flex flex-row-reverse items-center gap-2">
             <Avatar :src="vm.opp.avatar" :label="vm.opp.name" cls="h-8 w-8 rounded-lg" />
             <div class="text-right">
               <div class="text-[13px] font-bold text-dark-text">{{ vm.opp.name }}</div>
@@ -96,6 +97,7 @@ const noMatchup = computed(
         <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Stakes</p>
         <p class="font-mono text-[11px] text-dark-text">{{ vm.stakes.reasoning }}</p>
         <!-- Goal override segmented control -->
+        <p class="mb-1 font-mono text-[9px] uppercase tracking-widest text-dark-textMuted">goal</p>
         <div class="flex flex-wrap items-center gap-0.5 rounded-md border border-dark-border bg-dark-bg p-0.5 w-fit">
           <button
             v-for="opt in STAKES_OPTIONS"
