@@ -255,7 +255,7 @@ const router = createRouter({
         {
           path: 'matchups',
           name: 'my-league-matchups',
-          component: () => import('@/views/CategoryDemoMatchupsView.vue'),
+          component: () => import('@/views/MatchupBattlePlanView.vue'),
         },
         {
           path: 'draft',
