@@ -399,17 +399,13 @@ export function useMatchupBattlePlan(): {
     const reasoning = override.value === 'auto' ? auto.reasoning : 'Goal set manually.'
 
     // ── status mapping + matchupPlan ────────────────────────────────────────
-    // Map snapshot status → PlanCategory status, dropping 'notApplicable'.
-    const planCats: PlanCategory[] = snap.categories
-      .filter((c) => c.status !== 'notApplicable')
-      .map((c) => ({
-        statId: c.statId,
-        myWinPct: c.myWinPct,
-        status:
-          c.status === 'win' ? 'safe'
-          : c.status === 'tossup' ? 'tossup'
-          : 'loss', // 'loss' → 'loss'
-      }))
+    // SnapshotCategory.status is the CatStatus type — already 'safe' | 'tossup' | 'loss',
+    // exactly PlanCategory['status']. Pass it through directly.
+    const planCats: PlanCategory[] = snap.categories.map((c) => ({
+      statId: c.statId,
+      myWinPct: c.myWinPct,
+      status: c.status,
+    }))
 
     const plan = matchupPlan(planCats, mode)
 
