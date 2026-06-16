@@ -174,7 +174,9 @@ const noMatchup = computed(
 
       <!-- 5. MOVES THAT SWING IT (the to-do list — one row per move) -->
       <section v-if="vm.swingMoves.length" class="rounded-xl border border-primary/40 bg-primary/[0.04] px-4 py-3">
-        <p class="font-mono text-[10px] uppercase tracking-widest text-primary">★ Moves that swing it</p>
+        <p class="font-mono text-[10px] uppercase tracking-widest text-primary">
+          ★ Moves that swing it · {{ cadence === 'daily' ? 'today' : 'this week' }}
+        </p>
         <div class="mt-2 space-y-2">
           <div v-for="(m, i) in vm.swingMoves" :key="i" class="font-mono text-[11px]">
             <!-- Action + lift -->

@@ -335,25 +335,31 @@ export function useMatchupBattlePlan(): {
   // useYourMove already fetches the schedule internally; we fetch it again here
   // for volumeEdge so this composable is self-contained and doesn't couple to
   // useYourMove internals.
-  const weekScheduleRef = ref<import('@/services/mlbSchedule').WeekSchedule>({
-    gamesByTeam: {},
-    startsByPitcher: {},
-  })
+  const EMPTY_SCHEDULE: import('@/services/mlbSchedule').WeekSchedule = { gamesByTeam: {}, startsByPitcher: {} }
+  const weekScheduleRef = ref<import('@/services/mlbSchedule').WeekSchedule>({ ...EMPTY_SCHEDULE })
+  // Today-only schedule so the daily cadence can show TODAY's games, not the week's.
+  const todayScheduleRef = ref<import('@/services/mlbSchedule').WeekSchedule>({ ...EMPTY_SCHEDULE })
 
   watch(
     () => thisWeek.snapshot.value,
     async (snap) => {
       if (!snap || snap.completed) {
         weekScheduleRef.value = { gamesByTeam: {}, startsByPitcher: {} }
+        todayScheduleRef.value = { gamesByTeam: {}, startsByPitcher: {} }
         return
       }
+      const start = new Date()
+      const end = new Date(start)
+      end.setDate(end.getDate() + Math.max(0, snap.daysRemaining))
       try {
-        const start = new Date()
-        const end = new Date(start)
-        end.setDate(end.getDate() + Math.max(0, snap.daysRemaining))
         weekScheduleRef.value = await getWeekSchedule(ymd(start), ymd(end))
       } catch {
         weekScheduleRef.value = { gamesByTeam: {}, startsByPitcher: {} }
+      }
+      try {
+        todayScheduleRef.value = await getWeekSchedule(ymd(start), ymd(start))
+      } catch {
+        todayScheduleRef.value = { gamesByTeam: {}, startsByPitcher: {} }
       }
     },
     { immediate: true },
@@ -643,16 +649,20 @@ export function useMatchupBattlePlan(): {
             isPitcher: /SP|RP|\bP\b/.test((p as { position?: string }).position ?? ''),
           }))
 
-    const v = volumeEdge(mine, [] /* opponent roster unavailable */, weekScheduleRef.value)
+    // Daily cadence shows TODAY's volume; weekly shows the rest of the week — so
+    // the toggle changes what "bank the counting cats" actually means right now.
+    const isDaily = cadence.value === 'daily'
+    const v = volumeEdge(mine, [] /* opponent roster unavailable */, isDaily ? todayScheduleRef.value : weekScheduleRef.value)
     // Opponent roster isn't available in v1, so a comparative read would always say "volume on your
     // side" (opp = 0). Show YOUR remaining volume honestly instead; opponent-vs-you is a phase-2 add.
+    const horizon = isDaily ? 'today' : 'left this week'
     const volume = {
       myGames: v.myGames,
       myStarts: v.myStarts,
       oppGames: 0,
       oppStarts: 0,
       read: v.myGames > 0 || v.myStarts > 0
-        ? `You have ${v.myGames} hitter-games and ${v.myStarts} starts left this week — bank the counting cats.`
+        ? `You have ${v.myGames} hitter-games and ${v.myStarts} ${v.myStarts === 1 ? 'start' : 'starts'} ${horizon} — bank the counting cats.`
         : '',
     }
 
