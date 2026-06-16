@@ -66,6 +66,7 @@ export function useTradeOpportunities(inputs: {
   all: ComputedRef<TradeOpportunity[]>
   hero: ComputedRef<TradeOpportunity[]>
   ranked: ComputedRef<TradeOpportunity[]>
+  mutualCount: ComputedRef<number>
   pressLeverage: Ref<boolean>
 } {
   const pressLeverage = ref(false)
@@ -168,6 +169,12 @@ export function useTradeOpportunities(inputs: {
     return built.filter((o) => o.intents.includes('buyLow') || maxGetVal(o) >= GET_FLOOR)
   })
 
+  // Stable count of mutual (non-steal) moves above the gain floor. Toggle-independent, so the view's
+  // "few deals → one combined list" layout decision can't flip when you switch Mutual/Steals.
+  const mutualCount = computed(() =>
+    all.value.filter((o) => o.standings.partnerRead !== 'steal' && o.standings.deltaYou >= MIN_GAIN).length,
+  )
+
   // Hero = your top DISTINCT moves by standings gain (deltaYou), excluding lopsided 'steal' deals,
   // with no two heroes sharing a filled position (headline), partner, or give player.
   const hero = computed<TradeOpportunity[]>(() => {
@@ -213,5 +220,5 @@ export function useTradeOpportunities(inputs: {
     return out
   })
 
-  return { all, hero, ranked, pressLeverage }
+  return { all, hero, ranked, mutualCount, pressLeverage }
 }

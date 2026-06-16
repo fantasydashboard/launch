@@ -194,7 +194,7 @@ const catSideById = computed(() => {
   for (const c of catSpecs.value) m.set(c.statId, c.side)
   return m
 })
-const { hero, ranked, pressLeverage } = useTradeOpportunities({
+const { hero, ranked, mutualCount, pressLeverage } = useTradeOpportunities({
   pool, engine, catView: view, posView, slots: rosterSlots, myStatuses, myTeamKey, statIds: statIdsRef, catSideById, labelOf,
 })
 
@@ -228,9 +228,12 @@ const focusLabel = computed(() => {
 
 // For a thin roster (few total moves) the hero/all split is silly — all moves land in the hero and
 // "All opportunities" renders empty. At or below this many total moves, show ONE combined list.
+// "Few deals" is decided by the STABLE mutual-move count (toggle-independent) so switching
+// Mutual/Steals never flips the layout. The combined list itself stays toggle-coherent: Mutual shows
+// hero + the rest of the mutual moves; Steals shows only the steal plays (hero is always mutual).
 const FEW_DEALS = 5
-const allMoves = computed(() => [...hero.value, ...ranked.value])
-const fewDeals = computed(() => allMoves.value.length <= FEW_DEALS)
+const fewDeals = computed(() => mutualCount.value <= FEW_DEALS)
+const allMoves = computed(() => (pressLeverage.value ? [...ranked.value] : [...hero.value, ...ranked.value]))
 
 const valOf = (key: string): number => Math.round(engine.value?.valueByKey.get(key) ?? 0)
 const byVal = (a: { playerKey: string }, b: { playerKey: string }) => valOf(b.playerKey) - valOf(a.playerKey)
