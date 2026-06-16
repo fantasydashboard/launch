@@ -18,12 +18,15 @@ import { toEffectiveStats } from '@/myteam/effectiveStats'
 import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 import type { RosterSlotPlayer } from '@/myteam/yourMove/pairDrop'
 import { getWeekSchedule } from '@/services/mlbSchedule'
+import { classifyContested, isAccumulatorCat } from '@/myteam/contestedTiers'
 
 export interface CoinFlip {
   statId: string
   label: string
   myWinPct: number // 0..100
   move?: { text: string; lift: number; today: boolean }
+  dir?: 'win' | 'loss' // for the muted "leaning" tier — which way it's tipping
+  accumulator?: boolean // volume cat (IP/AB/BF…) won by games, not a waiver move
 }
 
 export interface BattlePlanVM {
@@ -38,7 +41,8 @@ export interface BattlePlanVM {
   cadence: 'daily' | 'weekly'
   stakes: { mode: StakesMode; reasoning: string }
   path: string
-  coinFlips: CoinFlip[]
+  coinFlips: CoinFlip[] // the tight 45–55 band — "fight these"
+  leaning: CoinFlip[] // near-decided contested cats, de-emphasized
   banked: { statId: string; label: string }[]
   conceded: { statId: string; label: string }[]
   swing: { statId: string; label: string }[]
@@ -430,6 +434,7 @@ export function useMatchupBattlePlan(): {
         stakes: { mode: 'clinch', reasoning: '' },
         path: '',
         coinFlips: [],
+        leaning: [],
         banked: [],
         conceded: [],
         swing: [],
@@ -475,7 +480,10 @@ export function useMatchupBattlePlan(): {
       status: c.status,
     }))
 
-    const plan = matchupPlan(planCats, mode)
+    // On a manual override there's no standings signal, so don't pass a coast
+    // kind — matchupPlan falls back to the neutral conserve copy.
+    const coastKind = override.value === 'auto' ? auto.coastKind : undefined
+    const plan = matchupPlan(planCats, mode, coastKind)
 
     // ── label lookup from snapshot ───────────────────────────────────────────
     const labelByStatId = new Map(snap.categories.map((c) => [c.statId, c.label]))
@@ -492,14 +500,10 @@ export function useMatchupBattlePlan(): {
     const conceded = plan.concede.map(toStatLabel)
     const swing = plan.swing.map(toStatLabel)
 
-    // ── coin-flips with moves ─────────────────────────────────────────────────
-    const tossupCats = planCats
-      .filter((c) => c.status === 'tossup')
-      .sort((a, b) => a.myWinPct - b.myWinPct)
-
+    // ── contested cats (tossups): build each row, then tier ───────────────────
     const moves = yourMove.moves.value
 
-    const coinFlips: CoinFlip[] = tossupCats.map((cat) => {
+    const buildRow = (cat: PlanCategory): CoinFlip => {
       // Find the highest-lift move whose categories include this statId.
       const bestMove = moves
         .filter((m) => m.categories.includes(cat.statId))
@@ -525,13 +529,24 @@ export function useMatchupBattlePlan(): {
         }
       }
 
-      return {
-        statId: cat.statId,
-        label: labelByStatId.get(cat.statId) ?? cat.statId,
-        myWinPct: cat.myWinPct,
-        move,
-      }
-    })
+      const label = labelByStatId.get(cat.statId) ?? cat.statId
+      return { statId: cat.statId, label, myWinPct: cat.myWinPct, move, accumulator: isAccumulatorCat(label) }
+    }
+
+    const tossupRows = planCats
+      .filter((c) => c.status === 'tossup')
+      .sort((a, b) => a.myWinPct - b.myWinPct)
+      .map(buildRow)
+
+    // Coin-flips: the true 45–55 swing cats you actually fight — excluding
+    // volume cats (won by games played, not a waiver move). Everything else
+    // contested drops to the muted "leaning" tier, tagged which way it tips.
+    const coinFlips: CoinFlip[] = tossupRows.filter(
+      (r) => !r.accumulator && classifyContested(r.myWinPct) === 'coinflip',
+    )
+    const leaning: CoinFlip[] = tossupRows
+      .filter((r) => r.accumulator || classifyContested(r.myWinPct) !== 'coinflip')
+      .map((r) => ({ ...r, dir: (r.myWinPct >= 50 ? 'win' : 'loss') as 'win' | 'loss' }))
 
     // ── volume edge ──────────────────────────────────────────────────────────
     const mine: VolPlayer[] = rosterPlayers.value.map((p) => ({
@@ -577,6 +592,7 @@ export function useMatchupBattlePlan(): {
       stakes: { mode, reasoning },
       path: plan.path,
       coinFlips,
+      leaning,
       banked,
       conceded,
       swing,

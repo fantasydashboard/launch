@@ -22,7 +22,25 @@ const SWING_FLOOR = 35
  * 'maximize' promotes close losses to a swing tier; 'must-win' fights everything winnable; 'coast'
  * keeps the split but tells you to conserve.
  */
-export function matchupPlan(categories: PlanCategory[], mode: StakesMode): MatchupPlan {
+// The coast nudge depends on WHY you're coasting: a clinched team saves its
+// resources for the playoffs; an eliminated team has no playoffs to save for and
+// should just not burn waivers chasing a meaningless week. A manual coast (no
+// standings signal) gets the neutral conserve line.
+function coastNudge(coastKind?: 'clinched' | 'eliminated'): string {
+  if (coastKind === 'eliminated') {
+    return `The bracket's out of reach, so this week is for pride only — don't burn FAAB or streamers chasing it.`
+  }
+  if (coastKind === 'clinched') {
+    return `You're set for the bracket — save your FAAB and streamers for the playoffs.`
+  }
+  return `Coasting — conserve your FAAB and streamers; nothing here is worth a waiver hit.`
+}
+
+export function matchupPlan(
+  categories: PlanCategory[],
+  mode: StakesMode,
+  coastKind?: 'clinched' | 'eliminated',
+): MatchupPlan {
   const tossups = categories.filter((c) => c.status === 'tossup').map((c) => c.statId)
   const losses = categories.filter((c) => c.status === 'loss')
   const base = matchupPath(categories) ?? 'No categories to plan around yet.'
@@ -45,10 +63,8 @@ export function matchupPlan(categories: PlanCategory[], mode: StakesMode): Match
       concede,
     }
   }
-  // clinch + coast share the base split (fight tossups, concede losses); coast adds a save-resources nudge.
+  // clinch + coast share the base split (fight tossups, concede losses); coast adds a stakes-aware nudge.
   const concede = losses.map((c) => c.statId)
-  const path = mode === 'coast'
-    ? `${base} You're set for the bracket — save your FAAB and streamers for the playoffs.`
-    : base
+  const path = mode === 'coast' ? `${base} ${coastNudge(coastKind)}` : base
   return { path, fight: tossups, swing: [], concede }
 }

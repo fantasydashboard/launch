@@ -18,10 +18,16 @@ const noMatchup = computed(
   () =>
     vm.value.ready &&
     vm.value.coinFlips.length === 0 &&
+    vm.value.leaning.length === 0 &&
     vm.value.banked.length === 0 &&
     vm.value.conceded.length === 0 &&
     vm.value.swing.length === 0,
 )
+
+// "Fight these" only reads true when there's actually a lever to pull. When every
+// coin-flip is held, the section is a read-out of what decides the week, not a
+// to-do list — so the heading shouldn't imply action that isn't there.
+const coinFlipsHaveMoves = computed(() => vm.value.coinFlips.some((c) => c.move))
 </script>
 
 <template>
@@ -122,9 +128,11 @@ const noMatchup = computed(
         <p class="mt-1.5 font-mono text-[11px] text-dark-text">{{ vm.volume.read }}</p>
       </section>
 
-      <!-- 5. COIN-FLIPS -->
+      <!-- 5. COIN-FLIPS (the tight 45–55 swing cats) -->
       <section v-if="vm.coinFlips.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
-        <p class="font-mono text-[10px] uppercase tracking-widest text-[#F2B33A]">Coin-flips · fight these</p>
+        <p class="font-mono text-[10px] uppercase tracking-widest text-[#F2B33A]">
+          Coin-flips · {{ coinFlipsHaveMoves ? 'fight these' : 'these decide the week' }}
+        </p>
         <div class="mt-2 space-y-1">
           <div
             v-for="c in vm.coinFlips"
@@ -135,8 +143,8 @@ const noMatchup = computed(
             <span class="w-12 shrink-0 font-semibold text-dark-text">{{ c.label }}</span>
             <!-- Win pct -->
             <span class="w-10 shrink-0 text-[#F2B33A]">{{ c.myWinPct }}%</span>
-            <!-- Move or no-move -->
-            <span v-if="c.move" class="flex min-w-0 flex-1 items-center gap-1.5 text-dark-textMuted">
+            <!-- Move (the lever) — bright; otherwise a quiet hold marker -->
+            <span v-if="c.move" class="flex min-w-0 flex-1 items-center gap-1.5 text-dark-textSecondary">
               <span
                 v-if="c.move.today"
                 class="shrink-0 rounded border border-[#1f6f86] px-1 py-0.5 font-mono text-[8px] uppercase tracking-widest text-[#5ec8e6]"
@@ -144,8 +152,27 @@ const noMatchup = computed(
               <span class="min-w-0 truncate">{{ c.move.text }}</span>
               <span class="ml-auto shrink-0 font-semibold text-primary">+{{ c.move.lift }}%</span>
             </span>
-            <span v-else class="flex-1 text-dark-textMuted">held — no move</span>
+            <span v-else class="flex-1 text-[10px] text-dark-textMuted">hold — let it ride</span>
           </div>
+        </div>
+      </section>
+
+      <!-- 5b. LEANING (near-decided contested cats + volume cats) — de-emphasized -->
+      <section v-if="vm.leaning.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
+        <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Leaning · lower priority</p>
+        <div class="mt-2 flex flex-wrap gap-1.5">
+          <span
+            v-for="l in vm.leaning"
+            :key="l.statId"
+            class="inline-flex items-center gap-1 rounded px-2 py-1 font-mono text-[10px]"
+            :class="l.dir === 'win'
+              ? 'bg-primary/[0.07] text-primary/80'
+              : 'bg-[#ff6b6b]/[0.07] text-[#ff6b6b]/80'"
+          >
+            <span class="font-semibold">{{ l.label }}</span>
+            <span class="opacity-70">{{ l.myWinPct }}%</span>
+            <span v-if="l.accumulator" class="opacity-60">· volume</span>
+          </span>
         </div>
       </section>
 

@@ -33,8 +33,17 @@ describe('matchupPlan', () => {
     expect(p.swing).toEqual([])
     expect(p.path).toMatch(/tank|every move|must/i)
   })
-  it('coast: dial down — path tells you to save resources', () => {
+  it('coast (manual, no coastKind): neutral conserve nudge', () => {
     const p = matchupPlan(CATS, 'coast')
-    expect(p.path).toMatch(/save|conserve|playoffs/i)
+    expect(p.path).toMatch(/conserve|waiver/i)
+  })
+  it('coast clinched: save resources for the playoffs', () => {
+    const p = matchupPlan(CATS, 'coast', 'clinched')
+    expect(p.path).toMatch(/set for the bracket|playoffs/i)
+  })
+  it('coast eliminated: does NOT claim the bracket — pride only', () => {
+    const p = matchupPlan(CATS, 'coast', 'eliminated')
+    expect(p.path).toMatch(/out of reach|pride/i)
+    expect(p.path).not.toMatch(/set for the bracket/i)
   })
 })

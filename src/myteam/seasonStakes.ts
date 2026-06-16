@@ -8,6 +8,11 @@ export interface StakesInput {
 export interface Stakes {
   mode: StakesMode
   reasoning: string // always shown — never a black box
+  // Why the coast: 'clinched' (safely in) vs 'eliminated' (out of reach). Set
+  // only when mode === 'coast' so the path copy can stop telling an eliminated
+  // team it's "set for the bracket". Undefined for the other modes and for a
+  // manual coast override (no standings signal to infer from).
+  coastKind?: 'clinched' | 'eliminated'
 }
 
 /**
@@ -28,11 +33,11 @@ export function seasonStakes({ rank, leagueSize, weeksLeft, playoffSpots }: Stak
 
   // Locked in: cushion outlasts what the remaining weeks could plausibly swing.
   if (cushion >= weeksLeft + 2) {
-    return { mode: 'coast', reasoning: `${ord(rank)} of ${leagueSize} — locked into the bracket with ${weeksLeft} to play.` }
+    return { mode: 'coast', coastKind: 'clinched', reasoning: `${ord(rank)} of ${leagueSize} — locked into the bracket with ${weeksLeft} to play.` }
   }
   // Out of reach: can't make up the deficit even running the table.
   if (deficit > weeksLeft) {
-    return { mode: 'coast', reasoning: `${ord(rank)} of ${leagueSize}, ${deficit} out with only ${weeksLeft} left — out of reach. Save your resources.` }
+    return { mode: 'coast', coastKind: 'eliminated', reasoning: `${ord(rank)} of ${leagueSize}, ${deficit} out with only ${weeksLeft} left — out of reach.` }
   }
   // Bubble, time short, still catchable.
   if (weeksLeft <= 2 && deficit >= 0 && deficit <= weeksLeft) {
