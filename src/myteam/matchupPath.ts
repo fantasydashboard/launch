@@ -20,7 +20,10 @@ export function matchupPath(categories: { status: 'safe' | 'tossup' | 'loss' }[]
 
   const majority = Math.floor(total / 2) + 1 // more than half = a win, not a tie
   const needed = majority - safe
-  const cf = (n: number) => `${n} coin-flip${n === 1 ? '' : 's'}`
+  // "Categories in play" = every contested cat (the page tiers these into the
+  // narrow coin-flip band + leaning + volume); the path counts all of them, so
+  // it must not call them "coin-flips" or the count won't match the UI section.
+  const inPlay = (n: number) => `${n} categor${n === 1 ? 'y' : 'ies'} in play`
 
   // Already over the line on safe cats alone.
   if (needed <= 0) {
@@ -30,13 +33,13 @@ export function matchupPath(categories: { status: 'safe' | 'tossup' | 'loss' }[]
   if (toss === 0) {
     return `You're behind. You'll need to steal one of the likely losses to take the week.`
   }
-  // Even a coin-flip sweep falls short: name how many losses must also be stolen.
+  // Even sweeping every contested cat falls short: name how many losses must also be stolen.
   if (needed > toss) {
     const steal = needed - toss
-    return `Winning every coin-flip still falls short. Steal ${steal} of the likely losses too.`
+    return `Winning every category in play still falls short. Steal ${steal} of the likely losses too.`
   }
-  // The normal case: a clear coin-flip target, with the losses flagged as no-spend.
-  const base = `Win ${needed} of ${cf(toss)} to take the week.`
+  // The normal case: a clear target, with the losses flagged as no-spend.
+  const base = `Win ${needed} of ${inPlay(toss)} to take the week.`
   return loss > 0
     ? `${base} The likely losses are out of reach, so don't spend moves there.`
     : base

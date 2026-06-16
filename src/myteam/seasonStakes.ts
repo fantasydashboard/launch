@@ -43,5 +43,5 @@ export function seasonStakes({ rank, leagueSize, weeksLeft, playoffSpots }: Stak
   if (weeksLeft <= 2 && deficit >= 0 && deficit <= weeksLeft) {
     return { mode: 'must-win', reasoning: `${ord(rank)} of ${leagueSize}, on the bubble with ${weeksLeft} to play — you need this one.` }
   }
-  return { mode: 'clinch', reasoning: `${ord(rank)} of ${leagueSize}, in good shape — take the week and conserve moves.` }
+  return { mode: 'clinch', reasoning: `${ord(rank)} of ${leagueSize}, comfortably in — you can pick your spots and conserve moves.` }
 }

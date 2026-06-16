@@ -17,7 +17,7 @@ describe('matchupPlan', () => {
     expect(p.fight.sort()).toEqual(['K', 'RBI'])
     expect(p.concede.sort()).toEqual(['R', 'TB'])
     expect(p.swing).toEqual([])
-    expect(p.path).toMatch(/coin-flip/i)
+    expect(p.path).toMatch(/in play/i)
   })
   it('maximize: close losses become a swing tier; only far losses stay conceded', () => {
     const p = matchupPlan(CATS, 'maximize')

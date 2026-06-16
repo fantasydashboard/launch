@@ -41,8 +41,10 @@ export interface BattlePlanVM {
   cadence: 'daily' | 'weekly'
   stakes: { mode: StakesMode; reasoning: string }
   path: string
-  coinFlips: CoinFlip[] // the tight 45–55 band — "fight these"
+  swingMoves: CoinFlip[] // contested cats that have a move — the to-do list
+  coinFlips: CoinFlip[] // tight 45–55 holds that still decide the week (no lever)
   leaning: CoinFlip[] // near-decided contested cats, de-emphasized
+  volumeCats: { statId: string; label: string; myWinPct: number }[] // won by games played
   banked: { statId: string; label: string }[]
   conceded: { statId: string; label: string }[]
   swing: { statId: string; label: string }[]
@@ -433,8 +435,10 @@ export function useMatchupBattlePlan(): {
         cadence: cadence.value,
         stakes: { mode: 'clinch', reasoning: '' },
         path: '',
+        swingMoves: [],
         coinFlips: [],
         leaning: [],
+        volumeCats: [],
         banked: [],
         conceded: [],
         swing: [],
@@ -538,14 +542,27 @@ export function useMatchupBattlePlan(): {
       .sort((a, b) => a.myWinPct - b.myWinPct)
       .map(buildRow)
 
-    // Coin-flips: the true 45–55 swing cats you actually fight — excluding
-    // volume cats (won by games played, not a waiver move). Everything else
-    // contested drops to the muted "leaning" tier, tagged which way it tips.
-    const coinFlips: CoinFlip[] = tossupRows.filter(
+    // Actionability-first split. A move is the only thing you DO, so any
+    // contested cat that has one floats to its own group regardless of win% band
+    // — never buried in a chip tier. The rest (no lever) split by where they sit:
+    //   • swingMoves — has a move (the to-do list), sorted by lift
+    //   • volumeCats — accumulator cats won by games, not a waiver move
+    //   • coinFlips  — the true 45–55 holds that still decide the week
+    //   • leaning    — near-decided, muted, tagged which way it tips
+    const withMove = tossupRows.filter((r) => r.move)
+    const noMove = tossupRows.filter((r) => !r.move)
+
+    const swingMoves: CoinFlip[] = [...withMove].sort(
+      (a, b) => (b.move?.lift ?? 0) - (a.move?.lift ?? 0),
+    )
+    const volumeCats = noMove
+      .filter((r) => r.accumulator)
+      .map((r) => ({ statId: r.statId, label: r.label, myWinPct: r.myWinPct }))
+    const coinFlips: CoinFlip[] = noMove.filter(
       (r) => !r.accumulator && classifyContested(r.myWinPct) === 'coinflip',
     )
-    const leaning: CoinFlip[] = tossupRows
-      .filter((r) => r.accumulator || classifyContested(r.myWinPct) !== 'coinflip')
+    const leaning: CoinFlip[] = noMove
+      .filter((r) => !r.accumulator && classifyContested(r.myWinPct) !== 'coinflip')
       .map((r) => ({ ...r, dir: (r.myWinPct >= 50 ? 'win' : 'loss') as 'win' | 'loss' }))
 
     // ── volume edge ──────────────────────────────────────────────────────────
@@ -591,8 +608,10 @@ export function useMatchupBattlePlan(): {
       cadence: cadence.value,
       stakes: { mode, reasoning },
       path: plan.path,
+      swingMoves,
       coinFlips,
       leaning,
+      volumeCats,
       banked,
       conceded,
       swing,
