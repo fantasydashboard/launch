@@ -226,6 +226,12 @@ const focusLabel = computed(() => {
   return f.kind === 'partner' ? `moves with ${f.key}` : `moves that fix ${labelOf(f.key)}`
 })
 
+// For a thin roster (few total moves) the hero/all split is silly — all moves land in the hero and
+// "All opportunities" renders empty. At or below this many total moves, show ONE combined list.
+const FEW_DEALS = 5
+const allMoves = computed(() => [...hero.value, ...ranked.value])
+const fewDeals = computed(() => allMoves.value.length <= FEW_DEALS)
+
 const valOf = (key: string): number => Math.round(engine.value?.valueByKey.get(key) ?? 0)
 const byVal = (a: { playerKey: string }, b: { playerKey: string }) => valOf(b.playerKey) - valOf(a.playerKey)
 const myRoster = computed(() => pool.value.filter((p) => p.teamKey && p.teamKey === myTeamKey.value).sort(byVal))
@@ -353,7 +359,32 @@ function onLogoError(e: Event) {
       </p>
 
       <!-- UNIFIED OPPORTUNITIES: one ranked list of trade moves -->
-      <section class="space-y-2">
+      <!-- few deals: one combined list (the Mutual/Steals toggle lives here in this layout) -->
+      <section v-if="fewDeals" class="space-y-2">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span class="font-mono text-[10px] uppercase tracking-widest text-primary">★ Best moves right now</span>
+          <div class="ml-auto inline-flex items-center gap-0.5 rounded-md border border-dark-border p-0.5 font-mono text-[10px]"
+            title="Mutual = deals they'd plausibly accept. Steals = lopsided your way, a tougher sell.">
+            <button type="button" class="rounded px-2 py-0.5 transition-colors"
+              :class="!pressLeverage ? 'bg-dark-border text-dark-text' : 'text-dark-textMuted hover:text-dark-textSecondary'"
+              @click="pressLeverage = false">Mutual</button>
+            <button type="button" class="rounded px-2 py-0.5 transition-colors"
+              :class="pressLeverage ? 'bg-[#F2B33A]/20 text-[#F2B33A]' : 'text-dark-textMuted hover:text-dark-textSecondary'"
+              @click="pressLeverage = true">Steals</button>
+          </div>
+        </div>
+        <p v-if="pressLeverage" class="font-mono text-[10px] text-dark-textMuted/80">
+          Lopsided offers — great for you, but they're unlikely to accept without leverage.
+        </p>
+        <p v-if="!allMoves.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
+          <template v-if="pressLeverage">No steals right now — every deal that helps you is also fair to them.</template>
+          <template v-else>No moves improve your standings right now — try <b class="text-dark-textSecondary">Steals</b> for one-sided plays.</template>
+        </p>
+        <OpportunityCard v-for="o in allMoves" :key="o.id" :opp="o" :labelOf="labelOf"
+          :class="['transition-opacity', matchesFocus(o) ? '' : 'opacity-30']" />
+      </section>
+
+      <section v-if="!fewDeals" class="space-y-2">
         <div class="flex items-center justify-between">
           <span class="font-mono text-[10px] uppercase tracking-widest text-primary">★ Best moves right now</span>
         </div>
@@ -364,7 +395,7 @@ function onLogoError(e: Event) {
           :class="['transition-opacity', matchesFocus(o) ? '' : 'opacity-30']" />
       </section>
 
-      <section class="space-y-3">
+      <section v-if="!fewDeals" class="space-y-3">
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">All opportunities</span>
           <div class="ml-auto inline-flex items-center gap-0.5 rounded-md border border-dark-border p-0.5 font-mono text-[10px]"
