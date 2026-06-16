@@ -133,10 +133,14 @@ const posNeedAt = (pl: PositionalLandscape, team: string, pos?: string): number 
   pos ? pl.get(team)?.get(pos)?.need ?? 0 : 0
 
 const headlineOf = (you: SideEffect, them: SideEffect, intents: Intent[], s: StandingsImpact): string => {
-  const b = s.ecwYouBefore.toFixed(1), a = s.ecwYouAfter.toFixed(1)
-  const ecw = s.deltaYou >= 0.05 ? `wins ${b} → ${a} cats/week`
-    : s.deltaYou <= -0.05 ? `loses ${b} → ${a} cats/week`
-    : `holds ${a} cats/week`
+  // Derive after = before + rounded delta so the headline arrow ALWAYS equals the +X/wk pill.
+  // (Rounding before/after independently made "8.4 → 8.8" disagree with a "+0.5/wk" pill.)
+  const d = Math.round(s.deltaYou * 10) / 10
+  const before = Math.round(s.ecwYouBefore * 10) / 10
+  const b = before.toFixed(1), a = (before + d).toFixed(1)
+  const ecw = d > 0 ? `wins ${b} → ${a} cats/week`
+    : d < 0 ? `loses ${b} → ${a} cats/week`
+    : `holds ${b} cats/week`
   let what = ''
   if (you.fillsPos) what = `fills your ${you.fillsPos}`
   else if (intents.includes('steal') && them.fillsPos) what = `press their ${them.fillsPos} hole`

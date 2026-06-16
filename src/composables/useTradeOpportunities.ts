@@ -17,24 +17,15 @@ import { FIT_WEIGHTS_CATEGORY } from '@/trades/fitScore'
 const HERO_COUNT = 3
 const HURT_THRESHOLD = 0.15 // min need-weighted loss to surface as a "cost"
 const POS_EDGE = 0.5
-// Curation caps — keep the merged list from becoming a repetitive wall (the same surplus body
-// shopped to everyone, the same 2-for-1 package offered for five studs, one thin slot dominating).
-const GIVE_CAP = 2 // max cards any one give player appears in
-const GET_CAP = 2 // max cards any one target appears in
-const PKG_CAP = 1 // max cards a give-package fills the SAME position (different positions allowed)
-const HEADLINE_CAP = 3 // max cards per headline (≈ per filled position)
-const PARTNER_CAP = 3 // max cards per partner team
-const MAX_LIST = 12 // overall length cap for the main list
+// The list shows every distinct positive-gain move — no length cap, no type tabs. The ONLY curation
+// is a light de-dup so the same surplus body shopped to ten partners collapses to its best couple of
+// fits, instead of becoming a repetitive wall.
+const GIVE_CAP = 2 // max cards any one give player appears in (the same-player de-dup)
 // A GET below this cross-value isn't a real rosterable upgrade — it can't "fill" a hole. Buy-lows
 // are exempt: their depressed current value is the whole point (rebound coming).
 const GET_FLOOR = 45
 const MIN_GAIN = 0.05 // only surface deals that actually improve your weekly category wins
 
-const giveKeysOf = (o: { give: { playerKey: string }[] }) => o.give.map((s) => s.playerKey).sort().join(',')
-const getKeysOf = (o: { get: { playerKey: string }[] }) => o.get.map((s) => s.playerKey).sort().join(',')
-// Package identity is scoped to the position it fills, so the same two expendables can be offered
-// for a P stud AND a C stud (a real choice), but not shown five times for five SPs (the wall).
-const pkgKeyOf = (o: { give: { playerKey: string }[]; headline: string }) => `${giveKeysOf(o)}|${o.headline}`
 const maxGetVal = (o: { get: { value: number }[] }) => Math.max(0, ...o.get.map((s) => s.value))
 
 const eligFromPos = (pos: string): string[] =>
@@ -76,17 +67,9 @@ export function useTradeOpportunities(inputs: {
   all: ComputedRef<TradeOpportunity[]>
   hero: ComputedRef<TradeOpportunity[]>
   ranked: ComputedRef<TradeOpportunity[]>
-  activeIntents: Ref<Set<Intent>>
   pressLeverage: Ref<boolean>
-  toggleIntent: (i: Intent) => void
 } {
-  const activeIntents = ref<Set<Intent>>(new Set())
   const pressLeverage = ref(false)
-  const toggleIntent = (i: Intent) => {
-    const next = new Set(activeIntents.value)
-    next.has(i) ? next.delete(i) : next.add(i)
-    activeIntents.value = next
-  }
 
   // Positional landscape (per team per slot) — role-relative value so the startable bar and
   // thin/deep reads match usePositionalTargets.
@@ -208,51 +191,30 @@ export function useTradeOpportunities(inputs: {
     return out
   })
 
-  // Main list: gated to deals they'd plausibly accept (unless pressing leverage), filtered by intent
-  // chips, sorted by your standings gain (deltaYou), hero-excluded, then CURATED so no single give
-  // player / package / position / partner floods the list — the fix for the repetitive wall.
+  // Main list: EVERY distinct positive-gain move (no length cap, no type tabs), gated to deals the
+  // partner would plausibly accept — OR, under the Steals toggle, the lopsided 'steal' plays. Sorted
+  // by your standings gain (deltaYou), hero-excluded. The ONLY curation is a light same-give-player
+  // de-dup (GIVE_CAP) so one surplus body shopped to ten partners collapses to its best couple of fits.
   const ranked = computed<TradeOpportunity[]>(() => {
     const heroIds = new Set(hero.value.map((o) => o.id))
-    const intents = activeIntents.value
-    // Mutually-exclusive toggle: OFF = deals the partner would plausibly accept (partnerRead fair or
-    // reach); ON = lopsided 'steal' plays the partner clearly loses — a tougher sell. Two distinct sets.
     const pool = [...all.value]
       .filter((o) => o.standings.deltaYou >= MIN_GAIN)
       .filter((o) => (pressLeverage.value ? o.standings.partnerRead === 'steal' : o.standings.partnerRead !== 'steal'))
-      .filter((o) => !intents.size || o.intents.some((i) => intents.has(i)))
       .filter((o) => !heroIds.has(o.id))
       .sort((a, b) => b.standings.deltaYou - a.standings.deltaYou)
 
-    // Seed the curation budget with what the hero already spent, so the list never repeats a give
-    // player or package the hero is already showing above it.
+    // Seed the de-dup budget with the give players the hero already shows above, so the list never
+    // repeats a give player the hero is leaning on.
     const giveUse = new Map<string, number>()
-    const getUse = new Map<string, number>()
-    const pkgUse = new Map<string, number>()
-    const headUse = new Map<string, number>()
-    const partnerUse = new Map<string, number>()
-    for (const o of hero.value) {
-      o.give.forEach((s) => giveUse.set(s.playerKey, (giveUse.get(s.playerKey) ?? 0) + 1))
-      pkgUse.set(pkgKeyOf(o), (pkgUse.get(pkgKeyOf(o)) ?? 0) + 1)
-    }
+    for (const o of hero.value) o.give.forEach((s) => giveUse.set(s.playerKey, (giveUse.get(s.playerKey) ?? 0) + 1))
     const out: TradeOpportunity[] = []
     for (const o of pool) {
-      const pkg = pkgKeyOf(o)
-      const get = getKeysOf(o)
       if (o.give.some((s) => (giveUse.get(s.playerKey) ?? 0) >= GIVE_CAP)) continue
-      if ((getUse.get(get) ?? 0) >= GET_CAP) continue
-      if ((pkgUse.get(pkg) ?? 0) >= PKG_CAP) continue
-      if ((headUse.get(o.headline) ?? 0) >= HEADLINE_CAP) continue
-      if ((partnerUse.get(o.partnerKey) ?? 0) >= PARTNER_CAP) continue
       out.push(o)
       o.give.forEach((s) => giveUse.set(s.playerKey, (giveUse.get(s.playerKey) ?? 0) + 1))
-      getUse.set(get, (getUse.get(get) ?? 0) + 1)
-      pkgUse.set(pkg, (pkgUse.get(pkg) ?? 0) + 1)
-      headUse.set(o.headline, (headUse.get(o.headline) ?? 0) + 1)
-      partnerUse.set(o.partnerKey, (partnerUse.get(o.partnerKey) ?? 0) + 1)
-      if (out.length >= MAX_LIST) break
     }
     return out
   })
 
-  return { all, hero, ranked, activeIntents, pressLeverage, toggleIntent }
+  return { all, hero, ranked, pressLeverage }
 }

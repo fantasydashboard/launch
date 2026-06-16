@@ -12,7 +12,6 @@ import { useTradeTargets } from '@/composables/useTradeTargets'
 import { usePositionalTargets } from '@/composables/usePositionalTargets'
 import { useTradeOpportunities } from '@/composables/useTradeOpportunities'
 import OpportunityCard from '@/components/trades/OpportunityCard.vue'
-import type { Intent } from '@/trades/opportunities'
 import { buildEngine } from '@/trades/engine'
 import { analyzeTrade } from '@/trades/analyzeTrade'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
@@ -194,13 +193,9 @@ const catSideById = computed(() => {
   for (const c of catSpecs.value) m.set(c.statId, c.side)
   return m
 })
-const { hero, ranked, activeIntents, pressLeverage, toggleIntent } = useTradeOpportunities({
+const { hero, ranked, pressLeverage } = useTradeOpportunities({
   pool, engine, catView: view, posView, slots: rosterSlots, myStatuses, myTeamKey, statIds: statIdsRef, catSideById, labelOf,
 })
-const INTENTS: { key: Intent; label: string }[] = [
-  { key: 'consolidate', label: 'consolidate' },
-  { key: 'buyLow', label: 'buy-low' },
-]
 
 const valOf = (key: string): number => Math.round(engine.value?.valueByKey.get(key) ?? 0)
 const byVal = (a: { playerKey: string }, b: { playerKey: string }) => valOf(b.playerKey) - valOf(a.playerKey)
@@ -411,14 +406,6 @@ function onLogoError(e: Event) {
       <section class="space-y-3">
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">All opportunities</span>
-          <button
-            v-for="it in INTENTS"
-            :key="it.key"
-            type="button"
-            class="font-mono text-[11px] transition-colors"
-            :class="activeIntents.has(it.key) ? 'text-primary' : 'text-dark-textMuted hover:text-dark-textSecondary'"
-            @click="toggleIntent(it.key)"
-          >{{ it.label }}</button>
           <div class="ml-auto inline-flex items-center gap-0.5 rounded-md border border-dark-border p-0.5 font-mono text-[10px]"
             title="Mutual = deals they'd plausibly accept. Steals = lopsided your way, a tougher sell.">
             <button type="button" class="rounded px-2 py-0.5 transition-colors"
@@ -434,7 +421,6 @@ function onLogoError(e: Event) {
         </p>
         <p v-if="!ranked.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
           <template v-if="pressLeverage">No steals right now — every deal that helps you is also fair to them.</template>
-          <template v-else-if="activeIntents.size">No deals match this filter — clear it to see more.</template>
           <template v-else-if="hero.length">That's every move that helps you right now — see <b class="text-dark-textSecondary">Best moves</b> above.</template>
           <template v-else>No moves improve your standings right now — try <b class="text-dark-textSecondary">Steals</b> for one-sided plays.</template>
         </p>
