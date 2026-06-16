@@ -707,7 +707,7 @@ export function useMatchupBattlePlan(): {
       if (!thisWeek.snapshot.value) return
       const schedKeys = Object.keys(weekScheduleRef.value.gamesByTeam)
       // eslint-disable-next-line no-console
-      console.debug('[volume-diag]', {
+      console.log('[volume-diag]', {
         lightRosterLen: yahooVolumeRoster.value.length,
         lightSample: yahooVolumeRoster.value.slice(0, 8).map((p) => `${p.name}:${p.teamAbbr}|${p.isPitcher ? 'P' : 'H'}`),
         heavyRosterLen: yahooRosterPlayers.value.length,
