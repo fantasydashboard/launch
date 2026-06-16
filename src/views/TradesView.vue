@@ -299,7 +299,7 @@ function onLogoError(e: Event) {
   <div class="mx-auto max-w-3xl px-4 py-6 space-y-5">
     <header class="space-y-1">
       <h1 class="font-display text-2xl font-bold text-dark-text">Trades</h1>
-      <p class="font-mono text-xs text-dark-textMuted">The league, and who to trade for — by rest-of-season value</p>
+      <p class="font-mono text-xs text-dark-textMuted">Who to trade for — ranked by how many categories each move wins you per week.</p>
     </header>
 
     <p v-if="unsupported" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
@@ -340,6 +340,77 @@ function onLogoError(e: Event) {
         <p v-if="view.tradeFrom.length && view.toFix.length" class="mt-2 font-mono text-[11px] text-dark-textMuted">
           ↳ Spend your surplus (dead value — winning a category by a mile scores nothing extra) to plug your holes.
         </p>
+      </section>
+
+      <!-- focus-on-partner: anchor we scroll to + banner -->
+      <div ref="oppsTop" class="scroll-mt-4"></div>
+      <p v-if="focus" class="flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/[0.06] px-3 py-2 font-mono text-[11px] text-dark-textSecondary">
+        Showing <b class="text-primary">{{ focusLabel }}</b>
+        <button type="button" class="ml-auto text-dark-textMuted hover:text-primary" @click="clearFocus">clear ✕</button>
+      </p>
+      <p v-if="focus && !focusedCount" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
+        No {{ focusLabel }} right now<template v-if="!pressLeverage"> — try <b class="text-dark-textSecondary">Steals</b></template>.
+      </p>
+
+      <!-- UNIFIED OPPORTUNITIES: one ranked list of trade moves -->
+      <section class="space-y-2 border-l-2 border-primary/60 pl-3">
+        <div class="flex items-center justify-between">
+          <span class="font-mono text-[10px] uppercase tracking-widest text-primary">★ Best moves right now</span>
+        </div>
+        <p v-if="!hero.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
+          No clear moves right now — try <b class="text-dark-textSecondary">Steals</b> below for one-sided plays.
+        </p>
+        <OpportunityCard v-for="o in hero" :key="o.id" :opp="o" :labelOf="labelOf"
+          :class="['transition-opacity', matchesFocus(o) ? '' : 'opacity-30']" />
+      </section>
+
+      <section class="space-y-3">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">All opportunities</span>
+          <div class="ml-auto inline-flex items-center gap-0.5 rounded-md border border-dark-border p-0.5 font-mono text-[10px]"
+            title="Mutual = deals they'd plausibly accept. Steals = lopsided your way, a tougher sell.">
+            <button type="button" class="rounded px-2 py-0.5 transition-colors"
+              :class="!pressLeverage ? 'bg-dark-border text-dark-text' : 'text-dark-textMuted hover:text-dark-textSecondary'"
+              @click="pressLeverage = false">Mutual</button>
+            <button type="button" class="rounded px-2 py-0.5 transition-colors"
+              :class="pressLeverage ? 'bg-[#F2B33A]/20 text-[#F2B33A]' : 'text-dark-textMuted hover:text-dark-textSecondary'"
+              @click="pressLeverage = true">Steals</button>
+          </div>
+        </div>
+        <p v-if="pressLeverage" class="font-mono text-[10px] text-dark-textMuted/80">
+          Lopsided offers — great for you, but they're unlikely to accept without leverage.
+        </p>
+        <p v-if="!ranked.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
+          <template v-if="pressLeverage">No steals right now — every deal that helps you is also fair to them.</template>
+          <template v-else-if="hero.length">That's every move that helps you right now — see <b class="text-dark-textSecondary">Best moves</b> above.</template>
+          <template v-else>No moves improve your standings right now — try <b class="text-dark-textSecondary">Steals</b> for one-sided plays.</template>
+        </p>
+        <OpportunityCard v-for="o in ranked" :key="o.id" :opp="o" :labelOf="labelOf"
+          :class="['transition-opacity', matchesFocus(o) ? '' : 'opacity-30']" />
+      </section>
+
+      <!-- BEST PARTNERS -->
+      <section v-if="view.partners.length" class="space-y-2">
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Best trade partners</span>
+          <span class="h-px flex-1 bg-dark-border/50"></span>
+        </div>
+        <p class="font-mono text-[10px] text-dark-textMuted">{{ partnerBlurb }}</p>
+        <div class="divide-y divide-dark-border/50 rounded-xl border border-dark-border bg-dark-card/40">
+          <button v-for="p in view.partners" :key="p.team" type="button"
+            class="flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-colors"
+            :class="focus?.kind === 'partner' && focus.key === p.team ? 'bg-primary/10' : 'hover:bg-dark-border/30'"
+            @click="setFocus({ kind: 'partner', key: p.team })">
+            <Avatar :src="p.logo" :label="p.team" cls="h-6 w-6 rounded-md" />
+            <span class="w-40 shrink-0 truncate text-sm font-semibold text-dark-text">{{ p.team }}</span>
+            <span class="min-w-0 flex-1 font-mono text-[11px] text-dark-textMuted">
+              <span v-if="p.buyFrom.length"><span class="text-dark-textMuted/60">you buy</span> <span class="text-primary">{{ p.buyFrom.join(' ') }}</span></span>
+              <span v-if="p.sellTo.length" class="ml-3"><span class="text-dark-textMuted/60">they need</span> <span class="text-[#F2B33A]">{{ p.sellTo.join(' ') }}</span></span>
+              <span v-if="!p.buyFrom.length && !p.sellTo.length"><span class="text-dark-textMuted/60">strong</span> <span class="text-primary">{{ p.strong.join(' ') }}</span></span>
+            </span>
+            <span class="shrink-0 font-mono text-[10px]" :class="focus?.kind === 'partner' && focus.key === p.team ? 'text-primary' : 'text-transparent'">●</span>
+          </button>
+        </div>
       </section>
 
       <!-- CUSTOM TRADE ANALYZER -->
@@ -421,77 +492,6 @@ function onLogoError(e: Event) {
             </div>
           </div>
           <p v-else class="font-mono text-[10px] text-dark-textMuted">Pick a partner and at least one player on each side.</p>
-        </div>
-      </section>
-
-      <!-- focus-on-partner: anchor we scroll to + banner -->
-      <div ref="oppsTop" class="scroll-mt-4"></div>
-      <p v-if="focus" class="flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/[0.06] px-3 py-2 font-mono text-[11px] text-dark-textSecondary">
-        Showing <b class="text-primary">{{ focusLabel }}</b>
-        <button type="button" class="ml-auto text-dark-textMuted hover:text-primary" @click="clearFocus">clear ✕</button>
-      </p>
-      <p v-if="focus && !focusedCount" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
-        No {{ focusLabel }} right now<template v-if="!pressLeverage"> — try <b class="text-dark-textSecondary">Steals</b></template>.
-      </p>
-
-      <!-- UNIFIED OPPORTUNITIES: one ranked list of trade moves -->
-      <section class="space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Best moves right now</span>
-        </div>
-        <p v-if="!hero.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
-          No clear moves right now — try <b class="text-dark-textSecondary">Steals</b> below for one-sided plays.
-        </p>
-        <OpportunityCard v-for="o in hero" :key="o.id" :opp="o" :labelOf="labelOf"
-          :class="['transition-opacity', matchesFocus(o) ? '' : 'opacity-30']" />
-      </section>
-
-      <section class="space-y-3">
-        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">All opportunities</span>
-          <div class="ml-auto inline-flex items-center gap-0.5 rounded-md border border-dark-border p-0.5 font-mono text-[10px]"
-            title="Mutual = deals they'd plausibly accept. Steals = lopsided your way, a tougher sell.">
-            <button type="button" class="rounded px-2 py-0.5 transition-colors"
-              :class="!pressLeverage ? 'bg-dark-border text-dark-text' : 'text-dark-textMuted hover:text-dark-textSecondary'"
-              @click="pressLeverage = false">Mutual</button>
-            <button type="button" class="rounded px-2 py-0.5 transition-colors"
-              :class="pressLeverage ? 'bg-[#F2B33A]/20 text-[#F2B33A]' : 'text-dark-textMuted hover:text-dark-textSecondary'"
-              @click="pressLeverage = true">Steals</button>
-          </div>
-        </div>
-        <p v-if="pressLeverage" class="font-mono text-[10px] text-dark-textMuted/80">
-          Lopsided offers — great for you, but they're unlikely to accept without leverage.
-        </p>
-        <p v-if="!ranked.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-sm text-dark-textMuted">
-          <template v-if="pressLeverage">No steals right now — every deal that helps you is also fair to them.</template>
-          <template v-else-if="hero.length">That's every move that helps you right now — see <b class="text-dark-textSecondary">Best moves</b> above.</template>
-          <template v-else>No moves improve your standings right now — try <b class="text-dark-textSecondary">Steals</b> for one-sided plays.</template>
-        </p>
-        <OpportunityCard v-for="o in ranked" :key="o.id" :opp="o" :labelOf="labelOf"
-          :class="['transition-opacity', matchesFocus(o) ? '' : 'opacity-30']" />
-      </section>
-
-      <!-- BEST PARTNERS -->
-      <section v-if="view.partners.length" class="space-y-2">
-        <div class="flex items-center gap-2">
-          <span class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Best trade partners</span>
-          <span class="h-px flex-1 bg-dark-border/50"></span>
-        </div>
-        <p class="font-mono text-[10px] text-dark-textMuted">{{ partnerBlurb }}</p>
-        <div class="divide-y divide-dark-border/50 rounded-xl border border-dark-border bg-dark-card/40">
-          <button v-for="p in view.partners" :key="p.team" type="button"
-            class="flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-colors"
-            :class="focus?.kind === 'partner' && focus.key === p.team ? 'bg-primary/10' : 'hover:bg-dark-border/30'"
-            @click="setFocus({ kind: 'partner', key: p.team })">
-            <Avatar :src="p.logo" :label="p.team" cls="h-6 w-6 rounded-md" />
-            <span class="w-40 shrink-0 truncate text-sm font-semibold text-dark-text">{{ p.team }}</span>
-            <span class="min-w-0 flex-1 font-mono text-[11px] text-dark-textMuted">
-              <span v-if="p.buyFrom.length"><span class="text-dark-textMuted/60">you buy</span> <span class="text-primary">{{ p.buyFrom.join(' ') }}</span></span>
-              <span v-if="p.sellTo.length" class="ml-3"><span class="text-dark-textMuted/60">they need</span> <span class="text-[#F2B33A]">{{ p.sellTo.join(' ') }}</span></span>
-              <span v-if="!p.buyFrom.length && !p.sellTo.length"><span class="text-dark-textMuted/60">strong</span> <span class="text-primary">{{ p.strong.join(' ') }}</span></span>
-            </span>
-            <span class="shrink-0 font-mono text-[10px]" :class="focus?.kind === 'partner' && focus.key === p.team ? 'text-primary' : 'text-transparent'">●</span>
-          </button>
         </div>
       </section>
     </template>
