@@ -397,11 +397,16 @@ export function useMatchupBattlePlan(): {
     maybeLoadThisWeek()
   }
 
-  // Mirror MyTeamView.vue lines 167-173, 619-621
+  // NOTE: the Yahoo roster/players load is deliberately NOT triggered here.
+  // useMyRoster.load() resolves the logged-in team from leagueStore.yahooTeams
+  // at call time and filters the league-wide pool down to that team. If it runs
+  // before the my-team key is ready it filters to an empty roster AND sets
+  // loaded=true; worse, that null-key load can finish *after* a later good load
+  // and clobber it back to empty — the intermittent "no volume / no moves" bug.
+  // So the Yahoo roster loads ONLY off the readiness watch below, never with a
+  // half-ready store. ESPN roster still loads here via maybeLoadEspn().
   watch(() => leagueStore.activeLeagueId, () => {
     maybeLoadSeasonData()
-    maybeLoadPlayers()
-    maybeLoadRoster()
     maybeLoadEspn()
     maybeLoadThisWeek()
   }, { immediate: true })
@@ -409,14 +414,11 @@ export function useMatchupBattlePlan(): {
     maybeLoadThisWeek()
   })
 
-  // useMyRoster.load() resolves the logged-in team from leagueStore.yahooTeams at
-  // call time. On a direct navigation to /matchup the inputs settle in an
-  // unpredictable order — activeLeagueId restores from persistence first, then
-  // yahooTeams loads, and isYahooCategoryLeague flips true off either. If the
-  // immediate load above runs before BOTH the my-team key and the category flag
-  // are ready, the roster filters to empty and never retries — no moves, no
-  // volume edge, intermittently. Gate the (re)load on a single readiness signal
-  // that's true only once both are present, so it fires regardless of order.
+  // The single, order-independent Yahoo roster trigger: fire only once BOTH the
+  // category flag and the my-team key are present (they settle in unpredictable
+  // order on a direct /matchup navigation), so the load always reads a real team
+  // key. Guarded so the heavy getAllRosteredPlayers call doesn't re-run once the
+  // roster has populated.
   const yahooRosterReady = computed(
     () =>
       isYahooCategoryLeague.value &&
@@ -426,7 +428,6 @@ export function useMatchupBattlePlan(): {
     yahooRosterReady,
     (ready) => {
       if (!ready) return
-      // Guarded so the heavy getAllRosteredPlayers call doesn't re-run once loaded.
       if (!yahooRosterPlayers.value.length) maybeLoadRoster()
       if (!yahooFreeAgents.value.length) maybeLoadPlayers()
     },
