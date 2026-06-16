@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { isYahooCategoryLeague } from '@/composables/useIsCategoryLeague'
-import CategoryMatchupsView from '@/views/CategoryMatchupsView.vue'
+import MatchupBattlePlanView from '@/views/MatchupBattlePlanView.vue'
 
 const leagueStore = useLeagueStore()
 
@@ -14,7 +14,7 @@ const isCategoryLeague = computed(() => {
 </script>
 
 <template>
-  <CategoryMatchupsView v-if="isCategoryLeague" />
+  <MatchupBattlePlanView v-if="isCategoryLeague" />
   <div v-else class="mx-auto max-w-4xl px-4 py-10 text-center text-dark-textMuted">
     Matchup is available for category leagues in this preview.
   </div>
