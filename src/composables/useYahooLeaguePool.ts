@@ -4,24 +4,35 @@ import { buildPlayerMatchers, type FGProjection } from '@/services/projectionSer
 
 /**
  * The league-wide rostered pool for a Yahoo category league, assembled from one
- * LIGHT `getRoster(teamKey)` call per team plus FanGraphs rest-of-season
- * projections — instead of the single heavy, rate-limit-prone
- * `getAllRosteredPlayers` (which chunks per-player stat fetches and frequently
- * returns empty under throttling, leaving standings-dependent pages stuck).
+ * LIGHT `getRoster(teamKey)` call per team (sequential, gentle on Yahoo's
+ * throttle) plus FanGraphs rest-of-season projections — instead of the single
+ * heavy, rate-limit-prone `getAllRosteredPlayers`.
  *
- * Each pool player carries no raw stats; their projection comes from `fgByKey`
- * (matched by name + MLB team). Consumers run this through the same
- * `toEffectiveStats` / `mapFgStatsByKey` pipeline, which prefers the FG
- * projection when present — so the pool's category totals are ROS-based, exactly
- * what the season-long Wire scores on.
+ * The fetched rosters are cached in sessionStorage (keyed by league), so a
+ * reload reuses the pool with ZERO Yahoo calls — both faster and immune to the
+ * reload-throttle loop. The cache lives for the tab session; rosters barely move
+ * within a session, and it clears when the tab closes.
+ *
+ * Pool players carry no raw stats; their projection comes from `fgByKey`
+ * (matched by name + MLB team), which the consumer runs through the same
+ * toEffectiveStats / mapFgStatsByKey pipeline (which prefers FG) — so totals are
+ * ROS-based, exactly what the season-long Wire scores on.
  */
 export interface LeaguePoolPlayer {
   playerKey: string
   name: string
   position: string
-  teamKey: string // owning fantasy team_key (matches a team's team_key)
+  teamKey: string // owning fantasy team_key
   proTeam: string // MLB team abbr
   stats: Record<string, number> // empty; the FG projection in fgByKey drives totals
+}
+
+interface PoolRow {
+  teamKey: string
+  playerKey: string
+  name: string
+  position: string
+  proTeam: string
 }
 
 export function useYahooLeaguePool() {
@@ -31,52 +42,92 @@ export function useYahooLeaguePool() {
   const loading = ref(false)
   const loaded = ref(false)
 
+  const cacheKey = () => `ufd_wirepool_${leagueStore.activeLeagueId ?? ''}`
+
+  function readCache(): PoolRow[] | null {
+    if (typeof sessionStorage === 'undefined') return null
+    try {
+      const raw = sessionStorage.getItem(cacheKey())
+      const parsed = raw ? JSON.parse(raw) : null
+      return Array.isArray(parsed) && parsed.length ? (parsed as PoolRow[]) : null
+    } catch {
+      return null
+    }
+  }
+
+  // Match each row to a FanGraphs projection and publish the pool + fg map.
+  async function buildFromRows(rows: PoolRow[]) {
+    const { matchFG } = await buildPlayerMatchers()
+    const nextPool: LeaguePoolPlayer[] = []
+    const nextFg: Record<string, FGProjection | null> = {}
+    for (const r of rows) {
+      nextPool.push({
+        playerKey: r.playerKey,
+        name: r.name,
+        position: r.position,
+        teamKey: r.teamKey,
+        proTeam: r.proTeam,
+        stats: {},
+      })
+      try {
+        nextFg[r.playerKey] = matchFG({ full_name: r.name, mlb_team: r.proTeam })
+      } catch {
+        nextFg[r.playerKey] = null
+      }
+    }
+    pool.value = nextPool
+    fgByKey.value = nextFg
+    loaded.value = true
+  }
+
   async function load() {
-    if (loading.value) return
+    if (loading.value || loaded.value) return
+
+    // 1) Cache hit: rebuild instantly, no Yahoo calls (breaks the reload throttle).
+    const cached = readCache()
+    if (cached) {
+      await buildFromRows(cached)
+      // eslint-disable-next-line no-console
+      console.log(`[wire-pool] cache rows=${cached.length} pool=${pool.value.length}`)
+      return
+    }
+
+    // 2) Cold: one light, throttle-friendly roster call per team, then cache.
     const teams = (leagueStore.yahooTeams ?? []).filter((t: any) => t?.team_key)
     if (!teams.length) return
     loading.value = true
     try {
       const { yahooService } = await import('@/services/yahoo')
-      const { matchFG } = await buildPlayerMatchers()
-
-      // SEQUENTIAL, one light roster call per team — Yahoo throttles concurrent
-      // requests (12 parallel getRoster calls 429'd), but single calls succeed.
-      // A team that fails just drops its players, not the whole pool.
-      const rows: { teamKey: string; p: any }[] = []
+      const rows: PoolRow[] = []
       for (const t of teams) {
         const teamKey = String(t.team_key)
         try {
           const roster = await yahooService.getRoster(teamKey)
-          for (const p of roster) rows.push({ teamKey, p })
+          for (const p of roster as any[]) {
+            const playerKey = String(p?.player_key ?? p?.player_id ?? '')
+            if (!playerKey) continue
+            rows.push({
+              teamKey,
+              playerKey,
+              name: String(p?.name?.full ?? ''),
+              position: String(p?.position ?? ''),
+              proTeam: String(p?.team_abbr ?? ''),
+            })
+          }
         } catch {
           /* skip this team */
         }
-        // Small gap between calls so a burst of 12 doesn't trip Yahoo's throttle.
-        await new Promise((r) => setTimeout(r, 120))
-      }
-      if (!rows.length) return // keep any previously-loaded pool rather than blanking it
-
-      const nextPool: LeaguePoolPlayer[] = []
-      const nextFg: Record<string, FGProjection | null> = {}
-      for (const { teamKey, p } of rows) {
-        const playerKey = String(p?.player_key ?? p?.player_id ?? '')
-        if (!playerKey) continue
-        const name = String(p?.name?.full ?? '')
-        const proTeam = String(p?.team_abbr ?? '')
-        nextPool.push({ playerKey, name, position: String(p?.position ?? ''), teamKey, proTeam, stats: {} })
-        // Per-player guard so one bad name/team match can't abort the whole pool.
-        try {
-          nextFg[playerKey] = matchFG({ full_name: name, mlb_team: proTeam })
-        } catch {
-          nextFg[playerKey] = null
-        }
+        await new Promise((r) => setTimeout(r, 120)) // gap so the burst doesn't trip the throttle
       }
       // eslint-disable-next-line no-console
-      console.log(`[wire-pool] teams=${teams.length} rows=${rows.length} pool=${nextPool.length}`)
-      pool.value = nextPool
-      fgByKey.value = nextFg
-      loaded.value = true
+      console.log(`[wire-pool] fetched teams=${teams.length} rows=${rows.length}`)
+      if (!rows.length) return // keep retryable; don't cache an empty (throttled) result
+      try {
+        sessionStorage.setItem(cacheKey(), JSON.stringify(rows))
+      } catch {
+        /* quota / private mode — pool still works in-memory */
+      }
+      await buildFromRows(rows)
     } finally {
       loading.value = false
     }
