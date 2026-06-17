@@ -179,7 +179,7 @@ export function useWire() {
 
   const contributions = computed(() => {
     if (!rosterPool.value.length || !catSpecs.value.length) return []
-    const myPlayerKeys = rosterPlayers.value.map((p) => p.playerKey)
+    const myPlayerKeys = myRosterPool.value.map((p) => p.playerKey)
     if (!myPlayerKeys.length) return []
     const fgMap = fgStatsByKey.value
     const effectivePool = rosterPool.value.map((p) => ({
@@ -198,6 +198,17 @@ export function useWire() {
       ? String(espn.myTeamId.value ?? '')
       : String(leagueStore.yahooTeams?.find((t: any) => t.is_my_team)?.team_key ?? ''),
   )
+
+  // Derive MY roster straight from the league pool by teamKey == myTeamId, rather
+  // than trusting the platform's separate my-team filter (useMyRoster.players came
+  // back empty on a Yahoo load where the pool itself was fully populated). The pool
+  // grouping is the same one leagueTotals relies on, so this is the reliable source
+  // of "which rostered players are mine" on both platforms.
+  const myRosterPool = computed(() =>
+    rosterPool.value.filter((p) => String((p as { teamKey?: string }).teamKey ?? '') === myTeamId.value),
+  )
+  // playerKey -> name across the whole pool (drop/upgrade players are all rostered).
+  const nameByKey = computed(() => new Map(rosterPool.value.map((p) => [p.playerKey, p.name])))
 
   const effStatsByKey = computed<Record<string, Record<string, number>>>(() => {
     const fg = fgStatsByKey.value
@@ -333,14 +344,14 @@ export function useWire() {
   const dropsVm = computed(() =>
     dropCandidates.value.candidates.map((d) => ({
       key: d.playerKey,
-      name: rosterPlayers.value.find((p) => p.playerKey === d.playerKey)?.name ?? d.playerKey,
+      name: nameByKey.value.get(d.playerKey) ?? d.playerKey,
       reason: d.reason,
     })),
   )
 
   const toUp = (u: WireUpgrade) => ({
     ...u,
-    dropName: u.dropKey ? (rosterPlayers.value.find((p) => p.playerKey === u.dropKey)?.name ?? null) : null,
+    dropName: u.dropKey ? (nameByKey.value.get(u.dropKey) ?? null) : null,
     fixesLabels: u.fixes.map(labelOf),
     holdsLabels: u.holds.map(labelOf),
   })
@@ -404,17 +415,15 @@ export function useWire() {
   watch(
     [isYahooCategoryLeague, categories, catSpecs, rosterPool, myTeamId, leagueTotals, seasonLoaded],
     () => {
-      const rpSample = rosterPlayers.value.slice(0, 4).map((p) => p.name).join(' / ')
-      const poolSample = rosterPool.value.slice(0, 4).map((p) => p.name).join(' / ')
-      const sameRef = (rosterPlayers.value as unknown) === (rosterPool.value as unknown)
+      const myRosterSample = myRosterPool.value.slice(0, 5).map((p) => p.name).join(' / ')
       // eslint-disable-next-line no-console
       console.log(
         `[wire-diag] yCat=${isYahooCategoryLeague.value} seasonLoaded=${seasonLoaded.value}` +
           ` cats=${categories.value.length} catSpecs=${catSpecs.value.length}` +
-          ` poolLen=${rosterPool.value.length} myRosterLen=${rosterPlayers.value.length} sameRef=${sameRef}` +
+          ` poolLen=${rosterPool.value.length} myRosterPoolLen=${myRosterPool.value.length}` +
+          ` contribs=${contributions.value.length} drops=${dropCandidates.value.candidates.length}` +
           ` FAs=${freeAgents.value.length} leagueTotals=${leagueTotals.value.length} ready=${ready.value}` +
-          ` | myTeamId="${myTeamId.value}"` +
-          ` | myRosterSample=[${rpSample}] | poolSample=[${poolSample}]`,
+          ` | myTeamId="${myTeamId.value}" | myRosterSample=[${myRosterSample}]`,
       )
     },
     { immediate: true },
