@@ -42,7 +42,6 @@ export function useWire() {
   // ── data loaders (mirror the Matchup composable) ──────────────────────────
   const { players: yahooFreeAgents, load: loadPlayers } = useAvailablePlayers()
   const {
-    players: yahooRosterPlayers,
     pool: yahooRosterPool,
     fgByKey: yahooFgByKey,
     load: loadRoster,
@@ -74,9 +73,9 @@ export function useWire() {
   )
 
   // ── platform-switched roster source ───────────────────────────────────────
-  const rosterPlayers = computed(() =>
-    isEspnCategoryLeague.value ? espn.rosterPlayers.value : yahooRosterPlayers.value,
-  )
+  // NOTE: "which players are mine" is derived from the pool by teamKey (see
+  // myRosterPool below), not from the platform's my-team list — that list proved
+  // flaky on Yahoo. We only switch the league-wide pool / fg / free agents here.
   const rosterPool = computed(() =>
     isEspnCategoryLeague.value ? espn.pool.value : yahooRosterPool.value,
   )
@@ -409,29 +408,10 @@ export function useWire() {
     { immediate: true },
   )
 
-  // TEMP DIAGNOSTIC — trace why `ready` isn't flipping true. Flat string so it copies
-  // cleanly from the console. Also logs a sample of pool teamKeys vs myTeamId, since the
-  // league-totals grouping is by teamKey and must match myTeamId. Remove once confirmed.
-  watch(
-    [isYahooCategoryLeague, categories, catSpecs, rosterPool, myTeamId, leagueTotals, seasonLoaded],
-    () => {
-      const myRosterSample = myRosterPool.value.slice(0, 5).map((p) => p.name).join(' / ')
-      // eslint-disable-next-line no-console
-      console.log(
-        `[wire-diag] yCat=${isYahooCategoryLeague.value} seasonLoaded=${seasonLoaded.value}` +
-          ` cats=${categories.value.length} catSpecs=${catSpecs.value.length}` +
-          ` poolLen=${rosterPool.value.length} myRosterPoolLen=${myRosterPool.value.length}` +
-          ` contribs=${contributions.value.length} drops=${dropCandidates.value.candidates.length}` +
-          ` FAs=${freeAgents.value.length} leagueTotals=${leagueTotals.value.length} ready=${ready.value}` +
-          ` | myTeamId="${myTeamId.value}" | myRosterSample=[${myRosterSample}]`,
-      )
-    },
-    { immediate: true },
-  )
-
   // The single, order-independent Yahoo roster trigger: fire only once BOTH the
   // category flag and the my-team key are present, so the load always reads a real
-  // team key (never a half-ready store that filters to an empty roster).
+  // team key. Guard on the POOL (the league-wide list the Wire actually needs and
+  // that reliably loads), not the platform's my-team list.
   const yahooRosterReady = computed(
     () =>
       isYahooCategoryLeague.value &&
@@ -440,9 +420,9 @@ export function useWire() {
 
   watch(
     yahooRosterReady,
-    (ready) => {
-      if (!ready) return
-      if (!yahooRosterPlayers.value.length) maybeLoadRoster()
+    (isReady) => {
+      if (!isReady) return
+      if (!yahooRosterPool.value.length) maybeLoadRoster()
       if (!yahooFreeAgents.value.length) maybeLoadPlayers()
     },
     { immediate: true },
