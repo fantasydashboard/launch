@@ -398,24 +398,21 @@ export function useWire() {
     { immediate: true },
   )
 
-  // TEMP DIAGNOSTIC — trace why `ready` isn't flipping true. Remove once confirmed.
+  // TEMP DIAGNOSTIC — trace why `ready` isn't flipping true. Flat string so it copies
+  // cleanly from the console. Also logs a sample of pool teamKeys vs myTeamId, since the
+  // league-totals grouping is by teamKey and must match myTeamId. Remove once confirmed.
   watch(
     [isYahooCategoryLeague, categories, catSpecs, rosterPool, myTeamId, leagueTotals, seasonLoaded],
     () => {
+      const poolTeamKeys = [...new Set(rosterPool.value.map((p) => String((p as { teamKey?: string }).teamKey ?? '∅')))]
       // eslint-disable-next-line no-console
-      console.log('[wire-diag]', {
-        isYahooCat: isYahooCategoryLeague.value,
-        isEspnCat: isEspnCategoryLeague.value,
-        seasonLoaded: seasonLoaded.value,
-        categories: categories.value.length,
-        catSpecs: catSpecs.value.length,
-        rosterPool: rosterPool.value.length,
-        rosterPlayers: rosterPlayers.value.length,
-        freeAgents: freeAgents.value.length,
-        myTeamId: myTeamId.value,
-        leagueTotals: leagueTotals.value.length,
-        ready: ready.value,
-      })
+      console.log(
+        `[wire-diag] yCat=${isYahooCategoryLeague.value} eCat=${isEspnCategoryLeague.value}` +
+          ` seasonLoaded=${seasonLoaded.value} cats=${categories.value.length} catSpecs=${catSpecs.value.length}` +
+          ` pool=${rosterPool.value.length} myRoster=${rosterPlayers.value.length} FAs=${freeAgents.value.length}` +
+          ` leagueTotals=${leagueTotals.value.length} ready=${ready.value}` +
+          ` | myTeamId="${myTeamId.value}" poolTeamKeys=[${poolTeamKeys.slice(0, 14).join(', ')}]`,
+      )
     },
     { immediate: true },
   )
