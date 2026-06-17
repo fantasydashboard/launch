@@ -52,10 +52,12 @@ export function buildStreamBoard(args: {
     starters.sort((a, b) => (b.starts ?? 0) - (a.starts ?? 0))
   }
 
+  const starterKeys = new Set(starters.map((s) => s.player.key))
   const relievers: StreamTarget[] = []
   if (relieverCats.length) {
     for (const fa of args.freeAgents) {
       if (!isRP(fa.position)) continue
+      if (starterKeys.has(fa.playerKey)) continue // already shown as a starter, don't double-count
       relievers.push({
         player: { key: fa.playerKey, name: fa.name, team: fa.team, position: fa.position },
         cats: relieverLabels,
