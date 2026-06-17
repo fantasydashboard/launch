@@ -40,21 +40,21 @@ export function useYahooLeaguePool() {
       const { yahooService } = await import('@/services/yahoo')
       const { matchFG } = await buildPlayerMatchers()
 
-      // One light roster call per team, in parallel; a single team failing just
-      // drops that team's players rather than failing the whole pool.
-      const rosters = await Promise.all(
-        teams.map(async (t: any) => {
-          const teamKey = String(t.team_key)
-          try {
-            const roster = await yahooService.getRoster(teamKey)
-            return roster.map((p: any) => ({ teamKey, p }))
-          } catch {
-            return [] as { teamKey: string; p: any }[]
-          }
-        }),
-      )
-
-      const rows = rosters.flat()
+      // SEQUENTIAL, one light roster call per team — Yahoo throttles concurrent
+      // requests (12 parallel getRoster calls 429'd), but single calls succeed.
+      // A team that fails just drops its players, not the whole pool.
+      const rows: { teamKey: string; p: any }[] = []
+      for (const t of teams) {
+        const teamKey = String(t.team_key)
+        try {
+          const roster = await yahooService.getRoster(teamKey)
+          for (const p of roster) rows.push({ teamKey, p })
+        } catch {
+          /* skip this team */
+        }
+      }
+      // eslint-disable-next-line no-console
+      console.log(`[wire-pool] teams=${teams.length} players=${rows.length}`)
       if (!rows.length) return // keep any previously-loaded pool rather than blanking it
 
       const nextPool: LeaguePoolPlayer[] = []
