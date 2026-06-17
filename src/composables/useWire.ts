@@ -385,12 +385,37 @@ export function useWire() {
 
   // NOTE: the Yahoo roster/players load is deliberately NOT triggered here — see
   // the yahooRosterReady watch below (mirrors the Matchup composable's clobber-race fix).
+  // Also watch the category flags: on a direct navigation the league details settle
+  // AFTER mount, so isYahooCategoryLeague flips true late — without re-firing here the
+  // season-derived categories never load and the page deadlocks on "Reading the wire".
   watch(
-    () => leagueStore.activeLeagueId,
+    [() => leagueStore.activeLeagueId, isYahooCategoryLeague, isEspnCategoryLeague],
     () => {
       maybeLoadSeasonData()
       maybeLoadEspn()
       fetchWeekSchedule()
+    },
+    { immediate: true },
+  )
+
+  // TEMP DIAGNOSTIC — trace why `ready` isn't flipping true. Remove once confirmed.
+  watch(
+    [isYahooCategoryLeague, categories, catSpecs, rosterPool, myTeamId, leagueTotals, seasonLoaded],
+    () => {
+      // eslint-disable-next-line no-console
+      console.log('[wire-diag]', {
+        isYahooCat: isYahooCategoryLeague.value,
+        isEspnCat: isEspnCategoryLeague.value,
+        seasonLoaded: seasonLoaded.value,
+        categories: categories.value.length,
+        catSpecs: catSpecs.value.length,
+        rosterPool: rosterPool.value.length,
+        rosterPlayers: rosterPlayers.value.length,
+        freeAgents: freeAgents.value.length,
+        myTeamId: myTeamId.value,
+        leagueTotals: leagueTotals.value.length,
+        ready: ready.value,
+      })
     },
     { immediate: true },
   )
