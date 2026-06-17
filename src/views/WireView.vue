@@ -1,7 +1,24 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import { useWire } from '@/composables/useWire'
 
-const { vm } = useWire()
+const { vm, refresh } = useWire()
+
+// If the league-wide data is slow/failing, show a retry instead of an endless
+// "Reading the wire..." (the standings need the heavy rostered-pool fetch).
+const slow = ref(false)
+onMounted(() => {
+  window.setTimeout(() => {
+    slow.value = true
+  }, 12000)
+})
+function retry() {
+  slow.value = false
+  refresh()
+  window.setTimeout(() => {
+    slow.value = true
+  }, 12000)
+}
 </script>
 
 <template>
@@ -12,12 +29,26 @@ const { vm } = useWire()
       <p class="font-mono text-xs text-dark-textMuted">{{ vm.subtitle }}</p>
     </header>
 
-    <!-- Loading state -->
+    <!-- Loading state (with a per-piece breakdown + retry if it's slow) -->
     <div
       v-if="!vm.ready && vm.supported"
       class="rounded-xl border border-dark-border bg-dark-card px-4 py-6 text-center text-sm text-dark-textMuted"
     >
-      Reading the wire...
+      <p>Reading the wire...</p>
+      <p class="mt-2 font-mono text-[10px] text-dark-textMuted">
+        categories {{ vm.loadState.categories }} ·
+        pool {{ vm.loadState.pool }} ·
+        team {{ vm.loadState.teamFound ? 'ok' : '...' }} ·
+        standings {{ vm.loadState.standings }}
+      </p>
+      <button
+        v-if="slow"
+        type="button"
+        class="mt-3 rounded border border-dark-border px-3 py-1 font-mono text-[11px] text-dark-textSecondary hover:text-dark-text"
+        @click="retry"
+      >
+        Taking a while. Retry
+      </button>
     </div>
 
     <!-- Unsupported league type -->

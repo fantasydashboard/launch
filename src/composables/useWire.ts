@@ -360,6 +360,14 @@ export function useWire() {
     return {
       ready: ready.value,
       supported: isEspnCategoryLeague.value || isYahooCategoryLeague.value,
+      // What's loaded vs still pending, surfaced in the loading card so a stuck
+      // state shows which piece is hanging (categories vs the league-wide pool).
+      loadState: {
+        categories: catSpecs.value.length,
+        pool: rosterPool.value.length,
+        teamFound: !!myTeamId.value,
+        standings: leagueTotals.value.length,
+      },
       subtitle: holes.length
         ? `Fix your roster for the season, you're ${holes.join(', ')}.`
         : 'Fix your roster for the season.',
