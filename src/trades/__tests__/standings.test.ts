@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { CatSpec } from '@/myteam/value'
 import type { AggPlayer } from '@/trades/aggregate'
-import { aggregateTeamCatTotals, rankInCategory, expectedCatsWon } from '../standings'
+import { aggregateTeamCatTotals, rankInCategory, expectedCatsWon, addDropDelta } from '../standings'
 
 // 3 teams, 2 cats: HR (counting, higher better), ERA (ratio, lower better, vol = IP).
 const CATS: CatSpec[] = [
@@ -98,5 +98,43 @@ describe('classifyPartnerRead', () => {
     expect(classifyPartnerRead(-0.1)).toBe('fair')  // within eps
     expect(classifyPartnerRead(-0.4)).toBe('reach') // between eps and big
     expect(classifyPartnerRead(-1.2)).toBe('steal') // beyond big
+  })
+})
+
+describe('addDropDelta', () => {
+  const cats: CatSpec[] = [
+    { statId: 'SB', lowerIsBetter: false, side: 'hit', isRatio: false },
+    { statId: 'AVG', lowerIsBetter: false, side: 'hit', isRatio: true, volumeStatId: 'AB' },
+  ]
+  const totals = aggregateTeamCatTotals(
+    [
+      { teamId: 'T1', players: [{ playerKey: 'mine-weak', stats: { SB: 1, AVG: 0.250, AB: 400 } }] },
+      { teamId: 'T2', players: [{ playerKey: 'b', stats: { SB: 20, AVG: 0.260, AB: 400 } }] },
+      { teamId: 'T3', players: [{ playerKey: 'c', stats: { SB: 30, AVG: 0.270, AB: 400 } }] },
+    ],
+    cats,
+  )
+
+  it('a strong add (drop the weak link) improves ECW and flags the fixed category', () => {
+    const d = addDropDelta(totals, cats, 'T1', { SB: 40, AVG: 0.300, AB: 400 }, { SB: 1, AVG: 0.250, AB: 400 })
+    expect(d.deltaEcw).toBeGreaterThan(0)
+    expect(d.fixes).toContain('SB')
+    expect(d.ecwAfter).toBeGreaterThan(d.ecwBefore)
+  })
+
+  it('a pure add (no drop) is supported', () => {
+    const d = addDropDelta(totals, cats, 'T1', { SB: 40, AVG: 0.300, AB: 400 }, null)
+    expect(d.deltaEcw).toBeGreaterThan(0)
+  })
+
+  it('a worthless add does not improve ECW', () => {
+    const d = addDropDelta(totals, cats, 'T1', { SB: 0, AVG: 0.200, AB: 100 }, { SB: 1, AVG: 0.250, AB: 400 })
+    expect(d.deltaEcw).toBeLessThanOrEqual(0)
+    expect(d.fixes).toEqual([])
+  })
+
+  it('returns a zero delta when the team id is unknown', () => {
+    const d = addDropDelta(totals, cats, 'NOPE', { SB: 40, AB: 400, AVG: 0.3 }, null)
+    expect(d.deltaEcw).toBe(0)
   })
 })

@@ -101,7 +101,7 @@ export type PartnerRead = 'fair' | 'reach' | 'steal'
 // Apply a roster change to ONE team's totals (pure — returns a new object). `remove`/`add` are the
 // projected stat lines leaving/joining the team. Counting cats add/subtract the stat; ratio cats
 // adjust num (Σ rate·vol) and den (Σ vol) then recompute value.
-function applySwapToTeam(
+export function applySwapToTeam(
   team: TeamCategoryTotals,
   remove: Record<string, number>[],
   add: Record<string, number>[],
@@ -184,4 +184,46 @@ export function classifyPartnerRead(deltaThem: number, eps = PARTNER_EPS, big = 
   if (deltaThem >= -eps) return 'fair'
   if (deltaThem >= -big) return 'reach'
   return 'steal'
+}
+
+export interface AddDropDelta {
+  deltaEcw: number   // season cats/week gain, net of the drop
+  ecwBefore: number
+  ecwAfter: number
+  fixes: string[]    // statIds whose rank improved
+  holds: string[]    // top-half cats the move keeps (didn't improve, didn't lose)
+}
+
+/**
+ * ECW impact of a one-sided waiver move: add `addStats`, optionally drop `dropStats`, on MY team
+ * only — the rest of the league is unchanged (the added player was unowned). `fixes` are categories
+ * my rank improved; `holds` are categories I'm already winning (top half) that the move preserves.
+ */
+export function addDropDelta(
+  totals: TeamCategoryTotals[],
+  cats: CatSpec[],
+  myTeamId: string,
+  addStats: Record<string, number>,
+  dropStats: Record<string, number> | null,
+): AddDropDelta {
+  const myTeam = totals.find((t) => t.teamId === myTeamId)
+  if (!myTeam) return { deltaEcw: 0, ecwBefore: 0, ecwAfter: 0, fixes: [], holds: [] }
+
+  const ecwBefore = expectedCatsWon(myTeamId, totals, cats)
+  const rankBefore = new Map(cats.map((c) => [c.statId, rankInCategory(totals, c).get(myTeamId) ?? totals.length]))
+
+  const myAfter = applySwapToTeam(myTeam, dropStats ? [dropStats] : [], [addStats], cats)
+  const after = totals.map((t) => (t.teamId === myTeamId ? myAfter : t))
+  const ecwAfter = expectedCatsWon(myTeamId, after, cats)
+
+  const half = Math.ceil(totals.length / 2)
+  const fixes: string[] = []
+  const holds: string[] = []
+  for (const c of cats) {
+    const rb = rankBefore.get(c.statId)!
+    const ra = rankInCategory(after, c).get(myTeamId) ?? after.length
+    if (ra < rb) fixes.push(c.statId)
+    else if (ra === rb && ra <= half) holds.push(c.statId)
+  }
+  return { deltaEcw: ecwAfter - ecwBefore, ecwBefore, ecwAfter, fixes, holds }
 }
