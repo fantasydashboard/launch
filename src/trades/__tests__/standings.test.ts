@@ -137,4 +137,19 @@ describe('addDropDelta', () => {
     const d = addDropDelta(totals, cats, 'NOPE', { SB: 40, AB: 400, AVG: 0.3 }, null)
     expect(d.deltaEcw).toBe(0)
   })
+
+  it('keeps an already-winning, unchanged category in holds', () => {
+    // 3 teams; T1 already leads SB by a lot. A neutral SB add does not change T1's #1 rank.
+    const t = aggregateTeamCatTotals(
+      [
+        { teamId: 'T1', players: [{ playerKey: 'mine', stats: { SB: 50, AVG: 0.25, AB: 400 } }] },
+        { teamId: 'T2', players: [{ playerKey: 'b', stats: { SB: 10, AVG: 0.26, AB: 400 } }] },
+        { teamId: 'T3', players: [{ playerKey: 'c', stats: { SB: 5, AVG: 0.27, AB: 400 } }] },
+      ],
+      cats,
+    )
+    const d = addDropDelta(t, cats, 'T1', { SB: 1, AVG: 0.25, AB: 100 }, null)
+    expect(d.fixes).not.toContain('SB')
+    expect(d.holds).toContain('SB')
+  })
 })

@@ -216,6 +216,9 @@ export function addDropDelta(
   const after = totals.map((t) => (t.teamId === myTeamId ? myAfter : t))
   const ecwAfter = expectedCatsWon(myTeamId, after, cats)
 
+  // Top-half boundary uses `< half + 0.5` because rankInCategory returns FRACTIONAL
+  // average ranks for ties (a 2-way tie for 1st is 1.5), which a strict `<= half`
+  // would wrongly exclude when a tie group straddles the half line.
   const half = Math.ceil(totals.length / 2)
   const fixes: string[] = []
   const holds: string[] = []
@@ -223,7 +226,7 @@ export function addDropDelta(
     const rb = rankBefore.get(c.statId)!
     const ra = rankInCategory(after, c).get(myTeamId) ?? after.length
     if (ra < rb) fixes.push(c.statId)
-    else if (ra === rb && ra <= half) holds.push(c.statId)
+    else if (ra === rb && ra < half + 0.5) holds.push(c.statId)
   }
   return { deltaEcw: ecwAfter - ecwBefore, ecwBefore, ecwAfter, fixes, holds }
 }
