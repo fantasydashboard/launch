@@ -20,6 +20,10 @@ import { buildPlayerMatchers } from '@/services/projectionService'
 
 const SEASON_FRACTION = 0.6
 
+// buildPlayerMatchers loads league-independent FanGraphs data; build it once per session.
+let matchersPromise: ReturnType<typeof buildPlayerMatchers> | null = null
+const getPlayerMatchers = () => (matchersPromise ??= buildPlayerMatchers())
+
 function ymd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
@@ -225,7 +229,7 @@ export function useWire() {
     [freeAgents, catSpecs],
     async () => {
       if (!freeAgents.value.length || !catSpecs.value.length) return
-      const { matchFG } = await buildPlayerMatchers()
+      const { matchFG } = await getPlayerMatchers()
       const labelByStatId = new Map(categories.value.map((c) => [c.statId, c.label || c.name || c.statId]))
       const raw: Record<string, ReturnType<typeof matchFG>> = {}
       for (const fa of freeAgents.value) raw[fa.playerKey] = matchFG({ full_name: fa.name, mlb_team: fa.team })
@@ -249,9 +253,12 @@ export function useWire() {
     })),
   )
 
+  // ── shared drop-candidate analysis (computed once, consumed by dropOptions + dropsVm) ──
+  const dropCandidates = computed(() => computeDropCandidates(contributions.value))
+
   // ── drop options (weakest same-side roster players, weakest first) ─────────
   const dropOptions = computed<WireDropOption[]>(() => {
-    const drops = computeDropCandidates(contributions.value).candidates
+    const drops = dropCandidates.value.candidates
     const byKey = new Map(contributions.value.map((c) => [c.playerKey, c]))
     return drops.map((d) => {
       const contrib = byKey.get(d.playerKey)
@@ -293,10 +300,10 @@ export function useWire() {
   // ── assemble the reactive VM ──────────────────────────────────────────────
   const labelOf = (statId: string) => categories.value.find((c) => c.statId === statId)?.label || statId
 
-  const vm = computed(() => {
-    const ready = leagueTotals.value.length > 0 && !!myTeamId.value
-    const supported = isEspnCategoryLeague.value || isYahooCategoryLeague.value
-    const upgradesAll = ready
+  const ready = computed(() => leagueTotals.value.length > 0 && !!myTeamId.value)
+
+  const upgradesAll = computed<WireUpgrade[]>(() =>
+    ready.value
       ? rankUpgrades({
           freeAgents: wireFreeAgents.value,
           leagueTotals: leagueTotals.value,
@@ -305,14 +312,11 @@ export function useWire() {
           dropOptions: dropOptions.value,
           minDelta: 0.05,
         })
-      : []
-    const toUp = (u: WireUpgrade) => ({
-      ...u,
-      dropName: u.dropKey ? (rosterPlayers.value.find((p) => p.playerKey === u.dropKey)?.name ?? null) : null,
-      fixesLabels: u.fixes.map(labelOf),
-      holdsLabels: u.holds.map(labelOf),
-    })
-    const board: StreamBoard = ready
+      : [],
+  )
+
+  const streamBoardVm = computed<StreamBoard>(() =>
+    ready.value
       ? buildStreamBoard({
           freeAgents: wireFreeAgents.value.map((f) => ({
             playerKey: f.playerKey,
@@ -323,22 +327,36 @@ export function useWire() {
           weakCats: weakCats.value,
           schedule: weekScheduleRef.value,
         })
-      : { weakCats: [], starters: [], relievers: [] }
+      : { weakCats: [], starters: [], relievers: [] },
+  )
+
+  const dropsVm = computed(() =>
+    dropCandidates.value.candidates.map((d) => ({
+      key: d.playerKey,
+      name: rosterPlayers.value.find((p) => p.playerKey === d.playerKey)?.name ?? d.playerKey,
+      reason: d.reason,
+    })),
+  )
+
+  const toUp = (u: WireUpgrade) => ({
+    ...u,
+    dropName: u.dropKey ? (rosterPlayers.value.find((p) => p.playerKey === u.dropKey)?.name ?? null) : null,
+    fixesLabels: u.fixes.map(labelOf),
+    holdsLabels: u.holds.map(labelOf),
+  })
+
+  const vm = computed(() => {
     const holes = weakCats.value.slice(0, 2).map((c) => `${ordinal(Math.round(c.rank))} in ${c.label}`)
     return {
-      ready,
-      supported,
+      ready: ready.value,
+      supported: isEspnCategoryLeague.value || isYahooCategoryLeague.value,
       subtitle: holes.length
         ? `Fix your roster for the season, you're ${holes.join(', ')}.`
         : 'Fix your roster for the season.',
-      hero: upgradesAll.length ? toUp(upgradesAll[0]) : null,
-      upgrades: upgradesAll.slice(1, 8).map(toUp),
-      streamBoard: board,
-      drops: computeDropCandidates(contributions.value).candidates.map((d) => ({
-        key: d.playerKey,
-        name: rosterPlayers.value.find((p) => p.playerKey === d.playerKey)?.name ?? d.playerKey,
-        reason: d.reason,
-      })),
+      hero: upgradesAll.value.length ? toUp(upgradesAll.value[0]) : null,
+      upgrades: upgradesAll.value.slice(1, 8).map(toUp),
+      streamBoard: streamBoardVm.value,
+      drops: dropsVm.value,
     }
   })
 
