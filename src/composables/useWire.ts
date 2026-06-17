@@ -1,7 +1,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAvailablePlayers } from '@/composables/useAvailablePlayers'
-import { useMyRoster } from '@/composables/useMyRoster'
+import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
 import { useFullSeasonCategoryData } from '@/composables/useFullSeasonCategoryData'
 import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { isYahooCategoryLeague as isYahooCategoryScoringType } from '@/composables/useIsCategoryLeague'
@@ -39,13 +39,15 @@ function ordinal(n: number): string {
 export function useWire() {
   const leagueStore = useLeagueStore()
 
-  // ── data loaders (mirror the Matchup composable) ──────────────────────────
+  // ── data loaders ──────────────────────────────────────────────────────────
   const { players: yahooFreeAgents, load: loadPlayers } = useAvailablePlayers()
+  // The league-wide pool comes from light per-team roster calls + FG projections,
+  // NOT the heavy throttle-prone getAllRosteredPlayers (see useYahooLeaguePool).
   const {
-    pool: yahooRosterPool,
-    fgByKey: yahooFgByKey,
-    load: loadRoster,
-  } = useMyRoster()
+    pool: yahooLeaguePool,
+    fgByKey: yahooLeagueFg,
+    load: loadYahooPool,
+  } = useYahooLeaguePool()
 
   // ESPN category data loader
   const espn = useEspnCategoryTeamData()
@@ -77,10 +79,10 @@ export function useWire() {
   // myRosterPool below), not from the platform's my-team list — that list proved
   // flaky on Yahoo. We only switch the league-wide pool / fg / free agents here.
   const rosterPool = computed(() =>
-    isEspnCategoryLeague.value ? espn.pool.value : yahooRosterPool.value,
+    isEspnCategoryLeague.value ? espn.pool.value : yahooLeaguePool.value,
   )
   const fgByKey = computed(() =>
-    isEspnCategoryLeague.value ? espn.fgByKey.value : yahooFgByKey.value,
+    isEspnCategoryLeague.value ? espn.fgByKey.value : yahooLeagueFg.value,
   )
   const freeAgents = computed(() =>
     isEspnCategoryLeague.value ? espn.freeAgents.value : yahooFreeAgents.value,
@@ -387,7 +389,7 @@ export function useWire() {
     if (leagueStore.activePlatform === 'espn') espn.load()
   }
   function maybeLoadRoster() {
-    if (isYahooCategoryLeague.value) loadRoster()
+    if (isYahooCategoryLeague.value) loadYahooPool()
   }
   function maybeLoadPlayers() {
     if (isYahooCategoryLeague.value) loadPlayers()
@@ -430,7 +432,7 @@ export function useWire() {
     yahooRosterReady,
     (isReady) => {
       if (!isReady) return
-      if (!yahooRosterPool.value.length) maybeLoadRoster()
+      if (!yahooLeaguePool.value.length) maybeLoadRoster()
       if (!yahooFreeAgents.value.length) maybeLoadPlayers()
     },
     { immediate: true },
