@@ -19,6 +19,9 @@ const STAKES_OPTIONS: Array<{ value: StakesMode | 'auto'; label: string }> = [
 // team to "fight" when the plan itself says to conserve.
 const subtitle = computed(() => {
   if (!vm.value.ready) return 'Win this week — fight the contested categories.'
+  // Getting blown out this week but safe for the season: don't tell them to fight.
+  if (vm.value.stakes.mode === 'clinch' && vm.value.me.winPct <= 20)
+    return 'Likely loss this week — your season is fine, so don’t chase it.'
   switch (vm.value.stakes.mode) {
     case 'coast':
       return 'Coast week — conserve your moves, no need to chase it.'

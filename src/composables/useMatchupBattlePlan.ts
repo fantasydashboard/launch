@@ -540,6 +540,16 @@ export function useMatchupBattlePlan(): {
     const coastKind = override.value === 'auto' ? auto.coastKind : undefined
     const plan = matchupPlan(planCats, mode, coastKind)
 
+    // When you're getting blown out this week (very low win%) but your season is
+    // safe (auto-clinch), the "win N of M to take the week" demand is tone-deaf —
+    // you're not taking the week. Reframe: concede the week, protect the season.
+    // (coast already says don't-chase; must-win has no choice but to fight.)
+    const LIKELY_LOSS_PCT = 20
+    const path =
+      mode === 'clinch' && meWinPct <= LIKELY_LOSS_PCT
+        ? `This week's a likely loss, but your season's in good shape — set your lineup, make only free swaps, and skip the FAAB.`
+        : plan.path
+
     // ── label lookup from snapshot ───────────────────────────────────────────
     const labelByStatId = new Map(snap.categories.map((c) => [c.statId, c.label]))
     const toStatLabel = (statId: string) => ({
@@ -688,7 +698,7 @@ export function useMatchupBattlePlan(): {
       projLosses: snap.projLosses,
       cadence: cadence.value,
       stakes: { mode, reasoning },
-      path: plan.path,
+      path,
       swingMoves,
       coinFlips,
       leaning,
