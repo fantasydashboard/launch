@@ -236,15 +236,26 @@ export function useWire() {
   })
 
   // ── free-agent effective stats + side ─────────────────────────────────────
+  // Bound the ranking input: the ECW ranking runs addDropDelta (many category
+  // re-ranks) per free agent, so an unbounded ESPN pool of hundreds/thousands
+  // hangs the main thread. Rank only the most-owned free agents (the realistic
+  // add targets); the rest are noise on a season-add page.
+  const MAX_RANKABLE_FAS = 120
+  const rankableFreeAgents = computed(() =>
+    [...freeAgents.value]
+      .sort((a, b) => (b.percentOwned ?? 0) - (a.percentOwned ?? 0))
+      .slice(0, MAX_RANKABLE_FAS),
+  )
+
   const faFgByKey = ref<Record<string, Record<string, number>>>({})
   watch(
-    [freeAgents, catSpecs],
+    [rankableFreeAgents, catSpecs],
     async () => {
-      if (!freeAgents.value.length || !catSpecs.value.length) return
+      if (!rankableFreeAgents.value.length || !catSpecs.value.length) return
       const { matchFG } = await getPlayerMatchers()
       const labelByStatId = new Map(categories.value.map((c) => [c.statId, c.label || c.name || c.statId]))
       const raw: Record<string, ReturnType<typeof matchFG>> = {}
-      for (const fa of freeAgents.value) raw[fa.playerKey] = matchFG({ full_name: fa.name, mlb_team: fa.team })
+      for (const fa of rankableFreeAgents.value) raw[fa.playerKey] = matchFG({ full_name: fa.name, mlb_team: fa.team })
       faFgByKey.value = mapFgStatsByKey(raw, catSpecs.value, (id) => labelByStatId.get(id) ?? id)
     },
     { immediate: true },
@@ -254,7 +265,7 @@ export function useWire() {
     /SP|RP|\bP\b/.test(position.toUpperCase()) ? 'pit' : 'hit'
 
   const wireFreeAgents = computed<WireFreeAgent[]>(() =>
-    freeAgents.value.map((fa) => ({
+    rankableFreeAgents.value.map((fa) => ({
       playerKey: fa.playerKey,
       name: fa.name,
       position: fa.position,
@@ -437,6 +448,17 @@ export function useWire() {
     },
     { immediate: true },
   )
+
+  // TEMP: log pool / free-agent sizes once ready, to confirm the ESPN pool size
+  // and that the FA cap is engaging. Remove once the page is confirmed on both.
+  watch(ready, (r) => {
+    if (!r) return
+    // eslint-disable-next-line no-console
+    console.log(
+      `[wire-sizes] pool=${rosterPool.value.length} freeAgentsRaw=${freeAgents.value.length}` +
+        ` rankable=${rankableFreeAgents.value.length} leagueTotals=${leagueTotals.value.length}`,
+    )
+  })
 
   return reactive({ vm, refresh })
 }

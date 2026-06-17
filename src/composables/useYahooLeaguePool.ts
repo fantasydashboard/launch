@@ -52,6 +52,8 @@ export function useYahooLeaguePool() {
         } catch {
           /* skip this team */
         }
+        // Small gap between calls so a burst of 12 doesn't trip Yahoo's throttle.
+        await new Promise((r) => setTimeout(r, 120))
       }
       if (!rows.length) return // keep any previously-loaded pool rather than blanking it
 
