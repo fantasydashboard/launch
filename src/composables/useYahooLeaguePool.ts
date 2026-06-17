@@ -53,8 +53,6 @@ export function useYahooLeaguePool() {
           /* skip this team */
         }
       }
-      // eslint-disable-next-line no-console
-      console.log(`[wire-pool] teams=${teams.length} players=${rows.length}`)
       if (!rows.length) return // keep any previously-loaded pool rather than blanking it
 
       const nextPool: LeaguePoolPlayer[] = []
@@ -65,8 +63,15 @@ export function useYahooLeaguePool() {
         const name = String(p?.name?.full ?? '')
         const proTeam = String(p?.team_abbr ?? '')
         nextPool.push({ playerKey, name, position: String(p?.position ?? ''), teamKey, proTeam, stats: {} })
-        nextFg[playerKey] = matchFG({ full_name: name, mlb_team: proTeam })
+        // Per-player guard so one bad name/team match can't abort the whole pool.
+        try {
+          nextFg[playerKey] = matchFG({ full_name: name, mlb_team: proTeam })
+        } catch {
+          nextFg[playerKey] = null
+        }
       }
+      // eslint-disable-next-line no-console
+      console.log(`[wire-pool] teams=${teams.length} rows=${rows.length} pool=${nextPool.length}`)
       pool.value = nextPool
       fgByKey.value = nextFg
       loaded.value = true
