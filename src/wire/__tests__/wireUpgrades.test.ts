@@ -36,4 +36,26 @@ describe('rankUpgrades', () => {
     })
     expect(out[0]?.dropKey ?? null).toBeNull()
   })
+
+  it('pairs a pitcher free agent with a pit-side drop', () => {
+    const pcats = [{ statId: 'K', lowerIsBetter: false, side: 'pit' as const, isRatio: false }]
+    const totals = aggregateTeamCatTotals(
+      [
+        { teamId: 'T1', players: [{ playerKey: 'weakSP', stats: { K: 50 } }] },
+        { teamId: 'T2', players: [{ playerKey: 'b', stats: { K: 120 } }] },
+        { teamId: 'T3', players: [{ playerKey: 'c', stats: { K: 200 } }] },
+      ],
+      pcats,
+    )
+    const out = rankUpgrades({
+      freeAgents: [{ playerKey: 'ace', name: 'Ace', position: 'SP', team: 'LAD', effStats: { K: 220 }, side: 'pit' }],
+      leagueTotals: totals,
+      myTeamId: 'T1',
+      cats: pcats,
+      dropOptions: [{ playerKey: 'weakSP', side: 'pit', effStats: { K: 50 } }],
+      minDelta: 0.05,
+    })
+    expect(out[0].dropKey).toBe('weakSP')
+    expect(out[0].fixes).toContain('K')
+  })
 })

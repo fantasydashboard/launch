@@ -23,7 +23,12 @@ export interface WireUpgrade {
   holds: string[] // statIds
 }
 
-/** Rank free agents by season ECW delta, each netted against the weakest same-side droppable. */
+/**
+ * Rank free agents by season ECW delta, each netted against the weakest same-side droppable.
+ *
+ * @remarks `dropOptions` MUST be ordered weakest-first — the first same-side entry is used as the
+ * drop for every free agent on that side, so a mis-ordered list produces wrong pairings.
+ */
 export function rankUpgrades(args: {
   freeAgents: WireFreeAgent[]
   leagueTotals: TeamCategoryTotals[]
