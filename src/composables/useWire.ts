@@ -404,14 +404,17 @@ export function useWire() {
   watch(
     [isYahooCategoryLeague, categories, catSpecs, rosterPool, myTeamId, leagueTotals, seasonLoaded],
     () => {
-      const poolTeamKeys = [...new Set(rosterPool.value.map((p) => String((p as { teamKey?: string }).teamKey ?? '∅')))]
+      const rpSample = rosterPlayers.value.slice(0, 4).map((p) => p.name).join(' / ')
+      const poolSample = rosterPool.value.slice(0, 4).map((p) => p.name).join(' / ')
+      const sameRef = (rosterPlayers.value as unknown) === (rosterPool.value as unknown)
       // eslint-disable-next-line no-console
       console.log(
-        `[wire-diag] yCat=${isYahooCategoryLeague.value} eCat=${isEspnCategoryLeague.value}` +
-          ` seasonLoaded=${seasonLoaded.value} cats=${categories.value.length} catSpecs=${catSpecs.value.length}` +
-          ` pool=${rosterPool.value.length} myRoster=${rosterPlayers.value.length} FAs=${freeAgents.value.length}` +
-          ` leagueTotals=${leagueTotals.value.length} ready=${ready.value}` +
-          ` | myTeamId="${myTeamId.value}" poolTeamKeys=[${poolTeamKeys.slice(0, 14).join(', ')}]`,
+        `[wire-diag] yCat=${isYahooCategoryLeague.value} seasonLoaded=${seasonLoaded.value}` +
+          ` cats=${categories.value.length} catSpecs=${catSpecs.value.length}` +
+          ` poolLen=${rosterPool.value.length} myRosterLen=${rosterPlayers.value.length} sameRef=${sameRef}` +
+          ` FAs=${freeAgents.value.length} leagueTotals=${leagueTotals.value.length} ready=${ready.value}` +
+          ` | myTeamId="${myTeamId.value}"` +
+          ` | myRosterSample=[${rpSample}] | poolSample=[${poolSample}]`,
       )
     },
     { immediate: true },
