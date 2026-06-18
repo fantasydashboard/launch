@@ -551,13 +551,25 @@ export function useWire() {
     valueGap: number
     ilWarning: boolean
   }
+  // Best-fit ordering: the FA's season ECW gain for MY team (from the ranked
+  // upgrades) leads, so the adds that actually plug your weak cats sit on top —
+  // far more useful on a category page than raw value. FAs with no positive
+  // upgrade fall back to value order, after the fit-positive ones.
+  const upgradeDeltaByKey = computed(() => new Map(upgradesAll.value.map((u) => [u.player.key, u.deltaEcw])))
   const graderAdds = computed<GraderPick[]>(() =>
     wireFreeAgents.value
       .map((f) => {
         const meta = metaByKey.value.get(f.playerKey)
         return { key: f.playerKey, name: f.name, pos: f.position, headshot: f.headshot || meta?.headshot, proLogo: mlbTeamLogo(f.team) || meta?.proLogo, value: meta?.value ?? 0 }
       })
-      .sort((a, b) => b.value - a.value),
+      .sort((a, b) => {
+        const da = upgradeDeltaByKey.value.get(a.key) ?? null
+        const db = upgradeDeltaByKey.value.get(b.key) ?? null
+        if (da !== null && db !== null) return db - da
+        if (da !== null) return -1
+        if (db !== null) return 1
+        return b.value - a.value
+      }),
   )
   const graderDrops = computed<GraderPick[]>(() =>
     myRosterPool.value

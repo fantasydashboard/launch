@@ -61,7 +61,7 @@ export function buildStreamBoard(args: {
       relievers.push({
         player: { key: fa.playerKey, name: fa.name, team: fa.team, position: fa.position },
         cats: relieverLabels,
-        rationale: 'reliever, save/hold upside',
+        rationale: fa.team ? `${fa.team} pen · ${relieverLabels.join('/')} upside` : `${relieverLabels.join('/')} upside`,
       })
     }
   }

@@ -29,6 +29,24 @@ describe('rankUpgrades', () => {
     expect(out.find((u) => u.player.name === 'Scrub')).toBeUndefined() // below minDelta
   })
 
+  it('assigns DISTINCT drops across same-side adds (no repeated drop)', () => {
+    const twoDrops = [
+      { playerKey: 'weakHitter', side: 'hit' as const, effStats: { SB: 1 } },
+      { playerKey: 'weakHitter2', side: 'hit' as const, effStats: { SB: 2 } },
+    ]
+    const out = rankUpgrades({
+      freeAgents: [
+        { playerKey: 'speedA', name: 'Speed A', position: 'OF', team: 'ARI', effStats: { SB: 40 }, side: 'hit' },
+        { playerKey: 'speedB', name: 'Speed B', position: 'OF', team: 'SD', effStats: { SB: 35 }, side: 'hit' },
+      ],
+      leagueTotals, myTeamId: 'T1', cats, dropOptions: twoDrops, minDelta: 0.05,
+    })
+    expect(out).toHaveLength(2)
+    const drops = out.map((u) => u.dropKey)
+    expect(new Set(drops).size).toBe(2) // two adds -> two different drops
+    expect(out[0].dropKey).toBe('weakHitter') // strongest add takes the weakest drop
+  })
+
   it('uses a null drop when no same-side droppable exists', () => {
     const out = rankUpgrades({
       freeAgents: [{ playerKey: 'sp', name: 'Streamer', position: 'SP', team: 'LAD', effStats: { SB: 40 }, side: 'pit' }],

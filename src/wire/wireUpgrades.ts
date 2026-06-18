@@ -24,10 +24,17 @@ export interface WireUpgrade {
 }
 
 /**
- * Rank free agents by season ECW delta, each netted against the weakest same-side droppable.
+ * Rank free agents by season ECW delta, with DISTINCT drops across same-side adds.
  *
- * @remarks `dropOptions` MUST be ordered weakest-first — the first same-side entry is used as the
- * drop for every free agent on that side, so a mis-ordered list produces wrong pairings.
+ * Each add is first scored against the weakest same-side droppable (its best-case
+ * gain) and the list is ranked by that. Then drops are assigned greedily down the
+ * ranking — the strongest add takes the weakest droppable, the next same-side add
+ * the next-weakest UNUSED droppable (delta recomputed against it), and so on — so
+ * the surfaced upgrades read as a menu of moves that each clear a DIFFERENT roster
+ * spot, instead of repeating "drop your weakest guy" on every row. When a side runs
+ * out of fresh droppables, it falls back to its weakest (the tail may repeat).
+ *
+ * @remarks `dropOptions` MUST be ordered weakest-first.
  */
 export function rankUpgrades(args: {
   freeAgents: WireFreeAgent[]
@@ -38,12 +45,26 @@ export function rankUpgrades(args: {
   minDelta?: number
 }): WireUpgrade[] {
   const minDelta = args.minDelta ?? 0.05
-  const upgrades: WireUpgrade[] = []
+
+  // 1) Best-case delta per FA (paired with the weakest same-side droppable), ranked.
+  const ranked: { fa: WireFreeAgent; best: number }[] = []
   for (const fa of args.freeAgents) {
     const drop = args.dropOptions.find((d) => d.side === fa.side) ?? null
     const d = addDropDelta(args.leagueTotals, args.cats, args.myTeamId, fa.effStats, drop?.effStats ?? null)
     if (d.deltaEcw < minDelta) continue
-    upgrades.push({
+    ranked.push({ fa, best: d.deltaEcw })
+  }
+  ranked.sort((a, b) => b.best - a.best)
+
+  // 2) Greedy distinct-drop assignment down the ranking, delta recomputed per drop.
+  const used = new Set<string>()
+  const out: WireUpgrade[] = []
+  for (const { fa } of ranked) {
+    const sideDrops = args.dropOptions.filter((d) => d.side === fa.side)
+    const drop = sideDrops.find((d) => !used.has(d.playerKey)) ?? sideDrops[0] ?? null
+    if (drop) used.add(drop.playerKey)
+    const d = addDropDelta(args.leagueTotals, args.cats, args.myTeamId, fa.effStats, drop?.effStats ?? null)
+    out.push({
       player: { key: fa.playerKey, name: fa.name, position: fa.position, team: fa.team, headshot: fa.headshot },
       deltaEcw: d.deltaEcw,
       dropKey: drop?.playerKey ?? null,
@@ -51,5 +72,5 @@ export function rankUpgrades(args: {
       holds: d.holds,
     })
   }
-  return upgrades.sort((a, b) => b.deltaEcw - a.deltaEcw)
+  return out.sort((a, b) => b.deltaEcw - a.deltaEcw)
 }

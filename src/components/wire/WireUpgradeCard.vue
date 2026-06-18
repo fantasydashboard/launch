@@ -73,6 +73,7 @@ const onLogoError = (e: Event) => {
       <span class="font-display text-[15px] font-bold text-dark-text">{{ u.add.name }}</span>
       <img v-if="u.add.proLogo" :src="u.add.proLogo" alt="" @error="onLogoError" class="h-4 w-4 shrink-0 object-contain" />
       <span class="font-mono text-[11px] text-dark-textMuted">{{ u.add.pos }}</span>
+      <ValueBadge :value="u.add.value" />
       <span class="ml-auto shrink-0 font-mono text-[13px] font-bold text-primary">+{{ u.deltaEcw.toFixed(1) }} cats/wk</span>
     </div>
 

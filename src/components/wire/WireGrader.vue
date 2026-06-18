@@ -79,8 +79,8 @@ const onLogoError = (e: Event) => {
             <input
               v-model="filter"
               type="text"
-              placeholder="filter free agents…"
-              class="w-32 rounded border border-dark-border bg-dark-bg px-2 py-0.5 font-mono text-[10px] text-dark-text placeholder:text-dark-textMuted focus:outline-none focus:ring-1 focus:ring-primary/40"
+              placeholder="filter…"
+              class="w-24 rounded border border-dark-border bg-dark-bg px-2 py-0.5 font-mono text-[10px] text-dark-text placeholder:text-dark-textMuted focus:outline-none focus:ring-1 focus:ring-primary/40"
             />
           </div>
           <div class="max-h-56 space-y-1 overflow-y-auto pr-1">
