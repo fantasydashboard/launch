@@ -284,34 +284,65 @@ export function useWire() {
   // hangs the main thread. Rank only the most-owned free agents (the realistic
   // add targets); the rest are noise on a season-add page.
   const MAX_RANKABLE_FAS = 120
-  // A free agent must NOT be on any team's roster. ESPN's free-agent feed can leak
+
+  // A free agent must NOT be on any team's roster. ESPN's free-agent feed leaks
   // rostered players (the status filter isn't always honored), surfacing stars like
   // CJ Abrams as "addable". The league pool is the source of truth for who's
-  // rostered, so exclude anyone already in it. Guard on a populated pool so an
-  // early/empty load doesn't blank every free agent.
+  // rostered, so exclude anyone in it. Guard on a populated pool so an early/empty
+  // load doesn't blank every free agent.
   const rosteredKeys = computed(() => new Set(rosterPool.value.map((p) => p.playerKey)))
-  const rankableFreeAgents = computed(() => {
+  const availableFreeAgents = computed(() => {
     const rostered = rosteredKeys.value
     const guard = rosterPool.value.length > 0
-    return [...freeAgents.value]
-      .filter((fa) => !guard || !rostered.has(fa.playerKey))
-      .sort((a, b) => (b.percentOwned ?? 0) - (a.percentOwned ?? 0))
-      .slice(0, MAX_RANKABLE_FAS)
+    return [...freeAgents.value].filter((fa) => !guard || !rostered.has(fa.playerKey))
   })
 
+  // FanGraphs ROS projection for EVERY available FA (not just the ranked slice), so
+  // candidate selection can lean on real projections instead of feed order.
   const faFgByKey = ref<Record<string, Record<string, number>>>({})
   watch(
-    [rankableFreeAgents, catSpecs],
+    [availableFreeAgents, catSpecs],
     async () => {
-      if (!rankableFreeAgents.value.length || !catSpecs.value.length) return
+      if (!availableFreeAgents.value.length || !catSpecs.value.length) return
       const { matchFG } = await getPlayerMatchers()
       const labelByStatId = new Map(categories.value.map((c) => [c.statId, c.label || c.name || c.statId]))
       const raw: Record<string, ReturnType<typeof matchFG>> = {}
-      for (const fa of rankableFreeAgents.value) raw[fa.playerKey] = matchFG({ full_name: fa.name, mlb_team: fa.team })
+      for (const fa of availableFreeAgents.value) raw[fa.playerKey] = matchFG({ full_name: fa.name, mlb_team: fa.team })
       faFgByKey.value = mapFgStatsByKey(raw, catSpecs.value, (id) => labelByStatId.get(id) ?? id)
     },
     { immediate: true },
   )
+
+  // The candidates we actually rank/show. ESPN returns 0% ownership for every free
+  // agent, so an ownership sort just surfaces alphabetical scrubs (all the same
+  // baseline value) and buries the useful FAs past the cap. Instead: drop players
+  // with NO rest-of-season projection (minor-leaguers), then keep the top
+  // MAX_RANKABLE_FAS by overall projected value vs the rostered pool — the realistic
+  // add targets. (Bounding the count keeps the per-FA ECW ranking off the main thread.)
+  const rankableFreeAgents = computed(() => {
+    const fg = faFgByKey.value
+    const avail = availableFreeAgents.value
+    if (!avail.length || !catSpecs.value.length) return []
+    const projectable = avail.filter((fa) => {
+      const m = fg[fa.playerKey]
+      return m && Object.keys(m).length > 0
+    })
+    const base = projectable.length ? projectable : avail
+    if (!rosterPool.value.length) return base.slice(0, MAX_RANKABLE_FAS) // value needs the pool
+    const scoring = [
+      ...rosterPool.value.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: effStatsByKey.value[p.playerKey] ?? {} })),
+      ...base.map((fa) => ({
+        playerKey: fa.playerKey,
+        position: fa.position,
+        stats: toEffectiveStats(fa.stats, fg[fa.playerKey] ?? null, catSpecs.value, SEASON_FRACTION),
+      })),
+    ]
+    const valById = new Map<string, number>()
+    for (const c of computeRosterValue(scoring, scoring.map((p) => p.playerKey), catSpecs.value)) valById.set(c.playerKey, c.roleValue)
+    return [...base]
+      .sort((a, b) => (valById.get(b.playerKey) ?? 0) - (valById.get(a.playerKey) ?? 0))
+      .slice(0, MAX_RANKABLE_FAS)
+  })
 
   const faSide = (position: string): 'hit' | 'pit' =>
     /SP|RP|\bP\b/.test(position.toUpperCase()) ? 'pit' : 'hit'
