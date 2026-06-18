@@ -19,6 +19,7 @@ defineProps<{
     holdsLabels: string[]
   }
   hero?: boolean
+  compact?: boolean // alternatives: hide the (shared) drop + holds, just ADD + fit + gain
 }>()
 const onLogoError = (e: Event) => {
   ;(e.target as HTMLImageElement).style.display = 'none'
@@ -37,7 +38,6 @@ const onLogoError = (e: Event) => {
     >
       <span class="flex flex-wrap items-center gap-x-2 font-mono text-[11px] uppercase tracking-wide text-dark-textMuted">
         <b :class="hero ? 'text-primary' : 'text-[#ffd98a]'">Adds {{ u.deltaEcw.toFixed(1) }} cats/week</b>
-        <span v-if="u.fixesLabels.length" class="text-[10px]">· fills {{ u.fixesLabels.join(' ') }}</span>
       </span>
       <span class="shrink-0 font-mono text-[12px] font-bold text-primary">+{{ u.deltaEcw.toFixed(1) }}/wk</span>
     </div>
@@ -66,8 +66,8 @@ const onLogoError = (e: Event) => {
       </span>
     </div>
 
-    <!-- DROP -->
-    <div v-if="u.drop" class="flex items-center gap-2 px-4 pb-2.5 pt-1.5">
+    <!-- DROP (omitted on compact alternatives — the shared drop is noted once above) -->
+    <div v-if="!compact && u.drop" class="flex items-center gap-2 px-4 pb-2.5 pt-1.5">
       <span class="w-10 shrink-0 font-mono text-[10px] font-bold tracking-wider text-dark-textMuted">DROP</span>
       <Avatar :src="u.drop.headshot" :label="u.drop.name" cls="h-6 w-6 rounded-full" />
       <span class="text-sm font-semibold text-dark-textSecondary">{{ u.drop.name }}</span>
@@ -75,11 +75,13 @@ const onLogoError = (e: Event) => {
       <span class="font-mono text-[11px] text-dark-textMuted">{{ u.drop.pos }}</span>
       <ValueBadge :value="u.drop.value" />
     </div>
-    <div v-else class="px-4 pb-2.5 pt-1 font-mono text-[10px] text-dark-textMuted">Open roster spot, no drop needed.</div>
+    <div v-else-if="!compact && !u.drop" class="px-4 pb-2.5 pt-1 font-mono text-[10px] text-dark-textMuted">Open roster spot, no drop needed.</div>
+    <!-- pad the bottom on compact cards (no drop row to provide it) -->
+    <div v-if="compact" class="pb-2.5"></div>
 
-    <!-- holds (cats the move keeps you strong in) -->
+    <!-- holds (cats the move keeps you strong in) — full card only -->
     <div
-      v-if="u.holdsLabels.length"
+      v-if="!compact && u.holdsLabels.length"
       class="border-t border-dark-border/40 px-4 py-1.5 font-mono text-[10px] text-dark-textMuted"
     >
       holds {{ u.holdsLabels.join(' ') }}
