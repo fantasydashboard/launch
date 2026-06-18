@@ -87,8 +87,6 @@ export function useYahooLeaguePool() {
     const cached = readCache()
     if (cached) {
       await buildFromRows(cached)
-      // eslint-disable-next-line no-console
-      console.log(`[wire-pool] cache rows=${cached.length} pool=${pool.value.length}`)
       return
     }
 
@@ -119,8 +117,6 @@ export function useYahooLeaguePool() {
         }
         await new Promise((r) => setTimeout(r, 120)) // gap so the burst doesn't trip the throttle
       }
-      // eslint-disable-next-line no-console
-      console.log(`[wire-pool] fetched teams=${teams.length} rows=${rows.length}`)
       if (!rows.length) return // keep retryable; don't cache an empty (throttled) result
       try {
         sessionStorage.setItem(cacheKey(), JSON.stringify(rows))

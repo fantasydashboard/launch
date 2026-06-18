@@ -449,17 +449,6 @@ export function useWire() {
     { immediate: true },
   )
 
-  // TEMP: log pool / free-agent sizes once ready, to confirm the ESPN pool size
-  // and that the FA cap is engaging. Remove once the page is confirmed on both.
-  watch(ready, (r) => {
-    if (!r) return
-    // eslint-disable-next-line no-console
-    console.log(
-      `[wire-sizes] pool=${rosterPool.value.length} freeAgentsRaw=${freeAgents.value.length}` +
-        ` rankable=${rankableFreeAgents.value.length} leagueTotals=${leagueTotals.value.length}`,
-    )
-  })
-
   // Return vm as a plain ComputedRef (NOT wrapped in reactive): the view does
   // `const { vm } = useWire()`, and destructuring out of a reactive() object would
   // unwrap vm into a frozen snapshot that never updates. As a top-level ref it
