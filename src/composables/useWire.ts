@@ -78,14 +78,18 @@ export function useWire() {
   // NOTE: "which players are mine" is derived from the pool by teamKey (see
   // myRosterPool below), not from the platform's my-team list — that list proved
   // flaky on Yahoo. We only switch the league-wide pool / fg / free agents here.
+  // TEMP: the ESPN path OOM-crashes the renderer (runaway compute under
+  // investigation), so gate the league pool to empty on ESPN — nothing heavy runs
+  // and the view shows an "ESPN coming soon" state instead of crashing. Yahoo
+  // unchanged. Remove the `isEspnCategoryLeague.value ? [] :` guard once fixed.
   const rosterPool = computed(() =>
-    isEspnCategoryLeague.value ? espn.pool.value : yahooLeaguePool.value,
+    isEspnCategoryLeague.value ? [] : yahooLeaguePool.value,
   )
   const fgByKey = computed(() =>
     isEspnCategoryLeague.value ? espn.fgByKey.value : yahooLeagueFg.value,
   )
   const freeAgents = computed(() =>
-    isEspnCategoryLeague.value ? espn.freeAgents.value : yahooFreeAgents.value,
+    isEspnCategoryLeague.value ? [] : yahooFreeAgents.value, // TEMP ESPN gate (see rosterPool)
   )
 
   // ── Yahoo season-derived categories ───────────────────────────────────────
@@ -373,6 +377,7 @@ export function useWire() {
     return {
       ready: ready.value,
       supported: isEspnCategoryLeague.value || isYahooCategoryLeague.value,
+      espnComingSoon: isEspnCategoryLeague.value, // TEMP: ESPN gated while OOM is fixed
       // What's loaded vs still pending, surfaced in the loading card so a stuck
       // state shows which piece is hanging (categories vs the league-wide pool).
       loadState: {
