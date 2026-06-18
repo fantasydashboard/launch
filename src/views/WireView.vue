@@ -106,6 +106,9 @@ const onLogoError = (e: Event) => {
       <!-- 3. MORE UPGRADES -->
       <section v-if="vm.upgrades.length" class="space-y-2">
         <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">More upgrades</p>
+        <p class="font-mono text-[9px] text-dark-textMuted">
+          Alternatives for the same spot, you'd make one of these.
+        </p>
         <WireUpgradeCard v-for="(u, i) in vm.upgrades" :key="i" :u="u" />
       </section>
 

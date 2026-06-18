@@ -334,19 +334,29 @@ export function useWire() {
       .sort((a, b) => a.rank - b.rank)
   })
 
-  // ── player value (0-100) + visual meta (headshot, logo, pos) for every player ─
-  // roleValue percentile over the rostered pool + the rankable free agents, so an
-  // add and a drop are on the same 0-100 scale (the Trades-page value bar).
-  const valueByKey = computed(() => {
-    if (!catSpecs.value.length) return new Map<string, number>()
+  // ── player values: overall (0-100 roleValue) + per-category strength (0-100) ──
+  // Computed once over the rostered pool + rankable free agents. The per-cat
+  // percentile drives the "category-fit" bars (how much an add plugs each weak
+  // cat) — far more useful on a fit-based waiver page than absolute value.
+  const playerValues = computed(() => {
+    const role = new Map<string, number>()
+    const pctCat = new Map<string, Map<string, number>>()
+    if (!catSpecs.value.length) return { role, pctCat }
     const all = [
       ...rosterPool.value.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: effStatsByKey.value[p.playerKey] ?? {} })),
       ...wireFreeAgents.value.map((f) => ({ playerKey: f.playerKey, position: f.position, stats: f.effStats })),
     ]
-    if (!all.length) return new Map<string, number>()
-    const contribs = computeRosterValue(all, all.map((p) => p.playerKey), catSpecs.value)
-    return new Map(contribs.map((c) => [c.playerKey, Math.round(c.roleValue)]))
+    if (!all.length) return { role, pctCat }
+    for (const c of computeRosterValue(all, all.map((p) => p.playerKey), catSpecs.value)) {
+      role.set(c.playerKey, Math.round(c.roleValue))
+      const m = new Map<string, number>()
+      for (const cc of c.contribs) m.set(cc.statId, Math.round(cc.percentile <= 1 ? cc.percentile * 100 : cc.percentile))
+      pctCat.set(c.playerKey, m)
+    }
+    return { role, pctCat }
   })
+  const valueByKey = computed(() => playerValues.value.role)
+  const pctByKeyCat = computed(() => playerValues.value.pctCat)
 
   interface PlayerMeta { headshot?: string; proLogo?: string; pos: string; value: number }
   const metaByKey = computed(() => {
@@ -426,6 +436,7 @@ export function useWire() {
   const toUp = (u: WireUpgrade) => {
     const addMeta = metaByKey.value.get(u.player.key)
     const dropMeta = u.dropKey ? metaByKey.value.get(u.dropKey) : undefined
+    const addPct = pctByKeyCat.value.get(u.player.key)
     return {
       deltaEcw: u.deltaEcw,
       add: {
@@ -435,6 +446,8 @@ export function useWire() {
         proLogo: mlbTeamLogo(u.player.team) || addMeta?.proLogo,
         value: addMeta?.value ?? 0,
       },
+      // The add's strength (0-100) in each category it fixes — the fit bars.
+      fit: u.fixes.map((statId) => ({ label: labelOf(statId), pct: addPct?.get(statId) ?? 0 })),
       drop: u.dropKey
         ? {
             name: nameByKey.value.get(u.dropKey) ?? u.dropKey,

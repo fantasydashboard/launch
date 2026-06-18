@@ -14,6 +14,7 @@ defineProps<{
     deltaEcw: number
     add: WirePlayer
     drop: WirePlayer | null
+    fit: { label: string; pct: number }[]
     fixesLabels: string[]
     holdsLabels: string[]
   }
@@ -48,7 +49,21 @@ const onLogoError = (e: Event) => {
       <span class="font-display text-[15px] font-bold text-dark-text">{{ u.add.name }}</span>
       <img v-if="u.add.proLogo" :src="u.add.proLogo" alt="" @error="onLogoError" class="h-4 w-4 shrink-0 object-contain" />
       <span class="font-mono text-[11px] text-dark-textMuted">{{ u.add.pos }}</span>
-      <ValueBadge :value="u.add.value" />
+    </div>
+
+    <!-- category-fit bars: how much this add plugs each of your weak cats -->
+    <div v-if="u.fit.length" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pl-[60px] pt-1.5">
+      <span
+        v-for="f in u.fit"
+        :key="f.label"
+        class="inline-flex items-center gap-1.5 font-mono text-[10px]"
+        :title="`${f.label}: ${f.pct}/100 in this category`"
+      >
+        <span class="text-primary">{{ f.label }}</span>
+        <span class="relative h-1 w-8 shrink-0 overflow-hidden rounded-full bg-dark-border">
+          <span class="absolute inset-y-0 left-0 rounded-full bg-primary" :style="{ width: f.pct + '%' }" />
+        </span>
+      </span>
     </div>
 
     <!-- DROP -->
