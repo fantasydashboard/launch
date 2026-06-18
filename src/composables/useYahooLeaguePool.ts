@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { buildPlayerMatchers, type FGProjection } from '@/services/projectionService'
+import { parseRosterSlots } from '@/trades/rosterSlots'
 
 /**
  * The league-wide rostered pool for a Yahoo category league, assembled from one
@@ -41,8 +42,22 @@ export function useYahooLeaguePool() {
   const leagueStore = useLeagueStore()
   const pool = ref<LeaguePoolPlayer[]>([])
   const fgByKey = ref<Record<string, FGProjection | null>>({})
+  // Required starting-slot counts per position (for position-aware drops).
+  const rosterSlots = ref<Record<string, number>>({})
   const loading = ref(false)
   const loaded = ref(false)
+
+  // League roster requirements; baseball defaults if the settings call fails.
+  async function loadRosterSlots() {
+    if (Object.keys(rosterSlots.value).length) return
+    try {
+      const { yahooService } = await import('@/services/yahoo')
+      const settings = await yahooService.getLeagueSettings(String(leagueStore.activeLeagueId ?? ''))
+      rosterSlots.value = parseRosterSlots('yahoo', settings)
+    } catch {
+      rosterSlots.value = parseRosterSlots('yahoo', null)
+    }
+  }
 
   const cacheKey = () => `ufd_wirepool_${leagueStore.activeLeagueId ?? ''}`
 
@@ -84,6 +99,7 @@ export function useYahooLeaguePool() {
   }
 
   async function load() {
+    void loadRosterSlots() // independent of the pool; fire it whenever we (re)load
     if (loading.value || loaded.value) return
 
     // 1) Cache hit: rebuild instantly, no Yahoo calls (breaks the reload throttle).
@@ -133,5 +149,5 @@ export function useYahooLeaguePool() {
     }
   }
 
-  return { pool, fgByKey, loading, loaded, load }
+  return { pool, fgByKey, rosterSlots, loading, loaded, load }
 }

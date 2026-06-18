@@ -15,6 +15,7 @@ import { aggregateTeamCatTotals, rankInCategory } from '@/trades/standings'
 import { rankUpgrades, type WireFreeAgent, type WireDropOption, type WireUpgrade } from '@/wire/wireUpgrades'
 import { buildStreamBoard, type StreamBoard } from '@/wire/streamBoard'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
+import { expendableKeys, parseEligible } from '@/wire/dropEligibility'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { buildPlayerMatchers } from '@/services/projectionService'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
@@ -47,6 +48,7 @@ export function useWire() {
   const {
     pool: yahooLeaguePool,
     fgByKey: yahooLeagueFg,
+    rosterSlots: yahooRosterSlots,
     load: loadYahooPool,
   } = useYahooLeaguePool()
 
@@ -281,22 +283,31 @@ export function useWire() {
     })),
   )
 
-  // ── shared drop-candidate analysis (computed once, consumed by dropOptions + dropsVm) ──
+  // ── position-aware drop eligibility ────────────────────────────────────────
+  // A roster player is "expendable" only if dropping them still leaves a legal
+  // lineup (positional depth check), so we never suggest dropping your only
+  // catcher. Empty roster slots (still loading) => no constraint (all expendable).
+  const expendable = computed<Set<string>>(() => {
+    if (isEspnCategoryLeague.value || !myRosterPool.value.length) return new Set()
+    const elig = myRosterPool.value.map((p) => ({ playerKey: p.playerKey, eligiblePositions: parseEligible(p.position) }))
+    return expendableKeys(elig, yahooRosterSlots.value)
+  })
+
+  // ── shared drop-candidate analysis (who-to-drop suggestions) ───────────────
   const dropCandidates = computed(() => computeDropCandidates(contributions.value))
 
-  // ── drop options (weakest same-side roster players, weakest first) ─────────
-  const dropOptions = computed<WireDropOption[]>(() => {
-    const drops = dropCandidates.value.candidates
-    const byKey = new Map(contributions.value.map((c) => [c.playerKey, c]))
-    return drops.map((d) => {
-      const contrib = byKey.get(d.playerKey)
-      return {
-        playerKey: d.playerKey,
-        side: (contrib?.role === 'pitcher' ? 'pit' : 'hit') as 'hit' | 'pit',
-        effStats: effStatsByKey.value[d.playerKey] ?? {},
-      }
-    })
-  })
+  // ── drop options: weakest EXPENDABLE roster players, weakest first ─────────
+  // (an add pairs with the weakest player you can legally lose on its side).
+  const dropOptions = computed<WireDropOption[]>(() =>
+    contributions.value
+      .filter((c) => expendable.value.has(c.playerKey))
+      .sort((a, b) => a.roleValue - b.roleValue)
+      .map((c) => ({
+        playerKey: c.playerKey,
+        side: (c.role === 'pitcher' ? 'pit' : 'hit') as 'hit' | 'pit',
+        effStats: effStatsByKey.value[c.playerKey] ?? {},
+      })),
+  )
 
   // ── weak cats (my bottom-half category ranks, weakest first) ──────────────
   const weakCats = computed(() => {
@@ -394,7 +405,9 @@ export function useWire() {
   )
 
   const dropsVm = computed(() =>
-    dropCandidates.value.candidates.map((d) => {
+    dropCandidates.value.candidates
+      .filter((d) => expendable.value.has(d.playerKey))
+      .map((d) => {
       const meta = metaByKey.value.get(d.playerKey)
       return {
         key: d.playerKey,
