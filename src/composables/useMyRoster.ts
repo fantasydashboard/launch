@@ -63,6 +63,7 @@ export interface PoolPlayer {
   teamKey: string // owning fantasy team_key
   headshot?: string
   proTeam?: string // MLB team abbr, for the pro-team logo
+  onIL?: boolean // sits in an IL/NA reserve slot (not an active roster spot)
 }
 
 function normalizePoolPlayer(raw: any): PoolPlayer {

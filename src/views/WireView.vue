@@ -4,8 +4,9 @@ import { useWire } from '@/composables/useWire'
 import Avatar from '@/components/trades/Avatar.vue'
 import ValueBadge from '@/components/trades/ValueBadge.vue'
 import WireUpgradeCard from '@/components/wire/WireUpgradeCard.vue'
+import WireGrader from '@/components/wire/WireGrader.vue'
 
-const { vm, refresh } = useWire()
+const { vm, refresh, grader } = useWire()
 
 // If the league-wide data is slow/failing, show a retry instead of an endless
 // "Reading the wire..." (the standings need the heavy rostered-pool fetch).
@@ -112,6 +113,9 @@ const onLogoError = (e: Event) => {
         The wire's quiet, nothing on it upgrades your roster right now.
       </section>
 
+      <!-- 3b. GRADE A MOVE (interactive add/drop grader) -->
+      <WireGrader :adds="grader.adds.value" :drops="grader.drops.value" :grade="grader.grade" />
+
       <!-- 4. STREAM BOARD -->
       <section
         v-if="vm.streamBoard.starters.length || vm.streamBoard.relievers.length"
@@ -167,6 +171,10 @@ const onLogoError = (e: Event) => {
           <span class="font-semibold text-dark-textSecondary">{{ d.name }}</span>
           <img v-if="d.proLogo" :src="d.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
           <span class="text-dark-textMuted">{{ d.pos }}</span>
+          <span
+            v-if="d.onIL"
+            class="rounded border border-[#f2b33a]/50 px-1 font-mono text-[8px] uppercase tracking-wider text-[#f2b33a]"
+          >IL</span>
           <span class="text-dark-textMuted">· {{ d.reason }}</span>
           <span class="ml-auto"><ValueBadge :value="d.value" /></span>
         </div>

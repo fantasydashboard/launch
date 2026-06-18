@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { buildPlayerMatchers, type FGProjection } from '@/services/projectionService'
 import { parseRosterSlots } from '@/trades/rosterSlots'
+import { isYahooIL } from '@/wire/injury'
 
 /**
  * The league-wide rostered pool for a Yahoo category league, assembled from one
@@ -26,6 +27,7 @@ export interface LeaguePoolPlayer {
   teamKey: string // owning fantasy team_key
   proTeam: string // MLB team abbr
   headshot: string // player headshot URL ('' if absent)
+  onIL: boolean // sits in an IL/NA reserve slot (not an active roster spot)
   stats: Record<string, number> // empty; the FG projection in fgByKey drives totals
 }
 
@@ -36,6 +38,7 @@ interface PoolRow {
   position: string
   proTeam: string
   headshot: string
+  status: string // Yahoo injury status ('IL10' / 'IL60' / 'NA' / 'DTD' / '')
 }
 
 export function useYahooLeaguePool() {
@@ -59,7 +62,8 @@ export function useYahooLeaguePool() {
     }
   }
 
-  const cacheKey = () => `ufd_wirepool_${leagueStore.activeLeagueId ?? ''}`
+  // v2: rows now carry injury `status` (for onIL) — bump invalidates pre-status caches.
+  const cacheKey = () => `ufd_wirepool2_${leagueStore.activeLeagueId ?? ''}`
 
   function readCache(): PoolRow[] | null {
     if (typeof sessionStorage === 'undefined') return null
@@ -85,6 +89,7 @@ export function useYahooLeaguePool() {
         teamKey: r.teamKey,
         proTeam: r.proTeam,
         headshot: r.headshot,
+        onIL: isYahooIL(r.status),
         stats: {},
       })
       try {
@@ -130,6 +135,7 @@ export function useYahooLeaguePool() {
               position: String(p?.position ?? ''),
               proTeam: String(p?.team_abbr ?? ''),
               headshot: String(p?.headshot ?? ''),
+              status: String(p?.status ?? ''),
             })
           }
         } catch {

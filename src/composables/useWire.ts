@@ -11,11 +11,12 @@ import { computeRosterValue, type CatSpec } from '@/myteam/value'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
 import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 // ── Wire engines ─────────────────────────────────────────────────────────────
-import { aggregateTeamCatTotals, rankInCategory } from '@/trades/standings'
+import { aggregateTeamCatTotals, rankInCategory, addDropDelta } from '@/trades/standings'
 import { rankUpgrades, type WireFreeAgent, type WireDropOption, type WireUpgrade } from '@/wire/wireUpgrades'
 import { buildStreamBoard, type StreamBoard } from '@/wire/streamBoard'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
 import { expendableKeys, parseEligible } from '@/wire/dropEligibility'
+import { gradeLabel, type GradeVerdict } from '@/wire/gradeMove'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { buildPlayerMatchers } from '@/services/projectionService'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
@@ -325,9 +326,18 @@ export function useWire() {
   const rosterSlots = computed(() =>
     isEspnCategoryLeague.value ? espn.rosterSlots.value : yahooRosterSlots.value,
   )
+  // Players parked in an IL/NA reserve slot. They don't hold an active roster
+  // spot, so dropping one never frees a spot for an add — keep them out of the
+  // "drop to make room" math (both as a droppable body AND as a body that could
+  // cover a starting slot, since an injured player can't actually be fielded).
+  const ilKeys = computed<Set<string>>(
+    () => new Set(myRosterPool.value.filter((p) => (p as { onIL?: boolean }).onIL).map((p) => p.playerKey)),
+  )
   const expendable = computed<Set<string>>(() => {
     if (!myRosterPool.value.length) return new Set()
-    const elig = myRosterPool.value.map((p) => ({ playerKey: p.playerKey, eligiblePositions: parseEligible(p.position) }))
+    const elig = myRosterPool.value
+      .filter((p) => !ilKeys.value.has(p.playerKey))
+      .map((p) => ({ playerKey: p.playerKey, eligiblePositions: parseEligible(p.position) }))
     return expendableKeys(elig, rosterSlots.value)
   })
 
@@ -452,22 +462,42 @@ export function useWire() {
       : { weakCats: [], starters: [], relievers: [] },
   )
 
-  const dropsVm = computed(() =>
-    dropCandidates.value.candidates
+  const dropsVm = computed(() => {
+    const healthy = dropCandidates.value.candidates
       .filter((d) => expendable.value.has(d.playerKey))
       .map((d) => {
-      const meta = metaByKey.value.get(d.playerKey)
-      return {
-        key: d.playerKey,
-        name: nameByKey.value.get(d.playerKey) ?? d.playerKey,
-        pos: meta?.pos ?? '',
-        headshot: meta?.headshot,
-        proLogo: meta?.proLogo,
-        value: meta?.value ?? 0,
-        reason: d.reason,
-      }
-    }),
-  )
+        const meta = metaByKey.value.get(d.playerKey)
+        return {
+          key: d.playerKey,
+          name: nameByKey.value.get(d.playerKey) ?? d.playerKey,
+          pos: meta?.pos ?? '',
+          headshot: meta?.headshot,
+          proLogo: meta?.proLogo,
+          value: meta?.value ?? 0,
+          reason: d.reason,
+          onIL: false,
+        }
+      })
+    // IL players are dead weight worth clearing, but dropping them won't open an
+    // active roster spot — flag them so the user knows a second (active) drop is
+    // needed before an add. Listed after the healthy drops.
+    const il = myRosterPool.value
+      .filter((p) => ilKeys.value.has(p.playerKey))
+      .map((p) => {
+        const meta = metaByKey.value.get(p.playerKey)
+        return {
+          key: p.playerKey,
+          name: p.name,
+          pos: meta?.pos ?? p.position,
+          headshot: meta?.headshot,
+          proLogo: meta?.proLogo,
+          value: meta?.value ?? 0,
+          reason: "won't open an active spot",
+          onIL: true,
+        }
+      })
+    return [...healthy, ...il]
+  })
 
   // An enriched upgrade: add + drop players carry headshot / team logo / 0-100 value
   // so the view can render the Trades-style ADD/DROP card with a value bar.
@@ -504,6 +534,60 @@ export function useWire() {
   const enrichStream = (t: StreamBoard['starters'][number]) => {
     const meta = metaByKey.value.get(t.player.key)
     return { ...t, headshot: meta?.headshot, proLogo: mlbTeamLogo(t.player.team) }
+  }
+
+  // ── interactive add/drop grader ────────────────────────────────────────────
+  // Pick a free agent to add + a roster player to drop and grade the move in the
+  // same ECW dialect as the auto upgrades (mirrors the Trades analyzer). The
+  // pickable lists; the grade is computed on demand from the current selection.
+  interface GraderPick { key: string; name: string; pos: string; headshot?: string; proLogo?: string; value: number; onIL?: boolean }
+  interface GradeResult {
+    deltaEcw: number
+    verdict: GradeVerdict
+    add: GraderPick | null
+    drop: GraderPick | null
+    fit: { label: string; pct: number }[]
+    holdsLabels: string[]
+    valueGap: number
+    ilWarning: boolean
+  }
+  const graderAdds = computed<GraderPick[]>(() =>
+    wireFreeAgents.value
+      .map((f) => {
+        const meta = metaByKey.value.get(f.playerKey)
+        return { key: f.playerKey, name: f.name, pos: f.position, headshot: f.headshot || meta?.headshot, proLogo: mlbTeamLogo(f.team) || meta?.proLogo, value: meta?.value ?? 0 }
+      })
+      .sort((a, b) => b.value - a.value),
+  )
+  const graderDrops = computed<GraderPick[]>(() =>
+    myRosterPool.value
+      .map((p) => {
+        const meta = metaByKey.value.get(p.playerKey)
+        return { key: p.playerKey, name: p.name, pos: meta?.pos ?? p.position, headshot: meta?.headshot, proLogo: meta?.proLogo, value: meta?.value ?? 0, onIL: ilKeys.value.has(p.playerKey) }
+      })
+      .sort((a, b) => a.value - b.value),
+  )
+  function gradeMove(addKey: string | null, dropKey: string | null): GradeResult | null {
+    if (!ready.value || (!addKey && !dropKey)) return null
+    const addFa = addKey ? wireFreeAgents.value.find((f) => f.playerKey === addKey) : undefined
+    const addStats = addFa ? addFa.effStats : {}
+    const dropStats = dropKey ? effStatsByKey.value[dropKey] ?? {} : null
+    const d = addDropDelta(leagueTotals.value, catSpecs.value, myTeamId.value, addStats, dropStats)
+    const addMeta = addKey ? metaByKey.value.get(addKey) : undefined
+    const dropMeta = dropKey ? metaByKey.value.get(dropKey) : undefined
+    const addPct = addKey ? pctByKeyCat.value.get(addKey) : undefined
+    const addVal = addKey ? valueByKey.value.get(addKey) ?? 0 : 0
+    const dropVal = dropKey ? valueByKey.value.get(dropKey) ?? 0 : 0
+    return {
+      deltaEcw: d.deltaEcw,
+      verdict: gradeLabel(d.deltaEcw),
+      add: addFa ? { key: addFa.playerKey, name: addFa.name, pos: addFa.position, headshot: addFa.headshot || addMeta?.headshot, proLogo: mlbTeamLogo(addFa.team) || addMeta?.proLogo, value: addVal } : null,
+      drop: dropKey ? { key: dropKey, name: nameByKey.value.get(dropKey) ?? dropKey, pos: dropMeta?.pos ?? '', headshot: dropMeta?.headshot, proLogo: dropMeta?.proLogo, value: dropVal, onIL: ilKeys.value.has(dropKey) } : null,
+      fit: d.fixes.map((statId) => ({ label: labelOf(statId), pct: addPct?.get(statId) ?? 0 })),
+      holdsLabels: d.holds.map(labelOf),
+      valueGap: addVal - dropVal,
+      ilWarning: dropKey ? ilKeys.value.has(dropKey) : false,
+    }
   }
 
   const vm = computed(() => {
@@ -615,5 +699,5 @@ export function useWire() {
   // `const { vm } = useWire()`, and destructuring out of a reactive() object would
   // unwrap vm into a frozen snapshot that never updates. As a top-level ref it
   // auto-unwraps in the template and stays reactive (same as the Matchup composable).
-  return { vm, refresh }
+  return { vm, refresh, grader: { adds: graderAdds, drops: graderDrops, grade: gradeMove } }
 }

@@ -30,8 +30,16 @@ describe('mapRosters', () => {
   it('mapRostersToPool flattens all teams with name + teamKey (espn_<id>)', () => {
     const pool = mapRostersToPool(teams)
     expect(pool).toHaveLength(3)
-    expect(pool).toContainEqual({ playerKey: '10', name: 'Player 10', position: 'OF', eligiblePositions: ['OF'], stats: { '20': 30 }, teamKey: 'espn_1', proTeam: 'NYY' })
-    expect(pool).toContainEqual({ playerKey: '20', name: 'Player 20', position: 'OF', eligiblePositions: ['OF'], stats: { '20': 5 }, teamKey: 'espn_2', proTeam: 'NYY' })
+    expect(pool).toContainEqual({ playerKey: '10', name: 'Player 10', position: 'OF', eligiblePositions: ['OF'], stats: { '20': 30 }, teamKey: 'espn_1', proTeam: 'NYY', onIL: false })
+    expect(pool).toContainEqual({ playerKey: '20', name: 'Player 20', position: 'OF', eligiblePositions: ['OF'], stats: { '20': 5 }, teamKey: 'espn_2', proTeam: 'NYY', onIL: false })
+  })
+
+  it('mapRostersToPool flags players in an IL lineup slot as onIL', () => {
+    const pool = mapRostersToPool([
+      { id: 3, name: 'C', roster: [{ ...player(30, { '20': 8 }), lineupSlot: 'IL' }, { ...player(31, { '20': 9 }), lineupSlot: 'BE' }] },
+    ])
+    expect(pool.find((p) => p.playerKey === '30')?.onIL).toBe(true)
+    expect(pool.find((p) => p.playerKey === '31')?.onIL).toBe(false)
   })
 
   it('mapRosterToPlayers maps one team to RosterPlayer rows with headshots', () => {

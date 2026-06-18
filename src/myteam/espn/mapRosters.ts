@@ -1,5 +1,6 @@
 import type { PoolPlayer, RosterPlayer } from '@/composables/useMyRoster'
 import type { Sport } from '@/types/supabase'
+import { isEspnIL } from '@/wire/injury'
 
 /** The subset of EspnPlayer the roster mappers read. */
 export interface EspnPlayerLike {
@@ -10,6 +11,7 @@ export interface EspnPlayerLike {
   started?: boolean
   eligiblePositions?: string[]
   injuryStatus?: string
+  lineupSlot?: string // 'IL' / 'IL+' / 'BE' / a position — reserve-slot signal
   actualPoints?: number
   stats: Record<string, number>
 }
@@ -55,6 +57,7 @@ export function mapRostersToPool(teams: EspnTeamRosterLike[], sport?: Sport): Po
       teamKey: `espn_${t.id}`,
       headshot: sport ? espnHeadshotUrl(p.playerId, sport) : undefined,
       proTeam: p.proTeam || undefined,
+      onIL: isEspnIL(p.lineupSlot),
     })),
   )
 }
