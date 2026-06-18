@@ -218,6 +218,45 @@ export function useWire() {
   // playerKey -> name across the whole pool (drop/upgrade players are all rostered).
   const nameByKey = computed(() => new Map(rosterPool.value.map((p) => [p.playerKey, p.name])))
 
+  // Headshots for MY roster (the drop players). The light getRoster pool omits
+  // headshots, so fetch player details for just my ~26 players (one call), cached
+  // per-session so reloads don't re-hit Yahoo. Drops fall back to monograms until
+  // this lands. Yahoo only (ESPN roster comes with headshots already).
+  const rosterHeadshots = ref<Record<string, string>>({})
+  watch(
+    myRosterPool,
+    async (mine) => {
+      if (isEspnCategoryLeague.value || !mine.length || Object.keys(rosterHeadshots.value).length) return
+      const cacheKey = `ufd_wirefaces_${leagueStore.activeLeagueId ?? ''}`
+      try {
+        const cached = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(cacheKey) : null
+        if (cached) {
+          rosterHeadshots.value = JSON.parse(cached)
+          return
+        }
+      } catch {
+        /* ignore */
+      }
+      try {
+        const { yahooService } = await import('@/services/yahoo')
+        const map = await yahooService.getPlayers(mine.map((p) => p.playerKey), String(leagueStore.activeLeagueId ?? ''))
+        const out: Record<string, string> = {}
+        for (const [k, v] of map.entries()) if (v?.headshot) out[k] = v.headshot as string
+        if (Object.keys(out).length) {
+          rosterHeadshots.value = out
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify(out))
+          } catch {
+            /* quota */
+          }
+        }
+      } catch {
+        /* keep monograms */
+      }
+    },
+    { immediate: true },
+  )
+
   const effStatsByKey = computed<Record<string, Record<string, number>>>(() => {
     const fg = fgStatsByKey.value
     const out: Record<string, Record<string, number>> = {}
@@ -362,7 +401,7 @@ export function useWire() {
   const metaByKey = computed(() => {
     const m = new Map<string, PlayerMeta>()
     for (const p of rosterPool.value)
-      m.set(p.playerKey, { headshot: (p as { headshot?: string }).headshot || undefined, proLogo: mlbTeamLogo((p as { proTeam?: string }).proTeam), pos: p.position, value: valueByKey.value.get(p.playerKey) ?? 0 })
+      m.set(p.playerKey, { headshot: rosterHeadshots.value[p.playerKey] || (p as { headshot?: string }).headshot || undefined, proLogo: mlbTeamLogo((p as { proTeam?: string }).proTeam), pos: p.position, value: valueByKey.value.get(p.playerKey) ?? 0 })
     for (const f of wireFreeAgents.value)
       m.set(f.playerKey, { headshot: f.headshot || undefined, proLogo: mlbTeamLogo(f.team), pos: f.position, value: valueByKey.value.get(f.playerKey) ?? 0 })
     return m
