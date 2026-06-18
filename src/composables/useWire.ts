@@ -1,4 +1,4 @@
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAvailablePlayers } from '@/composables/useAvailablePlayers'
 import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
@@ -460,5 +460,9 @@ export function useWire() {
     )
   })
 
-  return reactive({ vm, refresh })
+  // Return vm as a plain ComputedRef (NOT wrapped in reactive): the view does
+  // `const { vm } = useWire()`, and destructuring out of a reactive() object would
+  // unwrap vm into a frozen snapshot that never updates. As a top-level ref it
+  // auto-unwraps in the template and stays reactive (same as the Matchup composable).
+  return { vm, refresh }
 }
