@@ -585,7 +585,8 @@ export class YahooFantasyService {
         },
         team_abbr: flat.editorial_team_abbr,
         position: flat.display_position,
-        status: flat.status || ''
+        status: flat.status || '',
+        headshot: flat.headshot?.url || flat.image_url || ''
       })
     }
 

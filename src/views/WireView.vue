@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useWire } from '@/composables/useWire'
+import Avatar from '@/components/trades/Avatar.vue'
+import ValueBadge from '@/components/trades/ValueBadge.vue'
+import WireUpgradeCard from '@/components/wire/WireUpgradeCard.vue'
 
 const { vm, refresh } = useWire()
 
@@ -18,6 +21,9 @@ function retry() {
   window.setTimeout(() => {
     slow.value = true
   }, 12000)
+}
+const onLogoError = (e: Event) => {
+  ;(e.target as HTMLImageElement).style.display = 'none'
 }
 </script>
 
@@ -68,152 +74,106 @@ function retry() {
     </div>
 
     <template v-else>
-      <!-- 1. BIGGEST UPGRADE AVAILABLE (hero/accent card) -->
+      <!-- 1. LEVERAGE HEADER (where you're strong vs your holes) -->
       <section
-        v-if="vm.hero"
-        class="rounded-xl border border-primary/40 bg-primary/[0.04] px-4 py-3 space-y-1.5"
+        v-if="vm.surplus.length || vm.holes.length"
+        class="space-y-1.5 rounded-xl border border-dark-border bg-dark-card px-4 py-3"
       >
-        <p class="font-mono text-[10px] uppercase tracking-widest text-primary">
-          ★ Biggest upgrade available
-        </p>
-
-        <!-- Player name + position/team + delta -->
-        <div class="flex items-center gap-2 font-mono text-[12px]">
-          <span class="font-bold text-dark-text">+ {{ vm.hero.player.name }}</span>
-          <span class="text-dark-textMuted">({{ vm.hero.player.position }}, {{ vm.hero.player.team }})</span>
-          <span class="ml-auto shrink-0 font-bold text-primary">
-            +{{ vm.hero.deltaEcw.toFixed(1) }} cats/wk
-          </span>
+        <div v-if="vm.surplus.length" class="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span class="w-16 shrink-0 font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Your edge</span>
+          <span
+            v-for="c in vm.surplus"
+            :key="c.label"
+            class="inline-block rounded bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary"
+          >{{ c.label }} · {{ c.rank }}</span>
         </div>
-
-        <!-- Drop line -->
-        <div v-if="vm.hero.dropName" class="font-mono text-[11px] text-dark-textMuted">
-          drop {{ vm.hero.dropName }}
-        </div>
-
-        <!-- Fixes / holds labels -->
-        <div
-          v-if="vm.hero.fixesLabels.length || vm.hero.holdsLabels.length"
-          class="font-mono text-[10px]"
-        >
-          <template v-if="vm.hero.fixesLabels.length">
-            <span class="text-dark-textSecondary">fixes:</span>
-            <span class="ml-1 text-dark-textMuted">{{ vm.hero.fixesLabels.join(' ') }}</span>
-          </template>
-          <template v-if="vm.hero.fixesLabels.length && vm.hero.holdsLabels.length">
-            <span class="text-dark-textMuted"> · </span>
-          </template>
-          <template v-if="vm.hero.holdsLabels.length">
-            <span class="text-dark-textMuted">holds: {{ vm.hero.holdsLabels.join(' ') }}</span>
-          </template>
+        <div v-if="vm.holes.length" class="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span class="w-16 shrink-0 font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">To fix</span>
+          <span
+            v-for="c in vm.holes"
+            :key="c.label"
+            class="inline-block rounded bg-[#F2B33A]/10 px-2 py-0.5 font-mono text-[10px] text-[#F2B33A]"
+          >{{ c.label }} · {{ c.rank }}</span>
         </div>
       </section>
 
-      <!-- 2. MORE UPGRADES -->
-      <section
-        v-if="vm.upgrades.length"
-        class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 space-y-2"
-      >
+      <!-- 2. BIGGEST UPGRADE (hero) -->
+      <section v-if="vm.hero" class="space-y-2">
+        <p class="font-mono text-[10px] uppercase tracking-widest text-primary">★ Biggest upgrade available</p>
+        <WireUpgradeCard :u="vm.hero" hero />
+      </section>
+
+      <!-- 3. MORE UPGRADES -->
+      <section v-if="vm.upgrades.length" class="space-y-2">
         <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">More upgrades</p>
-
-        <div
-          v-for="u in vm.upgrades"
-          :key="u.player.key"
-          class="space-y-0.5"
-        >
-          <!-- Name row -->
-          <div class="flex items-center gap-2 font-mono text-[11px]">
-            <span class="text-dark-text">{{ u.player.name }}</span>
-            <span class="text-dark-textMuted">({{ u.player.position }})</span>
-            <span class="ml-auto shrink-0 font-bold text-primary">+{{ u.deltaEcw.toFixed(1) }} cats/wk</span>
-          </div>
-          <!-- Sub-line: drop + fixes -->
-          <div
-            v-if="u.dropName || u.fixesLabels.length"
-            class="font-mono text-[10px] text-dark-textMuted"
-          >
-            <template v-if="u.dropName">drop {{ u.dropName }}</template>
-            <template v-if="u.dropName && u.fixesLabels.length"> · </template>
-            <template v-if="u.fixesLabels.length">fixes {{ u.fixesLabels.join(' ') }}</template>
-          </div>
-        </div>
+        <WireUpgradeCard v-for="(u, i) in vm.upgrades" :key="i" :u="u" />
       </section>
 
-      <!-- 3. QUIET WIRE (no hero and no upgrades) -->
-      <div
+      <!-- Quiet wire -->
+      <section
         v-else-if="!vm.hero"
-        class="rounded-xl border border-dark-border bg-dark-card px-4 py-6 text-center font-mono text-sm text-dark-textMuted"
+        class="rounded-xl border border-dark-border bg-dark-card px-4 py-6 text-center text-sm text-dark-textMuted"
       >
         The wire's quiet, nothing on it upgrades your roster right now.
-      </div>
+      </section>
 
       <!-- 4. STREAM BOARD -->
       <section
         v-if="vm.streamBoard.starters.length || vm.streamBoard.relievers.length"
-        class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 space-y-2"
+        class="rounded-xl border border-dark-border bg-dark-card px-4 py-3"
       >
         <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Stream board</p>
-
-        <!-- Weak cats sub-line -->
-        <p
-          v-if="vm.streamBoard.weakCats.length"
-          class="font-mono text-[10px] text-dark-textMuted"
-        >
-          for your weak cats: {{ vm.streamBoard.weakCats.map(c => c.label).join(' ') }}
+        <p v-if="vm.streamBoard.weakCats.length" class="mt-1 font-mono text-[9px] text-dark-textMuted">
+          for your weak cats: {{ vm.streamBoard.weakCats.map((c) => c.label).join(' ') }}
         </p>
 
-        <!-- Starters -->
-        <div v-if="vm.streamBoard.starters.length" class="space-y-1.5">
-          <p class="font-mono text-[9px] uppercase tracking-widest text-dark-textMuted">starters</p>
+        <template v-if="vm.streamBoard.starters.length">
+          <p class="mt-3 font-mono text-[9px] uppercase tracking-widest text-dark-textMuted">Starters</p>
           <div
             v-for="s in vm.streamBoard.starters"
             :key="s.player.key"
-            class="flex flex-col gap-0.5"
+            class="mt-1.5 flex items-center gap-2 font-mono text-[11px]"
           >
-            <div class="flex items-center gap-2 font-mono text-[11px]">
-              <span class="font-bold text-dark-text">{{ s.player.name }}</span>
-              <span class="text-dark-textMuted">({{ s.player.team }})</span>
-              <span
-                v-if="s.twoStart"
-                class="shrink-0 rounded border border-[#1f6f86] px-1 py-0.5 font-mono text-[8px] uppercase tracking-widest text-[#5ec8e6]"
-              >TWO-START</span>
-            </div>
-            <div class="font-mono text-[10px] text-dark-textMuted">{{ s.rationale }}</div>
+            <Avatar :src="s.headshot" :label="s.player.name" cls="h-6 w-6 rounded-full" />
+            <span class="font-semibold text-dark-text">{{ s.player.name }}</span>
+            <img v-if="s.proLogo" :src="s.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
+            <span class="text-dark-textMuted">{{ s.rationale }}</span>
+            <span
+              v-if="s.twoStart"
+              class="ml-auto shrink-0 rounded border border-[#1f6f86] px-1 py-0.5 font-mono text-[8px] uppercase tracking-widest text-[#5ec8e6]"
+            >2-start</span>
           </div>
-        </div>
+        </template>
 
-        <!-- Relievers -->
-        <div v-if="vm.streamBoard.relievers.length" class="space-y-1.5">
-          <p class="font-mono text-[9px] uppercase tracking-widest text-dark-textMuted">relievers</p>
+        <template v-if="vm.streamBoard.relievers.length">
+          <p class="mt-3 font-mono text-[9px] uppercase tracking-widest text-dark-textMuted">Relievers</p>
           <div
             v-for="r in vm.streamBoard.relievers"
             :key="r.player.key"
-            class="flex flex-col gap-0.5"
+            class="mt-1.5 flex items-center gap-2 font-mono text-[11px]"
           >
-            <div class="flex items-center gap-2 font-mono text-[11px]">
-              <span class="font-bold text-dark-text">{{ r.player.name }}</span>
-              <span class="text-dark-textMuted">({{ r.player.team }})</span>
-            </div>
-            <div class="font-mono text-[10px] text-dark-textMuted">{{ r.rationale }}</div>
+            <Avatar :src="r.headshot" :label="r.player.name" cls="h-6 w-6 rounded-full" />
+            <span class="font-semibold text-dark-text">{{ r.player.name }}</span>
+            <img v-if="r.proLogo" :src="r.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
+            <span class="text-dark-textMuted">{{ r.rationale }}</span>
           </div>
-        </div>
+        </template>
       </section>
 
       <!-- 5. WHO TO DROP -->
-      <section
-        v-if="vm.drops.length"
-        class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 space-y-2"
-      >
+      <section v-if="vm.drops.length" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
         <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Who to drop</p>
-        <div class="flex flex-wrap gap-1.5">
-          <span
-            v-for="d in vm.drops"
-            :key="d.key"
-            class="inline-flex items-center gap-1 rounded bg-dark-border/60 px-2 py-1 font-mono text-[10px] text-dark-textSecondary"
-          >
-            <span class="font-semibold">{{ d.name }}</span>
-            <span v-if="d.reason" class="opacity-70">· {{ d.reason }}</span>
-          </span>
+        <div
+          v-for="d in vm.drops"
+          :key="d.key"
+          class="mt-2 flex items-center gap-2 font-mono text-[11px]"
+        >
+          <Avatar :src="d.headshot" :label="d.name" cls="h-6 w-6 rounded-full" />
+          <span class="font-semibold text-dark-textSecondary">{{ d.name }}</span>
+          <img v-if="d.proLogo" :src="d.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
+          <span class="text-dark-textMuted">{{ d.pos }}</span>
+          <span class="text-dark-textMuted">· {{ d.reason }}</span>
+          <span class="ml-auto"><ValueBadge :value="d.value" /></span>
         </div>
       </section>
     </template>

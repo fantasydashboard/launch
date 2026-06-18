@@ -17,6 +17,7 @@ import { buildStreamBoard, type StreamBoard } from '@/wire/streamBoard'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { buildPlayerMatchers } from '@/services/projectionService'
+import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
 const SEASON_FRACTION = 0.6
 
@@ -311,6 +312,41 @@ export function useWire() {
       .sort((a, b) => b.rank - a.rank)
   })
 
+  // ── surplus cats (where you're strong — the trade-from / leverage side) ────
+  const strongCats = computed(() => {
+    if (!leagueTotals.value.length) return []
+    const n = leagueTotals.value.length
+    const top = Math.max(2, Math.floor(n / 3))
+    return catSpecs.value
+      .map((c) => ({ statId: c.statId, label: labelOf(c.statId), rank: rankInCategory(leagueTotals.value, c).get(myTeamId.value) ?? n }))
+      .filter((c) => c.rank <= top)
+      .sort((a, b) => a.rank - b.rank)
+  })
+
+  // ── player value (0-100) + visual meta (headshot, logo, pos) for every player ─
+  // roleValue percentile over the rostered pool + the rankable free agents, so an
+  // add and a drop are on the same 0-100 scale (the Trades-page value bar).
+  const valueByKey = computed(() => {
+    if (!catSpecs.value.length) return new Map<string, number>()
+    const all = [
+      ...rosterPool.value.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: effStatsByKey.value[p.playerKey] ?? {} })),
+      ...wireFreeAgents.value.map((f) => ({ playerKey: f.playerKey, position: f.position, stats: f.effStats })),
+    ]
+    if (!all.length) return new Map<string, number>()
+    const contribs = computeRosterValue(all, all.map((p) => p.playerKey), catSpecs.value)
+    return new Map(contribs.map((c) => [c.playerKey, Math.round(c.roleValue)]))
+  })
+
+  interface PlayerMeta { headshot?: string; proLogo?: string; pos: string; value: number }
+  const metaByKey = computed(() => {
+    const m = new Map<string, PlayerMeta>()
+    for (const p of rosterPool.value)
+      m.set(p.playerKey, { headshot: (p as { headshot?: string }).headshot || undefined, proLogo: mlbTeamLogo((p as { proTeam?: string }).proTeam), pos: p.position, value: valueByKey.value.get(p.playerKey) ?? 0 })
+    for (const f of wireFreeAgents.value)
+      m.set(f.playerKey, { headshot: f.headshot || undefined, proLogo: mlbTeamLogo(f.team), pos: f.position, value: valueByKey.value.get(f.playerKey) ?? 0 })
+    return m
+  })
+
   // ── week schedule (for the streaming board) ───────────────────────────────
   const weekScheduleRef = ref<WeekSchedule>({ gamesByTeam: {}, startsByPitcher: {} })
   async function fetchWeekSchedule() {
@@ -358,40 +394,88 @@ export function useWire() {
   )
 
   const dropsVm = computed(() =>
-    dropCandidates.value.candidates.map((d) => ({
-      key: d.playerKey,
-      name: nameByKey.value.get(d.playerKey) ?? d.playerKey,
-      reason: d.reason,
-    })),
+    dropCandidates.value.candidates.map((d) => {
+      const meta = metaByKey.value.get(d.playerKey)
+      return {
+        key: d.playerKey,
+        name: nameByKey.value.get(d.playerKey) ?? d.playerKey,
+        pos: meta?.pos ?? '',
+        headshot: meta?.headshot,
+        proLogo: meta?.proLogo,
+        value: meta?.value ?? 0,
+        reason: d.reason,
+      }
+    }),
   )
 
-  const toUp = (u: WireUpgrade) => ({
-    ...u,
-    dropName: u.dropKey ? (nameByKey.value.get(u.dropKey) ?? null) : null,
-    fixesLabels: u.fixes.map(labelOf),
-    holdsLabels: u.holds.map(labelOf),
-  })
+  // An enriched upgrade: add + drop players carry headshot / team logo / 0-100 value
+  // so the view can render the Trades-style ADD/DROP card with a value bar.
+  const toUp = (u: WireUpgrade) => {
+    const addMeta = metaByKey.value.get(u.player.key)
+    const dropMeta = u.dropKey ? metaByKey.value.get(u.dropKey) : undefined
+    return {
+      deltaEcw: u.deltaEcw,
+      add: {
+        name: u.player.name,
+        pos: u.player.position,
+        headshot: u.player.headshot || addMeta?.headshot,
+        proLogo: mlbTeamLogo(u.player.team) || addMeta?.proLogo,
+        value: addMeta?.value ?? 0,
+      },
+      drop: u.dropKey
+        ? {
+            name: nameByKey.value.get(u.dropKey) ?? u.dropKey,
+            pos: dropMeta?.pos ?? '',
+            headshot: dropMeta?.headshot,
+            proLogo: dropMeta?.proLogo,
+            value: dropMeta?.value ?? 0,
+          }
+        : null,
+      fixesLabels: u.fixes.map(labelOf),
+      holdsLabels: u.holds.map(labelOf),
+    }
+  }
+
+  // Enrich a stream target with its headshot + team logo.
+  const enrichStream = (t: StreamBoard['starters'][number]) => {
+    const meta = metaByKey.value.get(t.player.key)
+    return { ...t, headshot: meta?.headshot, proLogo: mlbTeamLogo(t.player.team) }
+  }
 
   const vm = computed(() => {
-    const holes = weakCats.value.slice(0, 2).map((c) => `${ordinal(Math.round(c.rank))} in ${c.label}`)
+    const holesText = weakCats.value.slice(0, 2).map((c) => `${ordinal(Math.round(c.rank))} in ${c.label}`)
+    // Stream board: drop anyone already shown as a hero/upgrade so the two lists
+    // never surface the same player twice.
+    const upgradeKeys = new Set([
+      ...(upgradesAll.value[0] ? [upgradesAll.value[0].player.key] : []),
+      ...upgradesAll.value.slice(1, 8).map((u) => u.player.key),
+    ])
+    const board = streamBoardVm.value
+    const dedupeStream = (list: StreamBoard['starters']) =>
+      list.filter((t) => !upgradeKeys.has(t.player.key)).map(enrichStream)
     return {
       ready: ready.value,
       supported: isEspnCategoryLeague.value || isYahooCategoryLeague.value,
       espnComingSoon: isEspnCategoryLeague.value, // TEMP: ESPN gated while OOM is fixed
-      // What's loaded vs still pending, surfaced in the loading card so a stuck
-      // state shows which piece is hanging (categories vs the league-wide pool).
       loadState: {
         categories: catSpecs.value.length,
         pool: rosterPool.value.length,
         teamFound: !!myTeamId.value,
         standings: leagueTotals.value.length,
       },
-      subtitle: holes.length
-        ? `Fix your roster for the season, you're ${holes.join(', ')}.`
+      subtitle: holesText.length
+        ? `Fix your roster for the season, you're ${holesText.join(', ')}.`
         : 'Fix your roster for the season.',
+      // Leverage header (Trades-style): where you're strong vs your holes.
+      surplus: strongCats.value.map((c) => ({ label: c.label, rank: ordinal(Math.round(c.rank)) })),
+      holes: weakCats.value.map((c) => ({ label: c.label, rank: ordinal(Math.round(c.rank)) })),
       hero: upgradesAll.value.length ? toUp(upgradesAll.value[0]) : null,
       upgrades: upgradesAll.value.slice(1, 8).map(toUp),
-      streamBoard: streamBoardVm.value,
+      streamBoard: {
+        weakCats: board.weakCats,
+        starters: dedupeStream(board.starters),
+        relievers: dedupeStream(board.relievers),
+      },
       drops: dropsVm.value,
     }
   })

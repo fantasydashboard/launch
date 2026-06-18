@@ -24,6 +24,7 @@ export interface LeaguePoolPlayer {
   position: string
   teamKey: string // owning fantasy team_key
   proTeam: string // MLB team abbr
+  headshot: string // player headshot URL ('' if absent)
   stats: Record<string, number> // empty; the FG projection in fgByKey drives totals
 }
 
@@ -33,6 +34,7 @@ interface PoolRow {
   name: string
   position: string
   proTeam: string
+  headshot: string
 }
 
 export function useYahooLeaguePool() {
@@ -67,6 +69,7 @@ export function useYahooLeaguePool() {
         position: r.position,
         teamKey: r.teamKey,
         proTeam: r.proTeam,
+        headshot: r.headshot,
         stats: {},
       })
       try {
@@ -110,6 +113,7 @@ export function useYahooLeaguePool() {
               name: String(p?.name?.full ?? ''),
               position: String(p?.position ?? ''),
               proTeam: String(p?.team_abbr ?? ''),
+              headshot: String(p?.headshot ?? ''),
             })
           }
         } catch {
