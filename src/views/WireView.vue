@@ -35,17 +35,9 @@ const onLogoError = (e: Event) => {
       <p class="font-mono text-xs text-dark-textMuted">{{ vm.subtitle }}</p>
     </header>
 
-    <!-- ESPN temporarily gated (OOM under investigation) -->
-    <div
-      v-if="vm.espnComingSoon"
-      class="rounded-xl border border-dark-border bg-dark-card px-4 py-6 text-center text-sm text-dark-textMuted"
-    >
-      The Wire is live for Yahoo category leagues. ESPN support is coming soon.
-    </div>
-
     <!-- Loading state (with a per-piece breakdown + retry if it's slow) -->
     <div
-      v-else-if="!vm.ready && vm.supported"
+      v-if="!vm.ready && vm.supported"
       class="rounded-xl border border-dark-border bg-dark-card px-4 py-6 text-center text-sm text-dark-textMuted"
     >
       <p>Reading the wire...</p>

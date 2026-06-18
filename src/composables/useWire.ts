@@ -81,18 +81,14 @@ export function useWire() {
   // NOTE: "which players are mine" is derived from the pool by teamKey (see
   // myRosterPool below), not from the platform's my-team list — that list proved
   // flaky on Yahoo. We only switch the league-wide pool / fg / free agents here.
-  // TEMP: the ESPN path OOM-crashes the renderer (runaway compute under
-  // investigation), so gate the league pool to empty on ESPN — nothing heavy runs
-  // and the view shows an "ESPN coming soon" state instead of crashing. Yahoo
-  // unchanged. Remove the `isEspnCategoryLeague.value ? [] :` guard once fixed.
   const rosterPool = computed(() =>
-    isEspnCategoryLeague.value ? [] : yahooLeaguePool.value,
+    isEspnCategoryLeague.value ? espn.pool.value : yahooLeaguePool.value,
   )
   const fgByKey = computed(() =>
     isEspnCategoryLeague.value ? espn.fgByKey.value : yahooLeagueFg.value,
   )
   const freeAgents = computed(() =>
-    isEspnCategoryLeague.value ? [] : yahooFreeAgents.value, // TEMP ESPN gate (see rosterPool)
+    isEspnCategoryLeague.value ? espn.freeAgents.value : yahooFreeAgents.value,
   )
 
   // ── Yahoo season-derived categories ───────────────────────────────────────
@@ -326,10 +322,13 @@ export function useWire() {
   // A roster player is "expendable" only if dropping them still leaves a legal
   // lineup (positional depth check), so we never suggest dropping your only
   // catcher. Empty roster slots (still loading) => no constraint (all expendable).
+  const rosterSlots = computed(() =>
+    isEspnCategoryLeague.value ? espn.rosterSlots.value : yahooRosterSlots.value,
+  )
   const expendable = computed<Set<string>>(() => {
-    if (isEspnCategoryLeague.value || !myRosterPool.value.length) return new Set()
+    if (!myRosterPool.value.length) return new Set()
     const elig = myRosterPool.value.map((p) => ({ playerKey: p.playerKey, eligiblePositions: parseEligible(p.position) }))
-    return expendableKeys(elig, yahooRosterSlots.value)
+    return expendableKeys(elig, rosterSlots.value)
   })
 
   // ── shared drop-candidate analysis (who-to-drop suggestions) ───────────────
@@ -521,7 +520,6 @@ export function useWire() {
     return {
       ready: ready.value,
       supported: isEspnCategoryLeague.value || isYahooCategoryLeague.value,
-      espnComingSoon: isEspnCategoryLeague.value, // TEMP: ESPN gated while OOM is fixed
       loadState: {
         categories: catSpecs.value.length,
         pool: rosterPool.value.length,
@@ -568,17 +566,27 @@ export function useWire() {
     fetchWeekSchedule()
   }
 
-  // NOTE: the Yahoo roster/players load is deliberately NOT triggered here — see
-  // the yahooRosterReady watch below (mirrors the Matchup composable's clobber-race fix).
-  // Also watch the category flags: on a direct navigation the league details settle
-  // AFTER mount, so isYahooCategoryLeague flips true late — without re-firing here the
-  // season-derived categories never load and the page deadlocks on "Reading the wire".
+  // ESPN league data + the week schedule: load on activeLeagueId / platform settle.
+  // CRITICAL: do NOT watch isEspnCategoryLeague here — espn.load() reset()s
+  // espn.supported, which IS that flag, so re-firing this off it calls espn.load()
+  // forever (reset + refetch each time = the OOM crash that killed the ESPN tab).
   watch(
-    [() => leagueStore.activeLeagueId, isYahooCategoryLeague, isEspnCategoryLeague],
+    [() => leagueStore.activeLeagueId, () => leagueStore.activePlatform],
     () => {
-      maybeLoadSeasonData()
       maybeLoadEspn()
       fetchWeekSchedule()
+    },
+    { immediate: true },
+  )
+
+  // Yahoo season-derived categories: load when the Yahoo category flag settles late
+  // (a direct /players navigation finishes loading league details after mount, so
+  // without this the categories never arrive and the page deadlocks on "Reading...").
+  // isYahooCategoryLeague does NOT depend on espn.load(), so no loop here.
+  watch(
+    [() => leagueStore.activeLeagueId, isYahooCategoryLeague],
+    () => {
+      maybeLoadSeasonData()
     },
     { immediate: true },
   )
