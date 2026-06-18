@@ -284,11 +284,20 @@ export function useWire() {
   // hangs the main thread. Rank only the most-owned free agents (the realistic
   // add targets); the rest are noise on a season-add page.
   const MAX_RANKABLE_FAS = 120
-  const rankableFreeAgents = computed(() =>
-    [...freeAgents.value]
+  // A free agent must NOT be on any team's roster. ESPN's free-agent feed can leak
+  // rostered players (the status filter isn't always honored), surfacing stars like
+  // CJ Abrams as "addable". The league pool is the source of truth for who's
+  // rostered, so exclude anyone already in it. Guard on a populated pool so an
+  // early/empty load doesn't blank every free agent.
+  const rosteredKeys = computed(() => new Set(rosterPool.value.map((p) => p.playerKey)))
+  const rankableFreeAgents = computed(() => {
+    const rostered = rosteredKeys.value
+    const guard = rosterPool.value.length > 0
+    return [...freeAgents.value]
+      .filter((fa) => !guard || !rostered.has(fa.playerKey))
       .sort((a, b) => (b.percentOwned ?? 0) - (a.percentOwned ?? 0))
-      .slice(0, MAX_RANKABLE_FAS),
-  )
+      .slice(0, MAX_RANKABLE_FAS)
+  })
 
   const faFgByKey = ref<Record<string, Record<string, number>>>({})
   watch(
