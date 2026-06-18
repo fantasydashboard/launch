@@ -51,7 +51,7 @@ serve(async (req) => {
 
     // Parse request body
     const body = await req.json()
-    const { endpoint, espn_s2, swid } = body
+    const { endpoint, espn_s2, swid, fantasyFilter } = body
 
     if (!endpoint) {
       return new Response(
@@ -100,6 +100,16 @@ serve(async (req) => {
       // Format SWID - ensure it has curly braces
       const formattedSwid = finalSwid.startsWith('{') ? finalSwid : `{${finalSwid}}`
       espnHeaders['Cookie'] = `espn_s2=${finalS2}; SWID=${formattedSwid}`
+    }
+
+    // Forward the player filter as the X-Fantasy-Filter header. ESPN requires the
+    // free-agent filter/sort/limit (filterStatus, sortPercOwned, limit) to travel in
+    // THIS header, not the URL — without it ESPN ignores the filter and returns a
+    // default alphabetical player page, so free-agent lookups came back as an A-surname
+    // slice. The client sends it pre-stringified.
+    if (fantasyFilter) {
+      espnHeaders['X-Fantasy-Filter'] =
+        typeof fantasyFilter === 'string' ? fantasyFilter : JSON.stringify(fantasyFilter)
     }
 
     // Make request to ESPN
