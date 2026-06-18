@@ -132,10 +132,12 @@ export function useEspnCategoryTeamData() {
       }
 
       // Free agents for the weakness "top add" line AND Your Move's daily streaming
-      // layer. The pool is sorted most-owned first, but streamable spot-start SPs are
-      // low-owned — so we pull a wider pool (300) to bring them in range; the daily
-      // layer then matches FA pitchers against today's probable starters.
-      const fa = await espnService.getFreeAgents(sport, leagueId, season, 300)
+      // layer. The pool is sorted most-owned first; ESPN's feed also pads the list
+      // with rostered players (the status filter leaks), which eat the high-ownership
+      // slots, and streamable spot-start SPs are low-owned — so pull a WIDE pool so
+      // genuine free agents still come through after the rostered ones are excluded
+      // downstream (see useWire's rosteredKeys guard). Consumers cap their own ranking.
+      const fa = await espnService.getFreeAgents(sport, leagueId, season, 1000)
       if (leagueStore.activeLeagueId !== requestedId) return
       freeAgents.value = mapEspnFreeAgents(fa, sport)
 
