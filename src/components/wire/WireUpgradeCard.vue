@@ -38,6 +38,8 @@ const onLogoError = (e: Event) => {
     >
       <span class="flex flex-wrap items-center gap-x-2 font-mono text-[11px] uppercase tracking-wide text-dark-textMuted">
         <b :class="hero ? 'text-primary' : 'text-[#ffd98a]'">Adds {{ u.deltaEcw.toFixed(1) }} cats/week</b>
+        <!-- compact alternatives: show who you'd drop inline (it varies by add) -->
+        <span v-if="compact && u.drop" class="text-[10px] normal-case tracking-normal">· drop {{ u.drop.name }}</span>
       </span>
       <span class="shrink-0 font-mono text-[12px] font-bold text-primary">+{{ u.deltaEcw.toFixed(1) }}/wk</span>
     </div>

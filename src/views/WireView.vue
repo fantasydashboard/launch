@@ -107,7 +107,7 @@ const onLogoError = (e: Event) => {
       <section v-if="vm.upgrades.length" class="space-y-2">
         <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">More upgrades</p>
         <p class="font-mono text-[9px] text-dark-textMuted">
-          Other adds, each replacing your weak link. You'd make one of these.
+          Other adds worth making. You'd make one of these.
         </p>
         <WireUpgradeCard v-for="(u, i) in vm.upgrades" :key="i" :u="u" compact />
       </section>
