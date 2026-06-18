@@ -120,12 +120,27 @@ export function useYahooLeaguePool() {
     loading.value = true
     try {
       const { yahooService } = await import('@/services/yahoo')
+      // Retry a team's roster on a transient failure (Yahoo 502/throttle) before
+      // giving up on it — a single gateway blip shouldn't zero a team's players.
+      const fetchRoster = async (teamKey: string): Promise<any[] | null> => {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            return (await yahooService.getRoster(teamKey)) as any[]
+          } catch {
+            if (attempt < 2) await new Promise((r) => setTimeout(r, 400 * (attempt + 1)))
+          }
+        }
+        return null
+      }
       const rows: PoolRow[] = []
+      let failed = 0
       for (const t of teams) {
         const teamKey = String(t.team_key)
-        try {
-          const roster = await yahooService.getRoster(teamKey)
-          for (const p of roster as any[]) {
+        const roster = await fetchRoster(teamKey)
+        if (roster === null) {
+          failed++
+        } else {
+          for (const p of roster) {
             const playerKey = String(p?.player_key ?? p?.player_id ?? '')
             if (!playerKey) continue
             rows.push({
@@ -138,16 +153,19 @@ export function useYahooLeaguePool() {
               status: String(p?.status ?? ''),
             })
           }
-        } catch {
-          /* skip this team */
         }
         await new Promise((r) => setTimeout(r, 120)) // gap so the burst doesn't trip the throttle
       }
-      if (!rows.length) return // keep retryable; don't cache an empty (throttled) result
-      try {
-        sessionStorage.setItem(cacheKey(), JSON.stringify(rows))
-      } catch {
-        /* quota / private mode — pool still works in-memory */
+      if (!rows.length) return // total failure: keep retryable, don't cache an empty result
+      // Only persist a COMPLETE fetch — caching a partial pool (a team's worth of
+      // players missing) would skew standings on every reload. A partial pool still
+      // renders this session; the next reload retries cold and usually completes.
+      if (failed === 0) {
+        try {
+          sessionStorage.setItem(cacheKey(), JSON.stringify(rows))
+        } catch {
+          /* quota / private mode — pool still works in-memory */
+        }
       }
       await buildFromRows(rows)
     } finally {
