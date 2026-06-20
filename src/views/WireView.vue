@@ -90,6 +90,27 @@ const onLogoError = (e: Event) => {
         </div>
       </section>
 
+      <!-- 1b. HEATING UP — rising-ownership players, grab before your league does -->
+      <section
+        v-if="vm.heatingUp.length"
+        class="rounded-xl border border-[#F2B33A]/25 bg-dark-card px-4 py-3"
+      >
+        <p class="font-mono text-[10px] uppercase tracking-widest text-[#F2B33A]">▲ Heating up</p>
+        <p class="mt-0.5 font-mono text-[9px] text-dark-textMuted">Getting added across leagues — grab before yours does.</p>
+        <div
+          v-for="h in vm.heatingUp"
+          :key="h.key"
+          class="mt-2 flex items-center gap-2 font-mono text-[11px]"
+        >
+          <Avatar :src="h.headshot" :label="h.name" cls="h-6 w-6 rounded-full" />
+          <span class="font-semibold text-dark-text">{{ h.name }}</span>
+          <img v-if="h.proLogo" :src="h.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
+          <span class="text-dark-textMuted">{{ h.pos }}</span>
+          <span v-if="h.why" class="text-dark-textMuted">· {{ h.why }}</span>
+          <span class="ml-auto shrink-0 font-mono text-[11px] font-bold text-[#F2B33A]">▲ {{ h.trend }}%</span>
+        </div>
+      </section>
+
       <!-- 2. BIGGEST UPGRADE (hero) — only when it's a real (non-marginal) upgrade -->
       <section v-if="vm.hero && !vm.slim" class="space-y-2">
         <p class="font-mono text-[10px] uppercase tracking-widest text-primary">★ Biggest upgrade available</p>

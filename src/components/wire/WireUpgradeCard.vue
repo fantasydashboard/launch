@@ -12,6 +12,8 @@ interface WirePlayer {
 defineProps<{
   u: {
     deltaEcw: number
+    why?: string
+    trend?: number
     add: WirePlayer
     drop: WirePlayer | null
     fit: { label: string; pct: number }[]
@@ -38,6 +40,7 @@ const onLogoError = (e: Event) => {
       <span class="font-display text-[14px] font-bold text-dark-text">{{ u.add.name }}</span>
       <img v-if="u.add.proLogo" :src="u.add.proLogo" alt="" @error="onLogoError" class="h-4 w-4 shrink-0 object-contain" />
       <span class="font-mono text-[10px] text-dark-textMuted">{{ u.add.pos }}</span>
+      <span v-if="(u.trend ?? 0) >= 3" class="rounded border border-[#F2B33A]/40 px-1 font-mono text-[9px] text-[#F2B33A]" title="rising ownership this week">▲ {{ u.trend }}%</span>
       <!-- swap -> drop player -->
       <template v-if="u.drop">
         <span class="px-1 font-mono text-[11px] text-dark-textMuted">for</span>
@@ -48,8 +51,10 @@ const onLogoError = (e: Event) => {
       </template>
       <span class="ml-auto shrink-0 font-mono text-[12px] font-bold text-primary">+{{ u.deltaEcw.toFixed(1) }} cats/wk</span>
     </div>
+    <!-- one-line why -->
+    <p v-if="u.why" class="mt-1 pl-10 font-mono text-[10px] text-dark-textMuted">{{ u.why }}</p>
     <!-- category-fit bars under the add -->
-    <div v-if="u.fit.length" class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 pl-10">
+    <div v-if="u.fit.length" class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 pl-10">
       <span
         v-for="f in u.fit"
         :key="f.label"
@@ -74,8 +79,12 @@ const onLogoError = (e: Event) => {
       <img v-if="u.add.proLogo" :src="u.add.proLogo" alt="" @error="onLogoError" class="h-4 w-4 shrink-0 object-contain" />
       <span class="font-mono text-[11px] text-dark-textMuted">{{ u.add.pos }}</span>
       <ValueBadge :value="u.add.value" />
+      <span v-if="(u.trend ?? 0) >= 3" class="rounded border border-[#F2B33A]/40 px-1 font-mono text-[9px] text-[#F2B33A]" title="rising ownership this week">▲ {{ u.trend }}%</span>
       <span class="ml-auto shrink-0 font-mono text-[13px] font-bold text-primary">+{{ u.deltaEcw.toFixed(1) }} cats/wk</span>
     </div>
+
+    <!-- one-line why -->
+    <p v-if="u.why" class="pl-[52px] font-mono text-[10px] text-dark-textMuted">{{ u.why }}</p>
 
     <!-- category-fit bars -->
     <div v-if="u.fit.length" class="flex flex-wrap items-center gap-x-3 gap-y-1 pl-[52px]">

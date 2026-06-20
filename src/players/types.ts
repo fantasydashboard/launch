@@ -7,6 +7,7 @@ export interface AvailablePlayer {
   team: string // MLB team abbr
   headshot?: string
   percentOwned: number
+  percentChange?: number // week-over-week ownership delta (rising = trending add)
   status?: string // injury/IL status, '' if healthy
   stats: Record<string, number> // keyed by Yahoo stat_id (season totals)
 }

@@ -8,6 +8,8 @@ export interface WireFreeAgent {
   team: string
   headshot?: string
   side: 'hit' | 'pit'
+  percentOwned?: number // current roster ownership %
+  percentChange?: number // week-over-week ownership delta (rising = trending)
   effStats: Record<string, number> // effective ROS stats (incl. ratio volume stats)
 }
 export interface WireDropOption {

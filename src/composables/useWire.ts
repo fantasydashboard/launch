@@ -355,6 +355,8 @@ export function useWire() {
       team: fa.team,
       headshot: fa.headshot,
       side: faSide(fa.position),
+      percentOwned: fa.percentOwned,
+      percentChange: fa.percentChange,
       effStats: toEffectiveStats(fa.stats, faFgByKey.value[fa.playerKey] ?? null, catSpecs.value, SEASON_FRACTION),
     })),
   )
@@ -550,6 +552,24 @@ export function useWire() {
     return [...healthy, ...il]
   })
 
+  // ── trending ("act now") + the one-line "why" ──────────────────────────────
+  // Rising week-over-week ownership: getting scooped up across leagues = grab now.
+  const TREND_MIN = 3 // +3pp ownership in a week reads as "trending"
+  const trendByKey = computed(() => {
+    const m = new Map<string, number>()
+    for (const f of wireFreeAgents.value) if (typeof f.percentChange === 'number') m.set(f.playerKey, f.percentChange)
+    return m
+  })
+  // Your weak cats keyed by statId, for the one-line "why" on each add.
+  const weakByStatId = computed(() => new Map(weakCats.value.map((c) => [c.statId, c])))
+  // One-line rationale: the WORST-ranked weak cat this add plugs ("plugs K (10th)").
+  const whyFor = (fixes: string[]): string => {
+    const hit = fixes.map((s) => weakByStatId.value.get(s)).filter(Boolean) as { label: string; rank: number }[]
+    if (!hit.length) return ''
+    const worst = hit.slice().sort((a, b) => b.rank - a.rank)[0]
+    return `plugs ${worst.label} · ${ordinal(Math.round(worst.rank))}`
+  }
+
   // An enriched upgrade: add + drop players carry headshot / team logo / 0-100 value
   // so the view can render the Trades-style ADD/DROP card with a value bar.
   const toUp = (u: WireUpgrade) => {
@@ -558,6 +578,8 @@ export function useWire() {
     const addPct = pctByKeyCat.value.get(u.player.key)
     return {
       deltaEcw: u.deltaEcw,
+      why: whyFor(u.fixes),
+      trend: Math.round(trendByKey.value.get(u.player.key) ?? 0),
       add: {
         name: u.player.name,
         pos: u.player.position,
@@ -581,6 +603,30 @@ export function useWire() {
     }
   }
 
+  // ── "heating up" — the top rising-ownership available players ───────────────
+  // Time-sensitive and orthogonal to ECW fit: even a marginal add is worth grabbing
+  // before your league does. Shows the worst weak cat it helps when it's an upgrade.
+  const heatingUp = computed(() =>
+    wireFreeAgents.value
+      .filter((f) => (f.percentChange ?? 0) >= TREND_MIN)
+      .slice()
+      .sort((a, b) => (b.percentChange ?? 0) - (a.percentChange ?? 0))
+      .slice(0, 5)
+      .map((f) => {
+        const meta = metaByKey.value.get(f.playerKey)
+        const up = upgradesAll.value.find((u) => u.player.key === f.playerKey)
+        return {
+          key: f.playerKey,
+          name: f.name,
+          pos: f.position,
+          headshot: f.headshot || meta?.headshot,
+          proLogo: mlbTeamLogo(f.team) || meta?.proLogo,
+          trend: Math.round(f.percentChange ?? 0),
+          why: up ? whyFor(up.fixes) : '',
+        }
+      }),
+  )
+
   // Enrich a stream target with its headshot + team logo.
   const enrichStream = (t: StreamBoard['starters'][number]) => {
     const meta = metaByKey.value.get(t.player.key)
@@ -591,7 +637,7 @@ export function useWire() {
   // Pick a free agent to add + a roster player to drop and grade the move in the
   // same ECW dialect as the auto upgrades (mirrors the Trades analyzer). The
   // pickable lists; the grade is computed on demand from the current selection.
-  interface GraderPick { key: string; name: string; pos: string; headshot?: string; proLogo?: string; value: number; onIL?: boolean }
+  interface GraderPick { key: string; name: string; pos: string; headshot?: string; proLogo?: string; value: number; onIL?: boolean; trend?: number }
   interface GradeResult {
     deltaEcw: number
     verdict: GradeVerdict
@@ -611,7 +657,7 @@ export function useWire() {
     wireFreeAgents.value
       .map((f) => {
         const meta = metaByKey.value.get(f.playerKey)
-        return { key: f.playerKey, name: f.name, pos: f.position, headshot: f.headshot || meta?.headshot, proLogo: mlbTeamLogo(f.team) || meta?.proLogo, value: meta?.value ?? 0 }
+        return { key: f.playerKey, name: f.name, pos: f.position, headshot: f.headshot || meta?.headshot, proLogo: mlbTeamLogo(f.team) || meta?.proLogo, value: meta?.value ?? 0, trend: Math.round(f.percentChange ?? 0) }
       })
       .sort((a, b) => {
         const da = upgradeDeltaByKey.value.get(a.key) ?? null
@@ -685,6 +731,8 @@ export function useWire() {
       // (< +0.15 cats/wk = below a "solid" upgrade). On a strong roster, don't
       // trumpet a +0.1 move as the biggest upgrade — mute it and say so.
       slim: (upgradesAll.value[0]?.deltaEcw ?? 0) < 0.15,
+      // "Act now" — rising-ownership players to grab before your league does.
+      heatingUp: heatingUp.value,
       streamBoard: {
         weakCats: board.weakCats,
         starters: dedupeStream(board.starters),

@@ -12,6 +12,7 @@ export function normalizeFreeAgent(raw: any): AvailablePlayer {
     team: String(raw.mlb_team ?? ''),
     headshot: raw.headshot ? String(raw.headshot) : undefined,
     percentOwned: typeof raw.percent_owned === 'number' ? raw.percent_owned : 0,
+    percentChange: typeof raw.percent_change === 'number' ? raw.percent_change : 0,
     status: raw.status ? String(raw.status) : '',
     stats: raw.stats && typeof raw.stats === 'object' ? { ...raw.stats } : {},
   }

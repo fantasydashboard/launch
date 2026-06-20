@@ -26,6 +26,7 @@ describe('normalizeFreeAgent', () => {
       team: 'NYY',
       headshot: 'http://img/x.png',
       percentOwned: 45.2,
+      percentChange: 2.1,
       status: 'NA',
       stats: { '32': 30, '26': 2.5 },
     })

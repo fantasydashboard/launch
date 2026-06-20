@@ -11,6 +11,7 @@ interface Pick {
   proLogo?: string
   value: number
   onIL?: boolean
+  trend?: number
 }
 interface GradeResult {
   deltaEcw: number
@@ -96,6 +97,7 @@ const onLogoError = (e: Event) => {
               <span class="truncate text-[12px] font-semibold text-dark-text">{{ p.name }}</span>
               <img v-if="p.proLogo" :src="p.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
               <span class="font-mono text-[9px] text-dark-textMuted">{{ p.pos }}</span>
+              <span v-if="(p.trend ?? 0) >= 3" class="shrink-0 font-mono text-[9px] text-[#F2B33A]" title="rising ownership this week">▲{{ p.trend }}%</span>
               <span class="ml-auto shrink-0 font-mono text-[10px] text-dark-textMuted">{{ p.value }}</span>
             </button>
             <p v-if="!filteredAdds.length" class="px-2 py-1.5 font-mono text-[10px] text-dark-textMuted">No free agents match.</p>
