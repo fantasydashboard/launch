@@ -611,11 +611,20 @@ const eligOf = (p: { eligiblePositions?: string[]; position?: string }): string[
 const rosterSlotsForPos = computed(() =>
   isEspnCategoryLeague.value ? espn.rosterSlots.value : yahooRosterSlots.value,
 )
+// My team's key AS THE POOL LABELS IT. Standings use a short team_id ("7") while the
+// league pool uses the full fantasy_team_key ("431.l.….t.7") — derive my pool key
+// from one of my own players so the landscape lookup matches on BOTH platforms.
+const myPoolTeamKey = computed(() => {
+  const mineSet = new Set(myPlayerKeys.value)
+  const me = rosterPool.value.find((p) => mineSet.has(p.playerKey)) as { teamKey?: string } | undefined
+  return me?.teamKey ? String(me.teamKey) : ''
+})
 const positionalRows = computed(() => {
   const pool = rosterPool.value
   const slots = rosterSlotsForPos.value
   const eng = tradeEngine.value
-  if (!pool.length || !eng || !myTeamId.value || !Object.keys(slots).length) return []
+  const myKey = myPoolTeamKey.value
+  if (!pool.length || !eng || !myKey || !Object.keys(slots).length) return []
   const role = eng.roleValueByKey
   const vb = eng.valueByKey
   const depth = pool.map((p) => ({
@@ -623,25 +632,32 @@ const positionalRows = computed(() => {
     teamKey: String((p as { teamKey?: string }).teamKey ?? ''),
     eligiblePositions: eligOf(p),
     value: role.get(p.playerKey) ?? 0,
-    status: String((p as { teamKey?: string }).teamKey ?? '') === myTeamId.value && (p as { onIL?: boolean }).onIL ? 'IL' : '',
+    status: String((p as { teamKey?: string }).teamKey ?? '') === myKey && (p as { onIL?: boolean }).onIL ? 'IL' : '',
   }))
-  const mine = buildPositionalLandscape(depth, slots).get(myTeamId.value)
+  const mine = buildPositionalLandscape(depth, slots).get(myKey)
   if (!mine) return []
   const rows: { pos: string; depth: 'deep' | 'thin' | 'ok'; bestName: string | null; bestRank: number | null; leagueCount: number }[] = []
   for (const pos of POS_ORDER) {
     const st = mine.get(pos)
     if (!st || st.slots <= 0 || SURPLUS_FLEX.has(pos)) continue
-    const eligible = pool
-      .filter((p) => coversSlot(eligOf(p), pos))
-      .map((p) => ({ p, v: vb.get(p.playerKey) ?? 0 }))
-      .sort((a, b) => b.v - a.v)
-    const myBestIdx = eligible.findIndex((e) => String((e.p as { teamKey?: string }).teamKey ?? '') === myTeamId.value)
+    // Rank by each TEAM's BEST body at this slot (the "1-of-N teams" view), not every
+    // eligible body — so it reads "3rd of 10", not "3rd of 158".
+    const bestByTeam = new Map<string, { name: string; v: number }>()
+    for (const p of pool) {
+      if (!coversSlot(eligOf(p), pos)) continue
+      const tk = String((p as { teamKey?: string }).teamKey ?? '')
+      const v = vb.get(p.playerKey) ?? 0
+      const cur = bestByTeam.get(tk)
+      if (!cur || v > cur.v) bestByTeam.set(tk, { name: p.name, v })
+    }
+    const ranked = [...bestByTeam.entries()].sort((a, b) => b[1].v - a[1].v)
+    const myIdx = ranked.findIndex(([tk]) => tk === myKey)
     rows.push({
       pos,
       depth: st.surplusBodies >= 1 ? 'deep' : st.need >= 0.5 ? 'thin' : 'ok',
-      bestName: myBestIdx >= 0 ? eligible[myBestIdx].p.name : null,
-      bestRank: myBestIdx >= 0 ? myBestIdx + 1 : null,
-      leagueCount: eligible.length,
+      bestName: myIdx >= 0 ? ranked[myIdx][1].name : null,
+      bestRank: myIdx >= 0 ? myIdx + 1 : null,
+      leagueCount: ranked.length,
     })
   }
   return rows
