@@ -22,6 +22,8 @@ interface GradeResult {
   holdsLabels: string[]
   valueGap: number
   ilWarning: boolean
+  acqTip: string
+  dropQuality: boolean
 }
 
 const props = defineProps<{
@@ -180,6 +182,14 @@ const onLogoError = (e: Event) => {
         <p v-if="result.ilWarning" class="px-4 pt-1.5 pl-[56px] font-mono text-[10px] text-[#f2b33a]">
           ⚠ On IL — dropping won't open an active roster spot. You'll also need to drop an active player to make the add.
         </p>
+
+        <!-- don't drop a quality player -->
+        <p v-if="result.dropQuality" class="px-4 pt-1.5 pl-[56px] font-mono text-[10px] text-[#f2b33a]">
+          ★ Quality player — this is a trade chip. Shop him on the Trades page, don't drop him.
+        </p>
+
+        <!-- how to acquire -->
+        <p v-if="result.acqTip" class="px-4 pt-1.5 pl-[56px] font-mono text-[10px] text-[#5ec8e6]">→ {{ result.acqTip }}</p>
 
         <!-- holds + value gap -->
         <div class="flex flex-wrap items-center gap-x-4 gap-y-0.5 border-t border-dark-border/40 px-4 py-1.5 pl-[56px]">

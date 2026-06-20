@@ -17,6 +17,7 @@ import { buildStreamBoard, type StreamBoard } from '@/wire/streamBoard'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
 import { expendableKeys, parseEligible } from '@/wire/dropEligibility'
 import { gradeLabel, type GradeVerdict } from '@/wire/gradeMove'
+import { acquisitionTip } from '@/wire/acquisition'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { buildPlayerMatchers } from '@/services/projectionService'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
@@ -50,6 +51,7 @@ export function useWire() {
     pool: yahooLeaguePool,
     fgByKey: yahooLeagueFg,
     rosterSlots: yahooRosterSlots,
+    acquisition: yahooAcquisition,
     load: loadYahooPool,
   } = useYahooLeaguePool()
 
@@ -368,6 +370,10 @@ export function useWire() {
   const rosterSlots = computed(() =>
     isEspnCategoryLeague.value ? espn.rosterSlots.value : yahooRosterSlots.value,
   )
+  // Waiver/FAAB mode for "how to acquire" guidance (ESPN exposes the FAAB budget).
+  const acquisition = computed(() =>
+    isEspnCategoryLeague.value ? espn.acquisition.value : yahooAcquisition.value,
+  )
   // Players parked in an IL/NA reserve slot. They don't hold an active roster
   // spot, so dropping one never frees a spot for an add — keep them out of the
   // "drop to make room" math (both as a droppable body AND as a body that could
@@ -580,6 +586,7 @@ export function useWire() {
       deltaEcw: u.deltaEcw,
       why: whyFor(u.fixes),
       trend: Math.round(trendByKey.value.get(u.player.key) ?? 0),
+      acqTip: acquisitionTip(acquisition.value.mode, u.deltaEcw, acquisition.value.budget),
       add: {
         name: u.player.name,
         pos: u.player.position,
@@ -689,6 +696,8 @@ export function useWire() {
     holdsLabels: string[]
     valueGap: number
     ilWarning: boolean
+    acqTip: string
+    dropQuality: boolean // the drop is a quality player — trade, don't drop
   }
   // Best-fit ordering: the FA's season ECW gain for MY team (from the ranked
   // upgrades) leads, so the adds that actually plug your weak cats sit on top —
@@ -738,6 +747,10 @@ export function useWire() {
       holdsLabels: d.holds.map(labelOf),
       valueGap: addVal - dropVal,
       ilWarning: dropKey ? ilKeys.value.has(dropKey) : false,
+      // How to acquire the add (waiver/FAAB), scaled by the move's impact.
+      acqTip: addKey ? acquisitionTip(acquisition.value.mode, d.deltaEcw, acquisition.value.budget) : '',
+      // Don't drop a quality player — it's a trade chip, not a cut (PROTECT_FLOOR=50).
+      dropQuality: !!dropKey && dropVal >= 50,
     }
   }
 

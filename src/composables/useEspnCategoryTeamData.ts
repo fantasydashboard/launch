@@ -8,6 +8,7 @@ import type { StandingsEntryLike } from '@/recommendations/fromStandings'
 import type { CategoryDef } from '@/recommendations/types'
 import type { PoolPlayer, RosterPlayer } from '@/composables/useMyRoster'
 import type { AvailablePlayer } from '@/players/types'
+import { parseEspnAcquisition, type AcquisitionInfo } from '@/wire/acquisition'
 import { mapBreakdownToCategoryData } from '@/myteam/espn/mapStandings'
 import { mapRostersToPool, mapRosterToPlayers } from '@/myteam/espn/mapRosters'
 import { mapEspnFreeAgents } from '@/myteam/espn/mapFreeAgents'
@@ -40,6 +41,7 @@ export function useEspnCategoryTeamData() {
   const freeAgents = ref<AvailablePlayer[]>([])
   // Required starting-slot counts per position (for the positional trade dimension).
   const rosterSlots = ref<Record<string, number>>({})
+  const acquisition = ref<AcquisitionInfo>({ mode: 'unknown', budget: null })
   const supported = ref<boolean | null>(null)
   const loading = ref(false)
   const loaded = ref(false)
@@ -56,6 +58,7 @@ export function useEspnCategoryTeamData() {
     rosterPlayers.value = []
     freeAgents.value = []
     rosterSlots.value = {}
+    acquisition.value = { mode: 'unknown', budget: null }
     supported.value = null
     loaded.value = false
   }
@@ -90,6 +93,7 @@ export function useEspnCategoryTeamData() {
       supported.value = true
       // Roster-slot requirements for the positional dimension (defaults if absent).
       rosterSlots.value = parseRosterSlots('espn', { rosterSettings: league.settings?.rosterSettings })
+      acquisition.value = parseEspnAcquisition(league.settings?.acquisitionSettings)
 
       const [breakdown, teams, myTeam] = await Promise.all([
         espnService.getCategoryStatsBreakdown(sport, leagueId, season),
@@ -162,6 +166,7 @@ export function useEspnCategoryTeamData() {
     rosterPlayers,
     freeAgents,
     rosterSlots,
+    acquisition,
     supported,
     loading,
     loaded,

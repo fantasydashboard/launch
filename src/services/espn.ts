@@ -205,6 +205,7 @@ export interface EspnLeague {
     scheduleSettings: any
     scoringSettings: any
     tradeSettings: any
+    acquisitionSettings?: any
   }
 }
 
@@ -3230,7 +3231,8 @@ export class EspnFantasyService {
         rosterSettings: settings.rosterSettings,
         scheduleSettings: settings.scheduleSettings,
         scoringSettings: settings.scoringSettings,
-        tradeSettings: settings.tradeSettings
+        tradeSettings: settings.tradeSettings,
+        acquisitionSettings: settings.acquisitionSettings
       }
     }
   }

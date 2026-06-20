@@ -3,6 +3,7 @@ import { useLeagueStore } from '@/stores/league'
 import { buildPlayerMatchers, type FGProjection } from '@/services/projectionService'
 import { parseRosterSlots } from '@/trades/rosterSlots'
 import { isYahooIL } from '@/wire/injury'
+import { parseYahooAcquisition, type AcquisitionInfo } from '@/wire/acquisition'
 
 /**
  * The league-wide rostered pool for a Yahoo category league, assembled from one
@@ -47,16 +48,18 @@ export function useYahooLeaguePool() {
   const fgByKey = ref<Record<string, FGProjection | null>>({})
   // Required starting-slot counts per position (for position-aware drops).
   const rosterSlots = ref<Record<string, number>>({})
+  const acquisition = ref<AcquisitionInfo>({ mode: 'unknown', budget: null })
   const loading = ref(false)
   const loaded = ref(false)
 
-  // League roster requirements; baseball defaults if the settings call fails.
+  // League roster requirements + waiver/FAAB mode; baseball defaults if the call fails.
   async function loadRosterSlots() {
     if (Object.keys(rosterSlots.value).length) return
     try {
       const { yahooService } = await import('@/services/yahoo')
       const settings = await yahooService.getLeagueSettings(String(leagueStore.activeLeagueId ?? ''))
       rosterSlots.value = parseRosterSlots('yahoo', settings)
+      acquisition.value = parseYahooAcquisition(settings)
     } catch {
       rosterSlots.value = parseRosterSlots('yahoo', null)
     }
@@ -173,5 +176,5 @@ export function useYahooLeaguePool() {
     }
   }
 
-  return { pool, fgByKey, rosterSlots, loading, loaded, load }
+  return { pool, fgByKey, rosterSlots, acquisition, loading, loaded, load }
 }

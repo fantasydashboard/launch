@@ -14,6 +14,7 @@ defineProps<{
     deltaEcw: number
     why?: string
     trend?: number
+    acqTip?: string
     add: WirePlayer
     drop: WirePlayer | null
     fit: { label: string; pct: number }[]
@@ -67,6 +68,7 @@ const onLogoError = (e: Event) => {
         </span>
       </span>
     </div>
+    <p v-if="u.acqTip" class="mt-1 pl-10 font-mono text-[10px] text-[#5ec8e6]">→ {{ u.acqTip }}</p>
   </div>
 
   <!-- HERO / full card: add over drop, one gain, fit bars, holds -->
@@ -116,5 +118,8 @@ const onLogoError = (e: Event) => {
     <div v-if="u.holdsLabels.length" class="pl-[52px] font-mono text-[10px] text-dark-textMuted">
       holds {{ u.holdsLabels.join(' ') }}
     </div>
+
+    <!-- how to acquire -->
+    <p v-if="u.acqTip" class="pl-[52px] font-mono text-[10px] text-[#5ec8e6]">→ {{ u.acqTip }}</p>
   </div>
 </template>
