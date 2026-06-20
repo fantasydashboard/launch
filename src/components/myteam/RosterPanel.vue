@@ -14,6 +14,8 @@ const props = defineProps<{
   drops?: DropAnalysis
   // playerKey -> position where this started player is a "lineup leak" (weak for the slot).
   weakStarters?: Map<string, string>
+  // playerKeys that are sell-high trade chips (overperforming, due to regress).
+  sellHigh?: Set<string>
 }>()
 
 interface ContribChip {
@@ -202,6 +204,11 @@ function onLogoErr(e: Event) {
                 :title="'A stronger ' + props.weakStarters.get(row.player.playerKey) + ' is on your bench'"
                 class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-[#F2B33A] bg-[#F2B33A]/10"
               >weak {{ props.weakStarters.get(row.player.playerKey) }}</span>
+              <span
+                v-if="props.sellHigh?.has(row.player.playerKey)"
+                title="Overperforming his projection — peak trade value. Shop him on Trades."
+                class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-primary bg-primary/10"
+              >★ sell-high</span>
             </span>
             <span class="flex items-center gap-1 text-xs text-dark-textMuted">
               {{ row.player.position }}

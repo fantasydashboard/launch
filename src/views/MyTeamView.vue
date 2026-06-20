@@ -18,6 +18,7 @@ import { toEffectiveStats } from '@/myteam/effectiveStats'
 import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 import { classifyCategory } from '@/myteam/categorySide'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
+import { buildEngine } from '@/trades/engine'
 import { computeCategoryGaps } from '@/myteam/categoryGaps'
 import { holeFixNote } from '@/myteam/holeFix'
 import SituationStrip from '@/components/myteam/SituationStrip.vue'
@@ -31,6 +32,7 @@ const {
   players: yahooRosterPlayers,
   pool: yahooRosterPool,
   fgByKey: yahooFgByKey,
+  statcastByKey: yahooStatcastByKey,
   loading: yahooRosterLoading,
   loaded: yahooRosterLoaded,
   load: loadRoster,
@@ -64,6 +66,9 @@ const rosterPool = computed(() =>
 )
 const fgByKey = computed(() =>
   isEspnCategoryLeague.value ? espn.fgByKey.value : yahooFgByKey.value,
+)
+const statcastByKey = computed(() =>
+  isEspnCategoryLeague.value ? espn.statcastByKey.value : yahooStatcastByKey.value,
 )
 const rosterLoading = computed(() =>
   isEspnCategoryLeague.value ? espn.loading.value : yahooRosterLoading.value,
@@ -493,6 +498,33 @@ const contributions = computed(() => {
   return computeRosterValue(effectivePool, myPlayerKeys.value, catSpecs.value)
 })
 
+// Sell-high flags: reuse the Trades buy/sell timing engine (perceived-vs-projection
+// divergence, confirmed by Statcast luck). A roster player flagged 'sell' is
+// overperforming and at peak trade value — the cue to shop him on Trades, closing
+// the loop with the Wire's "don't drop a chip". Engine is keyed off the league pool;
+// timing doesn't need standings, so teamCatWins is omitted.
+const tradeEngine = computed(() =>
+  rosterPool.value.length && catSpecs.value.length
+    ? buildEngine({
+        pool: rosterPool.value,
+        fgByKey: fgByKey.value,
+        statcastByKey: statcastByKey.value,
+        cats: catSpecs.value,
+        seasonFraction: SEASON_FRACTION,
+        labelOf: (id: string) => categories.value.find((c) => c.statId === id)?.label || id,
+      })
+    : null,
+)
+const sellHighKeys = computed<Set<string>>(() => {
+  const s = new Set<string>()
+  const timing = tradeEngine.value?.timingByKey
+  if (!timing) return s
+  for (const key of myPlayerKeys.value) {
+    if (timing.get(key)?.dir === 'sell') s.add(key)
+  }
+  return s
+})
+
 // Drop candidates + weak link, derived from the contribution tiers.
 const drops = computed(() => {
   if (!contributions.value.length) return { candidates: [], weakLink: null }
@@ -569,6 +601,7 @@ watch(categories, () => {
         :categories="categories"
         :contributions="contributions"
         :drops="drops"
+        :sell-high="sellHighKeys"
       />
       <p v-else-if="rosterLoaded" class="text-sm text-dark-textMuted">
         No roster found for your team.
