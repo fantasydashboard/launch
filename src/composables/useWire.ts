@@ -502,6 +502,23 @@ export function useWire() {
       : [],
   )
 
+  // Displayed upgrades: ONE row per drop target (the best add for each droppable
+  // slot). When you have only one genuine weak link on a side but many adds that
+  // want it, the raw list repeats "for Matt Strahm" on every row — collapse to the
+  // best add per distinct drop so each row is a real, separate roster move.
+  const displayUpgrades = computed<WireUpgrade[]>(() => {
+    const seen = new Set<string>()
+    const out: WireUpgrade[] = []
+    for (const u of upgradesAll.value) {
+      if (u.dropKey) {
+        if (seen.has(u.dropKey)) continue
+        seen.add(u.dropKey)
+      }
+      out.push(u)
+    }
+    return out
+  })
+
   const streamBoardVm = computed<StreamBoard>(() =>
     ready.value
       ? buildStreamBoard({
@@ -566,14 +583,24 @@ export function useWire() {
     for (const f of wireFreeAgents.value) if (typeof f.percentChange === 'number') m.set(f.playerKey, f.percentChange)
     return m
   })
-  // Your weak cats keyed by statId, for the one-line "why" on each add.
-  const weakByStatId = computed(() => new Map(weakCats.value.map((c) => [c.statId, c])))
-  // One-line rationale: the WORST-ranked weak cat this add plugs ("plugs K (10th)").
+  // Current rank in EVERY category (not just weaknesses), for the one-line "why".
+  const rankByStatId = computed(() => {
+    const m = new Map<string, number>()
+    if (!leagueTotals.value.length) return m
+    const n = leagueTotals.value.length
+    for (const c of catSpecs.value) m.set(c.statId, rankInCategory(leagueTotals.value, c).get(myTeamId.value) ?? n)
+    return m
+  })
+  // One-line rationale: the cat with the most room (worst current rank) this add
+  // improves. "plugs" when it's a weakness (bottom half), "lifts" for a middle cat —
+  // so a starter that wins a middle cat reads honestly, not as a blank line.
   const whyFor = (fixes: string[]): string => {
-    const hit = fixes.map((s) => weakByStatId.value.get(s)).filter(Boolean) as { label: string; rank: number }[]
-    if (!hit.length) return ''
-    const worst = hit.slice().sort((a, b) => b.rank - a.rank)[0]
-    return `plugs ${worst.label} · ${ordinal(Math.round(worst.rank))}`
+    if (!fixes.length) return ''
+    const n = leagueTotals.value.length || 1
+    const top = fixes
+      .map((s) => ({ label: labelOf(s), rank: rankByStatId.value.get(s) ?? n }))
+      .sort((a, b) => b.rank - a.rank)[0]
+    return `${top.rank > n / 2 ? 'plugs' : 'lifts'} ${top.label} · ${ordinal(Math.round(top.rank))}`
   }
 
   // An enriched upgrade: add + drop players carry headshot / team logo / 0-100 value
@@ -759,8 +786,8 @@ export function useWire() {
     // Stream board: drop anyone already shown as a hero/upgrade so the two lists
     // never surface the same player twice.
     const upgradeKeys = new Set([
-      ...(upgradesAll.value[0] ? [upgradesAll.value[0].player.key] : []),
-      ...upgradesAll.value.slice(1, 8).map((u) => u.player.key),
+      ...(displayUpgrades.value[0] ? [displayUpgrades.value[0].player.key] : []),
+      ...displayUpgrades.value.slice(1, 8).map((u) => u.player.key),
     ])
     const board = streamBoardVm.value
     const dedupeStream = (list: StreamBoard['starters']) =>
@@ -780,12 +807,12 @@ export function useWire() {
       // Leverage header (Trades-style): where you're strong vs your holes.
       surplus: strongCats.value.map((c) => ({ label: c.label, rank: ordinal(Math.round(c.rank)) })),
       holes: weakCats.value.map((c) => ({ label: c.label, rank: ordinal(Math.round(c.rank)) })),
-      hero: upgradesAll.value.length ? toUp(upgradesAll.value[0]) : null,
-      upgrades: upgradesAll.value.slice(1, 8).map(toUp),
+      hero: displayUpgrades.value.length ? toUp(displayUpgrades.value[0]) : null,
+      upgrades: displayUpgrades.value.slice(1, 8).map(toUp),
       // Slim pickings: there ARE positive moves, but the best is only marginal
       // (< +0.15 cats/wk = below a "solid" upgrade). On a strong roster, don't
       // trumpet a +0.1 move as the biggest upgrade — mute it and say so.
-      slim: (upgradesAll.value[0]?.deltaEcw ?? 0) < 0.15,
+      slim: (displayUpgrades.value[0]?.deltaEcw ?? 0) < 0.15,
       // "Act now" — rising-ownership players to grab before your league does.
       heatingUp: heatingUp.value,
       streamBoard: {

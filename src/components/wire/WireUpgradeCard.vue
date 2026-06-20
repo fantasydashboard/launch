@@ -68,7 +68,6 @@ const onLogoError = (e: Event) => {
         </span>
       </span>
     </div>
-    <p v-if="u.acqTip" class="mt-1 pl-10 font-mono text-[10px] text-[#5ec8e6]">→ {{ u.acqTip }}</p>
   </div>
 
   <!-- HERO / full card: add over drop, one gain, fit bars, holds -->
