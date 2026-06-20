@@ -47,6 +47,26 @@ describe('rankUpgrades', () => {
     expect(out[0].dropKey).toBe('weakHitter') // strongest add takes the weakest drop
   })
 
+  it('only spreads distinct drops across diversifyKeys; repeats the weakest otherwise', () => {
+    // weakHitter (a genuine weak link) + goodHitter (expendable but NOT a weak link).
+    const drops = [
+      { playerKey: 'weakHitter', side: 'hit' as const, effStats: { SB: 1 } },
+      { playerKey: 'goodHitter', side: 'hit' as const, effStats: { SB: 5 } },
+    ]
+    const out = rankUpgrades({
+      freeAgents: [
+        { playerKey: 'speedA', name: 'Speed A', position: 'OF', team: 'ARI', effStats: { SB: 40 }, side: 'hit' },
+        { playerKey: 'speedB', name: 'Speed B', position: 'OF', team: 'SD', effStats: { SB: 35 }, side: 'hit' },
+      ],
+      leagueTotals, myTeamId: 'T1', cats, dropOptions: drops,
+      diversifyKeys: new Set(['weakHitter']), // only the weak link is diversifiable
+      minDelta: 0.05,
+    })
+    expect(out).toHaveLength(2)
+    // Both adds drop the weak link — the good player is never reached for variety.
+    expect(out.every((u) => u.dropKey === 'weakHitter')).toBe(true)
+  })
+
   it('uses a null drop when no same-side droppable exists', () => {
     const out = rankUpgrades({
       freeAgents: [{ playerKey: 'sp', name: 'Streamer', position: 'SP', team: 'LAD', effStats: { SB: 40 }, side: 'pit' }],

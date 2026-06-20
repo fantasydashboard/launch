@@ -90,18 +90,30 @@ const onLogoError = (e: Event) => {
         </div>
       </section>
 
-      <!-- 2. BIGGEST UPGRADE (hero) -->
-      <section v-if="vm.hero" class="space-y-2">
+      <!-- 2. BIGGEST UPGRADE (hero) — only when it's a real (non-marginal) upgrade -->
+      <section v-if="vm.hero && !vm.slim" class="space-y-2">
         <p class="font-mono text-[10px] uppercase tracking-widest text-primary">★ Biggest upgrade available</p>
         <WireUpgradeCard :u="vm.hero" hero />
       </section>
 
       <!-- 3. MORE UPGRADES -->
-      <section v-if="vm.upgrades.length" class="space-y-2">
+      <section v-if="vm.hero && !vm.slim && vm.upgrades.length" class="space-y-2">
         <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">More upgrades</p>
         <p class="font-mono text-[9px] text-dark-textMuted">
           Other adds worth making. You'd make one of these.
         </p>
+        <WireUpgradeCard v-for="(u, i) in vm.upgrades" :key="i" :u="u" compact />
+      </section>
+
+      <!-- Slim pickings: strong roster, best available is only marginal -->
+      <section v-else-if="vm.slim" class="space-y-2">
+        <div class="rounded-xl border border-dark-border bg-dark-card px-4 py-4 text-center">
+          <p class="font-mono text-[11px] text-dark-textSecondary">Your roster's in good shape.</p>
+          <p class="mt-1 font-mono text-[10px] text-dark-textMuted">
+            Nothing on the wire clearly upgrades it — closest marginal moves below.
+          </p>
+        </div>
+        <WireUpgradeCard v-if="vm.hero" :u="vm.hero" compact />
         <WireUpgradeCard v-for="(u, i) in vm.upgrades" :key="i" :u="u" compact />
       </section>
 

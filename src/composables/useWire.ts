@@ -383,6 +383,12 @@ export function useWire() {
 
   // ── shared drop-candidate analysis (who-to-drop suggestions) ───────────────
   const dropCandidates = computed(() => computeDropCandidates(contributions.value))
+  // Genuine weak links you'd actually cut (bottom-of-role), that are also legally
+  // droppable. Used to spread DISTINCT upgrade drops only across real weak links —
+  // never reaching into a good player (your closer) just for variety.
+  const dropCandidateKeys = computed(
+    () => new Set(dropCandidates.value.candidates.map((c) => c.playerKey).filter((k) => expendable.value.has(k))),
+  )
 
   // ── drop options: weakest EXPENDABLE roster players, weakest first ─────────
   // (an add pairs with the weakest player you can legally lose on its side).
@@ -482,6 +488,7 @@ export function useWire() {
           myTeamId: myTeamId.value,
           cats: catSpecs.value,
           dropOptions: dropOptions.value,
+          diversifyKeys: dropCandidateKeys.value,
           minDelta: 0.05,
         })
       : [],
@@ -518,9 +525,12 @@ export function useWire() {
           onIL: false,
         }
       })
-    // IL players are dead weight worth clearing, but dropping them won't open an
-    // active roster spot — flag them so the user knows a second (active) drop is
-    // needed before an add. Listed after the healthy drops.
+    // IL players: only LOW-value ones are genuine dead weight worth cutting. A
+    // high-value injured player (an injured stud/prospect) is an asset to STASH and
+    // get back, not a drop — never suggest cutting them. Cutoff tracks the healthy
+    // drop tier (floored at the bottom-of-role threshold). Flagged that dropping
+    // them won't open an active spot (a second, active drop is still needed).
+    const ilCutoff = Math.max(25, healthy.length ? Math.max(...healthy.map((d) => d.value)) : 0)
     const il = myRosterPool.value
       .filter((p) => ilKeys.value.has(p.playerKey))
       .map((p) => {
@@ -536,6 +546,7 @@ export function useWire() {
           onIL: true,
         }
       })
+      .filter((d) => d.value <= ilCutoff)
     return [...healthy, ...il]
   })
 
@@ -670,6 +681,10 @@ export function useWire() {
       holes: weakCats.value.map((c) => ({ label: c.label, rank: ordinal(Math.round(c.rank)) })),
       hero: upgradesAll.value.length ? toUp(upgradesAll.value[0]) : null,
       upgrades: upgradesAll.value.slice(1, 8).map(toUp),
+      // Slim pickings: there ARE positive moves, but the best is only marginal
+      // (< +0.15 cats/wk = below a "solid" upgrade). On a strong roster, don't
+      // trumpet a +0.1 move as the biggest upgrade — mute it and say so.
+      slim: (upgradesAll.value[0]?.deltaEcw ?? 0) < 0.15,
       streamBoard: {
         weakCats: board.weakCats,
         starters: dedupeStream(board.starters),
