@@ -20,7 +20,8 @@ import { classifyCategory } from '@/myteam/categorySide'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
 import { buildEngine } from '@/trades/engine'
 import { buildPositionalLandscape, coversSlot, SURPLUS_FLEX } from '@/trades/positionalLandscape'
-import { computeCategoryGaps } from '@/myteam/categoryGaps'
+import { computeProductionGaps } from '@/myteam/productionGaps'
+import { aggregateTeamCatTotals, rankInCategory } from '@/trades/standings'
 import { holeFixNote } from '@/myteam/holeFix'
 import SituationStrip from '@/components/myteam/SituationStrip.vue'
 import SeasonArc from '@/components/myteam/SeasonArc.vue'
@@ -310,8 +311,8 @@ const emptyStateMessage = computed(() => {
 })
 
 const weaknesses = computed(() => {
-  if (!profile.value) return []
-  return computeCategoryWeaknesses(profile.value, categories.value)
+  if (!productionProfile.value) return []
+  return computeCategoryWeaknesses(productionProfile.value, categories.value)
     .slice()
     .sort((a, b) => b.leverage - a.leverage)
     .slice(0, 4)
@@ -363,8 +364,8 @@ const addsByStatId = computed<Record<string, { name: string; statValue: number; 
 })
 
 const strengths = computed(() => {
-  if (!profile.value) return []
-  return computeCategoryStrengths(profile.value, categories.value)
+  if (!productionProfile.value) return []
+  return computeCategoryStrengths(productionProfile.value, categories.value)
     .slice()
     .sort((a, b) => b.leverage - a.leverage)
     .slice(0, 4)
@@ -500,6 +501,37 @@ const contributions = computed(() => {
     stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, SEASON_FRACTION),
   }))
   return computeRosterValue(effectivePool, myPlayerKeys.value, catSpecs.value)
+})
+
+// League-wide PRODUCTION totals per category (ROS effective stats, every team) — the
+// basis for "how your team stacks up vs the league" (the category profile + verdict),
+// distinct from the record-based standings the playoff race uses.
+const leagueTotals = computed(() => {
+  if (!rosterPool.value.length || !catSpecs.value.length) return []
+  const fgMap = fgStatsByKey.value
+  const byTeam = new Map<string, { playerKey: string; stats: Record<string, number> }[]>()
+  for (const p of rosterPool.value) {
+    const teamId = String((p as { teamKey?: string }).teamKey ?? '')
+    if (!teamId) continue
+    const arr = byTeam.get(teamId) ?? []
+    arr.push({ playerKey: p.playerKey, stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, SEASON_FRACTION) })
+    byTeam.set(teamId, arr)
+  }
+  return aggregateTeamCatTotals([...byTeam.entries()].map(([teamId, players]) => ({ teamId, players })), catSpecs.value)
+})
+// Production-rank profile (per cat) for the verdict's strongest/biggest-hole — same
+// basis as the category profile, so the header and the bars agree.
+const productionProfile = computed(() => {
+  if (!myPoolTeamKey.value || !leagueTotals.value.length) return null
+  const n = leagueTotals.value.length
+  return {
+    teamId: myPoolTeamKey.value,
+    numTeams: n,
+    categories: catSpecs.value.map((c) => ({
+      statId: c.statId,
+      rank: rankInCategory(leagueTotals.value, c).get(myPoolTeamKey.value) ?? n,
+    })),
+  }
 })
 
 // Sell-high flags: reuse the Trades buy/sell timing engine (perceived-vs-projection
@@ -669,11 +701,12 @@ const drops = computed(() => {
   return computeDropCandidates(contributions.value)
 })
 
-// Per-category position + gap: where I sit (rank on a 1->N scale) and whether the
-// category is strong / winnable / safe / lost. Feeds the Category Profile viz.
+// Per-category position by PRODUCTION rank (how much you produce vs the league),
+// tiered strong / winnable / safe / lost. Feeds the Category Profile viz. This is the
+// forward-looking "how your team stacks up" lens (not the record-based standings).
 const gaps = computed(() => {
-  if (!profile.value || !standings.value.length || !cats.value.length) return []
-  return computeCategoryGaps(standings.value, profile.value, cats.value)
+  if (!myPoolTeamKey.value || !catSpecs.value.length || !leagueTotals.value.length) return []
+  return computeProductionGaps(leagueTotals.value, catSpecs.value, myPoolTeamKey.value)
 })
 
 // Labels for the gap rows (statId -> display label).
