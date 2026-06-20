@@ -63,3 +63,6 @@ NOTES.md
 
 # Brainstorming visual companion mockups
 .superpowers/
+
+# Supabase CLI transient state
+supabase/.temp/
