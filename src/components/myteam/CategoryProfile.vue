@@ -118,15 +118,15 @@ const rankText = (rank: number, n: number, volume: boolean) => {
         </span>
       </div>
 
-      <!-- Top available add for this category (the merged-in "do this next"). For
-           COUNTING cats we show the player's production magnitude (+N). For RATIO cats
-           (ERA/WHIP/OBA) a raw season number is meaningless — a "+3 WHIP" delta is
-           impossible — so we name the best available arm/bat without a misleading
-           number. -->
+      <!-- Top available add for this category (the merged-in "do this next"). We name
+           the best available arm/bat WITHOUT a number: a player's season total isn't
+           the gain you'd get (you only accrue rest-of-season), and late in the year
+           that overstates wildly — "+12 HR" with 2 weeks left really means ~+1. With
+           no trustworthy remaining-season horizon to scale by, the honest signal is
+           "this is the player to add for this category", not a fabricated magnitude. -->
       <p v-if="row.add" class="mt-0.5 pl-[3.25rem] font-mono text-[11px] text-dark-textMuted">
         Add <span class="text-dark-text">{{ row.add.name }}</span>
-        <span v-if="row.add.isRatio" class="text-primary"> · {{ row.add.label }}</span>
-        <span v-else class="text-primary"> +{{ row.add.statValue }} {{ row.add.label }}</span>
+        <span class="text-primary"> · {{ row.add.label }}</span>
       </p>
       <!-- Positional cause: the roster slots dragging a weak category. -->
       <p
