@@ -19,7 +19,7 @@ import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 import { classifyCategory } from '@/myteam/categorySide'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
 import { buildEngine } from '@/trades/engine'
-import { buildPositionalLandscape, coversSlot, SURPLUS_FLEX } from '@/trades/positionalLandscape'
+import { buildPositionalLandscape, assignSlots, SURPLUS_FLEX, type DepthPlayer } from '@/trades/positionalLandscape'
 import { computeProductionGaps } from '@/myteam/productionGaps'
 import { aggregateTeamCatTotals, rankInCategory } from '@/trades/standings'
 import { holeFixNote } from '@/myteam/holeFix'
@@ -659,37 +659,54 @@ const positionalRows = computed(() => {
   if (!pool.length || !eng || !myKey || !Object.keys(slots).length) return []
   const role = eng.roleValueByKey
   const vb = eng.valueByKey
-  const depth = pool.map((p) => ({
-    playerKey: p.playerKey,
-    teamKey: String((p as { teamKey?: string }).teamKey ?? ''),
-    eligiblePositions: eligOf(p),
-    value: role.get(p.playerKey) ?? 0,
-    status: String((p as { teamKey?: string }).teamKey ?? '') === myKey && (p as { onIL?: boolean }).onIL ? 'IL' : '',
-  }))
-  const mine = buildPositionalLandscape(depth, slots).get(myKey)
+  const nameByKey = new Map(pool.map((p) => [p.playerKey, p.name]))
+  // Group the league pool by team as DepthPlayer[].
+  const byTeam = new Map<string, DepthPlayer[]>()
+  for (const p of pool) {
+    const tk = String((p as { teamKey?: string }).teamKey ?? '')
+    if (!tk) continue
+    const arr = byTeam.get(tk) ?? []
+    arr.push({
+      playerKey: p.playerKey,
+      teamKey: tk,
+      eligiblePositions: eligOf(p),
+      value: role.get(p.playerKey) ?? 0,
+      status: tk === myKey && (p as { onIL?: boolean }).onIL ? 'IL' : '',
+    })
+    byTeam.set(tk, arr)
+  }
+  const mine = buildPositionalLandscape([...byTeam.values()].flat(), slots).get(myKey)
   if (!mine) return []
+  // ASSIGN each team's bodies to one slot apiece (greedy, scarcity-aware) so a
+  // multi-eligible player can't be "best" at five slots. Each slot's "your body" is
+  // the best player the engine would actually START there.
+  const bestAssigned = (tk: string, pos: string): { key: string; v: number } | null => {
+    const keys = assignSlots(byTeam.get(tk) ?? [], slots).assignedByPos[pos] ?? []
+    let best: { key: string; v: number } | null = null
+    for (const k of keys) {
+      const v = vb.get(k) ?? 0
+      if (!best || v > best.v) best = { key: k, v }
+    }
+    return best
+  }
   const rows: { pos: string; depth: 'deep' | 'thin' | 'ok'; bestName: string | null; bestRank: number | null; leagueCount: number }[] = []
   for (const pos of POS_ORDER) {
     const st = mine.get(pos)
     if (!st || st.slots <= 0 || SURPLUS_FLEX.has(pos)) continue
-    // Rank by each TEAM's BEST body at this slot (the "1-of-N teams" view), not every
-    // eligible body — so it reads "3rd of 10", not "3rd of 158".
-    const bestByTeam = new Map<string, { name: string; v: number }>()
-    for (const p of pool) {
-      if (!coversSlot(eligOf(p), pos)) continue
-      const tk = String((p as { teamKey?: string }).teamKey ?? '')
-      const v = vb.get(p.playerKey) ?? 0
-      const cur = bestByTeam.get(tk)
-      if (!cur || v > cur.v) bestByTeam.set(tk, { name: p.name, v })
+    // Rank teams by their best ASSIGNED starter at this slot ("3rd of 10").
+    const teamBests: { tk: string; v: number; key: string }[] = []
+    for (const tk of byTeam.keys()) {
+      const b = bestAssigned(tk, pos)
+      if (b) teamBests.push({ tk, v: b.v, key: b.key })
     }
-    const ranked = [...bestByTeam.entries()].sort((a, b) => b[1].v - a[1].v)
-    const myIdx = ranked.findIndex(([tk]) => tk === myKey)
+    teamBests.sort((a, b) => b.v - a.v)
+    const myIdx = teamBests.findIndex((t) => t.tk === myKey)
     rows.push({
       pos,
       depth: st.surplusBodies >= 1 ? 'deep' : st.need >= 0.5 ? 'thin' : 'ok',
-      bestName: myIdx >= 0 ? ranked[myIdx][1].name : null,
+      bestName: myIdx >= 0 ? nameByKey.get(teamBests[myIdx].key) ?? null : null,
       bestRank: myIdx >= 0 ? myIdx + 1 : null,
-      leagueCount: ranked.length,
+      leagueCount: teamBests.length,
     })
   }
   return rows

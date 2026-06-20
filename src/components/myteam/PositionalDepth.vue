@@ -17,6 +17,13 @@ const ord = (n: number) => {
   const v = n % 100
   return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
+// Rank colour: top third = strength (green), bottom third = weakness (red), else neutral.
+const rankTone = (rank: number | null, n: number) => {
+  if (!rank) return 'text-[#f26d6d]'
+  if (rank <= Math.ceil(n / 3)) return 'text-primary'
+  if (rank > (n * 2) / 3) return 'text-[#f26d6d]'
+  return 'text-dark-text'
+}
 </script>
 
 <template>
@@ -26,41 +33,46 @@ const ord = (n: number) => {
       <div
         v-for="r in rows"
         :key="r.pos"
-        class="flex items-center gap-3 py-1 font-mono text-[11px]"
+        class="flex items-center gap-3 py-1.5 font-mono text-[11px]"
       >
-        <span class="w-10 shrink-0 font-semibold text-dark-textSecondary">{{ r.pos }}</span>
+        <span class="w-9 shrink-0 font-bold text-dark-textSecondary">{{ r.pos }}</span>
+        <!-- PROMINENT league rank at the slot -->
+        <span class="w-24 shrink-0 tabular-nums">
+          <template v-if="r.bestRank">
+            <span class="text-[15px] font-bold" :class="rankTone(r.bestRank, r.leagueCount)">{{ ord(r.bestRank) }}</span>
+            <span class="text-[10px] text-dark-textMuted"> of {{ r.leagueCount }}</span>
+          </template>
+          <span v-else class="text-[12px] font-bold text-[#f26d6d]">—</span>
+        </span>
+        <!-- the body you'd start there -->
+        <span class="min-w-0 flex-1 truncate text-dark-textSecondary">
+          {{ r.bestName || 'no startable option' }}
+        </span>
         <!-- depth verdict -->
         <span
           v-if="r.depth === 'deep'"
-          class="w-16 shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-primary bg-primary/10"
+          class="shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-primary bg-primary/10"
           title="extra startable bodies here — trade from this surplus"
         >deep</span>
         <span
           v-else-if="r.depth === 'thin'"
-          class="w-16 shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[#f26d6d] bg-[#f26d6d]/10"
+          class="shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[#f26d6d] bg-[#f26d6d]/10"
           title="no startable body to spare — an injury here hurts; upgrade target"
         >thin</span>
-        <span v-else class="w-16 shrink-0 text-dark-textMuted/50">·</span>
-        <!-- best body + league rank -->
-        <span class="min-w-0 truncate text-dark-text">
-          <template v-if="r.bestName">{{ r.bestName }}</template>
-          <span v-else class="text-[#f26d6d]">no startable option</span>
-        </span>
-        <span v-if="r.bestRank" class="shrink-0 text-dark-textMuted">{{ ord(r.bestRank) }} of {{ r.leagueCount }}</span>
         <!-- action -->
         <router-link
           v-if="r.depth === 'thin'"
           to="/players"
-          class="ml-auto shrink-0 text-[#5ec8e6] hover:underline"
+          class="shrink-0 text-[#5ec8e6] hover:underline"
         >↑ upgrade</router-link>
         <router-link
           v-else-if="r.depth === 'deep'"
           to="/trades"
-          class="ml-auto shrink-0 text-[#5ec8e6] hover:underline"
+          class="shrink-0 text-[#5ec8e6] hover:underline"
         >↓ deal from</router-link>
       </div>
       <p class="mt-2 font-mono text-[9px] text-dark-textMuted">
-        depth vs the league · rank = your best body among everyone rostered at the slot (overall value)
+        rank = your starter at the slot vs every team's starter there (overall value) · green = strength · red = weakness
       </p>
     </div>
   </section>

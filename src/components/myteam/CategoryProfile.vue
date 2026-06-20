@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import type { CategoryGap } from '@/myteam/types'
 import { ordinal } from '@/recommendations/ordinal'
 
@@ -30,19 +30,6 @@ interface ProfileRow {
   fillPct: number // standing as a bar: 1st = full, last = empty (more = better)
   gapNote: string
   add: CatAdd | null
-}
-
-// Tier presentation. Order = how the sections stack (battleground first: it's where
-// the matchup is won). Each tier owns a DISTINCT color so "out of reach" can never be
-// mistaken for mid-pack (the old gray-for-both problem).
-const TIER_META: Record<
-  CategoryGap['tier'],
-  { label: string; order: number; fill: string; dot: string }
-> = {
-  winnable: { label: 'Battleground', order: 0, fill: 'bg-[#F2B33A]', dot: 'text-[#F2B33A]' },
-  strong: { label: 'Your edge', order: 1, fill: 'bg-primary', dot: 'text-primary' },
-  safe: { label: 'Holding', order: 2, fill: 'bg-dark-textMuted/60', dot: 'text-dark-textSecondary' },
-  lost: { label: 'Out of reach', order: 3, fill: 'bg-red-500/45', dot: 'text-red-400' },
 }
 
 function gapNote(gap: CategoryGap): string {
@@ -76,103 +63,71 @@ const rows = computed<ProfileRow[]>(() => {
   }))
 })
 
-// Group rows into ordered tier sections; sort within a section by rank (best first).
-const sections = computed(() => {
-  const byTier = new Map<CategoryGap['tier'], ProfileRow[]>()
-  for (const row of rows.value) {
-    const arr = byTier.get(row.tier) ?? []
-    arr.push(row)
-    byTier.set(row.tier, arr)
-  }
-  return (['winnable', 'strong', 'safe', 'lost'] as const)
-    .filter((tier) => byTier.has(tier))
-    .map((tier) => ({
-      tier,
-      label: TIER_META[tier].label,
-      rows: byTier.get(tier)!.slice().sort((a, b) => a.rank - b.rank),
-    }))
-})
-
-// "Out of reach" cats are decided, not decisions — collapse them by default to keep the
-// profile scannable (they're already surfaced under "Where you're losing").
-const showLost = ref(false)
-const lostCount = computed(() => rows.value.filter((r) => r.tier === 'lost').length)
-const visibleSections = computed(() =>
-  sections.value.filter((s) => s.tier !== 'lost' || showLost.value),
-)
+// One flat list, strongest -> weakest (rank asc). No tier headers — My Team is a
+// season standing vs the league, not a head-to-head matchup, so it reads simply as
+// "your rank in each category". Colour carries strength; the rank is the headline.
+const sortedRows = computed(() => rows.value.slice().sort((a, b) => a.rank - b.rank))
+const strengthOf = (rank: number, n: number): 'strong' | 'weak' | 'mid' => {
+  if (rank <= Math.ceil(n / 3)) return 'strong'
+  if (rank > (n * 2) / 3) return 'weak'
+  return 'mid'
+}
+const barFill = (rank: number, n: number) => {
+  const s = strengthOf(rank, n)
+  return s === 'strong' ? 'bg-primary' : s === 'weak' ? 'bg-[#f26d6d]/60' : 'bg-dark-textMuted/50'
+}
+const rankText = (rank: number, n: number) => {
+  const s = strengthOf(rank, n)
+  return s === 'strong' ? 'text-primary' : s === 'weak' ? 'text-[#f26d6d]' : 'text-dark-text'
+}
 </script>
 
 <template>
-  <div class="rounded-xl bg-dark-card border border-dark-border overflow-hidden">
-    <template v-for="section in visibleSections" :key="section.tier">
-      <!-- Tier header -->
-      <div class="flex items-center gap-2 px-4 pt-3 pb-1">
-        <span class="font-mono text-[10px] uppercase tracking-wider" :class="TIER_META[section.tier].dot">
-          {{ section.label }}
-        </span>
-        <span class="h-px flex-1 bg-dark-border/40"></span>
-      </div>
+  <div class="rounded-xl bg-dark-card border border-dark-border overflow-hidden py-2">
+    <div v-for="row in sortedRows" :key="row.statId" class="px-4 py-1.5">
+      <div class="flex items-center gap-3">
+        <!-- Category label -->
+        <span class="w-10 shrink-0 text-xs font-mono text-dark-textSecondary truncate">{{ row.label }}</span>
 
-      <div v-for="row in section.rows" :key="row.statId" class="px-4 py-1.5">
-        <div class="flex items-center gap-3">
-          <!-- Category label -->
-          <span class="w-10 shrink-0 text-xs font-mono text-dark-textSecondary truncate">{{ row.label }}</span>
-
-          <!-- Standing bar: longer = better (1st full, last empty) -->
-          <div class="relative h-2 flex-1 overflow-hidden rounded-full bg-dark-border/50">
-            <div
-              class="absolute inset-y-0 left-0 rounded-full"
-              :class="TIER_META[row.tier].fill"
-              :style="{ width: `${row.fillPct}%` }"
-            />
-          </div>
-
-          <!-- Rank -->
-          <span class="w-6 shrink-0 text-right text-xs font-mono tabular-nums text-dark-text">{{ row.rank }}</span>
-          <!-- Battleground gap note (close cats only) -->
-          <span
-            class="w-24 shrink-0 text-right text-[11px] font-mono text-[#F2B33A]"
-            :class="{ 'opacity-0': !row.gapNote }"
-          >{{ row.gapNote || '·' }}</span>
+        <!-- Standing bar: longer = better (1st full, last empty), coloured by strength -->
+        <div class="relative h-2 flex-1 overflow-hidden rounded-full bg-dark-border/50">
+          <div
+            class="absolute inset-y-0 left-0 rounded-full"
+            :class="barFill(row.rank, row.numTeams)"
+            :style="{ width: `${row.fillPct}%` }"
+          />
         </div>
 
-        <!-- Top available add for this category (the merged-in "do this next"). -->
-        <p v-if="row.add" class="mt-0.5 pl-[3.25rem] font-mono text-[11px] text-dark-textMuted">
-          Add <span class="text-dark-text">{{ row.add.name }}</span>
-          <span class="text-primary">{{ row.add.isRatio ? '' : '+' }}{{ row.add.statValue }} {{ row.add.label }}</span>
-        </p>
-        <!-- Positional cause: the roster slots dragging this category. -->
-        <p
-          v-if="row.tier === 'winnable' && draggersByStatId?.[row.statId]?.length"
-          class="mt-0.5 pl-[3.25rem] font-mono text-[10px] text-dark-textMuted/80"
-        >
-          dragged by {{ draggersByStatId[row.statId].join(' · ') }}
-        </p>
+        <!-- Prominent rank: where you stand in this category vs every team, all season -->
+        <span class="w-16 shrink-0 text-right font-mono tabular-nums">
+          <span class="text-[13px] font-bold" :class="rankText(row.rank, row.numTeams)">{{ ordinal(row.rank) }}</span>
+          <span class="text-[9px] text-dark-textMuted"> / {{ row.numTeams }}</span>
+        </span>
       </div>
-    </template>
 
-    <!-- Collapsed "out of reach" toggle -->
-    <button
-      v-if="lostCount > 0"
-      type="button"
-      class="flex w-full items-center gap-2 px-4 py-2 text-left font-mono text-[11px] text-dark-textMuted transition-colors hover:text-dark-textSecondary"
-      @click="showLost = !showLost"
-    >
-      <span>{{ showLost ? 'Hide' : 'Show' }} {{ lostCount }} out of reach</span>
-      <span>{{ showLost ? '▴' : '▾' }}</span>
-    </button>
+      <!-- Top available add for this category (the merged-in "do this next"). -->
+      <p v-if="row.add" class="mt-0.5 pl-[3.25rem] font-mono text-[11px] text-dark-textMuted">
+        Add <span class="text-dark-text">{{ row.add.name }}</span>
+        <span class="text-primary">{{ row.add.isRatio ? '' : '+' }}{{ row.add.statValue }} {{ row.add.label }}</span>
+      </p>
+      <!-- Positional cause: the roster slots dragging a weak category. -->
+      <p
+        v-if="strengthOf(row.rank, row.numTeams) !== 'strong' && draggersByStatId?.[row.statId]?.length"
+        class="mt-0.5 pl-[3.25rem] font-mono text-[10px] text-dark-textMuted/80"
+      >
+        dragged by {{ draggersByStatId[row.statId].join(' · ') }}
+      </p>
+    </div>
 
     <p v-if="rows.length === 0" class="px-4 py-6 text-sm text-dark-textMuted">No category data available.</p>
 
     <!-- Legend -->
     <p
       v-if="rows.length > 0"
-      class="border-t border-dark-border/40 px-4 py-2 font-mono text-[11px] text-dark-textMuted"
+      class="mt-1 border-t border-dark-border/40 px-4 py-2 font-mono text-[11px] text-dark-textMuted"
     >
-      bar = standing (longer is better) ·
-      <span class="text-[#F2B33A]">battleground</span> ·
-      <span class="text-primary">edge</span> ·
-      <span class="text-red-400">out of reach</span>
+      your rank in each category vs all {{ rows[0].numTeams }} teams, all season · longer bar = better ·
+      <span class="text-primary">strength</span> · <span class="text-[#f26d6d]">weakness</span>
     </p>
   </div>
 </template>

@@ -56,6 +56,10 @@ export interface SlotAssignment {
   filledSlots: number
   unfilled: { position: string }[] // a required slot left empty (or vacated by injury)
   benchStartable: DepthPlayer[] // startable bodies that didn't land a starting slot
+  // playerKeys actually assigned to each concrete position (one per opening). Lets a
+  // consumer show "the body you'd START at this slot" without double-counting a
+  // multi-eligible player across every slot he qualifies for.
+  assignedByPos: Record<string, string[]>
 }
 
 /**
@@ -82,16 +86,20 @@ export function assignSlots(
 
   const used = new Set<string>()
   const unfilled: { position: string }[] = []
+  const assignedByPos: Record<string, string[]> = {}
   let filledSlots = 0
   for (const pos of openings) {
     const pick = healthy
       .filter((p) => !used.has(p.playerKey) && eligibleForSlot(p, pos))
       .sort((a, b) => b.value - a.value)[0]
-    if (pick) { used.add(pick.playerKey); filledSlots++ }
-    else unfilled.push({ position: pos })
+    if (pick) {
+      used.add(pick.playerKey)
+      filledSlots++
+      ;(assignedByPos[pos] ??= []).push(pick.playerKey)
+    } else unfilled.push({ position: pos })
   }
   const benchStartable = startable.filter((p) => !used.has(p.playerKey) && !isInjured(p.status))
-  return { filledSlots, unfilled, benchStartable }
+  return { filledSlots, unfilled, benchStartable, assignedByPos }
 }
 
 /**
