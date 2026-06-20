@@ -609,6 +609,15 @@ export function useWire() {
   // best move that targets the holes, weighted toward the worst ones. Null when
   // nothing on the wire helps your weaknesses (a signal those cats are punt-worthy).
   const weakStatIds = computed(() => new Set(weakCats.value.map((c) => c.statId)))
+  // A weak cat is FIXABLE on the wire if some available add improves it (it shows up
+  // in an upgrade's `fixes`); otherwise the wire can't help it — trade or punt. This
+  // is the "where to spend vs where to give up" verdict, the core category-league edge.
+  const fixableWeakStatIds = computed(() => {
+    const weak = weakStatIds.value
+    const s = new Set<string>()
+    for (const u of upgradesAll.value) for (const f of u.fixes) if (weak.has(f)) s.add(f)
+    return s
+  })
   const holesUpgrade = computed<WireUpgrade | null>(() => {
     const weak = weakStatIds.value
     if (!weak.size) return null
@@ -831,7 +840,11 @@ export function useWire() {
         : 'Fix your roster for the season.',
       // Leverage header (Trades-style): where you're strong vs your holes.
       surplus: strongCats.value.map((c) => ({ label: c.label, rank: ordinal(Math.round(c.rank)) })),
-      holes: weakCats.value.map((c) => ({ label: c.label, rank: ordinal(Math.round(c.rank)) })),
+      holes: weakCats.value.map((c) => ({
+        label: c.label,
+        rank: ordinal(Math.round(c.rank)),
+        fixable: fixableWeakStatIds.value.has(c.statId),
+      })),
       hero: overallU ? toUp(overallU) : null,
       // "Best for your holes": shown only when it's a DIFFERENT add than the overall
       // best (i.e. the top move doesn't already address your worst cats). Label it
