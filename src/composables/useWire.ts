@@ -834,9 +834,11 @@ export function useWire() {
       holes: weakCats.value.map((c) => ({ label: c.label, rank: ordinal(Math.round(c.rank)) })),
       hero: overallU ? toUp(overallU) : null,
       // "Best for your holes": shown only when it's a DIFFERENT add than the overall
-      // best (i.e. the top move doesn't already address your worst cats).
+      // best (i.e. the top move doesn't already address your worst cats). Label it
+      // with the weak cat(s) it ACTUALLY plugs, not all your holes (it may only fix
+      // one — the others may be unaddressable / punt-worthy).
       heroHoles: holesU ? toUp(holesU) : null,
-      holesLabel: weakCats.value.slice(0, 2).map((c) => c.label).join(' / '),
+      holesLabel: holesU ? holesU.fixes.filter((s) => weakStatIds.value.has(s)).map(labelOf).join(' / ') : '',
       upgrades: moreUpgrades.map(toUp),
       // Slim pickings: there ARE positive moves, but the best is only marginal
       // (< +0.15 cats/wk = below a "solid" upgrade). On a strong roster, don't
