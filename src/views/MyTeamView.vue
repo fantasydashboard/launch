@@ -19,11 +19,13 @@ import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 import { classifyCategory } from '@/myteam/categorySide'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
 import { buildEngine } from '@/trades/engine'
+import { buildPositionalLandscape, coversSlot, SURPLUS_FLEX } from '@/trades/positionalLandscape'
 import { computeCategoryGaps } from '@/myteam/categoryGaps'
 import { holeFixNote } from '@/myteam/holeFix'
 import SituationStrip from '@/components/myteam/SituationStrip.vue'
 import SeasonArc from '@/components/myteam/SeasonArc.vue'
 import CategoryProfile from '@/components/myteam/CategoryProfile.vue'
+import PositionalDepth from '@/components/myteam/PositionalDepth.vue'
 import RosterPanel from '@/components/myteam/RosterPanel.vue'
 import MyTeamLevers from '@/components/myteam/MyTeamLevers.vue'
 
@@ -34,6 +36,7 @@ const {
   pool: yahooRosterPool,
   fgByKey: yahooFgByKey,
   statcastByKey: yahooStatcastByKey,
+  rosterSlots: yahooRosterSlots,
   loading: yahooRosterLoading,
   loaded: yahooRosterLoaded,
   load: loadRoster,
@@ -563,6 +566,56 @@ const seasonArc = computed(() => {
   }
 })
 
+// ── positional depth ────────────────────────────────────────────────────────
+// Reuse the Trades positional engine (which computes but never surfaces this) to
+// show, per required starting slot: how deep/thin you are vs the league AND how
+// your best body at that slot ranks among everyone rostered there. Depth/surplus is
+// the actionable bit (thin = upgrade/injury risk; deep = trade-from); the rank is
+// the recognizable "Nth-best at the position" signal.
+const POS_ORDER = ['C', '1B', '2B', '3B', 'SS', 'OF', 'LF', 'CF', 'RF', 'DH', 'SP', 'RP', 'P']
+const eligOf = (p: { eligiblePositions?: string[]; position?: string }): string[] =>
+  p.eligiblePositions?.length
+    ? p.eligiblePositions
+    : String(p.position || '').split(/[,/|]/).map((s) => s.trim()).filter(Boolean)
+const rosterSlotsForPos = computed(() =>
+  isEspnCategoryLeague.value ? espn.rosterSlots.value : yahooRosterSlots.value,
+)
+const positionalRows = computed(() => {
+  const pool = rosterPool.value
+  const slots = rosterSlotsForPos.value
+  const eng = tradeEngine.value
+  if (!pool.length || !eng || !myTeamId.value || !Object.keys(slots).length) return []
+  const role = eng.roleValueByKey
+  const vb = eng.valueByKey
+  const depth = pool.map((p) => ({
+    playerKey: p.playerKey,
+    teamKey: String((p as { teamKey?: string }).teamKey ?? ''),
+    eligiblePositions: eligOf(p),
+    value: role.get(p.playerKey) ?? 0,
+    status: String((p as { teamKey?: string }).teamKey ?? '') === myTeamId.value && (p as { onIL?: boolean }).onIL ? 'IL' : '',
+  }))
+  const mine = buildPositionalLandscape(depth, slots).get(myTeamId.value)
+  if (!mine) return []
+  const rows: { pos: string; depth: 'deep' | 'thin' | 'ok'; bestName: string | null; bestRank: number | null; leagueCount: number }[] = []
+  for (const pos of POS_ORDER) {
+    const st = mine.get(pos)
+    if (!st || st.slots <= 0 || SURPLUS_FLEX.has(pos)) continue
+    const eligible = pool
+      .filter((p) => coversSlot(eligOf(p), pos))
+      .map((p) => ({ p, v: vb.get(p.playerKey) ?? 0 }))
+      .sort((a, b) => b.v - a.v)
+    const myBestIdx = eligible.findIndex((e) => String((e.p as { teamKey?: string }).teamKey ?? '') === myTeamId.value)
+    rows.push({
+      pos,
+      depth: st.surplusBodies >= 1 ? 'deep' : st.need >= 0.5 ? 'thin' : 'ok',
+      bestName: myBestIdx >= 0 ? eligible[myBestIdx].p.name : null,
+      bestRank: myBestIdx >= 0 ? myBestIdx + 1 : null,
+      leagueCount: eligible.length,
+    })
+  }
+  return rows
+})
+
 // Drop candidates + weak link, derived from the contribution tiers.
 const drops = computed(() => {
   if (!contributions.value.length) return { candidates: [], weakLink: null }
@@ -634,6 +687,8 @@ watch(categories, () => {
       <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Category Profile</h2>
       <CategoryProfile :gaps="gaps" :categories="gapCategories" :adds-by-stat-id="addsByStatId" />
     </section>
+
+    <PositionalDepth v-if="profile && positionalRows.length" :rows="positionalRows" />
 
     <section v-if="profile" class="space-y-2">
       <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Your Roster</h2>
