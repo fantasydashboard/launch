@@ -16,6 +16,9 @@ const props = defineProps<{
   // Top available add per category we'd want to improve (non-strong tiers). Rendered
   // as a "do this next" line on weak rows — the merged-in "Where you're losing" action.
   addsByStatId?: Record<string, CatAdd>
+  // Roster positions dragging each category (your weakest contributors there) — the
+  // positional CAUSE of a category hole. Shown on battleground rows.
+  draggersByStatId?: Record<string, string[]>
 }>()
 
 interface ProfileRow {
@@ -137,6 +140,13 @@ const visibleSections = computed(() =>
         <p v-if="row.add" class="mt-0.5 pl-[3.25rem] font-mono text-[11px] text-dark-textMuted">
           Add <span class="text-dark-text">{{ row.add.name }}</span>
           <span class="text-primary">{{ row.add.isRatio ? '' : '+' }}{{ row.add.statValue }} {{ row.add.label }}</span>
+        </p>
+        <!-- Positional cause: the roster slots dragging this category. -->
+        <p
+          v-if="row.tier === 'winnable' && draggersByStatId?.[row.statId]?.length"
+          class="mt-0.5 pl-[3.25rem] font-mono text-[10px] text-dark-textMuted/80"
+        >
+          dragged by {{ draggersByStatId[row.statId].join(' · ') }}
         </p>
       </div>
     </template>

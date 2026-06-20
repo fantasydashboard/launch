@@ -566,6 +566,37 @@ const seasonArc = computed(() => {
   }
 })
 
+// Positional CAUSE of a category hole: for each category, the same-side roster slots
+// whose best contributor is weakest in that cat (lowest z). Ties standings holes to
+// roster construction — "your HR hole = C · 2B". CategoryProfile shows it on
+// battleground rows.
+const draggersByStatId = computed<Record<string, string[]>>(() => {
+  const out: Record<string, string[]> = {}
+  if (!contributions.value.length) return out
+  const posByKey = new Map(rosterPool.value.map((p) => [p.playerKey, eligOf(p)[0] || String(p.position || '')]))
+  const sideByStatId = new Map(catSpecs.value.map((c) => [c.statId, c.side]))
+  for (const cat of catSpecs.value) {
+    const side = sideByStatId.get(cat.statId)
+    const bestZByPos = new Map<string, number>() // a slot's BEST contributor in this cat
+    for (const c of contributions.value) {
+      if ((c.role === 'pitcher' ? 'pit' : 'hit') !== side) continue
+      const pos = posByKey.get(c.playerKey)
+      if (!pos) continue
+      const z = c.contribs.find((x) => x.statId === cat.statId)?.z ?? 0
+      const cur = bestZByPos.get(pos)
+      if (cur === undefined || z > cur) bestZByPos.set(pos, z)
+    }
+    // the two slots whose best body still contributes least to this cat
+    const worst = [...bestZByPos.entries()]
+      .filter(([, z]) => z < 0)
+      .sort((a, b) => a[1] - b[1])
+      .slice(0, 2)
+      .map(([pos]) => pos)
+    if (worst.length) out[cat.statId] = worst
+  }
+  return out
+})
+
 // ── positional depth ────────────────────────────────────────────────────────
 // Reuse the Trades positional engine (which computes but never surfaces this) to
 // show, per required starting slot: how deep/thin you are vs the league AND how
@@ -685,7 +716,7 @@ watch(categories, () => {
 
     <section v-if="profile" class="space-y-2">
       <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Category Profile</h2>
-      <CategoryProfile :gaps="gaps" :categories="gapCategories" :adds-by-stat-id="addsByStatId" />
+      <CategoryProfile :gaps="gaps" :categories="gapCategories" :adds-by-stat-id="addsByStatId" :draggers-by-stat-id="draggersByStatId" />
     </section>
 
     <PositionalDepth v-if="profile && positionalRows.length" :rows="positionalRows" />
