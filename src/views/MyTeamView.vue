@@ -516,14 +516,22 @@ const tradeEngine = computed(() =>
       })
     : null,
 )
+// Sell-high must be SCARCE to mean anything — mid-season the timing engine reads
+// most good players as 'sell' (season pace beats a conservative ROS projection). A
+// genuine sell-high is a tradeable player (real value) whose overperformance is
+// STATCAST-CONFIRMED as luck-driven (regression coming). Cap to a short list.
+const SELL_HIGH_VALUE_FLOOR = 55 // only players with real trade value can be "sold high"
+const SELL_HIGH_MAX = 4
 const sellHighKeys = computed<Set<string>>(() => {
-  const s = new Set<string>()
   const timing = tradeEngine.value?.timingByKey
-  if (!timing) return s
-  for (const key of myPlayerKeys.value) {
-    if (timing.get(key)?.dir === 'sell') s.add(key)
-  }
-  return s
+  if (!timing) return new Set<string>()
+  const valueByKey = new Map(contributions.value.map((c) => [c.playerKey, c.crossPercentile ?? 0]))
+  const ranked = myPlayerKeys.value
+    .map((key) => ({ key, t: timing.get(key), v: valueByKey.get(key) ?? 0 }))
+    .filter((x) => x.t?.dir === 'sell' && x.t.luckConfirmed && x.v >= SELL_HIGH_VALUE_FLOOR)
+    .sort((a, b) => (b.t?.score ?? 0) - (a.t?.score ?? 0))
+    .slice(0, SELL_HIGH_MAX)
+  return new Set(ranked.map((x) => x.key))
 })
 
 // Playoff race: where you sit vs the cutline. Prefer ESPN's real playoffTeamCount;
@@ -550,6 +558,7 @@ const seasonArc = computed(() => {
     playoffSpots: spots,
     weeksLeft,
     marginToCut: margin,
+    catsPerWeek: categories.value.length || 10,
     estimateSpots: !(isEspnCategoryLeague.value && espn.playoffTeamCount.value),
   }
 })
@@ -588,11 +597,7 @@ watch(categories, () => {
       :team-name="profile.teamName"
       :team-avatar="profile.teamAvatar"
       :record="record"
-      :rank="myOverallRank"
-      :num-teams="profile.numTeams"
       :verdict="verdict"
-      :hole-add="holeAdd"
-      :hole-note="holeNote"
     />
 
     <SeasonArc
@@ -602,6 +607,7 @@ watch(categories, () => {
       :playoff-spots="seasonArc.playoffSpots"
       :weeks-left="seasonArc.weeksLeft"
       :margin-to-cut="seasonArc.marginToCut"
+      :cats-per-week="seasonArc.catsPerWeek"
       :estimate-spots="seasonArc.estimateSpots"
     />
 

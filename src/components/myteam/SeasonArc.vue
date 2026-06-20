@@ -10,6 +10,7 @@ const props = defineProps<{
   playoffSpots: number
   weeksLeft: number // 0 when unknown
   marginToCut: number // + = cat-wins clear of the bubble; - = back of the cut
+  catsPerWeek: number // scoring categories — how many cat-wins can swing per week
   estimateSpots: boolean // true when we fell back to a half-league guess
 }>()
 
@@ -19,15 +20,17 @@ const ord = (n: number) => {
   return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
 
+// Status is driven by the CAT-WINS margin vs what's realistically winnable in the
+// weeks left — NOT rank-position deficit. In a category league a few cat-wins back
+// is one good week, even if it's several standings spots. "closeable" = the cat-wins
+// either side can plausibly swing (half the contested cats per remaining week).
 const status = computed(() => {
-  const deficit = props.rank - props.playoffSpots // >0 = outside the cut
-  const w = props.weeksLeft
-  if (deficit <= 0) {
-    return w > 0 && -deficit >= w + 2
-      ? { label: 'Locked in', tone: 'up' as const }
-      : { label: 'In the field', tone: 'up' as const }
-  }
-  if (deficit <= 2 || (w > 0 && deficit <= w)) return { label: 'On the bubble', tone: 'flat' as const }
+  const m = props.marginToCut
+  const cpw = props.catsPerWeek || 10
+  const closeable = Math.max(cpw, props.weeksLeft * cpw * 0.5)
+  if (m >= closeable) return { label: 'Locked in', tone: 'up' as const }
+  if (m >= 0) return { label: 'In the field', tone: 'up' as const }
+  if (-m <= closeable) return { label: 'On the bubble', tone: 'flat' as const }
   return { label: 'Out of reach', tone: 'down' as const }
 })
 
