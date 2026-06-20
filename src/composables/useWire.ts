@@ -840,11 +840,18 @@ export function useWire() {
         : 'Fix your roster for the season.',
       // Leverage header (Trades-style): where you're strong vs your holes.
       surplus: strongCats.value.map((c) => ({ label: c.label, rank: ordinal(Math.round(c.rank)) })),
-      holes: weakCats.value.map((c) => ({
-        label: c.label,
-        rank: ordinal(Math.round(c.rank)),
-        fixable: fixableWeakStatIds.value.has(c.statId),
-      })),
+      // Per weak cat: 'chase' = an add improves it; 'punt' = near-last AND unfixable
+      // (a genuine give-up like SV·10th with no closer available); 'none' = the wire
+      // has no lever but the cat's still winnable (middle ratios), so no punt label.
+      holes: weakCats.value.map((c) => {
+        const fixable = fixableWeakStatIds.value.has(c.statId)
+        const nearLast = c.rank >= (leagueTotals.value.length || 1) - 1
+        return {
+          label: c.label,
+          rank: ordinal(Math.round(c.rank)),
+          state: fixable ? 'chase' : nearLast ? 'punt' : 'none',
+        }
+      }),
       hero: overallU ? toUp(overallU) : null,
       // "Best for your holes": shown only when it's a DIFFERENT add than the overall
       // best (i.e. the top move doesn't already address your worst cats). Label it

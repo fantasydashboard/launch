@@ -86,12 +86,16 @@ const onLogoError = (e: Event) => {
             v-for="c in vm.holes"
             :key="c.label"
             class="inline-flex items-center gap-1 rounded px-2 py-0.5 font-mono text-[10px]"
-            :class="c.fixable ? 'bg-[#F2B33A]/10 text-[#F2B33A]' : 'bg-dark-border/30 text-dark-textMuted'"
-            :title="c.fixable ? 'an add on the wire can improve this' : 'no add on the wire helps — trade or punt'"
-          >{{ c.fixable ? '●' : '○' }} {{ c.label }} · {{ c.rank }}</span>
+            :class="{
+              'bg-[#F2B33A]/10 text-[#F2B33A]': c.state === 'chase',
+              'bg-[#f26d6d]/10 text-[#f26d6d]': c.state === 'punt',
+              'bg-dark-border/30 text-dark-textMuted': c.state === 'none',
+            }"
+            :title="c.state === 'chase' ? 'an add on the wire can improve this' : c.state === 'punt' ? 'near-last and nothing available — punt' : 'the wire has no lever here; still winnable over time / via trade'"
+          ><span v-if="c.state === 'chase'">●</span>{{ c.label }} · {{ c.rank }}<span v-if="c.state === 'punt'"> · punt</span></span>
         </div>
-        <p v-if="vm.holes.some((h) => !h.fixable)" class="pl-[4.5rem] font-mono text-[9px] text-dark-textMuted">
-          ● an add can fix · ○ wire can't help — trade or punt
+        <p v-if="vm.holes.some((h) => h.state !== 'none')" class="pl-[4.5rem] font-mono text-[9px] text-dark-textMuted">
+          ● an add can fix · "punt" = near-last, nothing on the wire
         </p>
       </section>
 
