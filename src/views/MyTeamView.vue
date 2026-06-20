@@ -701,12 +701,31 @@ const positionalRows = computed(() => {
     }
     teamBests.sort((a, b) => b.v - a.v)
     const myIdx = teamBests.findIndex((t) => t.tk === myKey)
+    const count = teamBests.length
+    const rank = myIdx >= 0 ? myIdx + 1 : null
+    // Depth verdict (drives the deep/thin chip + deal-from/upgrade link):
+    //  • No startable body here -> THIN (you can't field it; an upgrade target).
+    //    Never DEEP — a slot with no starter can't be a trade-from surplus.
+    //  • DEEP ("deal from") only when you have a giveable surplus AND your starter
+    //    isn't bottom-third. Dealing from your WEAKEST position is bad advice even
+    //    when multi-eligible bodies pad the body count (the Yahoo "everything is
+    //    DEEP" bug — 1B ranked last still read as deal-from).
+    //  • Otherwise an unmet/injured slot -> THIN; else OK.
+    const isWeak = rank == null || rank > (count * 2) / 3
+    const depth: 'deep' | 'thin' | 'ok' =
+      rank == null
+        ? 'thin'
+        : st.surplusBodies >= 1 && !isWeak
+          ? 'deep'
+          : st.need >= 0.5
+            ? 'thin'
+            : 'ok'
     rows.push({
       pos,
-      depth: st.surplusBodies >= 1 ? 'deep' : st.need >= 0.5 ? 'thin' : 'ok',
-      bestName: myIdx >= 0 ? nameByKey.get(teamBests[myIdx].key) ?? null : null,
-      bestRank: myIdx >= 0 ? myIdx + 1 : null,
-      leagueCount: teamBests.length,
+      depth,
+      bestName: rank != null ? nameByKey.get(teamBests[myIdx].key) ?? null : null,
+      bestRank: rank,
+      leagueCount: count,
     })
   }
   return rows
