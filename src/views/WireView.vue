@@ -105,16 +105,16 @@ const onLogoError = (e: Event) => {
         <WireUpgradeCard v-for="(u, i) in vm.upgrades" :key="i" :u="u" compact />
       </section>
 
-      <!-- Slim pickings: strong roster, best available is only marginal -->
+      <!-- Slim pickings: strong roster, best available is only marginal. Show just
+           the single closest move — a list of near-identical +0.1 rows is noise. -->
       <section v-else-if="vm.slim" class="space-y-2">
         <div class="rounded-xl border border-dark-border bg-dark-card px-4 py-4 text-center">
           <p class="font-mono text-[11px] text-dark-textSecondary">Your roster's in good shape.</p>
           <p class="mt-1 font-mono text-[10px] text-dark-textMuted">
-            Nothing on the wire clearly upgrades it — closest marginal moves below.
+            Nothing on the wire clearly upgrades it — closest move below.
           </p>
         </div>
         <WireUpgradeCard v-if="vm.hero" :u="vm.hero" compact />
-        <WireUpgradeCard v-for="(u, i) in vm.upgrades" :key="i" :u="u" compact />
       </section>
 
       <!-- Quiet wire -->
