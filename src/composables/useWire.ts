@@ -633,6 +633,48 @@ export function useWire() {
     return { ...t, headshot: meta?.headshot, proLogo: mlbTeamLogo(t.player.team) }
   }
 
+  // ── league-aware saves/holds watch ─────────────────────────────────────────
+  // Which reliever category(ies) does THIS league score? Rank available arms by
+  // their projected output in those cats. Saves-only leagues see closers; holds /
+  // SVHD leagues also surface setup men — the underexploited waiver edge. Gated on
+  // a relief cat being a weakness (this is a fix-your-roster page). Projection comes
+  // from the same effStats the upgrades use (FG maps SV/HLD/SVHD by display name).
+  const RELIEF_LABELS = new Set(['SV', 'S', 'SAVES', 'HLD', 'HD', 'HOLD', 'HOLDS', 'SVHD', 'SV+H', 'SVH', 'SV+HLD'])
+  const reliefWatch = computed(() => {
+    if (!ready.value) return { title: '', arms: [] as { key: string; name: string; pos: string; headshot?: string; proLogo?: string; proj: string; trend: number }[] }
+    const weakIds = new Set(weakCats.value.map((c) => c.statId))
+    const cats = catSpecs.value
+      .map((c) => ({ statId: c.statId, label: labelOf(c.statId) }))
+      .filter((c) => RELIEF_LABELS.has(c.label.toUpperCase().replace(/\s/g, '')) && weakIds.has(c.statId))
+    if (!cats.length) return { title: '', arms: [] }
+    const labels = cats.map((c) => c.label.toUpperCase())
+    const holds = labels.some((l) => l.includes('H'))
+    const saves = labels.some((l) => l.includes('S') && !l.startsWith('H'))
+    const title = holds && saves ? 'Saves & holds' : holds ? 'Holds' : 'Saves'
+    const arms = wireFreeAgents.value
+      .filter((f) => f.side === 'pit')
+      .map((f) => {
+        const byCat = cats.map((c) => ({ label: c.label, val: Math.round(f.effStats[c.statId] ?? 0) }))
+        return { f, byCat, score: byCat.reduce((s, b) => s + b.val, 0) }
+      })
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+      .map(({ f, byCat }) => {
+        const meta = metaByKey.value.get(f.playerKey)
+        return {
+          key: f.playerKey,
+          name: f.name,
+          pos: f.position,
+          headshot: f.headshot || meta?.headshot,
+          proLogo: mlbTeamLogo(f.team) || meta?.proLogo,
+          proj: byCat.filter((b) => b.val > 0).map((b) => `${b.val} ${b.label}`).join(' · '),
+          trend: Math.round(f.percentChange ?? 0),
+        }
+      })
+    return { title, arms }
+  })
+
   // ── interactive add/drop grader ────────────────────────────────────────────
   // Pick a free agent to add + a roster player to drop and grade the move in the
   // same ECW dialect as the auto upgrades (mirrors the Trades analyzer). The
@@ -736,7 +778,10 @@ export function useWire() {
       streamBoard: {
         weakCats: board.weakCats,
         starters: dedupeStream(board.starters),
-        relievers: dedupeStream(board.relievers),
+        // Relievers come from the league-aware saves/holds watch (ranked by
+        // projected SV/HLD), not the generic pool list. Drop anyone already an upgrade.
+        reliefTitle: reliefWatch.value.title,
+        relievers: reliefWatch.value.arms.filter((a) => !upgradeKeys.has(a.key)),
       },
       drops: dropsVm.value,
     }

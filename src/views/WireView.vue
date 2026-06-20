@@ -178,16 +178,20 @@ const onLogoError = (e: Event) => {
         </template>
 
         <template v-if="vm.streamBoard.relievers.length">
-          <p class="mt-3 font-mono text-[9px] uppercase tracking-widest text-dark-textMuted">Relievers</p>
+          <p class="mt-3 font-mono text-[9px] uppercase tracking-widest text-dark-textMuted">
+            {{ vm.streamBoard.reliefTitle || 'Relievers' }} watch · best available arms
+          </p>
           <div
             v-for="r in vm.streamBoard.relievers"
-            :key="r.player.key"
+            :key="r.key"
             class="mt-1.5 flex items-center gap-2 font-mono text-[11px]"
           >
-            <Avatar :src="r.headshot" :label="r.player.name" cls="h-6 w-6 rounded-full" />
-            <span class="font-semibold text-dark-text">{{ r.player.name }}</span>
+            <Avatar :src="r.headshot" :label="r.name" cls="h-6 w-6 rounded-full" />
+            <span class="font-semibold text-dark-text">{{ r.name }}</span>
             <img v-if="r.proLogo" :src="r.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
-            <span class="text-dark-textMuted">{{ r.rationale }}</span>
+            <span class="text-dark-textMuted">{{ r.pos }}</span>
+            <span v-if="r.trend >= 3" class="font-mono text-[9px] text-[#F2B33A]" title="rising ownership this week">▲{{ r.trend }}%</span>
+            <span class="ml-auto shrink-0 text-primary">{{ r.proj }} proj</span>
           </div>
         </template>
       </section>
