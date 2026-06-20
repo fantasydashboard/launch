@@ -42,6 +42,7 @@ export function useEspnCategoryTeamData() {
   // Required starting-slot counts per position (for the positional trade dimension).
   const rosterSlots = ref<Record<string, number>>({})
   const acquisition = ref<AcquisitionInfo>({ mode: 'unknown', budget: null })
+  const playoffTeamCount = ref(0) // teams that make the bracket (0 = unknown)
   const supported = ref<boolean | null>(null)
   const loading = ref(false)
   const loaded = ref(false)
@@ -59,6 +60,7 @@ export function useEspnCategoryTeamData() {
     freeAgents.value = []
     rosterSlots.value = {}
     acquisition.value = { mode: 'unknown', budget: null }
+    playoffTeamCount.value = 0
     supported.value = null
     loaded.value = false
   }
@@ -94,6 +96,7 @@ export function useEspnCategoryTeamData() {
       // Roster-slot requirements for the positional dimension (defaults if absent).
       rosterSlots.value = parseRosterSlots('espn', { rosterSettings: league.settings?.rosterSettings })
       acquisition.value = parseEspnAcquisition(league.settings?.acquisitionSettings)
+      playoffTeamCount.value = Number(league.settings?.playoffTeamCount) || 0
 
       const [breakdown, teams, myTeam] = await Promise.all([
         espnService.getCategoryStatsBreakdown(sport, leagueId, season),
@@ -167,6 +170,7 @@ export function useEspnCategoryTeamData() {
     freeAgents,
     rosterSlots,
     acquisition,
+    playoffTeamCount,
     supported,
     loading,
     loaded,

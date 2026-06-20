@@ -22,6 +22,7 @@ import { buildEngine } from '@/trades/engine'
 import { computeCategoryGaps } from '@/myteam/categoryGaps'
 import { holeFixNote } from '@/myteam/holeFix'
 import SituationStrip from '@/components/myteam/SituationStrip.vue'
+import SeasonArc from '@/components/myteam/SeasonArc.vue'
 import CategoryProfile from '@/components/myteam/CategoryProfile.vue'
 import RosterPanel from '@/components/myteam/RosterPanel.vue'
 import MyTeamLevers from '@/components/myteam/MyTeamLevers.vue'
@@ -525,6 +526,34 @@ const sellHighKeys = computed<Set<string>>(() => {
   return s
 })
 
+// Playoff race: where you sit vs the cutline. Prefer ESPN's real playoffTeamCount;
+// fall back to a half-league estimate (Yahoo doesn't expose it). Margin = your total
+// cat-wins vs the team on the playoff bubble.
+const playoffSpots = computed(() => {
+  if (isEspnCategoryLeague.value && espn.playoffTeamCount.value) return espn.playoffTeamCount.value
+  return Math.max(1, Math.round((standings.value.length || 10) / 2))
+})
+const seasonArc = computed(() => {
+  const rank = myOverallRank.value
+  const size = standings.value.length
+  if (!rank || !size) return null
+  const spots = playoffSpots.value
+  const totals = standings.value
+    .map((s) => Object.values(s.perCategoryWins ?? {}).reduce((a, b) => a + b, 0))
+    .sort((a, b) => b - a)
+  const myWins = totals[rank - 1] ?? 0
+  const margin = rank <= spots ? myWins - (totals[spots] ?? 0) : -((totals[spots - 1] ?? 0) - myWins)
+  const weeksLeft = Math.max(0, ((leagueStore as any).playoffWeekStart ?? 0) - ((leagueStore as any).currentWeek ?? 0))
+  return {
+    rank,
+    leagueSize: size,
+    playoffSpots: spots,
+    weeksLeft,
+    marginToCut: margin,
+    estimateSpots: !(isEspnCategoryLeague.value && espn.playoffTeamCount.value),
+  }
+})
+
 // Drop candidates + weak link, derived from the contribution tiers.
 const drops = computed(() => {
   if (!contributions.value.length) return { candidates: [], weakLink: null }
@@ -564,6 +593,16 @@ watch(categories, () => {
       :verdict="verdict"
       :hole-add="holeAdd"
       :hole-note="holeNote"
+    />
+
+    <SeasonArc
+      v-if="profile && seasonArc"
+      :rank="seasonArc.rank"
+      :league-size="seasonArc.leagueSize"
+      :playoff-spots="seasonArc.playoffSpots"
+      :weeks-left="seasonArc.weeksLeft"
+      :margin-to-cut="seasonArc.marginToCut"
+      :estimate-spots="seasonArc.estimateSpots"
     />
 
     <!-- Hub triage: My Team owns the season picture + roster; the week, adds, and
