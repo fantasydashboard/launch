@@ -10,9 +10,6 @@ import { useAvailablePlayers } from '@/composables/useAvailablePlayers'
 import { useMyRoster } from '@/composables/useMyRoster'
 import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
-import { useYourMove } from '@/composables/useYourMove'
-import { useLineupLeaks } from '@/composables/useLineupLeaks'
-import type { RosterSlotPlayer } from '@/myteam/yourMove/pairDrop'
 import { rankAddsForHoles } from '@/players/rankAdds'
 import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
@@ -26,9 +23,7 @@ import { holeFixNote } from '@/myteam/holeFix'
 import SituationStrip from '@/components/myteam/SituationStrip.vue'
 import CategoryProfile from '@/components/myteam/CategoryProfile.vue'
 import RosterPanel from '@/components/myteam/RosterPanel.vue'
-import MatchupSnapshot from '@/components/myteam/MatchupSnapshot.vue'
-import YourMove from '@/components/myteam/YourMove.vue'
-import LineupLeaks from '@/components/myteam/LineupLeaks.vue'
+import MyTeamLevers from '@/components/myteam/MyTeamLevers.vue'
 
 const leagueStore = useLeagueStore()
 const { players: yahooFreeAgents, load: loadPlayers } = useAvailablePlayers()
@@ -516,102 +511,6 @@ const gapCategories = computed(() =>
   categories.value.map((c) => ({ statId: c.statId, label: c.label })),
 )
 
-// statId -> short label (HR, ERA, ...) so Your Move shows category names, not ids.
-const labelByStatId = computed<Record<string, string>>(() => {
-  const m: Record<string, string> = {}
-  for (const c of categories.value) m[c.statId] = c.label
-  return m
-})
-
-// playerKey -> headshot URL, from the roster + FA pools, so Your Move's hero card can
-// show the player's face (falls back to a monogram when missing/broken).
-const headshotByKey = computed(() => {
-  const m = new Map<string, string>()
-  for (const p of rosterPlayers.value) if (p.headshot) m.set(p.playerKey, p.headshot)
-  for (const p of players.value) if (p.headshot) m.set(p.playerKey, p.headshot)
-  return m
-})
-
-// My roster as drop/sit counterparties + start-sit seeds: join the value model
-// (role + roleValue) with the roster (name, lineup slot, stats). Yahoo carries the
-// `started` flag; other platforms default to started, so start/sit degrades away
-// there but adds/streams still get drop-cost netting.
-const rosterSlotPlayers = computed<RosterSlotPlayer[]>(() => {
-  const byKey = new Map(contributions.value.map((c) => [c.playerKey, c]))
-  return rosterPlayers.value.map((p) => {
-    const c = byKey.get(p.playerKey)
-    return {
-      playerKey: p.playerKey,
-      name: p.name,
-      team: (p as { team?: string }).team ?? '',
-      position: (p as { position?: string }).position ?? '',
-      side: (c?.role === 'pitcher' ? 'pit' : 'hit') as 'hit' | 'pit',
-      roleValue: c?.roleValue ?? 50,
-      started: (p as { started?: boolean }).started ?? true,
-      stats: (p as { stats?: Record<string, number> }).stats ?? {},
-    }
-  })
-})
-
-// Lineup cadence (daily vs weekly), remembered per league. Daily is the baseball
-// default; the user can flip it (and weekly leagues should). No fragile auto-detect.
-const cadenceKey = (id: string | null | undefined) => `ufd_ym_cadence_${id ?? ''}`
-const cadence = ref<'daily' | 'weekly'>('daily')
-watch(
-  () => leagueStore.activeLeagueId,
-  (id) => {
-    const stored = id ? localStorage.getItem(cadenceKey(id)) : null
-    cadence.value = stored === 'weekly' ? 'weekly' : 'daily'
-  },
-  { immediate: true },
-)
-watch(cadence, (v) => {
-  const id = leagueStore.activeLeagueId
-  if (id) localStorage.setItem(cadenceKey(id), v)
-})
-
-// "Your Move" — ranked short stack of this-week recommendations. Instantiated
-// here (after catSpecs / players / SEASON_FRACTION are declared) because it reads
-// those refs eagerly; declaring it earlier would hit a temporal-dead-zone error.
-const yourMove = useYourMove({
-  catSpecs,
-  freeAgents: players,
-  roster: rosterSlotPlayers,
-  snapshot: thisWeek.snapshot,
-  seasonFraction: computed(() => SEASON_FRACTION),
-  cadence,
-})
-
-// "Lineup Leaks" — started players who are weak for the position vs a better bench
-// option. Drives the callout above the roster and the "weak [pos]" tags within it.
-// Exclude players Your Move already surfaces so the two never contradict.
-const yourMoveKeys = computed(() => {
-  const s = new Set<string>()
-  for (const m of yourMove.moves.value) {
-    s.add(m.player.key)
-    if (m.counterparty) s.add(m.counterparty.key)
-  }
-  return s
-})
-// Single value model: the 0-100 roleValue the roster badge shows, keyed by player.
-// Lineup Leaks ranks by this so badge / weak-tag / leak ordering can't disagree.
-const roleValueByKey = computed(() => new Map(contributions.value.map((c) => [c.playerKey, c.roleValue])))
-// The green-chip categories per player (tier 'plus'), so a leak cites only strengths
-// the roster row also shows green — never a category that's red there.
-const helpsByKey = computed(() => {
-  const m = new Map<string, Set<string>>()
-  for (const c of contributions.value) {
-    m.set(c.playerKey, new Set(c.contribs.filter((x) => x.tier === 'plus').map((x) => x.statId)))
-  }
-  return m
-})
-const lineupLeaks = useLineupLeaks({ rosterPlayers, catSpecs, snapshot: thisWeek.snapshot, roleValueByKey, helpsByKey, excludeKeys: yourMoveKeys, cadence })
-const weakStarterTags = computed(() => {
-  const m = new Map<string, string>()
-  for (const leak of lineupLeaks.leaks.value) m.set(leak.starter.key, leak.position)
-  return m
-})
-
 // Categories load asynchronously after the league data resolves; (re)load the
 // snapshot once they're available so it doesn't no-op on first mount. Declared
 // here (after the base computeds) because `watch` evaluates its source eagerly
@@ -635,21 +534,14 @@ watch(categories, () => {
       :hole-note="holeNote"
     />
 
-    <YourMove
-      v-if="profile"
-      v-model:cadence="cadence"
-      :moves="yourMove.moves.value"
-      :loading="rosterLoading && rosterPlayers.length === 0"
-      :label-by-stat-id="labelByStatId"
-      :headshot-by-key="headshotByKey"
-    />
+    <!-- Hub triage: My Team owns the season picture + roster; the week, adds, and
+         trades each have their own page. These cards route there with a one-line
+         teaser instead of duplicating the matchup / daily-moves content here. -->
+    <MyTeamLevers v-if="profile" :snapshot="thisWeek.snapshot.value" :hole-add="holeAdd" :hole-note="holeNote" />
 
-    <MatchupSnapshot :snapshot="thisWeek.snapshot.value" />
-
-    <!-- Season-long category picture lives below the this-week decision layer. The
-         Category Profile is the complete ranking AND carries the top add for each
-         category worth improving — the merge that retired the separate "Where you're
-         losing / Your edge" block (it was the same season data, twice). -->
+    <!-- Season-long category picture. The Category Profile is the complete ranking
+         AND carries the top add for each category worth improving — the merge that
+         retired the separate "Where you're losing / Your edge" block. -->
     <div v-if="profile" class="space-y-1 pt-2">
       <div class="flex items-center gap-2">
         <span class="rounded bg-dark-border/70 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-dark-textSecondary">Season</span>
@@ -657,7 +549,7 @@ watch(categories, () => {
         <span class="h-px flex-1 bg-dark-border/50"></span>
       </div>
       <p class="font-mono text-[10px] text-dark-textMuted/70">
-        How you rank all season vs the league — your live matchup is above.
+        How you rank all season vs the league.
       </p>
     </div>
 
@@ -665,8 +557,6 @@ watch(categories, () => {
       <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Category Profile</h2>
       <CategoryProfile :gaps="gaps" :categories="gapCategories" :adds-by-stat-id="addsByStatId" />
     </section>
-
-    <LineupLeaks v-if="profile" :leaks="lineupLeaks.leaks.value" :label-by-stat-id="labelByStatId" />
 
     <section v-if="profile" class="space-y-2">
       <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Your Roster</h2>
@@ -679,7 +569,6 @@ watch(categories, () => {
         :categories="categories"
         :contributions="contributions"
         :drops="drops"
-        :weak-starters="weakStarterTags"
       />
       <p v-else-if="rosterLoaded" class="text-sm text-dark-textMuted">
         No roster found for your team.
