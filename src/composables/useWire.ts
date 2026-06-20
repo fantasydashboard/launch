@@ -603,6 +603,25 @@ export function useWire() {
     return `${top.rank > n / 2 ? 'plugs' : 'lifts'} ${top.label} · ${ordinal(Math.round(top.rank))}`
   }
 
+  // Best add that actually moves your WEAK cats — the "fix your holes" pick. The
+  // overall-best upgrade often maximizes total cats won by padding a winnable middle
+  // cat (a starter for K) and ignoring deeply-lost cats (SV/HLD); this surfaces the
+  // best move that targets the holes, weighted toward the worst ones. Null when
+  // nothing on the wire helps your weaknesses (a signal those cats are punt-worthy).
+  const weakStatIds = computed(() => new Set(weakCats.value.map((c) => c.statId)))
+  const holesUpgrade = computed<WireUpgrade | null>(() => {
+    const weak = weakStatIds.value
+    if (!weak.size) return null
+    const scored = upgradesAll.value
+      .map((u) => {
+        const fixedWeak = u.fixes.filter((s) => weak.has(s))
+        return { u, score: fixedWeak.reduce((s, id) => s + (rankByStatId.value.get(id) ?? 0), 0), n: fixedWeak.length }
+      })
+      .filter((x) => x.n > 0)
+      .sort((a, b) => b.score - a.score || b.u.deltaEcw - a.u.deltaEcw)
+    return scored[0]?.u ?? null
+  })
+
   // An enriched upgrade: add + drop players carry headshot / team logo / 0-100 value
   // so the view can render the Trades-style ADD/DROP card with a value bar.
   const toUp = (u: WireUpgrade) => {
@@ -785,10 +804,16 @@ export function useWire() {
     const holesText = weakCats.value.slice(0, 2).map((c) => `${ordinal(Math.round(c.rank))} in ${c.label}`)
     // Stream board: drop anyone already shown as a hero/upgrade so the two lists
     // never surface the same player twice.
-    const upgradeKeys = new Set([
-      ...(displayUpgrades.value[0] ? [displayUpgrades.value[0].player.key] : []),
-      ...displayUpgrades.value.slice(1, 8).map((u) => u.player.key),
-    ])
+    // Best overall + best-for-your-holes (only when distinct from overall), then the
+    // rest, excluding both heroes so nothing shows twice.
+    const overallU = displayUpgrades.value[0] ?? null
+    const holesU =
+      holesUpgrade.value && overallU && holesUpgrade.value.player.key !== overallU.player.key
+        ? holesUpgrade.value
+        : null
+    const heroPlayerKeys = new Set([overallU?.player.key, holesU?.player.key].filter(Boolean))
+    const moreUpgrades = displayUpgrades.value.filter((u) => !heroPlayerKeys.has(u.player.key)).slice(0, 7)
+    const upgradeKeys = new Set([...heroPlayerKeys, ...moreUpgrades.map((u) => u.player.key)])
     const board = streamBoardVm.value
     const dedupeStream = (list: StreamBoard['starters']) =>
       list.filter((t) => !upgradeKeys.has(t.player.key)).map(enrichStream)
@@ -807,12 +832,16 @@ export function useWire() {
       // Leverage header (Trades-style): where you're strong vs your holes.
       surplus: strongCats.value.map((c) => ({ label: c.label, rank: ordinal(Math.round(c.rank)) })),
       holes: weakCats.value.map((c) => ({ label: c.label, rank: ordinal(Math.round(c.rank)) })),
-      hero: displayUpgrades.value.length ? toUp(displayUpgrades.value[0]) : null,
-      upgrades: displayUpgrades.value.slice(1, 8).map(toUp),
+      hero: overallU ? toUp(overallU) : null,
+      // "Best for your holes": shown only when it's a DIFFERENT add than the overall
+      // best (i.e. the top move doesn't already address your worst cats).
+      heroHoles: holesU ? toUp(holesU) : null,
+      holesLabel: weakCats.value.slice(0, 2).map((c) => c.label).join(' / '),
+      upgrades: moreUpgrades.map(toUp),
       // Slim pickings: there ARE positive moves, but the best is only marginal
       // (< +0.15 cats/wk = below a "solid" upgrade). On a strong roster, don't
       // trumpet a +0.1 move as the biggest upgrade — mute it and say so.
-      slim: (displayUpgrades.value[0]?.deltaEcw ?? 0) < 0.15,
+      slim: (overallU?.deltaEcw ?? 0) < 0.15,
       // "Act now" — rising-ownership players to grab before your league does.
       heatingUp: heatingUp.value,
       streamBoard: {

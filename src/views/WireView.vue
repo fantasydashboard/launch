@@ -111,10 +111,22 @@ const onLogoError = (e: Event) => {
         </div>
       </section>
 
-      <!-- 2. BIGGEST UPGRADE (hero) — only when it's a real (non-marginal) upgrade -->
+      <!-- 2. BEST OVERALL (hero) — only when it's a real (non-marginal) upgrade -->
       <section v-if="vm.hero && !vm.slim" class="space-y-2">
-        <p class="font-mono text-[10px] uppercase tracking-widest text-primary">★ Biggest upgrade available</p>
+        <p class="font-mono text-[10px] uppercase tracking-widest text-primary">★ Best overall available</p>
         <WireUpgradeCard :u="vm.hero" hero />
+      </section>
+
+      <!-- 2b. BEST FOR YOUR HOLES — the best move that targets your weak cats, shown
+           only when the overall best doesn't already address them (punt-vs-chase). -->
+      <section v-if="vm.heroHoles && !vm.slim" class="space-y-2">
+        <p class="font-mono text-[10px] uppercase tracking-widest text-[#F2B33A]">
+          ◎ Best for your holes<span v-if="vm.holesLabel"> · {{ vm.holesLabel }}</span>
+        </p>
+        <p class="font-mono text-[9px] text-dark-textMuted">
+          The overall pick above wins more total cats; this one targets your worst cats instead.
+        </p>
+        <WireUpgradeCard :u="vm.heroHoles" hero />
       </section>
 
       <!-- 3. MORE UPGRADES -->
