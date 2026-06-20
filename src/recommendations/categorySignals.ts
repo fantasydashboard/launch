@@ -1,5 +1,5 @@
 import type { CategoryDef, MyTeamCategoryProfile, Recommendation } from './types'
-import { ordinal } from './ordinal'
+import { rankLabel } from './ordinal'
 
 function catName(statId: string, cats: CategoryDef[]): string {
   return cats.find((c) => c.statId === statId)?.name ?? statId
@@ -19,8 +19,8 @@ export function computeCategoryWeaknesses(
         kind: 'category-weakness' as const,
         severity: isBottomTwo ? ('high' as const) : ('medium' as const),
         statId: c.statId,
-        headline: `${ordinal(c.rank)} in ${catName(c.statId, cats)}`,
-        detail: `You rank ${ordinal(c.rank)} of ${profile.numTeams} in ${catName(c.statId, cats)}.`,
+        headline: `${rankLabel(c.rank)} in ${catName(c.statId, cats)}`,
+        detail: `You rank ${rankLabel(c.rank)} of ${profile.numTeams} in ${catName(c.statId, cats)}.`,
         evidenceRoute: '/',
         leverage: c.rank / profile.numTeams,
       }
@@ -39,8 +39,8 @@ export function computeCategoryStrengths(
       kind: 'category-strength' as const,
       severity: 'low' as const,
       statId: c.statId,
-      headline: `${ordinal(c.rank)} in ${catName(c.statId, cats)}`,
-      detail: `You rank ${ordinal(c.rank)} of ${profile.numTeams} in ${catName(c.statId, cats)}.`,
+      headline: `${rankLabel(c.rank)} in ${catName(c.statId, cats)}`,
+      detail: `You rank ${rankLabel(c.rank)} of ${profile.numTeams} in ${catName(c.statId, cats)}.`,
       evidenceRoute: '/',
       leverage: 1 - c.rank / profile.numTeams,
     }))

@@ -96,13 +96,15 @@ const sections = computed<RosterSection[]>(() => {
     const plus = allPlus.slice(0, MAX_PLUS_CHIPS).map((x) => x.chip)
     const minus = allMinus.slice(0, MAX_MINUS_CHIPS).map((x) => x.chip)
     const plusOverflow = Math.max(0, allPlus.length - MAX_PLUS_CHIPS)
-    // When a player has no plus chips, surface their best category as a muted chip
-    // so the row reads as something other than "—". Null topStatId => truly blank.
+    // When a player has no plus chips, surface their best category as a muted chip.
+    // Only when topStatId maps to a REAL category label — otherwise (unmatched
+    // rookie, raw stat id) we'd render a stray glyph that reads as a render bug, so
+    // we leave the chip area empty instead.
     let topChip: ContribChip | null = null
-    if (plus.length === 0 && contrib?.topStatId) {
+    if (plus.length === 0 && contrib?.topStatId && labelByStatId.value.has(contrib.topStatId)) {
       topChip = {
         statId: contrib.topStatId,
-        label: labelByStatId.value.get(contrib.topStatId) || contrib.topStatId,
+        label: labelByStatId.value.get(contrib.topStatId)!,
       }
     }
     const roleValue = contrib?.roleValue ?? 0
@@ -241,10 +243,6 @@ function onLogoErr(e: Event) {
               v-if="row.topChip"
               class="rounded px-1.5 py-0.5 font-mono text-xs text-dark-textMuted bg-dark-border/60"
             >{{ row.topChip.label }}</span>
-            <span
-              v-if="row.plus.length === 0 && row.minus.length === 0 && !row.topChip"
-              class="font-mono text-xs text-dark-textMuted"
-            >—</span>
           </span>
 
           <!-- Cross-role rest-of-season trade value (0-100) — same number as the Trades page,

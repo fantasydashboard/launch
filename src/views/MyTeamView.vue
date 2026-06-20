@@ -18,6 +18,8 @@ import { toEffectiveStats } from '@/myteam/effectiveStats'
 import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 import { classifyCategory } from '@/myteam/categorySide'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
+import { isAccumulatorCat } from '@/myteam/contestedTiers'
+import { DIVERGENCE_MIN } from '@/trades/timing'
 import { buildEngine } from '@/trades/engine'
 import { buildPositionalLandscape, assignSlots, SURPLUS_FLEX, type DepthPlayer } from '@/trades/positionalLandscape'
 import { computeProductionGaps } from '@/myteam/productionGaps'
@@ -310,9 +312,17 @@ const emptyStateMessage = computed(() => {
   return "Connect or select a category league to see your team's edge."
 })
 
+// Short category label for a statId (e.g. "AB", "IP") — used to spot accumulator cats.
+const labelOfStat = (statId: string) =>
+  categories.value.find((c) => c.statId === statId)?.label ?? statId
+
 const weaknesses = computed(() => {
   if (!productionProfile.value) return []
+  // Drop accumulator cats (AB/G/IP/BF…): a low rank there means "you play fewer
+  // games", not a fixable hole, and it shouldn't headline the verdict as your
+  // "biggest hole".
   return computeCategoryWeaknesses(productionProfile.value, categories.value)
+    .filter((w) => !isAccumulatorCat(labelOfStat(w.statId)))
     .slice()
     .sort((a, b) => b.leverage - a.leverage)
     .slice(0, 4)
@@ -347,6 +357,9 @@ const addsByStatId = computed<Record<string, { name: string; statValue: number; 
     const top = group.adds[0]
     if (!top) continue
     const cat = categories.value.find((c) => c.statId === group.hole.statId)
+    // Accumulator cats (Games/IP/AB/BF…) aren't fixed by a waiver add — surfacing
+    // "Add X +1 G" is noise. Skip them so only roster-quality holes get a nudge.
+    if (isAccumulatorCat(cat?.label ?? group.hole.statId)) continue
     const spec = catSpecs.value.find((c) => c.statId === group.hole.statId)
     const isRatio = spec?.isRatio ?? false
     // Ratio cats (ERA/WHIP/OBA) read as 2 decimals; counting cats as whole numbers.
@@ -365,7 +378,10 @@ const addsByStatId = computed<Record<string, { name: string; statValue: number; 
 
 const strengths = computed(() => {
   if (!productionProfile.value) return []
+  // Accumulator cats (AB/G/IP/BF…) are won by playing time, not roster quality —
+  // "1st in At Bats" is a hollow brag, so it never headlines your edge.
   return computeCategoryStrengths(productionProfile.value, categories.value)
+    .filter((s) => !isAccumulatorCat(labelOfStat(s.statId)))
     .slice()
     .sort((a, b) => b.leverage - a.leverage)
     .slice(0, 4)
@@ -563,7 +579,18 @@ const sellHighKeys = computed<Set<string>>(() => {
   const valueByKey = new Map(contributions.value.map((c) => [c.playerKey, c.crossPercentile ?? 0]))
   const ranked = myPlayerKeys.value
     .map((key) => ({ key, t: timing.get(key), v: valueByKey.get(key) ?? 0 }))
-    .filter((x) => x.t?.dir === 'sell' && x.t.luckConfirmed && x.v >= SELL_HIGH_VALUE_FLOOR)
+    // A real sell-high needs the MARKET to overvalue him: season-pace value must
+    // exceed his ROS projection by a genuine margin (perceived − ros ≥ DIVERGENCE_MIN),
+    // AND Statcast must confirm the regression. Luck alone isn't enough — an elite
+    // player who's slightly "lucky" but still elite after regression (small gap) is a
+    // hold, not a sell, so this keeps the page from telling you to dump your ace.
+    .filter(
+      (x) =>
+        x.t?.dir === 'sell' &&
+        x.t.luckConfirmed &&
+        x.t.perceived - x.t.ros >= DIVERGENCE_MIN &&
+        x.v >= SELL_HIGH_VALUE_FLOOR,
+    )
     .sort((a, b) => (b.t?.score ?? 0) - (a.t?.score ?? 0))
     .slice(0, SELL_HIGH_MAX)
   return new Set(ranked.map((x) => x.key))

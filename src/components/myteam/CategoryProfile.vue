@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { CategoryGap } from '@/myteam/types'
-import { ordinal } from '@/recommendations/ordinal'
+import { rankLabel } from '@/recommendations/ordinal'
 
 interface CatAdd {
   name: string
@@ -36,7 +36,7 @@ function gapNote(gap: CategoryGap): string {
   // Only the battleground (winnable) carries a gap note — those are the close, actionable
   // cats. Strengths and out-of-reach don't need a "how far" number.
   if (gap.tier === 'winnable' && gap.gapUp != null) {
-    return gap.gapUp === 0 ? `tied · ${ordinal(gap.rank - 1)}` : `${gap.gapUp}w from ${ordinal(gap.rank - 1)}`
+    return gap.gapUp === 0 ? `tied · ${rankLabel(gap.rank - 1)}` : `${gap.gapUp}w from ${rankLabel(gap.rank - 1)}`
   }
   return ''
 }
@@ -100,7 +100,7 @@ const rankText = (rank: number, n: number) => {
 
         <!-- Prominent rank: where you stand in this category vs every team, all season -->
         <span class="w-16 shrink-0 text-right font-mono tabular-nums">
-          <span class="text-[13px] font-bold" :class="rankText(row.rank, row.numTeams)">{{ ordinal(row.rank) }}</span>
+          <span class="text-[13px] font-bold" :class="rankText(row.rank, row.numTeams)">{{ rankLabel(row.rank) }}</span>
           <span class="text-[9px] text-dark-textMuted"> / {{ row.numTeams }}</span>
         </span>
       </div>
