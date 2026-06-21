@@ -83,9 +83,18 @@ const rosterLoading = computed(() =>
 const rosterLoaded = computed(() =>
   isEspnCategoryLeague.value ? espn.loaded.value : yahooRosterLoaded.value,
 )
-const players = computed(() =>
-  isEspnCategoryLeague.value ? espn.freeAgents.value : yahooFreeAgents.value,
-)
+// The platform free-agent feeds LEAK rostered players (ESPN's status filter is
+// unreliable), which is how stars like CJ Abrams / Acuña surfaced as "adds". The league
+// pool is the source of truth for who's rostered, so exclude anyone in it — the same
+// guard the Wire uses. Guard on a populated pool so an early/empty load doesn't blank
+// every free agent.
+const rosteredKeys = computed(() => new Set(rosterPool.value.map((p) => p.playerKey)))
+const players = computed(() => {
+  const src = isEspnCategoryLeague.value ? espn.freeAgents.value : yahooFreeAgents.value
+  const rostered = rosteredKeys.value
+  const guard = rosterPool.value.length > 0
+  return src.filter((fa) => !guard || !rostered.has(fa.playerKey))
+})
 
 // === Wired from the sources recorded in docs/superpowers/my-team-data-sources.md (Task 9 + Task 10) ===
 // No reusable store getter / composable yields the verified StandingsEntryLike[]
