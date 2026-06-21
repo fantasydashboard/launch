@@ -494,7 +494,9 @@ const catSpecs = computed<CatSpec[]>(() => {
 const myPlayerKeys = computed(() => rosterPlayers.value.map((p) => p.playerKey))
 
 // Slice 2: blend FanGraphs rest-of-season projections into roster value.
-const SEASON_FRACTION = 0.6 // baseball, ~mid-late season; only scales unmatched players' counting stats
+// Real season fraction from the league's week bounds (falls back to 0.6) — so player
+// values track actual season progress instead of a frozen guess. See store.
+const seasonFraction = computed(() => leagueStore.seasonFractionComplete)
 
 // Map each matched FGProjection to league stat_ids, keyed by playerKey. Empty
 // when FanGraphs returns no rows (degrades to extrapolated YTD downstream).
@@ -514,7 +516,7 @@ const contributions = computed(() => {
   const effectivePool = rosterPool.value.map((p) => ({
     playerKey: p.playerKey,
     position: p.position,
-    stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, SEASON_FRACTION),
+    stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, seasonFraction.value),
   }))
   return computeRosterValue(effectivePool, myPlayerKeys.value, catSpecs.value)
 })
@@ -530,7 +532,7 @@ const leagueTotals = computed(() => {
     const teamId = String((p as { teamKey?: string }).teamKey ?? '')
     if (!teamId) continue
     const arr = byTeam.get(teamId) ?? []
-    arr.push({ playerKey: p.playerKey, stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, SEASON_FRACTION) })
+    arr.push({ playerKey: p.playerKey, stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, seasonFraction.value) })
     byTeam.set(teamId, arr)
   }
   return aggregateTeamCatTotals([...byTeam.entries()].map(([teamId, players]) => ({ teamId, players })), catSpecs.value)
@@ -562,7 +564,7 @@ const tradeEngine = computed(() =>
         fgByKey: fgByKey.value,
         statcastByKey: statcastByKey.value,
         cats: catSpecs.value,
-        seasonFraction: SEASON_FRACTION,
+        seasonFraction: seasonFraction.value,
         labelOf: (id: string) => categories.value.find((c) => c.statId === id)?.label || id,
       })
     : null,

@@ -22,7 +22,6 @@ import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { buildPlayerMatchers } from '@/services/projectionService'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
-const SEASON_FRACTION = 0.6
 
 // buildPlayerMatchers loads league-independent FanGraphs data; build it once per session.
 let matchersPromise: ReturnType<typeof buildPlayerMatchers> | null = null
@@ -42,6 +41,8 @@ function ordinal(n: number): string {
 
 export function useWire() {
   const leagueStore = useLeagueStore()
+  // Real season fraction from the league's week bounds (falls back to 0.6) — see store.
+  const seasonFraction = computed(() => leagueStore.seasonFractionComplete)
 
   // ── data loaders ──────────────────────────────────────────────────────────
   const { players: yahooFreeAgents, load: loadPlayers } = useAvailablePlayers()
@@ -192,7 +193,7 @@ export function useWire() {
     const effectivePool = rosterPool.value.map((p) => ({
       playerKey: p.playerKey,
       position: p.position,
-      stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, SEASON_FRACTION),
+      stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, seasonFraction.value),
     }))
     return computeRosterValue(effectivePool, myPlayerKeys, catSpecs.value)
   })
@@ -260,7 +261,7 @@ export function useWire() {
     const fg = fgStatsByKey.value
     const out: Record<string, Record<string, number>> = {}
     for (const p of rosterPool.value)
-      out[p.playerKey] = toEffectiveStats(p.stats, fg[p.playerKey] ?? null, catSpecs.value, SEASON_FRACTION)
+      out[p.playerKey] = toEffectiveStats(p.stats, fg[p.playerKey] ?? null, catSpecs.value, seasonFraction.value)
     return out
   })
 
@@ -336,7 +337,7 @@ export function useWire() {
       ...base.map((fa) => ({
         playerKey: fa.playerKey,
         position: fa.position,
-        stats: toEffectiveStats(fa.stats, fg[fa.playerKey] ?? null, catSpecs.value, SEASON_FRACTION),
+        stats: toEffectiveStats(fa.stats, fg[fa.playerKey] ?? null, catSpecs.value, seasonFraction.value),
       })),
     ]
     const valById = new Map<string, number>()
@@ -359,7 +360,7 @@ export function useWire() {
       side: faSide(fa.position),
       percentOwned: fa.percentOwned,
       percentChange: fa.percentChange,
-      effStats: toEffectiveStats(fa.stats, faFgByKey.value[fa.playerKey] ?? null, catSpecs.value, SEASON_FRACTION),
+      effStats: toEffectiveStats(fa.stats, faFgByKey.value[fa.playerKey] ?? null, catSpecs.value, seasonFraction.value),
     })),
   )
 

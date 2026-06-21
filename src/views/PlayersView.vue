@@ -41,7 +41,8 @@ const thisWeek = useThisWeekMatchup()
 // "still loading" from "loaded and empty" from "the load failed". Reset on league switch.
 const attempted = ref(false)
 
-const SEASON_FRACTION = 0.6 // baseball, ~mid-late season; scales unmatched players' counting stats
+// Real season fraction from the league's week bounds (falls back to 0.6) — see store.
+const seasonFraction = computed(() => leagueStore.seasonFractionComplete)
 
 // === BEGIN copied-from-MyTeamView derivation (standings/categories/myTeamId + season load) ===
 // Kept identical to My Team so the two pages share league context. (A future refactor
@@ -243,7 +244,7 @@ const contributions = computed(() => {
   const effectivePool = rosterPool.value.map((p) => ({
     playerKey: p.playerKey,
     position: p.position,
-    stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, SEASON_FRACTION),
+    stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, seasonFraction.value),
   }))
   return computeRosterValue(effectivePool, myPlayerKeys.value, catSpecs.value)
 })
@@ -287,7 +288,7 @@ const faByKey = computed(() => new Map(players.value.map((fa) => [fa.playerKey, 
 const effectiveByKey = computed(() => {
   const fg = faFgStatsByKey.value
   const m = new Map<string, Record<string, number>>()
-  for (const fa of players.value) m.set(fa.playerKey, toEffectiveStats(fa.stats, fg[fa.playerKey] ?? null, catSpecs.value, SEASON_FRACTION))
+  for (const fa of players.value) m.set(fa.playerKey, toEffectiveStats(fa.stats, fg[fa.playerKey] ?? null, catSpecs.value, seasonFraction.value))
   return m
 })
 
@@ -298,7 +299,7 @@ const playersAdds = usePlayersAdds({
   fgStatsByKey: faFgStatsByKey,
   roster: rosterSlotPlayers,
   snapshot: thisWeek.snapshot,
-  seasonFraction: computed(() => SEASON_FRACTION),
+  seasonFraction,
 })
 const tiered = computed(() => tierAdds(playersAdds.adds.value))
 
@@ -353,8 +354,8 @@ const marketPool = computed(() => {
   if (!catSpecs.value.length) return []
   const fgR = rosterFgStatsByKey.value
   const fgF = faFgStatsByKey.value
-  const rosterEff = rosterPool.value.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: toEffectiveStats(p.stats, fgR[p.playerKey] ?? null, catSpecs.value, SEASON_FRACTION) }))
-  const faEff = players.value.map((fa) => ({ playerKey: fa.playerKey, position: fa.position, stats: toEffectiveStats(fa.stats, fgF[fa.playerKey] ?? null, catSpecs.value, SEASON_FRACTION) }))
+  const rosterEff = rosterPool.value.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: toEffectiveStats(p.stats, fgR[p.playerKey] ?? null, catSpecs.value, seasonFraction.value) }))
+  const faEff = players.value.map((fa) => ({ playerKey: fa.playerKey, position: fa.position, stats: toEffectiveStats(fa.stats, fgF[fa.playerKey] ?? null, catSpecs.value, seasonFraction.value) }))
   return [...rosterEff, ...faEff]
 })
 const marketValueByKey = computed(() => {
@@ -369,7 +370,7 @@ function toEligibleFor(p: { playerKey: string; name: string; team?: string; posi
     name: p.name,
     team: p.team ?? '',
     eligiblePositions: eligible,
-    stats: toEffectiveStats(p.stats ?? {}, fg[p.playerKey] ?? null, catSpecs.value, SEASON_FRACTION),
+    stats: toEffectiveStats(p.stats ?? {}, fg[p.playerKey] ?? null, catSpecs.value, seasonFraction.value),
     roleValue: marketValueByKey.value.get(p.playerKey) ?? 0,
     status: p.status,
   }

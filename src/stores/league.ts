@@ -87,6 +87,22 @@ export const useLeagueStore = defineStore('league', () => {
   const currentSeason = computed(() => currentLeague.value?.season || new Date().getFullYear().toString())
   const playoffWeekStart = computed(() => currentLeague.value?.settings?.playoff_week_start || 15)
   const currentWeek = computed(() => currentLeague.value?.settings?.leg || 1)
+
+  // Fraction of the season elapsed (0..1), derived from the league's OWN week bounds
+  // (leg = current week, end_week = season end — both normalized per platform). Used to
+  // project a player's season-to-date counting stats to a full-season scale for
+  // valuation, so the rankings track real season progress instead of a frozen guess.
+  // Keyed off leg/end_week, NOT playoff_week_start (hardcoded to 15 for Yahoo). Falls
+  // back to 0.6 (rough mid/late-season default) and clamps the extremes so the divide
+  // in toEffectiveStats can never blow up.
+  const seasonFractionComplete = computed(() => {
+    const leg = Number(currentLeague.value?.settings?.leg)
+    const end = Number(currentLeague.value?.settings?.end_week)
+    const start = Number(currentLeague.value?.settings?.start_week) || 1
+    if (!Number.isFinite(leg) || !Number.isFinite(end) || end <= start || leg < start) return 0.6
+    const frac = (leg - start + 1) / (end - start + 1)
+    return Math.min(0.97, Math.max(0.15, frac))
+  })
   
   // Current user info
   const currentUserId = ref<string | null>(null)
@@ -2206,6 +2222,7 @@ export const useLeagueStore = defineStore('league', () => {
     currentSeason,
     playoffWeekStart,
     currentWeek,
+    seasonFractionComplete,
     hasSavedLeagues,
     allLeagues,
     filteredLeaguesBySport,

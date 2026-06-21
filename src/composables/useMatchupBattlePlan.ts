@@ -63,8 +63,6 @@ export interface BattlePlanVM {
   lineupCheck: { ok: boolean; message: string } | null
 }
 
-const SEASON_FRACTION = 0.6
-
 function ymd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
@@ -77,6 +75,8 @@ export function useMatchupBattlePlan(): {
 } {
   const leagueStore = useLeagueStore()
   const leaguesStore = useLeaguesStore()
+  // Real season fraction from the league's week bounds (falls back to 0.6) — see store.
+  const seasonFraction = computed(() => leagueStore.seasonFractionComplete)
 
   // ── data loaders (mirror MyTeamView.vue lines 34-45) ──────────────────────
   const { players: yahooFreeAgents, load: loadPlayers } = useAvailablePlayers()
@@ -299,7 +299,7 @@ export function useMatchupBattlePlan(): {
     const effectivePool = rosterPool.value.map((p) => ({
       playerKey: p.playerKey,
       position: p.position,
-      stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, SEASON_FRACTION),
+      stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, seasonFraction.value),
     }))
     return computeRosterValue(effectivePool, myPlayerKeys, catSpecs.value)
   })
@@ -327,7 +327,7 @@ export function useMatchupBattlePlan(): {
     freeAgents,
     roster: rosterSlotPlayers,
     snapshot: thisWeek.snapshot,
-    seasonFraction: computed(() => SEASON_FRACTION),
+    seasonFraction,
     cadence,
   })
 

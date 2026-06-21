@@ -21,8 +21,9 @@ import TimingTag from '@/components/trades/TimingTag.vue'
 import type { TeamTotals, Landscape } from '@/trades/landscape'
 import type { TradeOpportunity } from '@/trades/opportunities'
 
-const SEASON_FRACTION = 0.6
 const leagueStore = useLeagueStore()
+// Real season fraction from the league's week bounds (falls back to 0.6) — see store.
+const seasonFraction = computed(() => leagueStore.seasonFractionComplete)
 const isEspn = computed(() => leagueStore.activePlatform === 'espn')
 
 // Yahoo sources.
@@ -157,7 +158,7 @@ const teamLogoByKey = computed(() => {
   return m
 })
 
-const { view } = useTradeTargets({ pool, fgByKey, statcastByKey, catSpecs, teamCatWins, myTeamKey, teamNameByKey, teamLogoByKey, seasonFraction: SEASON_FRACTION, labelOf })
+const { view } = useTradeTargets({ pool, fgByKey, statcastByKey, catSpecs, teamCatWins, myTeamKey, teamNameByKey, teamLogoByKey, seasonFraction: seasonFraction.value, labelOf })
 
 // --- Custom trade analyzer: evaluate a SPECIFIC deal you have in mind ---
 const analyzerOpen = ref(false)
@@ -168,7 +169,7 @@ const anGet = ref<string[]>([])
 // guarded only on an empty roster so we don't churn before data loads.
 const engine = computed(() =>
   pool.value.length
-    ? buildEngine({ pool: pool.value, fgByKey: fgByKey.value, statcastByKey: statcastByKey.value, cats: catSpecs.value, teamCatWins: teamCatWins.value, seasonFraction: SEASON_FRACTION, labelOf })
+    ? buildEngine({ pool: pool.value, fgByKey: fgByKey.value, statcastByKey: statcastByKey.value, cats: catSpecs.value, teamCatWins: teamCatWins.value, seasonFraction: seasonFraction.value, labelOf })
     : null,
 )
 // --- Positional dimension: win-win / reach / consolidate by roster slot ---
