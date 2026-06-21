@@ -629,6 +629,9 @@ const seasonArc = computed(() => {
 // whose best contributor is weakest in that cat (lowest z). Ties standings holes to
 // roster construction — "your HR hole = C · 2B". CategoryProfile shows it on
 // battleground rows.
+// A slot whose best body is this strong (cross-role value) is never a "drag" — it's an
+// elite specialist, not a hole you'd upgrade. Below this is solid/fringe territory.
+const DRAG_VALUE_CAP = 60
 const draggersByStatId = computed<Record<string, string[]>>(() => {
   const out: Record<string, string[]> = {}
   if (!contributions.value.length) return out
@@ -636,20 +639,26 @@ const draggersByStatId = computed<Record<string, string[]>>(() => {
   const sideByStatId = new Map(catSpecs.value.map((c) => [c.statId, c.side]))
   for (const cat of catSpecs.value) {
     const side = sideByStatId.get(cat.statId)
-    const bestZByPos = new Map<string, number>() // a slot's BEST contributor in this cat
+    // Per slot, its BEST body in this cat — and that body's OVERALL value, so we don't
+    // blame an elite specialist. A high-value player who simply doesn't pile up one
+    // stat (e.g. a 98-value catcher light on RBI) isn't "dragging" the cat — upgrading
+    // his slot wouldn't be the move. Only a genuinely weak slot is a real drag.
+    const bestByPos = new Map<string, { z: number; value: number }>()
     for (const c of contributions.value) {
       if ((c.role === 'pitcher' ? 'pit' : 'hit') !== side) continue
       const pos = posByKey.get(c.playerKey)
       if (!pos) continue
       const z = c.contribs.find((x) => x.statId === cat.statId)?.z ?? 0
-      const cur = bestZByPos.get(pos)
-      if (cur === undefined || z > cur) bestZByPos.set(pos, z)
+      const cur = bestByPos.get(pos)
+      if (cur === undefined || z > cur.z) bestByPos.set(pos, { z, value: c.crossPercentile ?? 0 })
     }
-    // the two slots whose best body still contributes least to this cat
-    const worst = [...bestZByPos.entries()]
-      .filter(([, z]) => z < 0)
-      .sort((a, b) => a[1] - b[1])
-      .slice(0, 2)
+    // The single weakest slot that ACTUALLY drags this cat: its best body hurts the cat
+    // (z < 0) AND isn't a strong overall contributor (value below the core/solid bar).
+    // One slot only — naming three positions for one hole was noise.
+    const worst = [...bestByPos.entries()]
+      .filter(([, b]) => b.z < 0 && b.value < DRAG_VALUE_CAP)
+      .sort((a, b) => a[1].z - b[1].z)
+      .slice(0, 1)
       .map(([pos]) => pos)
     if (worst.length) out[cat.statId] = worst
   }
