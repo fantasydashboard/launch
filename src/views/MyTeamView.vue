@@ -515,9 +515,11 @@ const seasonFraction = computed(() => leagueStore.seasonFractionComplete)
 // player quality — a league-leading skill scores a big z and a merely-average regular sits
 // near zero, instead of every good player compressing into one high band where breadth wins.
 // Null until the universe loads; computeRosterValue/buildEngine then fall back to pool-z.
-// Clamp is loose enough to let an elite single-category skill dominate (a 40-SB burner) but
-// still tames absurd outliers.
-const ZCLAMP = 4
+// Clamp only ever caps a SPECIALIST's elite category (a compiler's z's are all small and
+// never reach it), so a low clamp silently punishes scarce-skill stars (Carroll's SB) while
+// leaving breadth compilers untouched. Set high enough that real elite skills count in full
+// (a 60-SB z tops out ~5) — it exists only to reject garbage projections (z > 8 = bad data).
+const ZCLAMP = 8
 const valueBaseline = computed(() =>
   valueBaselineSvc.ready.value ? valueBaselineSvc.build(catSpecs.value, labelOfStat) : null,
 )
