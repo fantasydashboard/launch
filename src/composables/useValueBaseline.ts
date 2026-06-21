@@ -7,6 +7,19 @@ import type { CatSpec, ValuePoolPlayer } from '@/myteam/types'
 // session across every page that anchors value to it.
 let universeCache: FGProjection[] | null = null
 
+// The baseline reference population must be the STARTABLE pool, not every projected row.
+// The full universe is dragged down by minor-leaguers and part-timers, which pushes every
+// real MLB regular above the mean in nearly every category — so values compress into one
+// high band and a broad compiler out-totals a concentrated star (the "Duran > Carroll" bug).
+// Restricting the reference to everyday regulars makes the per-category mean a real starter,
+// so an elite skill scores a big z and a merely-average regular sits near zero.
+const STARTABLE_PA = 350 // ~everyday batter
+const STARTABLE_IP = 40 // includes relievers/closers, excludes up-and-down arms
+function isStartable(fg: FGProjection): boolean {
+  if (fg.player_type === 'pitcher') return (fg.ip ?? 0) >= STARTABLE_IP
+  return (fg.pa ?? fg.ab ?? 0) >= STARTABLE_PA
+}
+
 /**
  * Loads the full projected-player universe and turns it into a per-category value
  * baseline for a given league's categories. Anchoring player value to this universe
@@ -40,7 +53,11 @@ export function useValueBaseline() {
         .filter(([id]) => !catSpecs.some((c) => c.statId === id))
         .map(([id, isPit]) => ({ stat_id: id, display_name: labelOf(id), isPitching: isPit })),
     ]
-    const pool: ValuePoolPlayer[] = universeCache.map((fg) => ({
+    // Reference population = startable regulars only (see isStartable). Falls back to the
+    // full universe if the projection rows lack PA/IP so the baseline never goes empty.
+    const startable = universeCache.filter(isStartable)
+    const refPop = startable.length >= 50 ? startable : universeCache
+    const pool: ValuePoolPlayer[] = refPop.map((fg) => ({
       playerKey: String(fg.mlbam_id),
       // Side gate only needs hitter-vs-pitcher; per-cat participation is stat-gated.
       position: fg.player_type === 'pitcher' ? 'SP' : 'OF',

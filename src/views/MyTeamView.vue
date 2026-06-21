@@ -510,11 +510,14 @@ const myPlayerKeys = computed(() => rosterPlayers.value.map((p) => p.playerKey))
 // values track actual season progress instead of a frozen guess. See store.
 const seasonFraction = computed(() => leagueStore.seasonFractionComplete)
 
-// Value baseline anchored to the FULL projected-player universe (not just this league's
-// rostered pool), so "VS ALL" reflects real player quality — a league-leading skill
-// scores a big z; broad-but-mediocre no longer out-totals a concentrated star. Null until
-// the universe loads, in which case computeRosterValue/buildEngine fall back to pool-z.
-const ZCLAMP = 6
+// Value baseline anchored to the STARTABLE projected-player pool (everyday regulars, not the
+// scrub-laden full universe and not just this league's roster), so "VS ALL" reflects real
+// player quality — a league-leading skill scores a big z and a merely-average regular sits
+// near zero, instead of every good player compressing into one high band where breadth wins.
+// Null until the universe loads; computeRosterValue/buildEngine then fall back to pool-z.
+// Clamp is loose enough to let an elite single-category skill dominate (a 40-SB burner) but
+// still tames absurd outliers.
+const ZCLAMP = 4
 const valueBaseline = computed(() =>
   valueBaselineSvc.ready.value ? valueBaselineSvc.build(catSpecs.value, labelOfStat) : null,
 )
@@ -553,12 +556,31 @@ const contributions = computed(() => {
 const showFgAudit = new URLSearchParams(window.location.search).has('fgaudit')
 const fgMatchAudit = computed(() => {
   const fg = fgByKey.value
-  const valueByKey = new Map(contributions.value.map((c) => [c.playerKey, Math.round(c.crossPercentile ?? 0)]))
+  const contribByKey = new Map(contributions.value.map((c) => [c.playerKey, c]))
   const mine = new Set(myPlayerKeys.value)
   const rows = rosterPool.value
     .filter((p) => mine.has(p.playerKey))
-    .map((p) => ({ name: p.name, matched: !!fg[p.playerKey], value: valueByKey.get(p.playerKey) ?? 0 }))
-    .sort((a, b) => Number(a.matched) - Number(b.matched) || a.value - b.value)
+    .map((p) => {
+      const c = contribByKey.get(p.playerKey)
+      // Top category z's (signed, biggest magnitude first) — the per-cat drivers behind
+      // the value, so a suspect ranking shows WHY (e.g. an elite SB z, or nothing dominant).
+      const top = c
+        ? [...c.contribs]
+            .filter((x) => x.z)
+            .sort((a, b) => Math.abs(b.z) - Math.abs(a.z))
+            .slice(0, 5)
+            .map((x) => `${labelOfStat(x.statId)} ${x.z >= 0 ? '+' : ''}${x.z.toFixed(1)}`)
+            .join('  ')
+        : ''
+      return {
+        name: p.name,
+        matched: !!fg[p.playerKey],
+        value: Math.round(c?.crossPercentile ?? 0),
+        score: c ? Math.round((c.valueScore ?? 0) * 10) / 10 : 0,
+        top,
+      }
+    })
+    .sort((a, b) => Number(a.matched) - Number(b.matched) || b.score - a.score)
   return { rows, matched: rows.filter((r) => r.matched).length, total: rows.length }
 })
 
@@ -658,7 +680,12 @@ const seasonArc = computed(() => {
     .sort((a, b) => b - a)
   const myWins = totals[rank - 1] ?? 0
   const margin = rank <= spots ? myWins - (totals[spots] ?? 0) : -((totals[spots - 1] ?? 0) - myWins)
-  const weeksLeft = Math.max(0, ((leagueStore as any).playoffWeekStart ?? 0) - ((leagueStore as any).currentWeek ?? 0))
+  // playoff_week_start is hardcoded for non-ESPN leagues (Yahoo/Sleeper), so its weeks-left
+  // is a false countdown ("2 weeks left" in June). Only trust it for ESPN's real schedule —
+  // estimateSpots already marks the leagues where we're guessing. 0 = unknown -> the UI hides
+  // the countdown clause rather than showing a wrong one.
+  const weeksLeftRaw = Math.max(0, ((leagueStore as any).playoffWeekStart ?? 0) - ((leagueStore as any).currentWeek ?? 0))
+  const weeksLeft = isEspnCategoryLeague.value && espn.playoffTeamCount.value ? weeksLeftRaw : 0
   return {
     rank,
     leagueSize: size,
@@ -774,16 +801,23 @@ const positionalRows = computed(() => {
   for (const pos of POS_ORDER) {
     const st = mine.get(pos)
     if (!st || st.slots <= 0 || SURPLUS_FLEX.has(pos)) continue
-    // Rank teams by their best ASSIGNED starter at this slot ("3rd of 10").
+    // Rank teams by their best ASSIGNED starter at this slot ("3rd of 10"). EVERY team is
+    // counted so the denominator is the league size, not just teams that happened to field a
+    // starter here — "3rd of 6" in a 10-team league reads as broken. A team with no startable
+    // body at the slot is ranked last (it's failing to field it), value -Infinity.
     const teamBests: { tk: string; v: number; key: string }[] = []
     for (const tk of byTeam.keys()) {
       const b = bestAssigned(tk, pos)
-      if (b) teamBests.push({ tk, v: b.v, key: b.key })
+      teamBests.push({ tk, v: b ? b.v : -Infinity, key: b?.key ?? '' })
     }
     teamBests.sort((a, b) => b.v - a.v)
-    const myIdx = teamBests.findIndex((t) => t.tk === myKey)
     const count = teamBests.length
-    const rank = myIdx >= 0 ? myIdx + 1 : null
+    const myEntry = teamBests.find((t) => t.tk === myKey)
+    const myHasStarter = !!myEntry && Number.isFinite(myEntry.v)
+    const myIdx = teamBests.findIndex((t) => t.tk === myKey)
+    // rank is null only when YOU can't field the slot (drives the "no startable option" THIN
+    // row) — other teams' empty slots still count toward the denominator.
+    const rank = myHasStarter ? myIdx + 1 : null
     // Depth verdict (drives the deep/thin chip + deal-from/upgrade link):
     //  • No startable body here -> THIN (you can't field it; an upgrade target).
     //    Never DEEP — a slot with no starter can't be a trade-from surplus.
@@ -916,17 +950,21 @@ watch(categories, () => {
         <div
           v-for="r in fgMatchAudit.rows"
           :key="r.name"
-          class="flex items-center justify-between py-0.5"
+          class="border-b border-dark-border/20 py-1 last:border-0"
         >
-          <span :class="r.matched ? 'text-dark-textSecondary' : 'text-[#f26d6d]'">
-            {{ r.matched ? '✓ FG' : '✗ extrapolated' }}
-          </span>
-          <span class="flex-1 truncate px-3" :class="r.matched ? 'text-dark-text' : 'text-[#f26d6d]'">{{ r.name }}</span>
-          <span class="tabular-nums text-dark-textMuted">{{ r.value }}</span>
+          <div class="flex items-center justify-between">
+            <span :class="r.matched ? 'text-dark-textSecondary' : 'text-[#f26d6d]'">
+              {{ r.matched ? '✓ FG' : '✗ extrapolated' }}
+            </span>
+            <span class="flex-1 truncate px-3" :class="r.matched ? 'text-dark-text' : 'text-[#f26d6d]'">{{ r.name }}</span>
+            <span class="tabular-nums text-dark-textMuted">VS ALL {{ r.value }} · score {{ r.score }}</span>
+          </div>
+          <div v-if="r.top" class="truncate pl-[3.2rem] text-[10px] tabular-nums text-dark-textMuted/80">{{ r.top }}</div>
         </div>
         <p class="mt-2 border-t border-dark-border/40 pt-2 text-[10px] text-dark-textMuted">
           ✗ = no FanGraphs projection matched (value is extrapolated season-to-date). A low
-          ✗ player may be a name-match miss; a low ✓ player is a real projection.
+          ✗ player may be a name-match miss; a low ✓ player is a real projection. <b>score</b> =
+          sum of category z's (the raw value behind VS ALL); the per-cat z's below show what drives it.
         </p>
       </div>
     </section>
