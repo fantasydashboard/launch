@@ -68,8 +68,64 @@ function participatesIn(player: ValuePoolPlayer, cat: CatSpec): boolean {
   return (player.stats[cat.statId] ?? 0) !== 0
 }
 
-function clamp(z: number): number {
-  return Math.max(-Z_CLAMP, Math.min(Z_CLAMP, z))
+function clamp(z: number, cap: number = Z_CLAMP): number {
+  return Math.max(-cap, Math.min(cap, z))
+}
+
+/**
+ * The quantity we z-score for a category: counting cats use the raw value; ratio cats
+ * use a volume-weighted impact `(rate - wMean) * volume` so a tiny sample can't dominate.
+ * `dir` flips it for lower-is-better cats. Shared by the pool path and the universe
+ * baseline so both score on exactly the same metric.
+ */
+function categoryQuantity(player: ValuePoolPlayer, cat: CatSpec, wMean: number): number {
+  const dir = cat.lowerIsBetter ? -1 : 1
+  if (cat.isRatio && cat.volumeStatId) {
+    const vol = player.stats[cat.volumeStatId] ?? 0
+    return ((player.stats[cat.statId] ?? 0) - wMean) * vol * dir
+  }
+  return (player.stats[cat.statId] ?? 0) * dir
+}
+
+/** Per-category z baseline (mean/std of the scoring quantity, plus the volume-weighted
+ *  mean rate for ratio cats) computed over a fixed reference population. */
+export interface CatBaseline {
+  mean: number
+  std: number
+  wMean: number // ratio cats only; 0 for counting cats
+}
+export type ValueBaseline = Map<string, CatBaseline>
+
+/**
+ * Build a value baseline from a reference population — pass the FULL projected-player
+ * universe (every FanGraphs row), NOT just your league's rostered players. Anchoring z
+ * to the universe is what makes "elite" mean elite vs all of MLB: a 40-SB burner scores
+ * a big z instead of being compressed to "slightly above your stacked roster", and a
+ * broad compiler stops out-totaling a concentrated star. This is the trade-value fix.
+ */
+export function computeValueBaseline(universe: ValuePoolPlayer[], cats: CatSpec[]): ValueBaseline {
+  const out: ValueBaseline = new Map()
+  for (const cat of cats) {
+    const participants = universe.filter((p) => participatesIn(p, cat))
+    let wMean = 0
+    if (cat.isRatio && cat.volumeStatId) {
+      const withVol = participants.filter((p) => (p.stats[cat.volumeStatId!] ?? 0) > 0)
+      const totalVol = withVol.reduce((s, p) => s + (p.stats[cat.volumeStatId!] ?? 0), 0)
+      wMean =
+        totalVol > 0
+          ? withVol.reduce((s, p) => s + (p.stats[cat.statId] ?? 0) * (p.stats[cat.volumeStatId!] ?? 0), 0) / totalVol
+          : 0
+    }
+    const qs = participants
+      .filter((p) => !cat.isRatio || !cat.volumeStatId || (p.stats[cat.volumeStatId] ?? 0) > 0)
+      .map((p) => categoryQuantity(p, cat, wMean))
+      .filter((q) => Number.isFinite(q))
+    const n = qs.length
+    const mean = n > 0 ? qs.reduce((s, q) => s + q, 0) / n : 0
+    const variance = n > 0 ? qs.reduce((s, q) => s + (q - mean) ** 2, 0) / n : 0
+    out.set(cat.statId, { mean, std: Math.sqrt(variance), wMean })
+  }
+  return out
 }
 
 /** Classify a player's role. Two-way (both pitcher and hitter eligible) is assigned
@@ -100,45 +156,55 @@ export function computeRosterValue(
   pool: ValuePoolPlayer[],
   myPlayerKeys: string[],
   cats: CatSpec[],
+  opts: { baseline?: ValueBaseline; zClamp?: number } = {},
 ): PlayerContribution[] {
+  // When a `baseline` is supplied, z is measured against the full projected-player
+  // universe (not this league's rostered pool), with a looser clamp — so a real star's
+  // elite categories register at full magnitude instead of being compressed by a deep
+  // roster. Absent a baseline, the math is identical to before (pool-relative z).
+  const { baseline } = opts
+  const zClamp = opts.zClamp ?? Z_CLAMP
   // Per category: z by playerKey, percentile by playerKey (both over participants).
   const zByCat = new Map<string, Map<string, number>>()
   const pctByCat = new Map<string, Map<string, number>>()
 
   for (const cat of cats) {
     const participants = pool.filter((p) => participatesIn(p, cat))
-    const dir = cat.lowerIsBetter ? -1 : 1
+    const base = baseline?.get(cat.statId)
     const zMap = new Map<string, number>()
     const pctMap = new Map<string, number>()
 
-    // Build the quantity we z-score: counting -> value; ratio -> volume-weighted impact.
-    let quantities: { key: string; q: number }[]
-    if (cat.isRatio && cat.volumeStatId) {
-      const withVol = participants.filter((p) => (p.stats[cat.volumeStatId!] ?? 0) > 0)
-      const totalVol = withVol.reduce((s, p) => s + (p.stats[cat.volumeStatId!] ?? 0), 0)
-      const wMean =
+    // The z-scored quantity (counting value / volume-weighted ratio impact). When a
+    // baseline is present its `wMean` defines the ratio center; otherwise derive it from
+    // this pool.
+    const isVolRatio = cat.isRatio && !!cat.volumeStatId
+    const scored = isVolRatio ? participants.filter((p) => (p.stats[cat.volumeStatId!] ?? 0) > 0) : participants
+    let wMean = base?.wMean ?? 0
+    if (isVolRatio && !base) {
+      const totalVol = scored.reduce((s, p) => s + (p.stats[cat.volumeStatId!] ?? 0), 0)
+      wMean =
         totalVol > 0
-          ? withVol.reduce((s, p) => s + (p.stats[cat.statId] ?? 0) * (p.stats[cat.volumeStatId!] ?? 0), 0) / totalVol
+          ? scored.reduce((s, p) => s + (p.stats[cat.statId] ?? 0) * (p.stats[cat.volumeStatId!] ?? 0), 0) / totalVol
           : 0
-      quantities = withVol.map((p) => ({
-        key: p.playerKey,
-        q: ((p.stats[cat.statId] ?? 0) - wMean) * (p.stats[cat.volumeStatId!] ?? 0) * dir,
-      }))
-    } else {
-      quantities = participants.map((p) => ({ key: p.playerKey, q: (p.stats[cat.statId] ?? 0) * dir }))
     }
+    // A single non-finite stat (e.g. Yahoo returns "-" for a pitcher with no decisions
+    // -> NaN) would poison mean/std and collapse the category. Drop non-finite quantities.
+    const quantities = scored
+      .map((p) => ({ key: p.playerKey, q: categoryQuantity(p, cat, wMean) }))
+      .filter((x) => Number.isFinite(x.q))
 
-    // A single non-finite stat (e.g. Yahoo returns "-" for a pitcher with no
-    // decisions -> parseFloat NaN) would poison mean/std and collapse the whole
-    // category's z-scores to 0. Drop non-finite quantities so the rest score.
-    quantities = quantities.filter((x) => Number.isFinite(x.q))
-
-    const n = quantities.length
-    const mean = n > 0 ? quantities.reduce((s, x) => s + x.q, 0) / n : 0
-    const variance = n > 0 ? quantities.reduce((s, x) => s + (x.q - mean) ** 2, 0) / n : 0
-    const std = Math.sqrt(variance)
+    let mean: number, std: number
+    if (base) {
+      mean = base.mean
+      std = base.std
+    } else {
+      const n = quantities.length
+      mean = n > 0 ? quantities.reduce((s, x) => s + x.q, 0) / n : 0
+      const variance = n > 0 ? quantities.reduce((s, x) => s + (x.q - mean) ** 2, 0) / n : 0
+      std = Math.sqrt(variance)
+    }
     for (const { key, q } of quantities) {
-      zMap.set(key, std > 0 ? clamp((q - mean) / std) : 0)
+      zMap.set(key, std > 0 ? clamp((q - mean) / std, zClamp) : 0)
     }
     // Percentile for chips: rank by raw value (direction-aware) over participants.
     const sorted = [...participants].sort((a, b) =>

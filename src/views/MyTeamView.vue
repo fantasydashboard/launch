@@ -9,6 +9,7 @@ import { isYahooCategoryLeague as isYahooCategoryScoringType } from '@/composabl
 import { useAvailablePlayers } from '@/composables/useAvailablePlayers'
 import { useMyRoster } from '@/composables/useMyRoster'
 import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
+import { useValueBaseline } from '@/composables/useValueBaseline'
 import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
 import { rankAddsForHoles } from '@/players/rankAdds'
 import { isLowerBetter } from '@/players/direction'
@@ -33,6 +34,7 @@ import RosterPanel from '@/components/myteam/RosterPanel.vue'
 import MyTeamLevers from '@/components/myteam/MyTeamLevers.vue'
 
 const leagueStore = useLeagueStore()
+const valueBaselineSvc = useValueBaseline()
 const { players: yahooFreeAgents, load: loadPlayers } = useAvailablePlayers()
 const {
   players: yahooRosterPlayers,
@@ -178,6 +180,7 @@ onMounted(() => {
   maybeLoadRoster()
   maybeLoadEspn()
   maybeLoadThisWeek()
+  valueBaselineSvc.load() // league-independent FG universe; powers the value baseline
 })
 // Reload when the active league changes (e.g. switching into a category league).
 watch(() => leagueStore.activeLeagueId, () => {
@@ -507,6 +510,15 @@ const myPlayerKeys = computed(() => rosterPlayers.value.map((p) => p.playerKey))
 // values track actual season progress instead of a frozen guess. See store.
 const seasonFraction = computed(() => leagueStore.seasonFractionComplete)
 
+// Value baseline anchored to the FULL projected-player universe (not just this league's
+// rostered pool), so "VS ALL" reflects real player quality — a league-leading skill
+// scores a big z; broad-but-mediocre no longer out-totals a concentrated star. Null until
+// the universe loads, in which case computeRosterValue/buildEngine fall back to pool-z.
+const ZCLAMP = 6
+const valueBaseline = computed(() =>
+  valueBaselineSvc.ready.value ? valueBaselineSvc.build(catSpecs.value, labelOfStat) : null,
+)
+
 // Map each matched FGProjection to league stat_ids, keyed by playerKey. Empty
 // when FanGraphs returns no rows (degrades to extrapolated YTD downstream).
 const fgStatsByKey = computed<Record<string, Record<string, number>>>(() => {
@@ -527,7 +539,10 @@ const contributions = computed(() => {
     position: p.position,
     stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, seasonFraction.value),
   }))
-  return computeRosterValue(effectivePool, myPlayerKeys.value, catSpecs.value)
+  return computeRosterValue(effectivePool, myPlayerKeys.value, catSpecs.value, {
+    baseline: valueBaseline.value ?? undefined,
+    zClamp: ZCLAMP,
+  })
 })
 
 // Dev-only FanGraphs match audit (enable with ?fgaudit=1). A player MATCHED gets his
@@ -591,6 +606,8 @@ const tradeEngine = computed(() =>
         statcastByKey: statcastByKey.value,
         cats: catSpecs.value,
         seasonFraction: seasonFraction.value,
+        baseline: valueBaseline.value ?? undefined,
+        zClamp: ZCLAMP,
         labelOf: (id: string) => categories.value.find((c) => c.statId === id)?.label || id,
       })
     : null,

@@ -1,5 +1,5 @@
 import type { CatSpec } from '@/myteam/value'
-import { computeRosterValue, sideCleanStats } from '@/myteam/value'
+import { computeRosterValue, sideCleanStats, type ValueBaseline } from '@/myteam/value'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
 import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 import type { PoolPlayer } from '@/composables/useMyRoster'
@@ -44,10 +44,14 @@ export interface BuildEngineInput {
   teamCatWins?: TeamTotals[]
   seasonFraction: number
   labelOf: (statId: string) => string
+  // Universe-anchored value baseline (z vs all projected players) + looser clamp, so
+  // value reflects real player quality instead of category breadth. See computeValueBaseline.
+  baseline?: ValueBaseline
+  zClamp?: number
 }
 
 export function buildEngine(input: BuildEngineInput): TradeEngine | null {
-  const { pool, fgByKey, cats, teamCatWins, seasonFraction, labelOf } = input
+  const { pool, fgByKey, cats, teamCatWins, seasonFraction, labelOf, baseline, zClamp } = input
   if (!cats.length || pool.length < 2) return null
   const statIds = cats.map((c) => c.statId)
   // Rekey raw FanGraphs projections onto league stat_ids before blending (see mapFgStatsByKey).
@@ -85,6 +89,7 @@ export function buildEngine(input: BuildEngineInput): TradeEngine | null {
     pool.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: eff.get(p.playerKey)!.stats })),
     pool.map((p) => p.playerKey),
     cats,
+    { baseline, zClamp },
   )
   const valueByKey = new Map(valued.map((c) => [c.playerKey, c.crossPercentile]))
   const roleValueByKey = new Map(valued.map((c) => [c.playerKey, c.roleValue]))
@@ -95,6 +100,7 @@ export function buildEngine(input: BuildEngineInput): TradeEngine | null {
     pool.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: toEffectiveStats(p.stats, null, cats, seasonFraction) })),
     pool.map((p) => p.playerKey),
     cats,
+    { baseline, zClamp },
   )
   const perceivedPct = new Map(perceivedValued.map((c) => [c.playerKey, c.crossPercentile]))
   const rosPct = new Map(valued.map((c) => [c.playerKey, c.crossPercentile]))
