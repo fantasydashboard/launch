@@ -521,6 +521,23 @@ const contributions = computed(() => {
   return computeRosterValue(effectivePool, myPlayerKeys.value, catSpecs.value)
 })
 
+// Dev-only FanGraphs match audit (enable with ?fgaudit=1). A player MATCHED gets his
+// rest-of-season projection; UNMATCHED falls back to extrapolated season-to-date, which
+// is the usual reason a value looks surprisingly low/high. This shows which of your
+// players matched, joined to their VS ALL value, so a suspect number can be diagnosed
+// as "real projection" vs "name-match miss".
+const showFgAudit = new URLSearchParams(window.location.search).has('fgaudit')
+const fgMatchAudit = computed(() => {
+  const fg = fgByKey.value
+  const valueByKey = new Map(contributions.value.map((c) => [c.playerKey, Math.round(c.crossPercentile ?? 0)]))
+  const mine = new Set(myPlayerKeys.value)
+  const rows = rosterPool.value
+    .filter((p) => mine.has(p.playerKey))
+    .map((p) => ({ name: p.name, matched: !!fg[p.playerKey], value: valueByKey.get(p.playerKey) ?? 0 }))
+    .sort((a, b) => Number(a.matched) - Number(b.matched) || a.value - b.value)
+  return { rows, matched: rows.filter((r) => r.matched).length, total: rows.length }
+})
+
 // League-wide PRODUCTION totals per category (ROS effective stats, every team) — the
 // basis for "how your team stacks up vs the league" (the category profile + verdict),
 // distinct from the record-based standings the playoff race uses.
@@ -860,6 +877,32 @@ watch(categories, () => {
       <p v-else-if="rosterLoaded" class="text-sm text-dark-textMuted">
         No roster found for your team.
       </p>
+    </section>
+
+    <!-- Dev-only: FanGraphs match audit (?fgaudit=1). Unmatched players use extrapolated
+         season-to-date instead of an ROS projection — the usual cause of a surprising value. -->
+    <section v-if="profile && showFgAudit && fgMatchAudit.total" class="space-y-2">
+      <h2 class="font-mono text-[11px] uppercase tracking-wide text-[#5ec8e6]">
+        FG match audit · {{ fgMatchAudit.matched }}/{{ fgMatchAudit.total }} matched
+        <span class="text-dark-textMuted normal-case">(dev only)</span>
+      </h2>
+      <div class="rounded-xl border border-[#5ec8e6]/30 bg-dark-card px-4 py-3 font-mono text-[11px]">
+        <div
+          v-for="r in fgMatchAudit.rows"
+          :key="r.name"
+          class="flex items-center justify-between py-0.5"
+        >
+          <span :class="r.matched ? 'text-dark-textSecondary' : 'text-[#f26d6d]'">
+            {{ r.matched ? '✓ FG' : '✗ extrapolated' }}
+          </span>
+          <span class="flex-1 truncate px-3" :class="r.matched ? 'text-dark-text' : 'text-[#f26d6d]'">{{ r.name }}</span>
+          <span class="tabular-nums text-dark-textMuted">{{ r.value }}</span>
+        </div>
+        <p class="mt-2 border-t border-dark-border/40 pt-2 text-[10px] text-dark-textMuted">
+          ✗ = no FanGraphs projection matched (value is extrapolated season-to-date). A low
+          ✗ player may be a name-match miss; a low ✓ player is a real projection.
+        </p>
+      </div>
     </section>
 
     <p v-if="!profile" class="text-sm text-dark-textMuted">
