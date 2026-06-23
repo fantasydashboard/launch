@@ -9,6 +9,7 @@ import { isLowerBetter } from '@/players/direction'
 import { classifyCategory } from '@/myteam/categorySide'
 import type { CatSpec } from '@/myteam/value'
 import { useTradeTargets } from '@/composables/useTradeTargets'
+import { useValueBaseline } from '@/composables/useValueBaseline'
 import { usePositionalTargets } from '@/composables/usePositionalTargets'
 import { useTradeOpportunities } from '@/composables/useTradeOpportunities'
 import OpportunityCard from '@/components/trades/OpportunityCard.vue'
@@ -108,6 +109,16 @@ const catSpecs = computed<CatSpec[]>(() => {
 })
 const labelOf = (statId: string) => categories.value.find((c) => c.statId === statId)?.label ?? statId
 
+// Value baseline anchored to the STARTABLE projected-player pool, identical to My Team, so a
+// player's "VS ALL" value is the SAME number on both pages (the roster legend promises this).
+// Null until the league-independent FG universe loads; value then falls back to pool-z.
+const valueBaselineSvc = useValueBaseline()
+valueBaselineSvc.load()
+const ZCLAMP = 8
+const valueBaseline = computed(() =>
+  valueBaselineSvc.ready.value ? valueBaselineSvc.build(catSpecs.value, labelOf) : null,
+)
+
 // Per-team category WIN counts — ESPN from standings (perCategoryWins), Yahoo from the
 // season's matchup stat_winners. Both are direction-correct measures of category strength,
 // keyed to match the roster pool's teamKey (`espn_<id>` / Yahoo team_key).
@@ -158,7 +169,7 @@ const teamLogoByKey = computed(() => {
   return m
 })
 
-const { view } = useTradeTargets({ pool, fgByKey, statcastByKey, catSpecs, teamCatWins, myTeamKey, teamNameByKey, teamLogoByKey, seasonFraction: seasonFraction.value, labelOf })
+const { view } = useTradeTargets({ pool, fgByKey, statcastByKey, catSpecs, teamCatWins, myTeamKey, teamNameByKey, teamLogoByKey, seasonFraction: seasonFraction.value, labelOf, baseline: valueBaseline, zClamp: ZCLAMP })
 
 // --- Custom trade analyzer: evaluate a SPECIFIC deal you have in mind ---
 const analyzerOpen = ref(false)
@@ -169,7 +180,7 @@ const anGet = ref<string[]>([])
 // guarded only on an empty roster so we don't churn before data loads.
 const engine = computed(() =>
   pool.value.length
-    ? buildEngine({ pool: pool.value, fgByKey: fgByKey.value, statcastByKey: statcastByKey.value, cats: catSpecs.value, teamCatWins: teamCatWins.value, seasonFraction: seasonFraction.value, labelOf })
+    ? buildEngine({ pool: pool.value, fgByKey: fgByKey.value, statcastByKey: statcastByKey.value, cats: catSpecs.value, teamCatWins: teamCatWins.value, seasonFraction: seasonFraction.value, labelOf, baseline: valueBaseline.value ?? undefined, zClamp: ZCLAMP })
     : null,
 )
 // --- Positional dimension: win-win / reach / consolidate by roster slot ---

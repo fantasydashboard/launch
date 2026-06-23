@@ -1,6 +1,6 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
 import type { CatSpec } from '@/myteam/value'
-import { computeRosterValue } from '@/myteam/value'
+import { computeRosterValue, type ValueBaseline } from '@/myteam/value'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
 import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 import type { PoolPlayer } from '@/composables/useMyRoster'
@@ -115,6 +115,11 @@ export function useTradeTargets(inputs: {
   teamLogoByKey?: Ref<Map<string, string>>
   seasonFraction: number
   labelOf: (statId: string) => string
+  // Universe-anchored value baseline (z vs the startable projected-player pool) + clamp, so
+  // Trades values match My Team — see computeValueBaseline / useValueBaseline. Optional: absent,
+  // value falls back to pool-relative z (the old behavior).
+  baseline?: Ref<ValueBaseline | null>
+  zClamp?: number
 }): { view: ComputedRef<TradeView | null> } {
   const view = computed<TradeView | null>(() => {
     const cats = inputs.catSpecs.value
@@ -155,10 +160,12 @@ export function useTradeTargets(inputs: {
     //    ratio cat like ERA, but keeps full credit for counting cats like SV/HLD/K).
     //  - marketValue: the CROSS-ROLE percentile (hitter and pitcher on one scale), so deal
     //    evenness and the value meter are comparable across positions.
+    const valueOpts = { baseline: inputs.baseline?.value ?? undefined, zClamp: inputs.zClamp }
     const valued = computeRosterValue(
       pool.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: eff.get(p.playerKey)!.stats })),
       pool.map((p) => p.playerKey),
       cats,
+      valueOpts,
     )
     const marketValue = new Map(valued.map((c) => [c.playerKey, c.crossPercentile]))
     const strengths = new Map(
@@ -173,6 +180,7 @@ export function useTradeTargets(inputs: {
       pool.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: toEffectiveStats(p.stats, null, cats, inputs.seasonFraction) })),
       pool.map((p) => p.playerKey),
       cats,
+      valueOpts,
     )
     const perceivedPct = new Map(perceivedValued.map((c) => [c.playerKey, c.crossPercentile]))
     const rosPct = new Map(valued.map((c) => [c.playerKey, c.crossPercentile]))
