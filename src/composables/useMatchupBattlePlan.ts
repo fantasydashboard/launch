@@ -14,6 +14,7 @@ import { volumeEdge, type VolPlayer } from '@/myteam/volumeEdge'
 import { classifyCategory } from '@/myteam/categorySide'
 import { isLowerBetter } from '@/players/direction'
 import { computeRosterValue, type CatSpec } from '@/myteam/value'
+import { useValueBaseline } from '@/composables/useValueBaseline'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
 import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 import type { RosterSlotPlayer } from '@/myteam/yourMove/pairDrop'
@@ -283,6 +284,17 @@ export function useMatchupBattlePlan(): {
     })
   })
 
+  // Value baseline anchored to the STARTABLE pool — same as My Team / Trades / Wire — so the
+  // matchup's player values and sit/start calls run on the same scale as every other page.
+  const valueBaselineSvc = useValueBaseline()
+  valueBaselineSvc.load()
+  const ZCLAMP = 8
+  const valueBaseline = computed(() =>
+    valueBaselineSvc.ready.value
+      ? valueBaselineSvc.build(catSpecs.value, (id) => categories.value.find((c) => c.statId === id)?.label || id)
+      : null,
+  )
+
   // ── contributions (for rosterSlotPlayers) (mirror lines 490-499, 539-554) ─
   const fgStatsByKey = computed<Record<string, Record<string, number>>>(() => {
     const fgMap = fgByKey.value
@@ -301,7 +313,7 @@ export function useMatchupBattlePlan(): {
       position: p.position,
       stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, seasonFraction.value),
     }))
-    return computeRosterValue(effectivePool, myPlayerKeys, catSpecs.value)
+    return computeRosterValue(effectivePool, myPlayerKeys, catSpecs.value, { baseline: valueBaseline.value ?? undefined, zClamp: ZCLAMP })
   })
 
   const rosterSlotPlayers = computed<RosterSlotPlayer[]>(() => {

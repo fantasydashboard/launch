@@ -8,6 +8,7 @@ import { isYahooCategoryLeague as isYahooCategoryScoringType } from '@/composabl
 import { classifyCategory } from '@/myteam/categorySide'
 import { isLowerBetter } from '@/players/direction'
 import { computeRosterValue, type CatSpec } from '@/myteam/value'
+import { useValueBaseline } from '@/composables/useValueBaseline'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
 import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 // ── Wire engines ─────────────────────────────────────────────────────────────
@@ -177,6 +178,19 @@ export function useWire() {
     })
   })
 
+  // Value baseline anchored to the STARTABLE projected-player pool — identical to My Team and
+  // Trades — so roleValue (and therefore the drop candidates, FA ranks, and weak-link) match
+  // across pages instead of the Wire using the old pool-relative z and naming different players.
+  const valueBaselineSvc = useValueBaseline()
+  valueBaselineSvc.load()
+  const ZCLAMP = 8
+  const valueBaseline = computed(() =>
+    valueBaselineSvc.ready.value
+      ? valueBaselineSvc.build(catSpecs.value, (id) => categories.value.find((c) => c.statId === id)?.label || id)
+      : null,
+  )
+  const valueOpts = computed(() => ({ baseline: valueBaseline.value ?? undefined, zClamp: ZCLAMP }))
+
   // ── fgStatsByKey + contributions (VERBATIM from the Matchup composable) ────
   const fgStatsByKey = computed<Record<string, Record<string, number>>>(() => {
     const fgMap = fgByKey.value
@@ -195,7 +209,7 @@ export function useWire() {
       position: p.position,
       stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, seasonFraction.value),
     }))
-    return computeRosterValue(effectivePool, myPlayerKeys, catSpecs.value)
+    return computeRosterValue(effectivePool, myPlayerKeys, catSpecs.value, valueOpts.value)
   })
 
   // ── my-team id (must equal pool teamKey on BOTH platforms) ─────────────────
@@ -341,7 +355,7 @@ export function useWire() {
       })),
     ]
     const valById = new Map<string, number>()
-    for (const c of computeRosterValue(scoring, scoring.map((p) => p.playerKey), catSpecs.value)) valById.set(c.playerKey, c.roleValue)
+    for (const c of computeRosterValue(scoring, scoring.map((p) => p.playerKey), catSpecs.value, valueOpts.value)) valById.set(c.playerKey, c.roleValue)
     return [...base]
       .sort((a, b) => (valById.get(b.playerKey) ?? 0) - (valById.get(a.playerKey) ?? 0))
       .slice(0, MAX_RANKABLE_FAS)
@@ -450,7 +464,7 @@ export function useWire() {
       ...wireFreeAgents.value.map((f) => ({ playerKey: f.playerKey, position: f.position, stats: f.effStats })),
     ]
     if (!all.length) return { role, pctCat }
-    for (const c of computeRosterValue(all, all.map((p) => p.playerKey), catSpecs.value)) {
+    for (const c of computeRosterValue(all, all.map((p) => p.playerKey), catSpecs.value, valueOpts.value)) {
       role.set(c.playerKey, Math.round(c.roleValue))
       const m = new Map<string, number>()
       for (const cc of c.contribs) m.set(cc.statId, Math.round(cc.percentile <= 1 ? cc.percentile * 100 : cc.percentile))
