@@ -131,10 +131,13 @@ const headlineOf = (you: SideEffect, them: SideEffect, intents: Intent[], s: Sta
   const ecw = d > 0 ? `wins ${b} → ${a} cats/week`
     : d < 0 ? `loses ${b} → ${a} cats/week`
     : `holds ${b} cats/week`
+  // Category leagues are won on CATEGORIES, so lead with the cats the deal moves for you, not
+  // the roster slot it fills — "boosts K / IP" is the real lever; "fills your SP" misleads when
+  // you're already strong at SP. Position is the fallback when the deal helps no needed category.
   let what = ''
-  if (you.fillsPos) what = `fills your ${you.fillsPos}`
+  if (you.fillsCats.length) what = `boosts ${you.fillsCats.slice(0, 2).join(' / ')}`
+  else if (you.fillsPos) what = `fills your ${you.fillsPos}`
   else if (intents.includes('steal') && them.fillsPos) what = `targets their ${them.fillsPos}`
-  else if (you.fillsCats.length) what = `adds ${you.fillsCats[0]}`
   else if (intents.includes('buyLow')) what = 'buy-low window'
   return what ? `${ecw} · ${what}` : ecw
 }
