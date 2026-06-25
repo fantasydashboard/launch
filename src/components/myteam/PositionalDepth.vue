@@ -25,7 +25,6 @@ const gradeTone = (rank: number | null, n: number) =>
 
 <template>
   <section class="space-y-2">
-    <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Positions</h2>
     <div class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
       <!-- Aggregate grade: where your best legal lineup projects vs every team's best legal lineup. -->
       <div v-if="lineup.lineupRank" class="mb-2 border-b border-dark-border/40 pb-2">

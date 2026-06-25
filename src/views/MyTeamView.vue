@@ -556,6 +556,9 @@ const contributions = computed(() => {
 // is the usual reason a value looks surprisingly low/high. This shows which of your
 // players matched, joined to their VS ALL value, so a suspect number can be diagnosed
 // as "real projection" vs "name-match miss".
+// Season view toggle: show the category profile OR the positional lineup, one at a time, so
+// the page isn't two long stacked sections. Same lens-toggle as the Trades landscape.
+const seasonView = ref<'cat' | 'pos'>('cat')
 const showFgAudit = new URLSearchParams(window.location.search).has('fgaudit')
 const fgMatchAudit = computed(() => {
   const fg = fgByKey.value
@@ -922,18 +925,30 @@ watch(categories, () => {
         <span class="rounded bg-dark-border/70 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-dark-textSecondary">Season</span>
         <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">full-year ranks</span>
         <span class="h-px flex-1 bg-dark-border/50"></span>
+        <!-- Categories / Positions lens toggle (shortens the page — one view at a time). -->
+        <div class="flex overflow-hidden rounded-md border border-dark-border text-[10px] font-mono uppercase tracking-wider">
+          <button
+            class="px-2.5 py-1 transition-colors"
+            :class="seasonView === 'cat' ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+            @click="seasonView = 'cat'"
+          >Categories</button>
+          <button
+            class="border-l border-dark-border px-2.5 py-1 transition-colors"
+            :class="seasonView === 'pos' ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+            @click="seasonView = 'pos'"
+          >Positions</button>
+        </div>
       </div>
       <p class="font-mono text-[10px] text-dark-textMuted/70">
-        How you rank all season vs the league.
+        {{ seasonView === 'cat' ? 'How you rank in each category vs the league.' : 'Your best lineup vs every team, position by position.' }}
       </p>
     </div>
 
-    <section v-if="profile" class="space-y-2">
-      <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Category Profile</h2>
+    <section v-if="profile && seasonView === 'cat'" class="space-y-2">
       <CategoryProfile :gaps="gaps" :categories="gapCategories" :adds-by-stat-id="addsByStatId" :draggers-by-stat-id="draggersByStatId" />
     </section>
 
-    <PositionalDepth v-if="profile && positionalLineup" :lineup="positionalLineup" />
+    <PositionalDepth v-if="profile && seasonView === 'pos' && positionalLineup" :lineup="positionalLineup" />
 
     <section v-if="profile" class="space-y-2">
       <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Your Roster</h2>
