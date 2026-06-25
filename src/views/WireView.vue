@@ -5,8 +5,10 @@ import Avatar from '@/components/trades/Avatar.vue'
 import ValueBadge from '@/components/trades/ValueBadge.vue'
 import WireUpgradeCard from '@/components/wire/WireUpgradeCard.vue'
 import WireGrader from '@/components/wire/WireGrader.vue'
+import CatDebugPanel from '@/components/dev/CatDebugPanel.vue'
 
-const { vm, refresh, grader } = useWire()
+const { vm, refresh, grader, catDebug } = useWire()
+const showCatDebug = new URLSearchParams(window.location.search).has('catdebug')
 
 // If the league-wide data is slow/failing, show a retry instead of an endless
 // "Reading the wire..." (the standings need the heavy rostered-pool fetch).
@@ -241,6 +243,9 @@ const onLogoError = (e: Event) => {
           <span class="ml-auto"><ValueBadge :value="d.value" /></span>
         </div>
       </section>
+
+      <!-- Dev-only category diagnostic (?catdebug=1) -->
+      <CatDebugPanel v-if="showCatDebug && catDebug.rows.length" :debug="catDebug" />
     </template>
   </div>
 </template>

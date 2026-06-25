@@ -961,9 +961,33 @@ export function useWire() {
     { immediate: true },
   )
 
+  // Dev diagnostic (?catdebug=1): the exact category inputs + my per-cat production rank the
+  // Wire feeds into rankInCategory, so it can be compared row-for-row against My Team to find
+  // where the two diverge on Yahoo (different team count, category list, direction, or totals).
+  const catDebug = computed(() => {
+    const totals = leagueTotals.value
+    const myId = myTeamId.value
+    const mine = totals.find((t) => t.teamId === myId)
+    return {
+      page: 'Wire',
+      numTeams: totals.length,
+      myTeamId: myId,
+      myFound: !!mine,
+      rows: catSpecs.value.map((c) => ({
+        statId: c.statId,
+        label: labelOf(c.statId),
+        lowerIsBetter: c.lowerIsBetter,
+        isRatio: c.isRatio,
+        volumeStatId: c.volumeStatId ?? '',
+        myRank: Math.round((rankInCategory(totals, c).get(myId) ?? 0) * 10) / 10,
+        myTotal: Math.round((mine?.cats[c.statId]?.value ?? 0) * 1000) / 1000,
+      })),
+    }
+  })
+
   // Return vm as a plain ComputedRef (NOT wrapped in reactive): the view does
   // `const { vm } = useWire()`, and destructuring out of a reactive() object would
   // unwrap vm into a frozen snapshot that never updates. As a top-level ref it
   // auto-unwraps in the template and stays reactive (same as the Matchup composable).
-  return { vm, refresh, grader: { adds: graderAdds, drops: graderDrops, grade: gradeMove } }
+  return { vm, refresh, grader: { adds: graderAdds, drops: graderDrops, grade: gradeMove }, catDebug }
 }

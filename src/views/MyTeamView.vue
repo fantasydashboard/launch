@@ -31,6 +31,7 @@ import SituationStrip from '@/components/myteam/SituationStrip.vue'
 import SeasonArc from '@/components/myteam/SeasonArc.vue'
 import CategoryProfile from '@/components/myteam/CategoryProfile.vue'
 import PositionalDepth from '@/components/myteam/PositionalDepth.vue'
+import CatDebugPanel from '@/components/dev/CatDebugPanel.vue'
 import RosterPanel from '@/components/myteam/RosterPanel.vue'
 import MyTeamLevers from '@/components/myteam/MyTeamLevers.vue'
 
@@ -560,6 +561,29 @@ const contributions = computed(() => {
 // the page isn't two long stacked sections. Same lens-toggle as the Trades landscape.
 const seasonView = ref<'cat' | 'pos'>('cat')
 const showFgAudit = new URLSearchParams(window.location.search).has('fgaudit')
+// Dev diagnostic (?catdebug=1): My Team's category inputs + my per-cat production rank, in the
+// SAME shape the Wire dumps, so the two can be compared row-for-row to find the Yahoo divergence.
+const showCatDebug = new URLSearchParams(window.location.search).has('catdebug')
+const catDebug = computed(() => {
+  const totals = leagueTotals.value
+  const myId = myPoolTeamKey.value
+  const mine = totals.find((t) => t.teamId === myId)
+  return {
+    page: 'My Team',
+    numTeams: totals.length,
+    myTeamId: myId,
+    myFound: !!mine,
+    rows: catSpecs.value.map((c) => ({
+      statId: c.statId,
+      label: labelOfStat(c.statId),
+      lowerIsBetter: c.lowerIsBetter,
+      isRatio: c.isRatio,
+      volumeStatId: c.volumeStatId ?? '',
+      myRank: Math.round((rankInCategory(totals, c).get(myId) ?? 0) * 10) / 10,
+      myTotal: Math.round((mine?.cats[c.statId]?.value ?? 0) * 1000) / 1000,
+    })),
+  }
+})
 const fgMatchAudit = computed(() => {
   const fg = fgByKey.value
   const contribByKey = new Map(contributions.value.map((c) => [c.playerKey, c]))
@@ -997,6 +1021,9 @@ watch(categories, () => {
         </p>
       </div>
     </section>
+
+    <!-- Dev-only category diagnostic (?catdebug=1) — compare row-for-row against the Wire -->
+    <CatDebugPanel v-if="profile && showCatDebug && catDebug.rows.length" :debug="catDebug" />
 
     <p v-if="!profile" class="text-sm text-dark-textMuted">
       {{ emptyStateMessage }}
