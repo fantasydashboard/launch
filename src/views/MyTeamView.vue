@@ -8,6 +8,7 @@ import { useFullSeasonCategoryData } from '@/composables/useFullSeasonCategoryDa
 import { isYahooCategoryLeague as isYahooCategoryScoringType } from '@/composables/useIsCategoryLeague'
 import { useAvailablePlayers } from '@/composables/useAvailablePlayers'
 import { useMyRoster } from '@/composables/useMyRoster'
+import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
 import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { useValueBaseline } from '@/composables/useValueBaseline'
 import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
@@ -50,6 +51,11 @@ const {
 } = useMyRoster()
 
 const espn = useEspnCategoryTeamData()
+// The PROJECTION-based league pool (FG ROS, no raw stats) — the same source the Wire and
+// Trades rank off. My Team's category rank uses it (not useMyRoster's actual-pace pool) so
+// "your rank in cat X" is rest-of-season and matches every other page. Session-cached, so this
+// reuses whatever the Wire/Trades already loaded. Roster panel/values stay on useMyRoster.
+const yahooLeague = useYahooLeaguePool()
 const thisWeek = useThisWeekMatchup()
 const isEspnCategoryLeague = computed(
   () => leagueStore.activePlatform === 'espn' && espn.supported.value === true,
@@ -156,6 +162,7 @@ function maybeLoadPlayers() {
 function maybeLoadRoster() {
   if (isYahooCategoryLeague.value) {
     loadRoster()
+    yahooLeague.load() // projection pool for the category rank (shared session cache with Wire/Trades)
   }
 }
 
@@ -614,14 +621,24 @@ const fgMatchAudit = computed(() => {
   return { rows, matched: rows.filter((r) => r.matched).length, total: rows.length }
 })
 
-// League-wide PRODUCTION totals per category (ROS effective stats, every team) — the
-// basis for "how your team stacks up vs the league" (the category profile + verdict),
-// distinct from the record-based standings the playoff race uses.
+// League-wide REST-OF-SEASON PROJECTED totals per category, every team — the basis for "how
+// your team projects vs the league" (the category profile + verdict). Ranks off the SAME
+// projection pool the Wire and Trades use (FG ROS, no raw stats) so the category rank matches
+// every page; this is intentionally NOT useMyRoster's actual-to-date pool (which read a
+// different rank for Yahoo relievers). ESPN's pool is already projection-based, so unchanged.
+const rankPool = computed(() => (isEspnCategoryLeague.value ? espn.pool.value : yahooLeague.pool.value))
+const rankFgByKey = computed(() => (isEspnCategoryLeague.value ? espn.fgByKey.value : yahooLeague.fgByKey.value))
+const rankFgStatsByKey = computed<Record<string, Record<string, number>>>(() => {
+  const fgMap = rankFgByKey.value
+  if (!fgMap || !catSpecs.value.length) return {}
+  const labelByStatId = new Map(categories.value.map((c) => [c.statId, c.label || c.name || c.statId]))
+  return mapFgStatsByKey(fgMap, catSpecs.value, (id) => labelByStatId.get(id) ?? id)
+})
 const leagueTotals = computed(() => {
-  if (!rosterPool.value.length || !catSpecs.value.length) return []
-  const fgMap = fgStatsByKey.value
+  if (!rankPool.value.length || !catSpecs.value.length) return []
+  const fgMap = rankFgStatsByKey.value
   const byTeam = new Map<string, { playerKey: string; stats: Record<string, number> }[]>()
-  for (const p of rosterPool.value) {
+  for (const p of rankPool.value) {
     const teamId = String((p as { teamKey?: string }).teamKey ?? '')
     if (!teamId) continue
     const arr = byTeam.get(teamId) ?? []
@@ -947,7 +964,7 @@ watch(categories, () => {
     <div v-if="profile" class="space-y-1 pt-2">
       <div class="flex items-center gap-2">
         <span class="rounded bg-dark-border/70 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-dark-textSecondary">Season</span>
-        <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">full-year ranks</span>
+        <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">rest-of-season ranks</span>
         <span class="h-px flex-1 bg-dark-border/50"></span>
         <!-- Categories / Positions lens toggle (shortens the page — one view at a time). -->
         <div class="flex overflow-hidden rounded-md border border-dark-border text-[10px] font-mono uppercase tracking-wider">
@@ -964,7 +981,7 @@ watch(categories, () => {
         </div>
       </div>
       <p class="font-mono text-[10px] text-dark-textMuted/70">
-        {{ seasonView === 'cat' ? 'How you rank in each category vs the league.' : 'Your best lineup vs every team, position by position.' }}
+        {{ seasonView === 'cat' ? 'How you project to rank in each category, rest of season.' : 'Your best lineup vs every team, position by position.' }}
       </p>
     </div>
 

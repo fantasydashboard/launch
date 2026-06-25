@@ -111,7 +111,7 @@ const showVolume = ref(false)
       v-if="rows.length > 0"
       class="mt-1 border-t border-dark-border/40 px-4 py-2 font-mono text-[11px] text-dark-textMuted"
     >
-      your rank in each category vs all {{ rows[0].numTeams }} teams, all season · longer + brighter bar = better ·
+      your projected rest-of-season rank in each category vs all {{ rows[0].numTeams }} teams · longer + brighter bar = better ·
       <span class="text-primary">strength</span> · <span class="text-[#f26d6d]">weakness</span>
     </p>
   </div>
