@@ -781,6 +781,30 @@ const positionalLineup = computed(() => {
   const role = eng.roleValueByKey
   const valOf = (k: string) => role.get(k) ?? 0
   const nameByKey = new Map(pool.map((p) => [p.playerKey, p.name]))
+  const fgMap = fgByKey.value
+
+  // ESPN tags most pitchers as eligible for BOTH SP and RP, so the value-greedy assignment
+  // parks your aces in whichever pitching slot fills first (RP) and dumps closers into SP —
+  // the labels read backwards. For a DUAL-eligible pitcher, narrow to his projected role
+  // (majority of appearances are starts -> SP, else RP) so a starter lands in SP and a
+  // reliever in RP. Removing only the wrong concrete token keeps P-slot overflow working
+  // (a P slot accepts SP/RP). Only narrows when both tokens are present and we can classify.
+  const pitcherRole = (key: string): 'SP' | 'RP' | null => {
+    const fg = fgMap[key]
+    if (!fg || fg.player_type !== 'pitcher') return null
+    const gp = fg.gp ?? 0, gs = fg.gs ?? 0
+    if (gp <= 0) return gs > 0 ? 'SP' : null
+    return gs * 2 >= gp ? 'SP' : 'RP'
+  }
+  const lineupElig = (p: { playerKey: string; eligiblePositions?: string[]; position?: string }): string[] => {
+    const elig = eligOf(p)
+    const hasSP = elig.some((x) => x.toUpperCase() === 'SP')
+    const hasRP = elig.some((x) => x.toUpperCase() === 'RP')
+    if (!hasSP || !hasRP) return elig
+    const r = pitcherRole(p.playerKey)
+    if (!r) return elig
+    return elig.filter((x) => x.toUpperCase() !== (r === 'SP' ? 'RP' : 'SP'))
+  }
 
   // Group the league pool by team as DepthPlayer[] (value = role-relative percentile, so a
   // hitter slot ranks hitters and a pitcher slot ranks pitchers on the same scale).
@@ -791,7 +815,7 @@ const positionalLineup = computed(() => {
     ;(byTeam.get(tk) ?? byTeam.set(tk, []).get(tk)!).push({
       playerKey: p.playerKey,
       teamKey: tk,
-      eligiblePositions: eligOf(p),
+      eligiblePositions: lineupElig(p),
       value: valOf(p.playerKey),
       status: tk === myKey && (p as { onIL?: boolean }).onIL ? 'IL' : '',
     })
