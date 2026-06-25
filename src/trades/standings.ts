@@ -1,5 +1,6 @@
 import type { CatSpec } from '@/myteam/value'
 import type { AggPlayer } from './aggregate'
+import type { Landscape } from './landscape'
 
 /** One category's aggregate for a team. `num`/`den` retained for ratio cats so a swap can recompute. */
 export interface CatAgg {
@@ -54,6 +55,24 @@ function sortValue(agg: CatAgg | undefined, cat: CatSpec): number {
   if (!agg) return cat.lowerIsBetter ? Infinity : -Infinity
   if (cat.isRatio && (agg.den ?? 0) <= 0) return cat.lowerIsBetter ? Infinity : -Infinity
   return agg.value
+}
+
+/**
+ * A DISPLAY landscape (per-team category rank) from PRODUCTION totals — the cumulative-output
+ * lens My Team's category profile uses. Use this for the user-facing ranks on Trades (the
+ * leverage block + the league heatmap) so every page shows the same "your rank in cat X". Deal
+ * VALUE stays the expected-category-wins delta (expectedCatsWon), which is computed separately.
+ * Ranks are rounded so tied teams read as a clean integer (My Team shows the tie as "T-Nth").
+ */
+export function buildProductionLandscape(totals: TeamCategoryTotals[], cats: CatSpec[]): Landscape {
+  const ls: Landscape = new Map()
+  for (const t of totals) ls.set(t.teamId, new Map())
+  for (const cat of cats) {
+    for (const [teamId, rank] of rankInCategory(totals, cat)) {
+      ls.get(teamId)!.set(cat.statId, { rank: Math.round(rank), surplus: 0, need: 0 })
+    }
+  }
+  return ls
 }
 
 /** teamId -> rank (1 = best). Ties share the average of the positions they span. */

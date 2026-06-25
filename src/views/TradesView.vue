@@ -22,6 +22,7 @@ import Avatar from '@/components/trades/Avatar.vue'
 import ValueBadge from '@/components/trades/ValueBadge.vue'
 import TimingTag from '@/components/trades/TimingTag.vue'
 import type { TeamTotals, Landscape } from '@/trades/landscape'
+import { buildProductionLandscape } from '@/trades/standings'
 import type { TradeOpportunity } from '@/trades/opportunities'
 
 const leagueStore = useLeagueStore()
@@ -198,9 +199,13 @@ const roleValueByKey = computed(() => engine.value?.roleValueByKey ?? new Map<st
 const strengthByKey = computed(() => engine.value?.strengthByKey ?? new Map<string, Record<string, number>>())
 const catLandscape = computed<Landscape>(() => engine.value?.landscape ?? new Map())
 // League heatmap: every team's rank by category and by position (the browsable map under the
-// curated "best partners" list). Reuses the engine's landscape + role values.
+// curated "best partners" list). Category ranks use the PRODUCTION landscape (cumulative output)
+// so they match My Team's category profile — one canonical "rank in cat X" across all pages.
+const prodLandscape = computed<Landscape>(() =>
+  engine.value ? buildProductionLandscape(engine.value.teamCatTotals, catSpecs.value) : new Map(),
+)
 const { view: landscapeView } = useLeagueLandscape({
-  pool, fgByKey, catSpecs, landscape: catLandscape, roleValueByKey, myTeamKey, teamNameByKey, labelOf,
+  pool, fgByKey, catSpecs, landscape: prodLandscape, roleValueByKey, myTeamKey, teamNameByKey, labelOf,
 })
 const statIdsRef = computed(() => catSpecs.value.map((c) => c.statId))
 const { view: posView } = usePositionalTargets({

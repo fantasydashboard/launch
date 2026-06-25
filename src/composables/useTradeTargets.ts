@@ -6,8 +6,9 @@ import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 import type { PoolPlayer } from '@/composables/useMyRoster'
 import { computeLuck, type FGProjection, type StatcastData } from '@/services/projectionService'
 import { computeTiming } from '@/trades/timing'
-import { aggregateTeamCats, type AggPlayer } from '@/trades/aggregate'
-import { buildLandscape, type TeamTotals } from '@/trades/landscape'
+import type { AggPlayer } from '@/trades/aggregate'
+import type { TeamTotals } from '@/trades/landscape'
+import { aggregateTeamCatTotals, buildProductionLandscape } from '@/trades/standings'
 import { rankPartners } from '@/trades/partners'
 import { evalDeal, type DealClass } from '@/trades/deals'
 import { isGiveable } from '@/trades/giveable'
@@ -146,15 +147,11 @@ export function useTradeTargets(inputs: {
     if (!byTeam.has(myKey)) return null
 
     const playersByTeam = [...byTeam.entries()].map(([teamId, ps]) => ({ teamId, players: ps.map((p) => eff.get(p.playerKey)!) }))
-    // Team category STRENGTH from the real per-category standings (win records) when
-    // available — reliable and consistent with My Team — falling back to the ROS-aggregate
-    // only before standings load. Win counts already read higher-is-better in every cat
-    // (Yahoo's stat_winners encode direction), so rank them without direction flips.
-    const wins = inputs.teamCatWins?.value ?? []
-    const useWins = wins.length >= 2 && wins.some((w) => Object.keys(w.totals).length > 0)
-    const teamTotals = useWins ? wins : aggregateTeamCats(playersByTeam, cats)
-    const landscapeCats = useWins ? cats.map((c) => ({ ...c, lowerIsBetter: false })) : cats
-    const { landscape } = buildLandscape(teamTotals, landscapeCats)
+    // Team category strength by PRODUCTION rank (cumulative ROS-projected output) — the SAME
+    // lens as My Team's category profile and the league heatmap, so the leverage here shows the
+    // same "your rank in cat X" everywhere. Deal value is still the expected-category-wins delta
+    // (expectedCatsWon, in opportunities.ts) — that scoring is unchanged.
+    const landscape = buildProductionLandscape(aggregateTeamCatTotals(playersByTeam, cats), cats)
     // ONE valuation pass feeds both the trade scorer and the displayed value:
     //  - strengths: the per-category VOLUME-WEIGHTED z (so a low-IP reliever can't "fix" a
     //    ratio cat like ERA, but keeps full credit for counting cats like SV/HLD/K).
