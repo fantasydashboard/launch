@@ -58,11 +58,17 @@ export function useLeagueLandscape(inputs: {
     const numTeams = teamKeys.length
 
     // Category rows straight from the standings landscape (already direction-aware per cat).
-    const categoryRows: LandscapeRow[] = inputs.catSpecs.value.map((c) => ({
-      key: c.statId,
-      label: inputs.labelOf(c.statId),
-      ranks: teamKeys.map((tk) => ls.get(tk)?.get(c.statId)?.rank ?? null),
-    }))
+    // Drop any category that can't actually rank the league — a ratio cat with no volume stat
+    // to weight it (e.g. Yahoo AVG with no AB category) leaves every team tied, which renders as
+    // a meaningless wall of identical numbers. A cat that doesn't differentiate teams carries no
+    // trade signal, so it doesn't belong in the landscape.
+    const categoryRows: LandscapeRow[] = inputs.catSpecs.value
+      .map((c) => ({
+        key: c.statId,
+        label: inputs.labelOf(c.statId),
+        ranks: teamKeys.map((tk) => ls.get(tk)?.get(c.statId)?.rank ?? null),
+      }))
+      .filter((row) => new Set(row.ranks.filter((r) => r != null)).size > 1)
 
     // Position rows: each team's BEST eligible body at the position (cross-role percentile),
     // ranked across the league. Multi-eligible players count at every position they cover —
