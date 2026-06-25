@@ -82,20 +82,24 @@ const onLogoError = (e: Event) => {
         </div>
         <div v-if="vm.holes.length" class="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span class="w-16 shrink-0 font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">To fix</span>
-          <span
-            v-for="c in vm.holes"
-            :key="c.label"
-            class="inline-flex items-center gap-1 rounded px-2 py-0.5 font-mono text-[10px]"
-            :class="{
-              'bg-[#F2B33A]/10 text-[#F2B33A]': c.state === 'chase',
-              'bg-[#f26d6d]/10 text-[#f26d6d]': c.state === 'punt',
-              'bg-dark-border/30 text-dark-textMuted': c.state === 'none',
-            }"
-            :title="c.state === 'chase' ? 'an add on the wire can improve this' : c.state === 'punt' ? 'near-last and nothing available — punt' : 'the wire has no lever here; still winnable over time / via trade'"
-          ><span v-if="c.state === 'chase'">●</span>{{ c.label }} · {{ c.rank }}<span v-if="c.state === 'punt'"> · punt</span></span>
+          <template v-for="c in vm.holes" :key="c.label">
+            <!-- chase = an add can fix it here; punt / none = the wire has no lever, so route to Trades -->
+            <span
+              v-if="c.state === 'chase'"
+              class="inline-flex items-center gap-1 rounded bg-[#F2B33A]/10 px-2 py-0.5 font-mono text-[10px] text-[#F2B33A]"
+              title="an add on the wire can improve this"
+            >●{{ c.label }} · {{ c.rank }}</span>
+            <router-link
+              v-else
+              to="/trades"
+              class="inline-flex items-center gap-1 rounded px-2 py-0.5 font-mono text-[10px] hover:underline"
+              :class="c.state === 'punt' ? 'bg-[#f26d6d]/10 text-[#f26d6d]' : 'bg-dark-border/30 text-dark-textMuted'"
+              :title="c.state === 'punt' ? 'near-last, nothing on the wire — fix it with a trade' : 'no wire lever here — winnable over time, or trade for it'"
+            >{{ c.label }} · {{ c.rank }}<span v-if="c.state === 'punt'"> · punt</span> <span class="opacity-60">→</span></router-link>
+          </template>
         </div>
         <p v-if="vm.holes.some((h) => h.state !== 'none')" class="pl-[4.5rem] font-mono text-[9px] text-dark-textMuted">
-          ● an add can fix · "punt" = near-last, nothing on the wire
+          ● an add can fix · "punt" = near-last on the wire → trade for it
         </p>
       </section>
 

@@ -55,13 +55,18 @@ const showDraggers = computed(
       </span>
     </div>
 
-    <!-- Top available add (the "do this next" chip) -->
+    <!-- Top available add (the "do this next" chip) — links to The Wire to make the move. -->
     <p v-if="row.add" class="mt-1 pl-[3.25rem]">
-      <span class="inline-flex items-center gap-1 rounded bg-dark-border/60 px-1.5 py-0.5 font-mono text-[10px] text-dark-textMuted">
+      <router-link
+        to="/players"
+        :title="`Add ${row.add.name} for ${row.add.label} — opens The Wire`"
+        class="inline-flex items-center gap-1 rounded bg-dark-border/60 px-1.5 py-0.5 font-mono text-[10px] text-dark-textMuted hover:bg-dark-border"
+      >
         <span class="text-dark-textMuted/70">add</span>
         <span class="text-dark-text">{{ row.add.name }}</span>
         <span class="text-primary">· {{ row.add.label }}</span>
-      </span>
+        <span class="text-dark-textMuted/60">→</span>
+      </router-link>
     </p>
     <p v-if="showDraggers" class="mt-0.5 pl-[3.25rem] font-mono text-[10px] text-dark-textMuted/80">
       dragged by {{ draggers!.join(' · ') }}

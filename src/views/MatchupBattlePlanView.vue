@@ -266,6 +266,14 @@ const noMatchup = computed(
         v-if="vm.lineupCheck && vm.lineupCheck.ok"
         class="px-1 font-mono text-[10px] text-dark-textMuted"
       >✓ {{ vm.lineupCheck.message }}</p>
+
+      <!-- Cross-page handoff: when this week's lineup moves can't win a category, the levers that
+           add NEW bodies live elsewhere — a daily stream (The Wire) or a season upgrade (Trades). -->
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 pt-2 font-mono text-[10px] text-dark-textMuted">
+        <span>Need a category your lineup can't win?</span>
+        <router-link to="/players" class="text-[#5ec8e6] hover:underline">stream an add · The Wire →</router-link>
+        <router-link to="/trades" class="text-[#5ec8e6] hover:underline">trade for it · Trades →</router-link>
+      </div>
     </template>
   </div>
 </template>

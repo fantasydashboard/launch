@@ -192,25 +192,29 @@ function onLogoErr(e: Event) {
               <span class="truncate text-sm font-sans font-semibold text-dark-text">
                 {{ row.player.name }}
               </span>
-              <span
+              <router-link
                 v-if="row.isWeakLink"
-                class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-[#FF5C5C] bg-[#FF5C5C]/10"
-              >weak link</span>
-              <span
+                to="/players"
+                title="Your weakest link — handle it on The Wire"
+                class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-[#FF5C5C] bg-[#FF5C5C]/10 hover:underline"
+              >weak link</router-link>
+              <router-link
                 v-else-if="row.dropReason"
-                :title="row.dropReason"
-                class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-dark-textMuted bg-dark-border/60"
-              >drop?</span>
+                to="/players"
+                :title="row.dropReason + ' · handle it on The Wire'"
+                class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-dark-textMuted bg-dark-border/60 hover:underline"
+              >drop?</router-link>
               <span
                 v-if="props.weakStarters?.has(row.player.playerKey)"
                 :title="'A stronger ' + props.weakStarters.get(row.player.playerKey) + ' is on your bench'"
                 class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-[#F2B33A] bg-[#F2B33A]/10"
               >weak {{ props.weakStarters.get(row.player.playerKey) }}</span>
-              <span
+              <router-link
                 v-if="props.sellHigh?.has(row.player.playerKey)"
+                to="/trades"
                 title="Overperforming his projection — peak trade value. Shop him on Trades."
-                class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-primary bg-primary/10"
-              >★ sell-high</span>
+                class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-primary bg-primary/10 hover:underline"
+              >★ sell-high</router-link>
             </span>
             <span class="flex items-center gap-1 text-xs text-dark-textMuted">
               {{ row.player.position }}
