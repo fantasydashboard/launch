@@ -14,6 +14,7 @@ import { volumeEdge, type VolPlayer } from '@/myteam/volumeEdge'
 import { classifyCategory } from '@/myteam/categorySide'
 import { isLowerBetter } from '@/players/direction'
 import { computeRosterValue, type CatSpec } from '@/myteam/value'
+import { resolveVolumeStatId } from '@/myteam/catVolume'
 import { useValueBaseline } from '@/composables/useValueBaseline'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
 import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
@@ -279,7 +280,7 @@ export function useMatchupBattlePlan(): {
         lowerIsBetter: isLowerBetterFor(c.statId),
         side,
         isRatio,
-        volumeStatId: isRatio ? (side === 'pit' ? ipStatId : abStatId) : undefined,
+        volumeStatId: resolveVolumeStatId(isRatio, side, ipStatId, abStatId),
       }
     })
   })

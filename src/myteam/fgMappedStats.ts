@@ -1,5 +1,6 @@
 import { mapToEspnStats, type FGProjection } from '@/services/projectionService'
 import type { CatSpec } from './types'
+import { attachRatioVolume } from './catVolume'
 
 /**
  * Translate raw FanGraphs projections (keyed by FanGraphs field names like `hr`, `era`, `ip`)
@@ -25,7 +26,10 @@ export function mapFgStatsByKey(
   const out: Record<string, Record<string, number>> = {}
   for (const key of Object.keys(fgByKey)) {
     const fg = fgByKey[key]
-    if (fg) out[key] = mapToEspnStats(fg, fgCats)
+    if (!fg) continue
+    const mapped = mapToEspnStats(fg, fgCats)
+    attachRatioVolume(mapped, fg, cats) // so ratio cats with a synthetic volume id can be weighted
+    out[key] = mapped
   }
   return out
 }

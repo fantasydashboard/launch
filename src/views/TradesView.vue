@@ -8,6 +8,7 @@ import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { isLowerBetter } from '@/players/direction'
 import { classifyCategory } from '@/myteam/categorySide'
 import type { CatSpec } from '@/myteam/value'
+import { resolveVolumeStatId } from '@/myteam/catVolume'
 import { useTradeTargets } from '@/composables/useTradeTargets'
 import { useValueBaseline } from '@/composables/useValueBaseline'
 import { usePositionalTargets } from '@/composables/usePositionalTargets'
@@ -107,7 +108,7 @@ const catSpecs = computed<CatSpec[]>(() => {
   return categories.value.map((c) => {
     const lowerIsBetter = lowerBetterByStat.value.get(c.statId) ?? isLowerBetter(c.label || c.name || c.statId)
     const { side, isRatio } = classifyCategory(c.label || c.name || c.statId, lowerIsBetter)
-    return { statId: c.statId, lowerIsBetter, side, isRatio, volumeStatId: isRatio ? (side === 'pit' ? ipStatId : abStatId) : undefined }
+    return { statId: c.statId, lowerIsBetter, side, isRatio, volumeStatId: resolveVolumeStatId(isRatio, side, ipStatId, abStatId) }
   })
 })
 const labelOf = (statId: string) => categories.value.find((c) => c.statId === statId)?.label ?? statId

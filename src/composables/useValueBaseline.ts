@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { loadProjectionData, mapToEspnStats, type FGProjection } from '@/services/projectionService'
+import { attachRatioVolume } from '@/myteam/catVolume'
 import { computeValueBaseline, type ValueBaseline } from '@/myteam/value'
 import type { CatSpec, ValuePoolPlayer } from '@/myteam/types'
 
@@ -61,7 +62,9 @@ export function useValueBaseline() {
       playerKey: String(fg.mlbam_id),
       // Side gate only needs hitter-vs-pitcher; per-cat participation is stat-gated.
       position: fg.player_type === 'pitcher' ? 'SP' : 'OF',
-      stats: mapToEspnStats(fg, fgCats),
+      // attachRatioVolume covers ratio cats with a SYNTHETIC volume id (no AB/IP category),
+      // which the display-name map above can't resolve — fills IP/PA straight from the row.
+      stats: (() => { const s = mapToEspnStats(fg, fgCats); attachRatioVolume(s, fg, catSpecs); return s })(),
     }))
     return computeValueBaseline(pool, catSpecs)
   }

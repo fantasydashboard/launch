@@ -13,6 +13,7 @@ import { usePlayersAdds } from '@/composables/usePlayersAdds'
 import { isLowerBetter } from '@/players/direction'
 import { classifyCategory } from '@/myteam/categorySide'
 import { computeRosterValue, type CatSpec } from '@/myteam/value'
+import { resolveVolumeStatId } from '@/myteam/catVolume'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
 import { mapToEspnStats, buildPlayerMatchers, type FGProjection } from '@/services/projectionService'
@@ -217,7 +218,7 @@ const catSpecs = computed<CatSpec[]>(() => {
   return categories.value.map((c) => {
     const lowerIsBetter = lowerBetterByStatId.value.get(c.statId) ?? false
     const { side, isRatio } = classifyCategory(c.label || c.name || c.statId, lowerIsBetter)
-    return { statId: c.statId, lowerIsBetter, side, isRatio, volumeStatId: isRatio ? (side === 'pit' ? ipStatId : abStatId) : undefined }
+    return { statId: c.statId, lowerIsBetter, side, isRatio, volumeStatId: resolveVolumeStatId(isRatio, side, ipStatId, abStatId) }
   })
 })
 const labelFor = (statId: string) => categories.value.find((c) => c.statId === statId)?.label ?? statId

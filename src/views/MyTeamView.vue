@@ -16,6 +16,7 @@ import { rankAddsForHoles } from '@/players/rankAdds'
 import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
 import { computeRosterValue, type CatSpec } from '@/myteam/value'
+import { resolveVolumeStatId } from '@/myteam/catVolume'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
 import { mapFgStatsByKey } from '@/myteam/fgMappedStats'
 import { classifyCategory } from '@/myteam/categorySide'
@@ -506,7 +507,7 @@ const catSpecs = computed<CatSpec[]>(() => {
       lowerIsBetter,
       side,
       isRatio,
-      volumeStatId: isRatio ? (side === 'pit' ? ipStatId : abStatId) : undefined,
+      volumeStatId: resolveVolumeStatId(isRatio, side, ipStatId, abStatId),
     }
   })
 })
