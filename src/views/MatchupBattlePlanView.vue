@@ -115,22 +115,43 @@ const noMatchup = computed(
         </div>
       </section>
 
-      <!-- 1b. WIN-PROBABILITY TREND — real captured history + flat projection -->
-      <section v-if="trend.points.length" class="rounded-xl border border-dark-border bg-dark-card px-4 pt-3 pb-1">
+      <!-- 1b. WIN-PROBABILITY TREND — a chart only once there are 2+ real daily readings (a flat
+           line over one day reads as broken). Before that, show today's standing honestly. -->
+      <section v-if="trend.points.length" class="rounded-xl border border-dark-border bg-dark-card px-4 pt-3 pb-2">
         <div class="flex items-center justify-between">
           <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Win-probability trend</p>
-          <p class="font-mono text-[9px] text-dark-textMuted">solid = actual · dotted = projected</p>
+          <p v-if="trend.points.length >= 2" class="font-mono text-[9px] text-dark-textMuted">solid = actual · dotted = projected</p>
         </div>
+
         <MatchupWinProbChart
+          v-if="trend.points.length >= 2"
           :points="trend.points"
           :projected="trend.projected"
           :me-name="vm.me.name"
           :opp-name="vm.opp.name"
-          :height="trend.points.length >= 3 ? 160 : 92"
+          :height="trend.points.length >= 3 ? 160 : 120"
         />
-        <p v-if="trend.points.length < 2" class="-mt-1 mb-1 text-center font-mono text-[9px] text-dark-textMuted">
-          Building your history — the solid line fills in each day you check.
-        </p>
+
+        <!-- Not enough history yet: today's win% for each side, not a meaningless flat line. -->
+        <div v-else class="mt-2 space-y-1.5 font-mono text-[11px]">
+          <div class="flex items-center gap-2">
+            <span class="w-32 shrink-0 truncate text-[#5ec8e6]">{{ vm.me.name }}</span>
+            <div class="relative h-1.5 flex-1 overflow-hidden rounded-full bg-dark-border/40">
+              <div class="absolute inset-y-0 left-0 rounded-full bg-[#5ec8e6]" :style="{ width: `${vm.me.winPct}%` }" />
+            </div>
+            <span class="w-9 shrink-0 text-right tabular-nums text-[#5ec8e6]">{{ vm.me.winPct }}%</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-32 shrink-0 truncate text-[#e69a4a]">{{ vm.opp.name }}</span>
+            <div class="relative h-1.5 flex-1 overflow-hidden rounded-full bg-dark-border/40">
+              <div class="absolute inset-y-0 left-0 rounded-full bg-[#e69a4a]" :style="{ width: `${vm.opp.winPct}%` }" />
+            </div>
+            <span class="w-9 shrink-0 text-right tabular-nums text-[#e69a4a]">{{ vm.opp.winPct }}%</span>
+          </div>
+          <p class="pt-1 text-center font-mono text-[9px] text-dark-textMuted">
+            Your daily win-probability charts here as the week goes — check in each day to build the line.
+          </p>
+        </div>
       </section>
 
       <!-- 2. STAKES READ -->

@@ -771,7 +771,7 @@ const myPoolTeamKey = computed(() => {
 // that starter ranks against every other team's starter at the same opening. An aggregate
 // "your best lineup projects Nth of N" grades the whole lineup by total starter value.
 const SLOT_ORDER_INDEX = (s: string) => {
-  const i = SLOT_DISPLAY_ORDER.indexOf(s)
+  const i = SLOT_DISPLAY_ORDER.indexOf(s.toUpperCase()) // case-insensitive (Yahoo "Util" vs ESPN "UTIL")
   return i < 0 ? SLOT_DISPLAY_ORDER.length : i
 }
 const positionalLineup = computed(() => {
@@ -851,7 +851,7 @@ const positionalLineup = computed(() => {
       const filled = !!myEntry && Number.isFinite(myEntry.v)
       const rank = filled ? myIdx + 1 : null
       rows.push({
-        slot,
+        slot: slot.toUpperCase(), // display label (Yahoo "Util" -> "UTIL", consistent with ESPN)
         starterName: filled ? nameByKey.get(myEntry.key!) ?? null : null,
         rank,
         numTeams,

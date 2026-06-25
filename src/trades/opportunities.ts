@@ -3,6 +3,7 @@ import { buildPitch } from './pitch'
 import type { Landscape } from './landscape'
 import { tradeStandingsDelta, expectedCatsWon, classifyPartnerRead, type CatRankMove, type PartnerRead, type TeamCategoryTotals } from './standings'
 import type { CatSpec } from '@/myteam/value'
+import { isAccumulatorCat } from '@/myteam/contestedTiers'
 
 export type Intent = 'winWin' | 'steal' | 'consolidate' | 'buyLow' | 'sellHigh'
 
@@ -135,7 +136,13 @@ const headlineOf = (you: SideEffect, them: SideEffect, intents: Intent[], s: Sta
   // the roster slot it fills — "boosts K / IP" is the real lever; "fills your SP" misleads when
   // you're already strong at SP. Position is the fallback when the deal helps no needed category.
   let what = ''
-  if (you.fillsCats.length) what = `boosts ${you.fillsCats.slice(0, 2).join(' / ')}`
+  // Prefer real scoring cats in the headline — a volume cat (BF/AB/G/IP-as-playing-time) is a
+  // weak thing to lead "boosts …" with; fall back to all fills only if nothing else remains.
+  const headlineCats = (() => {
+    const scoring = you.fillsCats.filter((c) => !isAccumulatorCat(c))
+    return (scoring.length ? scoring : you.fillsCats).slice(0, 2)
+  })()
+  if (headlineCats.length) what = `boosts ${headlineCats.join(' / ')}`
   else if (you.fillsPos) what = `fills your ${you.fillsPos}`
   else if (intents.includes('steal') && them.fillsPos) what = `targets their ${them.fillsPos}`
   else if (intents.includes('buyLow')) what = 'buy-low window'

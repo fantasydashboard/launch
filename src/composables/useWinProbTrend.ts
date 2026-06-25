@@ -22,7 +22,9 @@ export function useWinProbTrend(opts: {
   const points = ref<TrendPoint[]>([])
   const weekEnd = ref<string>('')
 
-  const storageKey = () => `ufd_wptrend_${opts.leagueId.value ?? ''}_${opts.week.value}`
+  // v2: drop any pre-existing readings (an earlier capture stored implausible 100/0 win%);
+  // start the honest history clean.
+  const storageKey = () => `ufd_wptrend_v2_${opts.leagueId.value ?? ''}_${opts.week.value}`
 
   function readStored(): TrendPoint[] {
     if (typeof localStorage === 'undefined') return []

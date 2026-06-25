@@ -38,15 +38,23 @@ const isInjured = (s?: string): boolean => {
   return u !== '' && u !== 'ACTIVE' && u !== 'HEALTHY'
 }
 
-/** Which concrete sub-positions a slot accepts (flex slots expand; concrete slots are themselves). */
+/** Which concrete sub-positions a slot accepts (flex slots expand; concrete slots are themselves).
+ *  Case-normalized to UPPER so a Yahoo "Util"/"IF" slot matches the uppercase eligibility table
+ *  (ESPN sends "UTIL"; without this, Yahoo flex slots matched nobody and read as always-open). */
 export function slotAccepts(slot: string): string[] {
-  return FLEX_ELIGIBILITY[slot] ?? [slot]
+  const key = slot.toUpperCase()
+  return FLEX_ELIGIBILITY[key] ?? [key]
 }
 /** Whether a player's eligible positions can fill the given slot. Shared so the landscape and the
- *  generator judge eligibility identically (no drift between "who's a hole" and "who can fill it"). */
+ *  generator judge eligibility identically (no drift between "who's a hole" and "who can fill it").
+ *  Comparison is case-insensitive (Yahoo vs ESPN tokens differ in case). */
 export function coversSlot(eligiblePositions: string[], slot: string): boolean {
-  const accepted = slotAccepts(slot)
-  return eligiblePositions.some((p) => accepted.includes(p) || p === slot)
+  const accepted = slotAccepts(slot) // already upper
+  const slotU = slot.toUpperCase()
+  return eligiblePositions.some((p) => {
+    const u = p.toUpperCase()
+    return accepted.includes(u) || u === slotU
+  })
 }
 function eligibleForSlot(player: DepthPlayer, slot: string): boolean {
   return coversSlot(player.eligiblePositions, slot)
