@@ -804,7 +804,11 @@ const positionalLineup = computed(() => {
   // so the i-th opening compares like-for-like across teams (your OF1 vs their OF1).
   const startersByTeamSlot = new Map<string, Record<string, { key: string; v: number }[]>>()
   for (const tk of teams) {
-    const assigned = assignSlots(byTeam.get(tk) ?? [], slots).assignedByPos
+    // bar = 0: fill each slot with your best AVAILABLE eligible body, even a weak one — a
+    // lineup card fields someone at every slot, and the rank (red) tells you he's bad. The
+    // STARTABLE_BAR is for surplus detection, not "who would you start"; using it here blanked
+    // slots whose only bodies were below replacement ("no startable option" for a C you roster).
+    const assigned = assignSlots(byTeam.get(tk) ?? [], slots, 0).assignedByPos
     const bySlot: Record<string, { key: string; v: number }[]> = {}
     for (const [slot, keys] of Object.entries(assigned)) {
       bySlot[slot] = keys.map((k) => ({ key: k, v: valOf(k) })).sort((a, b) => b.v - a.v)

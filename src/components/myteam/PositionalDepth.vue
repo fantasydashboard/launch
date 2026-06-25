@@ -52,7 +52,7 @@ const gradeTone = (rank: number | null, n: number) =>
         </span>
         <!-- the body you'd start there -->
         <span class="min-w-0 flex-1 truncate" :class="r.starterName ? 'text-dark-textSecondary' : 'text-[#f26d6d]'">
-          {{ r.starterName || 'no startable option' }}
+          {{ r.starterName || 'open · no eligible body (add or activate)' }}
         </span>
       </div>
       <p class="mt-2 font-mono text-[9px] text-dark-textMuted">
