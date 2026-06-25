@@ -1,78 +1,62 @@
 <script setup lang="ts">
-// Positional depth chart: per required starting slot, how deep/thin you are vs the
-// league (the actionable bit — thin = upgrade/injury risk, deep = trade-from) plus
-// where your best body ranks among everyone rostered there. Routes thin → The Wire,
-// deep → Trades.
+// Your OPTIMAL starting lineup vs the league. Each opening shows who you'd actually start
+// (multi-eligible bodies solved into one slot apiece) and how that starter ranks against
+// every team's starter at the same opening. The headline grades the whole lineup.
 interface Row {
-  pos: string
-  depth: 'deep' | 'thin' | 'ok'
-  bestName: string | null
-  bestRank: number | null
-  leagueCount: number
+  slot: string
+  starterName: string | null
+  rank: number | null
+  numTeams: number
+  strong: boolean
+  weak: boolean
 }
-defineProps<{ rows: Row[] }>()
+defineProps<{ lineup: { lineupRank: number | null; numTeams: number; rows: Row[] } }>()
 
 const ord = (n: number) => {
   const s = ['th', 'st', 'nd', 'rd']
   const v = n % 100
   return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
-// Rank colour: top third = strength (green), bottom third = weakness (red), else neutral.
-const rankTone = (rank: number | null, n: number) => {
-  if (!rank) return 'text-[#f26d6d]'
-  if (rank <= Math.ceil(n / 3)) return 'text-primary'
-  if (rank > (n * 2) / 3) return 'text-[#f26d6d]'
-  return 'text-dark-text'
-}
+const rankTone = (r: Row) => (r.rank == null ? 'text-[#f26d6d]' : r.strong ? 'text-primary' : r.weak ? 'text-[#f26d6d]' : 'text-dark-text')
+// Headline tone: top third of the league = strength, bottom third = weakness.
+const gradeTone = (rank: number | null, n: number) =>
+  rank == null ? 'text-dark-text' : rank <= Math.ceil(n / 3) ? 'text-primary' : rank > (n * 2) / 3 ? 'text-[#f26d6d]' : 'text-[#F2B33A]'
 </script>
 
 <template>
-  <section v-if="rows.length" class="space-y-2">
+  <section class="space-y-2">
     <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Positions</h2>
     <div class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
+      <!-- Aggregate grade: where your best legal lineup projects vs every team's best legal lineup. -->
+      <div v-if="lineup.lineupRank" class="mb-2 border-b border-dark-border/40 pb-2">
+        <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Your best lineup projects</p>
+        <p class="mt-0.5 font-mono">
+          <span class="font-display text-2xl font-bold tabular-nums" :class="gradeTone(lineup.lineupRank, lineup.numTeams)">{{ ord(lineup.lineupRank) }}</span>
+          <span class="text-[11px] text-dark-textMuted"> of {{ lineup.numTeams }}</span>
+        </p>
+      </div>
+
       <div
-        v-for="r in rows"
-        :key="r.pos"
+        v-for="(r, i) in lineup.rows"
+        :key="r.slot + '-' + i"
         class="flex items-center gap-3 py-1.5 font-mono text-[11px]"
       >
-        <span class="w-9 shrink-0 font-bold text-dark-textSecondary">{{ r.pos }}</span>
-        <!-- PROMINENT league rank at the slot -->
+        <span class="w-12 shrink-0 font-bold text-dark-textSecondary">{{ r.slot }}</span>
+        <!-- PROMINENT league rank at the opening -->
         <span class="w-24 shrink-0 tabular-nums">
-          <template v-if="r.bestRank">
-            <span class="text-[15px] font-bold" :class="rankTone(r.bestRank, r.leagueCount)">{{ ord(r.bestRank) }}</span>
-            <span class="text-[10px] text-dark-textMuted"> of {{ r.leagueCount }}</span>
+          <template v-if="r.rank">
+            <span class="text-[15px] font-bold" :class="rankTone(r)">{{ ord(r.rank) }}</span>
+            <span class="text-[10px] text-dark-textMuted"> of {{ r.numTeams }}</span>
           </template>
           <span v-else class="text-[12px] font-bold text-[#f26d6d]">—</span>
         </span>
         <!-- the body you'd start there -->
-        <span class="min-w-0 flex-1 truncate text-dark-textSecondary">
-          {{ r.bestName || 'no startable option' }}
+        <span class="min-w-0 flex-1 truncate" :class="r.starterName ? 'text-dark-textSecondary' : 'text-[#f26d6d]'">
+          {{ r.starterName || 'no startable option' }}
         </span>
-        <!-- depth verdict -->
-        <span
-          v-if="r.depth === 'deep'"
-          class="shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-primary bg-primary/10"
-          title="extra startable bodies here — trade from this surplus"
-        >deep</span>
-        <span
-          v-else-if="r.depth === 'thin'"
-          class="shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[#f26d6d] bg-[#f26d6d]/10"
-          title="no startable body to spare — an injury here hurts; upgrade target"
-        >thin</span>
-        <!-- action -->
-        <router-link
-          v-if="r.depth === 'thin'"
-          to="/players"
-          class="shrink-0 text-[#5ec8e6] hover:underline"
-        >↑ upgrade</router-link>
-        <router-link
-          v-else-if="r.depth === 'deep'"
-          to="/trades"
-          class="shrink-0 text-[#5ec8e6] hover:underline"
-        >↓ deal from</router-link>
       </div>
       <p class="mt-2 font-mono text-[9px] text-dark-textMuted">
-        rank = your starter at the slot vs every team's starter there (overall value) · green = strength · red = weakness
+        your best legal lineup, one slot per body · rank = your starter vs every team's starter at that slot · green = strength · red = weakness
       </p>
     </div>
   </section>

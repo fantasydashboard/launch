@@ -22,7 +22,7 @@ import { computeDropCandidates } from '@/myteam/dropCandidates'
 import { isAccumulatorCat } from '@/myteam/contestedTiers'
 import { DIVERGENCE_MIN } from '@/trades/timing'
 import { buildEngine } from '@/trades/engine'
-import { buildPositionalLandscape, assignSlots, SURPLUS_FLEX, type DepthPlayer } from '@/trades/positionalLandscape'
+import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
 import { computeProductionGaps } from '@/myteam/productionGaps'
 import { aggregateTeamCatTotals, rankInCategory } from '@/trades/standings'
 import { holeFixNote } from '@/myteam/holeFix'
@@ -745,7 +745,9 @@ const draggersByStatId = computed<Record<string, string[]>>(() => {
 // your best body at that slot ranks among everyone rostered there. Depth/surplus is
 // the actionable bit (thin = upgrade/injury risk; deep = trade-from); the rank is
 // the recognizable "Nth-best at the position" signal.
-const POS_ORDER = ['C', '1B', '2B', '3B', 'SS', 'OF', 'LF', 'CF', 'RF', 'DH', 'SP', 'RP', 'P']
+// Lineup-card order: every batting slot, then every pitching slot. Flex slots (MI/CI/
+// UTIL/P) sit after the concrete positions they overlap. Slots not listed append at the end.
+const SLOT_DISPLAY_ORDER = ['C', '1B', '2B', '3B', 'SS', 'MI', '2B/SS', 'CI', '1B/3B', 'OF', 'LF', 'CF', 'RF', 'DH', 'IF', 'UTIL', 'SP', 'RP', 'P']
 const eligOf = (p: { eligiblePositions?: string[]; position?: string }): string[] =>
   p.eligiblePositions?.length
     ? p.eligiblePositions
@@ -761,91 +763,91 @@ const myPoolTeamKey = computed(() => {
   const me = rosterPool.value.find((p) => mineSet.has(p.playerKey)) as { teamKey?: string } | undefined
   return me?.teamKey ? String(me.teamKey) : ''
 })
-const positionalRows = computed(() => {
+// Your OPTIMAL STARTING LINEUP vs the league. We solve every team's best legal lineup
+// (assignSlots — greedy, scarcity-aware, so a multi-eligible body fills exactly one slot
+// and your dead spots get covered), then for each opening show who you'd start and how
+// that starter ranks against every other team's starter at the same opening. An aggregate
+// "your best lineup projects Nth of N" grades the whole lineup by total starter value.
+const SLOT_ORDER_INDEX = (s: string) => {
+  const i = SLOT_DISPLAY_ORDER.indexOf(s)
+  return i < 0 ? SLOT_DISPLAY_ORDER.length : i
+}
+const positionalLineup = computed(() => {
   const pool = rosterPool.value
   const slots = rosterSlotsForPos.value
   const eng = tradeEngine.value
   const myKey = myPoolTeamKey.value
-  if (!pool.length || !eng || !myKey || !Object.keys(slots).length) return []
+  if (!pool.length || !eng || !myKey || !Object.keys(slots).length) return null
   const role = eng.roleValueByKey
-  const vb = eng.valueByKey
+  const valOf = (k: string) => role.get(k) ?? 0
   const nameByKey = new Map(pool.map((p) => [p.playerKey, p.name]))
-  // Group the league pool by team as DepthPlayer[].
+
+  // Group the league pool by team as DepthPlayer[] (value = role-relative percentile, so a
+  // hitter slot ranks hitters and a pitcher slot ranks pitchers on the same scale).
   const byTeam = new Map<string, DepthPlayer[]>()
   for (const p of pool) {
     const tk = String((p as { teamKey?: string }).teamKey ?? '')
     if (!tk) continue
-    const arr = byTeam.get(tk) ?? []
-    arr.push({
+    ;(byTeam.get(tk) ?? byTeam.set(tk, []).get(tk)!).push({
       playerKey: p.playerKey,
       teamKey: tk,
       eligiblePositions: eligOf(p),
-      value: role.get(p.playerKey) ?? 0,
+      value: valOf(p.playerKey),
       status: tk === myKey && (p as { onIL?: boolean }).onIL ? 'IL' : '',
     })
-    byTeam.set(tk, arr)
   }
-  const mine = buildPositionalLandscape([...byTeam.values()].flat(), slots).get(myKey)
-  if (!mine) return []
-  // ASSIGN each team's bodies to one slot apiece (greedy, scarcity-aware) so a
-  // multi-eligible player can't be "best" at five slots. Each slot's "your body" is
-  // the best player the engine would actually START there.
-  const bestAssigned = (tk: string, pos: string): { key: string; v: number } | null => {
-    const keys = assignSlots(byTeam.get(tk) ?? [], slots).assignedByPos[pos] ?? []
-    let best: { key: string; v: number } | null = null
-    for (const k of keys) {
-      const v = vb.get(k) ?? 0
-      if (!best || v > best.v) best = { key: k, v }
+  const teams = [...byTeam.keys()]
+  const numTeams = teams.length
+
+  // Solve each team's optimal lineup ONCE. assignedByPos[slot] = the player(s) that team
+  // would start at that slot. Then per slot, sort a team's starters by value (best first)
+  // so the i-th opening compares like-for-like across teams (your OF1 vs their OF1).
+  const startersByTeamSlot = new Map<string, Record<string, { key: string; v: number }[]>>()
+  for (const tk of teams) {
+    const assigned = assignSlots(byTeam.get(tk) ?? [], slots).assignedByPos
+    const bySlot: Record<string, { key: string; v: number }[]> = {}
+    for (const [slot, keys] of Object.entries(assigned)) {
+      bySlot[slot] = keys.map((k) => ({ key: k, v: valOf(k) })).sort((a, b) => b.v - a.v)
     }
-    return best
+    startersByTeamSlot.set(tk, bySlot)
   }
-  const rows: { pos: string; depth: 'deep' | 'thin' | 'ok'; bestName: string | null; bestRank: number | null; leagueCount: number }[] = []
-  for (const pos of POS_ORDER) {
-    const st = mine.get(pos)
-    if (!st || st.slots <= 0 || SURPLUS_FLEX.has(pos)) continue
-    // Rank teams by their best ASSIGNED starter at this slot ("3rd of 10"). EVERY team is
-    // counted so the denominator is the league size, not just teams that happened to field a
-    // starter here — "3rd of 6" in a 10-team league reads as broken. A team with no startable
-    // body at the slot is ranked last (it's failing to field it), value -Infinity.
-    const teamBests: { tk: string; v: number; key: string }[] = []
-    for (const tk of byTeam.keys()) {
-      const b = bestAssigned(tk, pos)
-      teamBests.push({ tk, v: b ? b.v : -Infinity, key: b?.key ?? '' })
+
+  // Aggregate grade: total value of a team's whole optimal lineup. A team with an unfilled
+  // slot simply totals fewer starters, so holes cost you — exactly the intent.
+  const lineupTotal = (tk: string) => {
+    let s = 0
+    for (const arr of Object.values(startersByTeamSlot.get(tk) ?? {})) for (const x of arr) s += x.v
+    return s
+  }
+  const totals = teams.map((tk) => ({ tk, total: lineupTotal(tk) })).sort((a, b) => b.total - a.total)
+  const lineupRank = totals.findIndex((t) => t.tk === myKey) + 1 || null
+
+  // One row per opening, ordered like a lineup card. EVERY team counts toward the
+  // denominator (a team with no starter at the opening ranks last) so it reads "2nd of 12".
+  const orderedSlots = Object.keys(slots)
+    .filter((s) => slots[s] > 0)
+    .sort((a, b) => SLOT_ORDER_INDEX(a) - SLOT_ORDER_INDEX(b))
+  const rows: { slot: string; starterName: string | null; rank: number | null; numTeams: number; strong: boolean; weak: boolean }[] = []
+  for (const slot of orderedSlots) {
+    for (let i = 0; i < slots[slot]; i++) {
+      const ranked = teams
+        .map((tk) => ({ tk, v: startersByTeamSlot.get(tk)?.[slot]?.[i]?.v ?? -Infinity, key: startersByTeamSlot.get(tk)?.[slot]?.[i]?.key }))
+        .sort((a, b) => b.v - a.v)
+      const myIdx = ranked.findIndex((r) => r.tk === myKey)
+      const myEntry = ranked[myIdx]
+      const filled = !!myEntry && Number.isFinite(myEntry.v)
+      const rank = filled ? myIdx + 1 : null
+      rows.push({
+        slot,
+        starterName: filled ? nameByKey.get(myEntry.key!) ?? null : null,
+        rank,
+        numTeams,
+        strong: rank != null && rank <= Math.ceil(numTeams / 3),
+        weak: rank == null || rank > (numTeams * 2) / 3,
+      })
     }
-    teamBests.sort((a, b) => b.v - a.v)
-    const count = teamBests.length
-    const myEntry = teamBests.find((t) => t.tk === myKey)
-    const myHasStarter = !!myEntry && Number.isFinite(myEntry.v)
-    const myIdx = teamBests.findIndex((t) => t.tk === myKey)
-    // rank is null only when YOU can't field the slot (drives the "no startable option" THIN
-    // row) — other teams' empty slots still count toward the denominator.
-    const rank = myHasStarter ? myIdx + 1 : null
-    // Depth verdict (drives the deep/thin chip + deal-from/upgrade link):
-    //  • No startable body here -> THIN (you can't field it; an upgrade target).
-    //    Never DEEP — a slot with no starter can't be a trade-from surplus.
-    //  • DEEP ("deal from") only when you have a giveable surplus AND your starter
-    //    isn't bottom-third. Dealing from your WEAKEST position is bad advice even
-    //    when multi-eligible bodies pad the body count (the Yahoo "everything is
-    //    DEEP" bug — 1B ranked last still read as deal-from).
-    //  • Otherwise an unmet/injured slot -> THIN; else OK.
-    const isWeak = rank == null || rank > (count * 2) / 3
-    const depth: 'deep' | 'thin' | 'ok' =
-      rank == null
-        ? 'thin'
-        : st.surplusBodies >= 1 && !isWeak
-          ? 'deep'
-          : st.need >= 0.5
-            ? 'thin'
-            : 'ok'
-    rows.push({
-      pos,
-      depth,
-      bestName: rank != null ? nameByKey.get(teamBests[myIdx].key) ?? null : null,
-      bestRank: rank,
-      leagueCount: count,
-    })
   }
-  return rows
+  return { lineupRank, numTeams, rows }
 })
 
 // Drop candidates + weak link, derived from the contribution tiers.
@@ -921,7 +923,7 @@ watch(categories, () => {
       <CategoryProfile :gaps="gaps" :categories="gapCategories" :adds-by-stat-id="addsByStatId" :draggers-by-stat-id="draggersByStatId" />
     </section>
 
-    <PositionalDepth v-if="profile && positionalRows.length" :rows="positionalRows" />
+    <PositionalDepth v-if="profile && positionalLineup" :lineup="positionalLineup" />
 
     <section v-if="profile" class="space-y-2">
       <h2 class="text-sm font-display font-semibold uppercase tracking-wide text-dark-textMuted">Your Roster</h2>
