@@ -23,6 +23,7 @@ import { isAccumulatorCat } from '@/myteam/contestedTiers'
 import { DIVERGENCE_MIN } from '@/trades/timing'
 import { buildEngine } from '@/trades/engine'
 import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
+import { eligOf, lineupEligFor } from '@/trades/lineupEligibility'
 import { computeProductionGaps } from '@/myteam/productionGaps'
 import { aggregateTeamCatTotals, rankInCategory } from '@/trades/standings'
 import { holeFixNote } from '@/myteam/holeFix'
@@ -748,10 +749,8 @@ const draggersByStatId = computed<Record<string, string[]>>(() => {
 // Lineup-card order: every batting slot, then every pitching slot. Flex slots (MI/CI/
 // UTIL/P) sit after the concrete positions they overlap. Slots not listed append at the end.
 const SLOT_DISPLAY_ORDER = ['C', '1B', '2B', '3B', 'SS', 'MI', '2B/SS', 'CI', '1B/3B', 'OF', 'LF', 'CF', 'RF', 'DH', 'IF', 'UTIL', 'SP', 'RP', 'P']
-const eligOf = (p: { eligiblePositions?: string[]; position?: string }): string[] =>
-  p.eligiblePositions?.length
-    ? p.eligiblePositions
-    : String(p.position || '').split(/[,/|]/).map((s) => s.trim()).filter(Boolean)
+// eligOf + pitcher role classification are shared with the Trades league landscape so both
+// views slot pitchers identically. See src/trades/lineupEligibility.ts.
 const rosterSlotsForPos = computed(() =>
   isEspnCategoryLeague.value ? espn.rosterSlots.value : yahooRosterSlots.value,
 )
@@ -783,33 +782,11 @@ const positionalLineup = computed(() => {
   const nameByKey = new Map(pool.map((p) => [p.playerKey, p.name]))
   const fgMap = fgByKey.value
 
-  // ESPN tags pitchers inconsistently — some generic "P", some "SP"/"RP", many BOTH — so the
-  // value-greedy assignment scatters your aces into whichever pitching slot fills first and the
-  // SP/RP labels read backwards (aces in RP, closers in SP, or aces hidden in generic P). For
-  // the lineup we ignore those tags and assign every pitcher by PROJECTED role: a starter
-  // competes for SP, a reliever for RP, best leftovers overflow to the flex P slots (which
-  // accept either). Consistent across all teams, so an SP row compares real starters to real
-  // starters. Hitters keep their real eligibility (multi-position is genuinely useful there).
-  const PITCH_TOKENS = new Set(['SP', 'RP', 'P'])
-  const isPitcherElig = (elig: string[]) => elig.some((x) => PITCH_TOKENS.has(x.toUpperCase()))
-  const pitcherRoleFor = (key: string, elig: string[]): 'SP' | 'RP' => {
-    const fg = fgMap[key]
-    if (fg && fg.player_type === 'pitcher') {
-      const gp = fg.gp ?? 0, gs = fg.gs ?? 0
-      if (gp > 0) return gs * 2 >= gp ? 'SP' : 'RP'
-      if (gs > 0) return 'SP'
-    }
-    // No usable projection: fall back to a single ESPN tag, else assume starter (most rostered
-    // arms are, and parking an unknown in SP/P beats dumping a starter into a scarce RP slot).
-    const hasSP = elig.some((x) => x.toUpperCase() === 'SP')
-    const hasRP = elig.some((x) => x.toUpperCase() === 'RP')
-    if (hasRP && !hasSP) return 'RP'
-    return 'SP'
-  }
-  const lineupElig = (p: { playerKey: string; eligiblePositions?: string[]; position?: string }): string[] => {
-    const elig = eligOf(p)
-    return isPitcherElig(elig) ? [pitcherRoleFor(p.playerKey, elig)] : elig
-  }
+  // Pitchers are slotted by projected role (see lineupEligFor) so a starter competes for SP, a
+  // reliever for RP, and the flex P slot takes overflow — ignoring ESPN's inconsistent SP/RP/P
+  // tags. Hitters keep their real multi-position eligibility.
+  const lineupElig = (p: { playerKey: string; eligiblePositions?: string[]; position?: string }): string[] =>
+    lineupEligFor(p, fgMap)
 
   // Group the league pool by team as DepthPlayer[] (value = role-relative percentile, so a
   // hitter slot ranks hitters and a pitcher slot ranks pitchers on the same scale).

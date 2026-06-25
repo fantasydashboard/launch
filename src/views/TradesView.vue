@@ -13,6 +13,8 @@ import { useValueBaseline } from '@/composables/useValueBaseline'
 import { usePositionalTargets } from '@/composables/usePositionalTargets'
 import { useTradeOpportunities } from '@/composables/useTradeOpportunities'
 import OpportunityCard from '@/components/trades/OpportunityCard.vue'
+import LeagueLandscape from '@/components/trades/LeagueLandscape.vue'
+import { useLeagueLandscape } from '@/composables/useLeagueLandscape'
 import { buildEngine } from '@/trades/engine'
 import { analyzeTrade } from '@/trades/analyzeTrade'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
@@ -195,6 +197,11 @@ const valueByKey = computed(() => engine.value?.valueByKey ?? new Map<string, nu
 const roleValueByKey = computed(() => engine.value?.roleValueByKey ?? new Map<string, number>())
 const strengthByKey = computed(() => engine.value?.strengthByKey ?? new Map<string, Record<string, number>>())
 const catLandscape = computed<Landscape>(() => engine.value?.landscape ?? new Map())
+// League heatmap: every team's rank by category and by position (the browsable map under the
+// curated "best partners" list). Reuses the engine's landscape + role values.
+const { view: landscapeView } = useLeagueLandscape({
+  pool, fgByKey, catSpecs, landscape: catLandscape, roleValueByKey, myTeamKey, teamNameByKey, labelOf,
+})
 const statIdsRef = computed(() => catSpecs.value.map((c) => c.statId))
 const { view: posView } = usePositionalTargets({
   pool, valueByKey, roleValueByKey, strengthByKey, slots: rosterSlots, myStatuses,
@@ -462,6 +469,9 @@ function onLogoError(e: Event) {
           </button>
         </div>
       </section>
+
+      <!-- LEAGUE LANDSCAPE HEATMAP -->
+      <LeagueLandscape v-if="landscapeView" :view="landscapeView" />
 
       <!-- CUSTOM TRADE ANALYZER -->
       <section class="overflow-hidden rounded-xl border border-dark-border bg-dark-card/40">
