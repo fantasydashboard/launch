@@ -783,27 +783,32 @@ const positionalLineup = computed(() => {
   const nameByKey = new Map(pool.map((p) => [p.playerKey, p.name]))
   const fgMap = fgByKey.value
 
-  // ESPN tags most pitchers as eligible for BOTH SP and RP, so the value-greedy assignment
-  // parks your aces in whichever pitching slot fills first (RP) and dumps closers into SP —
-  // the labels read backwards. For a DUAL-eligible pitcher, narrow to his projected role
-  // (majority of appearances are starts -> SP, else RP) so a starter lands in SP and a
-  // reliever in RP. Removing only the wrong concrete token keeps P-slot overflow working
-  // (a P slot accepts SP/RP). Only narrows when both tokens are present and we can classify.
-  const pitcherRole = (key: string): 'SP' | 'RP' | null => {
+  // ESPN tags pitchers inconsistently — some generic "P", some "SP"/"RP", many BOTH — so the
+  // value-greedy assignment scatters your aces into whichever pitching slot fills first and the
+  // SP/RP labels read backwards (aces in RP, closers in SP, or aces hidden in generic P). For
+  // the lineup we ignore those tags and assign every pitcher by PROJECTED role: a starter
+  // competes for SP, a reliever for RP, best leftovers overflow to the flex P slots (which
+  // accept either). Consistent across all teams, so an SP row compares real starters to real
+  // starters. Hitters keep their real eligibility (multi-position is genuinely useful there).
+  const PITCH_TOKENS = new Set(['SP', 'RP', 'P'])
+  const isPitcherElig = (elig: string[]) => elig.some((x) => PITCH_TOKENS.has(x.toUpperCase()))
+  const pitcherRoleFor = (key: string, elig: string[]): 'SP' | 'RP' => {
     const fg = fgMap[key]
-    if (!fg || fg.player_type !== 'pitcher') return null
-    const gp = fg.gp ?? 0, gs = fg.gs ?? 0
-    if (gp <= 0) return gs > 0 ? 'SP' : null
-    return gs * 2 >= gp ? 'SP' : 'RP'
+    if (fg && fg.player_type === 'pitcher') {
+      const gp = fg.gp ?? 0, gs = fg.gs ?? 0
+      if (gp > 0) return gs * 2 >= gp ? 'SP' : 'RP'
+      if (gs > 0) return 'SP'
+    }
+    // No usable projection: fall back to a single ESPN tag, else assume starter (most rostered
+    // arms are, and parking an unknown in SP/P beats dumping a starter into a scarce RP slot).
+    const hasSP = elig.some((x) => x.toUpperCase() === 'SP')
+    const hasRP = elig.some((x) => x.toUpperCase() === 'RP')
+    if (hasRP && !hasSP) return 'RP'
+    return 'SP'
   }
   const lineupElig = (p: { playerKey: string; eligiblePositions?: string[]; position?: string }): string[] => {
     const elig = eligOf(p)
-    const hasSP = elig.some((x) => x.toUpperCase() === 'SP')
-    const hasRP = elig.some((x) => x.toUpperCase() === 'RP')
-    if (!hasSP || !hasRP) return elig
-    const r = pitcherRole(p.playerKey)
-    if (!r) return elig
-    return elig.filter((x) => x.toUpperCase() !== (r === 'SP' ? 'RP' : 'SP'))
+    return isPitcherElig(elig) ? [pitcherRoleFor(p.playerKey, elig)] : elig
   }
 
   // Group the league pool by team as DepthPlayer[] (value = role-relative percentile, so a

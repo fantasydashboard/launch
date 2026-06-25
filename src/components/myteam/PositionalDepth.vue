@@ -56,7 +56,7 @@ const gradeTone = (rank: number | null, n: number) =>
         </span>
       </div>
       <p class="mt-2 font-mono text-[9px] text-dark-textMuted">
-        your best legal lineup, one slot per body · rank = your starter vs every team's starter at that slot · green = strength · red = weakness
+        your best lineup, one body per slot (pitchers by projected role) · rank = your starter vs every team's starter at that slot · green = strength · red = weakness
       </p>
     </div>
   </section>
