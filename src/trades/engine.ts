@@ -48,6 +48,11 @@ export interface BuildEngineInput {
   // value reflects real player quality instead of category breadth. See computeValueBaseline.
   baseline?: ValueBaseline
   zClamp?: number
+  // PERCEIVED (season-to-date pace) effective stats per playerKey, for the buy-low/sell-high
+  // timing leg. When the `pool` is projection-only (no raw stats — the FG ROS pool), pass the
+  // ACTUAL season-pace stats here so timing still has something to diverge from the projection.
+  // Falls back to the pool's own raw stats when omitted.
+  perceivedStatsByKey?: Record<string, Record<string, number>>
 }
 
 export function buildEngine(input: BuildEngineInput): TradeEngine | null {
@@ -97,7 +102,11 @@ export function buildEngine(input: BuildEngineInput): TradeEngine | null {
 
   // Timing: perceived (season-pace) value vs ROS value + Statcast luck.
   const perceivedValued = computeRosterValue(
-    pool.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: toEffectiveStats(p.stats, null, cats, seasonFraction) })),
+    pool.map((p) => ({
+      playerKey: p.playerKey,
+      position: p.position,
+      stats: input.perceivedStatsByKey?.[p.playerKey] ?? toEffectiveStats(p.stats, null, cats, seasonFraction),
+    })),
     pool.map((p) => p.playerKey),
     cats,
     { baseline, zClamp },

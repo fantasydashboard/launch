@@ -543,13 +543,27 @@ const fgStatsByKey = computed<Record<string, Record<string, number>>>(() => {
   return mapFgStatsByKey(fgMap, catSpecs.value, (id) => labelByStatId.get(id) ?? id)
 })
 
-// Contribution per my player: which categories they help (plus) / hurt (minus).
-// Slice 2: effective stats blend FanGraphs ROS projections (when matched) with
-// extrapolated season-to-date totals; toEffectiveStats falls back to YTD when no FG row.
+// REST-OF-SEASON PROJECTED league pool — the SAME source the Wire and Trades rank/value off
+// (FG ROS, no raw stats). My Team's category rank AND player values use this (not useMyRoster's
+// actual-to-date pool) so every number is rest-of-season and matches every page. Identities
+// (headshots, the roster list, Statcast) still come from useMyRoster, mapped by playerKey.
+// ESPN's pool is already projection-based, so unchanged.
+const rankPool = computed(() => (isEspnCategoryLeague.value ? espn.pool.value : yahooLeague.pool.value))
+const rankFgByKey = computed(() => (isEspnCategoryLeague.value ? espn.fgByKey.value : yahooLeague.fgByKey.value))
+const rankFgStatsByKey = computed<Record<string, Record<string, number>>>(() => {
+  const fgMap = rankFgByKey.value
+  if (!fgMap || !catSpecs.value.length) return {}
+  const labelByStatId = new Map(categories.value.map((c) => [c.statId, c.label || c.name || c.statId]))
+  return mapFgStatsByKey(fgMap, catSpecs.value, (id) => labelByStatId.get(id) ?? id)
+})
+
+// Contribution per my player: which categories they help (plus) / hurt (minus). Computed over
+// the PROJECTED pool so "VS ALL" is rest-of-season and matches Trades. Keyed by playerKey, which
+// is shared with the useMyRoster-driven roster panel.
 const contributions = computed(() => {
-  if (!rosterPool.value.length || !myPlayerKeys.value.length || !catSpecs.value.length) return []
-  const fgMap = fgStatsByKey.value
-  const effectivePool = rosterPool.value.map((p) => ({
+  if (!rankPool.value.length || !myPlayerKeys.value.length || !catSpecs.value.length) return []
+  const fgMap = rankFgStatsByKey.value
+  const effectivePool = rankPool.value.map((p) => ({
     playerKey: p.playerKey,
     position: p.position,
     stats: toEffectiveStats(p.stats, fgMap[p.playerKey] ?? null, catSpecs.value, seasonFraction.value),
@@ -622,19 +636,6 @@ const fgMatchAudit = computed(() => {
   return { rows, matched: rows.filter((r) => r.matched).length, total: rows.length }
 })
 
-// League-wide REST-OF-SEASON PROJECTED totals per category, every team — the basis for "how
-// your team projects vs the league" (the category profile + verdict). Ranks off the SAME
-// projection pool the Wire and Trades use (FG ROS, no raw stats) so the category rank matches
-// every page; this is intentionally NOT useMyRoster's actual-to-date pool (which read a
-// different rank for Yahoo relievers). ESPN's pool is already projection-based, so unchanged.
-const rankPool = computed(() => (isEspnCategoryLeague.value ? espn.pool.value : yahooLeague.pool.value))
-const rankFgByKey = computed(() => (isEspnCategoryLeague.value ? espn.fgByKey.value : yahooLeague.fgByKey.value))
-const rankFgStatsByKey = computed<Record<string, Record<string, number>>>(() => {
-  const fgMap = rankFgByKey.value
-  if (!fgMap || !catSpecs.value.length) return {}
-  const labelByStatId = new Map(categories.value.map((c) => [c.statId, c.label || c.name || c.statId]))
-  return mapFgStatsByKey(fgMap, catSpecs.value, (id) => labelByStatId.get(id) ?? id)
-})
 const leagueTotals = computed(() => {
   if (!rankPool.value.length || !catSpecs.value.length) return []
   const fgMap = rankFgStatsByKey.value
@@ -668,16 +669,26 @@ const productionProfile = computed(() => {
 // overperforming and at peak trade value — the cue to shop him on Trades, closing
 // the loop with the Wire's "don't drop a chip". Engine is keyed off the league pool;
 // timing doesn't need standings, so teamCatWins is omitted.
+// Sell-high timing needs ACTUAL season-pace stats (it diverges pace from projection), but the
+// projected rankPool carries none — so build them from useMyRoster's actual pool, keyed by
+// playerKey, and pass them as the perceived leg.
+const perceivedStatsByKey = computed<Record<string, Record<string, number>>>(() => {
+  if (!rosterPool.value.length || !catSpecs.value.length) return {}
+  const out: Record<string, Record<string, number>> = {}
+  for (const p of rosterPool.value) out[p.playerKey] = toEffectiveStats(p.stats, null, catSpecs.value, seasonFraction.value)
+  return out
+})
 const tradeEngine = computed(() =>
-  rosterPool.value.length && catSpecs.value.length
+  rankPool.value.length && catSpecs.value.length
     ? buildEngine({
-        pool: rosterPool.value,
-        fgByKey: fgByKey.value,
+        pool: rankPool.value,
+        fgByKey: rankFgByKey.value,
         statcastByKey: statcastByKey.value,
         cats: catSpecs.value,
         seasonFraction: seasonFraction.value,
         baseline: valueBaseline.value ?? undefined,
         zClamp: ZCLAMP,
+        perceivedStatsByKey: perceivedStatsByKey.value,
         labelOf: (id: string) => categories.value.find((c) => c.statId === id)?.label || id,
       })
     : null,
