@@ -36,6 +36,7 @@ export function useEspnPointsTeamData() {
   const freeAgents = ref<AvailablePlayer[]>([])
   const myTeamId = ref<string | null>(null)
   const myTeamName = ref<string>('')
+  const myTeamLogo = ref<string>('')
   const myRecord = ref<string>('')
   const rosterSlots = ref<Record<string, number>>({})
   const playoffTeamCount = ref(0)
@@ -115,6 +116,7 @@ export function useEspnPointsTeamData() {
         const mine = teams.find((t) => t.id === myTeam.id) ?? myTeam
         rosterPlayers.value = mapRosterToPlayers(mine, sport)
         myTeamName.value = String((mine as any).name ?? (myTeam as any).name ?? '')
+        myTeamLogo.value = String((mine as any).logo ?? (myTeam as any).logo ?? '')
         const rec = (mine as any).record?.overall ?? (myTeam as any).record?.overall
         if (rec && rec.wins != null) myRecord.value = `${rec.wins}-${rec.losses}${rec.ties ? `-${rec.ties}` : ''}`
       }
@@ -140,6 +142,7 @@ export function useEspnPointsTeamData() {
     freeAgents,
     myTeamId,
     myTeamName,
+    myTeamLogo,
     myRecord,
     rosterSlots,
     playoffTeamCount,

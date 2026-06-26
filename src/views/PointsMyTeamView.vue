@@ -47,6 +47,11 @@ const myTeamName = computed<string>(() => {
   return String(me?.name ?? 'My Team')
 })
 const myRecord = computed<string>(() => (isEspn.value ? espnPoints.myRecord.value : ''))
+const myTeamLogo = computed<string>(() => {
+  if (isEspn.value) return espnPoints.myTeamLogo.value
+  const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
+  return String(me?.logo_url ?? '')
+})
 
 // ── The model ────────────────────────────────────────────────────────────────
 const model = computed(() => {
@@ -131,7 +136,10 @@ const roster = computed(() => [
 <template>
   <div class="mx-auto max-w-4xl px-4 py-6">
     <!-- Header -->
-    <div class="mb-5">
+    <div class="mb-5 flex items-center gap-3">
+      <img v-if="myTeamLogo" :src="myTeamLogo" alt="" @error="onLogoErr"
+        class="h-11 w-11 shrink-0 rounded-full bg-dark-border object-cover" />
+      <div>
       <h1 class="text-2xl font-display font-bold text-dark-text">
         {{ myTeamName }}
         <span v-if="myRecord" class="ml-1 align-middle text-base font-normal text-dark-textMuted">{{ myRecord }}</span>
@@ -142,6 +150,7 @@ const roster = computed(() => [
         · Strongest: {{ verdict.best.slot }} ({{ ord(verdict.best.rank) }})
         · Biggest hole: {{ verdict.worst.slot }} ({{ ord(verdict.worst.rank) }})
       </p>
+      </div>
     </div>
 
     <div v-if="loading && !model" class="py-16 text-center text-dark-textMuted">Loading your team…</div>
