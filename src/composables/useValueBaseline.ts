@@ -14,11 +14,16 @@ let universeCache: FGProjection[] | null = null
 // high band and a broad compiler out-totals a concentrated star (the "Duran > Carroll" bug).
 // Restricting the reference to everyday regulars makes the per-category mean a real starter,
 // so an elite skill scores a big z and a merely-average regular sits near zero.
-const STARTABLE_PA = 350 // ~everyday batter
-const STARTABLE_IP = 40 // includes relievers/closers, excludes up-and-down arms
-function isStartable(fg: FGProjection): boolean {
-  if (fg.player_type === 'pitcher') return (fg.ip ?? 0) >= STARTABLE_IP
-  return (fg.pa ?? fg.ab ?? 0) >= STARTABLE_PA
+// Reference population = the most-used regulars on EACH side, taken as a TOP-K by playing time
+// rather than an absolute PA/IP threshold. An absolute threshold (350 PA) filtered out nearly
+// every batter when the projection universe is rest-of-season (PA is naturally low), leaving ~1
+// startable batter and collapsing the hitter baseline. Top-K self-adjusts to any horizon and
+// always keeps batters AND pitchers represented.
+const BATTER_POOL = 300 // ≈ MLB regulars; the startable batter reference
+const PITCHER_POOL = 300 // starters + the better relievers
+const batterVol = (fg: FGProjection) => fg.pa ?? fg.ab ?? 0
+function topByPlayingTime(rows: FGProjection[], vol: (fg: FGProjection) => number, n: number): FGProjection[] {
+  return [...rows].sort((a, b) => vol(b) - vol(a)).slice(0, n)
 }
 
 /**
@@ -54,10 +59,15 @@ export function useValueBaseline() {
         .filter(([id]) => !catSpecs.some((c) => c.statId === id))
         .map(([id, isPit]) => ({ stat_id: id, display_name: labelOf(id), isPitching: isPit })),
     ]
-    // Reference population = startable regulars only (see isStartable). Falls back to the
-    // full universe if the projection rows lack PA/IP so the baseline never goes empty.
-    const startable = universeCache.filter(isStartable)
-    const refPop = startable.length >= 50 ? startable : universeCache
+    // Reference population: the top regulars on each side by playing time (see BATTER_POOL /
+    // PITCHER_POOL), so the baseline always has both batters and pitchers — never collapses one
+    // side to a degenerate std.
+    const batters = universeCache.filter((fg) => fg.player_type !== 'pitcher')
+    const pitchers = universeCache.filter((fg) => fg.player_type === 'pitcher')
+    const refPop = [
+      ...topByPlayingTime(batters, batterVol, BATTER_POOL),
+      ...topByPlayingTime(pitchers, (fg) => fg.ip ?? 0, PITCHER_POOL),
+    ]
     const pool: ValuePoolPlayer[] = refPop.map((fg) => ({
       playerKey: String(fg.mlbam_id),
       // Side gate only needs hitter-vs-pitcher; per-cat participation is stat-gated.

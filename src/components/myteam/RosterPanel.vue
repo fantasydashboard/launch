@@ -125,10 +125,19 @@ const sections = computed<RosterSection[]>(() => {
 
   const rows = props.players.map(build)
   const roleByKey = new Map(props.contributions?.map((c) => [c.playerKey, c.role]) ?? [])
+  // A player with no contribution (e.g. an arm with no projection that got filtered out of the
+  // value math) has no engine role — fall back to his POSITION so a pitcher doesn't land in the
+  // Hitters section (Joey Cantillo SP,RP showing among hitters).
+  const roleFor = (r: RosterRow): 'hitter' | 'pitcher' => {
+    const fromEngine = roleByKey.get(r.player.playerKey)
+    if (fromEngine) return fromEngine
+    const isPitcher = String(r.player.position || '')
+      .split(/[,/|]/)
+      .some((t) => ['SP', 'RP', 'P'].includes(t.trim().toUpperCase()))
+    return isPitcher ? 'pitcher' : 'hitter'
+  }
   const split = (role: 'hitter' | 'pitcher') =>
-    rows
-      .filter((r) => (roleByKey.get(r.player.playerKey) ?? 'hitter') === role)
-      .sort((a, b) => b.roleValue - a.roleValue)
+    rows.filter((r) => roleFor(r) === role).sort((a, b) => b.roleValue - a.roleValue)
   return [
     { role: 'hitter', label: 'Hitters', rows: split('hitter') },
     { role: 'pitcher', label: 'Pitchers', rows: split('pitcher') },
