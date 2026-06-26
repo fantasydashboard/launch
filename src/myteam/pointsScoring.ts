@@ -83,20 +83,20 @@ export function normalizeYahooWeights(
 
 // ─── ESPN ──────────────────────────────────────────────────────────────────
 
-// Best-effort ESPN scoring statId → [unified key, side]. ESPN's scoring
-// enumeration is the source of truth only once verified against a live league
-// (?ptsaudit) — treat this as a starting point, not gospel. Uses the
-// projectionService ESPN_TO_FG convention (0=AB,1=H,2=R,3=HR,…) which is the
-// map the app already uses to read ESPN player stat lines.
-const ESPN_POINTS_STAT: Record<string, [string, 'B' | 'P']> = {
+// ESPN scoring statId → unified key, verified against a live points league via
+// ?ptsaudit. `mult` rescales a stat that FG doesn't carry in the same unit —
+// ESPN scores OUTS (statId 34) at N pts/out, which is 3N pts per projected
+// INNING, so we fold the ×3 into the IP weight (FG gives innings, not outs).
+const ESPN_POINTS_STAT: Record<string, { key: string; mult?: number }> = {
   // Batting
-  '1': ['H', 'B'], '2': ['R', 'B'], '3': ['HR', 'B'], '4': ['RBI', 'B'],
-  '5': ['SB', 'B'], '6': ['BB', 'B'], '7': ['SO', 'B'], '14': ['2B', 'B'],
-  '15': ['3B', 'B'], '19': ['TB', 'B'], '25': ['HBP', 'B'],
+  '3': { key: '2B' }, '4': { key: '3B' }, '5': { key: 'HR' }, '7': { key: '1B' },
+  '8': { key: 'TB' }, '10': { key: 'BB' }, '12': { key: 'HBP' }, '15': { key: 'SB' },
+  '20': { key: 'R' }, '21': { key: 'RBI' }, '23': { key: 'SB' }, '27': { key: 'SO' },
   // Pitching
-  '35': ['W', 'P'], '36': ['L', 'P'], '37': ['SV', 'P'], '38': ['HLD', 'P'],
-  '39': ['IP', 'P'], '43': ['K', 'P'], '45': ['ER', 'P'], '44': ['H_P', 'P'],
-  '46': ['BB_P', 'P'], '40': ['HR_P', 'P'], '57': ['BS', 'P'], '63': ['QS', 'P'],
+  '34': { key: 'IP', mult: 3 }, // OUTS → IP (1 pt/out = 3 pt/IP)
+  '37': { key: 'H_P' }, '39': { key: 'BB_P' }, '45': { key: 'ER' }, '46': { key: 'HR_P' },
+  '48': { key: 'K' }, '53': { key: 'W' }, '54': { key: 'L' }, '57': { key: 'SV' },
+  '58': { key: 'BS' }, '60': { key: 'HLD' }, '63': { key: 'QS' },
 }
 
 interface EspnScoringItem {
@@ -113,12 +113,11 @@ export function normalizeEspnWeights(scoringItems: EspnScoringItem[] | undefined
     if (item?.statId == null) continue
     const map = ESPN_POINTS_STAT[String(item.statId)]
     if (!map) continue
-    const [key] = map
-    const raw = item.pointsOverride ?? item.points
+    const raw = typeof item.pointsOverride === 'number' ? item.pointsOverride : item.points
     if (raw == null) continue
-    const v = Number(raw)
+    const v = Number(raw) * (map.mult ?? 1)
     if (!v) continue
-    weights[key] = v
+    weights[map.key] = v
   }
   return weights
 }

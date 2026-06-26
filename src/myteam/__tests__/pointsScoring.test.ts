@@ -31,20 +31,31 @@ describe('normalizeYahooWeights', () => {
 })
 
 describe('normalizeEspnWeights', () => {
-  it('maps scoringItems by statId, preferring pointsOverride', () => {
+  it('maps real ESPN statIds to unified keys (verified vs a live league)', () => {
     const items = [
-      { statId: 3, points: 1, pointsOverride: 4 }, // HR
-      { statId: 5, points: 2 }, // SB
-      { statId: 43, points: 1 }, // pitcher K
+      { statId: 5, points: 5 }, // HR
+      { statId: 21, points: 1 }, // RBI
+      { statId: 23, points: 1 }, // SB
+      { statId: 48, points: 1 }, // pitcher K
       { statId: 45, points: -2 }, // ER
+      { statId: 37, points: -1 }, // hits allowed → H_P
       { statId: 9999, points: 5 }, // unknown → dropped
     ]
     const w = normalizeEspnWeights(items)
-    expect(w.HR).toBe(4)
-    expect(w.SB).toBe(2)
+    expect(w.HR).toBe(5)
+    expect(w.RBI).toBe(1)
+    expect(w.SB).toBe(1)
     expect(w.K).toBe(1)
     expect(w.ER).toBe(-2)
-    expect(Object.keys(w)).toHaveLength(4)
+    expect(w.H_P).toBe(-1)
+    expect(w.HR).not.toBe(undefined)
+    expect(Object.keys(w)).toHaveLength(6)
+  })
+
+  it('folds ESPN OUTS (statId 34) into a 3×/IP weight', () => {
+    // 1 pt/out = 3 pt/inning; FG carries innings, not outs.
+    const w = normalizeEspnWeights([{ statId: 34, points: 1 }])
+    expect(w.IP).toBe(3)
   })
 })
 
