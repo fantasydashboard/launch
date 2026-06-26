@@ -5,7 +5,7 @@ import { useLeagueStore } from '@/stores/league'
 import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
 import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
-import { buildPointsTeam, type PointsPoolPlayer, type PointsRosterRow } from '@/myteam/pointsTeam'
+import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { projectPlayerPoints } from '@/myteam/pointsValue'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
@@ -75,25 +75,6 @@ const ord = (n: number) => {
   return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
 const round = (n: number) => Math.round(n)
-
-// ── Point-source chips (the points analog of the category chips) ──────────────
-const STAT_LABEL: Record<string, string> = {
-  R: 'R', HR: 'HR', RBI: 'RBI', SB: 'SB', H: 'H', '1B': '1B', '2B': '2B', '3B': '3B',
-  TB: 'TB', BB: 'BB', HBP: 'HBP', SO: 'K', CS: 'CS', K: 'K', IP: 'IP', W: 'W', L: 'L',
-  SV: 'SV', HLD: 'HLD', ER: 'ER', H_P: 'H', BB_P: 'BB', HR_P: 'HR', BS: 'BS', QS: 'QS',
-}
-// Only SPECIALIST stats earn a chip. In additive scoring every player's points
-// come from the same counting stats (TB/HR/R/RBI, IP/K), so those are noise — a
-// chip should flag what makes THIS player different: a closer's SV/HLD, a
-// speedster's SB, a workhorse's QS. Generalists get no chip.
-const SPECIALIST = new Set(['SB', 'SV', 'HLD', 'QS'])
-function chipsFor(row: PointsRosterRow): string[] {
-  return Object.entries(row.perStat)
-    .filter(([k, v]) => SPECIALIST.has(k) && v > 0)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([k]) => STAT_LABEL[k] ?? k)
-}
 
 const tierColor = (tier: string) =>
   tier === 'CORE' ? 'text-primary' : tier === 'FRINGE' ? 'text-dark-textMuted' : 'text-dark-textSecondary'
@@ -269,7 +250,7 @@ const roster = computed(() => [
 
               <!-- Specialist chips (what makes this player different) -->
               <span class="flex shrink-0 flex-wrap items-center gap-1">
-                <span v-for="c in chipsFor(row)" :key="'s-' + c"
+                <span v-for="c in row.chips" :key="'s-' + c"
                   class="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary">{{ c }}</span>
               </span>
 

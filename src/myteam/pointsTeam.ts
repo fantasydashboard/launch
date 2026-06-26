@@ -35,6 +35,7 @@ export interface PointsRosterRow {
   tier: Tier
   rankVsAll: number // 0-100 percentile vs all rostered players on the same side
   perStat: Record<string, number>
+  chips: string[] // specialist edges (SB/SV/HLD/QS) where this player is a standout
 }
 
 export interface SlotRankRow {
@@ -103,6 +104,30 @@ export function buildPointsTeam(
   const ptsByKey = new Map<string, ReturnType<typeof projectPlayerPoints>>()
   for (const p of pool) ptsByKey.set(p.playerKey, projectPlayerPoints(fgByKey[p.playerKey], weights))
 
+  // Specialist-chip thresholds. A chip should mark a STANDOUT, not anyone who
+  // accrues a scored stat (every hitter steals a few bases, every starter logs a
+  // few QS). Threshold = the 65th percentile among the league pool's NONZERO
+  // contributors on that side, so only the upper slice earns the chip.
+  const SPECIALIST_STATS = ['SB', 'SV', 'HLD', 'QS']
+  const pctileNonzero = (vals: number[], p: number): number => {
+    const pos = vals.filter((v) => v > 0).sort((a, b) => a - b)
+    if (!pos.length) return Infinity
+    return pos[Math.floor((pos.length - 1) * p)]
+  }
+  const chipThresh: Record<PointsSide, Record<string, number>> = { hit: {}, pit: {} }
+  for (const side of ['hit', 'pit'] as PointsSide[]) {
+    for (const st of SPECIALIST_STATS) {
+      const vals: number[] = []
+      for (const p of pool) {
+        const r = ptsByKey.get(p.playerKey)!
+        if (r.side === side && r.perStat[st] != null) vals.push(r.perStat[st])
+      }
+      chipThresh[side][st] = pctileNonzero(vals, 0.65)
+    }
+  }
+  const chipsFor = (side: PointsSide, perStat: Record<string, number>): string[] =>
+    SPECIALIST_STATS.filter((st) => (perStat[st] ?? 0) > 0 && perStat[st] >= chipThresh[side][st])
+
   // 2) My roster rows. Tiers are WITHIN-ROSTER (your studs vs your scrubs) so every
   //    roster spreads CORE→FRINGE like the category page. A league-wide percentile
   //    compresses to all-FRINGE: additive points push the median rostered player
@@ -131,6 +156,7 @@ export function buildPointsTeam(
         tier,
         rankVsAll: pct,
         perStat: r.perStat,
+        chips: chipsFor(r.side, r.perStat),
       })
     })
   }

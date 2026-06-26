@@ -67,6 +67,23 @@ describe('buildPointsTeam', () => {
     expect(m.pitching?.arms[0].name).toBe('AceA')
   })
 
+  it('chips a specialist only when they are a standout (not anyone who accrues the stat)', () => {
+    // SB scored; build a pool where a few hitters steal a lot and most steal a little.
+    const w = { HR: 4, SB: 2 }
+    const speed = (k: string, sb: number) => ({
+      p: { playerKey: k, name: k, position: 'OF', teamKey: 'A', eligiblePositions: ['OF'] },
+      fg: { mlbam_id: 1, player_name: k, team: 'A', position: 'OF', player_type: 'batter' as const, hr: 15, sb, g: 150 },
+    })
+    const rows2 = [speed('Burner1', 40), speed('Burner2', 35), speed('Plodder1', 3), speed('Plodder2', 2), speed('Plodder3', 1)]
+    const pool2 = rows2.map((r) => r.p)
+    const fg2: Record<string, FGProjection | null> = {}
+    rows2.forEach((r) => (fg2[r.p.playerKey] = r.fg))
+    const m = buildPointsTeam(pool2, fg2, w, 'A', { OF: 1 })
+    const chip = (k: string) => m.rosterRows.find((r) => r.player.playerKey === k)?.chips ?? []
+    expect(chip('Burner1')).toContain('SB')
+    expect(chip('Plodder3')).not.toContain('SB') // accrues SB points, but not a standout
+  })
+
   it('parseEligible falls back to the position string', () => {
     expect(parseEligible({ playerKey: 'x', name: 'x', position: 'SP,RP', teamKey: 'A' })).toEqual(['SP', 'RP'])
   })
