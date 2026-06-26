@@ -5,8 +5,9 @@ import { useLeagueStore } from '@/stores/league'
 import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
 import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
-import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
+import { buildPointsTeam, type PointsPoolPlayer, type PointsRosterRow } from '@/myteam/pointsTeam'
 import { projectPlayerPoints } from '@/myteam/pointsValue'
+import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
 const route = useRoute()
 const leagueStore = useLeagueStore()
@@ -34,8 +35,7 @@ const fgByKey = computed(() => (isEspn.value ? espnPoints.fgByKey.value : yahooL
 const rosterSlots = computed(() => (isEspn.value ? espnPoints.rosterSlots.value : yahooLeague.rosterSlots.value))
 const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooLeague.loading.value))
 
-// My team key as the POOL labels it (full Yahoo team_key / `espn_{id}`), derived
-// from one of my own players so it matches on both platforms.
+// My team key as the POOL labels it (full Yahoo team_key / `espn_{id}`).
 const myTeamKey = computed<string>(() => {
   if (isEspn.value) return espnPoints.myTeamId.value ?? ''
   const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
@@ -46,6 +46,7 @@ const myTeamName = computed<string>(() => {
   const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
   return String(me?.name ?? 'My Team')
 })
+const myRecord = computed<string>(() => (isEspn.value ? espnPoints.myRecord.value : ''))
 
 // ── The model ────────────────────────────────────────────────────────────────
 const model = computed(() => {
@@ -56,9 +57,8 @@ const model = computed(() => {
 const hitters = computed(() => model.value?.rosterRows.filter((r) => r.side === 'hit') ?? [])
 const pitchers = computed(() => model.value?.rosterRows.filter((r) => r.side === 'pit') ?? [])
 
-// Verdict: strongest / weakest lineup slot by rank.
 const verdict = computed(() => {
-  const s = model.value?.slotRanks ?? []
+  const s = model.value?.slotRanks.filter((r) => r.starterKey) ?? []
   if (!s.length) return null
   const best = [...s].sort((a, b) => a.rank - b.rank)[0]
   const worst = [...s].sort((a, b) => b.rank - a.rank)[0]
@@ -71,28 +71,42 @@ const ord = (n: number) => {
 }
 const round = (n: number) => Math.round(n)
 
-// Bar + color helpers — longer/greener = better rank, shorter/redder = worse.
-function rankBar(rank: number, teams: number): number {
-  if (teams <= 1) return 100
-  return Math.round(((teams - rank + 1) / teams) * 100)
+// ── Point-source chips (the points analog of the category chips) ──────────────
+const STAT_LABEL: Record<string, string> = {
+  R: 'R', HR: 'HR', RBI: 'RBI', SB: 'SB', H: 'H', '1B': '1B', '2B': '2B', '3B': '3B',
+  TB: 'TB', BB: 'BB', HBP: 'HBP', SO: 'K', CS: 'CS', K: 'K', IP: 'IP', W: 'W', L: 'L',
+  SV: 'SV', HLD: 'HLD', ER: 'ER', H_P: 'H', BB_P: 'BB', HR_P: 'HR', BS: 'BS', QS: 'QS',
 }
+function chipsFor(row: PointsRosterRow): { plus: string[]; minus: string[] } {
+  const entries = Object.entries(row.perStat)
+  const plus = entries.filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 3)
+  const minus = entries.filter(([, v]) => v < 0).sort((a, b) => a[1] - b[1]).slice(0, 1)
+  return {
+    plus: plus.map(([k]) => STAT_LABEL[k] ?? k),
+    minus: minus.map(([k]) => STAT_LABEL[k] ?? k),
+  }
+}
+
+const tierColor = (tier: string) =>
+  tier === 'CORE' ? 'text-primary' : tier === 'FRINGE' ? 'text-dark-textMuted' : 'text-dark-textSecondary'
+
+// Slot-spine rank coloring (green good, red weak).
 function rankClass(rank: number, teams: number): string {
   if (teams <= 1) return 'text-dark-text'
   const f = rank / teams
-  if (f <= 0.34) return 'text-green-400'
-  if (f >= 0.75) return 'text-red-400'
+  if (f <= 0.34) return 'text-primary'
+  if (f >= 0.75) return 'text-[#FF5C5C]'
   return 'text-dark-text'
 }
 function barClass(rank: number, teams: number): string {
   if (teams <= 1) return 'bg-dark-textMuted/40'
   const f = rank / teams
-  if (f <= 0.34) return 'bg-green-500'
-  if (f >= 0.75) return 'bg-red-500/70'
+  if (f <= 0.34) return 'bg-primary'
+  if (f >= 0.75) return 'bg-[#FF5C5C]/70'
   return 'bg-dark-textMuted/50'
 }
-function tierClass(tier: string): string {
-  return tier === 'CORE' ? 'text-green-400' : tier === 'SOLID' ? 'text-dark-text' : 'text-dark-textMuted'
-}
+const rankBar = (rank: number, teams: number) => (teams <= 1 ? 100 : Math.round(((teams - rank + 1) / teams) * 100))
+const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none')
 
 // ── ?ptsaudit dev panel ──────────────────────────────────────────────────────
 const auditRows = computed(() => {
@@ -107,18 +121,26 @@ const auditRows = computed(() => {
       .join('  '),
   }))
 })
+
+const roster = computed(() => [
+  { label: 'Hitters', rows: hitters.value },
+  { label: 'Pitchers', rows: pitchers.value },
+])
 </script>
 
 <template>
   <div class="mx-auto max-w-4xl px-4 py-6">
     <!-- Header -->
     <div class="mb-5">
-      <h1 class="text-2xl font-bold text-dark-text">{{ myTeamName }}</h1>
+      <h1 class="text-2xl font-display font-bold text-dark-text">
+        {{ myTeamName }}
+        <span v-if="myRecord" class="ml-1 align-middle text-base font-normal text-dark-textMuted">{{ myRecord }}</span>
+      </h1>
       <p v-if="verdict" class="mt-1 text-sm text-dark-textMuted">
-        Best lineup projects <span class="text-dark-text font-semibold">{{ ord(model!.myLineupRank) }}</span>
-        of {{ model!.teams }} ·
-        Strongest: {{ verdict.best.slot }} ({{ ord(verdict.best.rank) }}) ·
-        Biggest hole: {{ verdict.worst.slot }} ({{ ord(verdict.worst.rank) }})
+        Best lineup projects
+        <span class="font-semibold text-dark-text">{{ ord(model!.myLineupRank) }} of {{ model!.teams }}</span>
+        · Strongest: {{ verdict.best.slot }} ({{ ord(verdict.best.rank) }})
+        · Biggest hole: {{ verdict.worst.slot }} ({{ ord(verdict.worst.rank) }})
       </p>
     </div>
 
@@ -128,15 +150,27 @@ const auditRows = computed(() => {
     </div>
 
     <template v-else>
+      <!-- Projected finish card -->
+      <div class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Projected finish</div>
+        <div class="mt-1 flex items-baseline gap-2">
+          <span class="text-3xl font-display font-bold text-primary">{{ ord(model.myLineupRank) }}</span>
+          <span class="text-sm text-dark-textMuted">of {{ model.teams }}</span>
+        </div>
+        <div class="mt-0.5 font-mono text-xs text-dark-textMuted">
+          by projected starting-lineup points · rest of season
+        </div>
+      </div>
+
       <!-- Slot-value spine -->
-      <section class="mb-6 rounded-xl border border-dark-border bg-dark-card/40 p-4">
-        <div class="mb-1 flex items-baseline justify-between">
-          <h2 class="text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+      <section class="mb-6 rounded-xl border border-dark-border bg-dark-card">
+        <div class="flex items-baseline justify-between px-4 pt-4 pb-1">
+          <h2 class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
             Your lineup vs the league
           </h2>
-          <span class="text-[11px] text-dark-textMuted">projected points · your starter vs every team's at that slot</span>
+          <span class="font-mono text-[10px] text-dark-textMuted/70">projected points · your starter vs every team's</span>
         </div>
-        <div class="mt-3 space-y-1.5">
+        <div class="space-y-1.5 px-4 pb-4 pt-2">
           <div v-for="(s, i) in model.slotRanks" :key="i" class="flex items-center gap-3">
             <span class="w-10 shrink-0 font-mono text-xs text-dark-textMuted">{{ s.slot }}</span>
             <span class="w-12 shrink-0 text-right font-mono text-sm font-semibold"
@@ -144,7 +178,7 @@ const auditRows = computed(() => {
               {{ s.starterKey ? ord(s.rank) : '—' }}
             </span>
             <span class="w-40 shrink-0 truncate text-sm"
-              :class="s.starterKey ? 'text-dark-text' : 'text-dark-textMuted/60 italic'">
+              :class="s.starterKey ? 'text-dark-text' : 'italic text-dark-textMuted/60'">
               {{ s.starterKey ? s.starterName : 'open slot' }}
             </span>
             <div class="relative h-2 flex-1 overflow-hidden rounded-full bg-dark-bg">
@@ -158,36 +192,68 @@ const auditRows = computed(() => {
         </div>
       </section>
 
-      <!-- Roster, by projected points -->
-      <section class="rounded-xl border border-dark-border bg-dark-card/40 p-4">
-        <h2 class="mb-3 text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Your roster</h2>
-
-        <template v-for="group in [{ label: 'Hitters', rows: hitters }, { label: 'Pitchers', rows: pitchers }]"
-          :key="group.label">
-          <div v-if="group.rows.length" class="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wide text-dark-textMuted">
-            {{ group.label }} <span class="font-normal opacity-60">· projected fantasy points</span>
+      <!-- Roster, by projected points — mirrors the category RosterPanel -->
+      <h2 class="mb-2 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Your roster</h2>
+      <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
+        <div v-for="group in roster" :key="group.label">
+          <div v-if="group.rows.length" class="px-4 pt-4 pb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+            {{ group.label }}
+            <span class="font-mono text-[10px] normal-case tracking-normal text-dark-textMuted/70">· projected fantasy points</span>
           </div>
-          <div v-for="r in group.rows" :key="r.player.playerKey"
-            class="flex items-center gap-3 border-b border-dark-border/40 py-1.5 last:border-0">
-            <span class="w-12 shrink-0 font-mono text-[10px] font-semibold uppercase" :class="tierClass(r.tier)">
-              {{ r.tier }}
-            </span>
-            <span class="min-w-0 flex-1 truncate text-sm text-dark-text">
-              {{ r.player.name }}
-              <span class="ml-1 text-[11px] text-dark-textMuted">{{ r.player.position }} · {{ r.player.proTeam }}</span>
-            </span>
-            <span class="w-14 shrink-0 text-right font-mono text-sm text-dark-text">{{ round(r.points) }}</span>
-            <span class="w-10 shrink-0 text-right font-mono text-[11px] text-dark-textMuted">{{ r.perGame.toFixed(1) }}/g</span>
-            <div class="relative hidden h-1.5 w-24 shrink-0 overflow-hidden rounded-full bg-dark-bg sm:block">
-              <div class="absolute inset-y-0 left-0 rounded-full bg-green-500/70" :style="{ width: r.rankVsAll + '%' }" />
+          <template v-for="(row, i) in group.rows" :key="row.player.playerKey">
+            <!-- Tier divider -->
+            <div v-if="i === 0 || row.tier !== group.rows[i - 1].tier" class="flex items-center gap-2 px-4 pt-2 pb-1">
+              <span class="font-mono text-[10px] uppercase tracking-wider" :class="tierColor(row.tier)">{{ row.tier }}</span>
+              <span class="h-px flex-1 bg-dark-border/50" />
             </div>
-          </div>
-        </template>
-        <p class="mt-3 text-[11px] text-dark-textMuted">
-          points = projected rest-of-season fantasy points in your league's scoring · /g = per game ·
+
+            <div class="flex items-center gap-3 px-4 py-2.5">
+              <!-- Headshot -->
+              <img v-if="row.player.headshot" :src="row.player.headshot" :alt="row.player.name" loading="lazy"
+                class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
+              <span v-else aria-hidden="true"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-xs text-dark-textMuted">
+                {{ (row.player.position || '—').slice(0, 2) }}
+              </span>
+
+              <!-- Name + position · team -->
+              <span class="min-w-0">
+                <span class="truncate text-sm font-sans font-semibold text-dark-text">{{ row.player.name }}</span>
+                <span class="flex items-center gap-1 text-xs text-dark-textMuted">
+                  {{ row.player.position }}
+                  <template v-if="row.player.proTeam">
+                    ·
+                    <img :src="mlbTeamLogo(row.player.proTeam)" alt="" @error="onLogoErr"
+                      class="h-3.5 w-3.5 shrink-0 object-contain" />
+                    {{ row.player.proTeam }}
+                  </template>
+                </span>
+              </span>
+
+              <!-- Point-source chips -->
+              <span class="flex shrink-0 flex-wrap items-center gap-1">
+                <span v-for="c in chipsFor(row).plus" :key="'p-' + c"
+                  class="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary">{{ c }}</span>
+                <span v-for="c in chipsFor(row).minus" :key="'m-' + c"
+                  class="rounded bg-[#FF5C5C]/10 px-1.5 py-0.5 font-mono text-xs text-[#FF5C5C]">{{ c }}</span>
+              </span>
+
+              <!-- Projected points + per-game -->
+              <span class="ml-auto flex shrink-0 items-baseline gap-1.5">
+                <span class="font-mono text-sm font-semibold text-dark-text">{{ round(row.points) }}</span>
+                <span class="font-mono text-[10px] text-dark-textMuted">{{ row.perGame.toFixed(1) }}/g</span>
+              </span>
+            </div>
+          </template>
+        </div>
+
+        <p class="px-4 py-3 font-mono text-[10px] leading-relaxed text-dark-textMuted">
+          <span class="text-primary">green</span> = a top point source ·
+          <span class="text-[#FF5C5C]">red</span> = a drag ·
+          right number = projected rest-of-season fantasy points (/g per game) ·
           tiers rank within hitters / pitchers
         </p>
-      </section>
+      </div>
 
       <!-- Dev audit -->
       <section v-if="showAudit" class="mt-6 rounded-xl border border-amber-600/40 bg-amber-950/20 p-4 font-mono text-[11px]">
