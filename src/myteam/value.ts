@@ -198,8 +198,12 @@ export function computeRosterValue(
       .map((p) => ({ key: p.playerKey, q: categoryQuantity(p, cat, wMean) }))
       .filter((x) => Number.isFinite(x.q))
 
+    // Use the universe baseline ONLY when it can actually differentiate (std > 0). A degenerate
+    // baseline cat — e.g. the projection universe has ~1 startable batter, so every hitting cat's
+    // std collapses to 0 — would zero every player's z and flatten the whole side to one value.
+    // Fall back to pool-relative mean/std for that cat so the rostered players still spread out.
     let mean: number, std: number
-    if (base) {
+    if (base && base.std > 0) {
       mean = base.mean
       std = base.std
     } else {
