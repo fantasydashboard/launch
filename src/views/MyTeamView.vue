@@ -335,8 +335,14 @@ const emptyStateMessage = computed(() => {
 })
 
 // Short category label for a statId (e.g. "AB", "IP") — used to spot accumulator cats.
-const labelOfStat = (statId: string) =>
-  categories.value.find((c) => c.statId === statId)?.label ?? statId
+const labelOfStat = (statId: string) => {
+  // MUST match how the rank pool resolves labels (c.label || c.name || statId): the value
+  // baseline maps the FG universe by this name, and `?? statId` (no name fallback, doesn't catch
+  // an empty-string label) fed the universe a garbage display name for cats whose label is "",
+  // collapsing that cat's baseline std to 0 — every player's z went to 0 (the all-hitters-43 bug).
+  const c = categories.value.find((x) => x.statId === statId)
+  return c?.label || c?.name || statId
+}
 
 const weaknesses = computed(() => {
   if (!productionProfile.value) return []
@@ -582,6 +588,18 @@ const contributions = computed(() => {
 // Season view toggle: show the category profile OR the positional lineup, one at a time, so
 // the page isn't two long stacked sections. Same lens-toggle as the Trades landscape.
 const seasonView = ref<'cat' | 'pos'>('cat')
+// Dev-only (?fgaudit=1): the value baseline per cat — std=0 means that cat can't differentiate
+// players (collapses their z to 0). `label` is what the baseline maps the universe with.
+const baselineDump = computed(() => {
+  const b = valueBaseline.value
+  return catSpecs.value.map((c) => ({
+    statId: c.statId,
+    label: labelOfStat(c.statId),
+    side: c.side,
+    std: b ? Math.round((b.get(c.statId)?.std ?? -1) * 1000) / 1000 : null,
+    mean: b ? Math.round((b.get(c.statId)?.mean ?? 0) * 1000) / 1000 : null,
+  }))
+})
 const showFgAudit = new URLSearchParams(window.location.search).has('fgaudit')
 // Dev diagnostic (?catdebug=1): My Team's category inputs + my per-cat production rank, in the
 // SAME shape the Wire dumps, so the two can be compared row-for-row to find the Yahoo divergence.
@@ -1048,6 +1066,20 @@ watch(categories, () => {
           ✗ player may be a name-match miss; a low ✓ player is a real projection. <b>score</b> =
           sum of category z's (the raw value behind VS ALL); the per-cat z's below show what drives it.
         </p>
+      </div>
+    </section>
+
+    <!-- Dev-only baseline diagnostic (?fgaudit=1): std=0 means the cat can't differentiate -->
+    <section v-if="profile && showFgAudit && baselineDump.length" class="space-y-1">
+      <h2 class="font-mono text-[11px] uppercase tracking-wide text-[#e6b85e]">VALUE BASELINE (dev only) · std=0 → collapsed</h2>
+      <div class="overflow-x-auto rounded-xl border border-[#e6b85e]/30 bg-dark-card px-3 py-2 font-mono text-[11px]">
+        <div v-for="r in baselineDump" :key="r.statId" class="flex items-center gap-3 py-0.5">
+          <span class="w-16 text-dark-text">{{ r.label }}</span>
+          <span class="w-10 text-dark-textMuted">{{ r.statId }}</span>
+          <span class="w-8" :class="r.side === 'pit' ? 'text-[#5ec8e6]' : 'text-[#e6b85e]'">{{ r.side }}</span>
+          <span class="w-24 tabular-nums" :class="r.std === 0 ? 'text-[#f26d6d] font-bold' : 'text-dark-textSecondary'">std {{ r.std }}</span>
+          <span class="tabular-nums text-dark-textMuted">mean {{ r.mean }}</span>
+        </div>
       </div>
     </section>
 
