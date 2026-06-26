@@ -52,14 +52,29 @@ export interface TeamStanding {
   rank: number
 }
 
+export interface PitchingRank {
+  rank: number // your staff's projected starter-points rank in the league
+  teams: number
+  points: number // your starting staff's total projected points
+  arms: { name: string; starterKey: string; points: number }[] // your starting arms, by points
+}
+
 export interface PointsTeamModel {
   rosterRows: PointsRosterRow[]
-  slotRanks: SlotRankRow[]
+  slotRanks: SlotRankRow[] // POSITION-PLAYER slots only (pitching folds into `pitching`)
+  pitching: PitchingRank | null
   myLineupRank: number // your optimal lineup's projected-points rank in the league
   teams: number
   standings: TeamStanding[]
   myStanding: TeamStanding | null
 }
+
+// Pitcher lineup slots — ranked as ONE staff unit, not per-opening. Ranking each
+// arm against every team's same-rank arm (your ace vs their aces) inverts: your
+// best pitcher shows the worst rank. A single staff rank is how managers actually
+// read it ("my pitching vs theirs") and stays monotonic.
+const PITCHER_SLOTS = new Set(['SP', 'RP', 'P', 'SP/RP', 'RP/SP'])
+const isPitcherSlot = (pos: string) => PITCHER_SLOTS.has(pos.toUpperCase())
 
 /** Split a comma/slash-delimited position string into eligible slots. */
 export function parseEligible(p: PointsPoolPlayer): string[] {
@@ -155,38 +170,51 @@ export function buildPointsTeam(
   const myStanding = myTeamKey ? standings.find((s) => s.teamKey === myTeamKey) ?? null : null
   const myLineupRank = myStanding?.rank ?? 0
 
-  // 5) Slot-value landscape: for each concrete opening, rank my starter against
-  //    every team's starter at that same opening index (their nth-best body there).
+  // 5) Slot-value landscape: POSITION-PLAYER slots ranked per-opening (your starter
+  //    vs every team's starter at that opening). Pitching is handled as a unit below.
+  const sortedAt = (teamKey: string, pos: string): string[] =>
+    [...(assignedByTeam.get(teamKey)?.[pos] ?? [])].sort((a, b) => pointsOf(b) - pointsOf(a))
   const slotRanks: SlotRankRow[] = []
   if (myTeamKey && assignedByTeam.has(myTeamKey)) {
-    // Per position, each team's assigned starters sorted by points desc.
-    const sortedAt = (teamKey: string, pos: string): string[] =>
-      [...(assignedByTeam.get(teamKey)?.[pos] ?? [])].sort((a, b) => pointsOf(b) - pointsOf(a))
-    const positions = Object.keys(slots).sort((a, b) => slotIdx(a) - slotIdx(b))
+    const positions = Object.keys(slots)
+      .filter((p) => !isPitcherSlot(p))
+      .sort((a, b) => slotIdx(a) - slotIdx(b))
     for (const pos of positions) {
       const mine = sortedAt(myTeamKey, pos)
-      const openings = slots[pos]
-      for (let i = 0; i < openings; i++) {
+      for (let i = 0; i < slots[pos]; i++) {
         const myKey = mine[i] ?? null
         const myPts = myKey ? pointsOf(myKey) : 0
-        // Rank: 1 + number of teams whose i-th starter at this pos outscores mine.
         let rank = 1
         for (const [teamKey] of byTeam) {
           if (teamKey === myTeamKey) continue
           const theirs = sortedAt(teamKey, pos)[i]
           if (theirs != null && pointsOf(theirs) > myPts) rank++
         }
-        slotRanks.push({
-          slot: pos,
-          starterName: myKey ? nameOf.get(myKey) ?? '—' : '—',
-          starterKey: myKey,
-          points: myPts,
-          rank,
-          teams,
-        })
+        slotRanks.push({ slot: pos, starterName: myKey ? nameOf.get(myKey) ?? '—' : '—', starterKey: myKey, points: myPts, rank, teams })
       }
     }
   }
 
-  return { rosterRows, slotRanks, myLineupRank, teams, standings, myStanding }
+  // 6) Pitching as ONE staff unit: sum each team's optimal-lineup pitcher points,
+  //    rank mine against the league, and list my starting arms by points.
+  const pitcherSlotKeys = Object.keys(slots).filter((p) => isPitcherSlot(p))
+  const staffPointsOf = (teamKey: string): number => {
+    const ass = assignedByTeam.get(teamKey) ?? {}
+    let sum = 0
+    for (const pos of pitcherSlotKeys) for (const k of ass[pos] ?? []) sum += pointsOf(k)
+    return sum
+  }
+  let pitching: PitchingRank | null = null
+  if (myTeamKey && assignedByTeam.has(myTeamKey) && pitcherSlotKeys.length) {
+    const myStaff = staffPointsOf(myTeamKey)
+    let rank = 1
+    for (const [teamKey] of byTeam) if (teamKey !== myTeamKey && staffPointsOf(teamKey) > myStaff) rank++
+    const myAss = assignedByTeam.get(myTeamKey) ?? {}
+    const arms: PitchingRank['arms'] = []
+    for (const pos of pitcherSlotKeys) for (const k of myAss[pos] ?? []) arms.push({ name: nameOf.get(k) ?? '—', starterKey: k, points: pointsOf(k) })
+    arms.sort((a, b) => b.points - a.points)
+    pitching = { rank, teams, points: myStaff, arms }
+  }
+
+  return { rosterRows, slotRanks, pitching, myLineupRank, teams, standings, myStanding }
 }

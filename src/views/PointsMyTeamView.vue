@@ -82,14 +82,17 @@ const STAT_LABEL: Record<string, string> = {
   TB: 'TB', BB: 'BB', HBP: 'HBP', SO: 'K', CS: 'CS', K: 'K', IP: 'IP', W: 'W', L: 'L',
   SV: 'SV', HLD: 'HLD', ER: 'ER', H_P: 'H', BB_P: 'BB', HR_P: 'HR', BS: 'BS', QS: 'QS',
 }
-function chipsFor(row: PointsRosterRow): { plus: string[]; minus: string[] } {
-  const entries = Object.entries(row.perStat)
-  const plus = entries.filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 3)
-  const minus = entries.filter(([, v]) => v < 0).sort((a, b) => a[1] - b[1]).slice(0, 1)
-  return {
-    plus: plus.map(([k]) => STAT_LABEL[k] ?? k),
-    minus: minus.map(([k]) => STAT_LABEL[k] ?? k),
-  }
+// Only SPECIALIST stats earn a chip. In additive scoring every player's points
+// come from the same counting stats (TB/HR/R/RBI, IP/K), so those are noise — a
+// chip should flag what makes THIS player different: a closer's SV/HLD, a
+// speedster's SB, a workhorse's QS. Generalists get no chip.
+const SPECIALIST = new Set(['SB', 'SV', 'HLD', 'QS'])
+function chipsFor(row: PointsRosterRow): string[] {
+  return Object.entries(row.perStat)
+    .filter(([k, v]) => SPECIALIST.has(k) && v > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([k]) => STAT_LABEL[k] ?? k)
 }
 
 const tierColor = (tier: string) =>
@@ -198,6 +201,31 @@ const roster = computed(() => [
               {{ s.starterKey ? round(s.points) : '' }}
             </span>
           </div>
+
+          <!-- Pitching as ONE staff unit — ranking each arm vs other teams' same-rank
+               arm inverts (your ace shows the worst rank), so rank the staff together. -->
+          <template v-if="model.pitching">
+            <div class="flex items-center gap-3 pt-1">
+              <span class="w-10 shrink-0 font-mono text-xs text-dark-textMuted">P</span>
+              <span class="w-12 shrink-0 text-right font-mono text-sm font-semibold"
+                :class="rankClass(model.pitching.rank, model.pitching.teams)">
+                {{ ord(model.pitching.rank) }}
+              </span>
+              <span class="w-40 shrink-0 truncate text-sm text-dark-text">Pitching staff</span>
+              <div class="relative h-2 flex-1 overflow-hidden rounded-full bg-dark-bg">
+                <div class="absolute inset-y-0 left-0 rounded-full" :class="barClass(model.pitching.rank, model.pitching.teams)"
+                  :style="{ width: rankBar(model.pitching.rank, model.pitching.teams) + '%' }" />
+              </div>
+              <span class="w-12 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ round(model.pitching.points) }}</span>
+            </div>
+            <!-- Your starting arms, by points (no misleading per-arm cross-rank) -->
+            <div v-for="arm in model.pitching.arms" :key="arm.starterKey" class="flex items-center gap-3">
+              <span class="w-10 shrink-0" />
+              <span class="w-12 shrink-0" />
+              <span class="min-w-0 flex-1 truncate text-xs text-dark-textMuted">{{ arm.name }}</span>
+              <span class="w-12 shrink-0 text-right font-mono text-[11px] text-dark-textMuted">{{ round(arm.points) }}</span>
+            </div>
+          </template>
         </div>
       </section>
 
@@ -239,12 +267,10 @@ const roster = computed(() => [
                 </span>
               </span>
 
-              <!-- Point-source chips -->
+              <!-- Specialist chips (what makes this player different) -->
               <span class="flex shrink-0 flex-wrap items-center gap-1">
-                <span v-for="c in chipsFor(row).plus" :key="'p-' + c"
+                <span v-for="c in chipsFor(row)" :key="'s-' + c"
                   class="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary">{{ c }}</span>
-                <span v-for="c in chipsFor(row).minus" :key="'m-' + c"
-                  class="rounded bg-[#FF5C5C]/10 px-1.5 py-0.5 font-mono text-xs text-[#FF5C5C]">{{ c }}</span>
               </span>
 
               <!-- Projected points + per-game -->
@@ -257,8 +283,7 @@ const roster = computed(() => [
         </div>
 
         <p class="px-4 py-3 font-mono text-[10px] leading-relaxed text-dark-textMuted">
-          <span class="text-primary">green</span> = a top point source ·
-          <span class="text-[#FF5C5C]">red</span> = a drag ·
+          <span class="text-primary">chips</span> = a specialist edge (SB / SV / HLD / QS) ·
           right number = projected rest-of-season fantasy points (/g per game) ·
           tiers rank within hitters / pitchers
         </p>

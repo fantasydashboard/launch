@@ -47,7 +47,7 @@ describe('buildPointsTeam', () => {
     expect(m.myStanding?.teamKey).toBe('A')
   })
 
-  it('ranks each starter against the other team at that slot', () => {
+  it('ranks each position starter against the other team at that slot', () => {
     const m = buildPointsTeam(pool, fgByKey, weights, 'A', slots)
     const my2B = m.slotRanks.find((s) => s.slot === '2B')!
     expect(my2B.starterName).toBe('Stud2B')
@@ -55,6 +55,16 @@ describe('buildPointsTeam', () => {
     const myOF = m.slotRanks.find((s) => s.slot === 'OF')!
     expect(myOF.starterName).toBe('WeakOF')
     expect(myOF.rank).toBe(2) // WeakOF (90) loses to MidOF (260)
+    // Pitching is NOT a per-slot row — it folds into the staff aggregate.
+    expect(m.slotRanks.some((s) => s.slot === 'SP')).toBe(false)
+  })
+
+  it('folds pitching into one staff rank with arms listed by points', () => {
+    const m = buildPointsTeam(pool, fgByKey, weights, 'A', slots)
+    // AceA staff (795) trails AceB staff (860) → my pitching ranks 2nd.
+    expect(m.pitching?.rank).toBe(2)
+    expect(m.pitching?.teams).toBe(2)
+    expect(m.pitching?.arms[0].name).toBe('AceA')
   })
 
   it('parseEligible falls back to the position string', () => {
