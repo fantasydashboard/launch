@@ -88,40 +88,38 @@ export function buildPointsTeam(
   const ptsByKey = new Map<string, ReturnType<typeof projectPlayerPoints>>()
   for (const p of pool) ptsByKey.set(p.playerKey, projectPlayerPoints(fgByKey[p.playerKey], weights))
 
-  // 2) Percentile within side, across every rostered player (the "VS ALL" rank).
-  const sidePoints: Record<PointsSide, number[]> = { hit: [], pit: [] }
-  for (const p of pool) {
-    const r = ptsByKey.get(p.playerKey)!
-    sidePoints[r.side].push(r.total)
-  }
-  for (const k of ['hit', 'pit'] as PointsSide[]) sidePoints[k].sort((a, b) => a - b)
-  const percentile = (side: PointsSide, v: number): number => {
-    const arr = sidePoints[side]
-    if (arr.length < 2) return 50
-    let below = 0
-    for (const x of arr) if (x < v) below++
-    return Math.round((below / (arr.length - 1)) * 100)
-  }
-
-  // 3) My roster rows, tiered by VS-ALL percentile within side.
-  const tierOf = (pct: number): Tier => (pct >= 66 ? 'CORE' : pct >= 33 ? 'SOLID' : 'FRINGE')
-  const rosterRows: PointsRosterRow[] = pool
+  // 2) My roster rows. Tiers are WITHIN-ROSTER (your studs vs your scrubs) so every
+  //    roster spreads CORE→FRINGE like the category page. A league-wide percentile
+  //    compresses to all-FRINGE: additive points push the median rostered player
+  //    high, so even a team's best bat sits below the league median. The bar
+  //    (rankVsAll) is the within-side, within-roster percentile (best ≈ 100).
+  const rawRows = pool
     .filter((p) => myTeamKey != null && p.teamKey === myTeamKey)
     .map((p) => {
       const r = ptsByKey.get(p.playerKey)!
-      const pct = percentile(r.side, r.points)
-      return {
-        player: p,
+      return { player: p, side: r.side, points: r.total, games: r.games, perStat: r.perStat }
+    })
+
+  const rosterRows: PointsRosterRow[] = []
+  for (const side of ['hit', 'pit'] as PointsSide[]) {
+    const sideRows = rawRows.filter((r) => r.side === side).sort((a, b) => b.points - a.points)
+    const n = sideRows.length
+    sideRows.forEach((r, i) => {
+      const pct = n < 2 ? 50 : Math.round(((n - 1 - i) / (n - 1)) * 100)
+      const tier: Tier = pct >= 66 ? 'CORE' : pct >= 33 ? 'SOLID' : 'FRINGE'
+      rosterRows.push({
+        player: r.player,
         side: r.side,
-        points: r.total,
-        perGame: r.games > 0 ? r.total / r.games : 0,
+        points: r.points,
+        perGame: r.games > 0 ? r.points / r.games : 0,
         games: r.games,
-        tier: tierOf(pct),
+        tier,
         rankVsAll: pct,
         perStat: r.perStat,
-      }
+      })
     })
-    .sort((a, b) => b.points - a.points)
+  }
+  rosterRows.sort((a, b) => b.points - a.points)
 
   // 4) Per-team optimal lineup (assignSlots over projected points), for standings
   //    AND the slot-value landscape. bar=0 so even weak rosters field a full lineup.

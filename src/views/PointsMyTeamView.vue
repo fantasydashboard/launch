@@ -139,15 +139,21 @@ const auditRows = computed(() => {
         <div class="mt-3 space-y-1.5">
           <div v-for="(s, i) in model.slotRanks" :key="i" class="flex items-center gap-3">
             <span class="w-10 shrink-0 font-mono text-xs text-dark-textMuted">{{ s.slot }}</span>
-            <span class="w-12 shrink-0 text-right font-mono text-sm font-semibold" :class="rankClass(s.rank, s.teams)">
-              {{ ord(s.rank) }}
+            <span class="w-12 shrink-0 text-right font-mono text-sm font-semibold"
+              :class="s.starterKey ? rankClass(s.rank, s.teams) : 'text-dark-textMuted/50'">
+              {{ s.starterKey ? ord(s.rank) : '—' }}
             </span>
-            <span class="w-40 shrink-0 truncate text-sm text-dark-text">{{ s.starterName }}</span>
+            <span class="w-40 shrink-0 truncate text-sm"
+              :class="s.starterKey ? 'text-dark-text' : 'text-dark-textMuted/60 italic'">
+              {{ s.starterKey ? s.starterName : 'open slot' }}
+            </span>
             <div class="relative h-2 flex-1 overflow-hidden rounded-full bg-dark-bg">
-              <div class="absolute inset-y-0 left-0 rounded-full" :class="barClass(s.rank, s.teams)"
+              <div v-if="s.starterKey" class="absolute inset-y-0 left-0 rounded-full" :class="barClass(s.rank, s.teams)"
                 :style="{ width: rankBar(s.rank, s.teams) + '%' }" />
             </div>
-            <span class="w-12 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ round(s.points) }}</span>
+            <span class="w-12 shrink-0 text-right font-mono text-xs text-dark-textMuted">
+              {{ s.starterKey ? round(s.points) : '' }}
+            </span>
           </div>
         </div>
       </section>
