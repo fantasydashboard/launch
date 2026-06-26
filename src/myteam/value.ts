@@ -153,11 +153,16 @@ function playerRole(player: ValuePoolPlayer, cats: CatSpec[]): 'hitter' | 'pitch
  * percentile + tier are retained for the chip UI.
  */
 export function computeRosterValue(
-  pool: ValuePoolPlayer[],
+  inputPool: ValuePoolPlayer[],
   myPlayerKeys: string[],
   cats: CatSpec[],
   opts: { baseline?: ValueBaseline; zClamp?: number } = {},
 ): PlayerContribution[] {
+  // Drop players that score in NO category (e.g. unmatched rows in a projection-only pool, whose
+  // stats are empty). An empty player has no side, so playerRole defaults it to 'hitter' — a flood
+  // of them pollutes the hitter replacement/VOR pools and collapses every real hitter's cross-role
+  // value to one number. They carry zero value anyway, so exclude them from the math entirely.
+  const pool = inputPool.filter((p) => cats.some((c) => participatesIn(p, c)))
   // When a `baseline` is supplied, z is measured against the full projected-player
   // universe (not this league's rostered pool), with a looser clamp — so a real star's
   // elite categories register at full magnitude instead of being compressed by a deep
