@@ -4,6 +4,8 @@ import { useLeagueStore } from '@/stores/league'
 import { useFullSeasonCategoryData } from '@/composables/useFullSeasonCategoryData'
 import { isYahooCategoryLeague as isYahooCategoryScoringType } from '@/composables/useIsCategoryLeague'
 import { useMyRoster } from '@/composables/useMyRoster'
+import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
+import { toEffectiveStats } from '@/myteam/effectiveStats'
 import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { isLowerBetter } from '@/players/direction'
 import { classifyCategory } from '@/myteam/categorySide'
@@ -33,7 +35,11 @@ const isEspn = computed(() => leagueStore.activePlatform === 'espn')
 
 // Yahoo sources.
 const { seasonMatchups, categoryLabels, loaded: yCatsLoaded, load: loadSeasonData } = useFullSeasonCategoryData()
-const { players: yRosterPlayers, pool: yPool, fgByKey: yFg, statcastByKey: yStatcast, rosterSlots: yRosterSlots, loading: yRosterLoading, loaded: yRosterLoaded, load: loadRoster } = useMyRoster()
+// useMyRoster gives the ACTUAL pool — we keep it only for identities (headshots) + Statcast +
+// season-pace (timing). The category ranks and player values rank off useYahooLeaguePool (FG ROS,
+// projected) so every page is rest-of-season consistent. Mapped together by playerKey below.
+const { players: yRosterPlayers, pool: yPool, statcastByKey: yStatcast, rosterSlots: yRosterSlots, loading: yRosterLoading, loaded: yRosterLoaded, load: loadRoster } = useMyRoster()
+const yahooLeague = useYahooLeaguePool()
 // ESPN source (self-detects H2H_CATEGORY).
 const espn = useEspnCategoryTeamData()
 
@@ -68,6 +74,7 @@ watch(
     else if (platform === 'yahoo') {
       loadSeasonData(id)
       loadRoster()
+      yahooLeague.load() // projected pool (shared session cache with My Team / Wire)
     }
   },
   { immediate: true },
@@ -81,13 +88,31 @@ function retry() {
   else {
     loadSeasonData(id)
     loadRoster()
+    yahooLeague.load()
   }
 }
 
 // === Unified, platform-neutral inputs into the trade engine ===
-const pool = computed(() => (isEspn.value ? espn.pool.value : yPool.value))
-const fgByKey = computed(() => (isEspn.value ? espn.fgByKey.value : yFg.value))
+// Yahoo ranks/values off the PROJECTED pool (FG ROS), but its light rows carry no headshots —
+// backfill those from useMyRoster's actual pool (by playerKey) so deal-card avatars survive.
+const pool = computed(() => {
+  if (isEspn.value) return espn.pool.value
+  const shots = new Map(yPool.value.map((p) => [p.playerKey, (p as { headshot?: string }).headshot]))
+  return yahooLeague.pool.value.map((p) => ({
+    ...p,
+    headshot: (p as { headshot?: string }).headshot || shots.get(p.playerKey) || '',
+  }))
+})
+const fgByKey = computed(() => (isEspn.value ? espn.fgByKey.value : yahooLeague.fgByKey.value))
 const statcastByKey = computed(() => (isEspn.value ? espn.statcastByKey.value : yStatcast.value))
+// Actual season-pace stats per playerKey (from useMyRoster) — the perceived leg for sell-high,
+// since the projected pool has no raw stats. ESPN's pool has raw stats, so it needs no override.
+const perceivedStatsByKey = computed<Record<string, Record<string, number>>>(() => {
+  if (isEspn.value) return {}
+  const out: Record<string, Record<string, number>> = {}
+  for (const p of yPool.value) out[p.playerKey] = toEffectiveStats(p.stats, null, catSpecs.value, seasonFraction.value)
+  return out
+})
 
 const categories = computed<{ statId: string; label: string; name: string }[]>(() => {
   if (isEspn.value) return espn.categories.value.map((c) => ({ statId: c.statId, label: c.label, name: c.name }))
@@ -173,7 +198,7 @@ const teamLogoByKey = computed(() => {
   return m
 })
 
-const { view } = useTradeTargets({ pool, fgByKey, statcastByKey, catSpecs, teamCatWins, myTeamKey, teamNameByKey, teamLogoByKey, seasonFraction: seasonFraction.value, labelOf, baseline: valueBaseline, zClamp: ZCLAMP })
+const { view } = useTradeTargets({ pool, fgByKey, statcastByKey, catSpecs, teamCatWins, myTeamKey, teamNameByKey, teamLogoByKey, seasonFraction: seasonFraction.value, labelOf, baseline: valueBaseline, zClamp: ZCLAMP, perceivedStatsByKey })
 
 // --- Custom trade analyzer: evaluate a SPECIFIC deal you have in mind ---
 const analyzerOpen = ref(false)
@@ -184,7 +209,7 @@ const anGet = ref<string[]>([])
 // guarded only on an empty roster so we don't churn before data loads.
 const engine = computed(() =>
   pool.value.length
-    ? buildEngine({ pool: pool.value, fgByKey: fgByKey.value, statcastByKey: statcastByKey.value, cats: catSpecs.value, teamCatWins: teamCatWins.value, seasonFraction: seasonFraction.value, labelOf, baseline: valueBaseline.value ?? undefined, zClamp: ZCLAMP })
+    ? buildEngine({ pool: pool.value, fgByKey: fgByKey.value, statcastByKey: statcastByKey.value, cats: catSpecs.value, teamCatWins: teamCatWins.value, seasonFraction: seasonFraction.value, labelOf, baseline: valueBaseline.value ?? undefined, zClamp: ZCLAMP, perceivedStatsByKey: perceivedStatsByKey.value })
     : null,
 )
 // --- Positional dimension: win-win / reach / consolidate by roster slot ---

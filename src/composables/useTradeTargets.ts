@@ -121,6 +121,9 @@ export function useTradeTargets(inputs: {
   // value falls back to pool-relative z (the old behavior).
   baseline?: Ref<ValueBaseline | null>
   zClamp?: number
+  // Actual season-pace stats per playerKey for the sell-high/buy-low PERCEIVED leg. Pass when the
+  // `pool` is projection-only (FG ROS, no raw stats); else timing has nothing to diverge from.
+  perceivedStatsByKey?: Ref<Record<string, Record<string, number>>>
 }): { view: ComputedRef<TradeView | null> } {
   const view = computed<TradeView | null>(() => {
     const cats = inputs.catSpecs.value
@@ -174,7 +177,7 @@ export function useTradeTargets(inputs: {
     //     Overperformer → sell-high; underperformer → buy-low. Powers the timing mode and the
     //     buy/sell side badges. Unmatched players have perceived == ros → no signal. ---
     const perceivedValued = computeRosterValue(
-      pool.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: toEffectiveStats(p.stats, null, cats, inputs.seasonFraction) })),
+      pool.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: inputs.perceivedStatsByKey?.value?.[p.playerKey] ?? toEffectiveStats(p.stats, null, cats, inputs.seasonFraction) })),
       pool.map((p) => p.playerKey),
       cats,
       valueOpts,
