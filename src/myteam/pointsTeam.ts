@@ -108,6 +108,17 @@ export function buildPointsTeam(
   // accrues a scored stat (every hitter steals a few bases, every starter logs a
   // few QS). Threshold = the 65th percentile among the league pool's NONZERO
   // contributors on that side, so only the upper slice earns the chip.
+  // Side per player. An unmatched player (no FG row) has no player_type, so fall
+  // back to POSITION — otherwise a projection-less reliever defaults to 'hit' and
+  // shows up under your hitters (the Carlos Estevez / category-Cantillo bug).
+  const isPitcherPos = (pos: string) =>
+    String(pos || '').split(/[,/|]/).some((t) => ['SP', 'RP', 'P'].includes(t.trim().toUpperCase()))
+  const sideByKey = new Map<string, PointsSide>()
+  for (const p of pool) {
+    const fg = fgByKey[p.playerKey]
+    sideByKey.set(p.playerKey, fg ? (fg.player_type === 'pitcher' ? 'pit' : 'hit') : isPitcherPos(p.position) ? 'pit' : 'hit')
+  }
+
   const SPECIALIST_STATS = ['SB', 'SV', 'HLD', 'QS']
   const pctileNonzero = (vals: number[], p: number): number => {
     const pos = vals.filter((v) => v > 0).sort((a, b) => a - b)
@@ -120,7 +131,7 @@ export function buildPointsTeam(
       const vals: number[] = []
       for (const p of pool) {
         const r = ptsByKey.get(p.playerKey)!
-        if (r.side === side && r.perStat[st] != null) vals.push(r.perStat[st])
+        if (sideByKey.get(p.playerKey) === side && r.perStat[st] != null) vals.push(r.perStat[st])
       }
       chipThresh[side][st] = pctileNonzero(vals, 0.65)
     }
@@ -137,7 +148,7 @@ export function buildPointsTeam(
     .filter((p) => myTeamKey != null && p.teamKey === myTeamKey)
     .map((p) => {
       const r = ptsByKey.get(p.playerKey)!
-      return { player: p, side: r.side, points: r.total, games: r.games, perStat: r.perStat }
+      return { player: p, side: sideByKey.get(p.playerKey)!, points: r.total, games: r.games, perStat: r.perStat }
     })
 
   const rosterRows: PointsRosterRow[] = []

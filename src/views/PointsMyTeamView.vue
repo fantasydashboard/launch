@@ -62,13 +62,20 @@ const model = computed(() => {
 const hitters = computed(() => model.value?.rosterRows.filter((r) => r.side === 'hit') ?? [])
 const pitchers = computed(() => model.value?.rosterRows.filter((r) => r.side === 'pit') ?? [])
 
+// Strongest / weakest unit — position slots AND the pitching staff (so a weak
+// staff can be flagged as the biggest hole, not just position players).
 const verdict = computed(() => {
-  const s = model.value?.slotRanks.filter((r) => r.starterKey) ?? []
-  if (!s.length) return null
-  const best = [...s].sort((a, b) => a.rank - b.rank)[0]
-  const worst = [...s].sort((a, b) => b.rank - a.rank)[0]
+  const m = model.value
+  if (!m) return null
+  const cands = m.slotRanks.filter((r) => r.starterKey).map((r) => ({ slot: r.slot, rank: r.rank }))
+  if (m.pitching) cands.push({ slot: 'Pitching', rank: m.pitching.rank })
+  if (!cands.length) return null
+  const best = [...cands].sort((a, b) => a.rank - b.rank)[0]
+  const worst = [...cands].sort((a, b) => b.rank - a.rank)[0]
   return { best, worst }
 })
+
+const hasProj = (key: string) => !!fgByKey.value[key]
 
 const ord = (n: number) => {
   const s = ['th', 'st', 'nd', 'rd'], v = n % 100
@@ -254,8 +261,10 @@ const roster = computed(() => [
                   class="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary">{{ c }}</span>
               </span>
 
-              <!-- Projected points + per-game -->
-              <span class="ml-auto flex shrink-0 items-baseline gap-1.5">
+              <!-- Projected points + per-game (or a "no projection" note for unmatched) -->
+              <span v-if="!hasProj(row.player.playerKey)"
+                class="ml-auto shrink-0 font-mono text-[11px] italic text-dark-textMuted/50">no projection</span>
+              <span v-else class="ml-auto flex shrink-0 items-baseline gap-1.5">
                 <span class="font-mono text-sm font-semibold text-dark-text">{{ round(row.points) }}</span>
                 <span class="font-mono text-[10px] text-dark-textMuted">{{ row.perGame.toFixed(1) }}/g</span>
               </span>
