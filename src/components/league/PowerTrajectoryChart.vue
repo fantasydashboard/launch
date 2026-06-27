@@ -5,8 +5,9 @@ import type { Trajectory } from '@/league/powerTrajectory'
 const props = withDefaults(defineProps<{ trajectory: Trajectory; height?: number }>(), { height: 320 })
 
 const ME = '#5ec8e6' // cyan — matches the matchup win-prob chart
-// Muted, distinguishable palette for the rest of the field.
-const PALETTE = ['#e69a4a', '#9b87f5', '#4ade80', '#f472b6', '#fbbf24', '#fb7185', '#34d399', '#c084fc', '#60a5fa', '#f87171', '#a3e635', '#22d3ee']
+// Field palette, ordered so neighbours contrast, and steering clear of the reserved
+// cyan (you) and lime (the strength bars) so no rival line mimics them.
+const PALETTE = ['#e69a4a', '#f472b6', '#60a5fa', '#4ade80', '#fbbf24', '#c084fc', '#fb7185', '#2dd4bf', '#fb923c', '#a78bfa', '#f87171', '#facc15']
 
 const teamCount = computed(() => props.trajectory.teams.length)
 
@@ -34,8 +35,10 @@ const built = computed<Built>(() => {
   }
 
   // Overlay YOUR talent (power-rank) line — dashed — so the luck gap is visible.
+  // Only once there's a real segment (≥2 snapshots); a lone point would render as
+  // an orphan marker with a redundant legend entry.
   const me = props.trajectory.teams.find((t) => t.isMe)
-  if (me && me.talent.length) {
+  if (me && props.trajectory.hasTalentHistory && me.talent.length >= 2) {
     series.push({ name: `${me.teamName} · talent`, data: me.talent.map((p) => ({ x: p.week, y: p.rank })) })
     colors.push(ME)
     widths.push(2)

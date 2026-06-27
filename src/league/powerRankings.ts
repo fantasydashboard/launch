@@ -58,15 +58,11 @@ const ord = (n: number) => {
   return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
 
-/**
- * Deterministic variant pick (no Math.random — keeps results stable/cacheable).
- * `offset` (the team's rank) is folded in so adjacent rows can't land on the same
- * variant — two Rebuilders back to back never get the identical sentence.
- */
-function pick(key: string, variants: string[], offset = 0): string {
+/** Stable string hash (no Math.random — keeps blurbs deterministic/cacheable). */
+function hashKey(key: string): number {
   let h = 0
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0
-  return variants[(h + offset) % variants.length]
+  return h
 }
 
 /** Dense rank a list (1 = best) by a descending key; ties share the better rank. */
@@ -100,7 +96,11 @@ export function buildPowerRankings(teams: PowerTeamInput[]): PowerRankings {
   const tol = Math.max(2, Math.round(n / 4))
   const third = Math.max(1, Math.round(n / 3))
 
-  const rows: PowerRow[] = teams.map((t) => {
+  // Build each row with its full set of candidate blurbs; the final variant is
+  // chosen AFTER sorting so adjacent rows (even two different teams at neighbouring
+  // ranks) never land on the identical sentence.
+  interface Build { row: PowerRow; variants: string[] }
+  const built: Build[] = teams.map((t) => {
     const sr = strengthRank.get(t)!
     const rr = recordRank.get(t)!
     const rec = `${t.wins}-${t.losses}${t.ties ? `-${t.ties}` : ''}`
@@ -109,7 +109,7 @@ export function buildPowerRankings(teams: PowerTeamInput[]): PowerRankings {
     const managerless = !!t.managerless
 
     // Abandoned teams never get a luck verdict — the talent won't be managed.
-    let luck: LuckStatus = managerless
+    const luck: LuckStatus = managerless
       ? 'legit'
       : luckDelta >= tol ? 'pretender' : luckDelta <= -tol ? 'sleeper' : 'legit'
     // A bottom-tier roster can't be a real "buy-low / they'll climb" — soften it to
@@ -119,54 +119,64 @@ export function buildPowerRankings(teams: PowerTeamInput[]): PowerRankings {
     // Board blurbs describe; the imperative ("sell high" / "buy low") lives ONCE in
     // the `move` field that drives the callout, so the row never echoes the callout.
     let move = ''
-    let blurb: string
+    let variants: string[]
     if (managerless) {
       move = 'Free matchup'
-      blurb = pick(t.teamKey, [
+      variants = [
         `Abandoned — nobody's setting this lineup, so the ${ord(sr)}-best talent stays stranded. Bank the win when you face them.`,
         `No manager here. The roster reads ${ord(sr)} on paper, but it won't be optimized — a free matchup, not a threat.`,
-      ], sr)
+      ]
     } else if (luck === 'pretender') {
       move = 'Sell-high'
-      blurb = pick(t.teamKey, [
+      variants = [
         `${ord(rr)} by record but only ${ord(sr)} by talent — riding luck, and due to regress.`,
         `The standings flatter them: ${ord(rr)} on ${ord(sr)}-place talent. Bound to cool off.`,
         `Overachieving at ${ord(rr)} on just ${ord(sr)}-best talent — a regression candidate.`,
-      ], sr)
+      ]
     } else if (softSleeper) {
       move = 'Slight rebound'
-      blurb = pick(t.teamKey, [
+      variants = [
         `A touch unlucky — ${ord(sr)} in talent, ${ord(rr)} by record — but the roster's still thin. A modest bounce, not a turnaround.`,
         `Better than a ${rec} looks, though it's a bottom-tier roster. A slight rebound at most.`,
-      ], sr)
+      ]
     } else if (luck === 'sleeper') {
       move = 'Buy-low'
-      blurb = pick(t.teamKey, [
+      variants = [
         `${ord(rr)} by record but ${ord(sr)} by talent — the roster's better than the standings; they should climb.`,
         `Underwater at ${ord(rr)} despite ${ord(sr)}-best talent. Unlucky, and primed to rise.`,
         `Standings say ${ord(rr)}, the roster says ${ord(sr)} — expect them to climb.`,
-      ], sr)
+      ]
     } else if (tier === 'Contender') {
-      blurb = pick(t.teamKey, [
-        `Genuinely the class of the league — ${ord(sr)} in talent, and the standings agree.`,
-        `The real deal: ${ord(sr)}-best roster, and they're stacking wins to match.`,
-        `No fluke — ${ord(sr)} in talent and playing like it.`,
-      ], sr)
+      // "Class of the league" is reserved for the actual #1; everyone else is a
+      // "real contender" so the superlative never lands on a #2/#3.
+      variants = sr === 1
+        ? [
+            `Genuinely the class of the league — 1st in talent, and the standings agree.`,
+            `The outright best roster in the league, and the record backs it.`,
+            `No fluke — the top roster, and playing like it.`,
+          ]
+        : [
+            `A real contender — ${ord(sr)} in talent, and the record backs it.`,
+            `The real deal: ${ord(sr)}-best roster, and they're stacking wins to match.`,
+            `No fluke — ${ord(sr)} in talent and playing like it.`,
+          ]
     } else if (tier === 'Rebuilder') {
-      blurb = pick(t.teamKey, [
+      variants = [
         `Thin roster (${ord(sr)} in talent), and the record knows it. Playing for next year.`,
         `${ord(sr)}-best talent — the standings aren't lying. This one's a rebuild.`,
         `Bottom-tier roster (${ord(sr)}), bottom-tier results. Next year's project.`,
-      ], sr)
+      ]
     } else {
-      blurb = pick(t.teamKey, [
+      // Always name the TALENT rank (the row's number) so it can't read as a
+      // contradiction next to the rank shown on the left.
+      variants = [
         `Right where they belong — ${ord(sr)} in talent, ${ord(rr)} in the standings.`,
         `Roster and record line up: ${ord(sr)} on paper, ${ord(rr)} in the race.`,
-        `A fair ${ord(rr)} — talent and results in agreement.`,
-      ], sr)
+        `Roughly fair — ${ord(sr)} in talent, ${ord(rr)} by record.`,
+      ]
     }
 
-    return {
+    const row: PowerRow = {
       teamKey: t.teamKey,
       teamName: t.teamName,
       teamLogo: t.teamLogo,
@@ -182,11 +192,24 @@ export function buildPowerRankings(teams: PowerTeamInput[]): PowerRankings {
       tier,
       managerless,
       move,
-      blurb,
+      blurb: '', // resolved post-sort
     }
+    return { row, variants }
   })
 
-  rows.sort((a, b) => a.strengthRank - b.strengthRank || b.winPct - a.winPct)
+  built.sort((a, b) => a.row.strengthRank - b.row.strengthRank || b.row.winPct - a.row.winPct)
+
+  // Resolve blurbs in display order: start from a deterministic per-team pick, then
+  // rotate off the previous row's sentence so no two neighbours read identically.
+  let prevBlurb = ''
+  for (const b of built) {
+    let idx = (hashKey(b.row.teamKey) + b.row.strengthRank) % b.variants.length
+    if (b.variants[idx] === prevBlurb && b.variants.length > 1) idx = (idx + 1) % b.variants.length
+    b.row.blurb = b.variants[idx]
+    prevBlurb = b.row.blurb
+  }
+
+  const rows = built.map((b) => b.row)
   // Callouts are ACTIONABLE only: skip abandoned teams, and skip bottom-tier
   // "sleepers" (a thin roster isn't a real buy-low). The board still shows the
   // nuanced per-row read; the callouts are the triage shortlist.

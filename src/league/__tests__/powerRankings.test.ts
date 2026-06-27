@@ -65,6 +65,32 @@ describe('buildPowerRankings', () => {
     expect(pr.sleepers.map((r) => r.teamKey)).not.toContain('Ghost')
   })
 
+  it('never repeats the same blurb on two adjacent rows', () => {
+    // 12 teams whose talent matches their record exactly → every row is "legit",
+    // the worst case for blurb collisions (all draw from the same variant set).
+    const twelve = Array.from({ length: 12 }, (_, i) =>
+      team(`T${i}`, 1200 - i * 100, 12 - i, i),
+    )
+    const pr = buildPowerRankings(twelve)
+    for (let i = 1; i < pr.rows.length; i++) {
+      expect(pr.rows[i].blurb).not.toBe(pr.rows[i - 1].blurb)
+    }
+  })
+
+  it('reserves "class of the league" for the actual #1', () => {
+    // Talent matches record, so #1 is a legit contender (not a sleeper).
+    const aligned = [
+      team('Ace', 100, 9, 1), team('B', 80, 7, 3), team('C', 60, 5, 5),
+      team('D', 40, 3, 7), team('E', 20, 1, 9),
+    ]
+    const pr = buildPowerRankings(aligned)
+    const top = pr.rows[0]
+    expect(top.strengthRank).toBe(1)
+    expect(top.blurb).toMatch(/class of the league|best roster|top roster/i)
+    // No non-#1 contender should claim the superlative.
+    for (const r of pr.rows.slice(1)) expect(r.blurb).not.toMatch(/class of the league/i)
+  })
+
   it('softens a bottom-tier sleeper so tier and luck never contradict', () => {
     // 8 teams: a thin (7th-talent) roster with the worst record is technically
     // "unlucky" but is a Rebuilder — it must not be sold as a climber.
