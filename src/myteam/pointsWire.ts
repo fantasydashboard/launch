@@ -72,7 +72,11 @@ export function buildPointsWire(
   const rows: Row[] = []
   for (const fa of freeAgents) {
     if (isOut(fa.status)) continue
-    const fg = matchFG({ full_name: fa.name, mlb_team: fa.team })
+    // A free agent with no MLB team ('FA') can only match by name, which collides a
+    // same-named prospect onto a star's projection (e.g. a "Julio Rodriguez" catcher
+    // inheriting the Mariners star's points). Require a real team to project.
+    const hasTeam = fa.team && fa.team.toUpperCase() !== 'FA'
+    const fg = hasTeam ? matchFG({ full_name: fa.name, mlb_team: fa.team }) : null
     const pp = projectPlayerPoints(fg, weights)
     const side: PointsSide = fg ? (fg.player_type === 'pitcher' ? 'pit' : 'hit') : isPitcherPos(fa.position) ? 'pit' : 'hit'
     rows.push({
