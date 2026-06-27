@@ -108,7 +108,7 @@ watch(
 // from the accruing snapshots, teams ordered by current power rank to match the board.
 const trajectoryView = computed(() => {
   if (!rankings.value) return null
-  const meta = rankings.value.rows.map((r) => ({ teamKey: r.teamKey, teamName: r.teamName, isMe: r.teamKey === myTeamKey.value }))
+  const meta = rankings.value.rows.map((r) => ({ teamKey: r.teamKey, teamName: r.teamName, isMe: r.teamKey === myTeamKey.value, teamLogo: r.teamLogo }))
   return buildTrajectory(trajectory.outcomes.value, snapshots.value, meta)
 })
 
@@ -228,10 +228,10 @@ const calloutCols = computed(() =>
         </p>
         <div class="rounded-xl border border-dark-border bg-dark-card p-3">
           <PowerTrajectoryChart :trajectory="trajectoryView" />
-          <p class="px-1 pt-1 font-mono text-[10px] leading-relaxed text-dark-textMuted">
-            <span class="text-[#5ec8e6]">Solid</span> = standings race ·
-            <template v-if="trajectoryView.hasTalentHistory"><span class="text-[#5ec8e6]">dashed</span> = your talent (power) rank — where the roster says you should sit. The gap is your luck.</template>
-            <template v-else>your <span class="text-[#5ec8e6]">talent</span> line starts charting from this week and fills in as the season goes.</template>
+          <p class="px-1 pt-2 font-mono text-[10px] leading-relaxed text-dark-textMuted">
+            Logos mark where each team sits now · your line is <span class="text-[#5ec8e6]">cyan</span> · hover a line to isolate it.
+            <template v-if="trajectoryView.hasTalentHistory"> The <span class="text-[#5ec8e6]">dashed</span> line is your talent (power) rank — where the roster says you should sit; the gap is your luck.</template>
+            <template v-else> Your <span class="text-[#5ec8e6]">talent</span> line starts charting from this week and fills in as the season goes.</template>
           </p>
         </div>
       </section>

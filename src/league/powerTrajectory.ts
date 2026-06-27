@@ -28,6 +28,7 @@ export interface TeamMeta {
   teamKey: string
   teamName: string
   isMe: boolean
+  teamLogo?: string
 }
 
 export interface RankPoint {
@@ -39,6 +40,7 @@ export interface TeamTrajectory {
   teamKey: string
   teamName: string
   isMe: boolean
+  teamLogo?: string
   standings: RankPoint[] // record rank per completed week
   talent: RankPoint[] // power rank per snapshot week (may be empty/sparse)
 }
@@ -115,6 +117,7 @@ export function buildTrajectory(
     teamKey: m.teamKey,
     teamName: m.teamName,
     isMe: m.isMe,
+    teamLogo: m.teamLogo,
     standings: standingsByTeam.get(m.teamKey)!,
     talent: talentByTeam.get(m.teamKey)!,
   }))
