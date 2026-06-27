@@ -40,6 +40,13 @@ describe('buildPointsMatchup', () => {
     expect(m.my.weeklyHitterPoints).toBeGreaterThan(m.opp.weeklyHitterPoints)
   })
 
+  it('favors the side with more projected weekly points', () => {
+    const m = buildPointsMatchup(pool, fg, weights, 'A', 'B', slots, schedule)!
+    expect(m.my.totalWeekly).toBeGreaterThan(m.opp.totalWeekly) // more games + a two-start arm
+    expect(m.myWinPct).toBeGreaterThan(50)
+    expect(m.myWinPct).toBeLessThanOrEqual(100)
+  })
+
   it('flags two-start pitchers from the probable-starter list', () => {
     const m = buildPointsMatchup(pool, fg, weights, 'A', 'B', slots, schedule)!
     expect(m.my.twoStartArms).toHaveLength(1)

@@ -8,6 +8,8 @@ import { useThisWeekOpponent } from '@/composables/useThisWeekOpponent'
 import { buildPointsMatchup } from '@/myteam/pointsMatchup'
 import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
+import { useWinProbTrend } from '@/composables/useWinProbTrend'
+import MatchupWinProbChart from '@/components/matchup/MatchupWinProbChart.vue'
 
 const leagueStore = useLeagueStore()
 const isEspn = computed(() => leagueStore.activePlatform === 'espn')
@@ -68,12 +70,18 @@ const matchup = computed(() => {
 const round = (n: number) => Math.round(n)
 const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none')
 
-// Who's favored this week = projected hitter points + a pitching-start nudge.
-const myEdge = computed(() => {
-  const m = matchup.value
-  if (!m) return null
-  const diff = m.my.weeklyHitterPoints - m.opp.weeklyHitterPoints
-  return { diff, leading: diff > 0 }
+const daysRemaining = computed(() => (7 - new Date().getDay()) % 7)
+const myWinPct = computed(() => matchup.value?.myWinPct ?? 50)
+
+// Daily-captured win-probability history → the trend line (same engine the
+// category Matchup uses). Feeds my/opp win% keyed by league + week.
+const trend = useWinProbTrend({
+  leagueId: computed(() => leagueStore.activeLeagueId),
+  week: computed(() => oppSvc.opponent.value?.week ?? 0),
+  my: myWinPct,
+  opp: computed(() => 100 - myWinPct.value),
+  daysRemaining,
+  ready: computed(() => !!matchup.value),
 })
 </script>
 
@@ -101,27 +109,43 @@ const myEdge = computed(() => {
         </div>
       </div>
 
-      <!-- This week's projected hitter output -->
+      <!-- Win probability + projected weekly total -->
       <div class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
-        <div class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">This week · projected hitter points</div>
-        <div class="mt-2 flex items-center gap-4">
-          <div>
-            <div class="text-2xl font-display font-bold" :class="myEdge?.leading ? 'text-primary' : 'text-dark-text'">
-              {{ round(matchup.my.weeklyHitterPoints) }}
-            </div>
-            <div class="font-mono text-[11px] text-dark-textMuted">you</div>
-          </div>
-          <span class="font-mono text-sm text-dark-textMuted">–</span>
-          <div>
-            <div class="text-2xl font-display font-bold" :class="!myEdge?.leading ? 'text-[#FF5C5C]' : 'text-dark-text'">
-              {{ round(matchup.opp.weeklyHitterPoints) }}
-            </div>
-            <div class="font-mono text-[11px] text-dark-textMuted">{{ oppSvc.opponent.value.opponentName }}</div>
-          </div>
-          <div class="ml-auto text-right font-mono text-[11px] text-dark-textMuted">
-            from your bats' games this week<br />(pitching counted separately below)
-          </div>
+        <div class="flex items-baseline justify-between">
+          <div class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Win probability</div>
+          <div class="font-mono text-[10px] text-dark-textMuted">{{ daysRemaining }} day{{ daysRemaining === 1 ? '' : 's' }} left</div>
         </div>
+        <div class="mt-1 flex items-end gap-3">
+          <span class="text-4xl font-display font-bold" :class="myWinPct >= 50 ? 'text-primary' : 'text-[#FF5C5C]'">{{ round(myWinPct) }}%</span>
+          <span class="pb-1 text-sm text-dark-textMuted">to win the week</span>
+        </div>
+        <!-- Win-probability split bar -->
+        <div class="mt-3 flex h-2 overflow-hidden rounded-full bg-dark-bg">
+          <div class="bg-primary" :style="{ width: myWinPct + '%' }" />
+          <div class="bg-[#FF5C5C]/60" :style="{ width: 100 - myWinPct + '%' }" />
+        </div>
+        <div class="mt-2 flex justify-between font-mono text-[11px] text-dark-textMuted">
+          <span>{{ myTeamName }} · {{ round(matchup.my.totalWeekly) }} proj pts</span>
+          <span>{{ oppSvc.opponent.value.opponentName }} · {{ round(matchup.opp.totalWeekly) }}</span>
+        </div>
+      </div>
+
+      <!-- Win-probability trend: real once ≥2 daily readings exist -->
+      <div v-if="trend.points.length >= 2" class="mb-5 rounded-xl border border-dark-border bg-dark-card px-4 pt-3 pb-2">
+        <div class="mb-1 flex items-baseline justify-between">
+          <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Win-probability trend</p>
+          <p class="font-mono text-[9px] text-dark-textMuted">solid = actual · dotted = projected</p>
+        </div>
+        <MatchupWinProbChart
+          :points="trend.points"
+          :projected="trend.projected"
+          :meName="myTeamName"
+          :oppName="oppSvc.opponent.value.opponentName"
+          :height="trend.points.length >= 3 ? 160 : 120"
+        />
+      </div>
+      <div v-else class="mb-5 rounded-xl border border-dark-border bg-dark-card px-4 py-3 font-mono text-[11px] text-dark-textMuted">
+        Win-probability trend builds as the week goes — check back tomorrow for the line.
       </div>
 
       <!-- The volume lever -->
