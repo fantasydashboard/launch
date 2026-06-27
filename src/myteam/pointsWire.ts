@@ -82,8 +82,11 @@ export function buildPointsWire(
 
   const strip = ({ perStat, ...rest }: Row): WireAdd => rest
   const byPoints = (a: WireAdd, b: WireAdd) => b.points - a.points
-  const hit = rows.filter((r) => r.side === 'hit')
-  const pit = rows.filter((r) => r.side === 'pit')
+  // Only show players we can actually project. An unmatched FA (no FanGraphs row)
+  // scores 0 — a wall of obscure 0-point names buries the real adds, so drop them.
+  const projectable = rows.filter((r) => r.points > 0)
+  const hit = projectable.filter((r) => r.side === 'hit')
+  const pit = projectable.filter((r) => r.side === 'pit')
   return {
     topHitters: [...hit].sort(byPoints).slice(0, 8).map(strip),
     topPitchers: [...pit].sort(byPoints).slice(0, 8).map(strip),
