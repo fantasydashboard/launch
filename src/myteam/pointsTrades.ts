@@ -1,0 +1,123 @@
+/**
+ * The points-league Trades brain: win-win deals that raise YOUR projected
+ * starting-lineup points. The realistic trade in a points league is surplus-for-
+ * surplus — you give a body that rides your bench but would START for a partner,
+ * and get back one that rides their bench but STARTS for you. Both optimal
+ * lineups go up, so the deal is fair and actually gets accepted.
+ *
+ * Everything is measured in the one currency (projected points) by re-solving
+ * each side's optimal lineup (assignSlots) with the swap applied.
+ */
+import { projectPlayerPoints } from '@/myteam/pointsValue'
+import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
+import { parseEligible, type PointsPoolPlayer } from '@/myteam/pointsTeam'
+import type { FGProjection } from '@/services/projectionService'
+
+export interface TradeSide {
+  playerKey: string
+  name: string
+  position: string
+  proTeam?: string
+  headshot?: string
+  points: number
+}
+
+export interface TradeIdea {
+  give: TradeSide // my surplus body
+  get: TradeSide // their surplus body that upgrades my lineup
+  oppTeamKey: string
+  oppTeamName: string
+  myGain: number // my optimal-lineup point gain
+  theirGain: number // their optimal-lineup point gain (fairness — both improve)
+}
+
+interface Dp extends DepthPlayer {
+  points: number
+}
+
+/** Optimal starting-lineup point total + the set of players who start. */
+function optimal(players: Dp[], slots: Record<string, number>): { total: number; started: Set<string> } {
+  const a = assignSlots(players, slots, 0)
+  const valByKey = new Map(players.map((p) => [p.playerKey, p.points]))
+  const started = new Set<string>()
+  let total = 0
+  for (const keys of Object.values(a.assignedByPos)) for (const k of keys) {
+    started.add(k)
+    total += valByKey.get(k) ?? 0
+  }
+  return { total, started }
+}
+
+const CAND = 5 // surplus candidates considered per side (keeps the search small)
+
+export function buildPointsTrades(
+  pool: PointsPoolPlayer[],
+  fgByKey: Record<string, FGProjection | null>,
+  weights: Record<string, number>,
+  myTeamKey: string,
+  slots: Record<string, number>,
+  teamNames: Record<string, string> = {},
+): TradeIdea[] {
+  if (!myTeamKey || !pool.length || !Object.keys(slots).length) return []
+
+  const meta = new Map<string, PointsPoolPlayer>()
+  const ptsByKey = new Map<string, number>()
+  const byTeam = new Map<string, Dp[]>()
+  for (const p of pool) {
+    const pts = projectPlayerPoints(fgByKey[p.playerKey], weights).total
+    ptsByKey.set(p.playerKey, pts)
+    meta.set(p.playerKey, p)
+    const dp: Dp = { playerKey: p.playerKey, teamKey: p.teamKey, eligiblePositions: parseEligible(p), value: pts, points: pts, status: p.onIL ? 'IL' : '' }
+    ;(byTeam.get(p.teamKey) ?? byTeam.set(p.teamKey, []).get(p.teamKey)!).push(dp)
+  }
+
+  const myDp = byTeam.get(myTeamKey)
+  if (!myDp) return []
+  const myBase = optimal(myDp, slots)
+  const sideOf = (key: string): TradeSide => {
+    const p = meta.get(key)!
+    return { playerKey: key, name: p.name, position: p.position, proTeam: p.proTeam, headshot: p.headshot, points: ptsByKey.get(key) ?? 0 }
+  }
+  // Surplus = a healthy body with value that ISN'T in the optimal lineup.
+  const surplus = (dp: Dp[], base: Set<string>): Dp[] =>
+    dp.filter((p) => !base.has(p.playerKey) && p.points > 0 && !p.status).sort((a, b) => b.points - a.points).slice(0, CAND)
+  const mySurplus = surplus(myDp, myBase.started)
+
+  const swap = (dp: Dp[], outKey: string, incoming: Dp): Dp[] => [...dp.filter((p) => p.playerKey !== outKey), incoming]
+
+  const ideas: TradeIdea[] = []
+  for (const [oppKey, theirDp] of byTeam) {
+    if (oppKey === myTeamKey) continue
+    const theirBase = optimal(theirDp, slots)
+    const theirSurplus = surplus(theirDp, theirBase.started)
+    for (const mine of mySurplus) {
+      for (const theirs of theirSurplus) {
+        const myNew = optimal(swap(myDp, mine.playerKey, theirs), slots)
+        const myGain = myNew.total - myBase.total
+        if (myGain <= 0) continue
+        const theirNew = optimal(swap(theirDp, theirs.playerKey, mine), slots)
+        const theirGain = theirNew.total - theirBase.total
+        if (theirGain <= 0) continue
+        ideas.push({
+          give: sideOf(mine.playerKey),
+          get: sideOf(theirs.playerKey),
+          oppTeamKey: oppKey,
+          oppTeamName: teamNames[oppKey] || 'Opponent',
+          myGain: Math.round(myGain),
+          theirGain: Math.round(theirGain),
+        })
+      }
+    }
+  }
+  // Best for me first; keep only the best idea per player I'd acquire (no dupes).
+  ideas.sort((a, b) => b.myGain - a.myGain)
+  const seen = new Set<string>()
+  const out: TradeIdea[] = []
+  for (const idea of ideas) {
+    if (seen.has(idea.get.playerKey)) continue
+    seen.add(idea.get.playerKey)
+    out.push(idea)
+    if (out.length >= 8) break
+  }
+  return out
+}
