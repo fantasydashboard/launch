@@ -98,6 +98,10 @@ export function buildPointsTrades(
         const theirNew = optimal(swap(theirDp, theirs.playerKey, mine), slots)
         const theirGain = theirNew.total - theirBase.total
         if (theirGain <= 0) continue
+        // Skip deals lopsided in THEIR favor — if you barely improve while they
+        // gain a lot, it's a gift, not a deal you'd propose. You should benefit at
+        // least ~40% as much as they do.
+        if (myGain < 0.4 * theirGain) continue
         ideas.push({
           give: sideOf(mine.playerKey),
           get: sideOf(theirs.playerKey),
@@ -109,13 +113,18 @@ export function buildPointsTrades(
       }
     }
   }
-  // Best for me first; keep only the best idea per player I'd acquire (no dupes).
+  // Best for me first; no duplicate acquisitions, and cap how many times the same
+  // body is the one you give up (so the list isn't all one surplus player).
   ideas.sort((a, b) => b.myGain - a.myGain)
-  const seen = new Set<string>()
+  const seenGet = new Set<string>()
+  const giveCount = new Map<string, number>()
   const out: TradeIdea[] = []
   for (const idea of ideas) {
-    if (seen.has(idea.get.playerKey)) continue
-    seen.add(idea.get.playerKey)
+    if (seenGet.has(idea.get.playerKey)) continue
+    const gc = giveCount.get(idea.give.playerKey) ?? 0
+    if (gc >= 3) continue
+    seenGet.add(idea.get.playerKey)
+    giveCount.set(idea.give.playerKey, gc + 1)
     out.push(idea)
     if (out.length >= 8) break
   }

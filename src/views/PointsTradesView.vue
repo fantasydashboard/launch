@@ -47,12 +47,12 @@ const ideas = computed(() => {
 
 const round = (n: number) => Math.round(n)
 const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none')
-// Fairness read: how lopsided the deal is (closer = more balanced → likelier yes).
+// Fairness read: who the deal favors, by comparing the two lineup gains honestly.
 function fairness(myGain: number, theirGain: number): string {
-  const ratio = theirGain / Math.max(1, myGain)
-  if (ratio >= 0.6) return 'balanced'
-  if (ratio >= 0.3) return 'fair'
-  return 'sell them on it'
+  const hi = Math.max(myGain, theirGain)
+  const lo = Math.min(myGain, theirGain)
+  if (hi === 0 || lo >= 0.6 * hi) return 'even — both win'
+  return myGain > theirGain ? 'favors you' : "favors them — easy yes"
 }
 </script>
 
