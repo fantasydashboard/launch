@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
 import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
+import { usePowerTrajectory } from '@/composables/usePowerTrajectory'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { buildPowerRankings, type PowerTeamInput } from '@/league/powerRankings'
+import { buildTrajectory, type TalentSnapshot } from '@/league/powerTrajectory'
+import { readTalentSnapshots, recordTalentSnapshot } from '@/league/talentSnapshots'
+import PowerTrajectoryChart from '@/components/league/PowerTrajectoryChart.vue'
 
 const leagueStore = useLeagueStore()
 const isEspn = computed(() => leagueStore.activePlatform === 'espn')
@@ -13,9 +17,13 @@ const isEspn = computed(() => leagueStore.activePlatform === 'espn')
 const yahooLeague = useYahooLeaguePool()
 const espnPoints = useEspnPointsTeamData()
 const scoring = useLeagueScoring()
+const trajectory = usePowerTrajectory()
+const snapshots = ref<TalentSnapshot[]>([])
 
 function loadAll() {
+  snapshots.value = readTalentSnapshots(leagueStore.activeLeagueId ?? '')
   scoring.load()
+  trajectory.load()
   if (isEspn.value) espnPoints.load()
   else yahooLeague.load()
 }
@@ -82,6 +90,28 @@ const rankings = computed(() => {
   return buildPowerRankings(inputs)
 })
 
+// Capture this week's talent (power) ranks once the board is ready, so the dashed
+// talent line accrues week over week. Overwrites the current week as rosters change.
+watch(
+  () => [rankings.value, trajectory.currentWeek.value] as const,
+  ([rk, week]) => {
+    const leagueId = leagueStore.activeLeagueId
+    if (!rk || !leagueId || !week) return
+    const ranks: Record<string, number> = {}
+    for (const r of rk.rows) ranks[r.teamKey] = r.strengthRank
+    snapshots.value = recordTalentSnapshot(leagueId, week, ranks)
+  },
+  { immediate: true },
+)
+
+// The race over time: standings (solid) reconstructed from results + talent (dashed)
+// from the accruing snapshots, teams ordered by current power rank to match the board.
+const trajectoryView = computed(() => {
+  if (!rankings.value) return null
+  const meta = rankings.value.rows.map((r) => ({ teamKey: r.teamKey, teamName: r.teamName, isMe: r.teamKey === myTeamKey.value }))
+  return buildTrajectory(trajectory.outcomes.value, snapshots.value, meta)
+})
+
 // Bars are MIN-anchored, not zero-anchored: rest-of-season projections cluster
 // tightly (the bottom team still fields a full lineup), so a zero baseline makes
 // every bar look maxed. Anchoring at the league min — with a 14% floor so last
@@ -106,6 +136,16 @@ const isMe = (key: string) => key === myTeamKey.value
 const recordStr = (r: { wins: number; losses: number; ties: number }) => `${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ''}`
 const tierClass = (tier: string) =>
   tier === 'Contender' ? 'text-primary' : tier === 'Rebuilder' ? 'text-dark-textMuted' : 'text-dark-textSecondary'
+
+// The theme's `primary` is a bare CSS var with no <alpha-value> slot, so Tailwind's
+// `/opacity` modifier silently produces invalid CSS (dead bars, invisible YOU tint).
+// Mix the var manually instead, which honours per-league theming.
+const primaryTint = (pct: number) => `color-mix(in srgb, var(--color-primary, #C6FF3A) ${pct}%, transparent)`
+
+// When only one callout type is present, it should span full width — no dead column.
+const calloutCols = computed(() =>
+  rankings.value && rankings.value.pretenders.length && rankings.value.sleepers.length ? 'sm:grid-cols-2' : 'sm:grid-cols-1',
+)
 </script>
 
 <template>
@@ -120,7 +160,7 @@ const tierClass = (tier: string) =>
 
     <template v-else>
       <!-- The triage shortlist — who to act on, and the move. -->
-      <div v-if="rankings.pretenders.length || rankings.sleepers.length" class="mb-5 grid gap-3 sm:grid-cols-2">
+      <div v-if="rankings.pretenders.length || rankings.sleepers.length" class="mb-5 grid gap-3" :class="calloutCols">
         <div v-if="rankings.pretenders.length" class="rounded-xl border border-[#e69a4a]/30 bg-dark-card p-4">
           <p class="font-mono text-[10px] uppercase tracking-widest text-[#e69a4a]">Sell-high targets</p>
           <p class="mb-2 font-mono text-[9px] text-dark-textMuted">their record outruns their roster — deal with them before it regresses</p>
@@ -131,7 +171,7 @@ const tierClass = (tier: string) =>
             </p>
           </div>
         </div>
-        <div v-if="rankings.sleepers.length" class="rounded-xl border border-primary/30 bg-dark-card p-4">
+        <div v-if="rankings.sleepers.length" class="rounded-xl border bg-dark-card p-4" :style="{ borderColor: primaryTint(35) }">
           <p class="font-mono text-[10px] uppercase tracking-widest text-primary">Buy-low targets</p>
           <p class="mb-2 font-mono text-[9px] text-dark-textMuted">strong roster the standings haven't caught up to — get them before they climb</p>
           <div v-for="r in rankings.sleepers" :key="r.teamKey" class="border-t border-dark-border/40 py-2 first:border-0">
@@ -145,7 +185,7 @@ const tierClass = (tier: string) =>
 
       <!-- The board -->
       <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
-        <div v-for="r in rankings.rows" :key="r.teamKey" class="px-4 py-3" :class="isMe(r.teamKey) ? 'bg-primary/5' : ''">
+        <div v-for="r in rankings.rows" :key="r.teamKey" class="px-4 py-3" :style="isMe(r.teamKey) ? { backgroundColor: primaryTint(6) } : {}">
           <div class="flex items-center gap-3">
             <span class="w-6 shrink-0 text-center font-mono text-sm font-bold text-dark-textMuted">{{ r.strengthRank }}</span>
             <img v-if="r.teamLogo" :src="r.teamLogo" alt="" @error="onLogoErr" class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
@@ -153,7 +193,7 @@ const tierClass = (tier: string) =>
             <span class="min-w-0 flex-1">
               <span class="flex items-center gap-2">
                 <span class="truncate text-sm font-semibold text-dark-text">{{ r.teamName }}</span>
-                <span v-if="isMe(r.teamKey)" class="shrink-0 rounded bg-primary/15 px-1 font-mono text-[9px] uppercase text-primary">you</span>
+                <span v-if="isMe(r.teamKey)" class="shrink-0 rounded px-1 font-mono text-[9px] uppercase text-primary" :style="{ backgroundColor: primaryTint(16) }">you</span>
                 <span v-if="r.managerless" class="shrink-0 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">abandoned</span>
                 <span v-else class="shrink-0 font-mono text-[9px] uppercase tracking-wider" :class="tierClass(r.tier)">{{ r.tier }}</span>
               </span>
@@ -166,8 +206,8 @@ const tierClass = (tier: string) =>
             </span>
             <!-- Strength bar (min-anchored to expose real separation) -->
             <div class="hidden w-28 shrink-0 sm:block">
-              <div class="relative h-2 overflow-hidden rounded-full bg-dark-bg">
-                <div class="absolute inset-y-0 left-0 rounded-full" :class="r.managerless ? 'bg-dark-textMuted/40' : 'bg-primary/70'" :style="{ width: barPct(r.strength) + '%' }" />
+              <div class="relative h-2 overflow-hidden rounded-full" :style="{ backgroundColor: 'rgba(255,255,255,0.08)' }">
+                <div class="absolute inset-y-0 left-0 rounded-full" :class="r.managerless ? 'bg-dark-textMuted' : 'bg-primary'" :style="{ width: barPct(r.strength) + '%' }" />
               </div>
               <div class="mt-0.5 text-right font-mono text-[9px] text-dark-textMuted">{{ projPts(r.strength) }} proj pts</div>
             </div>
@@ -179,6 +219,22 @@ const tierClass = (tier: string) =>
       <p class="mt-3 font-mono text-[10px] leading-relaxed text-dark-textMuted">
         rank = roster strength (projected optimal-lineup points) · the standings can lie — a lucky team regresses, an unlucky one climbs
       </p>
+
+      <!-- The race over time -->
+      <section v-if="trajectoryView && trajectoryView.weeks.length >= 2" class="mt-8">
+        <h2 class="font-display text-lg font-bold text-dark-text">The race</h2>
+        <p class="mb-3 font-mono text-xs text-dark-textMuted">
+          Standings rank, week by week. Rank 1 is up top — a line climbing means a team's been heating up.
+        </p>
+        <div class="rounded-xl border border-dark-border bg-dark-card p-3">
+          <PowerTrajectoryChart :trajectory="trajectoryView" />
+          <p class="px-1 pt-1 font-mono text-[10px] leading-relaxed text-dark-textMuted">
+            <span class="text-[#5ec8e6]">Solid</span> = standings race ·
+            <template v-if="trajectoryView.hasTalentHistory"><span class="text-[#5ec8e6]">dashed</span> = your talent (power) rank — where the roster says you should sit. The gap is your luck.</template>
+            <template v-else>your <span class="text-[#5ec8e6]">talent</span> line starts charting from this week and fills in as the season goes.</template>
+          </p>
+        </div>
+      </section>
     </template>
   </div>
 </template>

@@ -58,11 +58,15 @@ const ord = (n: number) => {
   return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
 
-/** Deterministic variant pick (no Math.random — keeps results stable/cacheable). */
-function pick(key: string, variants: string[]): string {
+/**
+ * Deterministic variant pick (no Math.random — keeps results stable/cacheable).
+ * `offset` (the team's rank) is folded in so adjacent rows can't land on the same
+ * variant — two Rebuilders back to back never get the identical sentence.
+ */
+function pick(key: string, variants: string[], offset = 0): string {
   let h = 0
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0
-  return variants[h % variants.length]
+  return variants[(h + offset) % variants.length]
 }
 
 /** Dense rank a list (1 = best) by a descending key; ties share the better rank. */
@@ -112,52 +116,54 @@ export function buildPowerRankings(teams: PowerTeamInput[]): PowerRankings {
     // a modest-bounce read so the tier and the luck flag never contradict.
     const softSleeper = luck === 'sleeper' && tier === 'Rebuilder'
 
+    // Board blurbs describe; the imperative ("sell high" / "buy low") lives ONCE in
+    // the `move` field that drives the callout, so the row never echoes the callout.
     let move = ''
     let blurb: string
     if (managerless) {
       move = 'Free matchup'
       blurb = pick(t.teamKey, [
-        `Abandoned — nobody's setting this lineup, so the ${ord(sr)}-best talent stays stranded. Don't expect a climb; bank the win when you face them.`,
-        `No manager here. The roster reads ${ord(sr)} on paper, but it won't be optimized — treat it as a free matchup, not a threat.`,
-      ])
+        `Abandoned — nobody's setting this lineup, so the ${ord(sr)}-best talent stays stranded. Bank the win when you face them.`,
+        `No manager here. The roster reads ${ord(sr)} on paper, but it won't be optimized — a free matchup, not a threat.`,
+      ], sr)
     } else if (luck === 'pretender') {
       move = 'Sell-high'
       blurb = pick(t.teamKey, [
-        `${ord(rr)} by record but only ${ord(sr)} by talent — riding luck. Sell high before it regresses.`,
-        `The standings flatter them: ${ord(rr)} on ${ord(sr)}-place talent. Sell high while the record still shines.`,
-        `Overachieving at ${ord(rr)} despite ${ord(sr)}-best talent — due to cool off. Sell high now.`,
-      ])
+        `${ord(rr)} by record but only ${ord(sr)} by talent — riding luck, and due to regress.`,
+        `The standings flatter them: ${ord(rr)} on ${ord(sr)}-place talent. Bound to cool off.`,
+        `Overachieving at ${ord(rr)} on just ${ord(sr)}-best talent — a regression candidate.`,
+      ], sr)
     } else if (softSleeper) {
       move = 'Slight rebound'
       blurb = pick(t.teamKey, [
-        `A touch unlucky — ${ord(sr)} in talent, ${ord(rr)} by record — but the roster's still thin. Expect a modest bounce, not a turnaround.`,
-        `Better than a ${rec} looks, though it's a bottom-tier roster. A slight rebound at most; don't bet on a real climb.`,
-      ])
+        `A touch unlucky — ${ord(sr)} in talent, ${ord(rr)} by record — but the roster's still thin. A modest bounce, not a turnaround.`,
+        `Better than a ${rec} looks, though it's a bottom-tier roster. A slight rebound at most.`,
+      ], sr)
     } else if (luck === 'sleeper') {
       move = 'Buy-low'
       blurb = pick(t.teamKey, [
-        `${ord(rr)} by record but ${ord(sr)} by talent — the roster's better than the standings. Buy low; they'll climb.`,
-        `Underwater at ${ord(rr)} despite ${ord(sr)}-best talent. Unlucky — buy low before they rise.`,
-        `Standings say ${ord(rr)}, the roster says ${ord(sr)}. A genuine buy-low; they should climb.`,
-      ])
+        `${ord(rr)} by record but ${ord(sr)} by talent — the roster's better than the standings; they should climb.`,
+        `Underwater at ${ord(rr)} despite ${ord(sr)}-best talent. Unlucky, and primed to rise.`,
+        `Standings say ${ord(rr)}, the roster says ${ord(sr)} — expect them to climb.`,
+      ], sr)
     } else if (tier === 'Contender') {
       blurb = pick(t.teamKey, [
         `Genuinely the class of the league — ${ord(sr)} in talent, and the standings agree.`,
         `The real deal: ${ord(sr)}-best roster, and they're stacking wins to match.`,
         `No fluke — ${ord(sr)} in talent and playing like it.`,
-      ])
+      ], sr)
     } else if (tier === 'Rebuilder') {
       blurb = pick(t.teamKey, [
         `Thin roster (${ord(sr)} in talent), and the record knows it. Playing for next year.`,
         `${ord(sr)}-best talent — the standings aren't lying. This one's a rebuild.`,
         `Bottom-tier roster (${ord(sr)}), bottom-tier results. Next year's project.`,
-      ])
+      ], sr)
     } else {
       blurb = pick(t.teamKey, [
         `Right where they belong — ${ord(sr)} in talent, ${ord(rr)} in the standings.`,
         `Roster and record line up: ${ord(sr)} on paper, ${ord(rr)} in the race.`,
         `A fair ${ord(rr)} — talent and results in agreement.`,
-      ])
+      ], sr)
     }
 
     return {

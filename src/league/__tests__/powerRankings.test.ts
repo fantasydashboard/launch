@@ -28,11 +28,13 @@ describe('buildPowerRankings', () => {
     const lucky = pr.rows.find((r) => r.teamKey === 'Lucky')!
     expect(lucky.luck).toBe('pretender')
     expect(lucky.luckDelta).toBeGreaterThan(0) // record better than talent
-    expect(lucky.blurb).toMatch(/sell high/i)
+    expect(lucky.move).toBe('Sell-high') // imperative lives in `move`, not the blurb
+    expect(lucky.blurb).toMatch(/regress|cool off|luck/i)
 
     const sleeper = pr.rows.find((r) => r.teamKey === 'Sleeper')!
     expect(sleeper.luck).toBe('sleeper')
-    expect(sleeper.blurb).toMatch(/buy low/i)
+    expect(sleeper.move).toBe('Buy-low')
+    expect(sleeper.blurb).toMatch(/climb|rise|better/i)
 
     expect(pr.pretenders.map((r) => r.teamKey)).toContain('Lucky')
     expect(pr.sleepers.map((r) => r.teamKey)).toContain('Sleeper')
