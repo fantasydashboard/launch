@@ -1,9 +1,9 @@
 <template>
   <!-- H2H Category leagues (any platform, any sport) -->
   <CategoryPowerRankings v-if="isCategoryLeague" />
-  
-  <!-- Points leagues (any platform, any sport) -->
-  <PointsPowerRankings v-else />
+
+  <!-- Points leagues → projection-driven redesign (category redesign next) -->
+  <PowerRankingsRedesign v-else />
 </template>
 
 <script setup lang="ts">
@@ -23,8 +23,8 @@ const CategoryPowerRankings = defineAsyncComponent(() =>
   import('@/views/CategoryPowerRankingsView.vue')
 )
 
-const PointsPowerRankings = defineAsyncComponent(() => 
-  import('@/views/PointsPowerRankingsView.vue')
+const PowerRankingsRedesign = defineAsyncComponent(() =>
+  import('@/views/PowerRankingsRedesignView.vue')
 )
 
 // Detect if it's a category league

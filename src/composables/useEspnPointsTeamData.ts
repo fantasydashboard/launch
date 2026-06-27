@@ -39,6 +39,8 @@ export function useEspnPointsTeamData() {
   const myTeamLogo = ref<string>('')
   const myRecord = ref<string>('')
   const teamNames = ref<Record<string, string>>({}) // pool teamKey (`espn_{id}`) → team name
+  const teamLogos = ref<Record<string, string>>({}) // pool teamKey → team logo url
+  const teamRecords = ref<Record<string, { wins: number; losses: number; ties: number; pointsFor: number }>>({})
   const rosterSlots = ref<Record<string, number>>({})
   const playoffTeamCount = ref(0)
   const supported = ref<boolean | null>(null)
@@ -99,6 +101,13 @@ export function useEspnPointsTeamData() {
 
       pool.value = mapRostersToPool(teams, sport)
       teamNames.value = Object.fromEntries(teams.map((t) => [`espn_${t.id}`, String((t as any).name ?? '')]))
+      teamLogos.value = Object.fromEntries(teams.map((t) => [`espn_${t.id}`, String((t as any).logo ?? '')]))
+      teamRecords.value = Object.fromEntries(
+        teams.map((t) => {
+          const o = (t as any).record?.overall ?? {}
+          return [`espn_${t.id}`, { wins: o.wins ?? 0, losses: o.losses ?? 0, ties: o.ties ?? 0, pointsFor: o.pointsFor ?? (t as any).pointsFor ?? 0 }]
+        }),
+      )
 
       const { matchFG, matchStatcast } = await buildPlayerMatchers()
       if (leagueStore.activeLeagueId !== requestedId) return
@@ -147,6 +156,8 @@ export function useEspnPointsTeamData() {
     myTeamLogo,
     myRecord,
     teamNames,
+    teamLogos,
+    teamRecords,
     rosterSlots,
     playoffTeamCount,
     supported,
