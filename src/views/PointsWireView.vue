@@ -64,17 +64,20 @@ const freeAgents = computed(() => {
   return src.filter((fa) => !guard || !rostered.has(fa.playerKey))
 })
 
+const teamModel = computed(() => {
+  if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
+  return buildPointsTeam(pool.value, fgByKey.value, scoring.weights.value, myTeamKey.value, rosterSlots.value)
+})
+const rosterBodies = computed(() =>
+  (teamModel.value?.rosterRows ?? []).map((r) => ({ name: r.player.name, position: r.player.position, points: r.points, side: r.side })),
+)
 const wire = computed(() => {
   if (!matchFG.value || !freeAgents.value.length) return null
-  return buildPointsWire(freeAgents.value, matchFG.value, scoring.weights.value, schedule.value)
+  return buildPointsWire(freeAgents.value, matchFG.value, scoring.weights.value, schedule.value, rosterBodies.value)
 })
 
 // Drop candidates: your weakest rostered bodies (lowest projected points).
-const drops = computed(() => {
-  if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return []
-  const model = buildPointsTeam(pool.value, fgByKey.value, scoring.weights.value, myTeamKey.value, rosterSlots.value)
-  return [...model.rosterRows].sort((a, b) => a.points - b.points).slice(0, 5)
-})
+const drops = computed(() => [...(teamModel.value?.rosterRows ?? [])].sort((a, b) => a.points - b.points).slice(0, 5))
 
 const round = (n: number) => Math.round(n)
 const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none')
@@ -92,7 +95,33 @@ const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooL
     <div v-else-if="!wire" class="py-16 text-center text-dark-textMuted">No free agents available right now.</div>
 
     <template v-else>
-      <!-- 1. STREAM THIS WEEK — the timely volume edge -->
+      <!-- 1. BEST UPGRADES — concrete add→drop swaps, the headline move -->
+      <section v-if="wire.swaps.length" class="mb-5 rounded-xl border border-primary/40 bg-dark-card p-4">
+        <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-primary">★ Best upgrades</h2>
+        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">add a free agent, cut your weakest body — the points you'd gain</p>
+        <template v-for="(s, i) in wire.swaps" :key="'sw-' + i">
+          <div class="flex items-center gap-3 border-b border-dark-border/40 py-2.5 last:border-0">
+            <img v-if="s.add.player.headshot" :src="s.add.player.headshot" :alt="s.add.player.name" loading="lazy" class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
+            <span v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[10px] text-dark-textMuted">{{ s.add.player.position }}</span>
+            <span class="min-w-0 flex-1">
+              <span class="text-sm text-dark-text">
+                <span class="font-mono text-[10px] uppercase text-primary">add</span> <span class="font-semibold">{{ s.add.player.name }}</span>
+                <span class="text-[11px] text-dark-textMuted"> {{ s.add.player.position }} · {{ s.add.player.team }}</span>
+              </span>
+              <span class="block text-xs text-dark-textMuted">
+                <span class="font-mono text-[10px] uppercase">drop</span> {{ s.dropName }} <span class="opacity-60">({{ round(s.dropPoints) }})</span>
+              </span>
+            </span>
+            <span class="shrink-0 text-right">
+              <span class="font-mono text-sm font-bold text-primary">+{{ round(s.upgrade) }}</span>
+              <span class="block font-mono text-[9px] uppercase text-dark-textMuted">pts ROS</span>
+            </span>
+          </div>
+        </template>
+        <p class="mt-2 font-mono text-[9px] text-dark-textMuted">you'd make ONE of these · upgrade = add's projected points − the body you cut</p>
+      </section>
+
+      <!-- 2. STREAM THIS WEEK — the timely volume edge -->
       <section v-if="wire.twoStart.length || wire.hotBats.length" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Stream this week</h2>
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">two-start arms and full-slate bats — the volume native apps don't flag</p>
@@ -166,6 +195,8 @@ const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooL
             <span class="min-w-0 flex-1 truncate text-sm text-dark-text">
               {{ r.player.name }}
               <span class="ml-1 text-[11px] text-dark-textMuted">{{ r.player.position }} · {{ r.player.proTeam }}</span>
+              <span v-if="r.player.onIL" class="ml-1 rounded bg-[#e69a4a]/15 px-1 py-0.5 font-mono text-[9px] uppercase text-[#e69a4a]">IL</span>
+              <span class="ml-1 text-[11px] text-dark-textMuted/70">{{ r.player.onIL ? "won't free an active spot" : 'lowest projected' }}</span>
             </span>
             <span class="font-mono text-[10px] uppercase text-dark-textMuted">{{ r.tier }}</span>
             <span class="w-12 shrink-0 text-right font-mono text-sm text-dark-textMuted">{{ round(r.points) }}</span>

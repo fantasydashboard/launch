@@ -19,7 +19,23 @@ export interface WireAdd {
   chips: string[] // specialist edges (SB/SV/HLD/QS) where this FA stands out
 }
 
+export interface RosterBody {
+  name: string
+  position: string
+  points: number
+  side: PointsSide
+}
+
+export interface Swap {
+  add: WireAdd
+  dropName: string
+  dropPos: string
+  dropPoints: number
+  upgrade: number // add.points − drop.points (rest-of-season)
+}
+
 export interface PointsWire {
+  swaps: Swap[] // concrete add→drop upgrades, by points gained (the headline move)
   topHitters: WireAdd[] // best available bats, by projected points
   topPitchers: WireAdd[] // best available arms, by projected points
   twoStart: WireAdd[] // available pitchers going twice this week
@@ -47,6 +63,7 @@ export function buildPointsWire(
   matchFG: (player: { full_name?: string; mlb_team?: string }) => FGProjection | null,
   weights: Record<string, number>,
   schedule: WeekSchedule,
+  myRoster: RosterBody[] = [],
 ): PointsWire {
   interface Row extends WireAdd {
     perStat: Record<string, number>
@@ -87,9 +104,33 @@ export function buildPointsWire(
   const projectable = rows.filter((r) => r.points > 0)
   const hit = projectable.filter((r) => r.side === 'hit')
   const pit = projectable.filter((r) => r.side === 'pit')
+  const topHitters = [...hit].sort(byPoints).slice(0, 8).map(strip)
+  const topPitchers = [...pit].sort(byPoints).slice(0, 8).map(strip)
+
+  // Concrete add→drop swaps: pair each top add with your weakest droppable body on
+  // the same side and keep the positive upgrades. Side-matched (a bat replaces a
+  // bat) — full positional fit is a later refinement.
+  const weakest = (side: PointsSide): RosterBody | null => {
+    const bodies = myRoster.filter((b) => b.side === side)
+    return bodies.length ? bodies.reduce((m, b) => (b.points < m.points ? b : m)) : null
+  }
+  const wHit = weakest('hit')
+  const wPit = weakest('pit')
+  const swaps: Swap[] = [...topHitters, ...topPitchers]
+    .map((add): Swap | null => {
+      const drop = add.side === 'hit' ? wHit : wPit
+      if (!drop) return null
+      const upgrade = add.points - drop.points
+      return upgrade > 0 ? { add, dropName: drop.name, dropPos: drop.position, dropPoints: drop.points, upgrade } : null
+    })
+    .filter((s): s is Swap => s !== null)
+    .sort((a, b) => b.upgrade - a.upgrade)
+    .slice(0, 4)
+
   return {
-    topHitters: [...hit].sort(byPoints).slice(0, 8).map(strip),
-    topPitchers: [...pit].sort(byPoints).slice(0, 8).map(strip),
+    swaps,
+    topHitters,
+    topPitchers,
     twoStart: pit.filter((r) => r.startsThisWeek >= 2).sort(byPoints).slice(0, 8).map(strip),
     hotBats: [...hit]
       .filter((r) => r.gamesThisWeek > 0)

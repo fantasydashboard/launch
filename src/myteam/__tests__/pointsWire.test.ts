@@ -44,6 +44,19 @@ describe('buildPointsWire', () => {
     expect(w.hotBats[0].player.name).toBe('BigBat') // NYY plays 6 this week
   })
 
+  it('pairs the best add with your weakest droppable body as a points upgrade', () => {
+    const roster = [
+      { name: 'WeakBat', position: 'OF', points: 50, side: 'hit' as const },
+      { name: 'GoodBat', position: 'OF', points: 250, side: 'hit' as const },
+    ]
+    const w = buildPointsWire(agents, matchFG, weights, schedule, roster)
+    expect(w.swaps.length).toBeGreaterThan(0)
+    const top = w.swaps[0]
+    expect(top.add.player.name).toBe('BigBat') // best available hitter
+    expect(top.dropName).toBe('WeakBat') // weakest rostered hitter
+    expect(top.upgrade).toBe(top.add.points - 50)
+  })
+
   it('chips a specialist (closer shows SV) and excludes IL players', () => {
     const w = buildPointsWire(agents, matchFG, weights, schedule)
     const closer = w.topPitchers.find((r) => r.player.name === 'Closer')
