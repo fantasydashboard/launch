@@ -7,7 +7,8 @@
  */
 import { projectPlayerPoints } from '@/myteam/pointsValue'
 import { coversSlot } from '@/trades/positionalLandscape'
-import { parseEligible, type PointsPoolPlayer } from '@/myteam/pointsTeam'
+import { lineupEligFor } from '@/trades/lineupEligibility'
+import { type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { FGProjection } from '@/services/projectionService'
 
 // Canonical positions for the trade grid (flex/UTIL/P are redundant for fit).
@@ -46,7 +47,9 @@ export function buildPointsTradeLandscape(
   const byTeam = new Map<string, P[]>()
   for (const p of pool) {
     const points = projectPlayerPoints(fgByKey[p.playerKey], weights).total
-    ;(byTeam.get(p.teamKey) ?? byTeam.set(p.teamKey, []).get(p.teamKey)!).push({ eligible: parseEligible(p), points })
+    // Role-based eligibility: a starter counts for SP, a reliever for RP — ESPN
+    // lists most pitchers as eligible for BOTH, which made the SP/RP rows identical.
+    ;(byTeam.get(p.teamKey) ?? byTeam.set(p.teamKey, []).get(p.teamKey)!).push({ eligible: lineupEligFor(p, fgByKey), points })
   }
   const teamKeys = [...byTeam.keys()]
   if (!teamKeys.includes(myTeamKey)) return null
@@ -88,9 +91,12 @@ export function buildPointsTradeLandscape(
     const youBuy = myWeak.filter((pos) => isStrong(t, pos))
     const theyNeed = myStrong.filter((pos) => isWeak(t, pos))
     const fit = youBuy.length + theyNeed.length
-    if (fit > 0) partners.push({ teamKey: t, teamName: teamNames[t] || 'Team', fit, youBuy, theyNeed })
+    // A useful partner must hold something at YOUR weak spot (you buy > 0) — a team
+    // that only needs your surplus is a sell target, not a deal that improves you.
+    if (youBuy.length > 0) partners.push({ teamKey: t, teamName: teamNames[t] || 'Team', fit, youBuy, theyNeed })
   }
-  partners.sort((a, b) => b.fit - a.fit)
+  // Most to acquire first, then easiest deal (they also need what you've got).
+  partners.sort((a, b) => b.youBuy.length - a.youBuy.length || b.theyNeed.length - a.theyNeed.length)
 
   return {
     positions,
