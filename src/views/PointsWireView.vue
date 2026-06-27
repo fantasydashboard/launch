@@ -69,7 +69,7 @@ const teamModel = computed(() => {
   return buildPointsTeam(pool.value, fgByKey.value, scoring.weights.value, myTeamKey.value, rosterSlots.value)
 })
 const rosterBodies = computed(() =>
-  (teamModel.value?.rosterRows ?? []).map((r) => ({ name: r.player.name, position: r.player.position, points: r.points, side: r.side })),
+  (teamModel.value?.rosterRows ?? []).map((r) => ({ name: r.player.name, position: r.player.position, points: r.points, side: r.side, onIL: r.player.onIL })),
 )
 const wire = computed(() => {
   if (!matchFG.value || !freeAgents.value.length) return null

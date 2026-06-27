@@ -2628,11 +2628,18 @@ export class EspnFantasyService {
 
     const proxyUrl = `${this.supabaseUrl}/functions/v1/espn-api`
     
-    const requestBody: any = { 
+    // The edge function reads the filter as `fantasyFilter` and forwards it as the
+    // X-Fantasy-Filter header. Sending it only under `filter` (the old key) meant the
+    // header was never set, so ESPN returned its default ALPHABETICAL player page —
+    // why free-agent lists came back as an A-surname slice. Send both keys so the
+    // filter (sortPercOwned / limit / status) actually reaches ESPN.
+    const filterJson = filter ? JSON.stringify(filter) : undefined
+    const requestBody: any = {
       endpoint,
-      filter: filter ? JSON.stringify(filter) : undefined
+      filter: filterJson,
+      fantasyFilter: filterJson,
     }
-    
+
     if (this.credentials?.espn_s2 && this.credentials?.swid) {
       requestBody.espn_s2 = this.credentials.espn_s2
       requestBody.swid = this.credentials.swid

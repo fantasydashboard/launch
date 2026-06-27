@@ -48,12 +48,14 @@ describe('buildPointsWire', () => {
     const roster = [
       { name: 'WeakBat', position: 'OF', points: 50, side: 'hit' as const },
       { name: 'GoodBat', position: 'OF', points: 250, side: 'hit' as const },
+      // An IL body projects lowest but frees only an IL slot — must NOT be the drop.
+      { name: 'HurtIL', position: 'OF', points: 5, side: 'hit' as const, onIL: true },
     ]
     const w = buildPointsWire(agents, matchFG, weights, schedule, roster)
     expect(w.swaps.length).toBeGreaterThan(0)
     const top = w.swaps[0]
     expect(top.add.player.name).toBe('BigBat') // best available hitter
-    expect(top.dropName).toBe('WeakBat') // weakest rostered hitter
+    expect(top.dropName).toBe('WeakBat') // weakest HEALTHY hitter (not the IL body)
     expect(top.upgrade).toBe(top.add.points - 50)
   })
 

@@ -24,6 +24,7 @@ export interface RosterBody {
   position: string
   points: number
   side: PointsSide
+  onIL?: boolean // an IL body frees only an IL slot, so it can't be the drop for an active add
 }
 
 export interface Swap {
@@ -111,7 +112,9 @@ export function buildPointsWire(
   // the same side and keep the positive upgrades. Side-matched (a bat replaces a
   // bat) — full positional fit is a later refinement.
   const weakest = (side: PointsSide): RosterBody | null => {
-    const bodies = myRoster.filter((b) => b.side === side)
+    // Only a HEALTHY body can be the drop — cutting an IL player frees an IL slot,
+    // not the active spot you need for the add.
+    const bodies = myRoster.filter((b) => b.side === side && !b.onIL)
     return bodies.length ? bodies.reduce((m, b) => (b.points < m.points ? b : m)) : null
   }
   const wHit = weakest('hit')
