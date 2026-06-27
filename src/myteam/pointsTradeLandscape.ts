@@ -1,0 +1,105 @@
+/**
+ * Positional trade landscape for points leagues: each team's strength at every
+ * lineup position (their best body's projected points, ranked across the league).
+ * Powers the trade-from-strength / fix-your-holes read, the best-partner-by-need
+ * list, and the landscape heatmap — the points analogs of the category Trades
+ * scaffolding.
+ */
+import { projectPlayerPoints } from '@/myteam/pointsValue'
+import { coversSlot } from '@/trades/positionalLandscape'
+import { parseEligible, type PointsPoolPlayer } from '@/myteam/pointsTeam'
+import type { FGProjection } from '@/services/projectionService'
+
+// Canonical positions for the trade grid (flex/UTIL/P are redundant for fit).
+const POSITIONS = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
+
+export interface TradePartner {
+  teamKey: string
+  teamName: string
+  fit: number // count of complementary positions
+  youBuy: string[] // positions they're strong, you're weak — what you'd acquire
+  theyNeed: string[] // positions you're strong, they're weak — your leverage
+}
+
+export interface PointsTradeLandscape {
+  positions: string[] // positions actually present in the league
+  teamKeys: string[] // me first, then others
+  teamNames: Record<string, string>
+  rank: Record<string, Record<string, number>> // position → teamKey → rank (1 = best); 0 = none
+  teams: number
+  myStrong: string[] // positions where you rank top-third
+  myWeak: string[] // positions where you rank bottom-third
+  partners: TradePartner[]
+}
+
+export function buildPointsTradeLandscape(
+  pool: PointsPoolPlayer[],
+  fgByKey: Record<string, FGProjection | null>,
+  weights: Record<string, number>,
+  myTeamKey: string,
+  teamNames: Record<string, string> = {},
+): PointsTradeLandscape | null {
+  if (!myTeamKey || !pool.length) return null
+
+  // Group players (with points + eligibility) by team.
+  interface P { eligible: string[]; points: number }
+  const byTeam = new Map<string, P[]>()
+  for (const p of pool) {
+    const points = projectPlayerPoints(fgByKey[p.playerKey], weights).total
+    ;(byTeam.get(p.teamKey) ?? byTeam.set(p.teamKey, []).get(p.teamKey)!).push({ eligible: parseEligible(p), points })
+  }
+  const teamKeys = [...byTeam.keys()]
+  if (!teamKeys.includes(myTeamKey)) return null
+  const teams = teamKeys.length
+
+  // Best body's points per team per position, then rank teams (desc) at each position.
+  const bestAt = (team: string, pos: string): number => {
+    let best = 0
+    for (const pl of byTeam.get(team) ?? []) if (coversSlot(pl.eligible, pos) && pl.points > best) best = pl.points
+    return best
+  }
+  const positions = POSITIONS.filter((pos) => teamKeys.some((t) => bestAt(t, pos) > 0))
+  const rank: Record<string, Record<string, number>> = {}
+  for (const pos of positions) {
+    const rows = teamKeys.map((t) => ({ t, v: bestAt(t, pos) })).sort((a, b) => b.v - a.v)
+    const r: Record<string, number> = {}
+    let prev = Infinity
+    let rk = 0
+    rows.forEach((row, i) => {
+      if (row.v <= 0) { r[row.t] = 0; return }
+      if (row.v < prev) { rk = i + 1; prev = row.v }
+      r[row.t] = rk
+    })
+    rank[pos] = r
+  }
+
+  const third = Math.max(1, Math.round(teams / 3))
+  const isStrong = (team: string, pos: string) => { const x = rank[pos]?.[team] ?? 0; return x > 0 && x <= third }
+  const isWeak = (team: string, pos: string) => { const x = rank[pos]?.[team] ?? 0; return x === 0 || x >= teams - third + 1 }
+
+  const myStrong = positions.filter((pos) => isStrong(myTeamKey, pos))
+  const myWeak = positions.filter((pos) => isWeak(myTeamKey, pos))
+
+  // Partner fit: they're strong where you're weak (you buy) and weak where you're
+  // strong (your leverage). More complementary positions = better partner.
+  const partners: TradePartner[] = []
+  for (const t of teamKeys) {
+    if (t === myTeamKey) continue
+    const youBuy = myWeak.filter((pos) => isStrong(t, pos))
+    const theyNeed = myStrong.filter((pos) => isWeak(t, pos))
+    const fit = youBuy.length + theyNeed.length
+    if (fit > 0) partners.push({ teamKey: t, teamName: teamNames[t] || 'Team', fit, youBuy, theyNeed })
+  }
+  partners.sort((a, b) => b.fit - a.fit)
+
+  return {
+    positions,
+    teamKeys: [myTeamKey, ...teamKeys.filter((t) => t !== myTeamKey)],
+    teamNames,
+    rank,
+    teams,
+    myStrong,
+    myWeak,
+    partners: partners.slice(0, 6),
+  }
+}
