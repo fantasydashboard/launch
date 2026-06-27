@@ -10,6 +10,7 @@ import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { useWinProbTrend } from '@/composables/useWinProbTrend'
 import MatchupWinProbChart from '@/components/matchup/MatchupWinProbChart.vue'
+import { seasonStakes } from '@/myteam/seasonStakes'
 
 const leagueStore = useLeagueStore()
 const isEspn = computed(() => leagueStore.activePlatform === 'espn')
@@ -19,13 +20,17 @@ const espnPoints = useEspnPointsTeamData()
 const scoring = useLeagueScoring()
 const oppSvc = useThisWeekOpponent()
 const schedule = ref<WeekSchedule>({ gamesByTeam: {}, startsByPitcher: {} })
+const todaySchedule = ref<WeekSchedule>({ gamesByTeam: {}, startsByPitcher: {} })
+const cadence = ref<'daily' | 'weekly'>('weekly')
 
 async function loadSchedule() {
   const today = new Date()
   const fmt = (d: Date) => d.toISOString().slice(0, 10)
   const end = new Date(today)
   end.setDate(today.getDate() + ((7 - today.getDay()) % 7)) // through the coming Sunday
-  schedule.value = await getWeekSchedule(fmt(today), fmt(end))
+  const [week, day] = await Promise.all([getWeekSchedule(fmt(today), fmt(end)), getWeekSchedule(fmt(today), fmt(today))])
+  schedule.value = week
+  todaySchedule.value = day
 }
 
 function loadAll() {
@@ -66,6 +71,13 @@ const matchup = computed(() => {
   if (!opp || !pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
   return buildPointsMatchup(pool.value, fgByKey.value, scoring.weights.value, myTeamKey.value, opp.opponentKey, rosterSlots.value, schedule.value)
 })
+// Today-only volume, for the daily cadence ("X hitter-games and Y starts today").
+const dayMatchup = computed(() => {
+  const opp = oppSvc.opponent.value
+  if (!opp || !pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
+  return buildPointsMatchup(pool.value, fgByKey.value, scoring.weights.value, myTeamKey.value, opp.opponentKey, rosterSlots.value, todaySchedule.value)
+})
+const volMatchup = computed(() => (cadence.value === 'daily' ? dayMatchup.value : matchup.value))
 
 const round = (n: number) => Math.round(n)
 const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none')
@@ -79,6 +91,53 @@ const oppLogo = computed(() => oppSvc.opponent.value?.opponentLogo ?? '')
 // App two-team palette (matches the category Matchup): you = cyan, opponent = amber.
 const ME = '#5ec8e6'
 const OPP = '#e69a4a'
+
+// ── Season stakes (reuses the category engine) ────────────────────────────────
+const leagueSize = computed(() => new Set(pool.value.map((p) => p.teamKey)).size || (leagueStore.yahooTeams?.length ?? 12))
+const myRank = computed(() => {
+  if (!isEspn.value) {
+    const t = (leagueStore.yahooTeams ?? []).find((x: any) => x?.is_my_team)
+    if (t?.rank && Number(t.rank) > 0) return Number(t.rank)
+  }
+  return Math.ceil(leagueSize.value / 2) // ESPN/unknown rank → mid-table (auto-detects to 'clinch')
+})
+const weeksLeft = computed(() => Math.max(0, leagueStore.playoffWeekStart - leagueStore.currentWeek))
+const stakes = computed(() =>
+  seasonStakes({
+    rank: myRank.value,
+    leagueSize: leagueSize.value,
+    weeksLeft: weeksLeft.value,
+    playoffSpots: Math.ceil(leagueSize.value / 2),
+  }),
+)
+
+// One-line strategic read from the stakes + this week's matchup.
+const path = computed(() => {
+  const m = matchup.value
+  if (!m) return ''
+  const vol =
+    m.gamesDiff >= 3
+      ? 'you out-game them, so bank the counting stats'
+      : m.gamesDiff <= -3
+        ? 'they out-game you, so stream bats into your open days'
+        : 'volume is even, so the edge is in streaming arms'
+  switch (stakes.value.mode) {
+    case 'coast':
+      return stakes.value.coastKind === 'eliminated'
+        ? 'Out of reach for the bracket — conserve your moves, no need to chase this week.'
+        : 'Locked into the bracket — rest your guys and pick your spots.'
+    case 'must-win':
+      return `Must-win — empty the tank: ${vol}, and stream aggressively. There's no next week to save for.`
+    case 'maximize':
+      return `Every win is seeding now — push: ${vol}.`
+    default:
+      return m.myWinPct >= 55
+        ? `You're favored — protect it: ${vol}.`
+        : m.myWinPct <= 45
+          ? `Underdog this week — you'll need the volume: ${vol}.`
+          : `Coin-flip week — ${vol}.`
+  }
+})
 
 // Daily-captured win-probability history → the trend line (same engine the
 // category Matchup uses). Feeds my/opp win% keyed by league + week.
@@ -115,8 +174,18 @@ const trend = useWinProbTrend({
               <div class="font-mono text-lg font-extrabold leading-none" :style="{ color: ME }">{{ round(myWinPct) }}%</div>
             </div>
           </div>
-          <!-- Center -->
-          <div class="font-mono text-[10px] text-dark-textMuted">⚔ · {{ daysRemaining }}d left</div>
+          <!-- Center: days left + daily/weekly cadence -->
+          <div class="flex flex-col items-center gap-1.5">
+            <div class="font-mono text-[10px] text-dark-textMuted">⚔ · {{ daysRemaining }}d left</div>
+            <div class="inline-flex items-center gap-0.5 rounded-md border border-dark-border p-0.5 font-mono text-[9px]">
+              <button type="button" class="rounded px-2 py-0.5 transition-colors"
+                :class="cadence === 'daily' ? 'bg-dark-border text-dark-text' : 'text-dark-textMuted hover:text-dark-textSecondary'"
+                @click="cadence = 'daily'">daily</button>
+              <button type="button" class="rounded px-2 py-0.5 transition-colors"
+                :class="cadence === 'weekly' ? 'bg-dark-border text-dark-text' : 'text-dark-textMuted hover:text-dark-textSecondary'"
+                @click="cadence = 'weekly'">weekly</button>
+            </div>
+          </div>
           <!-- Opp -->
           <div class="flex flex-row-reverse items-center gap-2">
             <img v-if="oppLogo" :src="oppLogo" alt="" @error="onLogoErr" class="h-9 w-9 rounded-lg bg-dark-border object-cover" />
@@ -167,34 +236,48 @@ const trend = useWinProbTrend({
         </div>
       </section>
 
-      <!-- The volume lever -->
-      <div class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
-        <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">The volume edge</h2>
-        <p class="mb-3 text-sm text-dark-text">{{ matchup.volumeRead }}</p>
+      <!-- Stakes -->
+      <section class="mb-3 rounded-xl border border-dark-border bg-dark-card px-4 py-3">
+        <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Stakes</p>
+        <p class="mt-1 font-mono text-[11px] text-dark-text">{{ stakes.reasoning }}</p>
+      </section>
+
+      <!-- Your path -->
+      <section class="mb-3 rounded-xl border border-primary/40 bg-dark-card px-4 py-3">
+        <p class="font-mono text-[10px] uppercase tracking-widest text-primary">★ Your path</p>
+        <p class="mt-1 text-sm text-dark-text">{{ path }}</p>
+      </section>
+
+      <!-- The volume lever (cadence-aware) -->
+      <div v-if="volMatchup" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+        <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+          The volume edge <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">· {{ cadence === 'daily' ? 'today' : 'this week' }}</span>
+        </h2>
+        <p class="mb-3 text-sm text-dark-text">{{ volMatchup.volumeRead }}</p>
 
         <div class="grid grid-cols-2 gap-3 text-sm">
           <div class="rounded-lg bg-dark-bg/60 p-3">
-            <div class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Hitter-games this week</div>
+            <div class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Hitter-games {{ cadence === 'daily' ? 'today' : 'this week' }}</div>
             <div class="mt-1 flex items-baseline gap-2">
-              <span class="text-xl font-semibold" :style="{ color: matchup.gamesDiff >= 0 ? ME : OPP }">{{ matchup.my.hitterGames }}</span>
-              <span class="text-dark-textMuted">vs {{ matchup.opp.hitterGames }}</span>
+              <span class="text-xl font-semibold" :style="{ color: volMatchup.gamesDiff >= 0 ? ME : OPP }">{{ volMatchup.my.hitterGames }}</span>
+              <span class="text-dark-textMuted">vs {{ volMatchup.opp.hitterGames }}</span>
             </div>
           </div>
           <div class="rounded-lg bg-dark-bg/60 p-3">
-            <div class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Two-start arms</div>
+            <div class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">{{ cadence === 'daily' ? 'Starts today' : 'Two-start arms' }}</div>
             <div class="mt-1 flex items-baseline gap-2">
-              <span class="text-xl font-semibold text-dark-text">{{ matchup.my.twoStartArms.length }}</span>
-              <span class="text-dark-textMuted">vs {{ matchup.opp.twoStartArms.length }}</span>
+              <span class="text-xl font-semibold text-dark-text">{{ cadence === 'daily' ? volMatchup.my.pitcherStarts : volMatchup.my.twoStartArms.length }}</span>
+              <span class="text-dark-textMuted">vs {{ cadence === 'daily' ? volMatchup.opp.pitcherStarts : volMatchup.opp.twoStartArms.length }}</span>
             </div>
-            <div v-if="matchup.my.twoStartArms.length" class="mt-1 font-mono text-[11px]" :style="{ color: ME }">
-              {{ matchup.my.twoStartArms.map((a) => a.name).join(' · ') }}
+            <div v-if="cadence === 'weekly' && volMatchup.my.twoStartArms.length" class="mt-1 font-mono text-[11px]" :style="{ color: ME }">
+              {{ volMatchup.my.twoStartArms.map((a) => a.name).join(' · ') }}
             </div>
           </div>
         </div>
 
         <!-- Empty-slot leakage -->
-        <p v-if="matchup.my.openHitterSlots > 0" class="mt-3 rounded-lg bg-[#FF5C5C]/10 px-3 py-2 text-sm text-[#FF5C5C]">
-          You're leaving {{ matchup.my.openHitterSlots }} lineup slot{{ matchup.my.openHitterSlots > 1 ? 's' : '' }} empty —
+        <p v-if="volMatchup.my.openHitterSlots > 0" class="mt-3 rounded-lg bg-[#FF5C5C]/10 px-3 py-2 text-sm text-[#FF5C5C]">
+          You're leaving {{ volMatchup.my.openHitterSlots }} lineup slot{{ volMatchup.my.openHitterSlots > 1 ? 's' : '' }} empty —
           games on the bench. Plug a body before games lock.
         </p>
       </div>
