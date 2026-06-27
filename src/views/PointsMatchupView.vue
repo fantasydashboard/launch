@@ -130,6 +130,12 @@ const path = computed(() => {
       return `Must-win — empty the tank: ${vol}, and stream aggressively. There's no next week to save for.`
     case 'maximize':
       return `Every win is seeding now — push: ${vol}.`
+    case 'clinch': // comfortably in — don't overspend on a single week
+      return m.myWinPct >= 55
+        ? 'Comfortably in and favored — bank the win, no need to overspend.'
+        : m.myWinPct <= 45
+          ? "Comfortably in but an underdog this week — your season's fine, so don't chase it."
+          : `Comfortably in — pick your spots; chase this coin-flip only if the move is cheap (${vol}).`
     default:
       return m.myWinPct >= 55
         ? `You're favored — protect it: ${vol}.`
@@ -176,7 +182,7 @@ const trend = useWinProbTrend({
           </div>
           <!-- Center: days left + daily/weekly cadence -->
           <div class="flex flex-col items-center gap-1.5">
-            <div class="font-mono text-[10px] text-dark-textMuted">⚔ · {{ daysRemaining }}d left</div>
+            <div class="font-mono text-[10px] text-dark-textMuted">{{ daysRemaining }}d left</div>
             <div class="inline-flex items-center gap-0.5 rounded-md border border-dark-border p-0.5 font-mono text-[9px]">
               <button type="button" class="rounded px-2 py-0.5 transition-colors"
                 :class="cadence === 'daily' ? 'bg-dark-border text-dark-text' : 'text-dark-textMuted hover:text-dark-textSecondary'"

@@ -74,11 +74,14 @@ function teamWeek(
         const starts = lookupStarts(schedule, pl.name).length
         pitcherStarts += starts
         if (starts >= 2) twoStartArms.push({ name: pl.name, starts })
-        // Appearances this week: a probable starter pitches once per listed start;
-        // a reliever (no probable start) appears in ~half his team's games. Rough,
-        // but enough to give pitching a weekly point estimate (flagged in the UI).
+        // Appearances this week. A starter pitches once per LISTED start (0 if
+        // he's off his turn this window — he must NOT get reliever appearances, or
+        // an idle ace inflates the week). A pure reliever appears in ~half his
+        // team's games. A swingman is treated as a starter when he has a start.
+        const posU = String(pl.position || '').toUpperCase()
+        const isPureReliever = posU.includes('RP') && !posU.includes('SP')
         const teamGames = schedule.gamesByTeam[pl.proTeam ?? ''] ?? 0
-        const appearances = starts > 0 ? starts : Math.round(teamGames * 0.5)
+        const appearances = isPureReliever ? Math.round(teamGames * 0.5) : starts
         weeklyPitcherPoints += perGame * appearances
       } else {
         const g = schedule.gamesByTeam[pl.proTeam ?? ''] ?? 0
