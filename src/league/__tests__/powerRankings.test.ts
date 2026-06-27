@@ -43,4 +43,41 @@ describe('buildPowerRankings', () => {
     expect(pr.rows.find((r) => r.teamKey === 'Sleeper')!.tier).toBe('Contender')
     expect(pr.rows.find((r) => r.teamKey === 'Lucky')!.tier).toBe('Rebuilder')
   })
+
+  it('never sells an abandoned team as buy-low, even with strong talent', () => {
+    const withGhost = [
+      { teamKey: 'Ghost', teamName: 'Manager-less', strength: 100, wins: 2, losses: 8, managerless: true },
+      team('B', 80, 6, 4),
+      team('C', 60, 5, 5),
+      team('D', 40, 4, 6),
+      team('E', 20, 8, 2),
+    ]
+    const pr = buildPowerRankings(withGhost)
+    const ghost = pr.rows.find((r) => r.teamKey === 'Ghost')!
+    expect(ghost.strengthRank).toBe(1) // talent still ranks honestly
+    expect(ghost.luck).toBe('legit') // but no buy-low verdict
+    expect(ghost.managerless).toBe(true)
+    expect(ghost.blurb).toMatch(/abandoned|no manager/i)
+    expect(ghost.blurb).not.toMatch(/buy low|they'll climb/i)
+    // Abandoned teams are excluded from the actionable buy-low shortlist.
+    expect(pr.sleepers.map((r) => r.teamKey)).not.toContain('Ghost')
+  })
+
+  it('softens a bottom-tier sleeper so tier and luck never contradict', () => {
+    // 8 teams: a thin (7th-talent) roster with the worst record is technically
+    // "unlucky" but is a Rebuilder — it must not be sold as a climber.
+    const eight = [
+      team('T1', 100, 7, 1), team('T2', 90, 6, 2), team('T3', 80, 6, 2),
+      team('T4', 70, 5, 3), team('T5', 60, 4, 4), team('T6', 50, 4, 4),
+      { teamKey: 'Thin', teamName: 'Thin', strength: 40, wins: 0, losses: 8 }, // 7th talent, last record
+      team('T8', 30, 5, 3),
+    ]
+    const pr = buildPowerRankings(eight)
+    const thin = pr.rows.find((r) => r.teamKey === 'Thin')!
+    expect(thin.tier).toBe('Rebuilder')
+    if (thin.luck === 'sleeper') {
+      expect(thin.blurb).not.toMatch(/they'll climb/i)
+      expect(pr.sleepers.map((r) => r.teamKey)).not.toContain('Thin') // not a buy-low target
+    }
+  })
 })
