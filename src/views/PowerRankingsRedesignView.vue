@@ -140,12 +140,8 @@ const pointsRankings = computed(() => {
 
 const rankings = computed(() => (isCategory.value ? categoryRankings.value : pointsRankings.value))
 
-// Category count, for the How-it-works copy. Rounded from the leader's near-max ECW (the best
-// roster's ECW approaches the number of categories), with a sane fallback before data lands.
-const catCount = computed(() => {
-  const rows = categoryRankings.value?.rows ?? []
-  return rows.length ? Math.max(...rows.map((r) => Math.ceil(r.strength))) : 0
-})
+// Number of scored categories — gives "X.X cats/wk" its denominator context.
+const catCount = computed(() => catStrength.catCount.value)
 
 // Capture this week's talent (power) ranks once the board is ready, so the dashed
 // talent line accrues week over week. Overwrites the current week as rosters change.
@@ -212,7 +208,9 @@ const perWeekBasis = computed(() => isCategory.value || trajectory.weeksLeft.val
 // Category strength is intrinsically per-week (ECW); points strength is per-week only once
 // weeks-left resolves. Leader unit + gap unit follow suit.
 const leaderUnit = computed(() =>
-  isCategory.value ? 'cats/wk' : trajectory.weeksLeft.value > 0 ? 'proj pts/wk' : 'proj pts',
+  isCategory.value
+    ? catCount.value ? `of ${catCount.value} cats/wk` : 'cats/wk'
+    : trajectory.weeksLeft.value > 0 ? 'proj pts/wk' : 'proj pts',
 )
 const gapSuffix = computed(() =>
   isCategory.value ? ' cats vs #1' : trajectory.weeksLeft.value > 0 ? '/wk vs #1' : ' vs #1',

@@ -65,7 +65,16 @@ export function useCategoryStrength() {
 
   // === Platform-neutral inputs into the trade engine (mirrors TradesView) ===
   const pool = computed(() => {
-    if (isEspn.value) return espn.pool.value
+    if (isEspn.value) {
+      // ESPN player-level season stats are keyed in a DIFFERENT stat-id space than the
+      // league's category statIds (e.g. player R=2/HR=3/TB=19 vs category R=32/HR=33/TB=34),
+      // so the raw-stat fallback in toEffectiveStats reads the WRONG stat for any cat a
+      // FanGraphs projection doesn't rescue — a systematic wrong-stat substitution that
+      // inverted the ECW ranking. Drop the raw stats so the engine uses FG ROS projections
+      // only (correctly keyed by label via mapFgStatsByKey) — which is the right basis for a
+      // talent ranking regardless. Unmatched players simply contribute nothing.
+      return espn.pool.value.map((p) => ({ ...p, stats: {} as Record<string, number> }))
+    }
     const shots = new Map(yPool.value.map((p) => [p.playerKey, (p as { headshot?: string }).headshot]))
     return yahooLeague.pool.value.map((p) => ({
       ...p,
@@ -211,5 +220,8 @@ export function useCategoryStrength() {
     }
   }
 
-  return { strengths, teamMeta, myTeamKey, loading, load }
+  // Number of scored categories — for the "X.X of N cats/wk" label context.
+  const catCount = computed(() => catSpecs.value.length)
+
+  return { strengths, teamMeta, myTeamKey, catCount, loading, load }
 }
