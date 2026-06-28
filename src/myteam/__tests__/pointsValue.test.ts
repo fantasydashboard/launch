@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { projectPlayerPoints, projectedGames } from '../pointsValue'
+import { projectPlayerPoints, projectedGames, weeklyRate, type PlayerPoints } from '../pointsValue'
 import type { FGProjection } from '@/services/projectionService'
 
 // A typical points-league scoring sheet (ESPN-ish defaults).
@@ -55,5 +55,35 @@ describe('projectPlayerPoints', () => {
   it('projectedGames reads G for batters, GP for pitchers', () => {
     expect(projectedGames(batter({ g: 150 }), 'hit')).toBe(150)
     expect(projectedGames(pitcher({ gp: 30, gs: 30 }), 'pit')).toBe(30)
+  })
+})
+
+describe('weeklyRate', () => {
+  const hit = (total: number, games: number): PlayerPoints => ({ total, games, side: 'hit', perStat: {} })
+  const pit = (total: number, games: number): PlayerPoints => ({ total, games, side: 'pit', perStat: {} })
+
+  it('an everyday hitter sits under the cap → rate ≈ per-game × games/week', () => {
+    // 120 pts over 60 games = 2/game; 60 games / 10 weeks = 6/week (< 6.5 cap).
+    expect(weeklyRate(hit(120, 60), batter({ g: 60 }), 10)).toBeCloseTo(12, 5)
+  })
+
+  it('throttles a two-start week so it cannot inflate strength', () => {
+    // SP: 40 pts over 4 starts = 10/start. A 2-week window with 4 starts = 2/week,
+    // but a starter is capped at 1.3 turns → 10 × 1.3 = 13, not 10 × 2 = 20.
+    const sp = pitcher({ gs: 4, gp: 4 })
+    expect(weeklyRate(pit(40, 4), sp, 2)).toBeCloseTo(13, 5)
+    // A normal cadence (4 starts over 4 weeks = 1/week) is under the cap, untouched.
+    expect(weeklyRate(pit(40, 4), sp, 4)).toBeCloseTo(10, 5)
+  })
+
+  it('keeps an everyday regular above a part-time platoon bat (volume-aware)', () => {
+    const everyday = weeklyRate(hit(120, 60), batter({ g: 60 }), 10) // 2/game, 6/week → 12
+    const platoon = weeklyRate(hit(90, 30), batter({ g: 30 }), 10) // 3/game, 3/week → 9
+    expect(everyday).toBeGreaterThan(platoon)
+  })
+
+  it('returns 0 when there are no projected games or points', () => {
+    expect(weeklyRate(hit(0, 0), null, 5)).toBe(0)
+    expect(weeklyRate(hit(100, 0), null, 5)).toBe(0)
   })
 })

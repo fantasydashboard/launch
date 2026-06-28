@@ -9,7 +9,7 @@
  * (projected fantasy points), so there are no per-category z-scores, no ratio
  * cats, no baselines — just points and ranks.
  */
-import { projectPlayerPoints, type PointsSide } from '@/myteam/pointsValue'
+import { projectPlayerPoints, weeklyRate, type PointsSide } from '@/myteam/pointsValue'
 import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
 import type { FGProjection } from '@/services/projectionService'
 
@@ -99,10 +99,26 @@ export function buildPointsTeam(
   weights: Record<string, number>,
   myTeamKey: string | null,
   slots: Record<string, number>,
+  // `basis` controls how a player's lineup value is measured. 'total' (default,
+  // used by My Team) = rest-of-season projected points. 'perWeek' (Power Rankings)
+  // = schedule-neutral weekly rate, so a late-season two-start week can't inflate a
+  // team's strength. Only the optimal-lineup VALUE/standings honour this; the
+  // roster-row tiers stay on totals (My Team's basis), which 'perWeek' callers ignore.
+  opts: { basis?: 'total' | 'perWeek'; weeksLeft?: number } = {},
 ): PointsTeamModel {
+  const basis = opts.basis ?? 'total'
+  const weeksLeft = opts.weeksLeft ?? 1
+
   // 1) Project every rostered player's points once.
   const ptsByKey = new Map<string, ReturnType<typeof projectPlayerPoints>>()
   for (const p of pool) ptsByKey.set(p.playerKey, projectPlayerPoints(fgByKey[p.playerKey], weights))
+
+  // Lineup value per the chosen basis — totals for My Team, weekly rate for ranking.
+  const valueOf = (key: string): number => {
+    const r = ptsByKey.get(key)
+    if (!r) return 0
+    return basis === 'perWeek' ? weeklyRate(r, fgByKey[key], weeksLeft) : r.total
+  }
 
   // Specialist-chip thresholds. A chip should mark a STANDOUT, not anyone who
   // accrues a scored stat (every hitter steals a few bases, every starter logs a
@@ -177,18 +193,17 @@ export function buildPointsTeam(
   //    AND the slot-value landscape. bar=0 so even weak rosters field a full lineup.
   const byTeam = new Map<string, DepthPlayer[]>()
   for (const p of pool) {
-    const r = ptsByKey.get(p.playerKey)!
     const dp: DepthPlayer = {
       playerKey: p.playerKey,
       teamKey: p.teamKey,
       eligiblePositions: parseEligible(p),
-      value: r.total,
+      value: valueOf(p.playerKey),
       status: p.onIL ? 'IL' : '',
     }
     ;(byTeam.get(p.teamKey) ?? byTeam.set(p.teamKey, []).get(p.teamKey)!).push(dp)
   }
 
-  const pointsOf = (key: string) => ptsByKey.get(key)?.total ?? 0
+  const pointsOf = (key: string) => valueOf(key)
   const nameOf = new Map(pool.map((p) => [p.playerKey, p.name]))
 
   // assignedByPos per team, plus each team's starting-lineup point total.

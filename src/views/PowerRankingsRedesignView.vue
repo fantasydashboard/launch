@@ -81,7 +81,14 @@ const teamMeta = computed<Record<string, Meta>>(() => {
 // Roster STRENGTH per team = projected optimal-lineup points (points-league basis).
 const rankings = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
-  const model = buildPointsTeam(pool.value, fgByKey.value, scoring.weights.value, myTeamKey.value, rosterSlots.value)
+  // Rank on a schedule-neutral weekly rate once we know weeks-left, so a late-season
+  // two-start week can't inflate a roster's strength. Falls back to season totals
+  // until weeks-left resolves (same order mid-season anyway).
+  const wl = trajectory.weeksLeft.value
+  const model = buildPointsTeam(pool.value, fgByKey.value, scoring.weights.value, myTeamKey.value, rosterSlots.value, {
+    basis: wl > 0 ? 'perWeek' : 'total',
+    weeksLeft: wl,
+  })
   const meta = teamMeta.value
   const inputs: PowerTeamInput[] = model.standings.map((s) => {
     const m = meta[s.teamKey] ?? { name: 'Team', logo: '', wins: 0, losses: 0, ties: 0, pointsFor: 0, managerless: false }
@@ -127,6 +134,8 @@ const barPct = (s: number) => {
 }
 // Round projections to the nearest 10 — the raw figure carries false precision.
 const projPts = (n: number) => Math.round(n / 10) * 10
+const perWeekBasis = computed(() => trajectory.weeksLeft.value > 0)
+const ptsUnit = computed(() => (perWeekBasis.value ? 'proj pts/wk' : 'proj pts'))
 const ord = (n: number) => {
   const s = ['th', 'st', 'nd', 'rd'], v = n % 100
   return n + (s[(v - 20) % 10] || s[v] || s[0])
@@ -169,6 +178,7 @@ const showHow = ref(false)
       <div>
         <p class="mb-1 text-[10px] uppercase tracking-widest text-dark-textSecondary">The rank</p>
         <p>Teams are ranked by <span class="text-dark-text">roster talent</span>, not record. We take every rostered player's <span class="text-dark-text">rest-of-season projection</span>, score it by <span class="text-dark-text">your league's exact settings</span>, and slot each team into its best legal lineup. The combined projection of those starters is the team's strength — higher means a better roster.</p>
+        <p class="mt-1">Strength is measured as a <span class="text-dark-text">per-week rate</span>, so late in the season a favorable two-start week doesn't inflate a roster past its true talent.</p>
       </div>
       <div>
         <p class="mb-1 text-[10px] uppercase tracking-widest text-dark-textSecondary">Where luck comes in</p>
@@ -181,7 +191,6 @@ const showHow = ref(false)
       <div>
         <p class="mb-1 text-[10px] uppercase tracking-widest text-[#e69a4a]">What it doesn't account for yet</p>
         <ul class="list-disc space-y-1 pl-4">
-          <li>Late in the season the projection window shrinks, so a favorable two-start week can nudge a team up more than its true talent warrants. We're moving to a stable per-week rate to fix this.</li>
           <li>It doesn't weight <span class="text-dark-text">playoff stakes</span> — a team that's eliminated can still rank high on pure roster talent even when it no longer matters. Playoff-aware context is coming.</li>
           <li>Buy-low / sell-high assume there are weeks left and an open trade market; near the deadline those calls expire.</li>
         </ul>
@@ -242,7 +251,7 @@ const showHow = ref(false)
               <div class="relative h-2 overflow-hidden rounded-full" :style="{ backgroundColor: 'rgba(255,255,255,0.08)' }">
                 <div class="absolute inset-y-0 left-0 rounded-full" :class="r.managerless ? 'bg-dark-textMuted' : 'bg-primary'" :style="{ width: barPct(r.strength) + '%' }" />
               </div>
-              <div class="mt-0.5 text-right font-mono text-[9px] text-dark-textMuted">{{ projPts(r.strength) }} proj pts</div>
+              <div class="mt-0.5 text-right font-mono text-[9px] text-dark-textMuted">{{ projPts(r.strength) }} {{ ptsUnit }}</div>
             </div>
           </div>
           <p class="mt-1.5 pl-9 font-mono text-[11px] leading-snug text-dark-textMuted">{{ r.blurb }}</p>
@@ -250,7 +259,7 @@ const showHow = ref(false)
       </div>
 
       <p class="mt-3 font-mono text-[10px] leading-relaxed text-dark-textMuted">
-        rank = roster strength (projected optimal-lineup points) · the standings can lie — a lucky team regresses, an unlucky one climbs
+        rank = roster strength (projected optimal-lineup points{{ perWeekBasis ? ' per week' : '' }}) · the standings can lie — a lucky team regresses, an unlucky one climbs
       </p>
 
       <!-- The race over time -->

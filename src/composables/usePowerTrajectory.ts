@@ -22,6 +22,7 @@ function parseEspnKey(key: string): { sport: Sport; leagueId: string; season: nu
 export function usePowerTrajectory() {
   const outcomes = ref<WeekOutcomes[]>([])
   const currentWeek = ref(0)
+  const weeksLeft = ref(0) // regular-season weeks remaining (incl. current); 0 = unknown
   const loading = ref(false)
   const loaded = ref(false)
 
@@ -32,13 +33,16 @@ export function usePowerTrajectory() {
     const leagueStore = useLeagueStore()
     let cw = Number(leagueStore.currentLeague?.current_week) || 0
     let sw = Number(leagueStore.currentLeague?.start_week) || 1
-    if (!cw) {
+    let ew = Number(leagueStore.currentLeague?.end_week) || 0
+    if (!cw || !ew) {
       const meta = await yahooService.getLeagueMetadata(leagueKey)
-      cw = meta.currentWeek
-      sw = meta.startWeek || 1
+      cw = cw || meta.currentWeek
+      sw = sw || meta.startWeek || 1
+      ew = ew || meta.endWeek || 0
     }
 
     currentWeek.value = cw
+    if (ew) weeksLeft.value = Math.max(1, ew - cw + 1)
     const weeks = Array.from({ length: Math.max(0, cw - sw + 1) }, (_, i) => sw + i)
     const perWeek = await Promise.all(
       weeks.map(async (week): Promise<WeekOutcomes | null> => {
@@ -83,6 +87,8 @@ export function usePowerTrajectory() {
     if (!cw) return []
 
     currentWeek.value = cw
+    const regSeason = Number(league?.settings?.regularSeasonMatchupPeriodCount) || 0
+    if (regSeason) weeksLeft.value = Math.max(1, regSeason - cw + 1)
     const weeks = Array.from({ length: cw }, (_, i) => i + 1)
     const perWeek = await Promise.all(
       weeks.map(async (week): Promise<WeekOutcomes | null> => {
@@ -131,5 +137,5 @@ export function usePowerTrajectory() {
     }
   }
 
-  return { outcomes, currentWeek, loading, loaded, load }
+  return { outcomes, currentWeek, weeksLeft, loading, loaded, load }
 }

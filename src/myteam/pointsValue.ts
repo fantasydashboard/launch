@@ -121,3 +121,27 @@ export function projectedGames(fg: FGProjection, side: PointsSide): number {
   if (side === 'pit') return fg.gp ?? fg.gs ?? 0
   return fg.g ?? 0
 }
+
+/**
+ * A schedule-neutral WEEKLY production rate for talent ranking. Rest-of-season
+ * TOTALS drift as the season shrinks — a team can climb purely because its arms
+ * line up for a two-start week — so we rank on per-week rate instead.
+ *
+ * rate = points-per-game × normal games-per-week, where games-per-week is the
+ * player's own remaining-window usage CAPPED at a role-normal ceiling. The cap is
+ * what neutralizes the late-season spike (a 2-start week is throttled to ~1 turn)
+ * while leaving everyday volume intact (an everyday bat's ~6 games/week sits under
+ * the cap, so a part-time platoon bat still ranks below it).
+ *
+ * Mid-season the cap rarely binds, so the order matches the season-total order;
+ * it only diverges in the final weeks, exactly where the distortion lives.
+ */
+export function weeklyRate(pp: PlayerPoints, fg: FGProjection | null | undefined, weeksLeft: number): number {
+  if (pp.games <= 0 || pp.total === 0) return 0
+  const wl = Math.max(1, weeksLeft)
+  const perGame = pp.total / pp.games
+  const gamesPerWeek = pp.games / wl
+  const isStarter = pp.side === 'pit' && Number(fg?.gs ?? 0) >= Number(fg?.gp ?? fg?.gs ?? 0) * 0.5
+  const cap = pp.side === 'hit' ? 6.5 : isStarter ? 1.3 : 3.5
+  return perGame * Math.min(gamesPerWeek, cap)
+}
