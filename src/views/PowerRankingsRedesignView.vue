@@ -265,7 +265,7 @@ const showHow = ref(false)
         <p class="mb-1 text-[10px] uppercase tracking-widest text-dark-textSecondary">The rank</p>
         <template v-if="isCategory">
           <p>Teams are ranked by <span class="text-dark-text">roster talent</span>, not record. We take every rostered player's <span class="text-dark-text">rest-of-season projection</span>, total each team's output in <span class="text-dark-text">your league's categories</span>, and rank the league category by category. A team's strength is its <span class="text-dark-text">expected categories won per week</span> — how many of the league's categories<template v-if="catCount"> ({{ catCount }} of them)</template> its roster should win against an average opponent. Higher means a better roster.</p>
-          <p class="mt-1">Because it's a <span class="text-dark-text">per-week category rate</span>, not points, it reads as a small number: the best roster lands near the top of that category count and the field clusters below.</p>
+          <p class="mt-1">The leader shows its full rate (categories won per week); every other team shows how many <span class="text-dark-text">fewer</span> it'd win — so a tight cluster means a close field.</p>
         </template>
         <template v-else>
           <p>Teams are ranked by <span class="text-dark-text">roster talent</span>, not record. We take every rostered player's <span class="text-dark-text">rest-of-season projection</span>, score it by <span class="text-dark-text">your league's exact settings</span>, and slot each team into its best legal lineup. The combined projection of those starters is the team's strength — higher means a better roster.</p>
