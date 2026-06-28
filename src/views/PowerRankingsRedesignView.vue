@@ -182,17 +182,17 @@ const showHow = ref(false)
       </div>
       <div>
         <p class="mb-1 text-[10px] uppercase tracking-widest text-dark-textSecondary">Where luck comes in</p>
-        <p>Your win-loss record isn't part of the rank. It's used only to spot luck: when a team's talent rank and its standings rank disagree, that gap is the <span class="text-[#e69a4a]">pretender</span> (record running ahead of talent) or <span class="text-primary">sleeper</span> (talent ahead of record) call that drives the buy/sell shortlist.</p>
+        <p>Your win-loss record isn't part of the rank. It's used only to spot luck: when a team's talent rank and its standings rank disagree, that gap forecasts movement — a record running ahead of the roster is <span class="text-[#e69a4a]">due to fall</span>, a roster the standings haven't caught up to is <span class="text-primary">due to rise</span>.</p>
       </div>
       <div>
         <p class="mb-1 text-[10px] uppercase tracking-widest text-dark-textSecondary">Tiers &amp; abandoned teams</p>
-        <p>Contender / Bubble / Rebuilder come from where a roster's talent lands — top third, middle, bottom third. A team with no manager is flagged <span class="text-dark-text">abandoned</span> and held out of the buy-low list: the talent's there, but nobody's setting the lineup, so it won't be realized.</p>
+        <p>Contender / Bubble / Rebuilder come from where a roster's talent lands — top third, middle, bottom third. A team with no manager is flagged <span class="text-dark-text">abandoned</span> and held out of the due-to-rise list: the talent's there, but nobody's setting the lineup, so it won't be realized.</p>
       </div>
       <div>
         <p class="mb-1 text-[10px] uppercase tracking-widest text-[#e69a4a]">What it doesn't account for yet</p>
         <ul class="list-disc space-y-1 pl-4">
           <li>It doesn't weight <span class="text-dark-text">playoff stakes</span> — a team that's eliminated can still rank high on pure roster talent even when it no longer matters. Playoff-aware context is coming.</li>
-          <li>Buy-low / sell-high assume there are weeks left and an open trade market; near the deadline those calls expire.</li>
+          <li>Rise / fall forecasts assume there are weeks left to play out; near the end of the season there's less room for a team to regress to its talent.</li>
         </ul>
       </div>
     </div>
@@ -204,8 +204,8 @@ const showHow = ref(false)
       <!-- The triage shortlist — who to act on, and the move. -->
       <div v-if="rankings.pretenders.length || rankings.sleepers.length" class="mb-5 grid gap-3" :class="calloutCols">
         <div v-if="rankings.pretenders.length" class="rounded-xl border border-[#e69a4a]/30 bg-dark-card p-4">
-          <p class="font-mono text-[10px] uppercase tracking-widest text-[#e69a4a]">Sell-high targets</p>
-          <p class="mb-2 font-mono text-[9px] text-dark-textMuted">their record outruns their roster — deal with them before it regresses</p>
+          <p class="font-mono text-[10px] uppercase tracking-widest text-[#e69a4a]">Due to fall</p>
+          <p class="mb-2 font-mono text-[9px] text-dark-textMuted">record's outrunning the roster — expect them to slide</p>
           <div v-for="r in rankings.pretenders" :key="r.teamKey" class="border-t border-dark-border/40 py-2 first:border-0">
             <p class="truncate text-sm text-dark-text">{{ r.teamName }}</p>
             <p class="font-mono text-[11px] text-dark-textMuted">
@@ -214,8 +214,8 @@ const showHow = ref(false)
           </div>
         </div>
         <div v-if="rankings.sleepers.length" class="rounded-xl border bg-dark-card p-4" :style="{ borderColor: primaryTint(35) }">
-          <p class="font-mono text-[10px] uppercase tracking-widest text-primary">Buy-low targets</p>
-          <p class="mb-2 font-mono text-[9px] text-dark-textMuted">strong roster the standings haven't caught up to — get them before they climb</p>
+          <p class="font-mono text-[10px] uppercase tracking-widest text-primary">Due to rise</p>
+          <p class="mb-2 font-mono text-[9px] text-dark-textMuted">roster the standings haven't caught up to — expect them to climb</p>
           <div v-for="r in rankings.sleepers" :key="r.teamKey" class="border-t border-dark-border/40 py-2 first:border-0">
             <p class="truncate text-sm text-dark-text">{{ r.teamName }}</p>
             <p class="font-mono text-[11px] text-dark-textMuted">
