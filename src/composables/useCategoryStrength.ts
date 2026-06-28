@@ -16,6 +16,7 @@ import { resolveVolumeStatId } from '@/myteam/catVolume'
 import type { CatSpec } from '@/myteam/value'
 import { buildEngine } from '@/trades/engine'
 import { ecwByTeam } from '@/trades/standings'
+import { espnStatNamesForSport } from '@/myteam/espn/statNames'
 
 /** Parse an ESPN league key `espn_{sport}_{leagueId}_{season}`. */
 function parseEspnKey(key: string): { sport: Sport; leagueId: string; season: number } | null {
@@ -44,6 +45,7 @@ export interface CategoryTeamMeta {
 export function useCategoryStrength() {
   const leagueStore = useLeagueStore()
   const isEspn = computed(() => leagueStore.activePlatform === 'espn')
+  const espnSport = computed<Sport>(() => parseEspnKey(leagueStore.activeLeagueId ?? '')?.sport ?? 'baseball')
 
   // Yahoo sources.
   const { categoryLabels, load: loadSeasonData } = useFullSeasonCategoryData()
@@ -67,13 +69,53 @@ export function useCategoryStrength() {
   const pool = computed(() => {
     if (isEspn.value) {
       // ESPN player-level season stats are keyed in a DIFFERENT stat-id space than the
-      // league's category statIds (e.g. player R=2/HR=3/TB=19 vs category R=32/HR=33/TB=34),
-      // so the raw-stat fallback in toEffectiveStats reads the WRONG stat for any cat a
-      // FanGraphs projection doesn't rescue — a systematic wrong-stat substitution that
-      // inverted the ECW ranking. Drop the raw stats so the engine uses FG ROS projections
-      // only (correctly keyed by label via mapFgStatsByKey) — which is the right basis for a
-      // talent ranking regardless. Unmatched players simply contribute nothing.
-      return espn.pool.value.map((p) => ({ ...p, stats: {} as Record<string, number> }))
+      // league's category statIds (e.g. player R=2/HR=3/TB=19/RBI=4 vs category
+      // R=32/HR=33/TB=34/RBI=23), so feeding raw stats straight into toEffectiveStats made
+      // its fallback read the WRONG stat for any cat a FanGraphs projection didn't rescue — a
+      // systematic wrong-stat substitution that INVERTED the ECW ranking.
+      //
+      // Fix: translate each player's raw stats from the PLAYER-LEVEL id space into the
+      // league's CATEGORY id space by matching on display NAME (the same bridge the FG path
+      // uses via labels). FG-matched players still prefer FG inside toEffectiveStats; FG-
+      // UNMATCHED players now contribute their correct season-to-date stats again instead of
+      // nothing (which understated genuinely strong, sparsely-projected rosters).
+      const playerStatNames = espnStatNamesForSport(espnSport.value) // player-level id → {display}
+      const specs = catSpecs.value
+      // Category statIds whose display label maps onto a player-level display name.
+      const catTargets = categories.value
+        .map((c) => ({ statId: c.statId, label: (c.label || c.name || '').toUpperCase().trim() }))
+        .filter((c) => c.label)
+      // Volume stats (IP/PA/AB) referenced by ratio cats but NOT scored as their own category —
+      // remap these too (under the synthetic volume id) so ratio weighting works for unmatched
+      // players. Map the volume id back to the player-level display to look it up.
+      const VOL_LABEL: Record<string, string[]> = { __volip: ['IP'], __volpa: ['PA', 'AB'] }
+      const synthVolTargets = specs
+        .filter((s) => s.isRatio && s.volumeStatId && VOL_LABEL[s.volumeStatId])
+        .map((s) => ({ statId: s.volumeStatId as string, labels: VOL_LABEL[s.volumeStatId as string] }))
+
+      return espn.pool.value.map((p) => {
+        const raw = p.stats || {}
+        // Re-key the player's raw stats from player-level id → display name (uppercased).
+        const byName: Record<string, number> = {}
+        for (const [idStr, val] of Object.entries(raw)) {
+          if (typeof val !== 'number' || !Number.isFinite(val)) continue
+          const display = playerStatNames[Number(idStr)]?.display
+          if (display) byName[display.toUpperCase().trim()] = val
+        }
+        const out: Record<string, number> = {}
+        for (const t of catTargets) {
+          const v = byName[t.label]
+          if (v !== undefined) out[t.statId] = v // omit missing (don't zero)
+        }
+        for (const t of synthVolTargets) {
+          if (out[t.statId] !== undefined) continue
+          for (const lbl of t.labels) {
+            const v = byName[lbl]
+            if (v !== undefined) { out[t.statId] = v; break }
+          }
+        }
+        return { ...p, stats: out }
+      })
     }
     const shots = new Map(yPool.value.map((p) => [p.playerKey, (p as { headshot?: string }).headshot]))
     return yahooLeague.pool.value.map((p) => ({
