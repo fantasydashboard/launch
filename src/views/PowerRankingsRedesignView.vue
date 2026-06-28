@@ -132,6 +132,22 @@ const barPct = (s: number) => {
   if (max <= min) return 100
   return 14 + 86 * ((s - min) / (max - min))
 }
+
+// The bar's COLOR carries the forecast (the one thing not otherwise glanceable):
+// amber = due to fall, cyan = due to rise, lime = on track. Abandoned teams get a
+// hatched fill so "inactive" reads as intentional, not an unrendered bar.
+const barStyle = (r: { strength: number; managerless: boolean; luck: string }) => {
+  const width = barPct(r.strength) + '%'
+  if (r.managerless) {
+    return {
+      width,
+      backgroundColor: 'rgba(148,163,184,0.18)',
+      backgroundImage: 'repeating-linear-gradient(45deg, rgba(148,163,184,0.6) 0, rgba(148,163,184,0.6) 3px, transparent 3px, transparent 6px)',
+    }
+  }
+  const color = r.luck === 'pretender' ? '#e69a4a' : r.luck === 'sleeper' ? '#5ec8e6' : 'var(--color-primary, #C6FF3A)'
+  return { width, backgroundColor: color }
+}
 // Round projections to the nearest 10 — the raw figure carries false precision.
 const projPts = (n: number) => Math.round(n / 10) * 10
 const perWeekBasis = computed(() => trajectory.weeksLeft.value > 0)
@@ -169,7 +185,7 @@ const showHow = ref(false)
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl px-4 py-6">
+  <div class="mx-auto max-w-3xl px-4 pt-6 pb-20">
     <header class="mb-4">
       <h1 class="font-display text-2xl font-bold text-dark-text">Power Rankings</h1>
       <p class="font-mono text-xs text-dark-textMuted">Who's actually good — ranked by roster talent, not record.</p>
@@ -210,11 +226,11 @@ const showHow = ref(false)
 
     <template v-else>
       <!-- The triage shortlist — who to act on, and the move. -->
-      <div v-if="rankings.pretenders.length || rankings.sleepers.length" class="mb-5 grid gap-3" :class="calloutCols">
+      <div v-if="rankings.pretenders.length || rankings.sleepers.length" class="mb-5 grid items-start gap-3" :class="calloutCols">
         <div v-if="rankings.pretenders.length" class="rounded-xl border border-[#e69a4a]/30 bg-dark-card p-4">
           <p class="font-mono text-[10px] uppercase tracking-widest text-[#e69a4a]">Due to fall</p>
           <p class="mb-2 font-mono text-[9px] text-dark-textMuted">record's outrunning the roster — expect them to slide</p>
-          <div v-for="r in rankings.pretenders" :key="r.teamKey" class="border-t border-dark-border/40 py-2 first:border-0">
+          <div v-for="r in rankings.pretenders.slice(0, 3)" :key="r.teamKey" class="border-t border-dark-border/40 py-2 first:border-0">
             <p class="truncate text-sm text-dark-text">{{ r.teamName }}</p>
             <p class="font-mono text-[11px] text-dark-textMuted">
               {{ recordStr(r) }} record, but only <span class="text-[#e69a4a]">{{ ord(r.strengthRank) }} in talent</span> ({{ Math.abs(r.luckDelta) }} spots of luck)
@@ -224,7 +240,7 @@ const showHow = ref(false)
         <div v-if="rankings.sleepers.length" class="rounded-xl border bg-dark-card p-4" :style="{ borderColor: primaryTint(35) }">
           <p class="font-mono text-[10px] uppercase tracking-widest text-primary">Due to rise</p>
           <p class="mb-2 font-mono text-[9px] text-dark-textMuted">roster the standings haven't caught up to — expect them to climb</p>
-          <div v-for="r in rankings.sleepers" :key="r.teamKey" class="border-t border-dark-border/40 py-2 first:border-0">
+          <div v-for="r in rankings.sleepers.slice(0, 3)" :key="r.teamKey" class="border-t border-dark-border/40 py-2 first:border-0">
             <p class="truncate text-sm text-dark-text">{{ r.teamName }}</p>
             <p class="font-mono text-[11px] text-dark-textMuted">
               {{ recordStr(r) }} record, but <span class="text-primary">{{ ord(r.strengthRank) }} in talent</span> ({{ Math.abs(r.luckDelta) }} spots unlucky)
@@ -257,7 +273,7 @@ const showHow = ref(false)
             <!-- Strength bar (min-anchored to expose real separation) -->
             <div class="hidden w-28 shrink-0 sm:block">
               <div class="relative h-2 overflow-hidden rounded-full" :style="{ backgroundColor: 'rgba(255,255,255,0.08)' }">
-                <div class="absolute inset-y-0 left-0 rounded-full" :class="r.managerless ? 'bg-dark-textMuted' : 'bg-primary'" :style="{ width: barPct(r.strength) + '%' }" />
+                <div class="absolute inset-y-0 left-0 rounded-full" :style="barStyle(r)" />
               </div>
               <div class="mt-0.5 text-right font-mono text-[9px] text-dark-textMuted" :title="`${projPts(r.strength)} ${ptsUnit}`">
                 <template v-if="r.strengthRank === 1">{{ projPts(r.strength) }} {{ ptsUnit }}</template>
@@ -271,6 +287,9 @@ const showHow = ref(false)
 
       <p class="mt-3 font-mono text-[10px] leading-relaxed text-dark-textMuted">
         rank = roster strength (projected optimal-lineup points{{ perWeekBasis ? ' per week' : '' }}) · leader shown in full, the rest as their gap behind #1 · the standings can lie — a lucky team regresses, an unlucky one climbs
+      </p>
+      <p class="mt-1.5 font-mono text-[10px] leading-relaxed text-dark-textMuted">
+        bar tint = forecast: <span class="text-primary">on track</span> · <span class="text-[#e69a4a]">due to fall</span> · <span class="text-[#5ec8e6]">due to rise</span> · <span class="text-dark-textSecondary">hatched = abandoned</span>
       </p>
 
       <!-- The race over time -->

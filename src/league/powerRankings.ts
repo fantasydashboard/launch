@@ -158,7 +158,7 @@ export function buildPowerRankings(teams: PowerTeamInput[]): PowerRankings {
         : [
             `A real contender — ${ord(sr)} in talent, and the record backs it.`,
             `The real deal: ${ord(sr)}-best roster, and they're stacking wins to match.`,
-            `No fluke — ${ord(sr)} in talent and playing like it.`,
+            `Legit at ${ord(sr)} in talent — the wins are following.`,
           ]
     } else if (tier === 'Rebuilder') {
       variants = [
