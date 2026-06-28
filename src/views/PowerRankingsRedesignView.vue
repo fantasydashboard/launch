@@ -146,6 +146,9 @@ const primaryTint = (pct: number) => `color-mix(in srgb, var(--color-primary, #C
 const calloutCols = computed(() =>
   rankings.value && rankings.value.pretenders.length && rankings.value.sleepers.length ? 'sm:grid-cols-2' : 'sm:grid-cols-1',
 )
+
+// Methodology disclosure — explains the model and, honestly, its current limits.
+const showHow = ref(false)
 </script>
 
 <template>
@@ -153,7 +156,37 @@ const calloutCols = computed(() =>
     <header class="mb-4">
       <h1 class="font-display text-2xl font-bold text-dark-text">Power Rankings</h1>
       <p class="font-mono text-xs text-dark-textMuted">Who's actually good — ranked by roster talent, not record.</p>
+      <button
+        class="mt-2 font-mono text-[11px] text-dark-textSecondary transition-colors hover:text-dark-text"
+        @click="showHow = !showHow"
+      >
+        {{ showHow ? '▾' : '▸' }} How these rankings work
+      </button>
     </header>
+
+    <!-- Methodology — what the rank is, and (honestly) what it doesn't do yet. -->
+    <div v-if="showHow" class="mb-5 space-y-3 rounded-xl border border-dark-border bg-dark-card p-4 font-mono text-[11px] leading-relaxed text-dark-textMuted">
+      <div>
+        <p class="mb-1 text-[10px] uppercase tracking-widest text-dark-textSecondary">The rank</p>
+        <p>Teams are ranked by <span class="text-dark-text">roster talent</span>, not record. We take every rostered player's <span class="text-dark-text">rest-of-season projection</span>, score it by <span class="text-dark-text">your league's exact settings</span>, and slot each team into its best legal lineup. The combined projection of those starters is the team's strength — higher means a better roster.</p>
+      </div>
+      <div>
+        <p class="mb-1 text-[10px] uppercase tracking-widest text-dark-textSecondary">Where luck comes in</p>
+        <p>Your win-loss record isn't part of the rank. It's used only to spot luck: when a team's talent rank and its standings rank disagree, that gap is the <span class="text-[#e69a4a]">pretender</span> (record running ahead of talent) or <span class="text-primary">sleeper</span> (talent ahead of record) call that drives the buy/sell shortlist.</p>
+      </div>
+      <div>
+        <p class="mb-1 text-[10px] uppercase tracking-widest text-dark-textSecondary">Tiers &amp; abandoned teams</p>
+        <p>Contender / Bubble / Rebuilder come from where a roster's talent lands — top third, middle, bottom third. A team with no manager is flagged <span class="text-dark-text">abandoned</span> and held out of the buy-low list: the talent's there, but nobody's setting the lineup, so it won't be realized.</p>
+      </div>
+      <div>
+        <p class="mb-1 text-[10px] uppercase tracking-widest text-[#e69a4a]">What it doesn't account for yet</p>
+        <ul class="list-disc space-y-1 pl-4">
+          <li>Late in the season the projection window shrinks, so a favorable two-start week can nudge a team up more than its true talent warrants. We're moving to a stable per-week rate to fix this.</li>
+          <li>It doesn't weight <span class="text-dark-text">playoff stakes</span> — a team that's eliminated can still rank high on pure roster talent even when it no longer matters. Playoff-aware context is coming.</li>
+          <li>Buy-low / sell-high assume there are weeks left and an open trade market; near the deadline those calls expire.</li>
+        </ul>
+      </div>
+    </div>
 
     <div v-if="loading && !rankings" class="py-16 text-center text-dark-textMuted">Sizing up the league…</div>
     <div v-else-if="!rankings" class="py-16 text-center text-dark-textMuted">Couldn't assemble the league yet. Try a refresh.</div>
