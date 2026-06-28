@@ -133,10 +133,9 @@ const barPct = (s: number) => {
   return 14 + 86 * ((s - min) / (max - min))
 }
 
-// The bar's COLOR carries the forecast (the one thing not otherwise glanceable):
-// amber = due to fall, cyan = due to rise, lime = on track. Abandoned teams get a
-// hatched fill so "inactive" reads as intentional, not an unrendered bar.
-const barStyle = (r: { strength: number; managerless: boolean; luck: string }) => {
+// The bar keeps ONE job — length = strength, so the leader pops. Abandoned teams
+// get a hatched fill so "inactive" reads as intentional, not an unrendered bar.
+const barStyle = (r: { strength: number; managerless: boolean }) => {
   const width = barPct(r.strength) + '%'
   if (r.managerless) {
     return {
@@ -145,8 +144,16 @@ const barStyle = (r: { strength: number; managerless: boolean; luck: string }) =
       backgroundImage: 'repeating-linear-gradient(45deg, rgba(148,163,184,0.6) 0, rgba(148,163,184,0.6) 3px, transparent 3px, transparent 6px)',
     }
   }
-  const color = r.luck === 'pretender' ? '#e69a4a' : r.luck === 'sleeper' ? '#5ec8e6' : 'var(--color-primary, #C6FF3A)'
-  return { width, backgroundColor: color }
+  return { width, backgroundColor: 'var(--color-primary, #C6FF3A)' }
+}
+
+// The FORECAST rides a small arrow beside the bar — green ▲ due to rise, amber ▼
+// due to fall — matching the callout boxes and the green/amber luck text in the row.
+const forecastArrow = (r: { luck: string; managerless: boolean }) => {
+  if (r.managerless) return { glyph: '', color: '' }
+  if (r.luck === 'sleeper') return { glyph: '▲', color: 'var(--color-primary, #C6FF3A)' }
+  if (r.luck === 'pretender') return { glyph: '▼', color: '#e69a4a' }
+  return { glyph: '', color: '' }
 }
 // Round projections to the nearest 10 — the raw figure carries false precision.
 const projPts = (n: number) => Math.round(n / 10) * 10
@@ -270,10 +277,13 @@ const showHow = ref(false)
                 <span v-else-if="r.luck === 'sleeper'" class="text-primary">· unlucky (talent {{ Math.abs(r.luckDelta) }} ahead of record)</span>
               </span>
             </span>
-            <!-- Strength bar (min-anchored to expose real separation) -->
-            <div class="hidden w-28 shrink-0 sm:block">
-              <div class="relative h-2 overflow-hidden rounded-full" :style="{ backgroundColor: 'rgba(255,255,255,0.08)' }">
-                <div class="absolute inset-y-0 left-0 rounded-full" :style="barStyle(r)" />
+            <!-- Strength bar (length = strength) + forecast arrow (rise/fall) -->
+            <div class="hidden w-32 shrink-0 sm:block">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2.5 shrink-0 text-center font-mono text-[10px] leading-none" :style="{ color: forecastArrow(r).color }" :title="r.luck === 'sleeper' ? 'Due to rise' : r.luck === 'pretender' ? 'Due to fall' : ''">{{ forecastArrow(r).glyph }}</span>
+                <div class="relative h-2 flex-1 overflow-hidden rounded-full" :style="{ backgroundColor: 'rgba(255,255,255,0.08)' }">
+                  <div class="absolute inset-y-0 left-0 rounded-full" :style="barStyle(r)" />
+                </div>
               </div>
               <div class="mt-0.5 text-right font-mono text-[9px] text-dark-textMuted" :title="`${projPts(r.strength)} ${ptsUnit}`">
                 <template v-if="r.strengthRank === 1">{{ projPts(r.strength) }} {{ ptsUnit }}</template>
@@ -289,7 +299,7 @@ const showHow = ref(false)
         rank = roster strength (projected optimal-lineup points{{ perWeekBasis ? ' per week' : '' }}) · leader shown in full, the rest as their gap behind #1 · the standings can lie — a lucky team regresses, an unlucky one climbs
       </p>
       <p class="mt-1.5 font-mono text-[10px] leading-relaxed text-dark-textMuted">
-        bar tint = forecast: <span class="text-primary">on track</span> · <span class="text-[#e69a4a]">due to fall</span> · <span class="text-[#5ec8e6]">due to rise</span> · <span class="text-dark-textSecondary">hatched = abandoned</span>
+        bar length = strength · forecast: <span class="text-primary">▲ due to rise</span> · <span class="text-[#e69a4a]">▼ due to fall</span> · hatched bar = abandoned
       </p>
 
       <!-- The race over time -->
