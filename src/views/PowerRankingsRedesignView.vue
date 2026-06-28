@@ -5,11 +5,18 @@ import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
 import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { usePowerTrajectory } from '@/composables/usePowerTrajectory'
+import { useCategoryStrength } from '@/composables/useCategoryStrength'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { buildPowerRankings, type PowerTeamInput } from '@/league/powerRankings'
 import { buildTrajectory, type TalentSnapshot } from '@/league/powerTrajectory'
 import { readTalentSnapshots, recordTalentSnapshot } from '@/league/talentSnapshots'
 import PowerTrajectoryChart from '@/components/league/PowerTrajectoryChart.vue'
+
+// Scoring dialect: 'points' = projected optimal-lineup points; 'category' = expected
+// categories won per week (ECW) from projected roster output. Branches ONLY the strength
+// source, team-meta source, and unit labels — everything downstream is shared.
+const props = withDefaults(defineProps<{ scoring?: 'points' | 'category' }>(), { scoring: 'points' })
+const isCategory = computed(() => props.scoring === 'category')
 
 const leagueStore = useLeagueStore()
 const isEspn = computed(() => leagueStore.activePlatform === 'espn')
@@ -18,12 +25,17 @@ const yahooLeague = useYahooLeaguePool()
 const espnPoints = useEspnPointsTeamData()
 const scoring = useLeagueScoring()
 const trajectory = usePowerTrajectory()
+const catStrength = useCategoryStrength()
 const snapshots = ref<TalentSnapshot[]>([])
 
 function loadAll() {
   snapshots.value = readTalentSnapshots(leagueStore.activeLeagueId ?? '')
-  scoring.load()
   trajectory.load()
+  if (isCategory.value) {
+    catStrength.load()
+    return
+  }
+  scoring.load()
   if (isEspn.value) espnPoints.load()
   else yahooLeague.load()
 }
@@ -35,8 +47,15 @@ const pool = computed<PointsPoolPlayer[]>(() =>
 )
 const fgByKey = computed(() => (isEspn.value ? espnPoints.fgByKey.value : yahooLeague.fgByKey.value))
 const rosterSlots = computed(() => (isEspn.value ? espnPoints.rosterSlots.value : yahooLeague.rosterSlots.value))
-const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooLeague.loading.value))
+const loading = computed(() =>
+  isCategory.value
+    ? catStrength.loading.value
+    : isEspn.value
+      ? espnPoints.loading.value
+      : yahooLeague.loading.value,
+)
 const myTeamKey = computed<string>(() => {
+  if (isCategory.value) return catStrength.myTeamKey.value
   if (isEspn.value) return espnPoints.myTeamId.value ?? ''
   const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
   return me ? String(me.team_key) : ''
@@ -78,8 +97,30 @@ const teamMeta = computed<Record<string, Meta>>(() => {
   return out
 })
 
+// CATEGORY strength = expected categories won per week (ECW) from the projected roster
+// output. Same Yahoo "Manager-less Team N" abandoned read as points; ESPN has no equivalent.
+const categoryRankings = computed(() => {
+  const strengths = catStrength.strengths.value
+  if (!strengths.length || !myTeamKey.value) return null
+  const meta = catStrength.teamMeta.value
+  const inputs: PowerTeamInput[] = strengths.map((s) => {
+    const m = meta[s.teamKey] ?? { name: 'Team', logo: '', wins: 0, losses: 0, ties: 0 }
+    return {
+      teamKey: s.teamKey,
+      teamName: m.name,
+      teamLogo: m.logo,
+      strength: s.strength,
+      wins: m.wins,
+      losses: m.losses,
+      ties: m.ties,
+      managerless: isEspn.value ? false : /manager-?less/i.test(m.name),
+    }
+  })
+  return buildPowerRankings(inputs)
+})
+
 // Roster STRENGTH per team = projected optimal-lineup points (points-league basis).
-const rankings = computed(() => {
+const pointsRankings = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
   // Rank on a schedule-neutral weekly rate once we know weeks-left, so a late-season
   // two-start week can't inflate a roster's strength. Falls back to season totals
@@ -95,6 +136,15 @@ const rankings = computed(() => {
     return { teamKey: s.teamKey, teamName: m.name, teamLogo: m.logo, strength: s.startingPoints, wins: m.wins, losses: m.losses, ties: m.ties, pointsFor: m.pointsFor, managerless: m.managerless }
   })
   return buildPowerRankings(inputs)
+})
+
+const rankings = computed(() => (isCategory.value ? categoryRankings.value : pointsRankings.value))
+
+// Category count, for the How-it-works copy. Rounded from the leader's near-max ECW (the best
+// roster's ECW approaches the number of categories), with a sane fallback before data lands.
+const catCount = computed(() => {
+  const rows = categoryRankings.value?.rows ?? []
+  return rows.length ? Math.max(...rows.map((r) => Math.ceil(r.strength))) : 0
 })
 
 // Capture this week's talent (power) ranks once the board is ready, so the dashed
@@ -155,11 +205,18 @@ const forecastArrow = (r: { luck: string; managerless: boolean }) => {
   if (r.luck === 'pretender') return { glyph: '▼', color: '#e69a4a' }
   return { glyph: '', color: '' }
 }
-// Round projections to the nearest 10 — the raw figure carries false precision.
-const projPts = (n: number) => Math.round(n / 10) * 10
-const perWeekBasis = computed(() => trajectory.weeksLeft.value > 0)
-const ptsUnit = computed(() => (perWeekBasis.value ? 'proj pts/wk' : 'proj pts'))
-const gapUnit = computed(() => (perWeekBasis.value ? '/wk' : ''))
+// Strength display. Points: round to the nearest 10 (the raw figure carries false precision).
+// Category (ECW): a small ~0–N figure, so show one decimal — rounding to 10 would zero it out.
+const fmtStrength = (n: number) => (isCategory.value ? n.toFixed(1) : String(Math.round(n / 10) * 10))
+const perWeekBasis = computed(() => isCategory.value || trajectory.weeksLeft.value > 0)
+// Category strength is intrinsically per-week (ECW); points strength is per-week only once
+// weeks-left resolves. Leader unit + gap unit follow suit.
+const leaderUnit = computed(() =>
+  isCategory.value ? 'cats/wk' : trajectory.weeksLeft.value > 0 ? 'proj pts/wk' : 'proj pts',
+)
+const gapSuffix = computed(() =>
+  isCategory.value ? ' cats vs #1' : trajectory.weeksLeft.value > 0 ? '/wk vs #1' : ' vs #1',
+)
 // Per-week strengths cluster tightly, so rounded absolutes manufacture fake ties
 // (three teams reading "380" at ranks 6/7/8). Show the leader in full and everyone
 // else as the gap behind #1 — a tight pack then reads honestly as "all ~30 back".
@@ -208,8 +265,14 @@ const showHow = ref(false)
     <div v-if="showHow" class="mb-5 space-y-3 rounded-xl border border-dark-border bg-dark-card p-4 font-mono text-[11px] leading-relaxed text-dark-textMuted">
       <div>
         <p class="mb-1 text-[10px] uppercase tracking-widest text-dark-textSecondary">The rank</p>
-        <p>Teams are ranked by <span class="text-dark-text">roster talent</span>, not record. We take every rostered player's <span class="text-dark-text">rest-of-season projection</span>, score it by <span class="text-dark-text">your league's exact settings</span>, and slot each team into its best legal lineup. The combined projection of those starters is the team's strength — higher means a better roster.</p>
-        <p class="mt-1">Strength is measured as a <span class="text-dark-text">per-week rate</span>, so late in the season a favorable two-start week doesn't inflate a roster past its true talent.</p>
+        <template v-if="isCategory">
+          <p>Teams are ranked by <span class="text-dark-text">roster talent</span>, not record. We take every rostered player's <span class="text-dark-text">rest-of-season projection</span>, total each team's output in <span class="text-dark-text">your league's categories</span>, and rank the league category by category. A team's strength is its <span class="text-dark-text">expected categories won per week</span> — how many of the league's categories<template v-if="catCount"> ({{ catCount }} of them)</template> its roster should win against an average opponent. Higher means a better roster.</p>
+          <p class="mt-1">Because it's a <span class="text-dark-text">per-week category rate</span>, not points, it reads as a small number: the best roster lands near the top of that category count and the field clusters below.</p>
+        </template>
+        <template v-else>
+          <p>Teams are ranked by <span class="text-dark-text">roster talent</span>, not record. We take every rostered player's <span class="text-dark-text">rest-of-season projection</span>, score it by <span class="text-dark-text">your league's exact settings</span>, and slot each team into its best legal lineup. The combined projection of those starters is the team's strength — higher means a better roster.</p>
+          <p class="mt-1">Strength is measured as a <span class="text-dark-text">per-week rate</span>, so late in the season a favorable two-start week doesn't inflate a roster past its true talent.</p>
+        </template>
       </div>
       <div>
         <p class="mb-1 text-[10px] uppercase tracking-widest text-dark-textSecondary">Where luck comes in</p>
@@ -285,9 +348,9 @@ const showHow = ref(false)
                   <div class="absolute inset-y-0 left-0 rounded-full" :style="barStyle(r)" />
                 </div>
               </div>
-              <div class="mt-0.5 text-right font-mono text-[9px] text-dark-textMuted" :title="`${projPts(r.strength)} ${ptsUnit}`">
-                <template v-if="r.strengthRank === 1">{{ projPts(r.strength) }} {{ ptsUnit }}</template>
-                <template v-else>−{{ projPts(leaderStrength - r.strength) }}{{ gapUnit }} vs #1</template>
+              <div class="mt-0.5 text-right font-mono text-[9px] text-dark-textMuted" :title="`${fmtStrength(r.strength)} ${leaderUnit}`">
+                <template v-if="r.strengthRank === 1">{{ fmtStrength(r.strength) }} {{ leaderUnit }}</template>
+                <template v-else>−{{ fmtStrength(leaderStrength - r.strength) }}{{ gapSuffix }}</template>
               </div>
             </div>
           </div>
@@ -296,7 +359,9 @@ const showHow = ref(false)
       </div>
 
       <p class="mt-3 font-mono text-[10px] leading-relaxed text-dark-textMuted">
-        rank = roster strength (projected optimal-lineup points{{ perWeekBasis ? ' per week' : '' }}) · leader shown in full, the rest as their gap behind #1 · the standings can lie — a lucky team regresses, an unlucky one climbs
+        rank = roster strength
+        ({{ isCategory ? 'expected categories won per week' : `projected optimal-lineup points${perWeekBasis ? ' per week' : ''}` }})
+        · leader shown in full, the rest as their gap behind #1 · the standings can lie — a lucky team regresses, an unlucky one climbs
       </p>
       <p class="mt-1.5 font-mono text-[10px] leading-relaxed text-dark-textMuted">
         bar length = strength · forecast: <span class="text-primary">▲ due to rise</span> · <span class="text-[#e69a4a]">▼ due to fall</span> · hatched bar = abandoned

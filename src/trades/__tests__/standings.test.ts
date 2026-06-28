@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { CatSpec } from '@/myteam/value'
 import type { AggPlayer } from '@/trades/aggregate'
-import { aggregateTeamCatTotals, rankInCategory, expectedCatsWon, addDropDelta } from '../standings'
+import { aggregateTeamCatTotals, rankInCategory, expectedCatsWon, ecwByTeam, addDropDelta } from '../standings'
 
 // 3 teams, 2 cats: HR (counting, higher better), ERA (ratio, lower better, vol = IP).
 const CATS: CatSpec[] = [
@@ -57,6 +57,23 @@ describe('expectedCatsWon', () => {
     expect(expectedCatsWon('B', totals, CATS)).toBeCloseTo(0, 5)
     // C is 2nd in both: (3-2)/2 * 2 = 1.0
     expect(expectedCatsWon('C', totals, CATS)).toBeCloseTo(1.0, 5)
+  })
+})
+
+describe('ecwByTeam', () => {
+  it('maps every team to its ECW (matching expectedCatsWon)', () => {
+    const totals = aggregateTeamCatTotals(PBT, CATS)
+    const got = ecwByTeam(totals, CATS)
+    expect(got.map((r) => r.teamId).sort()).toEqual(['A', 'B', 'C'])
+    const byId = Object.fromEntries(got.map((r) => [r.teamId, r.strength]))
+    // Same numbers expectedCatsWon yields per team: A=2.0 (1st in both), B=0, C=1.0.
+    expect(byId.A).toBeCloseTo(expectedCatsWon('A', totals, CATS), 10)
+    expect(byId.A).toBeCloseTo(2.0, 5)
+    expect(byId.B).toBeCloseTo(0, 5)
+    expect(byId.C).toBeCloseTo(1.0, 5)
+  })
+  it('returns an empty list for no teams', () => {
+    expect(ecwByTeam([], CATS)).toEqual([])
   })
 })
 

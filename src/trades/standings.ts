@@ -104,6 +104,15 @@ export function expectedCatsWon(teamId: string, totals: TeamCategoryTotals[], ca
   return ecw
 }
 
+/**
+ * Expected categories won per week for EVERY team — the league-wide ECW map. Ranks each
+ * category once per team via expectedCatsWon. This is the category-league strength signal
+ * (higher = better roster) the projection-driven Power Rankings ranks on.
+ */
+export function ecwByTeam(totals: TeamCategoryTotals[], cats: CatSpec[]): { teamId: string; strength: number }[] {
+  return totals.map((t) => ({ teamId: t.teamId, strength: expectedCatsWon(t.teamId, totals, cats) }))
+}
+
 export interface CatRankMove {
   statId: string
   rankBefore: number

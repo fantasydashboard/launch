@@ -1,9 +1,12 @@
 <template>
-  <!-- H2H Category leagues (any platform, any sport) -->
-  <CategoryPowerRankings v-if="isCategoryLeague" />
+  <!-- Roto leagues keep the old category view (roto is out of scope for the redesign) -->
+  <CategoryPowerRankings v-if="isRoto" />
 
-  <!-- Points leagues → projection-driven redesign (category redesign next) -->
-  <PowerRankingsRedesign v-else />
+  <!-- H2H-category → projection-driven redesign, category strength (ECW) -->
+  <PowerRankingsRedesign v-else-if="isCategoryLeague" scoring="category" />
+
+  <!-- Points leagues → projection-driven redesign, points strength -->
+  <PowerRankingsRedesign v-else scoring="points" />
 </template>
 
 <script setup lang="ts">
@@ -26,6 +29,19 @@ const CategoryPowerRankings = defineAsyncComponent(() =>
 const PowerRankingsRedesign = defineAsyncComponent(() =>
   import('@/views/PowerRankingsRedesignView.vue')
 )
+
+// Roto detection — same signals as App.vue's isRoto, plus the ESPN ROTO scoringType the
+// wrapper already resolves into scoringType.value. Roto stays on the old CategoryPowerRankings
+// view (the redesign's ECW/luck model is H2H-category only).
+const isRoto = computed(() => {
+  if ((scoringType.value || '').toLowerCase().includes('roto')) return true
+  const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+  if ((yahooLeagueData as any)?.scoring_type?.toLowerCase().includes('roto')) return true
+  if (leagueStore.currentLeague?.scoring_type?.toLowerCase().includes('roto')) return true
+  const saved = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
+  if (saved?.scoring_type?.toLowerCase().includes('roto')) return true
+  return false
+})
 
 // Detect if it's a category league
 const isCategoryLeague = computed(() => {
