@@ -297,7 +297,7 @@ const showHow = ref(false)
       <div v-if="rankings.pretenders.length || rankings.sleepers.length" class="mb-5 grid items-start gap-3" :class="calloutCols">
         <div v-if="rankings.pretenders.length" class="rounded-xl border border-[#e69a4a]/30 bg-dark-card p-4">
           <p class="font-mono text-[10px] uppercase tracking-widest text-[#e69a4a]">▼ Due to fall</p>
-          <p class="mb-2 font-mono text-[9px] text-dark-textMuted">record's outrunning the roster — expect them to slide</p>
+          <p class="mb-2 font-mono text-[9px] text-dark-textMuted">record's outrunning the roster — expect their record to slide back</p>
           <div v-for="r in rankings.pretenders.slice(0, 3)" :key="r.teamKey" class="border-t border-dark-border/40 py-2 first:border-0">
             <p class="truncate text-sm text-dark-text">{{ r.teamName }}</p>
             <p class="font-mono text-[11px] text-dark-textMuted">
@@ -307,7 +307,7 @@ const showHow = ref(false)
         </div>
         <div v-if="rankings.sleepers.length" class="rounded-xl border bg-dark-card p-4" :style="{ borderColor: primaryTint(35) }">
           <p class="font-mono text-[10px] uppercase tracking-widest text-primary">▲ Due to rise</p>
-          <p class="mb-2 font-mono text-[9px] text-dark-textMuted">roster the standings haven't caught up to — expect them to climb</p>
+          <p class="mb-2 font-mono text-[9px] text-dark-textMuted">roster the standings haven't caught up to — expect their record to climb</p>
           <div v-for="r in rankings.sleepers.slice(0, 3)" :key="r.teamKey" class="border-t border-dark-border/40 py-2 first:border-0">
             <p class="truncate text-sm text-dark-text">{{ r.teamName }}</p>
             <p class="font-mono text-[11px] text-dark-textMuted">
@@ -362,7 +362,7 @@ const showHow = ref(false)
         · leader shown in full, the rest as their gap behind #1 · the standings can lie — a lucky team regresses, an unlucky one climbs
       </p>
       <p class="mt-1.5 font-mono text-[10px] leading-relaxed text-dark-textMuted">
-        bar length = strength · forecast: <span class="text-primary">▲ due to rise</span> · <span class="text-[#e69a4a]">▼ due to fall</span> · hatched bar = abandoned
+        bar length = talent (stable) · the arrow forecasts their <span class="text-dark-textSecondary">record</span>: <span class="text-primary">▲ due to rise</span> · <span class="text-[#e69a4a]">▼ due to fall</span> · hatched bar = abandoned
       </p>
 
       <!-- The race over time -->
