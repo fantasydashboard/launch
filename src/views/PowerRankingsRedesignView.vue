@@ -136,6 +136,14 @@ const barPct = (s: number) => {
 const projPts = (n: number) => Math.round(n / 10) * 10
 const perWeekBasis = computed(() => trajectory.weeksLeft.value > 0)
 const ptsUnit = computed(() => (perWeekBasis.value ? 'proj pts/wk' : 'proj pts'))
+const gapUnit = computed(() => (perWeekBasis.value ? '/wk' : ''))
+// Per-week strengths cluster tightly, so rounded absolutes manufacture fake ties
+// (three teams reading "380" at ranks 6/7/8). Show the leader in full and everyone
+// else as the gap behind #1 — a tight pack then reads honestly as "all ~30 back".
+const leaderStrength = computed(() => {
+  const rows = rankings.value?.rows ?? []
+  return rows.length ? Math.max(...rows.map((r) => r.strength)) : 0
+})
 const ord = (n: number) => {
   const s = ['th', 'st', 'nd', 'rd'], v = n % 100
   return n + (s[(v - 20) % 10] || s[v] || s[0])
@@ -251,7 +259,10 @@ const showHow = ref(false)
               <div class="relative h-2 overflow-hidden rounded-full" :style="{ backgroundColor: 'rgba(255,255,255,0.08)' }">
                 <div class="absolute inset-y-0 left-0 rounded-full" :class="r.managerless ? 'bg-dark-textMuted' : 'bg-primary'" :style="{ width: barPct(r.strength) + '%' }" />
               </div>
-              <div class="mt-0.5 text-right font-mono text-[9px] text-dark-textMuted">{{ projPts(r.strength) }} {{ ptsUnit }}</div>
+              <div class="mt-0.5 text-right font-mono text-[9px] text-dark-textMuted" :title="`${projPts(r.strength)} ${ptsUnit}`">
+                <template v-if="r.strengthRank === 1">{{ projPts(r.strength) }} {{ ptsUnit }}</template>
+                <template v-else>−{{ projPts(leaderStrength - r.strength) }}{{ gapUnit }} vs #1</template>
+              </div>
             </div>
           </div>
           <p class="mt-1.5 pl-9 font-mono text-[11px] leading-snug text-dark-textMuted">{{ r.blurb }}</p>
@@ -259,7 +270,7 @@ const showHow = ref(false)
       </div>
 
       <p class="mt-3 font-mono text-[10px] leading-relaxed text-dark-textMuted">
-        rank = roster strength (projected optimal-lineup points{{ perWeekBasis ? ' per week' : '' }}) · the standings can lie — a lucky team regresses, an unlucky one climbs
+        rank = roster strength (projected optimal-lineup points{{ perWeekBasis ? ' per week' : '' }}) · leader shown in full, the rest as their gap behind #1 · the standings can lie — a lucky team regresses, an unlucky one climbs
       </p>
 
       <!-- The race over time -->
