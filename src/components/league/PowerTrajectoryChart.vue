@@ -47,6 +47,28 @@ interface Line {
   logo?: string
 }
 
+// Corner-rounded path: straight segments, but each elbow is filleted with an arc
+// (radius capped to half the shorter neighbouring segment, so it never overshoots
+// past a real rank or bulges between weeks the way a bezier spline would). Soft
+// look, honest data, crossings stay clean — they happen mid-segment, still straight.
+const CORNER_R = 14
+function roundedPath(pts: [number, number][]): string {
+  if (pts.length < 2) return ''
+  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], [x2, y2] = pts[i + 1]
+    const d1 = Math.hypot(x1 - x0, y1 - y0), d2 = Math.hypot(x2 - x1, y2 - y1)
+    if (d1 === 0 || d2 === 0) { d += ` L${x1.toFixed(1)},${y1.toFixed(1)}`; continue }
+    const r1 = Math.min(CORNER_R, d1 / 2), r2 = Math.min(CORNER_R, d2 / 2)
+    const ax = x1 - ((x1 - x0) / d1) * r1, ay = y1 - ((y1 - y0) / d1) * r1
+    const bx = x1 + ((x2 - x1) / d2) * r2, by = y1 + ((y2 - y1) / d2) * r2
+    d += ` L${ax.toFixed(1)},${ay.toFixed(1)} Q${x1.toFixed(1)},${y1.toFixed(1)} ${bx.toFixed(1)},${by.toFixed(1)}`
+  }
+  const last = pts[pts.length - 1]
+  d += ` L${last[0].toFixed(1)},${last[1].toFixed(1)}`
+  return d
+}
+
 const lines = computed<Line[]>(() => {
   const out: Line[] = []
   let ci = 0
@@ -54,7 +76,7 @@ const lines = computed<Line[]>(() => {
     if (!t.standings.length) continue
     const color = t.isMe ? ME : PALETTE[ci % PALETTE.length]
     if (!t.isMe) ci++
-    const pts = t.standings.map((p) => `${xOf(p.week).toFixed(1)},${yOf(p.rank).toFixed(1)}`)
+    const pts = t.standings.map((p) => [xOf(p.week), yOf(p.rank)] as [number, number])
     const last = t.standings[t.standings.length - 1]
     out.push({
       teamKey: t.teamKey,
@@ -63,7 +85,7 @@ const lines = computed<Line[]>(() => {
       color,
       width: t.isMe ? 3.5 : 1.75,
       dash: '',
-      path: pts.join(' '),
+      path: roundedPath(pts),
       end: { x: xOf(last.week), y: yOf(last.rank), rank: last.rank },
       logo: t.teamLogo,
     })
@@ -71,7 +93,7 @@ const lines = computed<Line[]>(() => {
   // Your talent (power-rank) line — dashed — once there's a real segment.
   const me = props.trajectory.teams.find((t) => t.isMe)
   if (me && props.trajectory.hasTalentHistory && me.talent.length >= 2) {
-    const pts = me.talent.map((p) => `${xOf(p.week).toFixed(1)},${yOf(p.rank).toFixed(1)}`)
+    const pts = me.talent.map((p) => [xOf(p.week), yOf(p.rank)] as [number, number])
     out.push({
       teamKey: `${me.teamKey}__talent`,
       teamName: `${me.teamName} · talent`,
@@ -79,7 +101,7 @@ const lines = computed<Line[]>(() => {
       color: ME,
       width: 2,
       dash: '5 4',
-      path: pts.join(' '),
+      path: roundedPath(pts),
       end: { x: 0, y: 0, rank: 0 },
     })
   }
@@ -121,10 +143,10 @@ const safeId = (key: string) => key.replace(/[^A-Za-z0-9_-]/g, '-')
 
     <!-- lines -->
     <g>
-      <polyline
+      <path
         v-for="l in lines"
         :key="l.teamKey"
-        :points="l.path"
+        :d="l.path"
         fill="none"
         :stroke="l.color"
         :stroke-width="l.width"
