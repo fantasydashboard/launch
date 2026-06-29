@@ -194,6 +194,16 @@ const barPct = (s: number) => {
   return 14 + 86 * ((s - min) / (max - min))
 }
 
+// ── LOADING ───────────────────────────────────────────────────────────────────
+
+const loading = computed(() =>
+  isCategory.value
+    ? cat.loading.value
+    : isEspn.value
+      ? espnPoints.loading.value
+      : yahooLeague.loading.value,
+)
+
 // ── SHARED HELPERS ────────────────────────────────────────────────────────────
 
 // Theme `primary` var has no alpha slot so bg-primary/NN renders nothing — use color-mix.
@@ -213,6 +223,11 @@ const ord = (n: number) => {
       <p class="font-mono text-xs text-dark-textMuted">How you stack up against the field.</p>
     </header>
 
+    <!-- ── LOADING / EMPTY STATES ─────────────────────────────────────────── -->
+    <div v-if="loading && !rankings" class="py-16 text-center text-dark-textMuted">Sizing up the league…</div>
+    <div v-else-if="!loading && !rankings" class="py-16 text-center text-dark-textMuted">Couldn't assemble the league yet. Try a refresh.</div>
+
+    <template v-else>
     <!-- ── STANDINGS (shared by both scoring types) ───────────────────────── -->
     <section class="mb-8">
       <h2 class="mb-2 font-display text-lg font-bold text-dark-text">Standings</h2>
@@ -482,5 +497,6 @@ const ord = (n: number) => {
         </div>
       </section>
     </template>
+    </template><!-- /v-else (rankings ready) -->
   </div>
 </template>
