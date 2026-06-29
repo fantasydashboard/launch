@@ -832,7 +832,7 @@ const sosBarColor = (sosRank: number, total: number) => {
 
         <!-- Unified transposed matrix: teams as columns (logos on top), metric as rows.
              Fixed-width columns keep numbers aligned regardless of team-name length. -->
-        <div v-if="landscapeView && activeMatrixRows.length" class="rounded-xl border border-dark-border bg-dark-card overflow-x-auto">
+        <div v-if="landscapeView && activeMatrixRows.length" class="w-fit max-w-full rounded-xl border border-dark-border bg-dark-card overflow-x-auto">
           <!-- Header: team logos (YOU ringed + first) -->
           <div class="flex border-b border-dark-border/40">
             <div class="min-w-[3.5rem] shrink-0" />
