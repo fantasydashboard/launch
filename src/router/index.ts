@@ -267,6 +267,11 @@ const router = createRouter({
           name: 'my-league-history',
           component: () => import('@/views/CategoryDemoHistoryView.vue'),
         },
+        {
+          path: 'league',
+          name: 'my-league-league',
+          component: () => import('@/views/LeagueWrapper.vue'),
+        },
       ],
     },
     // Category-league demo (no auth required, pre-baked category baseball data)
@@ -307,6 +312,11 @@ const router = createRouter({
           path: 'history',
           name: 'demo-cat-history',
           component: () => import('@/views/CategoryDemoHistoryView.vue'),
+        },
+        {
+          path: 'league',
+          name: 'demo-cat-league',
+          component: () => import('@/views/LeagueWrapper.vue'),
         },
       ],
     },

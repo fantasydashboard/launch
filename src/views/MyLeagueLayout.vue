@@ -91,6 +91,11 @@
         >Power Rankings</router-link>
         <router-link
           class="league-nav-tab"
+          :to="`/leagues/${routeLeagueId}/league`"
+          active-class="league-nav-tab-active"
+        >League</router-link>
+        <router-link
+          class="league-nav-tab"
           :to="`/leagues/${routeLeagueId}/matchups`"
           active-class="league-nav-tab-active"
         >Matchups</router-link>
