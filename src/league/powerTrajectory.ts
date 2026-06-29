@@ -17,6 +17,7 @@ export type Outcome = 'W' | 'L' | 'T'
 export interface WeekOutcomes {
   week: number
   results: Record<string, Outcome> // teamKey → that week's result (only decided games)
+  points?: Record<string, number> // teamKey → that week's points scored (points leagues)
 }
 
 export interface TalentSnapshot {

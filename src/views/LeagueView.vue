@@ -284,8 +284,9 @@ const catEdgeExposed = computed(() => {
 
 const hotCold = computed(() => {
   const rows = rankings.value?.rows ?? []
-  const meta = rows.map((r) => ({ teamKey: r.teamKey, teamName: r.teamName, isMe: r.teamKey === activeMyTeamKey.value }))
-  return buildHotCold(trajectory.outcomes.value, meta, 3)
+  const meta = rows.map((r) => ({ teamKey: r.teamKey, teamName: r.teamName, isMe: r.teamKey === activeMyTeamKey.value, teamLogo: r.teamLogo }))
+  // Points leagues rank by points scored (truer "who's hot"); category leagues by record.
+  return buildHotCold(trajectory.outcomes.value, meta, 3, isCategory.value ? 'record' : 'points')
 })
 
 // ── "THE RACE" TRAJECTORY CHART ───────────────────────────────────────────────
@@ -429,6 +430,7 @@ const racingLabel = computed(() =>
 const fmtPct = (p: number) => (p > 0.995 ? '>99%' : p > 0 && p < 0.005 ? '<1%' : Math.round(p * 100) + '%')
 const oddsColor = (p: number) => (p >= 0.5 ? 'text-primary' : p > 0 ? 'text-[#e69a4a]' : 'text-dark-textMuted')
 const oppName = (k: string) => teamInfo.value.get(k)?.name ?? 'Opponent'
+const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
 </script>
 
 <template>
@@ -604,17 +606,42 @@ const oppName = (k: string) => teamInfo.value.get(k)?.name ?? 'Opponent'
       <!-- Hot / Cold callout (last 3 weeks) -->
       <div
         v-if="hotCold.hottest && hotCold.coldest"
-        class="mt-3 rounded-xl border border-dark-border bg-dark-card px-4 py-2.5 font-mono text-[11px]"
+        class="mt-3 rounded-xl border border-dark-border bg-dark-card px-4 py-2.5 font-mono text-[11px] space-y-1.5"
       >
-        <span class="text-primary">Hottest</span>
-        <span class="text-dark-textMuted"> (last {{ hotCold.weeks }} wks): </span>
-        <span class="text-dark-text">{{ hotCold.hottest.teamName }} {{ hotCold.hottest.wins }}-{{ hotCold.hottest.losses }}{{ hotCold.hottest.ties ? '-' + hotCold.hottest.ties : '' }}</span>
-        <span v-if="hotCold.hottest.isMe" class="ml-1 text-primary text-[9px] uppercase">YOU</span>
-        <span class="text-dark-textMuted"> · </span>
-        <span class="text-[#e69a4a]">Coldest</span>
-        <span class="text-dark-textMuted">: </span>
-        <span class="text-dark-text">{{ hotCold.coldest.teamName }} {{ hotCold.coldest.wins }}-{{ hotCold.coldest.losses }}{{ hotCold.coldest.ties ? '-' + hotCold.coldest.ties : '' }}</span>
-        <span v-if="hotCold.coldest.isMe" class="ml-1 text-[#e69a4a] text-[9px] uppercase">YOU</span>
+        <div class="flex items-center gap-2">
+          <span class="shrink-0 text-primary">Hottest</span>
+          <span class="shrink-0 text-dark-textMuted">last {{ hotCold.weeks }} wks</span>
+          <img
+            v-if="hotCold.hottest.teamLogo"
+            :src="hotCold.hottest.teamLogo"
+            alt=""
+            class="h-4 w-4 shrink-0 rounded-full bg-dark-border object-cover"
+            @error="($event.target as HTMLElement).style.display = 'none'"
+          />
+          <span class="min-w-0 truncate text-dark-text">{{ hotCold.hottest.teamName }}</span>
+          <span v-if="hotCold.hottest.isMe" class="shrink-0 text-primary text-[9px] uppercase">YOU</span>
+          <span class="ml-auto shrink-0 text-dark-textMuted">
+            <template v-if="hotCold.basis === 'points'">{{ Math.round(hotCold.hottest.points).toLocaleString() }} pts</template>
+            <template v-else>{{ hotCold.hottest.wins }}-{{ hotCold.hottest.losses }}{{ hotCold.hottest.ties ? '-' + hotCold.hottest.ties : '' }}</template>
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="shrink-0 text-[#e69a4a]">Coldest</span>
+          <span class="shrink-0 text-dark-textMuted">last {{ hotCold.weeks }} wks</span>
+          <img
+            v-if="hotCold.coldest.teamLogo"
+            :src="hotCold.coldest.teamLogo"
+            alt=""
+            class="h-4 w-4 shrink-0 rounded-full bg-dark-border object-cover"
+            @error="($event.target as HTMLElement).style.display = 'none'"
+          />
+          <span class="min-w-0 truncate text-dark-text">{{ hotCold.coldest.teamName }}</span>
+          <span v-if="hotCold.coldest.isMe" class="shrink-0 text-[#e69a4a] text-[9px] uppercase">YOU</span>
+          <span class="ml-auto shrink-0 text-dark-textMuted">
+            <template v-if="hotCold.basis === 'points'">{{ Math.round(hotCold.coldest.points).toLocaleString() }} pts</template>
+            <template v-else>{{ hotCold.coldest.wins }}-{{ hotCold.coldest.losses }}{{ hotCold.coldest.ties ? '-' + hotCold.coldest.ties : '' }}</template>
+          </span>
+        </div>
       </div>
     </section>
 
@@ -647,7 +674,17 @@ const oppName = (k: string) => teamInfo.value.get(k)?.name ?? 'Opponent'
         <div v-if="topGame" class="px-4 py-3">
           <div class="mb-1 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">The game that matters most</div>
           <div class="flex items-center justify-between gap-3">
-            <div class="min-w-0 truncate font-mono text-[12px] text-dark-text">Wk {{ topGame.week }} vs {{ oppName(topGame.opponentKey) }}</div>
+            <div class="flex min-w-0 items-center gap-2 font-mono text-[12px] text-dark-text">
+              <span class="shrink-0 text-dark-textMuted">Wk {{ topGame.week }} vs</span>
+              <img
+                v-if="teamLogoOf(topGame.opponentKey)"
+                :src="teamLogoOf(topGame.opponentKey)"
+                alt=""
+                class="h-4 w-4 shrink-0 rounded-full bg-dark-border object-cover"
+                @error="($event.target as HTMLElement).style.display = 'none'"
+              />
+              <span class="truncate">{{ oppName(topGame.opponentKey) }}</span>
+            </div>
             <div class="shrink-0 font-mono text-[11px]">
               <span class="text-primary">{{ fmtPct(topGame.oddsIfWin) }}</span>
               <span class="text-dark-textMuted"> win · </span>

@@ -33,4 +33,24 @@ describe('buildHotCold', () => {
     expect(hc.hottest).toBeNull()
     expect(hc.coldest).toBeNull()
   })
+
+  it("ranks by points scored when basis='points'", () => {
+    const scored: WeekOutcomes[] = [
+      { week: 1, results: { A: 'W', B: 'L', C: 'W' }, points: { A: 50, B: 40, C: 90 } },
+      { week: 2, results: { A: 'W', B: 'L', C: 'L' }, points: { A: 60, B: 30, C: 95 } },
+      { week: 3, results: { A: 'W', B: 'L', C: 'W' }, points: { A: 55, B: 35, C: 100 } },
+    ]
+    const hc = buildHotCold(scored, meta, 3, 'points')
+    expect(hc.basis).toBe('points')
+    // C scores the most (285) despite a worse record than A; B scores the least (105).
+    expect(hc.hottest!.teamKey).toBe('C')
+    expect(hc.hottest!.points).toBe(285)
+    expect(hc.coldest!.teamKey).toBe('B')
+  })
+
+  it("falls back to record when basis='points' but no points are present", () => {
+    const hc = buildHotCold(outcomes, meta, 3, 'points')
+    expect(hc.basis).toBe('record') // no points data → record basis
+    expect(hc.hottest!.teamKey).toBe('A')
+  })
 })

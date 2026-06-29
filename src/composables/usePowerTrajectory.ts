@@ -52,6 +52,7 @@ export function usePowerTrajectory() {
         try {
           const matchups = await yahooService.getMatchups(leagueKey, week)
           const results: Record<string, Outcome> = {}
+          const points: Record<string, number> = {}
           for (const m of matchups) {
             if (m.is_playoffs || m.is_consolation) continue
             const teams = m.teams ?? []
@@ -64,8 +65,9 @@ export function usePowerTrajectory() {
                 results[String(t.team_key)] = String(t.team_key) === String(m.winner_team_key) ? 'W' : 'L'
               }
             }
+            for (const t of teams) if (t.team_key && t.points != null) points[String(t.team_key)] = Number(t.points)
           }
-          return Object.keys(results).length ? { week, results } : null
+          return Object.keys(results).length ? { week, results, points } : null
         } catch {
           return null
         }
@@ -124,6 +126,7 @@ export function usePowerTrajectory() {
         try {
           const matchups = await espnService.getMatchups(sport, leagueId, season, week)
           const results: Record<string, Outcome> = {}
+          const points: Record<string, number> = {}
           for (const m of matchups) {
             if (!m.winner || m.winner === 'UNDECIDED') continue
             const home = `espn_${m.homeTeamId}`
@@ -135,8 +138,10 @@ export function usePowerTrajectory() {
               results[home] = m.winner === 'HOME' ? 'W' : 'L'
               results[away] = m.winner === 'AWAY' ? 'W' : 'L'
             }
+            if (m.homeScore != null) points[home] = Number(m.homeScore)
+            if (m.awayScore != null) points[away] = Number(m.awayScore)
           }
-          return Object.keys(results).length ? { week, results } : null
+          return Object.keys(results).length ? { week, results, points } : null
         } catch {
           return null
         }
