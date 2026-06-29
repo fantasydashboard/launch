@@ -301,6 +301,8 @@ const trajectoryView = computed(() => {
 
 const leagueTeamCount = computed(() => rankings.value?.rows.length ?? 0)
 
+const oddsByKey = computed(() => new Map((playoffOdds.value?.results ?? []).map((r) => [r.teamKey, r])))
+
 const playoffSpotsOverride = ref<number | null>(null)
 const playoffSpots = computed(() =>
   playoffSpotsOverride.value ?? (trajectory.playoffSpots.value || Math.max(2, Math.round(leagueTeamCount.value / 2))),
@@ -361,21 +363,25 @@ const sosRank = computed(() => {
       <p class="font-mono text-xs text-dark-textMuted">How you stack up — and where to act.</p>
     </header>
 
-    <!-- ── PLAYOFF ODDS ──────────────────────────────────────────────────── -->
-    <section v-if="playoffOdds" class="mb-8">
+    <!-- ── LOADING / EMPTY STATES ─────────────────────────────────────────── -->
+    <div v-if="loading && !rankings" class="py-16 text-center text-dark-textMuted">Sizing up the league…</div>
+    <div v-else-if="!loading && !rankings" class="py-16 text-center text-dark-textMuted">Couldn't assemble the league yet. Try a refresh.</div>
+
+    <template v-else>
+    <!-- ── STANDINGS (shared; includes playoff odds when schedule is available) ── -->
+    <section class="mb-8">
       <!-- Section header row -->
-      <div class="mb-1 flex items-start justify-between gap-3">
+      <div class="mb-2 flex items-start justify-between gap-3">
         <div>
-          <h2 class="font-display text-lg font-bold text-dark-text">Playoff Odds</h2>
-          <p class="font-mono text-xs text-dark-textMuted">
-            rest-of-season simulation · top {{ playoffSpots }} make the bracket
-          </p>
-          <p v-if="sosRank" class="mt-0.5 font-mono text-xs text-dark-textMuted">
-            Your remaining schedule: <span class="text-dark-text">{{ ord(sosRank.rank) }}-easiest</span> of {{ sosRank.total }}.
-          </p>
+          <h2 class="font-display text-lg font-bold text-dark-text">Standings</h2>
+          <template v-if="playoffOdds">
+            <p class="font-mono text-xs text-dark-textMuted">
+              rest-of-season playoff odds · top {{ playoffSpots }} make the bracket<template v-if="sosRank"> · your remaining schedule <span class="text-dark-text">{{ ord(sosRank.rank) }}-easiest</span> of {{ sosRank.total }}</template>
+            </p>
+          </template>
         </div>
-        <!-- Playoff spots stepper -->
-        <div class="flex shrink-0 items-center gap-1 rounded-lg border border-dark-border px-2 py-1 font-mono text-xs text-dark-textMuted">
+        <!-- Playoff spots stepper (only when odds are available) -->
+        <div v-if="playoffOdds" class="flex shrink-0 items-center gap-1 rounded-lg border border-dark-border px-2 py-1 font-mono text-xs text-dark-textMuted">
           <button
             class="w-5 text-center leading-none hover:text-dark-text transition-colors"
             :disabled="playoffSpots <= 1"
@@ -390,74 +396,6 @@ const sosRank = computed(() => {
         </div>
       </div>
 
-      <!-- Odds list card -->
-      <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
-        <div
-          v-for="r in playoffOdds.results"
-          :key="r.teamKey"
-          class="flex items-center gap-3 px-4 py-2.5"
-          :style="teamInfo.get(r.teamKey)?.isMe ? { backgroundColor: 'color-mix(in srgb, var(--color-primary,#C6FF3A) 6%, transparent)' } : {}"
-        >
-          <!-- Logo -->
-          <img
-            v-if="teamInfo.get(r.teamKey)?.logo"
-            :src="teamInfo.get(r.teamKey)!.logo"
-            alt=""
-            class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover"
-            @error="($event.target as HTMLElement).style.display = 'none'"
-          />
-          <span v-else class="h-8 w-8 shrink-0 rounded-full bg-dark-border" />
-
-          <!-- Name + YOU pill -->
-          <span class="min-w-0 flex-1 flex items-center gap-2 overflow-hidden">
-            <span class="truncate text-sm font-semibold text-dark-text">{{ teamInfo.get(r.teamKey)?.name ?? r.teamKey }}</span>
-            <span
-              v-if="teamInfo.get(r.teamKey)?.isMe"
-              class="shrink-0 rounded px-1 font-mono text-[9px] uppercase text-primary"
-              :style="{ backgroundColor: primaryTint(16) }"
-            >you</span>
-          </span>
-
-          <!-- Projected record -->
-          <span class="shrink-0 font-mono text-[11px] text-dark-textMuted">
-            proj {{ Math.round(r.projWins) }}-{{ Math.round(r.projLosses) }}{{ r.projTies ? '-' + Math.round(r.projTies) : '' }}
-          </span>
-
-          <!-- Bar + % label -->
-          <div class="shrink-0 flex items-center gap-2 w-28">
-            <div class="flex-1 relative h-1.5 overflow-hidden rounded-full" :style="{ backgroundColor: 'rgba(255,255,255,0.08)' }">
-              <div
-                class="absolute inset-y-0 left-0 rounded-full transition-all"
-                :style="{
-                  width: (r.playoffPct * 100) + '%',
-                  backgroundColor: r.playoffPct >= 0.5
-                    ? 'var(--color-primary, #C6FF3A)'
-                    : r.playoffPct > 0
-                      ? '#e69a4a'
-                      : 'rgba(255,255,255,0.15)'
-                }"
-              />
-            </div>
-            <span class="w-9 text-right font-mono text-[11px]"
-              :class="r.playoffPct >= 0.5 ? 'text-primary' : r.playoffPct > 0 ? 'text-[#e69a4a]' : 'text-dark-textMuted'"
-            >
-              <template v-if="r.playoffPct > 0.995">&gt;99%</template>
-              <template v-else-if="r.playoffPct > 0 && r.playoffPct < 0.005">&lt;1%</template>
-              <template v-else>{{ Math.round(r.playoffPct * 100) }}%</template>
-            </span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── LOADING / EMPTY STATES ─────────────────────────────────────────── -->
-    <div v-if="loading && !rankings" class="py-16 text-center text-dark-textMuted">Sizing up the league…</div>
-    <div v-else-if="!loading && !rankings" class="py-16 text-center text-dark-textMuted">Couldn't assemble the league yet. Try a refresh.</div>
-
-    <template v-else>
-    <!-- ── STANDINGS (shared; includes talent bar + value) ────────────────── -->
-    <section class="mb-8">
-      <h2 class="mb-2 font-display text-lg font-bold text-dark-text">Standings</h2>
       <div v-if="!standings.length" class="py-10 text-center font-mono text-xs text-dark-textMuted">
         Loading standings…
       </div>
@@ -503,33 +441,67 @@ const sosRank = computed(() => {
             >bubble</span>
           </span>
 
-          <!-- Record + talent rank + luck arrow (grouped) -->
+          <!-- Text cluster: record · talent rank + luck arrow · proj record (when odds) -->
           <span class="shrink-0 flex items-center gap-1.5 font-mono text-[11px] text-dark-textMuted">
             {{ r.wins }}-{{ r.losses }}{{ r.ties ? '-' + r.ties : '' }}
             <span class="hidden sm:inline text-dark-border/60">·</span>
             <span class="hidden sm:inline">talent {{ ord(r.talentRank) }}</span>
             <span v-if="r.luck === 'sleeper'" class="hidden sm:inline text-primary">▲</span>
             <span v-else-if="r.luck === 'pretender'" class="hidden sm:inline text-[#e69a4a]">▼</span>
+            <template v-if="oddsByKey.get(r.teamKey) as any">
+              <span class="hidden sm:inline text-dark-border/60">·</span>
+              <span class="hidden sm:inline font-mono text-[11px] text-dark-textMuted">
+                proj {{ Math.round((oddsByKey.get(r.teamKey)!).projWins) }}-{{ Math.round((oddsByKey.get(r.teamKey)!).projLosses) }}{{ (oddsByKey.get(r.teamKey)!).projTies ? '-' + Math.round((oddsByKey.get(r.teamKey)!).projTies) : '' }}
+              </span>
+            </template>
           </span>
 
-          <!-- Talent bar + value (the key new column: bar length = roster strength) -->
-          <!-- Short bar high in the standings = lucky; long bar low = unlucky -->
-          <div class="hidden sm:flex w-36 shrink-0 flex-col gap-0.5">
-            <div class="relative h-1.5 overflow-hidden rounded-full" :style="{ backgroundColor: 'rgba(255,255,255,0.08)' }">
-              <div
-                class="absolute inset-y-0 left-0 rounded-full"
-                :style="{ width: barPct(r.strength) + '%', backgroundColor: 'var(--color-primary, #C6FF3A)' }"
-              />
+          <!-- Right anchor: playoff % bar when odds exist, talent bar as fallback -->
+          <template v-if="oddsByKey.get(r.teamKey) as any">
+            <!-- Playoff % bar + label -->
+            <div class="shrink-0 flex items-center gap-2 w-28">
+              <div class="flex-1 relative h-1.5 overflow-hidden rounded-full" :style="{ backgroundColor: 'rgba(255,255,255,0.08)' }">
+                <div
+                  class="absolute inset-y-0 left-0 rounded-full transition-all"
+                  :style="{
+                    width: ((oddsByKey.get(r.teamKey)!).playoffPct * 100) + '%',
+                    backgroundColor: (oddsByKey.get(r.teamKey)!).playoffPct >= 0.5
+                      ? 'var(--color-primary, #C6FF3A)'
+                      : (oddsByKey.get(r.teamKey)!).playoffPct > 0
+                        ? '#e69a4a'
+                        : 'rgba(255,255,255,0.15)'
+                  }"
+                />
+              </div>
+              <span class="w-9 text-right font-mono text-[11px]"
+                :class="(oddsByKey.get(r.teamKey)!).playoffPct >= 0.5 ? 'text-primary' : (oddsByKey.get(r.teamKey)!).playoffPct > 0 ? 'text-[#e69a4a]' : 'text-dark-textMuted'"
+              >
+                <template v-if="(oddsByKey.get(r.teamKey)!).playoffPct > 0.995">&gt;99%</template>
+                <template v-else-if="(oddsByKey.get(r.teamKey)!).playoffPct > 0 && (oddsByKey.get(r.teamKey)!).playoffPct < 0.005">&lt;1%</template>
+                <template v-else>{{ Math.round((oddsByKey.get(r.teamKey)!).playoffPct * 100) }}%</template>
+              </span>
             </div>
-            <div class="text-right font-mono text-[9px] text-dark-textMuted">
-              <template v-if="isCategory">{{ r.strength.toFixed(1) }} cats/wk</template>
-              <template v-else>{{ Math.round(r.strength / 10) * 10 }} pts/wk</template>
+          </template>
+          <template v-else>
+            <!-- Talent bar + value fallback (no schedule) -->
+            <div class="hidden sm:flex w-36 shrink-0 flex-col gap-0.5">
+              <div class="relative h-1.5 overflow-hidden rounded-full" :style="{ backgroundColor: 'rgba(255,255,255,0.08)' }">
+                <div
+                  class="absolute inset-y-0 left-0 rounded-full"
+                  :style="{ width: barPct(r.strength) + '%', backgroundColor: 'var(--color-primary, #C6FF3A)' }"
+                />
+              </div>
+              <div class="text-right font-mono text-[9px] text-dark-textMuted">
+                <template v-if="isCategory">{{ r.strength.toFixed(1) }} cats/wk</template>
+                <template v-else>{{ Math.round(r.strength / 10) * 10 }} pts/wk</template>
+              </div>
             </div>
-          </div>
+          </template>
         </div>
       </div>
       <p class="mt-2 font-mono text-[10px] text-dark-textMuted">
-        bar = roster talent · short bar near top = riding luck · long bar near bottom = due to climb
+        <template v-if="playoffOdds">proj = projected final record · % = playoff odds (rest-of-season sim)</template>
+        <template v-else>bar = roster talent · short bar near top = riding luck · long bar near bottom = due to climb</template>
       </p>
 
       <!-- Hot / Cold callout (last 3 weeks) -->
