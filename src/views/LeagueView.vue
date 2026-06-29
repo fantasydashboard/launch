@@ -357,7 +357,18 @@ const sosRank = computed(() => {
 
 // ── YOUR PLAYOFF PATH (leverage + who you're racing) ───────────────────────────
 
-const weeksLeft = computed(() => trajectory.weeksLeft.value)
+// Regular-season weeks YOU have left, taken from the actual undecided schedule (not
+// end_week math, which on Yahoo overcounts by including playoff weeks). This keeps the
+// headline consistent with the projected record, since the sim only plays these weeks.
+const myRemainingWeeks = computed(() => {
+  const myKey = activeMyTeamKey.value
+  if (!myKey) return 0
+  let n = 0
+  for (const wk of trajectory.remainingSchedule.value) {
+    if (wk.matchups.some(([a, b]) => a === myKey || b === myKey)) n++
+  }
+  return n
+})
 
 const myOdds = computed(() => {
   const k = activeMyTeamKey.value
@@ -387,18 +398,18 @@ const pathVerdict = computed<{ label: string; tone: 'good' | 'warn' | 'bad' } | 
   return { label: 'Long shot', tone: 'bad' }
 })
 
-// Teams you're realistically fighting for the last spots: contested (not locked or dead),
-// excluding you, nearest to your own odds.
+// The genuine bubble: teams whose spot is still live (odds in a contested band),
+// not the ones near your own number. Picked by how much of a toss-up they are, then
+// shown in odds order. These are the teams actually fighting for the cut line.
 const racingRivals = computed(() => {
   const myKey = activeMyTeamKey.value
-  const mine = myOdds.value?.playoffPct ?? 0
   const results = playoffOdds.value?.results ?? []
   return results
-    .filter((r) => r.teamKey !== myKey && r.playoffPct > 0.02 && r.playoffPct < 0.98)
-    .map((r) => ({ r, gap: Math.abs(r.playoffPct - mine) }))
-    .sort((a, b) => a.gap - b.gap)
+    .filter((r) => r.teamKey !== myKey && r.playoffPct >= 0.15 && r.playoffPct <= 0.85)
+    .sort((a, b) => Math.abs(a.playoffPct - 0.5) - Math.abs(b.playoffPct - 0.5)) // most uncertain first
     .slice(0, 3)
-    .map(({ r }) => ({
+    .sort((a, b) => b.playoffPct - a.playoffPct) // display in odds order
+    .map((r) => ({
       teamKey: r.teamKey,
       name: teamInfo.value.get(r.teamKey)?.name ?? 'Team',
       logo: teamInfo.value.get(r.teamKey)?.logo,
@@ -407,6 +418,13 @@ const racingRivals = computed(() => {
       projLosses: r.projLosses,
     }))
 })
+
+// When you've effectively clinched it's not your race — relabel to neutral league context.
+const racingLabel = computed(() =>
+  (myOdds.value?.playoffPct ?? 0) >= 0.99
+    ? 'The bubble — fighting for the final spots'
+    : `Who you're racing for the ${playoffSpots.value} spots`,
+)
 
 const fmtPct = (p: number) => (p > 0.995 ? '>99%' : p > 0 && p < 0.005 ? '<1%' : Math.round(p * 100) + '%')
 const oddsColor = (p: number) => (p >= 0.5 ? 'text-primary' : p > 0 ? 'text-[#e69a4a]' : 'text-dark-textMuted')
@@ -433,7 +451,7 @@ const oppName = (k: string) => teamInfo.value.get(k)?.name ?? 'Opponent'
           <h2 class="font-display text-lg font-bold text-dark-text">Standings</h2>
           <template v-if="playoffOdds">
             <p class="font-mono text-xs text-dark-textMuted">
-              rest-of-season playoff odds · top {{ playoffSpots }} make the bracket<template v-if="sosRank"> · your remaining schedule <span class="text-dark-text">{{ ord(sosRank.rank) }}-easiest</span> of {{ sosRank.total }}</template>
+              rest-of-season playoff odds · top {{ playoffSpots }} make the bracket
             </p>
           </template>
         </div>
@@ -620,7 +638,7 @@ const oppName = (k: string) => teamInfo.value.get(k)?.name ?? 'Opponent'
           <div class="min-w-0 flex-1 font-mono text-[11px] leading-relaxed text-dark-textMuted">
             Projected to finish
             <span class="text-dark-text">{{ Math.round(myOdds.projWins) }}-{{ Math.round(myOdds.projLosses) }}{{ myOdds.projTies ? '-' + Math.round(myOdds.projTies) : '' }}</span>
-            with <span class="text-dark-text">{{ weeksLeft }} {{ weeksLeft === 1 ? 'week' : 'weeks' }} left</span>.
+            with <span class="text-dark-text">{{ myRemainingWeeks }} {{ myRemainingWeeks === 1 ? 'week' : 'weeks' }} left</span>.
             <template v-if="sosRank"> Your remaining slate is the <span class="text-dark-text">{{ ord(sosRank.rank) }}-easiest</span> of {{ sosRank.total }}.</template>
           </div>
         </div>
@@ -644,7 +662,7 @@ const oppName = (k: string) => teamInfo.value.get(k)?.name ?? 'Opponent'
 
         <!-- Who you're racing -->
         <div v-if="racingRivals.length" class="px-4 py-3">
-          <div class="mb-1.5 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">Who you're racing for the {{ playoffSpots }} spots</div>
+          <div class="mb-1.5 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">{{ racingLabel }}</div>
           <div class="space-y-1.5">
             <div v-for="rv in racingRivals" :key="rv.teamKey" class="flex items-center gap-2">
               <img
