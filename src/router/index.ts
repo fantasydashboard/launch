@@ -88,6 +88,11 @@ const router = createRouter({
       component: () => import('@/views/PowerRankingsWrapper.vue')
     },
     {
+      path: '/league',
+      name: 'league-page',
+      component: () => import('@/views/LeagueWrapper.vue')
+    },
+    {
       path: '/matchups',
       name: 'matchups',
       component: () => import('@/views/MatchupsWrapper.vue')

@@ -1215,7 +1215,7 @@ const tabs = computed(() => [
   { name: isRotoLeague.value ? 'Roto Race' : 'Matchup', path: '/matchup' },
   { name: 'The Wire', path: '/players' },
   { name: 'Trades', path: '/trades' },
-  { name: 'League', path: '/' },
+  { name: 'League', path: '/league' },
   { name: 'Power Rankings', path: '/power-rankings' },
   { name: 'Draft', path: '/draft' },
   { name: 'History', path: '/history' },
