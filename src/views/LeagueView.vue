@@ -13,6 +13,9 @@ import { buildCategoryHeatmap } from '@/league/leagueHeatmap'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { buildPointsPositional } from '@/league/pointsPositional'
 import { seasonStakes } from '@/myteam/seasonStakes'
+import { buildTrajectory } from '@/league/powerTrajectory'
+import { buildHotCold } from '@/league/hotCold'
+import PowerTrajectoryChart from '@/components/league/PowerTrajectoryChart.vue'
 import type { Landscape } from '@/trades/landscape'
 
 const props = withDefaults(defineProps<{ scoring?: 'points' | 'category' }>(), { scoring: 'points' })
@@ -275,6 +278,23 @@ const catEdgeExposed = computed(() => {
   }))
   return edgeExposed(myRanks, numTeams)
 })
+
+// ── HOT / COLD (last 3 weeks) ─────────────────────────────────────────────────
+
+const hotCold = computed(() => {
+  const rows = rankings.value?.rows ?? []
+  const meta = rows.map((r) => ({ teamKey: r.teamKey, teamName: r.teamName, isMe: r.teamKey === activeMyTeamKey.value }))
+  return buildHotCold(trajectory.outcomes.value, meta, 3)
+})
+
+// ── "THE RACE" TRAJECTORY CHART ───────────────────────────────────────────────
+
+const trajectoryView = computed(() => {
+  const rows = rankings.value?.rows ?? []
+  if (!rows.length) return null
+  const meta = rows.map((r) => ({ teamKey: r.teamKey, teamName: r.teamName, isMe: r.teamKey === activeMyTeamKey.value, teamLogo: r.teamLogo }))
+  return buildTrajectory(trajectory.outcomes.value, [], meta) // [] = no talent overlay; League shows just the standings race
+})
 </script>
 
 <template>
@@ -365,6 +385,33 @@ const catEdgeExposed = computed(() => {
       <p class="mt-2 font-mono text-[10px] text-dark-textMuted">
         bar = roster talent · short bar near top = riding luck · long bar near bottom = due to climb
       </p>
+
+      <!-- Hot / Cold callout (last 3 weeks) -->
+      <div
+        v-if="hotCold.hottest && hotCold.coldest"
+        class="mt-3 rounded-xl border border-dark-border bg-dark-card px-4 py-2.5 font-mono text-[11px]"
+      >
+        <span class="text-primary">Hottest</span>
+        <span class="text-dark-textMuted"> (last {{ hotCold.weeks }} wks): </span>
+        <span class="text-dark-text">{{ hotCold.hottest.teamName }} {{ hotCold.hottest.wins }}-{{ hotCold.hottest.losses }}{{ hotCold.hottest.ties ? '-' + hotCold.hottest.ties : '' }}</span>
+        <span v-if="hotCold.hottest.isMe" class="ml-1 text-primary text-[9px] uppercase">YOU</span>
+        <span class="text-dark-textMuted"> · </span>
+        <span class="text-[#e69a4a]">Coldest</span>
+        <span class="text-dark-textMuted">: </span>
+        <span class="text-dark-text">{{ hotCold.coldest.teamName }} {{ hotCold.coldest.wins }}-{{ hotCold.coldest.losses }}{{ hotCold.coldest.ties ? '-' + hotCold.coldest.ties : '' }}</span>
+        <span v-if="hotCold.coldest.isMe" class="ml-1 text-[#e69a4a] text-[9px] uppercase">YOU</span>
+      </div>
+    </section>
+
+    <!-- ── "THE RACE" standings line graph ───────────────────────────────────── -->
+    <section v-if="trajectoryView && trajectoryView.weeks.length >= 2" class="mb-8">
+      <h2 class="font-display text-lg font-bold text-dark-text">The race</h2>
+      <p class="mb-3 font-mono text-xs text-dark-textMuted">
+        Standings rank, week by week — rank 1 up top.
+      </p>
+      <div class="rounded-xl border border-dark-border bg-dark-card p-3">
+        <PowerTrajectoryChart :trajectory="trajectoryView" />
+      </div>
     </section>
 
     <!-- ── CATEGORY landscape ─────────────────────────────────────────────── -->
@@ -382,12 +429,10 @@ const catEdgeExposed = computed(() => {
           class="mb-3 rounded-lg border border-dark-border/50 bg-dark-card px-3 py-2 font-mono text-[11px] leading-snug space-y-0.5"
         >
           <div v-if="catEdgeExposed.edge.length">
-            <span class="text-primary">Your edge:</span>
-            <span class="text-dark-text"> {{ catEdgeExposed.edge.join(', ') }}</span>
+            <span class="text-primary">Your edge: </span><span class="text-dark-text">{{ catEdgeExposed.edge.join(', ') }}</span>
           </div>
           <div v-if="catEdgeExposed.exposed.length">
-            <span class="text-[#e69a4a]">Exposed:</span>
-            <span class="text-dark-textMuted"> {{ catEdgeExposed.exposed.join(', ') }} — your upgrade targets</span>
+            <span class="text-[#e69a4a]">Exposed: </span><span class="text-dark-textMuted">{{ catEdgeExposed.exposed.join(', ') }} — your upgrade targets</span>
           </div>
         </div>
 
@@ -499,12 +544,10 @@ const catEdgeExposed = computed(() => {
           class="mb-3 rounded-lg border border-dark-border/50 bg-dark-card px-3 py-2 font-mono text-[11px] leading-snug space-y-0.5"
         >
           <div v-if="pointsEdgeExposed.edge.length">
-            <span class="text-primary">Your edge:</span>
-            <span class="text-dark-text"> {{ pointsEdgeExposed.edge.join(', ') }}</span>
+            <span class="text-primary">Your edge: </span><span class="text-dark-text">{{ pointsEdgeExposed.edge.join(', ') }}</span>
           </div>
           <div v-if="pointsEdgeExposed.exposed.length">
-            <span class="text-[#e69a4a]">Exposed:</span>
-            <span class="text-dark-textMuted"> {{ pointsEdgeExposed.exposed.join(', ') }} — your upgrade targets</span>
+            <span class="text-[#e69a4a]">Exposed: </span><span class="text-dark-textMuted">{{ pointsEdgeExposed.exposed.join(', ') }} — your upgrade targets</span>
           </div>
         </div>
 
