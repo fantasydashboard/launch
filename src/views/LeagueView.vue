@@ -280,6 +280,25 @@ const catEdgeExposed = computed(() => {
   return edgeExposed(myRanks, numTeams)
 })
 
+// Category branch ROSTER-POSITION edge/exposed (from the landscape position grid), so
+// the position view of the matrix toggle is as actionable as the category view.
+const catPositionEdgeExposed = computed(() => {
+  const lv = landscapeView.value
+  if (!lv) return { edge: [], exposed: [] }
+  const myIdx = lv.teams.findIndex((t) => t.isMe)
+  if (myIdx < 0) return { edge: [], exposed: [] }
+  const myRanks = lv.positionRows.map((row) => ({ label: row.label, rank: row.ranks[myIdx] ?? null }))
+  return edgeExposed(myRanks, lv.numTeams)
+})
+
+// Matrix toggle for category leagues: show the category heatmap OR the roster-position
+// grid, one at a time (they answer different questions and together overflow the page).
+const catMatrixView = ref<'category' | 'position'>('category')
+
+const activeMatrixEdge = computed(() =>
+  catMatrixView.value === 'category' ? catEdgeExposed.value : catPositionEdgeExposed.value,
+)
+
 // ── HOT / COLD (last 3 weeks) ─────────────────────────────────────────────────
 
 const hotCold = computed(() => {
@@ -732,30 +751,50 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
       </div>
     </section>
 
-    <!-- ── CATEGORY landscape ─────────────────────────────────────────────── -->
+    <!-- ── CATEGORY landscape (toggled: category matrix ⇄ roster positions) ─── -->
     <template v-if="isCategory">
-      <!-- Category heatmap with edge/exposed readout -->
-      <section v-if="heatmap && heatmap.categories.length" class="mb-8">
-        <h2 class="mb-1 font-display text-lg font-bold text-dark-text">Position Strength</h2>
+      <section
+        v-if="(heatmap && heatmap.categories.length) || (landscapeView && landscapeView.positionRows.length)"
+        class="mb-8"
+      >
+        <!-- Header + matrix toggle -->
+        <div class="mb-1 flex items-center justify-between gap-3">
+          <h2 class="font-display text-lg font-bold text-dark-text">Where you stack up</h2>
+          <div class="flex shrink-0 items-center gap-0.5 rounded-lg border border-dark-border p-0.5 font-mono text-[10px]">
+            <button
+              class="rounded-md px-2.5 py-1 uppercase tracking-wider transition-colors"
+              :class="catMatrixView === 'category' ? 'font-bold' : 'text-dark-textMuted hover:text-dark-text'"
+              :style="catMatrixView === 'category' ? { backgroundColor: 'var(--color-primary, #C6FF3A)', color: '#10130a' } : {}"
+              @click="catMatrixView = 'category'"
+            >Categories</button>
+            <button
+              class="rounded-md px-2.5 py-1 uppercase tracking-wider transition-colors"
+              :class="catMatrixView === 'position' ? 'font-bold' : 'text-dark-textMuted hover:text-dark-text'"
+              :style="catMatrixView === 'position' ? { backgroundColor: 'var(--color-primary, #C6FF3A)', color: '#10130a' } : {}"
+              @click="catMatrixView = 'position'"
+            >Positions</button>
+          </div>
+        </div>
         <p class="mb-2 font-mono text-[10px] text-dark-textMuted">
-          brighter = stronger in that category · your row highlighted
+          <template v-if="catMatrixView === 'category'">rank in each scoring category across the league · brighter = stronger · your row highlighted</template>
+          <template v-else>rank by best eligible player at each roster position · brighter = stronger</template>
         </p>
 
-        <!-- Edge / exposed readout for categories -->
+        <!-- Edge / exposed readout (swaps with the active view) -->
         <div
-          v-if="catEdgeExposed.edge.length || catEdgeExposed.exposed.length"
+          v-if="activeMatrixEdge.edge.length || activeMatrixEdge.exposed.length"
           class="mb-3 rounded-lg border border-dark-border/50 bg-dark-card px-3 py-2 font-mono text-[11px] leading-snug space-y-0.5"
         >
-          <div v-if="catEdgeExposed.edge.length">
-            <span class="text-primary">Your edge: </span><span class="text-dark-text">{{ catEdgeExposed.edge.join(', ') }}</span>
+          <div v-if="activeMatrixEdge.edge.length">
+            <span class="text-primary">Your edge: </span><span class="text-dark-text">{{ activeMatrixEdge.edge.join(', ') }}</span>
           </div>
-          <div v-if="catEdgeExposed.exposed.length">
-            <span class="text-[#e69a4a]">Exposed: </span><span class="text-dark-textMuted">{{ catEdgeExposed.exposed.join(', ') }} — your upgrade targets</span>
+          <div v-if="activeMatrixEdge.exposed.length">
+            <span class="text-[#e69a4a]">Exposed: </span><span class="text-dark-textMuted">{{ activeMatrixEdge.exposed.join(', ') }} — your upgrade targets</span>
           </div>
         </div>
 
-        <div class="rounded-xl border border-dark-border bg-dark-card overflow-x-auto">
-          <!-- Header row -->
+        <!-- CATEGORY matrix -->
+        <div v-if="catMatrixView === 'category' && heatmap && heatmap.categories.length" class="rounded-xl border border-dark-border bg-dark-card overflow-x-auto">
           <div class="flex border-b border-dark-border/40">
             <div class="min-w-[8rem] shrink-0" />
             <div
@@ -768,7 +807,6 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
             </div>
           </div>
 
-          <!-- Body rows (YOU is already first from useLeagueLandscape) -->
           <div
             v-for="row in heatmap.rows"
             :key="row.teamKey"
@@ -796,15 +834,9 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
             </div>
           </div>
         </div>
-      </section>
 
-      <!-- Category position strength (from landscapeView) -->
-      <section v-if="landscapeView && landscapeView.positionRows.length" class="mb-8">
-        <h2 class="mb-1 font-display text-lg font-bold text-dark-text">Roster positions</h2>
-        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
-          rank by best eligible player at each position · brighter = stronger
-        </p>
-        <div class="rounded-xl border border-dark-border bg-dark-card overflow-x-auto">
+        <!-- POSITION matrix (roster positions) -->
+        <div v-else-if="catMatrixView === 'position' && landscapeView && landscapeView.positionRows.length" class="rounded-xl border border-dark-border bg-dark-card overflow-x-auto">
           <div class="flex border-b border-dark-border/40">
             <div class="min-w-[3.5rem] shrink-0" />
             <div
