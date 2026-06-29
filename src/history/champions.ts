@@ -18,6 +18,7 @@ export interface ChampionRow {
   championLogo?: string
   runnerUpName?: string
   regularLeaderName?: string
+  inProgress: boolean // season not decided yet (no champion flagged) → "leader", not "champion"
 }
 
 function pickChampion(teams: HistoryTeam[]): HistoryTeam | undefined {
@@ -48,16 +49,20 @@ export function buildChampions(seasons: HistorySeason[]): ChampionRow[] {
       if (!champ) return null
       const runnerUp = pickByRank(s.teams, 2)
       const regularLeader = pickRegularLeader(s.teams)
+      // No team flagged champion → the season hasn't been decided; the pick is the
+      // current leader, not a champion.
+      const inProgress = !s.teams.some((t) => t.champion)
       const row: ChampionRow = {
         season: s.season,
         championKey: champ.teamKey,
         championName: champ.teamName,
         championLogo: champ.teamLogo,
-        runnerUpName: runnerUp?.teamName,
+        runnerUpName: inProgress ? undefined : runnerUp?.teamName,
         regularLeaderName:
-          regularLeader && regularLeader.teamKey !== champ.teamKey
+          !inProgress && regularLeader && regularLeader.teamKey !== champ.teamKey
             ? regularLeader.teamName
             : undefined,
+        inProgress,
       }
       return row
     })

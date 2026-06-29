@@ -88,7 +88,7 @@ const record = (w: number, l: number, t: number) => `${w}-${l}${t ? '-' + t : ''
             <span class="min-w-0 flex-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
               <span class="truncate text-sm font-semibold text-dark-text">{{ c.championName }}</span>
               <span
-                v-if="singleSeason"
+                v-if="c.inProgress"
                 class="shrink-0 rounded px-1 font-mono text-[9px] uppercase tracking-wider text-[#e69a4a]"
                 :style="{ backgroundColor: 'rgba(230,154,74,0.14)' }"
               >in progress</span>

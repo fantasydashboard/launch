@@ -75,4 +75,11 @@ describe('buildChampions', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0].championName).toBe('Charlie')
   })
+
+  it('flags a season with no champion as in progress (and hides runner-up)', () => {
+    const rows = buildChampions(seasons)
+    expect(rows[0].inProgress).toBe(false) // 2024 has a flagged champion
+    expect(rows[1].inProgress).toBe(true) // 2023 has no flag → undecided
+    expect(rows[1].runnerUpName).toBeUndefined() // no runner-up while undecided
+  })
 })
