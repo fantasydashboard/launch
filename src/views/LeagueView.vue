@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useCategoryStrength } from '@/composables/useCategoryStrength'
 import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
@@ -14,6 +14,7 @@ import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { buildPointsPositional } from '@/league/pointsPositional'
 import { seasonStakes } from '@/myteam/seasonStakes'
 import { buildTrajectory } from '@/league/powerTrajectory'
+import { simulatePlayoffOdds, type OddsTeam } from '@/league/playoffOdds'
 import { buildHotCold } from '@/league/hotCold'
 import PowerTrajectoryChart from '@/components/league/PowerTrajectoryChart.vue'
 import type { Landscape } from '@/trades/landscape'
@@ -295,6 +296,62 @@ const trajectoryView = computed(() => {
   const meta = rows.map((r) => ({ teamKey: r.teamKey, teamName: r.teamName, isMe: r.teamKey === activeMyTeamKey.value, teamLogo: r.teamLogo }))
   return buildTrajectory(trajectory.outcomes.value, [], meta) // [] = no talent overlay; League shows just the standings race
 })
+
+// ── PLAYOFF ODDS ──────────────────────────────────────────────────────────────
+
+const leagueTeamCount = computed(() => rankings.value?.rows.length ?? 0)
+
+const playoffSpotsOverride = ref<number | null>(null)
+const playoffSpots = computed(() =>
+  playoffSpotsOverride.value ?? (trajectory.playoffSpots.value || Math.max(2, Math.round(leagueTeamCount.value / 2))),
+)
+
+const oddsTeams = computed<OddsTeam[]>(() => {
+  const rows = rankings.value?.rows ?? []
+  const pmeta = pointsTeamMeta.value
+  return rows.map((r) => ({
+    teamKey: r.teamKey,
+    strength: r.strength,
+    wins: r.wins,
+    losses: r.losses,
+    ties: r.ties,
+    pointsFor: isCategory.value ? r.strength : (pmeta[r.teamKey]?.pointsFor ?? r.strength),
+  }))
+})
+
+const playoffOdds = computed(() => {
+  const sched = trajectory.remainingSchedule.value
+  if (!oddsTeams.value.length || !sched.length || !playoffSpots.value) return null
+  return simulatePlayoffOdds(oddsTeams.value, sched, { playoffSpots: playoffSpots.value, sims: 5000 })
+})
+
+// teamKey -> {name, logo, isMe} for rendering odds rows (from rankings).
+const teamInfo = computed(() => {
+  const m = new Map<string, { name: string; logo?: string; isMe: boolean }>()
+  for (const r of rankings.value?.rows ?? []) m.set(r.teamKey, { name: r.teamName, logo: r.teamLogo, isMe: r.teamKey === activeMyTeamKey.value })
+  return m
+})
+
+// Your remaining strength-of-schedule + its league rank (1 = easiest).
+const sosRank = computed(() => {
+  const sched = trajectory.remainingSchedule.value
+  const rows = rankings.value?.rows ?? []
+  if (!sched.length || !rows.length) return null
+  const sOf = new Map(rows.map((r) => [r.teamKey, r.strength]))
+  const opps = new Map<string, number[]>()
+  for (const r of rows) opps.set(r.teamKey, [])
+  for (const wk of sched) for (const [a, b] of wk.matchups) {
+    opps.get(a)?.push(sOf.get(b) ?? 0)
+    opps.get(b)?.push(sOf.get(a) ?? 0)
+  }
+  const avg = rows
+    .map((r) => ({ k: r.teamKey, sos: (opps.get(r.teamKey) ?? []).reduce((x, y) => x + y, 0) / Math.max(1, (opps.get(r.teamKey) ?? []).length), n: (opps.get(r.teamKey) ?? []).length }))
+    .filter((x) => x.n > 0)
+    .sort((x, y) => x.sos - y.sos) // ascending: easiest first
+  const myIdx = avg.findIndex((x) => x.k === activeMyTeamKey.value)
+  if (myIdx < 0) return null
+  return { rank: myIdx + 1, total: avg.length } // 1 = easiest remaining slate
+})
 </script>
 
 <template>
@@ -303,6 +360,95 @@ const trajectoryView = computed(() => {
       <h1 class="font-display text-2xl font-bold text-dark-text">League</h1>
       <p class="font-mono text-xs text-dark-textMuted">How you stack up — and where to act.</p>
     </header>
+
+    <!-- ── PLAYOFF ODDS ──────────────────────────────────────────────────── -->
+    <section v-if="playoffOdds" class="mb-8">
+      <!-- Section header row -->
+      <div class="mb-1 flex items-start justify-between gap-3">
+        <div>
+          <h2 class="font-display text-lg font-bold text-dark-text">Playoff Odds</h2>
+          <p class="font-mono text-xs text-dark-textMuted">
+            rest-of-season simulation · top {{ playoffSpots }} make the bracket
+          </p>
+          <p v-if="sosRank" class="mt-0.5 font-mono text-xs text-dark-textMuted">
+            Your remaining schedule: <span class="text-dark-text">{{ ord(sosRank.rank) }}-easiest</span> of {{ sosRank.total }}.
+          </p>
+        </div>
+        <!-- Playoff spots stepper -->
+        <div class="flex shrink-0 items-center gap-1 rounded-lg border border-dark-border px-2 py-1 font-mono text-xs text-dark-textMuted">
+          <button
+            class="w-5 text-center leading-none hover:text-dark-text transition-colors"
+            :disabled="playoffSpots <= 1"
+            @click="playoffSpotsOverride = Math.max(1, playoffSpots - 1)"
+          >−</button>
+          <span class="w-5 text-center text-dark-text">{{ playoffSpots }}</span>
+          <button
+            class="w-5 text-center leading-none hover:text-dark-text transition-colors"
+            :disabled="playoffSpots >= leagueTeamCount"
+            @click="playoffSpotsOverride = Math.min(leagueTeamCount, playoffSpots + 1)"
+          >+</button>
+        </div>
+      </div>
+
+      <!-- Odds list card -->
+      <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
+        <div
+          v-for="r in playoffOdds.results"
+          :key="r.teamKey"
+          class="flex items-center gap-3 px-4 py-2.5"
+          :style="teamInfo.get(r.teamKey)?.isMe ? { backgroundColor: 'color-mix(in srgb, var(--color-primary,#C6FF3A) 6%, transparent)' } : {}"
+        >
+          <!-- Logo -->
+          <img
+            v-if="teamInfo.get(r.teamKey)?.logo"
+            :src="teamInfo.get(r.teamKey)!.logo"
+            alt=""
+            class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover"
+            @error="($event.target as HTMLElement).style.display = 'none'"
+          />
+          <span v-else class="h-8 w-8 shrink-0 rounded-full bg-dark-border" />
+
+          <!-- Name + YOU pill -->
+          <span class="min-w-0 flex-1 flex items-center gap-2 overflow-hidden">
+            <span class="truncate text-sm font-semibold text-dark-text">{{ teamInfo.get(r.teamKey)?.name ?? r.teamKey }}</span>
+            <span
+              v-if="teamInfo.get(r.teamKey)?.isMe"
+              class="shrink-0 rounded px-1 font-mono text-[9px] uppercase text-primary"
+              :style="{ backgroundColor: primaryTint(16) }"
+            >you</span>
+          </span>
+
+          <!-- Projected record -->
+          <span class="shrink-0 font-mono text-[11px] text-dark-textMuted">
+            proj {{ Math.round(r.projWins) }}-{{ Math.round(r.projLosses) }}{{ r.projTies ? '-' + Math.round(r.projTies) : '' }}
+          </span>
+
+          <!-- Bar + % label -->
+          <div class="shrink-0 flex items-center gap-2 w-28">
+            <div class="flex-1 relative h-1.5 overflow-hidden rounded-full" :style="{ backgroundColor: 'rgba(255,255,255,0.08)' }">
+              <div
+                class="absolute inset-y-0 left-0 rounded-full transition-all"
+                :style="{
+                  width: (r.playoffPct * 100) + '%',
+                  backgroundColor: r.playoffPct >= 0.5
+                    ? 'var(--color-primary, #C6FF3A)'
+                    : r.playoffPct > 0
+                      ? '#e69a4a'
+                      : 'rgba(255,255,255,0.15)'
+                }"
+              />
+            </div>
+            <span class="w-9 text-right font-mono text-[11px]"
+              :class="r.playoffPct >= 0.5 ? 'text-primary' : r.playoffPct > 0 ? 'text-[#e69a4a]' : 'text-dark-textMuted'"
+            >
+              <template v-if="r.playoffPct > 0.995">&gt;99%</template>
+              <template v-else-if="r.playoffPct > 0 && r.playoffPct < 0.005">&lt;1%</template>
+              <template v-else>{{ Math.round(r.playoffPct * 100) }}%</template>
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- ── LOADING / EMPTY STATES ─────────────────────────────────────────── -->
     <div v-if="loading && !rankings" class="py-16 text-center text-dark-textMuted">Sizing up the league…</div>
