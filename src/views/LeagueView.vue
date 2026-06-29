@@ -14,7 +14,7 @@ import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { buildPointsPositional } from '@/league/pointsPositional'
 import { seasonStakes } from '@/myteam/seasonStakes'
 import { buildTrajectory } from '@/league/powerTrajectory'
-import { simulatePlayoffOdds, type OddsTeam } from '@/league/playoffOdds'
+import { simulatePlayoffOdds, buildLeverage, type OddsTeam, type GameLeverage } from '@/league/playoffOdds'
 import { buildHotCold } from '@/league/hotCold'
 import PowerTrajectoryChart from '@/components/league/PowerTrajectoryChart.vue'
 import type { Landscape } from '@/trades/landscape'
@@ -354,6 +354,63 @@ const sosRank = computed(() => {
   if (myIdx < 0) return null
   return { rank: myIdx + 1, total: avg.length } // 1 = easiest remaining slate
 })
+
+// ── YOUR PLAYOFF PATH (leverage + who you're racing) ───────────────────────────
+
+const weeksLeft = computed(() => trajectory.weeksLeft.value)
+
+const myOdds = computed(() => {
+  const k = activeMyTeamKey.value
+  return k ? (oddsByKey.value.get(k) ?? null) : null
+})
+
+// Per-game playoff-odds swing for each of YOUR remaining matchups, sorted by leverage.
+// Skipped once your fate is sealed (>99% / <1%) — the sim would be wasted work.
+const leverage = computed<GameLeverage[]>(() => {
+  const sched = trajectory.remainingSchedule.value
+  const myKey = activeMyTeamKey.value
+  if (!oddsTeams.value.length || !sched.length || !playoffSpots.value || !myKey) return []
+  const od = oddsByKey.value.get(myKey)
+  if (od && (od.playoffPct > 0.995 || od.playoffPct < 0.005)) return []
+  return buildLeverage(oddsTeams.value, sched, { playoffSpots: playoffSpots.value, sims: 1500 }, myKey)
+})
+
+const topGame = computed(() => leverage.value[0] ?? null)
+
+const pathVerdict = computed<{ label: string; tone: 'good' | 'warn' | 'bad' } | null>(() => {
+  const p = myOdds.value?.playoffPct
+  if (p == null) return null
+  if (p >= 0.99) return { label: 'Effectively clinched', tone: 'good' }
+  if (p >= 0.7) return { label: 'In control', tone: 'good' }
+  if (p >= 0.4) return { label: 'On the bubble', tone: 'warn' }
+  if (p >= 0.1) return { label: 'Need a run', tone: 'warn' }
+  return { label: 'Long shot', tone: 'bad' }
+})
+
+// Teams you're realistically fighting for the last spots: contested (not locked or dead),
+// excluding you, nearest to your own odds.
+const racingRivals = computed(() => {
+  const myKey = activeMyTeamKey.value
+  const mine = myOdds.value?.playoffPct ?? 0
+  const results = playoffOdds.value?.results ?? []
+  return results
+    .filter((r) => r.teamKey !== myKey && r.playoffPct > 0.02 && r.playoffPct < 0.98)
+    .map((r) => ({ r, gap: Math.abs(r.playoffPct - mine) }))
+    .sort((a, b) => a.gap - b.gap)
+    .slice(0, 3)
+    .map(({ r }) => ({
+      teamKey: r.teamKey,
+      name: teamInfo.value.get(r.teamKey)?.name ?? 'Team',
+      logo: teamInfo.value.get(r.teamKey)?.logo,
+      playoffPct: r.playoffPct,
+      projWins: r.projWins,
+      projLosses: r.projLosses,
+    }))
+})
+
+const fmtPct = (p: number) => (p > 0.995 ? '>99%' : p > 0 && p < 0.005 ? '<1%' : Math.round(p * 100) + '%')
+const oddsColor = (p: number) => (p >= 0.5 ? 'text-primary' : p > 0 ? 'text-[#e69a4a]' : 'text-dark-textMuted')
+const oppName = (k: string) => teamInfo.value.get(k)?.name ?? 'Opponent'
 </script>
 
 <template>
@@ -540,6 +597,70 @@ const sosRank = computed(() => {
         <span class="text-dark-textMuted">: </span>
         <span class="text-dark-text">{{ hotCold.coldest.teamName }} {{ hotCold.coldest.wins }}-{{ hotCold.coldest.losses }}{{ hotCold.coldest.ties ? '-' + hotCold.coldest.ties : '' }}</span>
         <span v-if="hotCold.coldest.isMe" class="ml-1 text-[#e69a4a] text-[9px] uppercase">YOU</span>
+      </div>
+    </section>
+
+    <!-- ── YOUR PLAYOFF PATH (leverage + who you're racing) ──────────────────── -->
+    <section v-if="playoffOdds && myOdds" class="mb-8">
+      <div class="mb-2 flex items-baseline justify-between gap-3">
+        <h2 class="font-display text-lg font-bold text-dark-text">Your playoff path</h2>
+        <span
+          v-if="pathVerdict"
+          class="font-mono text-xs"
+          :class="pathVerdict.tone === 'good' ? 'text-primary' : pathVerdict.tone === 'warn' ? 'text-[#e69a4a]' : 'text-dark-textMuted'"
+        >{{ pathVerdict.label }}</span>
+      </div>
+      <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
+        <!-- Odds headline + projected finish -->
+        <div class="px-4 py-3 flex items-center gap-4">
+          <div class="shrink-0 text-center">
+            <div class="font-display text-3xl font-bold leading-none" :class="oddsColor(myOdds.playoffPct)">{{ fmtPct(myOdds.playoffPct) }}</div>
+            <div class="mt-1 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">playoff odds</div>
+          </div>
+          <div class="min-w-0 flex-1 font-mono text-[11px] leading-relaxed text-dark-textMuted">
+            Projected to finish
+            <span class="text-dark-text">{{ Math.round(myOdds.projWins) }}-{{ Math.round(myOdds.projLosses) }}{{ myOdds.projTies ? '-' + Math.round(myOdds.projTies) : '' }}</span>
+            with <span class="text-dark-text">{{ weeksLeft }} {{ weeksLeft === 1 ? 'week' : 'weeks' }} left</span>.
+            <template v-if="sosRank"> Your remaining slate is the <span class="text-dark-text">{{ ord(sosRank.rank) }}-easiest</span> of {{ sosRank.total }}.</template>
+          </div>
+        </div>
+
+        <!-- The game that matters most -->
+        <div v-if="topGame" class="px-4 py-3">
+          <div class="mb-1 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">The game that matters most</div>
+          <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0 truncate font-mono text-[12px] text-dark-text">Wk {{ topGame.week }} vs {{ oppName(topGame.opponentKey) }}</div>
+            <div class="shrink-0 font-mono text-[11px]">
+              <span class="text-primary">{{ fmtPct(topGame.oddsIfWin) }}</span>
+              <span class="text-dark-textMuted"> win · </span>
+              <span class="text-[#e69a4a]">{{ fmtPct(topGame.oddsIfLose) }}</span>
+              <span class="text-dark-textMuted"> lose</span>
+            </div>
+          </div>
+          <div class="mt-1 font-mono text-[10px] text-dark-textMuted">
+            a <span class="text-dark-text">{{ Math.round(topGame.leverage * 100) }}-point</span> swing — your highest-leverage matchup left
+          </div>
+        </div>
+
+        <!-- Who you're racing -->
+        <div v-if="racingRivals.length" class="px-4 py-3">
+          <div class="mb-1.5 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">Who you're racing for the {{ playoffSpots }} spots</div>
+          <div class="space-y-1.5">
+            <div v-for="rv in racingRivals" :key="rv.teamKey" class="flex items-center gap-2">
+              <img
+                v-if="rv.logo"
+                :src="rv.logo"
+                alt=""
+                class="h-5 w-5 shrink-0 rounded-full bg-dark-border object-cover"
+                @error="($event.target as HTMLElement).style.display = 'none'"
+              />
+              <span v-else class="h-5 w-5 shrink-0 rounded-full bg-dark-border" />
+              <span class="min-w-0 flex-1 truncate font-mono text-[12px] text-dark-text">{{ rv.name }}</span>
+              <span class="shrink-0 font-mono text-[10px] text-dark-textMuted">proj {{ Math.round(rv.projWins) }}-{{ Math.round(rv.projLosses) }}</span>
+              <span class="shrink-0 w-9 text-right font-mono text-[11px]" :class="oddsColor(rv.playoffPct)">{{ fmtPct(rv.playoffPct) }}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 

@@ -44,11 +44,20 @@ function std(xs: number[]): number {
 export function simulatePlayoffOdds(
   teams: OddsTeam[],
   schedule: ScheduleWeek[],
-  opts: { playoffSpots: number; sims?: number; scale?: number; rng?: () => number },
+  opts: {
+    playoffSpots: number
+    sims?: number
+    scale?: number
+    rng?: () => number
+    // Pin one team's result in one week (for leverage analysis): that team is forced
+    // to win/lose its matchup that week instead of flipping. Other games flip normally.
+    force?: { teamKey: string; week: number; win: boolean }
+  },
 ): OddsOutput {
   const sims = opts.sims ?? 10000
   const rng = opts.rng ?? Math.random
   const spots = opts.playoffSpots
+  const force = opts.force
   const scale = opts.scale ?? Math.max(1e-6, std(teams.map((t) => t.strength)))
   const strengthOf = new Map(teams.map((t) => [t.teamKey, t.strength]))
 
@@ -70,6 +79,19 @@ export function simulatePlayoffOdds(
         const ra = rec.get(a),
           rb = rec.get(b)
         if (!ra || !rb) continue
+        // Forced game: the pinned team wins/loses deterministically this sim.
+        if (force && force.week === wk.week && (a === force.teamKey || b === force.teamKey)) {
+          const forcedIsA = a === force.teamKey
+          const forcedWins = force.win
+          if (forcedIsA === forcedWins) {
+            ra.w++
+            rb.l++
+          } else {
+            rb.w++
+            ra.l++
+          }
+          continue
+        }
         const pa = matchupWinProb(strengthOf.get(a) ?? 0, strengthOf.get(b) ?? 0, scale)
         if (rng() < pa) {
           ra.w++
@@ -106,4 +128,39 @@ export function simulatePlayoffOdds(
     }))
     .sort((a, b) => b.playoffPct - a.playoffPct || a.avgSeed - b.avgSeed)
   return { results, sims }
+}
+
+export interface GameLeverage {
+  week: number
+  opponentKey: string
+  oddsIfWin: number
+  oddsIfLose: number
+  leverage: number // |oddsIfWin - oddsIfLose| — how much this game swings your odds
+}
+
+/**
+ * For each of myTeam's remaining games, how much winning vs losing it swings their
+ * playoff odds — re-running the sim with that one game pinned win, then pinned loss.
+ * Sorted by leverage desc, so the first entry is "the game that matters most".
+ */
+export function buildLeverage(
+  teams: OddsTeam[],
+  schedule: ScheduleWeek[],
+  opts: { playoffSpots: number; sims?: number; scale?: number; rng?: () => number },
+  myTeamKey: string,
+): GameLeverage[] {
+  const myGames: { week: number; opp: string }[] = []
+  for (const wk of schedule)
+    for (const [a, b] of wk.matchups) {
+      if (a === myTeamKey) myGames.push({ week: wk.week, opp: b })
+      else if (b === myTeamKey) myGames.push({ week: wk.week, opp: a })
+    }
+  const myPct = (out: OddsOutput) => out.results.find((r) => r.teamKey === myTeamKey)?.playoffPct ?? 0
+  return myGames
+    .map((g) => {
+      const win = myPct(simulatePlayoffOdds(teams, schedule, { ...opts, force: { teamKey: myTeamKey, week: g.week, win: true } }))
+      const lose = myPct(simulatePlayoffOdds(teams, schedule, { ...opts, force: { teamKey: myTeamKey, week: g.week, win: false } }))
+      return { week: g.week, opponentKey: g.opp, oddsIfWin: win, oddsIfLose: lose, leverage: Math.abs(win - lose) }
+    })
+    .sort((a, b) => b.leverage - a.leverage)
 }
