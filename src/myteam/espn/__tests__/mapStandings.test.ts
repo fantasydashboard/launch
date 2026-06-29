@@ -59,4 +59,48 @@ describe('mapBreakdownToCategoryData', () => {
     expect(out.categories).toHaveLength(0)
     expect(out.cats).toHaveLength(0)
   })
+
+  it('does not filter when no sport is passed (back-compat)', () => {
+    const withCounters = {
+      ...breakdown,
+      categories: [
+        { stat_id: '0', name: 'At Bats', display_name: 'AB' }, // counter
+        { stat_id: '20', name: 'Home Runs', display_name: 'HR' },
+        { stat_id: '47', name: 'ERA', display_name: 'ERA', is_negative: true },
+      ],
+    }
+    const out = mapBreakdownToCategoryData(withCounters, teams)
+    expect(out.categories.map((c) => c.statId)).toEqual(['0', '20', '47'])
+  })
+
+  it("drops pure counters (AB, G, GS, BF) for baseball but keeps real categories", () => {
+    // Real ESPN global stat IDs: AB=0, G=18, GS=53, BF=67 (counters); H=1, HR=33, ERA=47 (cats).
+    const withCounters = {
+      ...breakdown,
+      categories: [
+        { stat_id: '0', name: 'At Bats', display_name: 'AB' }, // never a category
+        { stat_id: '18', name: 'Games', display_name: 'G' }, // never a category
+        { stat_id: '53', name: 'Games Started', display_name: 'GS' }, // never a category
+        { stat_id: '67', name: 'Batters Faced', display_name: 'BF' }, // never a category
+        { stat_id: '1', name: 'Hits', display_name: 'H' }, // ambiguous — keep
+        { stat_id: '33', name: 'Home Runs', display_name: 'HR' },
+        { stat_id: '47', name: 'ERA', display_name: 'ERA', is_negative: true },
+      ],
+    }
+    const out = mapBreakdownToCategoryData(withCounters, teams, 'baseball')
+    expect(out.categories.map((c) => c.statId)).toEqual(['1', '33', '47'])
+    expect(out.cats.map((c) => c.statId)).toEqual(['1', '33', '47'])
+  })
+
+  it('falls back to the raw list if the filter would remove everything', () => {
+    const allCounters = {
+      ...breakdown,
+      categories: [
+        { stat_id: '0', name: 'At Bats', display_name: 'AB' },
+        { stat_id: '18', name: 'Games', display_name: 'G' },
+      ],
+    }
+    const out = mapBreakdownToCategoryData(allCounters, teams, 'baseball')
+    expect(out.categories.map((c) => c.statId)).toEqual(['0', '18']) // safety fallback
+  })
 })

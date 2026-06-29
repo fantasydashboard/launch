@@ -105,7 +105,7 @@ export function useEspnCategoryTeamData() {
       ])
       if (leagueStore.activeLeagueId !== requestedId) return
 
-      const mapped = mapBreakdownToCategoryData(breakdown, teams)
+      const mapped = mapBreakdownToCategoryData(breakdown, teams, sport)
       standings.value = mapped.standings
       categories.value = mapped.categories
       cats.value = mapped.cats
