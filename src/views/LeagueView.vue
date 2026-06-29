@@ -15,6 +15,7 @@ import { seasonStakes } from '@/myteam/seasonStakes'
 import { buildTrajectory } from '@/league/powerTrajectory'
 import { simulatePlayoffOdds, buildLeverage, type OddsTeam, type GameLeverage } from '@/league/playoffOdds'
 import { buildHotCold } from '@/league/hotCold'
+import { buildTradeFit } from '@/league/tradeFit'
 import PowerTrajectoryChart from '@/components/league/PowerTrajectoryChart.vue'
 import TeamAvatar from '@/components/league/TeamAvatar.vue'
 import type { Landscape } from '@/trades/landscape'
@@ -300,6 +301,17 @@ const activeMatrixRows = computed(() => {
 const activeMatrixEdge = computed(() =>
   catMatrixView.value === 'category' ? catEdgeExposed.value : catPositionEdgeExposed.value,
 )
+
+// Trade radar: complementary fits across the league (category leagues), built from the
+// same category landscape. A pointer to "who to talk to" — the deal itself lives on Trades.
+const tradeRadar = computed(() => {
+  const lv = landscapeView.value
+  if (!lv || !isCategory.value || !activeMyTeamKey.value) return []
+  return buildTradeFit(
+    { teams: lv.teams, rows: lv.categoryRows, numTeams: lv.numTeams },
+    activeMyTeamKey.value,
+  ).slice(0, 3)
+})
 
 // ── HOT / COLD (last 3 weeks) ─────────────────────────────────────────────────
 
@@ -804,6 +816,33 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
             </div>
           </div>
         </div>
+      </section>
+
+      <!-- ── TRADE RADAR (complementary fits across the league) ─────────────── -->
+      <section v-if="tradeRadar.length" class="mb-8">
+        <h2 class="font-display text-lg font-bold text-dark-text">Trade radar</h2>
+        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
+          best complementary fits — teams strong where you're exposed, weak where you're strong
+        </p>
+        <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
+          <div v-for="p in tradeRadar" :key="p.teamKey" class="px-4 py-3">
+            <div class="mb-1.5 flex items-center gap-2">
+              <TeamAvatar :name="p.teamName" :logo="teamLogoOf(p.teamKey)" :size="20" />
+              <span class="min-w-0 truncate font-mono text-[13px] font-semibold text-dark-text">{{ p.teamName }}</span>
+            </div>
+            <div class="space-y-0.5 font-mono text-[11px] leading-relaxed">
+              <div>
+                <span class="text-primary">You get: </span><span class="text-dark-text">{{ p.youGet.map((d) => d.label).join(', ') }}</span>
+              </div>
+              <div>
+                <span class="text-[#e69a4a]">They want: </span><span class="text-dark-textMuted">{{ p.theyGet.map((d) => d.label).join(', ') }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <router-link to="/trades" class="mt-2 inline-block font-mono text-[11px] text-primary hover:underline">
+          Build the deal on Trades →
+        </router-link>
       </section>
     </template>
 
