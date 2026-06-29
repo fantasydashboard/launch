@@ -8,6 +8,7 @@ import { usePowerTrajectory } from '@/composables/usePowerTrajectory'
 import { useCategoryStrength } from '@/composables/useCategoryStrength'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { buildPowerRankings, type PowerTeamInput } from '@/league/powerRankings'
+import { seasonStakes } from '@/myteam/seasonStakes'
 import { buildTrajectory, type TalentSnapshot } from '@/league/powerTrajectory'
 import { readTalentSnapshots, recordTalentSnapshot } from '@/league/talentSnapshots'
 import PowerTrajectoryChart from '@/components/league/PowerTrajectoryChart.vue'
@@ -218,6 +219,24 @@ const gapSuffix = computed(() =>
 // Per-week strengths cluster tightly, so rounded absolutes manufacture fake ties
 // (three teams reading "380" at ranks 6/7/8). Show the leader in full and everyone
 // else as the gap behind #1 — a tight pack then reads honestly as "all ~30 back".
+// Playoff stakes from STANDINGS position (record rank) vs the bracket cut — flags a
+// team that's clinched, eliminated, or on the bubble. ESPN only (Yahoo doesn't expose
+// the bracket size reliably, so playoffSpots stays 0 and no badges show).
+const rowStakes = computed(() => {
+  const out = new Map<string, { label: string; cls: string }>()
+  const spots = trajectory.playoffSpots.value
+  const wl = trajectory.weeksLeft.value
+  const rows = rankings.value?.rows ?? []
+  if (!spots || !wl || !rows.length) return out
+  for (const r of rows) {
+    const s = seasonStakes({ rank: r.recordRank, leagueSize: rows.length, weeksLeft: wl, playoffSpots: spots })
+    if (s.coastKind === 'clinched') out.set(r.teamKey, { label: 'clinched', cls: 'text-primary' })
+    else if (s.coastKind === 'eliminated') out.set(r.teamKey, { label: 'eliminated', cls: 'text-dark-textMuted' })
+    else if (s.mode === 'must-win') out.set(r.teamKey, { label: 'bubble', cls: 'text-[#e69a4a]' })
+  }
+  return out
+})
+
 const leaderStrength = computed(() => {
   const rows = rankings.value?.rows ?? []
   return rows.length ? Math.max(...rows.map((r) => r.strength)) : 0
@@ -330,6 +349,7 @@ const showHow = ref(false)
                 <span v-if="isMe(r.teamKey)" class="shrink-0 rounded px-1 font-mono text-[9px] uppercase text-primary" :style="{ backgroundColor: primaryTint(16) }">you</span>
                 <span v-if="r.managerless" class="shrink-0 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">abandoned</span>
                 <span v-else class="shrink-0 font-mono text-[9px] uppercase tracking-wider" :class="tierClass(r.tier)">{{ r.tier }}</span>
+                <span v-if="rowStakes.get(r.teamKey)" class="shrink-0 font-mono text-[9px] uppercase tracking-wider" :class="rowStakes.get(r.teamKey)?.cls">· {{ rowStakes.get(r.teamKey)?.label }}</span>
               </span>
               <span class="flex items-center gap-2 font-mono text-[11px] text-dark-textMuted">
                 {{ recordStr(r) }}

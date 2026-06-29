@@ -23,6 +23,7 @@ export function usePowerTrajectory() {
   const outcomes = ref<WeekOutcomes[]>([])
   const currentWeek = ref(0)
   const weeksLeft = ref(0) // regular-season weeks remaining (incl. current); 0 = unknown
+  const playoffSpots = ref(0) // teams that make the bracket; 0 = unknown (no stakes badges)
   const loading = ref(false)
   const loaded = ref(false)
 
@@ -89,6 +90,8 @@ export function usePowerTrajectory() {
     currentWeek.value = cw
     const regSeason = Number(league?.settings?.regularSeasonMatchupPeriodCount) || 0
     if (regSeason) weeksLeft.value = Math.max(1, regSeason - cw + 1)
+    // ESPN exposes the bracket size; Yahoo doesn't reliably, so it stays 0 (no badges).
+    playoffSpots.value = Number(league?.settings?.playoffTeamCount) || 0
     const weeks = Array.from({ length: cw }, (_, i) => i + 1)
     const perWeek = await Promise.all(
       weeks.map(async (week): Promise<WeekOutcomes | null> => {
@@ -137,5 +140,5 @@ export function usePowerTrajectory() {
     }
   }
 
-  return { outcomes, currentWeek, weeksLeft, loading, loaded, load }
+  return { outcomes, currentWeek, weeksLeft, playoffSpots, loading, loaded, load }
 }
