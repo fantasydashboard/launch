@@ -203,6 +203,13 @@ export function useCategoryStrength() {
     return out
   })
 
+  // teamKey -> name, for the landscape (which keys names separately from records).
+  const teamNameByKey = computed(() => {
+    const m = new Map<string, string>()
+    for (const [k, v] of Object.entries(teamMeta.value)) m.set(k, v.name)
+    return m
+  })
+
   const myTeamKey = computed<string>(() => {
     if (isEspn.value) return espn.myTeamId.value ?? ''
     const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
@@ -265,5 +272,9 @@ export function useCategoryStrength() {
   // Number of scored categories — for the "X.X of N cats/wk" label context.
   const catCount = computed(() => catSpecs.value.length)
 
-  return { strengths, teamMeta, myTeamKey, catCount, loading, load }
+  return {
+    strengths, teamMeta, myTeamKey, catCount, loading, load,
+    // Exposed for the League page's all-team landscape (already computed above).
+    engine, fgByKey, catSpecs, labelOf, teamNameByKey, pool,
+  }
 }
