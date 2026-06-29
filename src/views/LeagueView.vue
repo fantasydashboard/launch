@@ -103,7 +103,7 @@ const catRankings = computed(() => {
   const meta = cat.teamMeta.value
   const inputs: PowerTeamInput[] = s.map((x) => {
     const m = meta[x.teamKey] ?? { name: 'Team', logo: '', wins: 0, losses: 0, ties: 0 }
-    return { teamKey: x.teamKey, teamName: m.name, teamLogo: m.logo, strength: x.strength, wins: m.wins, losses: m.losses, ties: m.ties }
+    return { teamKey: x.teamKey, teamName: m.name, teamLogo: m.logo, strength: x.strength, wins: m.wins, losses: m.losses, ties: m.ties, managerless: isEspn.value ? false : /manager-?less/i.test(m.name) }
   })
   return buildPowerRankings(inputs)
 })
