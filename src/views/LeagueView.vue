@@ -381,7 +381,8 @@ const sosRank = computed(() => {
           </template>
         </div>
         <!-- Playoff spots stepper (only when odds are available) -->
-        <div v-if="playoffOdds" class="flex shrink-0 items-center gap-1 rounded-lg border border-dark-border px-2 py-1 font-mono text-xs text-dark-textMuted">
+        <div v-if="playoffOdds" class="flex shrink-0 items-center gap-2 rounded-lg border border-dark-border px-2 py-1 font-mono text-xs text-dark-textMuted">
+          <span class="text-[10px] uppercase tracking-wider text-dark-textMuted font-mono">Playoff spots</span>
           <button
             class="w-5 text-center leading-none hover:text-dark-text transition-colors"
             :disabled="playoffSpots <= 1"
@@ -400,6 +401,27 @@ const sosRank = computed(() => {
         Loading standings…
       </div>
       <div v-else class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
+        <!-- Column header row -->
+        <div class="px-4 py-1 flex items-center gap-3 border-b border-dark-border/40">
+          <!-- spacer: position number -->
+          <span class="w-6 shrink-0" />
+          <!-- spacer: logo -->
+          <span class="h-8 w-8 shrink-0" />
+          <!-- spacer: name column -->
+          <span class="min-w-0 flex-1" />
+          <!-- label over text cluster -->
+          <span class="shrink-0 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">
+            <template v-if="playoffOdds">REC · TALENT · PROJ</template>
+            <template v-else>REC · TALENT</template>
+          </span>
+          <!-- label over bar/% column -->
+          <template v-if="playoffOdds">
+            <span class="shrink-0 w-28 text-right font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">PLAYOFF ODDS</span>
+          </template>
+          <template v-else>
+            <span class="hidden sm:block shrink-0 w-36 text-right font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">ROSTER TALENT</span>
+          </template>
+        </div>
         <div
           v-for="(r, i) in standings"
           :key="r.teamKey"
