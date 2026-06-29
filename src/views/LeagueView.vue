@@ -447,7 +447,10 @@ const racingLabel = computed(() =>
     : `Who you're racing for the ${playoffSpots.value} spots`,
 )
 
-const fmtPct = (p: number) => (p > 0.995 ? '>99%' : p > 0 && p < 0.005 ? '<1%' : Math.round(p * 100) + '%')
+// These odds only render mid-season (the sim needs a remaining schedule), so a sim
+// result of exactly 0 isn't "mathematically eliminated" — it just never happened in
+// 5000 tries. Floor it to "<1%" rather than a hard "0%" that reads as "give up".
+const fmtPct = (p: number) => (p > 0.995 ? '>99%' : p < 0.005 ? '<1%' : Math.round(p * 100) + '%')
 const oddsColor = (p: number) => (p >= 0.5 ? 'text-primary' : p > 0 ? 'text-[#e69a4a]' : 'text-dark-textMuted')
 const oppName = (k: string) => teamInfo.value.get(k)?.name ?? 'Opponent'
 const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
@@ -595,9 +598,7 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
               <span class="w-9 text-right font-mono text-[11px]"
                 :class="(oddsByKey.get(r.teamKey)!).playoffPct >= 0.5 ? 'text-primary' : (oddsByKey.get(r.teamKey)!).playoffPct > 0 ? 'text-[#e69a4a]' : 'text-dark-textMuted'"
               >
-                <template v-if="(oddsByKey.get(r.teamKey)!).playoffPct > 0.995">&gt;99%</template>
-                <template v-else-if="(oddsByKey.get(r.teamKey)!).playoffPct > 0 && (oddsByKey.get(r.teamKey)!).playoffPct < 0.005">&lt;1%</template>
-                <template v-else>{{ Math.round((oddsByKey.get(r.teamKey)!).playoffPct * 100) }}%</template>
+                {{ fmtPct((oddsByKey.get(r.teamKey)!).playoffPct) }}
               </span>
             </div>
           </template>
