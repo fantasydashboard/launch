@@ -9,7 +9,6 @@ import { usePowerTrajectory } from '@/composables/usePowerTrajectory'
 import { useLeagueLandscape } from '@/composables/useLeagueLandscape'
 import { buildPowerRankings, type PowerTeamInput } from '@/league/powerRankings'
 import { buildLeagueStandings, type StakesTag } from '@/league/leagueStandings'
-import { buildCategoryHeatmap } from '@/league/leagueHeatmap'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { buildPointsPositional } from '@/league/pointsPositional'
 import { seasonStakes } from '@/myteam/seasonStakes'
@@ -189,8 +188,6 @@ const { view: landscapeView } = useLeagueLandscape({
   labelOf: cat.labelOf,
 })
 
-const heatmap = computed(() => (landscapeView.value ? buildCategoryHeatmap(landscapeView.value) : null))
-
 // ── POINTS LANDSCAPE ──────────────────────────────────────────────────────────
 
 // Ordered team keys: YOU first, then remaining teams by standings rank (record-sorted).
@@ -267,17 +264,14 @@ const pointsEdgeExposed = computed(() => {
   return edgeExposed(myRanks, numTeams)
 })
 
-// Category heatmap: gather MY ranks per category from heatmap rows.
+// MY ranks per category, from the landscape's category rows (transposed: category × team).
 const catEdgeExposed = computed(() => {
-  if (!heatmap.value) return { edge: [], exposed: [] }
-  const myRow = heatmap.value.rows.find((r) => r.isMe)
-  if (!myRow) return { edge: [], exposed: [] }
-  const numTeams = heatmap.value.rows.length
-  const myRanks = heatmap.value.categories.map((cat, ci) => ({
-    label: cat.label,
-    rank: myRow.cells[ci]?.rank ?? null,
-  }))
-  return edgeExposed(myRanks, numTeams)
+  const lv = landscapeView.value
+  if (!lv) return { edge: [], exposed: [] }
+  const myIdx = lv.teams.findIndex((t) => t.isMe)
+  if (myIdx < 0) return { edge: [], exposed: [] }
+  const myRanks = lv.categoryRows.map((row) => ({ label: row.label, rank: row.ranks[myIdx] ?? null }))
+  return edgeExposed(myRanks, lv.numTeams)
 })
 
 // Category branch ROSTER-POSITION edge/exposed (from the landscape position grid), so
@@ -291,9 +285,16 @@ const catPositionEdgeExposed = computed(() => {
   return edgeExposed(myRanks, lv.numTeams)
 })
 
-// Matrix toggle for category leagues: show the category heatmap OR the roster-position
-// grid, one at a time (they answer different questions and together overflow the page).
+// Matrix toggle for category leagues: show categories OR roster positions, one at a time.
+// Both render the SAME transposed grid (teams as columns, the metric as rows) so columns
+// stay aligned regardless of team-name length — only the row source differs.
 const catMatrixView = ref<'category' | 'position'>('category')
+
+const activeMatrixRows = computed(() => {
+  const lv = landscapeView.value
+  if (!lv) return []
+  return catMatrixView.value === 'category' ? lv.categoryRows : lv.positionRows
+})
 
 const activeMatrixEdge = computed(() =>
   catMatrixView.value === 'category' ? catEdgeExposed.value : catPositionEdgeExposed.value,
@@ -754,7 +755,7 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
     <!-- ── CATEGORY landscape (toggled: category matrix ⇄ roster positions) ─── -->
     <template v-if="isCategory">
       <section
-        v-if="(heatmap && heatmap.categories.length) || (landscapeView && landscapeView.positionRows.length)"
+        v-if="landscapeView && (landscapeView.categoryRows.length || landscapeView.positionRows.length)"
         class="mb-8"
       >
         <!-- Header + matrix toggle -->
@@ -776,8 +777,8 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
           </div>
         </div>
         <p class="mb-2 font-mono text-[10px] text-dark-textMuted">
-          <template v-if="catMatrixView === 'category'">rank in each scoring category across the league · brighter = stronger · your row highlighted</template>
-          <template v-else>rank by best eligible player at each roster position · brighter = stronger</template>
+          <template v-if="catMatrixView === 'category'">rank in each scoring category across the league · brighter = stronger · you're the ringed column</template>
+          <template v-else>rank by best eligible player at each roster position · brighter = stronger · you're the ringed column</template>
         </p>
 
         <!-- Edge / exposed readout (swaps with the active view) -->
@@ -793,74 +794,48 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
           </div>
         </div>
 
-        <!-- CATEGORY matrix -->
-        <div v-if="catMatrixView === 'category' && heatmap && heatmap.categories.length" class="rounded-xl border border-dark-border bg-dark-card overflow-x-auto">
-          <div class="flex border-b border-dark-border/40">
-            <div class="min-w-[8rem] shrink-0" />
-            <div
-              v-for="c in heatmap.categories"
-              :key="c.key"
-              class="w-7 shrink-0 py-1.5 text-center font-mono text-[8px] uppercase tracking-wide text-dark-textMuted leading-tight"
-              :title="c.label"
-            >
-              {{ c.label.slice(0, 3) }}
-            </div>
-          </div>
-
-          <div
-            v-for="row in heatmap.rows"
-            :key="row.teamKey"
-            class="flex items-center border-b border-dark-border/20 last:border-0"
-            :style="row.isMe ? { backgroundColor: primaryTint(6) } : {}"
-          >
-            <div
-              class="min-w-[8rem] shrink-0 px-3 py-1.5 font-mono text-[11px] truncate text-dark-text"
-              :class="row.isMe ? 'font-bold' : ''"
-            >
-              <span
-                v-if="row.isMe"
-                class="inline-block rounded px-1 mr-1 font-mono text-[9px] uppercase text-primary"
-                :style="{ backgroundColor: primaryTint(16) }"
-              >you</span>{{ row.teamName }}
-            </div>
-
-            <div
-              v-for="(cell, ci) in row.cells"
-              :key="ci"
-              class="w-7 shrink-0 py-1.5 text-center font-mono text-[10px] text-dark-text leading-none"
-              :style="{ backgroundColor: heatBg(cell.pct) }"
-            >
-              {{ cell.rank ?? '' }}
-            </div>
-          </div>
-        </div>
-
-        <!-- POSITION matrix (roster positions) -->
-        <div v-else-if="catMatrixView === 'position' && landscapeView && landscapeView.positionRows.length" class="rounded-xl border border-dark-border bg-dark-card overflow-x-auto">
+        <!-- Unified transposed matrix: teams as columns (logos on top), metric as rows.
+             Fixed-width columns keep numbers aligned regardless of team-name length. -->
+        <div v-if="landscapeView && activeMatrixRows.length" class="rounded-xl border border-dark-border bg-dark-card overflow-x-auto">
+          <!-- Header: team logos (YOU ringed + first) -->
           <div class="flex border-b border-dark-border/40">
             <div class="min-w-[3.5rem] shrink-0" />
             <div
               v-for="team in landscapeView.teams"
               :key="team.key"
-              class="w-10 shrink-0 py-1.5 text-center font-mono text-[8px] uppercase tracking-wide leading-tight truncate"
-              :class="team.isMe ? 'text-primary font-bold' : 'text-dark-textMuted'"
+              class="w-10 shrink-0 py-1.5 flex items-center justify-center"
               :title="team.name"
             >
-              {{ team.isMe ? 'YOU' : team.label }}
+              <img
+                v-if="teamLogoOf(team.key)"
+                :src="teamLogoOf(team.key)"
+                :alt="team.name"
+                class="h-[18px] w-[18px] rounded-full object-cover"
+                :class="team.isMe ? 'ring-1 ring-primary ring-offset-[1px] ring-offset-dark-card' : 'opacity-70'"
+                @error="($event.target as HTMLElement).style.display = 'none'"
+              />
+              <span
+                v-else
+                class="font-mono text-[7px] uppercase leading-none"
+                :class="team.isMe ? 'text-primary font-bold' : 'text-dark-textMuted'"
+              >
+                {{ team.isMe ? 'YOU' : team.label }}
+              </span>
             </div>
           </div>
 
+          <!-- Rows: one per category / position -->
           <div
-            v-for="posRow in landscapeView.positionRows"
-            :key="posRow.key"
+            v-for="row in activeMatrixRows"
+            :key="row.key"
             class="flex items-center border-b border-dark-border/20 last:border-0"
           >
             <div class="min-w-[3.5rem] shrink-0 px-3 py-1.5 font-mono text-[10px] text-dark-textSecondary uppercase tracking-wider">
-              {{ posRow.label }}
+              {{ row.label }}
             </div>
 
             <div
-              v-for="(rank, ti) in posRow.ranks"
+              v-for="(rank, ti) in row.ranks"
               :key="ti"
               class="w-10 shrink-0 py-1.5 text-center font-mono text-[10px] text-dark-text leading-none"
               :style="{
