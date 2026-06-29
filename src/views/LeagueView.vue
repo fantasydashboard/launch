@@ -16,6 +16,7 @@ import { buildTrajectory } from '@/league/powerTrajectory'
 import { simulatePlayoffOdds, buildLeverage, type OddsTeam, type GameLeverage } from '@/league/playoffOdds'
 import { buildHotCold } from '@/league/hotCold'
 import { buildTradeFit } from '@/league/tradeFit'
+import { buildStrengthOfSchedule } from '@/league/strengthOfSchedule'
 import PowerTrajectoryChart from '@/components/league/PowerTrajectoryChart.vue'
 import TeamAvatar from '@/components/league/TeamAvatar.vue'
 import type { Landscape } from '@/trades/landscape'
@@ -368,26 +369,24 @@ const teamInfo = computed(() => {
   return m
 })
 
-// Your remaining strength-of-schedule + its league rank (1 = easiest).
-const sosRank = computed(() => {
+// Remaining strength-of-schedule for every team (easiest road = rank 1), with fade/surge
+// flags where schedule luck contradicts current standing.
+const leagueSos = computed(() => {
   const sched = trajectory.remainingSchedule.value
-  const rows = rankings.value?.rows ?? []
-  if (!sched.length || !rows.length) return null
-  const sOf = new Map(rows.map((r) => [r.teamKey, r.strength]))
-  const opps = new Map<string, number[]>()
-  for (const r of rows) opps.set(r.teamKey, [])
-  for (const wk of sched) for (const [a, b] of wk.matchups) {
-    opps.get(a)?.push(sOf.get(b) ?? 0)
-    opps.get(b)?.push(sOf.get(a) ?? 0)
-  }
-  const avg = rows
-    .map((r) => ({ k: r.teamKey, sos: (opps.get(r.teamKey) ?? []).reduce((x, y) => x + y, 0) / Math.max(1, (opps.get(r.teamKey) ?? []).length), n: (opps.get(r.teamKey) ?? []).length }))
-    .filter((x) => x.n > 0)
-    .sort((x, y) => x.sos - y.sos) // ascending: easiest first
-  const myIdx = avg.findIndex((x) => x.k === activeMyTeamKey.value)
-  if (myIdx < 0) return null
-  return { rank: myIdx + 1, total: avg.length } // 1 = easiest remaining slate
+  const rows = standings.value
+  if (!sched.length || !rows.length) return []
+  const teams = rows.map((r, i) => ({ teamKey: r.teamKey, teamName: r.teamName, strength: r.strength, standingRank: i + 1 }))
+  return buildStrengthOfSchedule(teams, sched.map((w) => ({ matchups: w.matchups })))
 })
+
+// Your own remaining-SOS rank (drives the playoff-path headline).
+const sosRank = computed(() => {
+  const me = leagueSos.value.find((r) => r.teamKey === activeMyTeamKey.value)
+  return me ? { rank: me.sosRank, total: me.total } : null
+})
+
+// Teams the schedule is about to move (sorted easiest road first), for the outlook list.
+const sosMovers = computed(() => leagueSos.value.filter((r) => r.trend))
 
 // ── YOUR PLAYOFF PATH (leverage + who you're racing) ───────────────────────────
 
@@ -467,6 +466,15 @@ const fmtPct = (p: number) => (p > 0.995 ? '>99%' : p < 0.005 ? '<1%' : Math.rou
 const oddsColor = (p: number) => (p >= 0.5 ? 'text-primary' : p > 0 ? 'text-[#e69a4a]' : 'text-dark-textMuted')
 const oppName = (k: string) => teamInfo.value.get(k)?.name ?? 'Opponent'
 const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
+
+// SOS difficulty bar colour by road tier (independent of standing): easy=green, hard=orange.
+const sosBarColor = (sosRank: number, total: number) => {
+  const easy = Math.max(1, Math.ceil(total / 3))
+  const hard = total - Math.max(1, Math.floor(total / 3)) + 1
+  if (sosRank <= easy) return 'var(--color-primary, #C6FF3A)'
+  if (sosRank >= hard) return '#e69a4a'
+  return 'rgba(255,255,255,0.25)'
+}
 </script>
 
 <template>
@@ -719,6 +727,52 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
               <span class="shrink-0 w-9 text-right font-mono text-[11px]" :class="oddsColor(rv.playoffPct)">{{ fmtPct(rv.playoffPct) }}</span>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SCHEDULE OUTLOOK (full-league remaining SOS) ──────────────────────── -->
+    <section v-if="leagueSos.length >= 3" class="mb-8">
+      <div class="mb-2 flex items-baseline justify-between gap-3">
+        <h2 class="font-display text-lg font-bold text-dark-text">Schedule outlook</h2>
+        <span v-if="sosMovers.length" class="font-mono text-xs text-dark-textMuted">{{ sosMovers.length }} on the move</span>
+      </div>
+      <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
+        remaining road, easiest to hardest · <span class="text-primary">▲ soft finish</span> (may rise) · <span class="text-[#e69a4a]">⚠ tough finish</span> (may fade)
+      </p>
+      <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
+        <div
+          v-for="r in leagueSos"
+          :key="r.teamKey"
+          class="px-4 py-2 flex items-center gap-3"
+          :style="r.teamKey === activeMyTeamKey ? { backgroundColor: primaryTint(6) } : {}"
+        >
+          <span class="w-5 shrink-0 text-center font-mono text-[11px] text-dark-textMuted">{{ r.sosRank }}</span>
+          <TeamAvatar :name="r.teamName" :logo="teamLogoOf(r.teamKey)" :size="20" />
+          <span class="min-w-0 flex-1 flex items-center gap-2 overflow-hidden">
+            <span class="truncate font-mono text-[12px] text-dark-text">{{ r.teamName }}</span>
+            <span
+              v-if="r.teamKey === activeMyTeamKey"
+              class="shrink-0 rounded px-1 font-mono text-[9px] uppercase text-primary"
+              :style="{ backgroundColor: primaryTint(16) }"
+            >you</span>
+          </span>
+          <span class="shrink-0 font-mono text-[10px] text-dark-textMuted">{{ ord(r.standingRank) }}</span>
+          <!-- difficulty bar: longer = harder road -->
+          <div class="shrink-0 w-16 h-1.5 relative overflow-hidden rounded-full" :style="{ backgroundColor: 'rgba(255,255,255,0.08)' }">
+            <div
+              class="absolute inset-y-0 left-0 rounded-full"
+              :style="{ width: (r.sosRank / r.total * 100) + '%', backgroundColor: sosBarColor(r.sosRank, r.total) }"
+            />
+          </div>
+          <span
+            class="shrink-0 w-24 text-right font-mono text-[10px]"
+            :class="r.trend === 'fade' ? 'text-[#e69a4a]' : r.trend === 'surge' ? 'text-primary' : 'text-dark-textMuted'"
+          >
+            <template v-if="r.trend === 'surge'">▲ soft road</template>
+            <template v-else-if="r.trend === 'fade'">⚠ tough road</template>
+            <template v-else>—</template>
+          </span>
         </div>
       </div>
     </section>
