@@ -18,6 +18,9 @@ export interface WeekOutcomes {
   week: number
   results: Record<string, Outcome> // teamKey → that week's result (only decided games)
   points?: Record<string, number> // teamKey → that week's points scored (points leagues)
+  catWins?: Record<string, number> // teamKey → categories won that week (category leagues)
+  catLosses?: Record<string, number> // teamKey → categories lost that week
+  catTies?: Record<string, number> // teamKey → categories tied that week
 }
 
 export interface TalentSnapshot {

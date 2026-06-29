@@ -29,7 +29,7 @@ export function usePowerTrajectory() {
   const loading = ref(false)
   const loaded = ref(false)
 
-  async function loadYahoo(leagueKey: string): Promise<WeekOutcomes[]> {
+  async function loadYahoo(leagueKey: string, categoryForm = false): Promise<WeekOutcomes[]> {
     const authStore = useAuthStore()
     if (authStore.user?.id) await yahooService.initialize(authStore.user.id)
 
@@ -97,7 +97,47 @@ export function usePowerTrajectory() {
       remainingSchedule.value = sched.filter((w): w is ScheduleWeek => w != null)
     }
 
-    return perWeek.filter((w): w is WeekOutcomes => w != null)
+    const decided = perWeek.filter((w): w is WeekOutcomes => w != null)
+
+    // Category leagues: enrich the most recent weeks with per-category win tallies, the
+    // cats-native "who's hot" signal. Yahoo exposes stat winners only via a separate
+    // (cached) scoreboard parse, so we fetch just the last few weeks Hot/Cold needs.
+    if (categoryForm && decided.length) {
+      const recentWeeks = [...decided].sort((a, b) => a.week - b.week).slice(-3).map((w) => w.week)
+      await Promise.all(
+        recentWeeks.map(async (week) => {
+          try {
+            const catMatchups = await yahooService.getCategoryMatchups(leagueKey, week)
+            const cw: Record<string, number> = {}
+            const cl: Record<string, number> = {}
+            const ct: Record<string, number> = {}
+            for (const m of catMatchups) {
+              const teams = (m.teams ?? []).map((t: any) => String(t.team_key)).filter(Boolean)
+              if (teams.length < 2) continue
+              for (const sw of m.stat_winners ?? []) {
+                if (sw.is_tied) {
+                  for (const tk of teams) ct[tk] = (ct[tk] ?? 0) + 1
+                } else if (sw.winner_team_key) {
+                  const win = String(sw.winner_team_key)
+                  cw[win] = (cw[win] ?? 0) + 1
+                  for (const tk of teams) if (tk !== win) cl[tk] = (cl[tk] ?? 0) + 1
+                }
+              }
+            }
+            const entry = decided.find((w) => w.week === week)
+            if (entry && Object.keys(cw).length) {
+              entry.catWins = cw
+              entry.catLosses = cl
+              entry.catTies = ct
+            }
+          } catch {
+            /* leave the week without cat data; Hot/Cold falls back to record */
+          }
+        }),
+      )
+    }
+
+    return decided
   }
 
   async function loadEspn(leagueKey: string): Promise<WeekOutcomes[]> {
@@ -127,6 +167,9 @@ export function usePowerTrajectory() {
           const matchups = await espnService.getMatchups(sport, leagueId, season, week)
           const results: Record<string, Outcome> = {}
           const points: Record<string, number> = {}
+          const catWins: Record<string, number> = {}
+          const catLosses: Record<string, number> = {}
+          const catTies: Record<string, number> = {}
           for (const m of matchups) {
             if (!m.winner || m.winner === 'UNDECIDED') continue
             const home = `espn_${m.homeTeamId}`
@@ -140,8 +183,19 @@ export function usePowerTrajectory() {
             }
             if (m.homeScore != null) points[home] = Number(m.homeScore)
             if (m.awayScore != null) points[away] = Number(m.awayScore)
+            // Category leagues: per-week categories won/lost/tied (free in the payload).
+            if (m.homeCategoryWins != null) {
+              catWins[home] = Number(m.homeCategoryWins)
+              catLosses[home] = Number(m.homeCategoryLosses ?? 0)
+              catTies[home] = Number(m.homeCategoryTies ?? 0)
+            }
+            if (m.awayCategoryWins != null) {
+              catWins[away] = Number(m.awayCategoryWins)
+              catLosses[away] = Number(m.awayCategoryLosses ?? 0)
+              catTies[away] = Number(m.awayCategoryTies ?? 0)
+            }
           }
-          return Object.keys(results).length ? { week, results, points } : null
+          return Object.keys(results).length ? { week, results, points, catWins, catLosses, catTies } : null
         } catch {
           return null
         }
@@ -171,7 +225,7 @@ export function usePowerTrajectory() {
     return perWeek.filter((w): w is WeekOutcomes => w != null)
   }
 
-  async function load() {
+  async function load(opts?: { categoryForm?: boolean }) {
     const leagueStore = useLeagueStore()
     const leagueKey = leagueStore.activeLeagueId
     if (!leagueKey) return
@@ -179,7 +233,7 @@ export function usePowerTrajectory() {
     loading.value = true
     try {
       const isEspn = leagueStore.activePlatform === 'espn'
-      const result = isEspn ? await loadEspn(leagueKey) : await loadYahoo(leagueKey)
+      const result = isEspn ? await loadEspn(leagueKey) : await loadYahoo(leagueKey, opts?.categoryForm)
       if (leagueStore.activeLeagueId !== requested) return
       outcomes.value = result
       loaded.value = true

@@ -32,7 +32,7 @@ const scoring = useLeagueScoring()
 const trajectory = usePowerTrajectory()
 
 function loadAll() {
-  trajectory.load()
+  trajectory.load({ categoryForm: isCategory.value })
   if (isCategory.value) {
     cat.load()
   } else {
@@ -285,8 +285,8 @@ const catEdgeExposed = computed(() => {
 const hotCold = computed(() => {
   const rows = rankings.value?.rows ?? []
   const meta = rows.map((r) => ({ teamKey: r.teamKey, teamName: r.teamName, isMe: r.teamKey === activeMyTeamKey.value, teamLogo: r.teamLogo }))
-  // Points leagues rank by points scored (truer "who's hot"); category leagues by record.
-  return buildHotCold(trajectory.outcomes.value, meta, 3, isCategory.value ? 'record' : 'points')
+  // Category leagues rank by net categories won; points leagues by points scored.
+  return buildHotCold(trajectory.outcomes.value, meta, 3, isCategory.value ? 'cats' : 'points')
 })
 
 // ── "THE RACE" TRAJECTORY CHART ───────────────────────────────────────────────
@@ -622,6 +622,7 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
           <span v-if="hotCold.hottest.isMe" class="shrink-0 text-primary text-[9px] uppercase">YOU</span>
           <span class="ml-auto shrink-0 text-dark-textMuted">
             <template v-if="hotCold.basis === 'points'">{{ Math.round(hotCold.hottest.points).toLocaleString() }} pts</template>
+            <template v-else-if="hotCold.basis === 'cats'">{{ hotCold.hottest.catWins }}-{{ hotCold.hottest.catLosses }}{{ hotCold.hottest.catTies ? '-' + hotCold.hottest.catTies : '' }} cats</template>
             <template v-else>{{ hotCold.hottest.wins }}-{{ hotCold.hottest.losses }}{{ hotCold.hottest.ties ? '-' + hotCold.hottest.ties : '' }}</template>
           </span>
         </div>
@@ -639,6 +640,7 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
           <span v-if="hotCold.coldest.isMe" class="shrink-0 text-[#e69a4a] text-[9px] uppercase">YOU</span>
           <span class="ml-auto shrink-0 text-dark-textMuted">
             <template v-if="hotCold.basis === 'points'">{{ Math.round(hotCold.coldest.points).toLocaleString() }} pts</template>
+            <template v-else-if="hotCold.basis === 'cats'">{{ hotCold.coldest.catWins }}-{{ hotCold.coldest.catLosses }}{{ hotCold.coldest.catTies ? '-' + hotCold.coldest.catTies : '' }} cats</template>
             <template v-else>{{ hotCold.coldest.wins }}-{{ hotCold.coldest.losses }}{{ hotCold.coldest.ties ? '-' + hotCold.coldest.ties : '' }}</template>
           </span>
         </div>
