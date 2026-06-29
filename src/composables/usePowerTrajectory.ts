@@ -12,6 +12,7 @@ import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
 import type { Sport } from '@/types/supabase'
 import type { WeekOutcomes, Outcome } from '@/league/powerTrajectory'
+import type { ScheduleWeek } from '@/league/playoffOdds'
 
 function parseEspnKey(key: string): { sport: Sport; leagueId: string; season: number } | null {
   const parts = key.split('_')
@@ -24,6 +25,7 @@ export function usePowerTrajectory() {
   const currentWeek = ref(0)
   const weeksLeft = ref(0) // regular-season weeks remaining (incl. current); 0 = unknown
   const playoffSpots = ref(0) // teams that make the bracket; 0 = unknown (no stakes badges)
+  const remainingSchedule = ref<ScheduleWeek[]>([]) // undecided games, current week → season end
   const loading = ref(false)
   const loaded = ref(false)
 
@@ -69,6 +71,30 @@ export function usePowerTrajectory() {
         }
       }),
     )
+
+    // Remaining schedule: undecided games from the current week to the season end.
+    if (ew) {
+      const schedWeeks = Array.from({ length: Math.max(0, ew - cw + 1) }, (_, i) => cw + i)
+      const sched = await Promise.all(
+        schedWeeks.map(async (week): Promise<ScheduleWeek | null> => {
+          try {
+            const matchups = await yahooService.getMatchups(leagueKey, week)
+            const pairs: [string, string][] = []
+            for (const m of matchups) {
+              if (m.is_playoffs || m.is_consolation || m.winner_team_key || m.is_tied) continue
+              const teams = m.teams ?? []
+              if (teams.length < 2 || !teams[0].team_key || !teams[1].team_key) continue
+              pairs.push([String(teams[0].team_key), String(teams[1].team_key)])
+            }
+            return pairs.length ? { week, matchups: pairs } : null
+          } catch {
+            return null
+          }
+        }),
+      )
+      remainingSchedule.value = sched.filter((w): w is ScheduleWeek => w != null)
+    }
+
     return perWeek.filter((w): w is WeekOutcomes => w != null)
   }
 
@@ -116,6 +142,27 @@ export function usePowerTrajectory() {
         }
       }),
     )
+
+    // Remaining schedule: undecided games from the current week to the regular-season end.
+    const lastWeek = regSeason || cw
+    const schedWeeks = Array.from({ length: Math.max(0, lastWeek - cw + 1) }, (_, i) => cw + i)
+    const sched = await Promise.all(
+      schedWeeks.map(async (week): Promise<ScheduleWeek | null> => {
+        try {
+          const matchups = await espnService.getMatchups(sport, leagueId, season, week)
+          const pairs: [string, string][] = []
+          for (const m of matchups) {
+            if (m.winner && m.winner !== 'UNDECIDED') continue
+            pairs.push([`espn_${m.homeTeamId}`, `espn_${m.awayTeamId}`])
+          }
+          return pairs.length ? { week, matchups: pairs } : null
+        } catch {
+          return null
+        }
+      }),
+    )
+    remainingSchedule.value = sched.filter((w): w is ScheduleWeek => w != null)
+
     return perWeek.filter((w): w is WeekOutcomes => w != null)
   }
 
@@ -134,11 +181,12 @@ export function usePowerTrajectory() {
     } catch (e) {
       console.error('[usePowerTrajectory] load failed', e)
       outcomes.value = []
+      remainingSchedule.value = []
       loaded.value = true
     } finally {
       if (leagueStore.activeLeagueId === requested) loading.value = false
     }
   }
 
-  return { outcomes, currentWeek, weeksLeft, playoffSpots, loading, loaded, load }
+  return { outcomes, currentWeek, weeksLeft, playoffSpots, remainingSchedule, loading, loaded, load }
 }
