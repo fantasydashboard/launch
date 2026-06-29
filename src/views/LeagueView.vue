@@ -16,6 +16,7 @@ import { buildTrajectory } from '@/league/powerTrajectory'
 import { simulatePlayoffOdds, buildLeverage, type OddsTeam, type GameLeverage } from '@/league/playoffOdds'
 import { buildHotCold } from '@/league/hotCold'
 import PowerTrajectoryChart from '@/components/league/PowerTrajectoryChart.vue'
+import TeamAvatar from '@/components/league/TeamAvatar.vue'
 import type { Landscape } from '@/trades/landscape'
 
 const props = withDefaults(defineProps<{ scoring?: 'points' | 'category' }>(), { scoring: 'points' })
@@ -531,15 +532,8 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
           <!-- Position -->
           <span class="w-6 shrink-0 text-center font-mono text-sm text-dark-textMuted">{{ i + 1 }}</span>
 
-          <!-- Logo -->
-          <img
-            v-if="r.teamLogo"
-            :src="r.teamLogo"
-            alt=""
-            class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover"
-            @error="($event.target as HTMLElement).style.display = 'none'"
-          />
-          <span v-else class="h-8 w-8 shrink-0 rounded-full bg-dark-border" />
+          <!-- Logo (falls back to initials) -->
+          <TeamAvatar :name="r.teamName" :logo="r.teamLogo" :size="32" />
 
           <!-- Name + YOU badge + stakes -->
           <span class="min-w-0 flex-1 flex items-center gap-2 overflow-hidden">
@@ -632,13 +626,7 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
         <div class="flex items-center gap-2">
           <span class="shrink-0 text-primary">Hottest</span>
           <span class="shrink-0 text-dark-textMuted">last {{ hotCold.weeks }} wks</span>
-          <img
-            v-if="hotCold.hottest.teamLogo"
-            :src="hotCold.hottest.teamLogo"
-            alt=""
-            class="h-4 w-4 shrink-0 rounded-full bg-dark-border object-cover"
-            @error="($event.target as HTMLElement).style.display = 'none'"
-          />
+          <TeamAvatar :name="hotCold.hottest.teamName" :logo="hotCold.hottest.teamLogo" :size="16" />
           <span class="min-w-0 truncate text-dark-text">{{ hotCold.hottest.teamName }}</span>
           <span v-if="hotCold.hottest.isMe" class="shrink-0 text-primary text-[9px] uppercase">YOU</span>
           <span class="ml-auto shrink-0 text-dark-textMuted">
@@ -650,13 +638,7 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
         <div class="flex items-center gap-2">
           <span class="shrink-0 text-[#e69a4a]">Coldest</span>
           <span class="shrink-0 text-dark-textMuted">last {{ hotCold.weeks }} wks</span>
-          <img
-            v-if="hotCold.coldest.teamLogo"
-            :src="hotCold.coldest.teamLogo"
-            alt=""
-            class="h-4 w-4 shrink-0 rounded-full bg-dark-border object-cover"
-            @error="($event.target as HTMLElement).style.display = 'none'"
-          />
+          <TeamAvatar :name="hotCold.coldest.teamName" :logo="hotCold.coldest.teamLogo" :size="16" />
           <span class="min-w-0 truncate text-dark-text">{{ hotCold.coldest.teamName }}</span>
           <span v-if="hotCold.coldest.isMe" class="shrink-0 text-[#e69a4a] text-[9px] uppercase">YOU</span>
           <span class="ml-auto shrink-0 text-dark-textMuted">
@@ -699,13 +681,7 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
           <div class="flex items-center justify-between gap-3">
             <div class="flex min-w-0 items-center gap-2 font-mono text-[12px] text-dark-text">
               <span class="shrink-0 text-dark-textMuted">Wk {{ topGame.week }} vs</span>
-              <img
-                v-if="teamLogoOf(topGame.opponentKey)"
-                :src="teamLogoOf(topGame.opponentKey)"
-                alt=""
-                class="h-4 w-4 shrink-0 rounded-full bg-dark-border object-cover"
-                @error="($event.target as HTMLElement).style.display = 'none'"
-              />
+              <TeamAvatar :name="oppName(topGame.opponentKey)" :logo="teamLogoOf(topGame.opponentKey)" :size="16" />
               <span class="truncate">{{ oppName(topGame.opponentKey) }}</span>
             </div>
             <div class="shrink-0 font-mono text-[11px]">
@@ -725,14 +701,7 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
           <div class="mb-1.5 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">{{ racingLabel }}</div>
           <div class="space-y-1.5">
             <div v-for="rv in racingRivals" :key="rv.teamKey" class="flex items-center gap-2">
-              <img
-                v-if="rv.logo"
-                :src="rv.logo"
-                alt=""
-                class="h-5 w-5 shrink-0 rounded-full bg-dark-border object-cover"
-                @error="($event.target as HTMLElement).style.display = 'none'"
-              />
-              <span v-else class="h-5 w-5 shrink-0 rounded-full bg-dark-border" />
+              <TeamAvatar :name="rv.name" :logo="rv.logo" :size="20" />
               <span class="min-w-0 flex-1 truncate font-mono text-[12px] text-dark-text">{{ rv.name }}</span>
               <span class="shrink-0 font-mono text-[10px] text-dark-textMuted">proj {{ Math.round(rv.projWins) }}-{{ Math.round(rv.projLosses) }}</span>
               <span class="shrink-0 w-9 text-right font-mono text-[11px]" :class="oddsColor(rv.playoffPct)">{{ fmtPct(rv.playoffPct) }}</span>
@@ -807,21 +776,7 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
               class="w-10 shrink-0 py-1.5 flex items-center justify-center"
               :title="team.name"
             >
-              <img
-                v-if="teamLogoOf(team.key)"
-                :src="teamLogoOf(team.key)"
-                :alt="team.name"
-                class="h-[18px] w-[18px] rounded-full object-cover"
-                :class="team.isMe ? 'ring-1 ring-primary ring-offset-[1px] ring-offset-dark-card' : 'opacity-70'"
-                @error="($event.target as HTMLElement).style.display = 'none'"
-              />
-              <span
-                v-else
-                class="font-mono text-[7px] uppercase leading-none"
-                :class="team.isMe ? 'text-primary font-bold' : 'text-dark-textMuted'"
-              >
-                {{ team.isMe ? 'YOU' : team.label }}
-              </span>
+              <TeamAvatar :name="team.name" :logo="teamLogoOf(team.key)" :size="18" :ring="team.isMe" :dim="!team.isMe" />
             </div>
           </div>
 
@@ -887,25 +842,13 @@ const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
               class="w-10 shrink-0 py-1.5 flex items-center justify-center"
               :title="pointsTeamMeta[tk]?.name ?? tk"
             >
-              <!-- Logo (circular, ~18px), ring highlight for YOU -->
-              <img
-                v-if="pointsTeamMeta[tk]?.logo"
-                :src="pointsTeamMeta[tk].logo"
-                :alt="pointsTeamMeta[tk]?.name ?? tk"
-                class="h-[18px] w-[18px] rounded-full object-cover"
-                :class="tk === activeMyTeamKey
-                  ? 'ring-1 ring-primary ring-offset-[1px] ring-offset-dark-card'
-                  : 'opacity-70'"
-                @error="($event.target as HTMLElement).style.display = 'none'"
+              <TeamAvatar
+                :name="pointsTeamMeta[tk]?.name ?? tk"
+                :logo="pointsTeamMeta[tk]?.logo"
+                :size="18"
+                :ring="tk === activeMyTeamKey"
+                :dim="tk !== activeMyTeamKey"
               />
-              <!-- Fallback: initials or YOU label -->
-              <span
-                v-else
-                class="font-mono text-[7px] uppercase leading-none"
-                :class="tk === activeMyTeamKey ? 'text-primary font-bold' : 'text-dark-textMuted'"
-              >
-                {{ tk === activeMyTeamKey ? 'YOU' : (pointsTeamMeta[tk]?.name ?? tk).slice(0, 3) }}
-              </span>
             </div>
           </div>
 
