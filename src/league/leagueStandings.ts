@@ -14,6 +14,7 @@ export interface StandingRow {
   talentRank: number // strengthRank — the Power Rankings connector
   luck: LuckStatus
   stakes: StakesTag | null
+  strength: number // raw roster strength (pts/wk or cats/wk) for the talent bar
 }
 
 /** Standings-ordered view (by record) of the power-ranking rows, with the playoff-stakes
@@ -37,5 +38,6 @@ export function buildLeagueStandings(
       talentRank: r.strengthRank,
       luck: r.luck,
       stakes: stakes.get(r.teamKey) ?? null,
+      strength: r.strength,
     }))
 }

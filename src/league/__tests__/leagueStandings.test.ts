@@ -27,6 +27,19 @@ describe('buildLeagueStandings', () => {
     expect(out.find((r) => r.teamKey === 'A')!.isMe).toBe(true)
   })
 
+  it('carries strength through from PowerRow', () => {
+    const rowsWithStrength = [
+      row({ teamKey: 'A', recordRank: 2, strengthRank: 1, luck: 'sleeper', strength: 123 }),
+      row({ teamKey: 'B', recordRank: 1, strengthRank: 3, luck: 'pretender', strength: 456 }),
+    ]
+    const out = buildLeagueStandings(rowsWithStrength, new Map(), 'A')
+    // sorted by recordRank: B(1) then A(2)
+    expect(out[0].teamKey).toBe('B')
+    expect(out[0].strength).toBe(456)
+    expect(out[1].teamKey).toBe('A')
+    expect(out[1].strength).toBe(123)
+  })
+
   it('null stakes when none provided', () => {
     const out = buildLeagueStandings(rows, new Map(), 'A')
     expect(out.every((r) => r.stakes === null)).toBe(true)

@@ -160,6 +160,18 @@ const standings = computed(() =>
   rankings.value ? buildLeagueStandings(rankings.value.rows, stakesMap.value, activeMyTeamKey.value) : [],
 )
 
+// ── Strength bar: min-anchored (same pattern as PowerRankingsRedesignView) ──────
+
+const strengthBounds = computed(() => {
+  const vals = rankings.value?.rows.map((r) => r.strength) ?? [1]
+  return { min: Math.min(...vals), max: Math.max(...vals) }
+})
+const barPct = (s: number) => {
+  const { min, max } = strengthBounds.value
+  if (max <= min) return 100
+  return 14 + 86 * ((s - min) / (max - min))
+}
+
 // ── CATEGORY LANDSCAPE ────────────────────────────────────────────────────────
 
 const { view: landscapeView } = useLeagueLandscape({
@@ -177,22 +189,21 @@ const heatmap = computed(() => (landscapeView.value ? buildCategoryHeatmap(lands
 
 // ── POINTS LANDSCAPE ──────────────────────────────────────────────────────────
 
-const pointsPositional = computed(() => {
-  if (!pool.value.length) return null
-  const teamKeys = [...new Set(pool.value.map((p) => p.teamKey))]
-  return buildPointsPositional(pool.value, fgByKey.value, scoring.weights.value, teamKeys)
+// Ordered team keys: YOU first, then remaining teams by standings rank (record-sorted).
+// This makes YOU the leftmost column in the position grid so it's pinned/prominent.
+const pointsOrderedTeamKeys = computed<string[]>(() => {
+  const myKey = activeMyTeamKey.value
+  // standings is already sorted by recordRank ascending
+  const rankOrdered = standings.value.map((r) => r.teamKey)
+  if (!myKey) return rankOrdered
+  const withoutMe = rankOrdered.filter((k) => k !== myKey)
+  return [myKey, ...withoutMe]
 })
 
-// Strength bar: min-anchored (same pattern as PowerRankingsRedesignView).
-const strengthBounds = computed(() => {
-  const vals = rankings.value?.rows.map((r) => r.strength) ?? [1]
-  return { min: Math.min(...vals), max: Math.max(...vals) }
+const pointsPositional = computed(() => {
+  if (!pool.value.length) return null
+  return buildPointsPositional(pool.value, fgByKey.value, scoring.weights.value, pointsOrderedTeamKeys.value)
 })
-const barPct = (s: number) => {
-  const { min, max } = strengthBounds.value
-  if (max <= min) return 100
-  return 14 + 86 * ((s - min) / (max - min))
-}
 
 // ── LOADING ───────────────────────────────────────────────────────────────────
 
@@ -208,19 +219,69 @@ const loading = computed(() =>
 
 // Theme `primary` var has no alpha slot so bg-primary/NN renders nothing — use color-mix.
 const primaryTint = (pct: number) => `color-mix(in srgb, var(--color-primary, #C6FF3A) ${pct}%, transparent)`
+
+// Steepened heat scale: gamma-like curve (pct²) so top cells pop and the bottom third
+// nearly disappears — much more readable than a linear 0–70% spread.
 const heatBg = (pctOrNull: number | null) =>
-  pctOrNull == null ? 'transparent' : primaryTint(Math.round(pctOrNull * 70))
+  pctOrNull == null
+    ? 'transparent'
+    : `color-mix(in srgb, var(--color-primary, #C6FF3A) ${Math.round(8 + pctOrNull * pctOrNull * 82)}%, transparent)`
+
 const ord = (n: number) => {
   const s = ['th', 'st', 'nd', 'rd'], v = n % 100
   return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
+
+// ── EDGE / EXPOSED READOUT ────────────────────────────────────────────────────
+
+/** From a list of labelled ranks, returns which positions YOU dominate (rank ≤ 2)
+ *  and which expose you (rank in the bottom third). */
+function edgeExposed(
+  myRanks: { label: string; rank: number | null }[],
+  numTeams: number,
+): { edge: string[]; exposed: string[] } {
+  const exposedThreshold = numTeams - Math.floor(numTeams / 3) + 1
+  const edge: string[] = []
+  const exposed: string[] = []
+  for (const { label, rank } of myRanks) {
+    if (rank == null) continue
+    if (rank <= 2) edge.push(label)
+    else if (rank >= exposedThreshold) exposed.push(label)
+  }
+  return { edge, exposed }
+}
+
+// Points grid: gather MY ranks per position from the ordered grid.
+const pointsEdgeExposed = computed(() => {
+  if (!pointsPositional.value) return { edge: [], exposed: [] }
+  const myKey = activeMyTeamKey.value
+  const numTeams = pointsOrderedTeamKeys.value.length
+  const myRanks = pointsPositional.value.positions.map((row) => {
+    const cell = row.cells.find((c) => c.teamKey === myKey)
+    return { label: row.position, rank: cell?.rank ?? null }
+  })
+  return edgeExposed(myRanks, numTeams)
+})
+
+// Category heatmap: gather MY ranks per category from heatmap rows.
+const catEdgeExposed = computed(() => {
+  if (!heatmap.value) return { edge: [], exposed: [] }
+  const myRow = heatmap.value.rows.find((r) => r.isMe)
+  if (!myRow) return { edge: [], exposed: [] }
+  const numTeams = heatmap.value.rows.length
+  const myRanks = heatmap.value.categories.map((cat, ci) => ({
+    label: cat.label,
+    rank: myRow.cells[ci]?.rank ?? null,
+  }))
+  return edgeExposed(myRanks, numTeams)
+})
 </script>
 
 <template>
   <div class="mx-auto max-w-5xl px-4 pt-6 pb-20">
     <header class="mb-6">
       <h1 class="font-display text-2xl font-bold text-dark-text">League</h1>
-      <p class="font-mono text-xs text-dark-textMuted">How you stack up against the field.</p>
+      <p class="font-mono text-xs text-dark-textMuted">How you stack up — and where to act.</p>
     </header>
 
     <!-- ── LOADING / EMPTY STATES ─────────────────────────────────────────── -->
@@ -228,7 +289,7 @@ const ord = (n: number) => {
     <div v-else-if="!loading && !rankings" class="py-16 text-center text-dark-textMuted">Couldn't assemble the league yet. Try a refresh.</div>
 
     <template v-else>
-    <!-- ── STANDINGS (shared by both scoring types) ───────────────────────── -->
+    <!-- ── STANDINGS (shared; includes talent bar + value) ────────────────── -->
     <section class="mb-8">
       <h2 class="mb-2 font-display text-lg font-bold text-dark-text">Standings</h2>
       <div v-if="!standings.length" class="py-10 text-center font-mono text-xs text-dark-textMuted">
@@ -254,7 +315,7 @@ const ord = (n: number) => {
           />
           <span v-else class="h-8 w-8 shrink-0 rounded-full bg-dark-border" />
 
-          <!-- Name + stakes -->
+          <!-- Name + YOU badge + stakes -->
           <span class="min-w-0 flex-1 flex items-center gap-2 overflow-hidden">
             <span class="truncate text-sm font-semibold text-dark-text">{{ r.teamName }}</span>
             <span
@@ -276,44 +337,75 @@ const ord = (n: number) => {
             >bubble</span>
           </span>
 
-          <!-- Record -->
-          <span class="shrink-0 font-mono text-[11px] text-dark-textMuted">
+          <!-- Record + talent rank + luck arrow (grouped) -->
+          <span class="shrink-0 flex items-center gap-1.5 font-mono text-[11px] text-dark-textMuted">
             {{ r.wins }}-{{ r.losses }}{{ r.ties ? '-' + r.ties : '' }}
+            <span class="hidden sm:inline text-dark-border/60">·</span>
+            <span class="hidden sm:inline">talent {{ ord(r.talentRank) }}</span>
+            <span v-if="r.luck === 'sleeper'" class="hidden sm:inline text-primary">▲</span>
+            <span v-else-if="r.luck === 'pretender'" class="hidden sm:inline text-[#e69a4a]">▼</span>
           </span>
 
-          <!-- Power-Rankings connector: talent rank + luck arrow -->
-          <span class="hidden sm:flex shrink-0 items-center gap-1 font-mono text-[11px] text-dark-textMuted">
-            talent {{ ord(r.talentRank) }}
-            <span v-if="r.luck === 'sleeper'" class="text-primary">▲</span>
-            <span v-else-if="r.luck === 'pretender'" class="text-[#e69a4a]">▼</span>
-          </span>
+          <!-- Talent bar + value (the key new column: bar length = roster strength) -->
+          <!-- Short bar high in the standings = lucky; long bar low = unlucky -->
+          <div class="hidden sm:flex w-36 shrink-0 flex-col gap-0.5">
+            <div class="relative h-1.5 overflow-hidden rounded-full" :style="{ backgroundColor: 'rgba(255,255,255,0.08)' }">
+              <div
+                class="absolute inset-y-0 left-0 rounded-full"
+                :style="{ width: barPct(r.strength) + '%', backgroundColor: 'var(--color-primary, #C6FF3A)' }"
+              />
+            </div>
+            <div class="text-right font-mono text-[9px] text-dark-textMuted">
+              <template v-if="isCategory">{{ r.strength.toFixed(1) }} cats/wk</template>
+              <template v-else>{{ Math.round(r.strength / 10) * 10 }} pts/wk</template>
+            </div>
+          </div>
         </div>
       </div>
+      <p class="mt-2 font-mono text-[10px] text-dark-textMuted">
+        bar = roster talent · short bar near top = riding luck · long bar near bottom = due to climb
+      </p>
     </section>
 
     <!-- ── CATEGORY landscape ─────────────────────────────────────────────── -->
     <template v-if="isCategory">
-      <!-- Category heatmap -->
+      <!-- Category heatmap with edge/exposed readout -->
       <section v-if="heatmap && heatmap.categories.length" class="mb-8">
-        <h2 class="mb-1 font-display text-lg font-bold text-dark-text">The landscape</h2>
-        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
+        <h2 class="mb-1 font-display text-lg font-bold text-dark-text">Position Strength</h2>
+        <p class="mb-2 font-mono text-[10px] text-dark-textMuted">
           brighter = stronger in that category · your row highlighted
         </p>
+
+        <!-- Edge / exposed readout for categories -->
+        <div
+          v-if="catEdgeExposed.edge.length || catEdgeExposed.exposed.length"
+          class="mb-3 rounded-lg border border-dark-border/50 bg-dark-card px-3 py-2 font-mono text-[11px] leading-snug space-y-0.5"
+        >
+          <div v-if="catEdgeExposed.edge.length">
+            <span class="text-primary">Your edge:</span>
+            <span class="text-dark-text"> {{ catEdgeExposed.edge.join(', ') }}</span>
+          </div>
+          <div v-if="catEdgeExposed.exposed.length">
+            <span class="text-[#e69a4a]">Exposed:</span>
+            <span class="text-dark-textMuted"> {{ catEdgeExposed.exposed.join(', ') }} — your upgrade targets</span>
+          </div>
+        </div>
+
         <div class="rounded-xl border border-dark-border bg-dark-card overflow-x-auto">
           <!-- Header row -->
           <div class="flex border-b border-dark-border/40">
             <div class="min-w-[8rem] shrink-0" />
             <div
-              v-for="cat in heatmap.categories"
-              :key="cat.key"
+              v-for="c in heatmap.categories"
+              :key="c.key"
               class="w-7 shrink-0 py-1.5 text-center font-mono text-[8px] uppercase tracking-wide text-dark-textMuted leading-tight"
-              :title="cat.label"
+              :title="c.label"
             >
-              {{ cat.label.slice(0, 3) }}
+              {{ c.label.slice(0, 3) }}
             </div>
           </div>
 
-          <!-- Body rows -->
+          <!-- Body rows (YOU is already first from useLeagueLandscape) -->
           <div
             v-for="row in heatmap.rows"
             :key="row.teamKey"
@@ -343,9 +435,9 @@ const ord = (n: number) => {
         </div>
       </section>
 
-      <!-- Category position strength -->
+      <!-- Category position strength (from landscapeView) -->
       <section v-if="landscapeView && landscapeView.positionRows.length" class="mb-8">
-        <h2 class="mb-1 font-display text-lg font-bold text-dark-text">Position strength</h2>
+        <h2 class="mb-1 font-display text-lg font-bold text-dark-text">Roster positions</h2>
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
           rank by best eligible player at each position · brighter = stronger
         </p>
@@ -391,79 +483,60 @@ const ord = (n: number) => {
 
     <!-- ── POINTS landscape ───────────────────────────────────────────────── -->
     <template v-else>
-      <!-- Projected points / week bars -->
-      <section v-if="rankings && rankings.rows.length" class="mb-8">
-        <h2 class="mb-1 font-display text-lg font-bold text-dark-text">Projected points</h2>
-        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
-          optimal-lineup projection · bar length = roster talent
-        </p>
-        <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
-          <div
-            v-for="r in rankings.rows"
-            :key="r.teamKey"
-            class="px-4 py-2.5 flex items-center gap-3"
-            :style="r.teamKey === activeMyTeamKey ? { backgroundColor: primaryTint(6) } : {}"
-          >
-            <!-- Rank -->
-            <span class="w-6 shrink-0 text-center font-mono text-sm font-bold text-dark-textMuted">{{ r.strengthRank }}</span>
-
-            <!-- Logo -->
-            <img
-              v-if="r.teamLogo"
-              :src="r.teamLogo"
-              alt=""
-              class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover"
-              @error="($event.target as HTMLElement).style.display = 'none'"
-            />
-            <span v-else class="h-8 w-8 shrink-0 rounded-full bg-dark-border" />
-
-            <!-- Name + YOU badge -->
-            <span class="min-w-0 flex-1 flex items-center gap-2 overflow-hidden">
-              <span class="truncate text-sm font-semibold text-dark-text">{{ r.teamName }}</span>
-              <span
-                v-if="r.teamKey === activeMyTeamKey"
-                class="shrink-0 rounded px-1 font-mono text-[9px] uppercase text-primary"
-                :style="{ backgroundColor: primaryTint(16) }"
-              >you</span>
-            </span>
-
-            <!-- Strength bar + value -->
-            <div class="hidden w-40 shrink-0 sm:block">
-              <div class="relative h-2 overflow-hidden rounded-full" :style="{ backgroundColor: 'rgba(255,255,255,0.08)' }">
-                <div
-                  class="absolute inset-y-0 left-0 rounded-full"
-                  :style="{ width: barPct(r.strength) + '%', backgroundColor: 'var(--color-primary, #C6FF3A)' }"
-                />
-              </div>
-              <div class="mt-0.5 text-right font-mono text-[9px] text-dark-textMuted">
-                {{ Math.round(r.strength / 10) * 10 }}{{ trajectory.weeksLeft.value > 0 ? ' pts/wk' : ' pts' }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Position strength grid (points) -->
+      <!-- Position strength grid (points): YOU first, then teams by standing rank -->
       <section
         v-if="pointsPositional && pointsPositional.positions.length"
         class="mb-8"
       >
-        <h2 class="mb-1 font-display text-lg font-bold text-dark-text">Position strength</h2>
-        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
+        <h2 class="mb-1 font-display text-lg font-bold text-dark-text">Position Strength</h2>
+        <p class="mb-2 font-mono text-[10px] text-dark-textMuted">
           best startable player per position, ranked across the league · brighter = stronger
         </p>
+
+        <!-- Edge / exposed readout for points positions -->
+        <div
+          v-if="pointsEdgeExposed.edge.length || pointsEdgeExposed.exposed.length"
+          class="mb-3 rounded-lg border border-dark-border/50 bg-dark-card px-3 py-2 font-mono text-[11px] leading-snug space-y-0.5"
+        >
+          <div v-if="pointsEdgeExposed.edge.length">
+            <span class="text-primary">Your edge:</span>
+            <span class="text-dark-text"> {{ pointsEdgeExposed.edge.join(', ') }}</span>
+          </div>
+          <div v-if="pointsEdgeExposed.exposed.length">
+            <span class="text-[#e69a4a]">Exposed:</span>
+            <span class="text-dark-textMuted"> {{ pointsEdgeExposed.exposed.join(', ') }} — your upgrade targets</span>
+          </div>
+        </div>
+
         <div class="rounded-xl border border-dark-border bg-dark-card overflow-x-auto">
-          <!-- Header: team short names as columns -->
+          <!-- Header: YOU first (logo+ring), then teams by standing rank (logos) -->
           <div class="flex border-b border-dark-border/40">
             <div class="min-w-[3.5rem] shrink-0" />
             <div
-              v-for="tk in [...new Set(pool.map(p => p.teamKey))]"
+              v-for="tk in pointsOrderedTeamKeys"
               :key="tk"
-              class="w-10 shrink-0 py-1.5 text-center font-mono text-[8px] uppercase tracking-wide leading-tight truncate"
-              :class="tk === activeMyTeamKey ? 'text-primary font-bold' : 'text-dark-textMuted'"
+              class="w-10 shrink-0 py-1.5 flex items-center justify-center"
               :title="pointsTeamMeta[tk]?.name ?? tk"
             >
-              {{ tk === activeMyTeamKey ? 'YOU' : (pointsTeamMeta[tk]?.name ?? tk).slice(0, 4) }}
+              <!-- Logo (circular, ~18px), ring highlight for YOU -->
+              <img
+                v-if="pointsTeamMeta[tk]?.logo"
+                :src="pointsTeamMeta[tk].logo"
+                :alt="pointsTeamMeta[tk]?.name ?? tk"
+                class="h-[18px] w-[18px] rounded-full object-cover"
+                :class="tk === activeMyTeamKey
+                  ? 'ring-1 ring-primary ring-offset-[1px] ring-offset-dark-card'
+                  : 'opacity-70'"
+                @error="($event.target as HTMLElement).style.display = 'none'"
+              />
+              <!-- Fallback: initials or YOU label -->
+              <span
+                v-else
+                class="font-mono text-[7px] uppercase leading-none"
+                :class="tk === activeMyTeamKey ? 'text-primary font-bold' : 'text-dark-textMuted'"
+              >
+                {{ tk === activeMyTeamKey ? 'YOU' : (pointsTeamMeta[tk]?.name ?? tk).slice(0, 3) }}
+              </span>
             </div>
           </div>
 
@@ -485,7 +558,7 @@ const ord = (n: number) => {
                   ? 'transparent'
                   : heatBg(
                       (() => {
-                        const tc = new Set(pool.map(p => p.teamKey)).size
+                        const tc = pointsOrderedTeamKeys.length
                         return tc <= 1 ? 0.5 : (tc - cell.rank) / (tc - 1)
                       })()
                     )
