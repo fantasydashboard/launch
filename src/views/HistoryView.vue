@@ -133,6 +133,23 @@ const rivalIsMe = computed(
 const rivalName = computed(
   () => teamOptions.value.find((o) => o.teamKey === effectiveRivalKey.value)?.teamName ?? '',
 )
+// The selected team's own name/logo (for the fiercest-rivalry banner).
+const subjectInfo = computed(() => {
+  const row = allTime.value.find((r) => r.teamKey === effectiveRivalKey.value)
+  return { name: row?.teamName ?? rivalName.value, logo: row?.teamLogo }
+})
+// The selected team's fiercest rivalry: most meetings, tiebreak tightest split.
+const subjectFiercest = computed(() => {
+  const rows = rivalries.value.mine
+  if (!rows.length) return null
+  let best = rows[0]
+  for (const r of rows) {
+    const split = Math.abs(r.wins - r.losses)
+    const bestSplit = Math.abs(best.wins - best.losses)
+    if (r.games > best.games || (r.games === best.games && split < bestSplit)) best = r
+  }
+  return best
+})
 
 // ── Legendary moments — the record book. ─────────────────────────────────────
 const moments = computed(() => buildLegendaryMoments(seasons.value, scoring.value))
@@ -141,7 +158,7 @@ const moments = computed(() => buildLegendaryMoments(seasons.value, scoring.valu
 const momentTone = (kind: string): 'good' | 'neutral' | 'bad' =>
   kind === 'loseStreak' || kind === 'worstSeason'
     ? 'bad'
-    : kind === 'closestGame'
+    : kind === 'closestGame' || kind === 'fiercestRivalry'
       ? 'neutral'
       : 'good'
 const toneRank: Record<string, number> = { good: 0, neutral: 1, bad: 2 }
@@ -215,6 +232,11 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
                 v-else
                 class="shrink-0 font-mono text-[9px] uppercase tracking-wider text-primary"
               >champion</span>
+              <span
+                v-if="c.repeat"
+                class="shrink-0 rounded px-1 font-mono text-[9px] uppercase tracking-wider text-primary"
+                :style="{ backgroundColor: primaryTint(16) }"
+              >back-to-back</span>
             </span>
             <div class="shrink-0 text-right font-mono text-[10px] leading-tight text-dark-textMuted">
               <div v-if="c.runnerUpName">runner-up: <span class="text-dark-text">{{ c.runnerUpName }}</span></div>
@@ -305,14 +327,14 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
                 <template v-else>—</template>
               </span>
               <template v-if="hasPlayoffData">
-                <span class="text-dark-border/60"> · </span>{{ r.playoffAppearances }}<span class="text-dark-border/60">po</span>
+                <span class="text-dark-border/60"> · </span>{{ r.playoffAppearances }}
               </template>
-              <span class="text-dark-border/60"> · </span>{{ r.seasonsPlayed }}<span class="text-dark-border/60">y</span>
+              <span class="text-dark-border/60"> · </span>{{ r.seasonsPlayed }}
             </span>
           </div>
         </div>
         <p v-if="allTimeView === 'record'" class="mt-2 font-mono text-[10px] text-dark-textMuted">
-          win% counts ties as half-wins<template v-if="hasPlayoffData"> · PO = playoff appearances</template> · y = seasons played
+          win% counts ties as half-wins<template v-if="hasPlayoffData"> · PO = playoff appearances</template> · SZN = seasons played
         </p>
 
         <!-- LEGACY view: scoring explainer (top, so it's not a scroll away) + score bars -->
@@ -398,21 +420,23 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
           No head-to-head meetings on record for {{ rivalIsMe ? 'you' : rivalName }} yet.
         </p>
 
-        <!-- fiercest rivalry callout -->
+        <!-- The selected team's fiercest rivalry (most meetings). -->
         <div
-          v-if="rivalries.fiercest"
+          v-if="subjectFiercest"
           class="mb-3 rounded-xl border border-dark-border bg-dark-card px-4 py-3"
           :style="{ backgroundColor: primaryTint(4) }"
         >
-          <div class="font-mono text-[9px] uppercase tracking-wider text-primary">Fiercest rivalry</div>
-          <div class="mt-1.5 flex items-center gap-2">
-            <TeamAvatar :name="rivalries.fiercest.aName" :logo="rivalries.fiercest.aLogo" :size="28" />
-            <span class="truncate text-sm font-semibold text-dark-text">{{ rivalries.fiercest.aName }}</span>
-            <span class="shrink-0 font-mono text-xs text-dark-textMuted">{{ rivalries.fiercest.aWins }}–{{ rivalries.fiercest.bWins }}<template v-if="rivalries.fiercest.ties">–{{ rivalries.fiercest.ties }}</template></span>
-            <span class="truncate text-sm font-semibold text-dark-text text-right">{{ rivalries.fiercest.bName }}</span>
-            <TeamAvatar :name="rivalries.fiercest.bName" :logo="rivalries.fiercest.bLogo" :size="28" />
+          <div class="font-mono text-[9px] uppercase tracking-wider text-primary">
+            {{ rivalIsMe ? 'Your fiercest rivalry' : 'Fiercest rivalry' }}
           </div>
-          <div class="mt-1 font-mono text-[10px] text-dark-textMuted">{{ rivalries.fiercest.games }} meetings all-time</div>
+          <div class="mt-1.5 flex items-center gap-2">
+            <TeamAvatar :name="subjectInfo.name" :logo="subjectInfo.logo" :size="28" />
+            <span class="truncate text-sm font-semibold text-dark-text">{{ subjectInfo.name }}</span>
+            <span class="shrink-0 font-mono text-xs text-dark-textMuted">{{ subjectFiercest.wins }}–{{ subjectFiercest.losses }}<template v-if="subjectFiercest.ties">–{{ subjectFiercest.ties }}</template></span>
+            <span class="truncate text-sm font-semibold text-dark-text text-right">{{ subjectFiercest.oppName }}</span>
+            <TeamAvatar :name="subjectFiercest.oppName" :logo="subjectFiercest.oppLogo" :size="28" />
+          </div>
+          <div class="mt-1 font-mono text-[10px] text-dark-textMuted">{{ subjectFiercest.games }} meetings all-time</div>
         </div>
 
         <div v-if="hasRivalries" class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
@@ -455,7 +479,7 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
             </div>
             <!-- Game moments: opponent + final score line -->
             <div v-if="m.vsName" class="mt-1 flex items-center gap-1.5 pl-0.5">
-              <span class="font-mono text-[10px] text-dark-textMuted">def.</span>
+              <span class="font-mono text-[10px] text-dark-textMuted">{{ m.kind === 'fiercestRivalry' ? 'vs' : 'def.' }}</span>
               <TeamAvatar :name="m.vsName" :logo="m.vsLogo" :size="18" />
               <span class="min-w-0 flex-1 truncate font-mono text-[11px] text-dark-textMuted">{{ m.vsName }}</span>
               <span v-if="m.detail" class="shrink-0 font-mono text-[11px] text-dark-text tabular-nums">{{ m.detail }}</span>

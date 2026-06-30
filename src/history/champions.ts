@@ -19,6 +19,7 @@ export interface ChampionRow {
   runnerUpName?: string
   regularLeaderName?: string
   inProgress: boolean // season not decided yet (no champion flagged) → "leader", not "champion"
+  repeat: boolean // same franchise won the immediately preceding (consecutive) season
 }
 
 function pickChampion(teams: HistoryTeam[]): HistoryTeam | undefined {
@@ -42,7 +43,7 @@ function pickRegularLeader(teams: HistoryTeam[]): HistoryTeam | undefined {
 }
 
 export function buildChampions(seasons: HistorySeason[]): ChampionRow[] {
-  return [...seasons]
+  const rows = [...seasons]
     .sort((a, b) => b.season - a.season)
     .map((s) => {
       const champ = pickChampion(s.teams)
@@ -63,8 +64,23 @@ export function buildChampions(seasons: HistorySeason[]): ChampionRow[] {
             ? regularLeader.teamName
             : undefined,
         inProgress,
+        repeat: false, // filled in below once the full title roll is known
       }
       return row
     })
     .filter((r): r is ChampionRow => r != null)
+
+  // Mark back-to-backs: a decided season whose champion also won the immediately
+  // preceding (consecutive) season. Rows are newest-first, so rows[i + 1] is older.
+  for (let i = 0; i < rows.length; i++) {
+    const cur = rows[i]
+    const older = rows[i + 1]
+    cur.repeat =
+      !cur.inProgress &&
+      !!older &&
+      !older.inProgress &&
+      older.championKey === cur.championKey &&
+      cur.season - older.season === 1
+  }
+  return rows
 }

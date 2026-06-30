@@ -37,6 +37,47 @@ describe('buildLegendaryMoments', () => {
     expect(top.week).toBe(2)
   })
 
+  it('detects the fiercest rivalry (most meetings, tightest split) from matchups', () => {
+    const seasons: HistorySeason[] = [
+      {
+        season: 2024,
+        teams: [
+          team({ teamKey: 'A', teamName: 'Aces', wins: 1, losses: 2 }),
+          team({ teamKey: 'B', teamName: 'Bees', wins: 2, losses: 1 }),
+          team({ teamKey: 'C', teamName: 'Cubs', wins: 0, losses: 0 }),
+        ],
+        weeks: [
+          // A vs B meet three times (B 2–1); A vs C meet once.
+          { week: 1, results: { A: 'W', B: 'L', C: 'L' }, matchups: [['A', 'B']] },
+          { week: 2, results: { A: 'L', B: 'W' }, matchups: [['A', 'B']] },
+          { week: 3, results: { A: 'L', B: 'W' }, matchups: [['A', 'B']] },
+          { week: 4, results: { A: 'W', C: 'L' }, matchups: [['A', 'C']] },
+        ],
+      },
+    ]
+    const moments = buildLegendaryMoments(seasons)
+    const r = moments.find((m) => m.kind === 'fiercestRivalry')!
+    expect(r).toBeTruthy()
+    expect(r.value).toBe(3) // three meetings
+    expect(r.season).toBe(0) // all-time
+    // Pair is A|B (lexical "a"), record is A's vs B: 1–2.
+    expect(r.teamName).toBe('Aces')
+    expect(r.vsName).toBe('Bees')
+    expect(r.detail).toBe('1–2')
+  })
+
+  it('omits fiercest rivalry when no matchup pairings exist', () => {
+    const seasons: HistorySeason[] = [
+      {
+        season: 2024,
+        teams: [team({ teamKey: 'A', wins: 1, losses: 1 }), team({ teamKey: 'B', wins: 1, losses: 1 })],
+        weeks: [{ week: 1, results: { A: 'W', B: 'L' } }],
+      },
+    ]
+    const moments = buildLegendaryMoments(seasons)
+    expect(moments.find((m) => m.kind === 'fiercestRivalry')).toBeUndefined()
+  })
+
   it('omits topWeek for category leagues with no points', () => {
     const seasons: HistorySeason[] = [
       {

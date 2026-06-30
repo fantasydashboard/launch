@@ -23,6 +23,8 @@
  * Both (when available):
  *   most playoff trips  team with the most `madePlayoffs` seasons (skipped when
  *                       no team has any playoff data, e.g. Yahoo getStandings)
+ *   fiercest rivalry .. the league pair that has met the most times (tiebreak
+ *                       tightest split); needs `weeks.matchups`, all-time
  *
  * Deterministic + side-effect-free; unit-tested in __tests__/legendaryMoments.test.ts.
  */
@@ -41,6 +43,7 @@ export type MomentKind =
   | 'biggestBlowout'
   | 'biggestSweep'
   | 'mostPlayoffTrips'
+  | 'fiercestRivalry'
 
 export interface Moment {
   kind: MomentKind
@@ -419,6 +422,72 @@ export function buildLegendaryMoments(
           season: 0, // all-time count — no single season; the view hides a 0 season
         })
       }
+    }
+  }
+
+  // ── Fiercest rivalry (both, needs matchup pairings) ────────────────────────
+  // The league pair that has met the most times (tiebreak: tightest all-time split).
+  {
+    interface PairAcc {
+      aKey: string
+      bKey: string
+      aWins: number
+      bWins: number
+      ties: number
+    }
+    const pairs = new Map<string, PairAcc>()
+    for (const s of seasons) {
+      for (const w of s.weeks ?? []) {
+        if (!w.matchups || !w.matchups.length) continue
+        for (const [x, y] of w.matchups) {
+          const aKey = x < y ? x : y
+          const bKey = x < y ? y : x
+          const pk = aKey + '|' + bKey
+          let acc = pairs.get(pk)
+          if (!acc) {
+            acc = { aKey, bKey, aWins: 0, bWins: 0, ties: 0 }
+            pairs.set(pk, acc)
+          }
+          const ra = w.results[aKey]
+          const rb = w.results[bKey]
+          let aOutcome: HistoryResult | undefined = ra
+          if (aOutcome == null && rb != null) {
+            aOutcome = rb === 'W' ? 'L' : rb === 'L' ? 'W' : 'T'
+          }
+          if (aOutcome == null) continue
+          if (aOutcome === 'T') acc.ties += 1
+          else if (aOutcome === 'W') acc.aWins += 1
+          else acc.bWins += 1
+        }
+      }
+    }
+    let best: PairAcc | null = null
+    let bestGames = -1
+    let bestSplit = Infinity
+    for (const acc of pairs.values()) {
+      const games = acc.aWins + acc.bWins + acc.ties
+      if (games === 0) continue
+      const split = Math.abs(acc.aWins - acc.bWins)
+      if (games > bestGames || (games === bestGames && split < bestSplit)) {
+        best = acc
+        bestGames = games
+        bestSplit = split
+      }
+    }
+    if (best) {
+      const ties = best.ties
+      moments.push({
+        kind: 'fiercestRivalry',
+        label: 'Fiercest rivalry',
+        teamName: nameOf(best.aKey),
+        teamLogo: logoOf(best.aKey),
+        vsName: nameOf(best.bKey),
+        vsLogo: logoOf(best.bKey),
+        value: bestGames,
+        valueLabel: 'meetings',
+        detail: `${best.aWins}–${best.bWins}${ties ? '-' + ties : ''}`,
+        season: 0, // all-time — no single season
+      })
     }
   }
 

@@ -76,6 +76,27 @@ describe('buildChampions', () => {
     expect(rows[0].championName).toBe('Charlie')
   })
 
+  it('marks back-to-back titles by the same franchise in consecutive seasons', () => {
+    const repeat: HistorySeason[] = [
+      { season: 2025, teams: [team({ teamKey: 'A', teamName: 'Alpha', rank: 1, champion: true }), team({ teamKey: 'B', rank: 2 })] },
+      { season: 2024, teams: [team({ teamKey: 'A', teamName: 'Alpha', rank: 1, champion: true }), team({ teamKey: 'B', rank: 2 })] },
+      { season: 2023, teams: [team({ teamKey: 'B', teamName: 'Bravo', rank: 1, champion: true }), team({ teamKey: 'A', rank: 2 })] },
+    ]
+    const rows = buildChampions(repeat)
+    expect(rows[0].repeat).toBe(true) // 2025 follows A's 2024 title
+    expect(rows[1].repeat).toBe(false) // 2024 follows B's 2023 title — not a repeat
+    expect(rows[2].repeat).toBe(false) // oldest season can't repeat
+  })
+
+  it('does not mark a repeat across a gap in seasons', () => {
+    const gapped: HistorySeason[] = [
+      { season: 2025, teams: [team({ teamKey: 'A', rank: 1, champion: true })] },
+      { season: 2023, teams: [team({ teamKey: 'A', rank: 1, champion: true })] }, // skipped 2024
+    ]
+    const rows = buildChampions(gapped)
+    expect(rows[0].repeat).toBe(false)
+  })
+
   it('flags a season with no champion as in progress (and hides runner-up)', () => {
     const rows = buildChampions(seasons)
     expect(rows[0].inProgress).toBe(false) // 2024 has a flagged champion
