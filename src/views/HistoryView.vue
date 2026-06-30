@@ -90,6 +90,18 @@ const maxDynastyScore = computed(() =>
   dynasty.value.reduce((m, r) => Math.max(m, r.score), 1),
 )
 
+// "Active only" filter — the teams in the most recent (current) season are the league's
+// current members; filtering to them cuts the long all-time list to who's still around.
+const activeKeys = computed(() => new Set((seasons.value[0]?.teams ?? []).map((t) => t.teamKey)))
+const hasInactive = computed(() => allTime.value.length > activeKeys.value.size)
+const activeOnly = ref(false)
+const displayedAllTime = computed(() =>
+  activeOnly.value ? allTime.value.filter((r) => activeKeys.value.has(r.teamKey)) : allTime.value,
+)
+const displayedDynasty = computed(() =>
+  activeOnly.value ? dynasty.value.filter((r) => activeKeys.value.has(r.teamKey)) : dynasty.value,
+)
+
 // ── Rivalries — head-to-head across visible seasons (needs matchup pairings). ─
 // Re-rootable to ANY team via the switcher; defaults to the user's team.
 const selectedRivalKey = ref('')
@@ -232,15 +244,25 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
             >Legacy</button>
           </div>
         </div>
-        <p class="mb-3 font-mono text-xs text-dark-textMuted">
+        <p class="mb-2 font-mono text-xs text-dark-textMuted">
           <template v-if="allTimeView === 'record'">
             <template v-if="singleSeason">This season's race — all-time begins here.</template>
-            <template v-else>The GOAT race across every visible season · titles, then win% · {{ allTime.length }} teams.</template>
+            <template v-else>The GOAT race across every visible season · titles, then win% · {{ displayedAllTime.length }} teams.</template>
           </template>
           <template v-else>
             The all-time franchise pecking order — titles, finals, playoffs, and consistency, weighted.
           </template>
         </p>
+
+        <!-- Active-only filter (only when there are former teams to hide). -->
+        <button
+          v-if="hasInactive"
+          class="mb-3 font-mono text-[10px] transition-colors"
+          :class="activeOnly ? 'text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+          @click="activeOnly = !activeOnly"
+        >
+          {{ activeOnly ? '▣' : '▢' }} active teams only
+        </button>
 
         <!-- RECORD view = all-time standings table -->
         <div v-if="allTimeView === 'record'" class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
@@ -254,7 +276,7 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
           </div>
 
           <div
-            v-for="(r, i) in allTime"
+            v-for="(r, i) in displayedAllTime"
             :key="r.teamKey"
             class="px-4 py-2.5 flex items-center gap-3"
             :style="r.isMe ? { backgroundColor: primaryTint(6) } : {}"
@@ -323,7 +345,7 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
 
           <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
             <div
-              v-for="(r, i) in dynasty"
+              v-for="(r, i) in displayedDynasty"
               :key="r.teamKey"
               class="relative px-4 py-2.5 flex items-center gap-3 overflow-hidden"
               :style="r.isMe ? { backgroundColor: primaryTint(6) } : {}"
