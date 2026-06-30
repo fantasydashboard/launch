@@ -164,14 +164,20 @@ export function useLeagueHistory() {
         const standings = await yahooService.getStandings(currentKey)
         if (!standings || standings.length === 0) break
 
-        // Cross-season identity: Yahoo team_keys change every season, so we key on the
-        // stable manager GUID when present, else the normalized team name (some
-        // category-league standings omit the guid — without this fallback every team
-        // collapses to one bucket). A per-season team_key → identity map lets matchup
-        // data (which lacks the guid) resolve to the same identity.
+        // Cross-season identity: Yahoo team_keys change every season, so we prefer the
+        // stable manager GUID — but ONLY when it's actually unique per team. Some Yahoo
+        // standings responses return the same guid for every team (which would collapse
+        // the whole league into one bucket), so we fall back to the normalized team name
+        // (unique within a season, stable enough across seasons) when the guid is bogus.
+        const guidCounts = new Map<string, number>()
+        for (const t of standings as any[]) {
+          const g = String(t?.manager_guid ?? '').trim()
+          if (g) guidCounts.set(g, (guidCounts.get(g) ?? 0) + 1)
+        }
+        const guidReliable = guidCounts.size > 1 && [...guidCounts.values()].every((c) => c === 1)
         const identityOf = (t: any): string => {
           const guid = String(t?.manager_guid ?? '').trim()
-          if (guid) return 'g:' + guid
+          if (guidReliable && guid) return 'g:' + guid
           const name = String(t?.name ?? '').trim().toLowerCase()
           if (name) return 'n:' + name
           return 'k:' + String(t?.team_key ?? '')
