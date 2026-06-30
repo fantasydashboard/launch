@@ -4,6 +4,9 @@ import { useLeagueStore } from '@/stores/league'
 import { useLeagueHistory } from '@/composables/useLeagueHistory'
 import { buildChampions } from '@/history/champions'
 import { buildAllTimeStandings } from '@/history/allTimeStandings'
+import { buildDynastyRankings } from '@/history/dynastyRankings'
+import { buildRivalries } from '@/history/rivalries'
+import { buildLegendaryMoments } from '@/history/legendaryMoments'
 import TeamAvatar from '@/components/league/TeamAvatar.vue'
 
 const leagueStore = useLeagueStore()
@@ -37,8 +40,33 @@ const allTime = computed(() =>
   buildAllTimeStandings(seasons.value, history.myTeamKey.value),
 )
 
+// Hide the PO (playoff appearances) stat when NO team has any — platforms without
+// playoff-seed data (e.g. Yahoo getStandings) would otherwise show 0 for everyone.
+const hasPlayoffData = computed(() =>
+  allTime.value.some((r) => r.playoffAppearances > 0),
+)
+
+// ── Dynasty rankings — the all-time franchise pecking order. ─────────────────
+const dynasty = computed(() =>
+  buildDynastyRankings(seasons.value, history.myTeamKey.value),
+)
+const maxDynastyScore = computed(() =>
+  dynasty.value.reduce((m, r) => Math.max(m, r.score), 1),
+)
+
+// ── Rivalries — head-to-head across visible seasons (needs matchup pairings). ─
+const rivalries = computed(() =>
+  buildRivalries(seasons.value, history.myTeamKey.value),
+)
+const hasRivalries = computed(() => rivalries.value.mine.length > 0)
+
+// ── Legendary moments — the record book. ─────────────────────────────────────
+const moments = computed(() => buildLegendaryMoments(seasons.value))
+
 const fmtPct = (p: number) => '.' + String(Math.round(p * 1000)).padStart(3, '0')
 const record = (w: number, l: number, t: number) => `${w}-${l}${t ? '-' + t : ''}`
+const edgeArrow = (edge: 'up' | 'down' | 'even') =>
+  edge === 'up' ? '▲' : edge === 'down' ? '▼' : '—'
 </script>
 
 <template>
@@ -120,7 +148,7 @@ const record = (w: number, l: number, t: number) => `${w}-${l}${t ? '-' + t : ''
             <span class="h-8 w-8 shrink-0" />
             <span class="min-w-0 flex-1" />
             <span class="shrink-0 w-24 text-right font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">REC · WIN%</span>
-            <span class="shrink-0 w-28 text-right font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">TITLES · PO · SZN</span>
+            <span class="shrink-0 w-28 text-right font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">{{ hasPlayoffData ? 'TITLES · PO · SZN' : 'TITLES · SZN' }}</span>
           </div>
 
           <div
@@ -152,14 +180,128 @@ const record = (w: number, l: number, t: number) => `${w}-${l}${t ? '-' + t : ''
                 <template v-if="r.titles > 0">🏆×{{ r.titles }}</template>
                 <template v-else>—</template>
               </span>
-              <span class="text-dark-border/60"> · </span>{{ r.playoffAppearances }}<span class="text-dark-border/60">po</span>
+              <template v-if="hasPlayoffData">
+                <span class="text-dark-border/60"> · </span>{{ r.playoffAppearances }}<span class="text-dark-border/60">po</span>
+              </template>
               <span class="text-dark-border/60"> · </span>{{ r.seasonsPlayed }}<span class="text-dark-border/60">y</span>
             </span>
           </div>
         </div>
         <p class="mt-2 font-mono text-[10px] text-dark-textMuted">
-          win% counts ties as half-wins · PO = playoff appearances · y = seasons played
+          win% counts ties as half-wins<template v-if="hasPlayoffData"> · PO = playoff appearances</template> · y = seasons played
         </p>
+      </section>
+
+      <!-- ── DYNASTY RANKINGS ──────────────────────────────────────────────── -->
+      <section class="mb-8">
+        <h2 class="font-display text-lg font-bold text-dark-text">Dynasty rankings</h2>
+        <p class="mb-3 font-mono text-xs text-dark-textMuted">
+          The all-time franchise pecking order — titles, finals, playoffs, and consistency, weighted.
+        </p>
+
+        <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
+          <div
+            v-for="(r, i) in dynasty"
+            :key="r.teamKey"
+            class="relative px-4 py-2.5 flex items-center gap-3 overflow-hidden"
+            :style="r.isMe ? { backgroundColor: primaryTint(6) } : {}"
+          >
+            <!-- subtle score bar -->
+            <span
+              class="pointer-events-none absolute inset-y-0 left-0"
+              :style="{ width: Math.max(2, Math.round((r.score / maxDynastyScore) * 100)) + '%', backgroundColor: primaryTint(8) }"
+            />
+            <span class="relative w-6 shrink-0 text-center font-mono text-sm text-dark-textMuted">{{ i + 1 }}</span>
+            <TeamAvatar class="relative" :name="r.teamName" :logo="r.teamLogo" :size="32" />
+            <span class="relative min-w-0 flex-1 flex flex-col gap-0.5 overflow-hidden">
+              <span class="flex items-center gap-2 overflow-hidden">
+                <span class="truncate text-sm font-semibold text-dark-text">{{ r.teamName }}</span>
+                <span
+                  v-if="r.isMe"
+                  class="shrink-0 rounded px-1 font-mono text-[9px] uppercase text-primary"
+                  :style="{ backgroundColor: primaryTint(16) }"
+                >you</span>
+              </span>
+              <span class="font-mono text-[10px] leading-tight text-dark-textMuted">
+                <span v-if="r.titles > 0" class="text-primary">🏆 {{ r.titles }}</span><span v-if="r.titles > 0 && (r.runnerUps > 0 || r.seasonsPlayed > 0)"> · </span><template v-if="r.runnerUps > 0">runner-up {{ r.runnerUps }} · </template>{{ r.seasonsPlayed }} szn
+              </span>
+            </span>
+            <span class="relative shrink-0 font-mono text-base font-bold text-dark-text tabular-nums">{{ r.score }}</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── RIVALRIES ─────────────────────────────────────────────────────── -->
+      <section v-if="hasRivalries" class="mb-8">
+        <h2 class="font-display text-lg font-bold text-dark-text">Rivalries</h2>
+        <p class="mb-3 font-mono text-xs text-dark-textMuted">
+          Your head-to-head record vs every team you've faced.
+        </p>
+
+        <!-- fiercest rivalry callout -->
+        <div
+          v-if="rivalries.fiercest"
+          class="mb-3 rounded-xl border border-dark-border bg-dark-card px-4 py-3"
+          :style="{ backgroundColor: primaryTint(4) }"
+        >
+          <div class="font-mono text-[9px] uppercase tracking-wider text-primary">Fiercest rivalry</div>
+          <div class="mt-1.5 flex items-center gap-2">
+            <TeamAvatar :name="rivalries.fiercest.aName" :logo="rivalries.fiercest.aLogo" :size="28" />
+            <span class="truncate text-sm font-semibold text-dark-text">{{ rivalries.fiercest.aName }}</span>
+            <span class="shrink-0 font-mono text-xs text-dark-textMuted">{{ rivalries.fiercest.aWins }}–{{ rivalries.fiercest.bWins }}<template v-if="rivalries.fiercest.ties">–{{ rivalries.fiercest.ties }}</template></span>
+            <span class="truncate text-sm font-semibold text-dark-text text-right">{{ rivalries.fiercest.bName }}</span>
+            <TeamAvatar :name="rivalries.fiercest.bName" :logo="rivalries.fiercest.bLogo" :size="28" />
+          </div>
+          <div class="mt-1 font-mono text-[10px] text-dark-textMuted">{{ rivalries.fiercest.games }} meetings all-time</div>
+        </div>
+
+        <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
+          <div
+            v-for="r in rivalries.mine"
+            :key="r.oppKey"
+            class="px-4 py-2.5 flex items-center gap-3"
+          >
+            <TeamAvatar :name="r.oppName" :logo="r.oppLogo" :size="32" />
+            <span class="min-w-0 flex-1 truncate text-sm font-semibold text-dark-text">{{ r.oppName }}</span>
+            <span
+              class="shrink-0 font-mono text-xs"
+              :class="r.edge === 'up' ? 'text-primary' : r.edge === 'down' ? 'text-[#e0625a]' : 'text-dark-textMuted'"
+            >{{ edgeArrow(r.edge) }}</span>
+            <span class="shrink-0 w-20 text-right font-mono text-[11px] text-dark-text tabular-nums">
+              {{ record(r.wins, r.losses, r.ties) }}
+            </span>
+            <span class="shrink-0 w-14 text-right font-mono text-[10px] text-dark-textMuted">{{ r.games }} gp</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── LEGENDARY MOMENTS ─────────────────────────────────────────────── -->
+      <section v-if="moments.length" class="mb-8">
+        <h2 class="font-display text-lg font-bold text-dark-text">Legendary moments</h2>
+        <p class="mb-3 font-mono text-xs text-dark-textMuted">
+          The record book — the highs, the lows, and the streaks.
+        </p>
+
+        <div class="grid gap-2 sm:grid-cols-2">
+          <div
+            v-for="m in moments"
+            :key="m.kind"
+            class="rounded-xl border border-dark-border bg-dark-card px-4 py-3"
+          >
+            <div class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">{{ m.label }}</div>
+            <div class="mt-1.5 flex items-center gap-2">
+              <TeamAvatar :name="m.teamName" :logo="m.teamLogo" :size="28" />
+              <span class="min-w-0 flex-1 truncate text-sm font-semibold text-dark-text">{{ m.teamName }}</span>
+            </div>
+            <div class="mt-1.5 flex items-baseline gap-1.5">
+              <span class="font-display text-xl font-bold text-primary tabular-nums">{{ m.value }}</span>
+              <span v-if="m.valueLabel" class="font-mono text-[10px] text-dark-textMuted">{{ m.valueLabel }}</span>
+              <span class="ml-auto font-mono text-[10px] text-dark-textMuted">
+                {{ m.season }}<template v-if="m.week"> · wk {{ m.week }}</template>
+              </span>
+            </div>
+          </div>
+        </div>
       </section>
     </template>
   </div>

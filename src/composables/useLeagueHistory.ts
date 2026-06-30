@@ -109,6 +109,7 @@ export function useLeagueHistory() {
             }
             const results: Record<string, HistoryResult> = {}
             const points: Record<string, number> = {}
+            const pairs: [string, string][] = []
             for (const m of matchups as any[]) {
               if (!m.winner || m.winner === 'UNDECIDED') continue
               const homeKey = keyByEspnId.get(Number(m.homeTeamId))
@@ -123,9 +124,15 @@ export function useLeagueHistory() {
               }
               if (m.homeScore != null) points[homeKey] = Number(m.homeScore)
               if (m.awayScore != null) points[awayKey] = Number(m.awayScore)
+              pairs.push([homeKey, awayKey])
             }
             if (Object.keys(results).length) {
-              weeks.push({ week, results, points: Object.keys(points).length ? points : undefined })
+              weeks.push({
+                week,
+                results,
+                points: Object.keys(points).length ? points : undefined,
+                matchups: pairs.length ? pairs : undefined,
+              })
             }
           } catch {
             if (weeks.length > 0) break
@@ -218,11 +225,13 @@ export function useLeagueHistory() {
               consecutiveFailures = 0
               const results: Record<string, HistoryResult> = {}
               const points: Record<string, number> = {}
+              const pairs: [string, string][] = []
               for (const m of matchups as any[]) {
                 if (m.is_playoffs || m.is_consolation) continue
                 const teams = (m.teams ?? []).filter((t: any) => t?.team_key)
                 if (teams.length < 2) continue
                 const keys = teams.map((t: any) => keyFor(String(t.team_key)))
+                if (keys.length === 2) pairs.push([keys[0], keys[1]])
                 for (const t of teams) {
                   const k = keyFor(String(t.team_key))
                   if (t.points != null) points[k] = Number(t.points)
@@ -247,7 +256,12 @@ export function useLeagueHistory() {
                 }
               }
               if (Object.keys(results).length) {
-                weeks.push({ week, results, points: Object.keys(points).length ? points : undefined })
+                weeks.push({
+                  week,
+                  results,
+                  points: Object.keys(points).length ? points : undefined,
+                  matchups: pairs.length ? pairs : undefined,
+                })
               }
             }
           } catch {
@@ -357,6 +371,7 @@ export function useLeagueHistory() {
             }
             const results: Record<string, HistoryResult> = {}
             const points: Record<string, number> = {}
+            const pairs: [string, string][] = []
             for (const pair of grouped.values()) {
               if (pair.length !== 2) continue
               const [m1, m2] = pair
@@ -374,9 +389,10 @@ export function useLeagueHistory() {
                 results[k1] = p1 > p2 ? 'W' : 'L'
                 results[k2] = p2 > p1 ? 'W' : 'L'
               }
+              pairs.push([k1, k2])
             }
             if (Object.keys(results).length) {
-              weeks.push({ week, results, points })
+              weeks.push({ week, results, points, matchups: pairs.length ? pairs : undefined })
             }
           }
         }

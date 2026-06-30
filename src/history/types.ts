@@ -35,6 +35,14 @@ export interface HistoryWeek {
   results: Record<string, HistoryResult>
   /** teamKey → points that week (points leagues only). */
   points?: Record<string, number>
+  /**
+   * Head-to-head pairings that week: each entry is the two teamKeys that played.
+   * `results`/`points` alone are per-team and can't reconstruct who-played-whom,
+   * so rivalries (and margin-based moments) require this. Populated where the
+   * platform's matchup data exposes both sides (ESPN home/away, Yahoo two teams,
+   * Sleeper rosters paired by matchup_id). Regular-season pairs only.
+   */
+  matchups?: [string, string][]
 }
 
 export interface HistorySeason {
