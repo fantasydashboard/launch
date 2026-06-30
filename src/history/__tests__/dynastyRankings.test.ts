@@ -32,12 +32,14 @@ describe('buildDynastyRankings', () => {
     ]
     const rows = buildDynastyRankings(seasons, '')
     const byKey = Object.fromEntries(rows.map((r) => [r.teamKey, r]))
-    // A: champ 100 + playoffs 20 + top-half(<=2) 10 + winPct 1.0*30=30 + longevity 5 = 165
-    expect(byKey.A.score).toBe(165)
-    // B: runner-up 40 + playoffs 20 + top-half 10 + winPct .6*30=18 + 5 = 93
-    expect(byKey.B.score).toBe(93)
-    // C: third 20 + winPct .4*30=12 + 5 = 37 (rank 3 not top-half of 4, not last)
-    expect(byKey.C.score).toBe(37)
+    // A is also the regular-season #1 (best win% 1.0).
+    // A: champ 100 + reg-title 35 + playoffs 20 + top-half(<=2) 10 + winPct 1.0*30=30 + 5 = 200
+    expect(byKey.A.score).toBe(200)
+    expect(byKey.A.regSeasonTitles).toBe(1)
+    // B: runner-up 50 + playoffs 20 + top-half 10 + winPct .6*30=18 + 5 = 103
+    expect(byKey.B.score).toBe(103)
+    // C: third 25 + winPct .4*30=12 + 5 = 42 (rank 3 not top-half of 4, not last)
+    expect(byKey.C.score).toBe(42)
     // D: last -15 + winPct 0 + 5 = -10
     expect(byKey.D.score).toBe(-10)
   })
@@ -89,20 +91,19 @@ describe('buildDynastyRankings', () => {
   })
 
   it('tiebreaks equal scores by titles desc then teamKey', () => {
-    // Two teams engineered to the same score; one has a title.
+    // Two teams with 0 games (no reg-season title awarded, winPct 0) → identical score.
     const seasons: HistorySeason[] = [
       {
         season: 2024,
         teams: [
-          // Champ but worse record vs non-champ with identical total — force a title tiebreak
-          // by giving both the same score.
-          team({ teamKey: 'Zeta', rank: 1, wins: 5, losses: 5 }), // no champ
-          team({ teamKey: 'Alpha', rank: 1, wins: 5, losses: 5 }),
+          team({ teamKey: 'Zeta', rank: 1 }),
+          team({ teamKey: 'Alpha', rank: 1 }),
         ],
       },
     ]
     const rows = buildDynastyRankings(seasons, '')
-    // Both identical score & 0 titles → teamKey asc: Alpha before Zeta.
+    // Identical score & 0 titles → teamKey asc: Alpha before Zeta.
+    expect(rows[0].score).toBe(rows[1].score)
     expect(rows.map((r) => r.teamKey)).toEqual(['Alpha', 'Zeta'])
   })
 

@@ -74,13 +74,14 @@ const showLegacyScoring = ref(false)
 // Legacy weights — kept in sync with buildDynastyRankings; shown in the "how it's scored" panel.
 const legacyWeights: { label: string; value: string }[] = [
   { label: 'Championship', value: '+100' },
-  { label: 'Runner-up', value: '+40' },
-  { label: 'Third place', value: '+20' },
+  { label: 'Runner-up', value: '+50' },
+  { label: 'Regular-season title', value: '+35' },
+  { label: 'Semifinal (3rd)', value: '+25' },
   { label: 'Made playoffs', value: '+20' },
   { label: 'Top-half finish', value: '+10' },
-  { label: 'Last place', value: '−15' },
   { label: 'Season strength', value: '+ win% × 30' },
   { label: 'Per season played', value: '+5' },
+  { label: 'Last place', value: '−15' },
 ]
 const dynasty = computed(() =>
   buildDynastyRankings(seasons.value, history.myTeamKey.value),
@@ -123,6 +124,23 @@ const rivalName = computed(
 
 // ── Legendary moments — the record book. ─────────────────────────────────────
 const moments = computed(() => buildLegendaryMoments(seasons.value, scoring.value))
+
+// Group moments by tone (highs → notable → lows) and color them green/amber/red.
+const momentTone = (kind: string): 'good' | 'neutral' | 'bad' =>
+  kind === 'loseStreak' || kind === 'worstSeason'
+    ? 'bad'
+    : kind === 'closestGame'
+      ? 'neutral'
+      : 'good'
+const toneRank: Record<string, number> = { good: 0, neutral: 1, bad: 2 }
+const toneColor: Record<string, string> = {
+  good: 'text-primary',
+  neutral: 'text-[#e69a4a]',
+  bad: 'text-[#e0625a]',
+}
+const groupedMoments = computed(() =>
+  [...moments.value].sort((a, b) => toneRank[momentTone(a.kind)] - toneRank[momentTone(b.kind)]),
+)
 
 const fmtPct = (p: number) => '.' + String(Math.round(p * 1000)).padStart(3, '0')
 const record = (w: number, l: number, t: number) => `${w}-${l}${t ? '-' + t : ''}`
@@ -275,63 +293,65 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
           win% counts ties as half-wins<template v-if="hasPlayoffData"> · PO = playoff appearances</template> · y = seasons played
         </p>
 
-        <!-- LEGACY view = dynasty score bars + breakdown -->
-        <div v-if="allTimeView === 'legacy'" class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
-          <div
-            v-for="(r, i) in dynasty"
-            :key="r.teamKey"
-            class="relative px-4 py-2.5 flex items-center gap-3 overflow-hidden"
-            :style="r.isMe ? { backgroundColor: primaryTint(6) } : {}"
-          >
-            <!-- subtle score bar -->
-            <span
-              class="pointer-events-none absolute inset-y-0 left-0"
-              :style="{ width: Math.max(2, Math.round((r.score / maxDynastyScore) * 100)) + '%', backgroundColor: primaryTint(8) }"
-            />
-            <span class="relative w-6 shrink-0 text-center font-mono text-sm text-dark-textMuted">{{ i + 1 }}</span>
-            <TeamAvatar class="relative" :name="r.teamName" :logo="r.teamLogo" :size="32" />
-            <span class="relative min-w-0 flex-1 flex flex-col gap-0.5 overflow-hidden">
-              <span class="flex items-center gap-2 overflow-hidden">
-                <span class="truncate text-sm font-semibold text-dark-text">{{ r.teamName }}</span>
-                <span
-                  v-if="r.isMe"
-                  class="shrink-0 rounded px-1 font-mono text-[9px] uppercase text-primary"
-                  :style="{ backgroundColor: primaryTint(16) }"
-                >you</span>
-              </span>
-              <span class="font-mono text-[10px] leading-tight text-dark-textMuted">
-                <span v-if="r.titles > 0" class="text-primary">🏆 {{ r.titles }}</span><span v-if="r.titles > 0 && (r.runnerUps > 0 || r.seasonsPlayed > 0)"> · </span><template v-if="r.runnerUps > 0">runner-up {{ r.runnerUps }} · </template>{{ r.seasonsPlayed }} szn
-              </span>
-            </span>
-            <span class="relative shrink-0 font-mono text-base font-bold text-dark-text tabular-nums">{{ r.score }}</span>
-          </div>
-        </div>
-
-        <!-- How the Legacy score is computed (transparent, collapsible). -->
-        <div v-if="allTimeView === 'legacy'" class="mt-2">
-          <button
-            class="font-mono text-[10px] text-dark-textMuted hover:text-dark-text transition-colors"
-            @click="showLegacyScoring = !showLegacyScoring"
-          >
-            {{ showLegacyScoring ? '▾' : '▸' }} how the legacy score is computed
-          </button>
-          <div
-            v-if="showLegacyScoring"
-            class="mt-2 rounded-lg border border-dark-border/50 bg-dark-card px-4 py-3 font-mono text-[11px]"
-          >
-            <div class="mb-2 text-dark-textMuted">Summed across every season a team appears in:</div>
-            <div class="grid grid-cols-1 gap-y-1 sm:grid-cols-2 sm:gap-x-8">
-              <div
-                v-for="w in legacyWeights"
-                :key="w.label"
-                class="flex items-baseline justify-between gap-3 border-b border-dark-border/30 py-0.5"
-              >
-                <span class="text-dark-textSecondary">{{ w.label }}</span>
-                <span :class="w.value.startsWith('−') ? 'text-[#e0625a]' : 'text-primary'">{{ w.value }}</span>
+        <!-- LEGACY view: scoring explainer (top, so it's not a scroll away) + score bars -->
+        <template v-if="allTimeView === 'legacy'">
+          <!-- How the Legacy score is computed (transparent, collapsible). -->
+          <div class="mb-2">
+            <button
+              class="font-mono text-[10px] text-dark-textMuted hover:text-dark-text transition-colors"
+              @click="showLegacyScoring = !showLegacyScoring"
+            >
+              {{ showLegacyScoring ? '▾' : '▸' }} how the legacy score is computed
+            </button>
+            <div
+              v-if="showLegacyScoring"
+              class="mt-2 rounded-lg border border-dark-border/50 bg-dark-card px-4 py-3 font-mono text-[11px]"
+            >
+              <div class="mb-2 text-dark-textMuted">Summed across every season a team appears in:</div>
+              <div class="grid grid-cols-1 gap-y-1 sm:grid-cols-2 sm:gap-x-8">
+                <div
+                  v-for="w in legacyWeights"
+                  :key="w.label"
+                  class="flex items-baseline justify-between gap-3 border-b border-dark-border/30 py-0.5"
+                >
+                  <span class="text-dark-textSecondary">{{ w.label }}</span>
+                  <span :class="w.value.startsWith('−') ? 'text-[#e0625a]' : 'text-primary'">{{ w.value }}</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+
+          <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
+            <div
+              v-for="(r, i) in dynasty"
+              :key="r.teamKey"
+              class="relative px-4 py-2.5 flex items-center gap-3 overflow-hidden"
+              :style="r.isMe ? { backgroundColor: primaryTint(6) } : {}"
+            >
+              <!-- subtle score bar -->
+              <span
+                class="pointer-events-none absolute inset-y-0 left-0"
+                :style="{ width: Math.max(2, Math.round((r.score / maxDynastyScore) * 100)) + '%', backgroundColor: primaryTint(8) }"
+              />
+              <span class="relative w-6 shrink-0 text-center font-mono text-sm text-dark-textMuted">{{ i + 1 }}</span>
+              <TeamAvatar class="relative" :name="r.teamName" :logo="r.teamLogo" :size="32" />
+              <span class="relative min-w-0 flex-1 flex flex-col gap-0.5 overflow-hidden">
+                <span class="flex items-center gap-2 overflow-hidden">
+                  <span class="truncate text-sm font-semibold text-dark-text">{{ r.teamName }}</span>
+                  <span
+                    v-if="r.isMe"
+                    class="shrink-0 rounded px-1 font-mono text-[9px] uppercase text-primary"
+                    :style="{ backgroundColor: primaryTint(16) }"
+                  >you</span>
+                </span>
+                <span class="font-mono text-[10px] leading-tight text-dark-textMuted">
+                  <span v-if="r.titles > 0" class="text-primary">🏆 {{ r.titles }} · </span><template v-if="r.runnerUps > 0">runner-up {{ r.runnerUps }} · </template><template v-if="r.regSeasonTitles > 0">reg #1 {{ r.regSeasonTitles }} · </template>{{ r.seasonsPlayed }} szn
+                </span>
+              </span>
+              <span class="relative shrink-0 font-mono text-base font-bold text-dark-text tabular-nums">{{ r.score }}</span>
+            </div>
+          </div>
+        </template>
       </section>
 
       <!-- ── RIVALRIES ─────────────────────────────────────────────────────── -->
@@ -402,7 +422,7 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
 
         <div class="grid gap-2 sm:grid-cols-2">
           <div
-            v-for="m in moments"
+            v-for="m in groupedMoments"
             :key="m.kind"
             class="rounded-xl border border-dark-border bg-dark-card px-4 py-3"
           >
@@ -419,7 +439,7 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
               <span v-if="m.detail" class="shrink-0 font-mono text-[11px] text-dark-text tabular-nums">{{ m.detail }}</span>
             </div>
             <div class="mt-1.5 flex items-baseline gap-1.5">
-              <span class="font-display text-xl font-bold text-primary tabular-nums">{{ m.value }}</span>
+              <span class="font-display text-xl font-bold tabular-nums" :class="toneColor[momentTone(m.kind)]">{{ m.value }}</span>
               <span v-if="m.valueLabel" class="font-mono text-[10px] text-dark-textMuted">{{ m.valueLabel }}</span>
               <span v-if="m.season" class="ml-auto font-mono text-[10px] text-dark-textMuted">
                 {{ m.season }}<template v-if="m.week"> · wk {{ m.week }}</template>
