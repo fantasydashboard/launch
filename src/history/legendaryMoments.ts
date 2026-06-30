@@ -416,7 +416,7 @@ export function buildLegendaryMoments(
           teamLogo: logoOf(top.key),
           value: top.count,
           valueLabel: 'playoffs',
-          season: nameByKey.get(top.key)?.season ?? 0,
+          season: 0, // all-time count — no single season; the view hides a 0 season
         })
       }
     }

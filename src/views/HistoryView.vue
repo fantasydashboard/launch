@@ -69,6 +69,19 @@ const hasPlayoffData = computed(() =>
 // ── All-time section — toggled Record (standings) ⇄ Legacy (dynasty score). ──
 // "Legacy" is the user-facing name for the internal dynasty ranking.
 const allTimeView = ref<'record' | 'legacy'>('record')
+const showLegacyScoring = ref(false)
+
+// Legacy weights — kept in sync with buildDynastyRankings; shown in the "how it's scored" panel.
+const legacyWeights: { label: string; value: string }[] = [
+  { label: 'Championship', value: '+100' },
+  { label: 'Runner-up', value: '+40' },
+  { label: 'Third place', value: '+20' },
+  { label: 'Made playoffs', value: '+20' },
+  { label: 'Top-half finish', value: '+10' },
+  { label: 'Last place', value: '−15' },
+  { label: 'Season strength', value: '+ win% × 30' },
+  { label: 'Per season played', value: '+5' },
+]
 const dynasty = computed(() =>
   buildDynastyRankings(seasons.value, history.myTeamKey.value),
 )
@@ -293,6 +306,32 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
             <span class="relative shrink-0 font-mono text-base font-bold text-dark-text tabular-nums">{{ r.score }}</span>
           </div>
         </div>
+
+        <!-- How the Legacy score is computed (transparent, collapsible). -->
+        <div v-if="allTimeView === 'legacy'" class="mt-2">
+          <button
+            class="font-mono text-[10px] text-dark-textMuted hover:text-dark-text transition-colors"
+            @click="showLegacyScoring = !showLegacyScoring"
+          >
+            {{ showLegacyScoring ? '▾' : '▸' }} how the legacy score is computed
+          </button>
+          <div
+            v-if="showLegacyScoring"
+            class="mt-2 rounded-lg border border-dark-border/50 bg-dark-card px-4 py-3 font-mono text-[11px]"
+          >
+            <div class="mb-2 text-dark-textMuted">Summed across every season a team appears in:</div>
+            <div class="grid grid-cols-1 gap-y-1 sm:grid-cols-2 sm:gap-x-8">
+              <div
+                v-for="w in legacyWeights"
+                :key="w.label"
+                class="flex items-baseline justify-between gap-3 border-b border-dark-border/30 py-0.5"
+              >
+                <span class="text-dark-textSecondary">{{ w.label }}</span>
+                <span :class="w.value.startsWith('−') ? 'text-[#e0625a]' : 'text-primary'">{{ w.value }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- ── RIVALRIES ─────────────────────────────────────────────────────── -->
@@ -382,9 +421,10 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
             <div class="mt-1.5 flex items-baseline gap-1.5">
               <span class="font-display text-xl font-bold text-primary tabular-nums">{{ m.value }}</span>
               <span v-if="m.valueLabel" class="font-mono text-[10px] text-dark-textMuted">{{ m.valueLabel }}</span>
-              <span class="ml-auto font-mono text-[10px] text-dark-textMuted">
+              <span v-if="m.season" class="ml-auto font-mono text-[10px] text-dark-textMuted">
                 {{ m.season }}<template v-if="m.week"> · wk {{ m.week }}</template>
               </span>
+              <span v-else class="ml-auto font-mono text-[10px] text-dark-textMuted">all-time</span>
             </div>
           </div>
         </div>
