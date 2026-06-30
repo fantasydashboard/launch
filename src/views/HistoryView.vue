@@ -110,7 +110,7 @@ const record = (w: number, l: number, t: number) => `${w}-${l}${t ? '-' + t : ''
         <h2 class="font-display text-lg font-bold text-dark-text">All-time standings</h2>
         <p class="mb-3 font-mono text-xs text-dark-textMuted">
           <template v-if="singleSeason">This season's race — all-time begins here.</template>
-          <template v-else>The GOAT race across every visible season · titles, then win%.</template>
+          <template v-else>The GOAT race across every visible season · titles, then win% · {{ allTime.length }} teams.</template>
         </p>
 
         <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
