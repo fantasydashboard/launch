@@ -164,15 +164,27 @@ export function useLeagueHistory() {
         const standings = await yahooService.getStandings(currentKey)
         if (!standings || standings.length === 0) break
 
-        // Yahoo team_keys change every season; manager GUID is stable.
-        const guidByTeamKey = new Map<string, string>()
-        for (const t of standings as any[]) {
-          if (t.manager_guid) guidByTeamKey.set(String(t.team_key), String(t.manager_guid))
+        // Cross-season identity: Yahoo team_keys change every season, so we key on the
+        // stable manager GUID when present, else the normalized team name (some
+        // category-league standings omit the guid — without this fallback every team
+        // collapses to one bucket). A per-season team_key → identity map lets matchup
+        // data (which lacks the guid) resolve to the same identity.
+        const identityOf = (t: any): string => {
+          const guid = String(t?.manager_guid ?? '').trim()
+          if (guid) return 'g:' + guid
+          const name = String(t?.name ?? '').trim().toLowerCase()
+          if (name) return 'n:' + name
+          return 'k:' + String(t?.team_key ?? '')
         }
-        const keyFor = (teamKey: string) => guidByTeamKey.get(teamKey) ?? teamKey
+        const idByTeamKey = new Map<string, string>()
+        for (const t of standings as any[]) {
+          const tk = String(t.team_key ?? '')
+          if (tk) idByTeamKey.set(tk, identityOf(t))
+        }
+        const keyFor = (teamKey: string) => idByTeamKey.get(String(teamKey)) ?? 'k:' + String(teamKey)
 
         const historyTeams: HistoryTeam[] = (standings as any[]).map((t: any) => ({
-          teamKey: keyFor(String(t.team_key)),
+          teamKey: identityOf(t),
           teamName: String(t.name ?? 'Team'),
           teamLogo: String(t.logo_url ?? '') || undefined,
           wins: Number(t.wins) || 0,
@@ -185,11 +197,8 @@ export function useLeagueHistory() {
           champion: !!metadata.isFinished && Number(t.rank) === 1,
         }))
 
-        // Capture the user's cross-season key from the most recent season.
-        if (out.length === 0) {
-          const me = (standings as any[]).find((t: any) => t?.is_my_team)
-          if (me) myTeamKey.value = keyFor(String(me.team_key))
-        }
+        // myTeamKey is derived from matchup data below (getStandings doesn't flag the
+        // user's team; getMatchups does via is_my_team).
 
         // Weekly matchups, normalized to manager-guid keys.
         const weeks: HistoryWeek[] = []
@@ -211,6 +220,8 @@ export function useLeagueHistory() {
                 for (const t of teams) {
                   const k = keyFor(String(t.team_key))
                   if (t.points != null) points[k] = Number(t.points)
+                  // getStandings doesn't flag the user's team, so grab it here (most recent season).
+                  if (out.length === 0 && t.is_my_team) myTeamKey.value = k
                 }
                 if (m.is_tied) {
                   for (const k of keys) results[k] = 'T'
