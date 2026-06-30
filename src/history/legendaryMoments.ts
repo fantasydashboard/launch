@@ -1,20 +1,34 @@
 /**
  * Pure builder: the league's record book ("legendary moments"). Returns only the
  * moments that are derivable from the available data — point-based records are
- * skipped for category leagues that carry no `points`.
+ * gated to points leagues; category-only moments to category leagues; and every
+ * moment is skipped when its underlying data is missing/empty (zeros, no pairs).
  *
- *   biggest week ..... max single-team weekly `points` (points leagues only)
- *   longest win streak max run of consecutive 'W' in `results` ordered by (season, week)
+ * Always (both league types):
+ *   longest win streak  max run of consecutive 'W' in `results` ordered by (season, week)
  *   longest lose streak same for 'L'
- *   best season ...... team-season with the highest winPct (min 1 game)
- *   worst season ..... lowest winPct (min 1 game)
+ *   best season ....... team-season with the highest winPct (min 1 game)
+ *   worst season ...... lowest winPct (min 1 game)
  *
- * Margin-based "biggest blowout" is intentionally omitted — it needs paired
- * matchups AND both scores; not built here.
+ * Points leagues only (scoring === 'points', needs `weeks.points` / `weeks.matchups`):
+ *   biggest week ...... max single-team weekly `points`
+ *   highest-scoring season  team-season with the max SUM of weekly points
+ *   closest game ...... paired matchup with the smallest positive margin
+ *   biggest blowout ... paired matchup with the largest margin
+ *
+ * Category leagues only (scoring === 'category', and only when category data is
+ * actually present — some week has a points/category value > 0):
+ *   biggest sweep ..... matchup week where the winner won the most categories
+ *
+ * Both (when available):
+ *   most playoff trips  team with the most `madePlayoffs` seasons (skipped when
+ *                       no team has any playoff data, e.g. Yahoo getStandings)
  *
  * Deterministic + side-effect-free; unit-tested in __tests__/legendaryMoments.test.ts.
  */
 import type { HistorySeason, HistoryResult } from './types'
+
+export type Scoring = 'points' | 'category'
 
 export type MomentKind =
   | 'topWeek'
@@ -22,6 +36,11 @@ export type MomentKind =
   | 'loseStreak'
   | 'bestSeason'
   | 'worstSeason'
+  | 'highScoringSeason'
+  | 'closestGame'
+  | 'biggestBlowout'
+  | 'biggestSweep'
+  | 'mostPlayoffTrips'
 
 export interface Moment {
   kind: MomentKind
@@ -31,11 +50,19 @@ export interface Moment {
   /** The headline number/string (a score, a streak length, a record string). */
   value: number | string
   valueLabel?: string
+  /** Opponent name/logo for game-based moments (closest / blowout / sweep). */
+  vsName?: string
+  vsLogo?: string
+  /** Extra context line, e.g. the final score "142–138". */
+  detail?: string
   season: number
   week?: number
 }
 
-export function buildLegendaryMoments(seasons: HistorySeason[]): Moment[] {
+export function buildLegendaryMoments(
+  seasons: HistorySeason[],
+  scoring: Scoring = 'points',
+): Moment[] {
   // Latest name/logo per teamKey (newest-first).
   const nameByKey = new Map<string, { name: string; logo?: string; season: number }>()
   for (const s of seasons) {
@@ -56,30 +83,32 @@ export function buildLegendaryMoments(seasons: HistorySeason[]): Moment[] {
   const moments: Moment[] = []
 
   // ── Biggest week (points leagues only) ─────────────────────────────────────
-  let topWeek: { key: string; pts: number; season: number; week: number } | null = null
-  for (const s of seasons) {
-    for (const w of s.weeks ?? []) {
-      if (!w.points) continue
-      for (const [key, raw] of Object.entries(w.points)) {
-        const pts = Number(raw)
-        if (!Number.isFinite(pts)) continue
-        if (!topWeek || pts > topWeek.pts) {
-          topWeek = { key, pts, season: s.season, week: w.week }
+  if (scoring === 'points') {
+    let topWeek: { key: string; pts: number; season: number; week: number } | null = null
+    for (const s of seasons) {
+      for (const w of s.weeks ?? []) {
+        if (!w.points) continue
+        for (const [key, raw] of Object.entries(w.points)) {
+          const pts = Number(raw)
+          if (!Number.isFinite(pts)) continue
+          if (!topWeek || pts > topWeek.pts) {
+            topWeek = { key, pts, season: s.season, week: w.week }
+          }
         }
       }
     }
-  }
-  if (topWeek) {
-    moments.push({
-      kind: 'topWeek',
-      label: 'Biggest week',
-      teamName: nameOf(topWeek.key),
-      teamLogo: logoOf(topWeek.key),
-      value: Math.round(topWeek.pts * 10) / 10,
-      valueLabel: 'pts',
-      season: topWeek.season,
-      week: topWeek.week,
-    })
+    if (topWeek) {
+      moments.push({
+        kind: 'topWeek',
+        label: 'Biggest week',
+        teamName: nameOf(topWeek.key),
+        teamLogo: logoOf(topWeek.key),
+        value: Math.round(topWeek.pts * 10) / 10,
+        valueLabel: 'pts',
+        season: topWeek.season,
+        week: topWeek.week,
+      })
+    }
   }
 
   // ── Win / lose streaks (across ordered weeks) ──────────────────────────────
@@ -201,6 +230,196 @@ export function buildLegendaryMoments(seasons: HistorySeason[]): Moment[] {
       value: worst.rec,
       season: worst.season,
     })
+  }
+
+  // ── Highest-scoring season (points leagues only) ───────────────────────────
+  if (scoring === 'points') {
+    // Sum each team's weekly points, scoped per (teamKey, season).
+    let topSeason: { key: string; total: number; season: number } | null = null
+    for (const s of seasons) {
+      const totals = new Map<string, number>()
+      let sawPoints = false
+      for (const w of s.weeks ?? []) {
+        if (!w.points) continue
+        for (const [key, raw] of Object.entries(w.points)) {
+          const pts = Number(raw)
+          if (!Number.isFinite(pts)) continue
+          sawPoints = true
+          totals.set(key, (totals.get(key) ?? 0) + pts)
+        }
+      }
+      if (!sawPoints) continue
+      for (const [key, total] of totals) {
+        if (!topSeason || total > topSeason.total) {
+          topSeason = { key, total, season: s.season }
+        }
+      }
+    }
+    if (topSeason) {
+      moments.push({
+        kind: 'highScoringSeason',
+        label: 'Highest-scoring season',
+        teamName: nameOf(topSeason.key),
+        teamLogo: logoOf(topSeason.key),
+        value: Math.round(topSeason.total * 10) / 10,
+        valueLabel: 'pts',
+        season: topSeason.season,
+      })
+    }
+  }
+
+  // ── Closest game / biggest blowout (points leagues only, paired data) ──────
+  if (scoring === 'points') {
+    interface Game {
+      winKey: string
+      loseKey: string
+      winPts: number
+      losePts: number
+      margin: number
+      season: number
+      week: number
+    }
+    let closest: Game | null = null
+    let blowout: Game | null = null
+    for (const s of seasons) {
+      for (const w of s.weeks ?? []) {
+        if (!w.matchups || !w.points) continue
+        for (const [a, b] of w.matchups) {
+          const pa = w.points[a]
+          const pb = w.points[b]
+          if (pa == null || pb == null) continue
+          if (!Number.isFinite(pa) || !Number.isFinite(pb)) continue
+          const margin = Math.abs(pa - pb)
+          if (margin <= 0) continue // skip ties — no positive margin
+          const winKey = pa > pb ? a : b
+          const loseKey = pa > pb ? b : a
+          const winPts = Math.max(pa, pb)
+          const losePts = Math.min(pa, pb)
+          const game: Game = { winKey, loseKey, winPts, losePts, margin, season: s.season, week: w.week }
+          if (!closest || margin < closest.margin) closest = game
+          if (!blowout || margin > blowout.margin) blowout = game
+        }
+      }
+    }
+    const fmtScore = (g: { winPts: number; losePts: number }) =>
+      `${Math.round(g.winPts * 10) / 10}–${Math.round(g.losePts * 10) / 10}`
+    if (closest) {
+      moments.push({
+        kind: 'closestGame',
+        label: 'Closest game',
+        teamName: nameOf(closest.winKey),
+        teamLogo: logoOf(closest.winKey),
+        vsName: nameOf(closest.loseKey),
+        vsLogo: logoOf(closest.loseKey),
+        value: Math.round(closest.margin * 10) / 10,
+        valueLabel: 'pt margin',
+        detail: fmtScore(closest),
+        season: closest.season,
+        week: closest.week,
+      })
+    }
+    if (blowout) {
+      moments.push({
+        kind: 'biggestBlowout',
+        label: 'Biggest blowout',
+        teamName: nameOf(blowout.winKey),
+        teamLogo: logoOf(blowout.winKey),
+        vsName: nameOf(blowout.loseKey),
+        vsLogo: logoOf(blowout.loseKey),
+        value: Math.round(blowout.margin * 10) / 10,
+        valueLabel: 'pt margin',
+        detail: fmtScore(blowout),
+        season: blowout.season,
+        week: blowout.week,
+      })
+    }
+  }
+
+  // ── Biggest sweep (category leagues only, real category data present) ───────
+  if (scoring === 'category') {
+    interface Sweep {
+      winKey: string
+      loseKey: string
+      winCats: number
+      loseCats: number
+      season: number
+      week: number
+    }
+    let sweep: Sweep | null = null
+    for (const s of seasons) {
+      for (const w of s.weeks ?? []) {
+        if (!w.matchups || !w.points) continue
+        for (const [a, b] of w.matchups) {
+          const ca = w.points[a]
+          const cb = w.points[b]
+          if (ca == null || cb == null) continue
+          if (!Number.isFinite(ca) || !Number.isFinite(cb)) continue
+          // ESPN cats carry all-zero "points"; require a real category margin.
+          if (ca <= 0 && cb <= 0) continue
+          if (ca === cb) continue
+          const winKey = ca > cb ? a : b
+          const loseKey = ca > cb ? b : a
+          const winCats = Math.max(ca, cb)
+          const loseCats = Math.min(ca, cb)
+          // Most categories won by the winner (tiebreak: largest margin).
+          if (
+            !sweep ||
+            winCats > sweep.winCats ||
+            (winCats === sweep.winCats && winCats - loseCats > sweep.winCats - sweep.loseCats)
+          ) {
+            sweep = { winKey, loseKey, winCats, loseCats, season: s.season, week: w.week }
+          }
+        }
+      }
+    }
+    if (sweep) {
+      moments.push({
+        kind: 'biggestSweep',
+        label: 'Biggest sweep',
+        teamName: nameOf(sweep.winKey),
+        teamLogo: logoOf(sweep.winKey),
+        vsName: nameOf(sweep.loseKey),
+        vsLogo: logoOf(sweep.loseKey),
+        value: sweep.winCats,
+        valueLabel: 'cats',
+        detail: `${sweep.winCats}–${sweep.loseCats}`,
+        season: sweep.season,
+        week: sweep.week,
+      })
+    }
+  }
+
+  // ── Most playoff trips (both, only when playoff data exists) ───────────────
+  {
+    const trips = new Map<string, number>()
+    let sawPlayoffs = false
+    for (const s of seasons) {
+      for (const t of s.teams) {
+        if (t.madePlayoffs) {
+          sawPlayoffs = true
+          trips.set(t.teamKey, (trips.get(t.teamKey) ?? 0) + 1)
+        }
+      }
+    }
+    if (sawPlayoffs) {
+      let top: { key: string; count: number } | null = null
+      for (const [key, count] of trips) {
+        if (!top || count > top.count || (count === top.count && key < top.key)) {
+          top = { key, count }
+        }
+      }
+      if (top && top.count > 0) {
+        moments.push({
+          kind: 'mostPlayoffTrips',
+          label: 'Most playoff trips',
+          teamName: nameOf(top.key),
+          teamLogo: logoOf(top.key),
+          value: top.count,
+          valueLabel: 'playoffs',
+          season: nameByKey.get(top.key)?.season ?? 0,
+        })
+      }
+    }
   }
 
   return moments

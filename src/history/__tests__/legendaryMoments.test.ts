@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildLegendaryMoments } from '../legendaryMoments'
-import type { HistorySeason, HistoryTeam, HistoryWeek } from '../types'
+import type { HistorySeason, HistoryTeam } from '../types'
 
 function team(p: Partial<HistoryTeam> & { teamKey: string }): HistoryTeam {
   return {
@@ -122,5 +122,165 @@ describe('buildLegendaryMoments', () => {
 
   it('returns empty for empty input', () => {
     expect(buildLegendaryMoments([])).toEqual([])
+  })
+
+  it('finds the closest game and biggest blowout from paired matchups', () => {
+    const seasons: HistorySeason[] = [
+      {
+        season: 2024,
+        teams: [
+          team({ teamKey: 'A', teamName: 'Aces', wins: 2 }),
+          team({ teamKey: 'B', teamName: 'Bears', losses: 2 }),
+          team({ teamKey: 'C', teamName: 'Cubs', wins: 1, losses: 1 }),
+          team({ teamKey: 'D', teamName: 'Ducks', wins: 1, losses: 1 }),
+        ],
+        weeks: [
+          {
+            week: 1,
+            results: { A: 'W', B: 'L', C: 'W', D: 'L' },
+            points: { A: 100.5, B: 100.0, C: 150, D: 90 },
+            matchups: [['A', 'B'], ['C', 'D']],
+          },
+        ],
+      },
+    ]
+    const moments = buildLegendaryMoments(seasons, 'points')
+    const close = moments.find((m) => m.kind === 'closestGame')!
+    expect(close.teamName).toBe('Aces')
+    expect(close.vsName).toBe('Bears')
+    expect(close.value).toBe(0.5)
+    expect(close.detail).toBe('100.5–100')
+    expect(close.week).toBe(1)
+
+    const blow = moments.find((m) => m.kind === 'biggestBlowout')!
+    expect(blow.teamName).toBe('Cubs')
+    expect(blow.vsName).toBe('Ducks')
+    expect(blow.value).toBe(60)
+    expect(blow.detail).toBe('150–90')
+  })
+
+  it('finds the highest-scoring season by summed weekly points', () => {
+    const seasons: HistorySeason[] = [
+      {
+        season: 2024,
+        teams: [team({ teamKey: 'A', teamName: 'Aces', wins: 2 }), team({ teamKey: 'B', wins: 0, losses: 2 })],
+        weeks: [
+          { week: 1, results: { A: 'W', B: 'L' }, points: { A: 110, B: 90 } },
+          { week: 2, results: { A: 'W', B: 'L' }, points: { A: 120, B: 95 } },
+        ],
+      },
+    ]
+    const moments = buildLegendaryMoments(seasons, 'points')
+    const hi = moments.find((m) => m.kind === 'highScoringSeason')!
+    expect(hi.teamName).toBe('Aces')
+    expect(hi.value).toBe(230) // 110 + 120
+    expect(hi.valueLabel).toBe('pts')
+    expect(hi.season).toBe(2024)
+  })
+
+  it('finds the biggest sweep for category leagues from category-win counts', () => {
+    const seasons: HistorySeason[] = [
+      {
+        season: 2024,
+        teams: [
+          team({ teamKey: 'A', teamName: 'Aces', wins: 1, losses: 1 }),
+          team({ teamKey: 'B', teamName: 'Bears', wins: 1, losses: 1 }),
+        ],
+        weeks: [
+          {
+            week: 1,
+            results: { A: 'W', B: 'L' },
+            points: { A: 6, B: 3 },
+            matchups: [['A', 'B']],
+          },
+          {
+            week: 2,
+            results: { A: 'L', B: 'W' },
+            points: { B: 9, A: 1 }, // bigger sweep
+            matchups: [['A', 'B']],
+          },
+        ],
+      },
+    ]
+    const moments = buildLegendaryMoments(seasons, 'category')
+    const sweep = moments.find((m) => m.kind === 'biggestSweep')!
+    expect(sweep.teamName).toBe('Bears')
+    expect(sweep.vsName).toBe('Aces')
+    expect(sweep.value).toBe(9)
+    expect(sweep.detail).toBe('9–1')
+    expect(sweep.week).toBe(2)
+    // points-only moments must NOT appear for a category league
+    expect(moments.find((m) => m.kind === 'topWeek')).toBeUndefined()
+    expect(moments.find((m) => m.kind === 'closestGame')).toBeUndefined()
+    expect(moments.find((m) => m.kind === 'biggestBlowout')).toBeUndefined()
+    expect(moments.find((m) => m.kind === 'highScoringSeason')).toBeUndefined()
+  })
+
+  it('skips biggest sweep when category data is all-zero (e.g. ESPN cats)', () => {
+    const seasons: HistorySeason[] = [
+      {
+        season: 2024,
+        teams: [team({ teamKey: 'A', wins: 1 }), team({ teamKey: 'B', losses: 1 })],
+        weeks: [
+          {
+            week: 1,
+            results: { A: 'W', B: 'L' },
+            points: { A: 0, B: 0 },
+            matchups: [['A', 'B']],
+          },
+        ],
+      },
+    ]
+    const moments = buildLegendaryMoments(seasons, 'category')
+    expect(moments.find((m) => m.kind === 'biggestSweep')).toBeUndefined()
+  })
+
+  it('omits points-based moments when scoring is category', () => {
+    const seasons: HistorySeason[] = [
+      {
+        season: 2024,
+        teams: [team({ teamKey: 'A', wins: 1 }), team({ teamKey: 'B', losses: 1 })],
+        weeks: [
+          {
+            week: 1,
+            results: { A: 'W', B: 'L' },
+            points: { A: 142, B: 100 },
+            matchups: [['A', 'B']],
+          },
+        ],
+      },
+    ]
+    const moments = buildLegendaryMoments(seasons, 'category')
+    expect(moments.find((m) => m.kind === 'topWeek')).toBeUndefined()
+    expect(moments.find((m) => m.kind === 'closestGame')).toBeUndefined()
+    expect(moments.find((m) => m.kind === 'biggestBlowout')).toBeUndefined()
+    expect(moments.find((m) => m.kind === 'highScoringSeason')).toBeUndefined()
+  })
+
+  it('includes most playoff trips only when playoff data exists', () => {
+    const withPlayoffs: HistorySeason[] = [
+      {
+        season: 2023,
+        teams: [team({ teamKey: 'A', wins: 1, madePlayoffs: true }), team({ teamKey: 'B', losses: 1 })],
+      },
+      {
+        season: 2024,
+        teams: [team({ teamKey: 'A', wins: 1, madePlayoffs: true }), team({ teamKey: 'B', wins: 1, madePlayoffs: true })],
+      },
+    ]
+    const m1 = buildLegendaryMoments(withPlayoffs, 'points')
+    const trips = m1.find((m) => m.kind === 'mostPlayoffTrips')!
+    expect(trips.teamName).toBe('A')
+    expect(trips.value).toBe(2)
+    expect(trips.valueLabel).toBe('playoffs')
+
+    const noPlayoffs: HistorySeason[] = [
+      {
+        season: 2024,
+        teams: [team({ teamKey: 'A', wins: 2 }), team({ teamKey: 'B', losses: 2 })],
+      },
+    ]
+    const m2 = buildLegendaryMoments(noPlayoffs, 'points')
+    expect(m2.find((m) => m.kind === 'mostPlayoffTrips')).toBeUndefined()
   })
 })

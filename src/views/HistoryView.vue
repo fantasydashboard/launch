@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useLeagueHistory } from '@/composables/useLeagueHistory'
 import { buildChampions } from '@/history/champions'
@@ -24,6 +24,26 @@ const seasons = computed(() => history.data.value)
 const singleSeason = computed(() => seasons.value.length === 1)
 const isEspn = computed(() => history.platform.value === 'espn')
 
+// Scoring type — replicate the wrappers' isCategoryLeague signal against the store so
+// we can gate point-based legendary moments. Defaults to 'points'.
+const scoring = computed<'points' | 'category'>(() => {
+  if (leagueStore.activePlatform === 'sleeper') return 'points'
+  const saved = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
+  const st = String(
+    leagueStore.currentLeague?.scoring_type ?? saved?.scoring_type ?? '',
+  ).toLowerCase()
+  if (st.includes('roto') || st.includes('category') || st === 'head' || st === 'headcategory' || st === 'h2h_category') {
+    return 'category'
+  }
+  const yahoo = leagueStore.yahooLeague
+  const yahooData = Array.isArray(yahoo) ? yahoo[0] : yahoo
+  const yst = String((yahooData as any)?.scoring_type ?? '').toLowerCase()
+  if (yst === 'head' || yst.includes('category') || yst === 'headcategory' || yst.includes('roto')) {
+    return 'category'
+  }
+  return 'points'
+})
+
 const subtitle = computed(() => {
   const n = seasons.value.length
   if (!n) return 'Bragging rights, title runs, and the all-time race.'
@@ -46,7 +66,9 @@ const hasPlayoffData = computed(() =>
   allTime.value.some((r) => r.playoffAppearances > 0),
 )
 
-// ── Dynasty rankings — the all-time franchise pecking order. ─────────────────
+// ── All-time section — toggled Record (standings) ⇄ Legacy (dynasty score). ──
+// "Legacy" is the user-facing name for the internal dynasty ranking.
+const allTimeView = ref<'record' | 'legacy'>('record')
 const dynasty = computed(() =>
   buildDynastyRankings(seasons.value, history.myTeamKey.value),
 )
@@ -55,13 +77,39 @@ const maxDynastyScore = computed(() =>
 )
 
 // ── Rivalries — head-to-head across visible seasons (needs matchup pairings). ─
+// Re-rootable to ANY team via the switcher; defaults to the user's team.
+const selectedRivalKey = ref('')
+watch(
+  () => history.myTeamKey.value,
+  (k) => {
+    if (!selectedRivalKey.value && k) selectedRivalKey.value = k
+  },
+  { immediate: true },
+)
+// Team options for the switcher: distinct teamKey with latest name (all-time list).
+const teamOptions = computed(() =>
+  allTime.value.map((r) => ({ teamKey: r.teamKey, teamName: r.teamName })),
+)
+// Fall back to the user's team (then the first team) if the selected key isn't present.
+const effectiveRivalKey = computed(() => {
+  const keys = new Set(teamOptions.value.map((o) => o.teamKey))
+  if (selectedRivalKey.value && keys.has(selectedRivalKey.value)) return selectedRivalKey.value
+  if (history.myTeamKey.value && keys.has(history.myTeamKey.value)) return history.myTeamKey.value
+  return teamOptions.value[0]?.teamKey ?? ''
+})
 const rivalries = computed(() =>
-  buildRivalries(seasons.value, history.myTeamKey.value),
+  buildRivalries(seasons.value, effectiveRivalKey.value),
 )
 const hasRivalries = computed(() => rivalries.value.mine.length > 0)
+const rivalIsMe = computed(
+  () => !!history.myTeamKey.value && effectiveRivalKey.value === history.myTeamKey.value,
+)
+const rivalName = computed(
+  () => teamOptions.value.find((o) => o.teamKey === effectiveRivalKey.value)?.teamName ?? '',
+)
 
 // ── Legendary moments — the record book. ─────────────────────────────────────
-const moments = computed(() => buildLegendaryMoments(seasons.value))
+const moments = computed(() => buildLegendaryMoments(seasons.value, scoring.value))
 
 const fmtPct = (p: number) => '.' + String(Math.round(p * 1000)).padStart(3, '0')
 const record = (w: number, l: number, t: number) => `${w}-${l}${t ? '-' + t : ''}`
@@ -133,15 +181,38 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
         </div>
       </section>
 
-      <!-- ── ALL-TIME STANDINGS ────────────────────────────────────────────── -->
+      <!-- ── ALL-TIME (Record ⇄ Legacy) ────────────────────────────────────── -->
       <section class="mb-8">
-        <h2 class="font-display text-lg font-bold text-dark-text">All-time standings</h2>
+        <!-- Header + toggle (mirrors LeagueView's matrix toggle) -->
+        <div class="mb-1 flex items-center justify-between gap-3">
+          <h2 class="font-display text-lg font-bold text-dark-text">All-time</h2>
+          <div class="flex shrink-0 items-center gap-0.5 rounded-lg border border-dark-border p-0.5 font-mono text-[10px]">
+            <button
+              class="rounded-md px-2.5 py-1 uppercase tracking-wider transition-colors"
+              :class="allTimeView === 'record' ? 'font-bold' : 'text-dark-textMuted hover:text-dark-text'"
+              :style="allTimeView === 'record' ? { backgroundColor: 'var(--color-primary, #C6FF3A)', color: '#10130a' } : {}"
+              @click="allTimeView = 'record'"
+            >Record</button>
+            <button
+              class="rounded-md px-2.5 py-1 uppercase tracking-wider transition-colors"
+              :class="allTimeView === 'legacy' ? 'font-bold' : 'text-dark-textMuted hover:text-dark-text'"
+              :style="allTimeView === 'legacy' ? { backgroundColor: 'var(--color-primary, #C6FF3A)', color: '#10130a' } : {}"
+              @click="allTimeView = 'legacy'"
+            >Legacy</button>
+          </div>
+        </div>
         <p class="mb-3 font-mono text-xs text-dark-textMuted">
-          <template v-if="singleSeason">This season's race — all-time begins here.</template>
-          <template v-else>The GOAT race across every visible season · titles, then win% · {{ allTime.length }} teams.</template>
+          <template v-if="allTimeView === 'record'">
+            <template v-if="singleSeason">This season's race — all-time begins here.</template>
+            <template v-else>The GOAT race across every visible season · titles, then win% · {{ allTime.length }} teams.</template>
+          </template>
+          <template v-else>
+            The all-time franchise pecking order — titles, finals, playoffs, and consistency, weighted.
+          </template>
         </p>
 
-        <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
+        <!-- RECORD view = all-time standings table -->
+        <div v-if="allTimeView === 'record'" class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
           <!-- Column header -->
           <div class="px-4 py-1 flex items-center gap-3 border-b border-dark-border/40">
             <span class="w-6 shrink-0" />
@@ -187,19 +258,12 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
             </span>
           </div>
         </div>
-        <p class="mt-2 font-mono text-[10px] text-dark-textMuted">
+        <p v-if="allTimeView === 'record'" class="mt-2 font-mono text-[10px] text-dark-textMuted">
           win% counts ties as half-wins<template v-if="hasPlayoffData"> · PO = playoff appearances</template> · y = seasons played
         </p>
-      </section>
 
-      <!-- ── DYNASTY RANKINGS ──────────────────────────────────────────────── -->
-      <section class="mb-8">
-        <h2 class="font-display text-lg font-bold text-dark-text">Dynasty rankings</h2>
-        <p class="mb-3 font-mono text-xs text-dark-textMuted">
-          The all-time franchise pecking order — titles, finals, playoffs, and consistency, weighted.
-        </p>
-
-        <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
+        <!-- LEGACY view = dynasty score bars + breakdown -->
+        <div v-if="allTimeView === 'legacy'" class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
           <div
             v-for="(r, i) in dynasty"
             :key="r.teamKey"
@@ -232,10 +296,25 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
       </section>
 
       <!-- ── RIVALRIES ─────────────────────────────────────────────────────── -->
-      <section v-if="hasRivalries" class="mb-8">
-        <h2 class="font-display text-lg font-bold text-dark-text">Rivalries</h2>
+      <section v-if="rivalries.fiercest" class="mb-8">
+        <div class="mb-1 flex items-center justify-between gap-3">
+          <h2 class="font-display text-lg font-bold text-dark-text">Rivalries</h2>
+          <select
+            v-model="selectedRivalKey"
+            class="shrink-0 max-w-[55%] truncate rounded-lg border border-dark-border bg-dark-card px-2.5 py-1 font-mono text-[11px] text-dark-text focus:border-dark-textMuted focus:outline-none"
+          >
+            <option v-for="o in teamOptions" :key="o.teamKey" :value="o.teamKey">
+              {{ o.teamName }}{{ o.teamKey === history.myTeamKey.value ? ' (you)' : '' }}
+            </option>
+          </select>
+        </div>
         <p class="mb-3 font-mono text-xs text-dark-textMuted">
-          Your head-to-head record vs every team you've faced.
+          <template v-if="rivalIsMe">Your head-to-head record vs every team you've faced.</template>
+          <template v-else>{{ rivalName }}'s head-to-head record vs every team.</template>
+        </p>
+
+        <p v-if="!hasRivalries" class="mb-3 rounded-xl border border-dark-border bg-dark-card px-4 py-3 font-mono text-[11px] text-dark-textMuted">
+          No head-to-head meetings on record for {{ rivalIsMe ? 'you' : rivalName }} yet.
         </p>
 
         <!-- fiercest rivalry callout -->
@@ -255,7 +334,7 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
           <div class="mt-1 font-mono text-[10px] text-dark-textMuted">{{ rivalries.fiercest.games }} meetings all-time</div>
         </div>
 
-        <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
+        <div v-if="hasRivalries" class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
           <div
             v-for="r in rivalries.mine"
             :key="r.oppKey"
@@ -292,6 +371,13 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
             <div class="mt-1.5 flex items-center gap-2">
               <TeamAvatar :name="m.teamName" :logo="m.teamLogo" :size="28" />
               <span class="min-w-0 flex-1 truncate text-sm font-semibold text-dark-text">{{ m.teamName }}</span>
+            </div>
+            <!-- Game moments: opponent + final score line -->
+            <div v-if="m.vsName" class="mt-1 flex items-center gap-1.5 pl-0.5">
+              <span class="font-mono text-[10px] text-dark-textMuted">def.</span>
+              <TeamAvatar :name="m.vsName" :logo="m.vsLogo" :size="18" />
+              <span class="min-w-0 flex-1 truncate font-mono text-[11px] text-dark-textMuted">{{ m.vsName }}</span>
+              <span v-if="m.detail" class="shrink-0 font-mono text-[11px] text-dark-text tabular-nums">{{ m.detail }}</span>
             </div>
             <div class="mt-1.5 flex items-baseline gap-1.5">
               <span class="font-display text-xl font-bold text-primary tabular-nums">{{ m.value }}</span>
