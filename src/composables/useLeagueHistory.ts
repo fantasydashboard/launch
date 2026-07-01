@@ -450,10 +450,16 @@ export function useLeagueHistory() {
           const stored = await fetchSnapshots(key)
           if (leagueStore.activeLeagueId !== requested) return // stale re-check
           const merged = mergeHistorySeasons(result, stored)
-          data.value = merged
-          firstYear.value = merged.length ? Math.min(...merged.map((s) => s.season)) : 0
-          const liveMin = result.length ? Math.min(...result.map((s) => s.season)) : 0
-          backfilled.value = firstYear.value > 0 && liveMin > 0 && firstYear.value < liveMin
+          // Only re-render when stored snapshots actually deepened the history
+          // (merge only ever ADDS seasons the live fetch lacked). Skips a redundant
+          // second render on the common no-backfill path; `data`/`firstYear` already
+          // hold the live result, and `backfilled` was reset to false at load start.
+          if (merged.length > result.length) {
+            data.value = merged
+            firstYear.value = Math.min(...merged.map((s) => s.season))
+            const liveMin = result.length ? Math.min(...result.map((s) => s.season)) : 0
+            backfilled.value = liveMin > 0 && firstYear.value < liveMin
+          }
           const sport = String(leagueStore.activeSport || 'football')
           const activeSeason = result.length ? Math.max(...result.map((s) => s.season)) : 0
           void snapshotSeasons({ key, platform: p, sport, activeSeason, seasons: result })
