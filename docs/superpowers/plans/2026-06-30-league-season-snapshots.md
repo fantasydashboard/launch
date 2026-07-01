@@ -57,14 +57,19 @@ create table if not exists public.league_season_snapshots (
   season int not null,
   is_final boolean not null default false,
   payload jsonb not null,
-  contributor_user_id uuid references auth.users(id),
+  contributor_user_id uuid not null references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (league_snapshot_key, season)
 );
 
-create index if not exists league_season_snapshots_key_idx
-  on public.league_season_snapshots (league_snapshot_key);
+comment on table public.league_season_snapshots is
+  'Shared per-league season history (one row per league_snapshot_key + season). '
+  'Read by all authenticated users; finished seasons (is_final) are locked from updates.';
+
+-- Note: the unique(league_snapshot_key, season) btree already serves the hot-path
+-- lookup "all rows for one league_snapshot_key" (leftmost-prefix), so no separate
+-- single-column index is needed.
 
 alter table public.league_season_snapshots enable row level security;
 
@@ -75,18 +80,27 @@ create policy "insertable by authenticated"
   on public.league_season_snapshots for insert to authenticated
   with check (auth.uid() = contributor_user_id);
 
+-- Shared refresh model: any authenticated member may update the current
+-- (non-final) season row; once a season rolls off (is_final = true) it is locked
+-- from further updates. WITH CHECK (true) keeps the post-image unconstrained so a
+-- non-final row can be finalized, rather than the implicit USING fallback that
+-- would forbid ever setting is_final = true via UPDATE.
 create policy "update only non-final"
   on public.league_season_snapshots for update to authenticated
-  using (is_final = false);
+  using (is_final = false)
+  with check (true);
 
 -- Keep updated_at fresh on every write (same pattern as matchup_snapshots).
 create or replace function public.set_league_season_snapshots_updated_at()
-returns trigger as $$
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
 begin
   new.updated_at = now();
   return new;
 end;
-$$ language plpgsql;
+$$;
 
 drop trigger if exists trg_league_season_snapshots_updated_at
   on public.league_season_snapshots;
@@ -159,13 +173,14 @@ function season(year: number, teams: HistoryTeam[] = []): HistorySeason {
 
 describe('isSeasonFinal', () => {
   it('is final when the season predates the active season', () => {
-    expect(isSeasonFinal(2023, 2026, [])).toBe(true)
+    expect(isSeasonFinal(2023, 2026)).toBe(true)
   })
-  it('is final when a champion is flagged, even in the active season', () => {
-    expect(isSeasonFinal(2026, 2026, [team({ teamKey: 'A', champion: true })])).toBe(true)
+  it('is NOT final for the active (current) season', () => {
+    // Stays updatable so the champion-crowning refresh still lands before it locks.
+    expect(isSeasonFinal(2026, 2026)).toBe(false)
   })
-  it('is NOT final for the active season with no champion yet', () => {
-    expect(isSeasonFinal(2026, 2026, [team({ teamKey: 'A' })])).toBe(false)
+  it('is NOT final for a future season', () => {
+    expect(isSeasonFinal(2027, 2026)).toBe(false)
   })
 })
 
@@ -208,15 +223,18 @@ Create `src/history/mergeSeasons.ts`:
  * preferring the live payload on overlap — stored rows only fill seasons the
  * user's own account can't see. Both are deterministic + side-effect-free.
  */
-import type { HistorySeason, HistoryTeam } from './types'
+import type { HistorySeason } from './types'
 
-/** A season is final when it predates the active season, or a champion is flagged. */
-export function isSeasonFinal(
-  season: number,
-  activeSeason: number,
-  teams: HistoryTeam[],
-): boolean {
-  return season < activeSeason || teams.some((t) => t.champion)
+/**
+ * A season is final (immutable, lockable) once a newer season exists — i.e.
+ * `season < activeSeason`. The current season is deliberately NOT treated as
+ * final even after a champion is decided: finished-season writes are
+ * insert-or-nothing, so if we locked mid-year the champion-crowning refresh
+ * would never be recorded. Keeping the current season non-final lets it keep
+ * refreshing (champion included); it locks a year later when it rolls off.
+ */
+export function isSeasonFinal(season: number, activeSeason: number): boolean {
+  return season < activeSeason
 }
 
 /** Union by season number; live wins on overlap. Result sorted season DESC. */
@@ -281,7 +299,7 @@ vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { id: 'user-1' } 
 
 import { leagueSnapshotKey, snapshotSeasons } from '../historySnapshots'
 
-function season(year: number, champion = false): HistorySeason {
+function season(year: number): HistorySeason {
   return {
     season: year,
     teams: [
@@ -294,7 +312,7 @@ function season(year: number, champion = false): HistorySeason {
         pointsFor: 0,
         rank: 1,
         madePlayoffs: false,
-        champion,
+        champion: false,
       },
     ],
   }
@@ -341,17 +359,18 @@ describe('snapshotSeasons', () => {
     expect(currentCall[0].map((r: any) => r.season)).toEqual([2026])
     expect(currentCall[0][0].is_final).toBe(false)
   })
-  it('treats a champion-flagged active season as final', async () => {
+  it('writes only a final upsert when every season is in the past', async () => {
     await snapshotSeasons({
       key: 'espn:baseball:1',
       platform: 'espn',
       sport: 'baseball',
       activeSeason: 2026,
-      seasons: [season(2026, true)],
+      seasons: [season(2024), season(2025)],
     })
-    // Only a final upsert; no current-season upsert.
+    // Both seasons predate the active one → one final upsert, no current upsert.
     expect(upsert).toHaveBeenCalledTimes(1)
     expect(upsert.mock.calls[0][1].ignoreDuplicates).toBe(true)
+    expect(upsert.mock.calls[0][0].map((r: any) => r.season)).toEqual([2024, 2025])
   })
 })
 ```
@@ -437,7 +456,7 @@ export async function snapshotSeasons(params: {
   const finalRows: ReturnType<typeof row>[] = []
   const currentRows: ReturnType<typeof row>[] = []
   for (const s of seasons) {
-    const final = isSeasonFinal(s.season, activeSeason, s.teams)
+    const final = isSeasonFinal(s.season, activeSeason)
     ;(final ? finalRows : currentRows).push(row(s, final))
   }
 

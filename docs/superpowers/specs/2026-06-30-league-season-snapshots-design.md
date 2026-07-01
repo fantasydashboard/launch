@@ -74,7 +74,7 @@ drifted ahead of the committed migrations; author to match the
 | `season` | int not null | the season year |
 | `is_final` | boolean not null default false | true when the season is complete → locked |
 | `payload` | jsonb not null | the full `HistorySeason` (teams[], weeks[]) |
-| `contributor_user_id` | uuid | `auth.uid()` of the first writer (provenance) |
+| `contributor_user_id` | uuid not null | `auth.uid()` of the first writer (provenance) |
 | `created_at` | timestamptz default now() | |
 | `updated_at` | timestamptz default now() | `updated_at` trigger like `matchup_snapshots` |
 
@@ -95,18 +95,27 @@ create policy "insertable by authenticated"
 
 create policy "update only non-final"
   on public.league_season_snapshots for update to authenticated
-  using (is_final = false);
+  using (is_final = false)
+  with check (true);
 ```
 
 The `update only non-final` policy enforces the "lock finished seasons" rule at
-the database level — a completed season physically cannot be overwritten, even by
-a buggy client.
+the database level — a completed season (`is_final = true`) physically cannot be
+overwritten, even by a buggy client. `with check (true)` keeps the post-update
+image unconstrained (so a non-final row can still be finalized), rather than the
+Postgres fallback where an absent `WITH CHECK` reuses `USING` and would forbid
+setting `is_final = true` via UPDATE. The trigger function is defined with
+`set search_path = ''` per Supabase hardening guidance.
 
 ### 3. Conflict rule, implemented
 
-`isSeasonFinal(season, activeSeason, teams)` (pure): `true` when
-`season < activeSeason` **or** some team is flagged `champion`. Belt and
-suspenders — a decided season is final regardless of the year rollover.
+`isSeasonFinal(season, activeSeason)` (pure): `true` when `season < activeSeason`
+— i.e. a newer season exists. The current season is deliberately **not** locked
+mid-year even once a champion is decided: because finished-season writes are
+insert-or-nothing, locking on the champion flag would freeze the crowning-season
+snapshot at its pre-champion state and never record the winner. Keeping the
+current season non-final lets it keep refreshing (champion included); it locks a
+year later when it rolls off.
 
 - **Finished season** → upsert `is_final: true` with `ignoreDuplicates: true` on
   conflict `(league_snapshot_key, season)`. First final write sticks; later
