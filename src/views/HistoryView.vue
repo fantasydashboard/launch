@@ -23,6 +23,7 @@ const firstYear = computed(() => history.firstYear.value)
 const seasons = computed(() => history.data.value)
 const singleSeason = computed(() => seasons.value.length === 1)
 const isEspn = computed(() => history.platform.value === 'espn')
+const backfilled = computed(() => history.backfilled.value)
 
 // Scoring type — replicate the wrappers' isCategoryLeague signal against the store so
 // we can gate point-based legendary moments. Defaults to 'points'.
@@ -196,9 +197,16 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
     </div>
 
     <template v-else>
-      <!-- ESPN membership note -->
+      <!-- History depth note: positive when league snapshots deepened it, else the ESPN caveat. -->
       <p
-        v-if="isEspn"
+        v-if="backfilled"
+        class="mb-6 rounded-lg border border-dark-border/50 bg-dark-card px-3 py-2 font-mono text-[11px] leading-snug text-dark-textMuted"
+      >
+        History runs back to <span class="text-dark-text">{{ firstYear }}</span>, filled in from
+        seasons your leaguemates contributed. It deepens as more of the league joins.
+      </p>
+      <p
+        v-else-if="isEspn"
         class="mb-6 rounded-lg border border-dark-border/50 bg-dark-card px-3 py-2 font-mono text-[11px] leading-snug text-dark-textMuted"
       >
         ESPN only shares seasons you've been a member of, so your history starts at
