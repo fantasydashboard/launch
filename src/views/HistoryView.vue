@@ -203,7 +203,7 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
         class="mb-6 rounded-lg border border-dark-border/50 bg-dark-card px-3 py-2 font-mono text-[11px] leading-snug text-dark-textMuted"
       >
         History runs back to <span class="text-dark-text">{{ firstYear }}</span>, filled in from
-        seasons your leaguemates contributed. It deepens as more of the league joins.
+        seasons your leaguemates have contributed.
       </p>
       <p
         v-else-if="isEspn"
