@@ -49,6 +49,11 @@ describe('leagueSnapshotKey', () => {
   it('builds a Sleeper key from the chain root', () => {
     expect(leagueSnapshotKey({ platform: 'sleeper', rootLeagueId: 'abc123' })).toBe('sleeper:abc123')
   })
+  it('falls back to the whole key when a Yahoo key lacks .l.', () => {
+    expect(leagueSnapshotKey({ platform: 'yahoo', sport: 'baseball', leagueKey: 'weirdkey' })).toBe(
+      'yahoo:baseball:weirdkey',
+    )
+  })
 })
 
 describe('snapshotSeasons', () => {
@@ -88,5 +93,28 @@ describe('snapshotSeasons', () => {
     expect(upsert).toHaveBeenCalledTimes(1)
     expect(upsert.mock.calls[0][1].ignoreDuplicates).toBe(true)
     expect(upsert.mock.calls[0][0].map((r: any) => r.season)).toEqual([2024, 2025])
+  })
+  it('does not upsert when there are no seasons', async () => {
+    await snapshotSeasons({
+      key: 'espn:baseball:1',
+      platform: 'espn',
+      sport: 'baseball',
+      activeSeason: 2026,
+      seasons: [],
+    })
+    expect(upsert).not.toHaveBeenCalled()
+  })
+  it('logs when an upsert resolves with a Supabase error', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    upsert.mockResolvedValueOnce({ error: { message: 'rls' } })
+    await snapshotSeasons({
+      key: 'espn:baseball:1',
+      platform: 'espn',
+      sport: 'baseball',
+      activeSeason: 2026,
+      seasons: [season(2024)],
+    })
+    expect(errSpy).toHaveBeenCalled()
+    errSpy.mockRestore()
   })
 })

@@ -75,14 +75,16 @@ export async function snapshotSeasons(params: {
 
   try {
     if (finalRows.length) {
-      await supabase
+      const { error } = await supabase
         .from(TABLE)
         .upsert(finalRows, { onConflict: 'league_snapshot_key,season', ignoreDuplicates: true })
+      if (error) console.error('[historySnapshots] final upsert failed', error)
     }
     if (currentRows.length) {
-      await supabase
+      const { error } = await supabase
         .from(TABLE)
         .upsert(currentRows, { onConflict: 'league_snapshot_key,season', ignoreDuplicates: false })
+      if (error) console.error('[historySnapshots] current upsert failed', error)
     }
   } catch (e) {
     console.error('[historySnapshots] write failed', e)
