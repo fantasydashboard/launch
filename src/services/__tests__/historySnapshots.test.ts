@@ -1,20 +1,30 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { HistorySeason } from '@/history/types'
 
-// Capture upsert calls through a mock Supabase client.
-// Use vi.hoisted so variables are available when vi.mock factories run.
-const { upsert, from } = vi.hoisted(() => {
+// Controllable mock Supabase client. vi.hoisted so it's ready when vi.mock factories run.
+const { upsert, del, selectEq, from, authRef } = vi.hoisted(() => {
   const upsert = vi.fn(() => Promise.resolve({ error: null }))
+  const selectEq = vi.fn(() => Promise.resolve({ data: [] as any[], error: null }))
+  // delete().eq(key).eq(season) → resolves { error }
+  const del = vi.fn(() => ({ eq: () => ({ eq: () => Promise.resolve({ error: null }) }) }))
   const from = vi.fn(() => ({
     upsert,
-    select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
+    select: () => ({ eq: selectEq }),
+    delete: del,
   }))
-  return { upsert, from }
+  const authRef = { user: { id: 'user-1' } as { id: string } | null }
+  return { upsert, del, selectEq, from, authRef }
 })
 vi.mock('@/lib/supabase', () => ({ supabase: { from } }))
-vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { id: 'user-1' } }) }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: authRef.user }) }))
 
-import { leagueSnapshotKey, snapshotSeasons } from '../historySnapshots'
+import {
+  leagueSnapshotKey,
+  snapshotSeasons,
+  saveManualSeason,
+  deleteManualSeason,
+  fetchSnapshotRows,
+} from '../historySnapshots'
 
 function season(year: number): HistorySeason {
   return {
@@ -116,5 +126,82 @@ describe('snapshotSeasons', () => {
     })
     expect(errSpy).toHaveBeenCalled()
     errSpy.mockRestore()
+  })
+})
+
+describe('saveManualSeason', () => {
+  beforeEach(() => {
+    upsert.mockClear()
+    upsert.mockResolvedValue({ error: null })
+    authRef.user = { id: 'user-1' }
+  })
+  it('writes a manual, final row for a past season', async () => {
+    const res = await saveManualSeason({
+      key: 'espn:baseball:1',
+      platform: 'espn',
+      sport: 'baseball',
+      activeSeason: 2026,
+      season: season(2019),
+    })
+    expect(res).toEqual({ ok: true })
+    expect(upsert).toHaveBeenCalledTimes(1)
+    const [rows, opts] = upsert.mock.calls[0]
+    const row = Array.isArray(rows) ? rows[0] : rows
+    expect(row).toMatchObject({
+      league_snapshot_key: 'espn:baseball:1',
+      season: 2019,
+      source: 'manual',
+      is_final: true,
+      contributor_user_id: 'user-1',
+    })
+    // Upsert must be able to UPDATE the caller's own row → not ignoreDuplicates.
+    expect(opts.onConflict).toBe('league_snapshot_key,season')
+    expect(opts.ignoreDuplicates).not.toBe(true)
+  })
+  it('returns reason "auth" when logged out', async () => {
+    authRef.user = null
+    const res = await saveManualSeason({
+      key: 'k', platform: 'espn', sport: 'baseball', activeSeason: 2026, season: season(2019),
+    })
+    expect(res).toEqual({ ok: false, reason: 'auth' })
+    expect(upsert).not.toHaveBeenCalled()
+  })
+  it('returns reason "conflict" when the upsert is blocked (RLS)', async () => {
+    upsert.mockResolvedValueOnce({ error: { message: 'permission denied' } })
+    const res = await saveManualSeason({
+      key: 'k', platform: 'espn', sport: 'baseball', activeSeason: 2026, season: season(2019),
+    })
+    expect(res).toEqual({ ok: false, reason: 'conflict' })
+  })
+})
+
+describe('deleteManualSeason', () => {
+  beforeEach(() => del.mockClear())
+  it('issues a delete for the key + season', async () => {
+    const res = await deleteManualSeason('espn:baseball:1', 2019)
+    expect(res).toEqual({ ok: true })
+    expect(del).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('fetchSnapshotRows', () => {
+  beforeEach(() => selectEq.mockClear())
+  it('maps rows to season/source/contributor/payload', async () => {
+    selectEq.mockResolvedValueOnce({
+      data: [
+        { season: 2019, source: 'manual', contributor_user_id: 'u2', payload: season(2019) },
+        { season: 2020, source: 'auto', contributor_user_id: 'u3', payload: season(2020) },
+      ],
+      error: null,
+    })
+    const rows = await fetchSnapshotRows('espn:baseball:1')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toMatchObject({ season: 2019, source: 'manual', contributorUserId: 'u2' })
+    expect(rows[0].payload.season).toBe(2019)
+    expect(rows[1]).toMatchObject({ season: 2020, source: 'auto', contributorUserId: 'u3' })
+  })
+  it('returns [] on a Supabase error', async () => {
+    selectEq.mockResolvedValueOnce({ data: null, error: { message: 'boom' } })
+    expect(await fetchSnapshotRows('k')).toEqual([])
   })
 })
