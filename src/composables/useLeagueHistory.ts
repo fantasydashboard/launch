@@ -24,7 +24,7 @@ import { espnService } from '@/services/espn'
 import { sleeperService } from '@/services/sleeper'
 import type { Sport } from '@/types/supabase'
 import type { HistorySeason, HistoryTeam, HistoryWeek, HistoryResult } from '@/history/types'
-import { leagueSnapshotKey, fetchSnapshots, snapshotSeasons } from '@/services/historySnapshots'
+import { leagueSnapshotKey, fetchSnapshotRows, snapshotSeasons } from '@/services/historySnapshots'
 import { mergeHistorySeasons } from '@/history/mergeSeasons'
 
 function parseEspnKey(key: string): { sport: Sport; leagueId: string; season: number } | null {
@@ -42,6 +42,11 @@ export function useLeagueHistory() {
   const loaded = ref(false)
   const snapshotKey = ref('') // stable per-league key for durable snapshots
   const backfilled = ref(false) // true when stored snapshots deepened the history
+  const sport = ref('') // resolved sport, exposed so the backfill form can label its writes
+  // Per-season provenance for seasons that came from STORAGE (not the user's live fetch).
+  const origin = ref<Map<number, { source: 'auto' | 'manual'; contributorUserId: string; isMine: boolean }>>(
+    new Map(),
+  )
 
   // ── ESPN ──────────────────────────────────────────────────────────────────────
   async function loadEspn(leagueKey: string): Promise<HistorySeason[]> {
@@ -428,6 +433,8 @@ export function useLeagueHistory() {
     myTeamKey.value = ''
     snapshotKey.value = ''
     backfilled.value = false
+    sport.value = String(leagueStore.activeSport || 'football')
+    origin.value = new Map()
     try {
       const p = leagueStore.activePlatform
       platform.value = p
@@ -447,22 +454,36 @@ export function useLeagueHistory() {
       try {
         const key = snapshotKey.value
         if (key) {
-          const stored = await fetchSnapshots(key)
+          const rows = await fetchSnapshotRows(key)
           if (leagueStore.activeLeagueId !== requested) return // stale re-check
+          const stored = rows.map((r) => r.payload)
           const merged = mergeHistorySeasons(result, stored)
-          // Only re-render when stored snapshots actually deepened the history
-          // (merge only ever ADDS seasons the live fetch lacked). Skips a redundant
-          // second render on the common no-backfill path; `data`/`firstYear` already
-          // hold the live result, and `backfilled` was reset to false at load start.
+          // Only re-render + compute provenance when storage actually deepened history
+          // (merge only ADDS seasons the live fetch lacked). Skips a redundant render on
+          // the common no-backfill path.
           if (merged.length > result.length) {
             data.value = merged
             firstYear.value = Math.min(...merged.map((s) => s.season))
             const liveMin = result.length ? Math.min(...result.map((s) => s.season)) : 0
             backfilled.value = liveMin > 0 && firstYear.value < liveMin
+
+            // Provenance only for stored-origin seasons (live wins on overlap, so a season
+            // the user fetched firsthand is never "from storage").
+            const liveSeasons = new Set(result.map((s) => s.season))
+            const uid = useAuthStore().user?.id ?? ''
+            const om = new Map<number, { source: 'auto' | 'manual'; contributorUserId: string; isMine: boolean }>()
+            for (const r of rows) {
+              if (liveSeasons.has(r.season)) continue
+              om.set(r.season, {
+                source: r.source,
+                contributorUserId: r.contributorUserId,
+                isMine: r.source === 'manual' && !!uid && r.contributorUserId === uid,
+              })
+            }
+            origin.value = om
           }
-          const sport = String(leagueStore.activeSport || 'football')
           const activeSeason = result.length ? Math.max(...result.map((s) => s.season)) : 0
-          void snapshotSeasons({ key, platform: p, sport, activeSeason, seasons: result })
+          void snapshotSeasons({ key, platform: p, sport: sport.value, activeSeason, seasons: result })
         }
       } catch (e) {
         console.error('[useLeagueHistory] snapshot step failed', e)
@@ -479,5 +500,5 @@ export function useLeagueHistory() {
     }
   }
 
-  return { data, firstYear, platform, myTeamKey, backfilled, loading, loaded, load }
+  return { data, firstYear, platform, sport, myTeamKey, backfilled, snapshotKey, origin, loading, loaded, load }
 }
