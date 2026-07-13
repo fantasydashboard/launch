@@ -30,6 +30,10 @@ export function useSeasonOutlook(inputs: {
     if (!inputs.myTeamKey.value || !Object.keys(inputs.teamMeta.value).length) return null
 
     const wl = trajectory.weeksLeft.value
+    // usePowerTrajectory only fills playoffSpots for ESPN; mirror LeagueView's fallback so
+    // Yahoo points leagues still get a seed/odds gate rather than being stuck at ready=false.
+    const leagueSize = Object.keys(inputs.teamMeta.value).length
+    const playoffSpots = trajectory.playoffSpots.value || Math.max(2, Math.round(leagueSize / 2))
     const model = buildPointsTeam(
       inputs.pool.value,
       inputs.fgByKey.value,
@@ -46,7 +50,7 @@ export function useSeasonOutlook(inputs: {
       talentRank: model.myLineupRank,
       schedule: trajectory.remainingSchedule.value,
       weeksLeft: wl,
-      playoffSpots: trajectory.playoffSpots.value,
+      playoffSpots,
     })
   })
 
