@@ -6,6 +6,8 @@ import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
 import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
+import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
+import type { OutlookTeamMeta } from '@/myteam/seasonOutlook'
 import { projectPlayerPoints } from '@/myteam/pointsValue'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
@@ -51,6 +53,59 @@ const myTeamLogo = computed<string>(() => {
   if (isEspn.value) return espnPoints.myTeamLogo.value
   const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
   return String(me?.logo_url ?? '')
+})
+
+// All-team records for the playoff sim (mirror LeagueView's pointsTeamMeta, records only).
+const teamMeta = computed<Record<string, OutlookTeamMeta>>(() => {
+  if (isEspn.value) {
+    const out: Record<string, OutlookTeamMeta> = {}
+    for (const [k, r] of Object.entries(espnPoints.teamRecords.value)) {
+      out[k] = { wins: r.wins, losses: r.losses, ties: r.ties, pointsFor: r.pointsFor }
+    }
+    return out
+  }
+  const out: Record<string, OutlookTeamMeta> = {}
+  for (const t of (leagueStore.yahooTeams ?? []) as any[]) {
+    out[String(t.team_key)] = {
+      wins: Number(t.wins ?? 0),
+      losses: Number(t.losses ?? 0),
+      ties: Number(t.ties ?? 0),
+      pointsFor: Number(t.points_for ?? 0),
+    }
+  }
+  return out
+})
+
+const { outlook } = useSeasonOutlook({
+  pool,
+  fgByKey,
+  rosterSlots,
+  weights: scoring.weights,
+  myTeamKey,
+  teamMeta,
+})
+
+const recordLabel = computed(() => {
+  const r = outlook.value?.record
+  if (!r) return ''
+  return `${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ''}`
+})
+
+const standingBadge = computed(() => {
+  const s = outlook.value?.standingState
+  switch (s) {
+    case 'clinched': return { label: 'CLINCHED', cls: 'bg-primary/15 text-primary' }
+    case 'in': return { label: 'IN THE FIELD', cls: 'bg-dark-textMuted/15 text-dark-text' }
+    case 'bubble': return { label: 'ON THE BUBBLE', cls: 'bg-amber-500/15 text-amber-400' }
+    case 'chasing': return { label: 'CHASING', cls: 'bg-dark-textMuted/15 text-dark-textMuted' }
+    case 'eliminated': return { label: 'ELIMINATED', cls: 'bg-[#FF5C5C]/15 text-[#FF5C5C]' }
+    default: return null
+  }
+})
+
+const luckColor = computed(() => {
+  const st = outlook.value?.luck.stance
+  return st === 'sell-high' ? 'text-amber-400' : st === 'buy-low' ? 'text-primary' : 'text-dark-text'
 })
 
 // ── The model ────────────────────────────────────────────────────────────────
@@ -118,6 +173,20 @@ const auditRows = computed(() => {
   }))
 })
 
+const auditOutlook = computed(() => {
+  const o = outlook.value
+  if (!showAudit.value || !o) return null
+  return {
+    record: recordLabel.value,
+    recordRank: o.recordRank,
+    talentRank: o.talentRank,
+    projSeed: o.projSeed,
+    playoffPct: o.playoffPct == null ? null : Math.round(o.playoffPct * 100),
+    state: o.standingState,
+    luck: `${o.luck.stance} (Δ${o.luck.luckDelta})`,
+  }
+})
+
 const roster = computed(() => [
   { label: 'Hitters', rows: hitters.value },
   { label: 'Pitchers', rows: pitchers.value },
@@ -136,9 +205,7 @@ const roster = computed(() => [
         <span v-if="myRecord" class="ml-1 align-middle text-base font-normal text-dark-textMuted">{{ myRecord }}</span>
       </h1>
       <p v-if="verdict" class="mt-1 text-sm text-dark-textMuted">
-        Best lineup projects
-        <span class="font-semibold text-dark-text">{{ ord(model!.myLineupRank) }} of {{ model!.teams }}</span>
-        · Strongest: {{ verdict.best.slot }} ({{ ord(verdict.best.rank) }})
+        Strongest: {{ verdict.best.slot }} ({{ ord(verdict.best.rank) }})
         · Biggest hole: {{ verdict.worst.slot }} ({{ ord(verdict.worst.rank) }})
       </p>
       </div>
@@ -150,15 +217,40 @@ const roster = computed(() => [
     </div>
 
     <template v-else>
-      <!-- Projected finish card -->
-      <div class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
-        <div class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Projected finish</div>
-        <div class="mt-1 flex items-baseline gap-2">
-          <span class="text-3xl font-display font-bold text-primary">{{ ord(model.myLineupRank) }}</span>
-          <span class="text-sm text-dark-textMuted">of {{ model.teams }}</span>
+      <!-- Season Outlook -->
+      <div v-if="outlook" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Season outlook</div>
+
+        <div class="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span class="text-3xl font-display font-bold text-dark-text">{{ recordLabel }}</span>
+          <span class="text-sm text-dark-textMuted">{{ ord(outlook.recordRank) }} of {{ outlook.leagueSize }}</span>
+          <span v-if="standingBadge" class="rounded px-2 py-0.5 font-mono text-[11px] font-semibold" :class="standingBadge.cls">
+            {{ standingBadge.label }}
+          </span>
         </div>
-        <div class="mt-0.5 font-mono text-xs text-dark-textMuted">
-          by projected starting-lineup points · rest of season
+
+        <div v-if="outlook.ready && outlook.projSeed != null && outlook.playoffPct != null"
+          class="mt-1 font-mono text-xs text-dark-textMuted">
+          Projected seed <span class="text-dark-text">{{ ord(outlook.projSeed) }}</span>
+          · <span class="text-dark-text">{{ Math.round(outlook.playoffPct * 100) }}%</span> to make the playoffs
+          · top {{ outlook.playoffSpots }} advance
+        </div>
+        <div v-if="outlook.reasoning" class="mt-1 text-xs text-dark-textMuted">{{ outlook.reasoning }}</div>
+
+        <div class="mt-2 text-[11px] text-dark-textMuted/80">
+          Roster talent: {{ ord(outlook.talentRank) }} of {{ outlook.leagueSize }} · rest-of-season points
+        </div>
+
+        <!-- Luck action -->
+        <div class="mt-3 flex items-start gap-3 rounded-lg border border-dark-border/70 bg-dark-bg/40 p-3">
+          <div class="min-w-0 flex-1">
+            <div class="text-sm font-semibold" :class="luckColor">{{ outlook.luck.headline }}</div>
+            <div class="mt-0.5 text-xs text-dark-textMuted">{{ outlook.luck.detail }}</div>
+          </div>
+          <RouterLink v-if="outlook.luck.cta" :to="outlook.luck.cta.route"
+            class="shrink-0 rounded-md bg-primary/15 px-2.5 py-1 font-mono text-[11px] text-primary hover:bg-primary/25">
+            {{ outlook.luck.cta.label }}
+          </RouterLink>
         </div>
       </div>
 
@@ -289,6 +381,10 @@ const roster = computed(() => [
           <span class="text-dark-text">{{ a.name }}</span>
           <span class="ml-2 text-dark-textMuted">[{{ a.side }}] {{ a.points }} pts · {{ a.perGame }}/g</span>
           <div class="text-dark-textMuted">{{ a.perStat }}</div>
+        </div>
+        <div v-if="auditOutlook" class="mb-2 border-t border-amber-600/20 pt-2 text-dark-textMuted">
+          outlook: {{ auditOutlook.record }} · recordRank {{ auditOutlook.recordRank }} · talentRank {{ auditOutlook.talentRank }}
+          · seed {{ auditOutlook.projSeed }} · {{ auditOutlook.playoffPct }}% · {{ auditOutlook.state }} · {{ auditOutlook.luck }}
         </div>
         <pre class="mt-2 max-h-40 overflow-auto text-[10px] text-dark-textMuted">{{ scoring.rawDump.value }}</pre>
       </section>
