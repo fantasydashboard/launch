@@ -8,9 +8,14 @@ import { buildDynastyRankings } from '@/history/dynastyRankings'
 import { buildRivalries } from '@/history/rivalries'
 import { buildLegendaryMoments } from '@/history/legendaryMoments'
 import TeamAvatar from '@/components/league/TeamAvatar.vue'
+import { useAuthStore } from '@/stores/auth'
+import BackfillSeason from '@/components/history/BackfillSeason.vue'
+import { deleteManualSeason } from '@/services/historySnapshots'
+import type { HistorySeason } from '@/history/types'
 
 const leagueStore = useLeagueStore()
 const history = useLeagueHistory()
+const authStore = useAuthStore()
 
 onMounted(() => history.load())
 watch(() => leagueStore.activeLeagueId, () => history.load())
@@ -24,6 +29,26 @@ const seasons = computed(() => history.data.value)
 const singleSeason = computed(() => seasons.value.length === 1)
 const isEspn = computed(() => history.platform.value === 'espn')
 const backfilled = computed(() => history.backfilled.value)
+
+// ── Manual backfill (Phase 2b) ───────────────────────────────────────────────
+const canWrite = computed(() => !!authStore.user)
+const existingSeasonNums = computed(() => seasons.value.map((s) => s.season))
+// data is sorted season DESC → the newest season is the active one.
+const activeSeason = computed(() => seasons.value[0]?.season ?? 0)
+const originOf = (season: number) => history.origin.value.get(season)
+const editingSeason = ref<HistorySeason | null>(null)
+
+function editManual(season: number) {
+  editingSeason.value = seasons.value.find((s) => s.season === season) ?? null
+}
+async function removeManual(season: number) {
+  const res = await deleteManualSeason(history.snapshotKey.value, season)
+  if (res.ok) await history.load()
+}
+function onBackfillSaved() {
+  editingSeason.value = null
+  history.load()
+}
 
 // Scoring type — replicate the wrappers' isCategoryLeague signal against the store so
 // we can gate point-based legendary moments. Defaults to 'points'.
@@ -213,6 +238,21 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
         <span class="text-dark-text">{{ firstYear }}</span>. It'll grow each season.
       </p>
 
+      <!-- ── MANUAL BACKFILL (Phase 2b) ────────────────────────────────────── -->
+      <BackfillSeason
+        v-if="firstYear"
+        :snapshot-key="history.snapshotKey.value"
+        :platform="history.platform.value"
+        :sport="history.sport.value"
+        :first-year="firstYear"
+        :active-season="activeSeason"
+        :existing-seasons="existingSeasonNums"
+        :prefill="editingSeason"
+        :can-write="canWrite"
+        @saved="onBackfillSaved"
+        @cancel-edit="editingSeason = null"
+      />
+
       <!-- ── CHAMPIONS ─────────────────────────────────────────────────────── -->
       <section class="mb-8">
         <h2 class="font-display text-lg font-bold text-dark-text">Champions</h2>
@@ -245,6 +285,21 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
                 class="shrink-0 rounded px-1 font-mono text-[9px] uppercase tracking-wider text-primary"
                 :style="{ backgroundColor: primaryTint(16) }"
               >back-to-back</span>
+              <template v-if="originOf(c.season)?.source === 'manual'">
+                <span class="shrink-0 font-mono text-[9px] text-dark-textMuted">
+                  added by {{ originOf(c.season)?.isMine ? 'you' : 'a leaguemate' }}
+                </span>
+                <template v-if="originOf(c.season)?.isMine">
+                  <button
+                    class="shrink-0 font-mono text-[9px] text-dark-textMuted underline-offset-2 hover:text-dark-text hover:underline"
+                    @click="editManual(c.season)"
+                  >edit</button>
+                  <button
+                    class="shrink-0 font-mono text-[9px] text-[#e0625a] underline-offset-2 hover:underline"
+                    @click="removeManual(c.season)"
+                  >remove</button>
+                </template>
+              </template>
             </span>
             <div class="shrink-0 text-right font-mono text-[10px] leading-tight text-dark-textMuted">
               <div v-if="c.runnerUpName">runner-up: <span class="text-dark-text">{{ c.runnerUpName }}</span></div>
