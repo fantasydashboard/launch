@@ -141,6 +141,11 @@ const round = (n: number) => Math.round(n)
 const tierColor = (tier: string) =>
   tier === 'CORE' ? 'text-primary' : tier === 'FRINGE' ? 'text-dark-textMuted' : 'text-dark-textSecondary'
 
+const injuryBadge = (injury: string) =>
+  injury === 'il' ? { label: 'IL', cls: 'bg-[#FF5C5C]/15 text-[#FF5C5C]' }
+  : injury === 'dtd' ? { label: 'DTD', cls: 'bg-amber-500/15 text-amber-400' }
+  : null
+
 // Slot-spine rank coloring (green good, red weak).
 function rankClass(rank: number, teams: number): string {
   if (teams <= 1) return 'text-dark-text'
@@ -170,6 +175,7 @@ const auditRows = computed(() => {
     perStat: Object.entries(projectPlayerPoints(fgByKey.value[r.player.playerKey], scoring.weights.value).perStat)
       .map(([k, v]) => `${k} ${v > 0 ? '+' : ''}${round(v)}`)
       .join('  '),
+    injury: r.injury,
   }))
 })
 
@@ -191,6 +197,10 @@ const roster = computed(() => [
   { label: 'Hitters', rows: hitters.value },
   { label: 'Pitchers', rows: pitchers.value },
 ])
+
+const injuredCount = computed(() =>
+  (model.value?.rosterRows ?? []).filter((r) => r.injury === 'il' || r.injury === 'dtd').length,
+)
 </script>
 
 <template>
@@ -353,6 +363,12 @@ const roster = computed(() => [
                   class="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary">{{ c }}</span>
               </span>
 
+              <span v-if="injuryBadge(row.injury)"
+                class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold"
+                :class="injuryBadge(row.injury)!.cls">
+                {{ injuryBadge(row.injury)!.label }}
+              </span>
+
               <!-- Projected points + per-game (or a "no projection" note for unmatched) -->
               <span v-if="!hasProj(row.player.playerKey)"
                 class="ml-auto shrink-0 font-mono text-[11px] italic text-dark-textMuted/50">no projection</span>
@@ -365,6 +381,9 @@ const roster = computed(() => [
         </div>
 
         <p class="px-4 py-3 font-mono text-[10px] leading-relaxed text-dark-textMuted">
+          <span v-if="injuredCount" class="text-dark-text">
+            {{ injuredCount }} injured — projections discounted (IL ×0.5, DTD ×0.9).
+          </span>
           <span class="text-primary">chips</span> = a specialist edge (SB / SV / HLD / QS) ·
           right number = projected rest-of-season fantasy points (/g per game) ·
           tiers rank within hitters / pitchers
@@ -380,6 +399,7 @@ const roster = computed(() => [
         <div v-for="a in auditRows" :key="a.name" class="border-t border-amber-600/20 py-1">
           <span class="text-dark-text">{{ a.name }}</span>
           <span class="ml-2 text-dark-textMuted">[{{ a.side }}] {{ a.points }} pts · {{ a.perGame }}/g</span>
+          <span class="ml-2 text-dark-textMuted">inj: {{ a.injury }}</span>
           <div class="text-dark-textMuted">{{ a.perStat }}</div>
         </div>
         <div v-if="auditOutlook" class="mb-2 border-t border-amber-600/20 pt-2 text-dark-textMuted">
