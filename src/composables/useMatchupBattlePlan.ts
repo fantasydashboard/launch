@@ -348,7 +348,7 @@ export function useMatchupBattlePlan(): {
   // useYourMove already fetches the schedule internally; we fetch it again here
   // for volumeEdge so this composable is self-contained and doesn't couple to
   // useYourMove internals.
-  const EMPTY_SCHEDULE: import('@/services/mlbSchedule').WeekSchedule = { gamesByTeam: {}, startsByPitcher: {} }
+  const EMPTY_SCHEDULE: import('@/services/mlbSchedule').WeekSchedule = { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
   const weekScheduleRef = ref<import('@/services/mlbSchedule').WeekSchedule>({ ...EMPTY_SCHEDULE })
   // Today-only schedule so the daily cadence can show TODAY's games, not the week's.
   const todayScheduleRef = ref<import('@/services/mlbSchedule').WeekSchedule>({ ...EMPTY_SCHEDULE })
@@ -357,8 +357,8 @@ export function useMatchupBattlePlan(): {
     () => thisWeek.snapshot.value,
     async (snap) => {
       if (!snap || snap.completed) {
-        weekScheduleRef.value = { gamesByTeam: {}, startsByPitcher: {} }
-        todayScheduleRef.value = { gamesByTeam: {}, startsByPitcher: {} }
+        weekScheduleRef.value = { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
+        todayScheduleRef.value = { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
         return
       }
       const start = new Date()
@@ -367,12 +367,12 @@ export function useMatchupBattlePlan(): {
       try {
         weekScheduleRef.value = await getWeekSchedule(ymd(start), ymd(end))
       } catch {
-        weekScheduleRef.value = { gamesByTeam: {}, startsByPitcher: {} }
+        weekScheduleRef.value = { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
       }
       try {
         todayScheduleRef.value = await getWeekSchedule(ymd(start), ymd(start))
       } catch {
-        todayScheduleRef.value = { gamesByTeam: {}, startsByPitcher: {} }
+        todayScheduleRef.value = { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
       }
     },
     { immediate: true },

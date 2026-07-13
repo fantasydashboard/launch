@@ -14,6 +14,9 @@ export interface WeekSchedule {
   gamesByTeam: Record<string, number>
   // normalized pitcher name -> their probable starts in the range.
   startsByPitcher: Record<string, ProbableStart[]>
+  // Each team (all abbr variants) -> the home team abbr of their game in range (park venue).
+  // On multiple games the latest wins; fine for the single-day "today" use.
+  homeTeamByTeam: Record<string, string>
 }
 
 // Team-abbreviation variants across data sources. statsapi (the schedule) uses
@@ -84,6 +87,7 @@ export function lookupStarts(schedule: WeekSchedule, name: string): ProbableStar
 export function parseSchedule(data: unknown): WeekSchedule {
   const gamesByTeam: Record<string, number> = {}
   const startsByPitcher: Record<string, ProbableStart[]> = {}
+  const homeTeamByTeam: Record<string, string> = {}
   const dates = (data as { dates?: unknown[] })?.dates ?? []
   for (const day of dates as { games?: unknown[] }[]) {
     for (const game of (day.games ?? []) as Record<string, any>[]) {
@@ -93,6 +97,10 @@ export function parseSchedule(data: unknown): WeekSchedule {
       // Key by every abbreviation variant so ESPN/Yahoo team codes resolve too.
       if (home) for (const v of teamAbbrVariants(home)) gamesByTeam[v] = (gamesByTeam[v] ?? 0) + 1
       if (away) for (const v of teamAbbrVariants(away)) gamesByTeam[v] = (gamesByTeam[v] ?? 0) + 1
+      if (home) {
+        for (const v of teamAbbrVariants(home)) homeTeamByTeam[v] = home
+        if (away) for (const v of teamAbbrVariants(away)) homeTeamByTeam[v] = home
+      }
       const record = (
         side: 'home' | 'away',
         teamAbbr: string | undefined,
@@ -113,10 +121,10 @@ export function parseSchedule(data: unknown): WeekSchedule {
       record('away', away, home)
     }
   }
-  return { gamesByTeam, startsByPitcher }
+  return { gamesByTeam, startsByPitcher, homeTeamByTeam }
 }
 
-const EMPTY: WeekSchedule = { gamesByTeam: {}, startsByPitcher: {} }
+const EMPTY: WeekSchedule = { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
 const memo = new Map<string, WeekSchedule>()
 
 /**

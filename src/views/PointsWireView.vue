@@ -18,7 +18,7 @@ const yahooLeague = useYahooLeaguePool()
 const espnPoints = useEspnPointsTeamData()
 const avail = useAvailablePlayers()
 const scoring = useLeagueScoring()
-const schedule = ref<WeekSchedule>({ gamesByTeam: {}, startsByPitcher: {} })
+const schedule = ref<WeekSchedule>({ gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} })
 const matchFG = ref<((p: { full_name?: string; mlb_team?: string }) => FGProjection | null) | null>(null)
 
 async function loadSchedule() {

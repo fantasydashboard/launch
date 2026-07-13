@@ -19,8 +19,8 @@ const yahooLeague = useYahooLeaguePool()
 const espnPoints = useEspnPointsTeamData()
 const scoring = useLeagueScoring()
 const oppSvc = useThisWeekOpponent()
-const schedule = ref<WeekSchedule>({ gamesByTeam: {}, startsByPitcher: {} })
-const todaySchedule = ref<WeekSchedule>({ gamesByTeam: {}, startsByPitcher: {} })
+const schedule = ref<WeekSchedule>({ gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} })
+const todaySchedule = ref<WeekSchedule>({ gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} })
 const cadence = ref<'daily' | 'weekly'>('weekly')
 
 async function loadSchedule() {

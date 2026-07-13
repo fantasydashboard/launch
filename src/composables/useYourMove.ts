@@ -15,7 +15,7 @@ import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 // A this-week category is worth chasing if it's a coin-flip, or a loss still within
 // reach (we're not yet hopelessly behind). Hopeless cats aren't "moves."
 const LOSS_IN_REACH_PCT = 30
-const EMPTY_SCHEDULE: WeekSchedule = { gamesByTeam: {}, startsByPitcher: {} }
+const EMPTY_SCHEDULE: WeekSchedule = { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
 
 function ymd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`

@@ -128,3 +128,30 @@ describe('mlbSchedule', () => {
     expect(parseSchedule({ dates: [{ games: [{}] }] }).startsByPitcher).toEqual({})
   })
 })
+
+const RAW = {
+  dates: [
+    {
+      games: [
+        {
+          gameDate: '2026-07-13T23:00:00Z',
+          teams: {
+            home: { team: { abbreviation: 'COL' }, probablePitcher: { fullName: 'Kyle Freeland' } },
+            away: { team: { abbreviation: 'LAD' }, probablePitcher: { fullName: 'Yoshinobu Yamamoto' } },
+          },
+        },
+      ],
+    },
+  ],
+}
+
+describe('parseSchedule homeTeamByTeam', () => {
+  it('maps every team (and variants) to the home team of their game', () => {
+    const s = parseSchedule(RAW)
+    expect(s.homeTeamByTeam['COL']).toBe('COL')
+    expect(s.homeTeamByTeam['LAD']).toBe('COL')
+  })
+  it('is empty for no games', () => {
+    expect(parseSchedule({ dates: [] }).homeTeamByTeam).toEqual({})
+  })
+})

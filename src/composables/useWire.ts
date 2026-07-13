@@ -487,7 +487,7 @@ export function useWire() {
   })
 
   // ── week schedule (for the streaming board) ───────────────────────────────
-  const weekScheduleRef = ref<WeekSchedule>({ gamesByTeam: {}, startsByPitcher: {} })
+  const weekScheduleRef = ref<WeekSchedule>({ gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} })
   async function fetchWeekSchedule() {
     const start = new Date()
     const end = new Date(start)
@@ -495,7 +495,7 @@ export function useWire() {
     try {
       weekScheduleRef.value = await getWeekSchedule(ymd(start), ymd(end))
     } catch {
-      weekScheduleRef.value = { gamesByTeam: {}, startsByPitcher: {} }
+      weekScheduleRef.value = { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
     }
   }
 
