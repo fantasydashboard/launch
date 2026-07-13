@@ -58,6 +58,23 @@ describe('buildSeasonOutlook', () => {
     expect(o.recordRank).toBe(3)
   })
 
+  it('breaks a win% tie by pointsFor (higher pointsFor ranks ahead)', () => {
+    const teamMeta: Record<string, OutlookTeamMeta> = {
+      team_a: { wins: 6, losses: 6, ties: 0, pointsFor: 1000 },
+      team_b: { wins: 6, losses: 6, ties: 0, pointsFor: 1200 }, // same win%, more PF -> ranks 1st
+      team_c: { wins: 0, losses: 12, ties: 0, pointsFor: 500 },
+    }
+    const standings: TeamStanding[] = [
+      { teamKey: 'team_a', startingPoints: 400, rank: 2 },
+      { teamKey: 'team_b', startingPoints: 420, rank: 1 },
+      { teamKey: 'team_c', startingPoints: 300, rank: 3 },
+    ]
+    const a = buildSeasonOutlook({ myTeamKey: 'team_a', teamMeta, standings, talentRank: 2, schedule: [], weeksLeft: 0, playoffSpots: 0 })
+    const b = buildSeasonOutlook({ myTeamKey: 'team_b', teamMeta, standings, talentRank: 1, schedule: [], weeksLeft: 0, playoffSpots: 0 })
+    expect(b.recordRank).toBe(1)
+    expect(a.recordRank).toBe(2)
+  })
+
   it('no schedule -> not ready, seed/odds null, luck still computed from ranks', () => {
     const { teamMeta, standings } = fixture()
     const o = buildSeasonOutlook({

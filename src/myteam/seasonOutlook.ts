@@ -80,14 +80,14 @@ export function buildSeasonOutlook(input: {
   const recordRank = (ranked.indexOf(myTeamKey) + 1) || leagueSize
 
   const strengthByKey = new Map(standings.map((s) => [s.teamKey, s.startingPoints]))
-  const ready = schedule.length > 0 && weeksLeft > 0 && playoffSpots > 0
+  const scheduleKnown = schedule.length > 0 && weeksLeft > 0 && playoffSpots > 0
 
   let projSeed: number | null = null
   let playoffPct: number | null = null
   let standingState: StandingState = 'unknown'
   let reasoning = ''
 
-  if (ready) {
+  if (scheduleKnown) {
     const oddsTeams: OddsTeam[] = keys.map((k) => ({
       teamKey: k,
       strength: strengthByKey.get(k) ?? 0,
@@ -110,6 +110,7 @@ export function buildSeasonOutlook(input: {
     }
   }
 
+  const ready = playoffPct != null
   const luck = luckVerdict({ recordRank, talentRank, leagueSize, standingState })
 
   return {
