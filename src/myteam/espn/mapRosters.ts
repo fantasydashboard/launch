@@ -58,6 +58,7 @@ export function mapRostersToPool(teams: EspnTeamRosterLike[], sport?: Sport): Po
       headshot: sport ? espnHeadshotUrl(p.playerId, sport) : undefined,
       proTeam: p.proTeam || undefined,
       onIL: isEspnIL(p.lineupSlot),
+      status: p.injuryStatus && p.injuryStatus !== 'ACTIVE' ? p.injuryStatus : '',
     })),
   )
 }

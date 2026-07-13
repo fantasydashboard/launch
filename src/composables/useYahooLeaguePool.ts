@@ -29,6 +29,7 @@ export interface LeaguePoolPlayer {
   proTeam: string // MLB team abbr
   headshot: string // player headshot URL ('' if absent)
   onIL: boolean // sits in an IL/NA reserve slot (not an active roster spot)
+  status?: string // raw Yahoo injury status ('IL10' / 'DTD' / …)
   stats: Record<string, number> // empty; the FG projection in fgByKey drives totals
 }
 
@@ -93,6 +94,7 @@ export function useYahooLeaguePool() {
         proTeam: r.proTeam,
         headshot: r.headshot,
         onIL: isYahooIL(r.status),
+        status: r.status ?? '',
         stats: {},
       })
       try {

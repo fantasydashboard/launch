@@ -64,6 +64,7 @@ export interface PoolPlayer {
   headshot?: string
   proTeam?: string // MLB team abbr, for the pro-team logo
   onIL?: boolean // sits in an IL/NA reserve slot (not an active roster spot)
+  status?: string // raw platform injury status
 }
 
 function normalizePoolPlayer(raw: any): PoolPlayer {

@@ -22,6 +22,7 @@ export interface PointsPoolPlayer {
   proTeam?: string
   headshot?: string
   onIL?: boolean
+  status?: string // raw platform injury status ('IL10' / 'DTD' / 'DAY_TO_DAY' / '' …)
 }
 
 export type Tier = 'CORE' | 'SOLID' | 'FRINGE'
