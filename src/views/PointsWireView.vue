@@ -80,6 +80,12 @@ const wire = computed(() => {
 const drops = computed(() => [...(teamModel.value?.rosterRows ?? [])].sort((a, b) => a.points - b.points).slice(0, 5))
 
 const round = (n: number) => Math.round(n)
+// Injury badge (health) — separate from the onIL reserve-slot mechanic below, so a discounted
+// but still-active injured body (DTD / status-only IL) isn't captioned as merely "lowest projected".
+const injuryBadge = (injury: string) =>
+  injury === 'il' ? { label: 'IL', cls: 'bg-[#FF5C5C]/15 text-[#FF5C5C]' }
+  : injury === 'dtd' ? { label: 'DTD', cls: 'bg-amber-500/15 text-amber-400' }
+  : null
 const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none')
 const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooLeague.loading.value || avail.loading.value))
 </script>
@@ -195,7 +201,7 @@ const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooL
             <span class="min-w-0 flex-1 truncate text-sm text-dark-text">
               {{ r.player.name }}
               <span class="ml-1 text-[11px] text-dark-textMuted">{{ r.player.position }} · {{ r.player.proTeam }}</span>
-              <span v-if="r.player.onIL" class="ml-1 rounded bg-[#e69a4a]/15 px-1 py-0.5 font-mono text-[9px] uppercase text-[#e69a4a]">IL</span>
+              <span v-if="injuryBadge(r.injury)" class="ml-1 rounded px-1 py-0.5 font-mono text-[9px] uppercase" :class="injuryBadge(r.injury)!.cls">{{ injuryBadge(r.injury)!.label }}</span>
               <span class="ml-1 text-[11px] text-dark-textMuted/70">{{ r.player.onIL ? "won't free an active spot" : 'lowest projected' }}</span>
             </span>
             <span class="font-mono text-[10px] uppercase text-dark-textMuted">{{ r.tier }}</span>
