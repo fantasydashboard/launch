@@ -73,6 +73,7 @@ function normalizePoolPlayer(raw: any): PoolPlayer {
     name: String(raw.full_name ?? ''),
     position: String(raw.position ?? ''),
     stats: raw.stats && typeof raw.stats === 'object' ? { ...raw.stats } : {},
+    status: raw.status ? String(raw.status) : '',
     eligiblePositions: eligibleFrom(raw),
     teamKey: String(raw.fantasy_team_key ?? ''),
     headshot: raw.headshot ? String(raw.headshot) : undefined,
