@@ -39,13 +39,15 @@ const form = reactive({
 const saving = ref(false)
 const errorMsg = ref('')
 
-// Candidate years for ADD: the 15 years before firstYear, minus any already on record.
+// Candidate years for ADD: every year before firstYear (back to the online-fantasy era),
+// minus any already on record — so even a 15–20+ year-old league can seed its earliest seasons.
 const candidateYears = computed(() => {
   const base = props.firstYear || props.activeSeason
   if (!base) return []
+  const floor = Math.max(1996, base - 30) // online fantasy predates ~1996; 30y back is a safe bound
   const taken = new Set(props.existingSeasons)
   const years: number[] = []
-  for (let y = base - 1; y >= base - 15; y--) if (!taken.has(y)) years.push(y)
+  for (let y = base - 1; y >= floor; y--) if (!taken.has(y)) years.push(y)
   return years
 })
 
@@ -83,7 +85,8 @@ function populateFromPrefill(season: HistorySeason) {
   }
 }
 
-// Open + populate when a prefill arrives; close when it clears.
+// Open + populate the form when a prefill arrives (edit mode). Clearing the prefill is
+// handled by the caller's own close paths, so nothing to do when it goes null.
 watch(
   () => props.prefill,
   (p) => {

@@ -42,6 +42,8 @@ function editManual(season: number) {
   editingSeason.value = seasons.value.find((s) => s.season === season) ?? null
 }
 async function removeManual(season: number) {
+  // Destructive + one-click on a hand-entered season → confirm before deleting.
+  if (!window.confirm(`Remove the ${season} season you added? This can't be undone.`)) return
   const res = await deleteManualSeason(history.snapshotKey.value, season)
   if (res.ok) await history.load()
 }
