@@ -87,4 +87,32 @@ describe('buildPointsTeam', () => {
   it('parseEligible falls back to the position string', () => {
     expect(parseEligible({ playerKey: 'x', name: 'x', position: 'SP,RP', teamKey: 'A' })).toEqual(['SP', 'RP'])
   })
+
+  it('discounts injured players (IL x0.5, DTD x0.9), keeps perGame at the healthy rate, and lowers strength', () => {
+    const injPool = pool.map((p) =>
+      p.playerKey === 'Stud2B' ? { ...p, onIL: true } // IL
+      : p.playerKey === 'WeakOF' ? { ...p, status: 'DTD' } // DTD
+      : p,
+    )
+    const healthy = buildPointsTeam(pool, fgByKey, weights, 'A', slots)
+    const injured = buildPointsTeam(injPool, fgByKey, weights, 'A', slots)
+
+    const row = (m: ReturnType<typeof buildPointsTeam>, key: string) =>
+      m.rosterRows.find((r) => r.player.playerKey === key)!
+
+    // IL: points halved, tier tagged, per-game rate untouched
+    expect(row(injured, 'Stud2B').points).toBeCloseTo(row(healthy, 'Stud2B').points * 0.5, 5)
+    expect(row(injured, 'Stud2B').injury).toBe('il')
+    expect(row(injured, 'Stud2B').perGame).toBeCloseTo(row(healthy, 'Stud2B').perGame, 5)
+    // DTD: points x0.9
+    expect(row(injured, 'WeakOF').points).toBeCloseTo(row(healthy, 'WeakOF').points * 0.9, 5)
+    expect(row(injured, 'WeakOF').injury).toBe('dtd')
+    // Healthy player unchanged
+    expect(row(injured, 'AceA').points).toBeCloseTo(row(healthy, 'AceA').points, 5)
+    expect(row(injured, 'AceA').injury).toBe('healthy')
+    // Team strength drops when a star is hurt
+    const strengthA = (m: ReturnType<typeof buildPointsTeam>) =>
+      m.standings.find((s) => s.teamKey === 'A')!.startingPoints
+    expect(strengthA(injured)).toBeLessThan(strengthA(healthy))
+  })
 })

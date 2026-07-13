@@ -12,6 +12,7 @@
 import { projectPlayerPoints, weeklyRate, type PointsSide } from '@/myteam/pointsValue'
 import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
 import type { FGProjection } from '@/services/projectionService'
+import { injuryTier, injuryDiscount, type InjuryTier } from './injuryStatus'
 
 export interface PointsPoolPlayer {
   playerKey: string
@@ -37,6 +38,7 @@ export interface PointsRosterRow {
   rankVsAll: number // 0-100 percentile vs all rostered players on the same side
   perStat: Record<string, number>
   chips: string[] // specialist edges (SB/SV/HLD/QS) where this player is a standout
+  injury: InjuryTier // 'healthy' | 'dtd' | 'il' — drives the badge + the points discount
 }
 
 export interface SlotRankRow {
@@ -114,11 +116,17 @@ export function buildPointsTeam(
   const ptsByKey = new Map<string, ReturnType<typeof projectPlayerPoints>>()
   for (const p of pool) ptsByKey.set(p.playerKey, projectPlayerPoints(fgByKey[p.playerKey], weights))
 
+  // Injury haircut per player (IL x0.5 / DTD x0.9), applied to every value read below so it
+  // flows into tiers, the slot spine, standings strength, and myLineupRank consistently.
+  const injuryByKey = new Map<string, InjuryTier>(pool.map((p) => [p.playerKey, injuryTier(p.status, p.onIL)]))
+  const discountOf = (key: string) => injuryDiscount(injuryByKey.get(key) ?? 'healthy')
+
   // Lineup value per the chosen basis — totals for My Team, weekly rate for ranking.
   const valueOf = (key: string): number => {
     const r = ptsByKey.get(key)
     if (!r) return 0
-    return basis === 'perWeek' ? weeklyRate(r, fgByKey[key], weeksLeft) : r.total
+    const base = basis === 'perWeek' ? weeklyRate(r, fgByKey[key], weeksLeft) : r.total
+    return base * discountOf(key)
   }
 
   // Specialist-chip thresholds. A chip should mark a STANDOUT, not anyone who
@@ -165,7 +173,16 @@ export function buildPointsTeam(
     .filter((p) => myTeamKey != null && p.teamKey === myTeamKey)
     .map((p) => {
       const r = ptsByKey.get(p.playerKey)!
-      return { player: p, side: sideByKey.get(p.playerKey)!, points: r.total, games: r.games, perStat: r.perStat }
+      const disc = discountOf(p.playerKey)
+      return {
+        player: p,
+        side: sideByKey.get(p.playerKey)!,
+        points: r.total * disc, // discounted — drives tiers + display
+        perGame: r.games > 0 ? r.total / r.games : 0, // healthy "when he plays" rate
+        games: r.games,
+        perStat: r.perStat,
+        injury: injuryByKey.get(p.playerKey) ?? 'healthy',
+      }
     })
 
   const rosterRows: PointsRosterRow[] = []
@@ -179,12 +196,13 @@ export function buildPointsTeam(
         player: r.player,
         side: r.side,
         points: r.points,
-        perGame: r.games > 0 ? r.points / r.games : 0,
+        perGame: r.perGame,
         games: r.games,
         tier,
         rankVsAll: pct,
         perStat: r.perStat,
         chips: chipsFor(r.side, r.perStat),
+        injury: r.injury,
       })
     })
   }
