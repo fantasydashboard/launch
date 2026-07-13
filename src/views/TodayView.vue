@@ -23,7 +23,11 @@ const hasNothing = computed(
     !board.value.openSlots.length &&
     !board.value.streamers.length,
 )
-const showEmpty = computed(() => error.value === 'no-games' || (!loading.value && hasNothing.value))
+// No MLB games at all (off-day / All-Star break) is different from "you have games but
+// nothing to change" — keep the two apart so the copy doesn't imply a lineup is optimized
+// on a day nobody plays.
+const noGames = computed(() => error.value === 'no-games')
+const showEmpty = computed(() => noGames.value || (!loading.value && hasNothing.value))
 const showFailed = computed(() => error.value === 'failed')
 
 function fillLabel(play: ScoredPlay): string {
@@ -57,9 +61,14 @@ function reasonLabel(reason: string): string {
       Couldn't load today's slate. Try refreshing.
     </div>
 
-    <!-- ── EMPTY (no games / nothing to do) ───────────────────────────────── -->
+    <!-- ── EMPTY — distinguish "no games at all" from "games, but nothing to do" ── -->
     <div v-else-if="showEmpty" class="py-16 text-center text-dark-textMuted">
-      You're set for today — lineup's optimal.
+      <template v-if="noGames">
+        No MLB games today — the board lights up when games resume.
+      </template>
+      <template v-else>
+        You're set for today — lineup's optimal.
+      </template>
     </div>
 
     <template v-else>
