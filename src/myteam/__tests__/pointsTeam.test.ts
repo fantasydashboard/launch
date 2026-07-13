@@ -115,4 +115,17 @@ describe('buildPointsTeam', () => {
       m.standings.find((s) => s.teamKey === 'A')!.startingPoints
     expect(strengthA(injured)).toBeLessThan(strengthA(healthy))
   })
+
+  it('DTD discount (startable) lowers team strength by exactly the haircut', () => {
+    // WeakOF is team A's only OF, so he starts. DTD keeps him startable at x0.9, so the
+    // 0.1 haircut must show up in standings strength — proving the discount, not exclusion, moved it.
+    const dtdPool = pool.map((p) => (p.playerKey === 'WeakOF' ? { ...p, status: 'DTD' } : p))
+    const healthy = buildPointsTeam(pool, fgByKey, weights, 'A', slots)
+    const dtd = buildPointsTeam(dtdPool, fgByKey, weights, 'A', slots)
+    const strengthA = (m: ReturnType<typeof buildPointsTeam>) =>
+      m.standings.find((s) => s.teamKey === 'A')!.startingPoints
+    const weakOfPoints = healthy.rosterRows.find((r) => r.player.playerKey === 'WeakOF')!.points
+    expect(strengthA(dtd)).toBeLessThan(strengthA(healthy))
+    expect(strengthA(healthy) - strengthA(dtd)).toBeCloseTo(weakOfPoints * 0.1, 3)
+  })
 })

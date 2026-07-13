@@ -116,8 +116,10 @@ export function buildPointsTeam(
   const ptsByKey = new Map<string, ReturnType<typeof projectPlayerPoints>>()
   for (const p of pool) ptsByKey.set(p.playerKey, projectPlayerPoints(fgByKey[p.playerKey], weights))
 
-  // Injury haircut per player (IL x0.5 / DTD x0.9), applied to every value read below so it
-  // flows into tiers, the slot spine, standings strength, and myLineupRank consistently.
+  // Injury haircut per player (IL x0.5 / DTD x0.9). IL-tier players are already excluded from the
+  // optimal lineup by assignSlots (DepthPlayer.status below), so for them the discount governs the
+  // roster-row display + tiers; DTD players stay startable, so their haircut also flows into
+  // standings strength and myLineupRank.
   const injuryByKey = new Map<string, InjuryTier>(pool.map((p) => [p.playerKey, injuryTier(p.status, p.onIL)]))
   const discountOf = (key: string) => injuryDiscount(injuryByKey.get(key) ?? 'healthy')
 
