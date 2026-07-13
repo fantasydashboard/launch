@@ -128,6 +128,11 @@ const router = createRouter({
       redirect: '/ultimate-tools'
     },
     {
+      path: '/today',
+      name: 'today',
+      component: () => import('@/views/TodayWrapper.vue')
+    },
+    {
       path: '/history',
       name: 'history',
       component: () => import('@/views/HistoryWrapper.vue')
