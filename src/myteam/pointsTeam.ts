@@ -219,7 +219,7 @@ export function buildPointsTeam(
       teamKey: p.teamKey,
       eligiblePositions: parseEligible(p),
       value: valueOf(p.playerKey),
-      status: p.onIL ? 'IL' : '',
+      status: injuryByKey.get(p.playerKey) === 'il' ? 'IL' : '',
     }
     ;(byTeam.get(p.teamKey) ?? byTeam.set(p.teamKey, []).get(p.teamKey)!).push(dp)
   }

@@ -128,4 +128,18 @@ describe('buildPointsTeam', () => {
     expect(strengthA(dtd)).toBeLessThan(strengthA(healthy))
     expect(strengthA(healthy) - strengthA(dtd)).toBeCloseTo(weakOfPoints * 0.1, 3)
   })
+
+  it('excludes a status-only IL player (onIL false) from the optimal lineup, not just discounts them', () => {
+    // AceA is team A's only SP. Marking him OUT via status alone (onIL stays false) should EXCLUDE
+    // him from the lineup (SP slot empties) — removing his FULL value from strength, not just x0.5.
+    const outPool = pool.map((p) => (p.playerKey === 'AceA' ? { ...p, status: 'OUT' } : p))
+    const healthy = buildPointsTeam(pool, fgByKey, weights, 'A', slots)
+    const out = buildPointsTeam(outPool, fgByKey, weights, 'A', slots)
+    const strengthA = (m: ReturnType<typeof buildPointsTeam>) =>
+      m.standings.find((s) => s.teamKey === 'A')!.startingPoints
+    const aceHealthyPts = healthy.rosterRows.find((r) => r.player.playerKey === 'AceA')!.points
+    // Excluded → full ace value removed (a mere 0.5x discount would remove only half)
+    expect(strengthA(healthy) - strengthA(out)).toBeCloseTo(aceHealthyPts, 3)
+    expect(out.rosterRows.find((r) => r.player.playerKey === 'AceA')!.injury).toBe('il')
+  })
 })
