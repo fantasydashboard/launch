@@ -23,6 +23,9 @@ import { scoreToday } from '@/today/scoreToday'
 import { parkFactor } from '@/today/parkFactors'
 import { opposingStarterName, spQualityFactor, type PitcherQuality } from '@/today/oppMatchup'
 import { buildTodayBoard, type ScoredPlay, type TodayBoard } from '@/today/todayBoard'
+import { useLeagueScoring } from '@/composables/useLeagueScoring'
+import { pointsDailyValue } from '@/today/pointsDailyValue'
+import { injuryTier } from '@/myteam/injuryStatus'
 
 const EMPTY_SCHEDULE: WeekSchedule = { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
 const EMPTY_BOARD: TodayBoard = { hero: null, openSlots: [], streamers: [], upgrades: [], sitAlerts: [] }
@@ -177,6 +180,10 @@ export function useToday(): {
     () => getLeagueType(leagueStore.currentLeague?.scoring_type ?? undefined) === 'points',
   )
 
+  // League points weights (for the points-league daily base value). Loaded alongside the
+  // other sources; empty until loaded, which keeps the board on its loading/empty state.
+  const scoring = useLeagueScoring()
+
   // ── platform / sport scope ──────────────────────────────────────────────────
   const isBaseball = computed(() => leagueStore.activeSport === 'baseball')
   const platformSupported = computed(
@@ -239,12 +246,16 @@ export function useToday(): {
 
   // ── base value: category league = sum of the positive (helped-cat) deltas — a
   // single comparable magnitude across counting + ratio cats. Points league = the
-  // candidate's one-game total (addDelta is points-shaped only once catSpecs itself
-  // represents the league's points weighting — see the report for the current gap).
-  function baseValue(delta: Record<string, number>): number {
-    const vals = Object.values(delta).filter((v) => Number.isFinite(v))
-    if (!vals.length) return 0
-    if (isPointsLeague.value) return vals.reduce((s, v) => s + v, 0)
+  // candidate player's projected per-game fantasy points (FanGraphs projection x
+  // league scoring weights), independent of addDelta's category-shaped deltas.
+  function baseValue(candidate: MoveCandidate): number {
+    if (isPointsLeague.value) {
+      const matchFG = matchFGRef.value
+      if (!matchFG) return 0
+      return pointsDailyValue(candidate.player.name, candidate.player.team, matchFG, scoring.weights.value)
+    }
+    // Category league: sum of the positive (helped-cat) deltas — a single comparable magnitude.
+    const vals = Object.values(candidate.addDelta).filter((v) => Number.isFinite(v))
     return vals.reduce((s, v) => s + (v > 0 ? v : 0), 0)
   }
 
@@ -287,7 +298,7 @@ export function useToday(): {
     const home = schedule.value.homeTeamByTeam[candidate.player.team] ?? ''
     const pf = parkFactor(home)
     const parkVal = candidate.side === 'hit' ? pf.hit : pf.pit
-    const { value, bucket } = scoreToday(baseValue(candidate.addDelta), {
+    const { value, bucket } = scoreToday(baseValue(candidate), {
       parkFactor: parkVal,
       spFactor: spFactorFor(candidate),
     })
@@ -305,7 +316,19 @@ export function useToday(): {
     }
   }
 
-  const scoredPlays = computed<ScoredPlay[]>(() => candidates.value.map(scoreCandidate))
+  // Free agents on the IL/OUT are never a stream — skip them on the points board. DTD stays
+  // (still likely to play today). Reuses the Phase-2 injury tier. Only FAs carry a status here.
+  const outFaKeys = computed(() => {
+    const s = new Set<string>()
+    for (const fa of freeAgents.value) if (injuryTier(fa.status) === 'il') s.add(fa.playerKey)
+    return s
+  })
+
+  const scoredPlays = computed<ScoredPlay[]>(() => {
+    const scored = candidates.value.map(scoreCandidate)
+    if (!isPointsLeague.value) return scored
+    return scored.filter((p) => p.value > 0 && !outFaKeys.value.has(p.playerKey))
+  })
 
   function positionsOverlap(a: string, b: string): boolean {
     const ta = new Set((a || '').split(/[,/|]/).map((t) => t.trim().toUpperCase()).filter(Boolean))
@@ -391,6 +414,7 @@ export function useToday(): {
     () => {
       maybeLoadEspn()
       maybeLoadSeasonData()
+      scoring.load()
     },
     { immediate: true },
   )
@@ -405,6 +429,7 @@ export function useToday(): {
       maybeLoadEspn()
       maybeLoadSeasonData()
       maybeLoadYahoo()
+      scoring.load()
       const today = ymd(new Date())
       schedule.value = await getWeekSchedule(today, today)
       error.value = Object.keys(schedule.value.gamesByTeam).length ? null : 'no-games'
