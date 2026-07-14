@@ -184,6 +184,13 @@ export function useToday(): {
   // other sources; empty until loaded, which keeps the board on its loading/empty state.
   const scoring = useLeagueScoring()
 
+  // On points leagues the daily base value needs the FanGraphs matcher + league weights. Until
+  // both settle, every play scores 0 and would be filtered to an empty board — which must read as
+  // "loading", not "you're set". Category leagues don't use these, so they're ready immediately.
+  const pointsScoringReady = computed(
+    () => !isPointsLeague.value || (matchFgSettled.value && Object.keys(scoring.weights.value).length > 0),
+  )
+
   // ── platform / sport scope ──────────────────────────────────────────────────
   const isBaseball = computed(() => leagueStore.activeSport === 'baseball')
   const platformSupported = computed(
@@ -199,12 +206,15 @@ export function useToday(): {
   const matchFGRef = ref<((p: { full_name?: string; mlb_team?: string }) => FGProjection | null) | null>(
     null,
   )
+  const matchFgSettled = ref(false)
   ;(async () => {
     try {
       const { matchFG } = await getPlayerMatchers()
       matchFGRef.value = matchFG
+      matchFgSettled.value = true
     } catch {
       matchFGRef.value = null
+      matchFgSettled.value = true
     }
   })()
 
@@ -442,5 +452,7 @@ export function useToday(): {
     }
   }
 
-  return { vm, loading, error, load }
+  const isLoading = computed(() => loading.value || !pointsScoringReady.value)
+
+  return { vm, loading: isLoading, error, load }
 }
