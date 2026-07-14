@@ -184,11 +184,12 @@ export function useToday(): {
   // other sources; empty until loaded, which keeps the board on its loading/empty state.
   const scoring = useLeagueScoring()
 
-  // On points leagues the daily base value needs the FanGraphs matcher + league weights. Until
-  // both settle, every play scores 0 and would be filtered to an empty board — which must read as
-  // "loading", not "you're set". Category leagues don't use these, so they're ready immediately.
+  // On points leagues the daily base value needs the FanGraphs matcher + league weights loaded
+  // (scoring.ready — the real league weights, not the default seed). Until both settle, every play
+  // scores 0 and would be filtered to an empty board — which must read as "loading", not "you're
+  // set". Category leagues don't use these, so they're ready immediately.
   const pointsScoringReady = computed(
-    () => !isPointsLeague.value || (matchFgSettled.value && Object.keys(scoring.weights.value).length > 0),
+    () => !isPointsLeague.value || (matchFgSettled.value && scoring.ready.value),
   )
 
   // ── platform / sport scope ──────────────────────────────────────────────────
