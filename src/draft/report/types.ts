@@ -24,12 +24,25 @@ export interface GradedTeam {
   grade: string
   rank: number
 }
+export interface KeeperInfo {
+  teamKey: string
+  teamName: string
+  teamLogo?: string
+  playerName: string
+  position: string
+  round: number
+  finishedTier: string
+  points: number
+  headshot?: string
+  proTeam?: string
+}
 export interface GradedDraft {
   picks: GradedPick[]
   teams: GradedTeam[]
   numTeams: number
   myTeamKey: string | null
   keeperCount?: number
+  keepers?: KeeperInfo[]
 }
 export interface DraftHighlight {
   teamKey: string
@@ -57,6 +70,7 @@ export interface TeamGradeRow {
   bestPick: DraftHighlight | null
   steals: number
   busts: number
+  scoreGap: number
 }
 export interface DraftReport {
   season: number
@@ -68,6 +82,7 @@ export interface DraftReport {
   teamGrades: TeamGradeRow[]
   topSteals: DraftHighlight[]
   topReaches: DraftHighlight[]
+  topKeepers: KeeperInfo[]
   keeperCount: number
   mySpotlight: {
     grade: string

@@ -22,7 +22,7 @@ const draft: GradedDraft = {
     pick({ teamKey: 't1', playerName: 'Steal Guy', round: 8, score: 45, verdict: 'JACKPOT', tierMovement: 'WAIVER→ELITE' }),
     pick({ teamKey: 't3', playerName: 'Bust Guy', round: 2, score: -35, verdict: 'DISASTER', tierMovement: 'ELITE→WAIVER' }),
     pick({ teamKey: 't2', playerName: 'My Best', round: 3, score: 20 }),
-    pick({ teamKey: 't2', playerName: 'My Worst', round: 1, score: -10 }),
+    pick({ teamKey: 't2', playerName: 'My Worst', round: 1, score: -10, verdict: 'BUST' }),
     pick({ teamKey: 't1', playerName: 'Late Flier', round: 14, score: -40 }),
   ],
 }
@@ -121,5 +121,51 @@ describe('buildDraftReport — substance', () => {
     ] }
     expect(buildDraftReport(d, 2024).steal?.headshot).toBe('h.png')
     expect(buildDraftReport(d, 2024).steal?.proTeam).toBe('NYY')
+  })
+})
+
+describe('buildDraftReport — critique fixes', () => {
+  function keeper(teamKey: string, playerName: string, finishedTier: string, points: number, round = 15) {
+    return { teamKey, teamName: teamKey, teamLogo: '', playerName, position: 'OF', round, finishedTier, points }
+  }
+  const base: GradedDraft = {
+    numTeams: 4, myTeamKey: 't1', keeperCount: 3,
+    teams: [team('t1', 20, 1), team('t2', 4, 2), team('t3', -4, 3), team('t4', -20, 4)], // sum 0 -> mean 0
+    picks: [
+      pick({ teamKey: 't1', playerName: 'MySteal', round: 12, score: 40, verdict: 'JACKPOT' }),
+      pick({ teamKey: 't1', playerName: 'MyMeh', round: 10, score: -3, verdict: 'SOLID' }),
+      pick({ teamKey: 't4', playerName: 'Flop', round: 2, score: -40, verdict: 'DISASTER' }),
+    ],
+    keepers: [
+      keeper('t2', 'Held Ace', 'ELITE', 400, 18),
+      keeper('t1', 'Held Bat', 'STARTER', 300, 14),
+      keeper('t3', 'Held Dud', 'REPLACEMENT', 50, 20),
+    ],
+  }
+
+  it('grades spread across the full A+..F range by rank', () => {
+    const r = buildDraftReport(base, 2024)
+    const g = r.teamGrades.map((t) => t.grade)
+    expect(g[0]).toBe('A+')
+    expect(g[g.length - 1]).toBe('F')
+    expect(new Set(g).size).toBeGreaterThan(2)
+  })
+  it('score gap = gradeScore minus league mean, rounded', () => {
+    const r = buildDraftReport(base, 2024)
+    expect(r.teamGrades.find((t) => t.teamKey === 't1')!.scoreGap).toBe(20)
+    expect(r.teamGrades.find((t) => t.teamKey === 't4')!.scoreGap).toBe(-20)
+  })
+  it('top keepers = ELITE/STARTER finishers, best first; drops REPLACEMENT', () => {
+    const r = buildDraftReport(base, 2024)
+    expect(r.topKeepers.map((k) => k.playerName)).toEqual(['Held Ace', 'Held Bat'])
+  })
+  it('worst pick only shows a real bust (else null)', () => {
+    const r = buildDraftReport(base, 2024)
+    expect(r.mySpotlight?.worstPick).toBeNull()
+    const r2 = buildDraftReport({ ...base, myTeamKey: 't4' }, 2024)
+    expect(r2.mySpotlight?.worstPick?.playerName).toBe('Flop')
+  })
+  it('no keepers -> empty topKeepers', () => {
+    expect(buildDraftReport({ ...base, keepers: undefined }, 2024).topKeepers).toEqual([])
   })
 })

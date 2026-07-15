@@ -3,6 +3,14 @@ import type { GradedDraft, GradedPick, DraftReport, DraftHighlight, TeamGradeRow
 const STEAL_VERDICTS = new Set(['JACKPOT', 'STEAL'])
 const BUST_VERDICTS = new Set(['BUST', 'DISASTER'])
 
+const SPREAD_GRADES = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'F']
+function spreadGrade(rank: number, numTeams: number): string {
+  if (numTeams <= 1) return 'A'
+  const pos = (rank - 1) / (numTeams - 1)
+  return SPREAD_GRADES[Math.round(pos * (SPREAD_GRADES.length - 1))]
+}
+const TIER_RANK: Record<string, number> = { ELITE: 0, STARTER: 1, BENCH: 2, REPLACEMENT: 3, WAIVER: 4 }
+
 function toHighlight(p: GradedPick): DraftHighlight {
   return {
     teamKey: p.teamKey, teamName: p.teamName, teamLogo: p.teamLogo,
@@ -16,6 +24,7 @@ function toHighlight(p: GradedPick): DraftHighlight {
 /** Pure highlight selection + enrichment over a normalized, pre-graded draft. Never throws. */
 export function buildDraftReport(draft: GradedDraft, season: number): DraftReport {
   const { picks, teams, numTeams, myTeamKey } = draft
+  const meanScore = teams.length ? teams.reduce((s, t) => s + t.gradeScore, 0) / teams.length : 0
 
   const steal = picks.length ? toHighlight([...picks].sort((a, b) => b.score - a.score)[0]) : null
   const early = picks.filter((p) => p.round <= 5)
@@ -36,16 +45,22 @@ export function buildDraftReport(draft: GradedDraft, season: number): DraftRepor
     const tp = picksByTeam.get(t.teamKey) ?? []
     return {
       teamKey: t.teamKey, teamName: t.teamName, teamLogo: t.teamLogo,
-      grade: t.grade, gradeScore: t.gradeScore, rank: t.rank,
+      grade: spreadGrade(t.rank, teams.length), gradeScore: t.gradeScore, rank: t.rank,
       isMe: myTeamKey != null && t.teamKey === myTeamKey,
       bestPick: tp.length ? toHighlight([...tp].sort((a, b) => b.score - a.score)[0]) : null,
       steals: tp.filter((p) => STEAL_VERDICTS.has(p.verdict)).length,
       busts: tp.filter((p) => BUST_VERDICTS.has(p.verdict)).length,
+      scoreGap: Math.round(t.gradeScore - meanScore),
     }
   })
 
   const bestDrafter = teamGrades[0] ?? null
   const worstDrafter = teamGrades.length ? teamGrades[teamGrades.length - 1] : null
+
+  const topKeepers = (draft.keepers ?? [])
+    .filter((k) => k.finishedTier === 'ELITE' || k.finishedTier === 'STARTER')
+    .sort((a, b) => (TIER_RANK[a.finishedTier] ?? 9) - (TIER_RANK[b.finishedTier] ?? 9) || b.points - a.points)
+    .slice(0, 5)
 
   let mySpotlight: DraftReport['mySpotlight'] = null
   if (myTeamKey != null) {
@@ -55,7 +70,7 @@ export function buildDraftReport(draft: GradedDraft, season: number): DraftRepor
       const byScoreDesc = [...mine].sort((a, b) => b.score - a.score)
       const byScoreAsc = [...mine].sort((a, b) => a.score - b.score)
       const bestPick = mine.length ? toHighlight(byScoreDesc[0]) : null
-      const worstPick = mine.length ? toHighlight(byScoreAsc[0]) : null
+      const worstPick = mine.length && BUST_VERDICTS.has(byScoreAsc[0].verdict) ? toHighlight(byScoreAsc[0]) : null
       const mySteals = mine.filter((p) => STEAL_VERDICTS.has(p.verdict)).sort((a, b) => b.score - a.score)
       const lowest = mine.length ? byScoreAsc[0] : null
       const myBust = lowest && BUST_VERDICTS.has(lowest.verdict) ? lowest : null
@@ -75,7 +90,7 @@ export function buildDraftReport(draft: GradedDraft, season: number): DraftRepor
 
   return {
     season, teamCount: numTeams,
-    steal, bust, topSteals, topReaches,
+    steal, bust, topSteals, topReaches, topKeepers,
     bestDrafter, worstDrafter, teamGrades,
     keeperCount: draft.keeperCount ?? 0,
     mySpotlight,
