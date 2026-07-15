@@ -124,6 +124,10 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
 
   unrankedTeams.sort((a, b) => b.gradeScore - a.gradeScore)
 
+  // Relative grading uses the count of teams that actually drafted (distinct teamKeys),
+  // not the league's getTeams() length — matches PointsDraftView's teamGrades computed.
+  const gradedTeamCount = unrankedTeams.length
+
   const gradedTeams: GradedTeam[] = unrankedTeams.map((t, index) => {
     const rank = index + 1
     return {
@@ -131,7 +135,7 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
       teamName: t.teamName,
       teamLogo: t.teamLogo,
       gradeScore: t.gradeScore,
-      grade: getRelativeTeamGrade(rank, numTeams, t.gradeScore),
+      grade: getRelativeTeamGrade(rank, gradedTeamCount, t.gradeScore),
       rank,
     }
   })
