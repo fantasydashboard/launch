@@ -8,8 +8,9 @@ import type { GradedDraft, GradedPick, GradedTeam } from './types'
  * predraft -> previous-season (renew) fallback.
  * Any fetch error propagates to the caller (only getMyTeam is caught, matching the reference).
  */
-export async function loadYahooPointsDraft(args: { leagueKey: string }): Promise<GradedDraft | null> {
+export async function loadYahooPointsDraft(args: { leagueKey: string; sport?: string }): Promise<GradedDraft | null> {
   const { leagueKey } = args
+  const sport = args.sport || 'football'
 
   let seasonLeagueKey = leagueKey
 
@@ -97,7 +98,8 @@ export async function loadYahooPointsDraft(args: { leagueKey: string }): Promise
       currentPositionRank,
       position,
       numTeams,
-      totalPicks
+      totalPicks,
+      sport
     )
 
     return {
