@@ -17,8 +17,12 @@ export function useDraftReport(): {
   const report = ref<DraftReport | null>(null)
   const loading = ref(false)
   const error = ref<'no-data' | 'failed' | null>(null)
+  // Monotonic token so a slower earlier load (rapid season-switching, or a league switch racing an
+  // in-flight prior-league load) can't overwrite a newer one's result.
+  let loadToken = 0
 
   async function load(args: { platform: string; seasonKey: string; sport: string; season: number }) {
+    const token = ++loadToken
     loading.value = true
     error.value = null
     report.value = null
@@ -35,16 +39,18 @@ export function useDraftReport(): {
           sport: args.sport,
         })
       }
+      if (token !== loadToken) return // a newer load started — discard this stale result
       if (!draft || !draft.picks.length) {
         error.value = 'no-data'
         return
       }
       report.value = buildDraftReport(draft, args.season)
     } catch (e) {
+      if (token !== loadToken) return
       console.error('[useDraftReport] load failed', e)
       error.value = 'failed'
     } finally {
-      loading.value = false
+      if (token === loadToken) loading.value = false
     }
   }
 

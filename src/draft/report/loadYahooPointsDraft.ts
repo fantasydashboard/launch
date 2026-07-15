@@ -156,7 +156,9 @@ export async function loadYahooPointsDraft(args: { leagueKey: string; sport?: st
 
   let myTeamKey: string | null = null
   try {
-    const myTeam = await yahooService.getMyTeam(leagueKey)
+    // Use the RESOLVED season key (post renew-fallback), so my team_key is in the SAME season's
+    // namespace as the picks — otherwise isMe/spotlight never match when the fallback fired.
+    const myTeam = await yahooService.getMyTeam(seasonLeagueKey)
     myTeamKey = myTeam?.team_key ?? null
   } catch {
     myTeamKey = null
