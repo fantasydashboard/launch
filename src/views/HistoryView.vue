@@ -12,6 +12,8 @@ import { useAuthStore } from '@/stores/auth'
 import BackfillSeason from '@/components/history/BackfillSeason.vue'
 import { deleteManualSeason } from '@/services/historySnapshots'
 import type { HistorySeason } from '@/history/types'
+import { useDraftReport } from '@/composables/useDraftReport'
+import { getLeagueType } from '@/config/sports'
 
 const leagueStore = useLeagueStore()
 const history = useLeagueHistory()
@@ -19,6 +21,35 @@ const authStore = useAuthStore()
 
 onMounted(() => history.load())
 watch(() => leagueStore.activeLeagueId, () => history.load())
+
+// ── DRAFT REPORT (Phase 1: points leagues only) ──────────────────────────────
+const draft = useDraftReport()
+const showDraftReport = ref(false)
+
+const draftReportPointsOnly = computed(
+  () => getLeagueType(leagueStore.currentLeague?.scoring_type ?? undefined) !== 'points',
+)
+const draftSeasons = computed<number[]>(() =>
+  [...history.seasonKeys.value.keys()].sort((a, b) => b - a),
+)
+const selectedDraftSeason = ref<number | null>(null)
+
+function loadDraftSeason(season: number) {
+  const key = history.seasonKeys.value.get(season)
+  if (!key) return
+  selectedDraftSeason.value = season
+  draft.load({ platform: history.platform.value, seasonKey: key, sport: history.sport.value, season })
+}
+function openDraftReport() {
+  showDraftReport.value = true
+  if (selectedDraftSeason.value == null && draftSeasons.value.length && !draftReportPointsOnly.value) {
+    loadDraftSeason(draftSeasons.value[0])
+  }
+}
+function ordinalRank(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'], v = n % 100
+  return n + (s[(v - 20) % 10] || s[v] || s[0])
+}
 
 // Theme `primary` var has no alpha slot so bg-primary/NN renders nothing — use color-mix.
 const primaryTint = (pct: number) => `color-mix(in srgb, var(--color-primary, #C6FF3A) ${pct}%, transparent)`
@@ -557,6 +588,111 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
               </span>
               <span v-else class="ml-auto font-mono text-[10px] text-dark-textMuted">all-time</span>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── DRAFT REPORT ─────────────────────────────────────────────────── -->
+      <section class="mb-8">
+        <button
+          type="button"
+          class="flex w-full items-center justify-between text-left"
+          @click="showDraftReport ? (showDraftReport = false) : openDraftReport()"
+        >
+          <h2 class="font-display text-lg font-bold text-dark-text">Draft report</h2>
+          <span class="font-mono text-xs text-dark-textMuted">{{ showDraftReport ? '▾ hide' : '▸ show' }}</span>
+        </button>
+
+        <div v-if="showDraftReport" class="mt-3">
+          <div v-if="draftSeasons.length && !draftReportPointsOnly" class="mb-3 flex flex-wrap gap-1.5">
+            <button
+              v-for="s in draftSeasons"
+              :key="s"
+              type="button"
+              class="rounded-lg border border-dark-border px-2.5 py-1 font-mono text-[11px]"
+              :class="s === selectedDraftSeason ? 'text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+              :style="s === selectedDraftSeason ? { backgroundColor: primaryTint(16) } : {}"
+              @click="loadDraftSeason(s)"
+            >{{ s }}</button>
+          </div>
+
+          <p v-if="draftReportPointsOnly" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 font-mono text-[11px] text-dark-textMuted">
+            The graded Draft Report is available on points leagues for now — category-league grading is coming next.
+          </p>
+          <p v-else-if="draft.loading.value" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 font-mono text-[11px] text-dark-textMuted">
+            Grading the draft…
+          </p>
+          <p v-else-if="draft.error.value === 'no-data'" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 font-mono text-[11px] text-dark-textMuted">
+            We couldn't pull enough of {{ selectedDraftSeason }}'s draft to grade it — this can happen with older seasons.
+          </p>
+          <p v-else-if="draft.error.value === 'failed'" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 font-mono text-[11px] text-dark-textMuted">
+            Couldn't load the draft. Try another season.
+          </p>
+
+          <div v-else-if="draft.report.value" class="space-y-4">
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div v-if="draft.report.value.steal" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
+                <div class="font-mono text-[9px] uppercase tracking-wider text-primary">Biggest steal</div>
+                <div class="mt-1 text-lg font-display font-bold text-dark-text">{{ draft.report.value.steal.playerName }}</div>
+                <div class="font-mono text-[11px] text-dark-textMuted">{{ draft.report.value.steal.teamName }} · {{ draft.report.value.steal.valueLabel }} · {{ draft.report.value.steal.grade }}</div>
+              </div>
+              <div v-if="draft.report.value.bust" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
+                <div class="font-mono text-[9px] uppercase tracking-wider text-[#e0625a]">Biggest bust</div>
+                <div class="mt-1 text-lg font-display font-bold text-dark-text">{{ draft.report.value.bust.playerName }}</div>
+                <div class="font-mono text-[11px] text-dark-textMuted">{{ draft.report.value.bust.teamName }} · {{ draft.report.value.bust.valueLabel }} · {{ draft.report.value.bust.grade }}</div>
+              </div>
+            </div>
+
+            <div v-if="draft.report.value.bestDrafter" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
+              <div class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">Draft MVP · best &amp; worst drafter</div>
+              <div class="mt-2 flex items-center justify-between gap-2">
+                <span class="flex min-w-0 items-center gap-2">
+                  <TeamAvatar :name="draft.report.value.bestDrafter.teamName" :logo="draft.report.value.bestDrafter.teamLogo" :size="28" />
+                  <span class="truncate text-sm text-dark-text">{{ draft.report.value.bestDrafter.teamName }}</span>
+                </span>
+                <span class="shrink-0 font-display text-lg font-bold text-primary">{{ draft.report.value.bestDrafter.grade }}</span>
+              </div>
+              <div v-if="draft.report.value.worstDrafter" class="mt-2 flex items-center justify-between gap-2">
+                <span class="flex min-w-0 items-center gap-2">
+                  <TeamAvatar :name="draft.report.value.worstDrafter.teamName" :logo="draft.report.value.worstDrafter.teamLogo" :size="28" />
+                  <span class="truncate text-sm text-dark-text">{{ draft.report.value.worstDrafter.teamName }}</span>
+                </span>
+                <span class="shrink-0 font-display text-lg font-bold text-[#e0625a]">{{ draft.report.value.worstDrafter.grade }}</span>
+              </div>
+            </div>
+
+            <div class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
+              <div class="mb-2 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">Every team, graded</div>
+              <div
+                v-for="t in draft.report.value.teamGrades"
+                :key="t.teamKey"
+                class="flex items-center justify-between gap-2 border-b border-dark-border/40 py-1.5 last:border-0"
+                :class="t.isMe ? 'text-primary' : 'text-dark-text'"
+              >
+                <span class="flex min-w-0 items-center gap-2">
+                  <span class="w-5 shrink-0 font-mono text-xs text-dark-textMuted">{{ t.rank }}</span>
+                  <TeamAvatar :name="t.teamName" :logo="t.teamLogo" :size="24" />
+                  <span class="truncate text-sm">{{ t.teamName }}<span v-if="t.isMe" class="ml-1 text-xs">(you)</span></span>
+                </span>
+                <span class="shrink-0 font-display text-sm font-bold">{{ t.grade }}</span>
+              </div>
+            </div>
+
+            <div v-if="draft.report.value.mySpotlight" class="rounded-xl border border-dark-border px-4 py-3" :style="{ backgroundColor: primaryTint(6) }">
+              <div class="font-mono text-[9px] uppercase tracking-wider text-primary">Your draft</div>
+              <div class="mt-1 text-sm text-dark-text">
+                Grade <span class="font-display text-lg font-bold text-primary">{{ draft.report.value.mySpotlight.grade }}</span>
+                · {{ ordinalRank(draft.report.value.mySpotlight.rank) }} of {{ draft.report.value.teamCount }}
+              </div>
+              <div v-if="draft.report.value.mySpotlight.bestPick" class="mt-1 font-mono text-[11px] text-dark-textMuted">
+                Best pick: {{ draft.report.value.mySpotlight.bestPick.playerName }} ({{ draft.report.value.mySpotlight.bestPick.valueLabel }})
+              </div>
+              <div v-if="draft.report.value.mySpotlight.worstPick" class="font-mono text-[11px] text-dark-textMuted">
+                Worst pick: {{ draft.report.value.mySpotlight.worstPick.playerName }} ({{ draft.report.value.mySpotlight.worstPick.valueLabel }})
+              </div>
+            </div>
+
+            <RouterLink to="/draft" class="inline-block font-mono text-[11px] text-dark-textMuted hover:text-primary">deep draft board →</RouterLink>
           </div>
         </div>
       </section>
