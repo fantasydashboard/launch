@@ -68,3 +68,58 @@ describe('buildDraftReport', () => {
     expect(buildDraftReport(late, 2024).bust?.playerName).toBe('B')
   })
 })
+
+describe('buildDraftReport — substance', () => {
+  const draft2: GradedDraft = {
+    numTeams: 2, myTeamKey: 't1', keeperCount: 2,
+    teams: [team('t1', 30, 1), team('t2', -10, 2)],
+    picks: [
+      pick({ teamKey: 't1', playerName: 'A', round: 10, score: 40, verdict: 'JACKPOT', tierMovement: 'WAIVER→ELITE' }),
+      pick({ teamKey: 't1', playerName: 'B', round: 12, score: 25, verdict: 'STEAL' }),
+      pick({ teamKey: 't1', playerName: 'C', round: 1, score: -20, verdict: 'BUST', tierMovement: 'ELITE→BENCH' }),
+      pick({ teamKey: 't2', playerName: 'D', round: 2, score: -35, verdict: 'DISASTER' }),
+      pick({ teamKey: 't2', playerName: 'E', round: 5, score: 5, verdict: 'SOLID' }),
+    ],
+  }
+
+  it('per-team rows carry best pick + steal/bust counts', () => {
+    const r = buildDraftReport(draft2, 2024)
+    const t1 = r.teamGrades.find((t) => t.teamKey === 't1')!
+    expect(t1.bestPick?.playerName).toBe('A')
+    expect(t1.steals).toBe(2)
+    expect(t1.busts).toBe(1)
+    const t2 = r.teamGrades.find((t) => t.teamKey === 't2')!
+    expect(t2.steals).toBe(0)
+    expect(t2.busts).toBe(1)
+  })
+  it('top steals/reaches are top-3 by score with sign filter', () => {
+    const r = buildDraftReport(draft2, 2024)
+    expect(r.topSteals.map((s) => s.playerName)).toEqual(['A', 'B', 'E'])
+    expect(r.topReaches.map((s) => s.playerName)).toEqual(['D', 'C'])
+  })
+  it('keeperCount passes through (undefined -> 0)', () => {
+    expect(buildDraftReport(draft2, 2024).keeperCount).toBe(2)
+    expect(buildDraftReport({ ...draft2, keeperCount: undefined }, 2024).keeperCount).toBe(0)
+  })
+  it('narrative: steals + a bust', () => {
+    const r = buildDraftReport(draft2, 2024)
+    expect(r.mySpotlight?.narrative).toBe('2 steals, led by A (Rd 10 · WAIVER→ELITE). Your biggest miss: C (Rd 1 · ELITE→BENCH).')
+  })
+  it('narrative: no steals, only a bust', () => {
+    const d = { ...draft2, myTeamKey: 't2' }
+    expect(buildDraftReport(d, 2024).mySpotlight?.narrative).toBe('A quiet draft — your roughest pick was D (Rd 2 · STARTER→STARTER).')
+  })
+  it('narrative: steady when neither', () => {
+    const d: GradedDraft = { numTeams: 1, myTeamKey: 't1', teams: [team('t1', 0, 1)], picks: [
+      pick({ teamKey: 't1', playerName: 'X', round: 3, score: 2, verdict: 'SOLID' }),
+    ] }
+    expect(buildDraftReport(d, 2024).mySpotlight?.narrative).toBe('A steady, no-drama draft.')
+  })
+  it('headshot/proTeam flow through highlights', () => {
+    const d: GradedDraft = { numTeams: 1, myTeamKey: null, teams: [team('t1', 0, 1)], picks: [
+      pick({ teamKey: 't1', playerName: 'H', round: 9, score: 30, verdict: 'STEAL', headshot: 'h.png', proTeam: 'NYY' }),
+    ] }
+    expect(buildDraftReport(d, 2024).steal?.headshot).toBe('h.png')
+    expect(buildDraftReport(d, 2024).steal?.proTeam).toBe('NYY')
+  })
+})
