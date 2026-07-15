@@ -116,6 +116,8 @@ export async function loadYahooPointsDraft(args: { leagueKey: string; sport?: st
       tierMovement: result.tierMovement,
       draftedTier: result.draftedTier,
       finishedTier: result.finishedTier,
+      headshot: player.headshot || undefined,
+      proTeam: player.team || undefined,
     }
   })
 
@@ -164,5 +166,7 @@ export async function loadYahooPointsDraft(args: { leagueKey: string; sport?: st
     myTeamKey = null
   }
 
-  return { picks, teams, numTeams, myTeamKey }
+  // Yahoo's getDraftResults does not expose a keeper flag — keeperCount is always 0
+  // and all picks are graded (documented gap).
+  return { picks, teams, numTeams, myTeamKey, keeperCount: 0 }
 }

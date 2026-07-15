@@ -23,6 +23,15 @@ export async function loadSleeperPointsDraft(args: {
   const draft = leagueStore.historicalDrafts.get(seasonKey)
   if (!draft || !draft.picks || draft.picks.length === 0) return null
 
+  // Exclude keeper picks from grading and rank computation entirely — a kept star
+  // shouldn't distort the position-rank pools or team grades.
+  const isKeeper = (pk: any) => {
+    const v = pk?.metadata?.is_keeper
+    return v === true || v === 'true' || v === 1 || v === '1'
+  }
+  const keeperCount = draft.picks.filter(isKeeper).length
+  const gradedPicks = draft.picks.filter((p: any) => !isKeeper(p))
+
   const rosters = leagueStore.historicalRosters.get(seasonKey) || []
   const users = leagueStore.historicalUsers.get(seasonKey) || []
   const matchups = leagueStore.historicalMatchups.get(seasonKey)
@@ -30,7 +39,7 @@ export async function loadSleeperPointsDraft(args: {
 
   // Build player positions map from draft picks
   const playerPositions = new Map<string, string>()
-  draft.picks.forEach((pick: any) => {
+  gradedPicks.forEach((pick: any) => {
     const pos = pick.metadata?.position
     if (pos && pick.player_id) playerPositions.set(pick.player_id, pos)
   })
@@ -43,7 +52,7 @@ export async function loadSleeperPointsDraft(args: {
 
   // Position rank as drafted: order each position was taken in the draft
   const positionDraftOrder: Record<string, string[]> = {}
-  draft.picks.forEach((pick: any) => {
+  gradedPicks.forEach((pick: any) => {
     const pos = pick.metadata?.position
     if (pos && pick.player_id) {
       if (!positionDraftOrder[pos]) positionDraftOrder[pos] = []
@@ -63,9 +72,9 @@ export async function loadSleeperPointsDraft(args: {
   })
 
   const numTeams = rosters.length || 12
-  const totalPicks = draft.picks.length
+  const totalPicks = gradedPicks.length
 
-  const picks: GradedPick[] = draft.picks.map((pick: any) => {
+  const picks: GradedPick[] = gradedPicks.map((pick: any) => {
     const position = pick.metadata?.position || 'Unknown'
     const playerName =
       pick.metadata?.first_name && pick.metadata?.last_name
@@ -114,6 +123,7 @@ export async function loadSleeperPointsDraft(args: {
       tierMovement: result.tierMovement,
       draftedTier: result.draftedTier,
       finishedTier: result.finishedTier,
+      headshot: pick.metadata?.headshot_url || undefined,
     }
   })
 
@@ -154,5 +164,5 @@ export async function loadSleeperPointsDraft(args: {
   const myRoster = args.currentUserId ? rosters.find((r: any) => r.owner_id === args.currentUserId) : undefined
   const myTeamKey = myRoster ? `sleeper_${myRoster.roster_id}` : null
 
-  return { picks, teams, numTeams, myTeamKey }
+  return { picks, teams, numTeams, myTeamKey, keeperCount }
 }

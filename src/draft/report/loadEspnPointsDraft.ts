@@ -1,6 +1,7 @@
 import { espnService } from '@/services/espn'
 import type { Sport } from '@/types/supabase'
 import { calculatePickScore, scoreToGrade, calculateTeamGrade, getRelativeTeamGrade } from '@/services/draftGrading'
+import { espnHeadshotUrl } from '@/myteam/espn/mapRosters'
 import type { GradedDraft, GradedPick, GradedTeam } from './types'
 
 /**
@@ -36,7 +37,12 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
     // No season points available — ranks below will fall back to 999 / round proxy
   }
 
-  const sortedPicks = [...draftPicks].sort((a, b) => a.overallPickNumber - b.overallPickNumber)
+  // Exclude keeper picks from grading and rank computation entirely — a kept star
+  // shouldn't distort the position-rank pools or team grades.
+  const keeperCount = draftPicks.filter((p) => p.keeper).length
+  const gradedPicks = draftPicks.filter((p) => !p.keeper)
+
+  const sortedPicks = [...gradedPicks].sort((a, b) => a.overallPickNumber - b.overallPickNumber)
 
   // Position rank as drafted: order each position was taken in the draft
   const positionDraftOrder = new Map<string, number[]>()
@@ -51,7 +57,7 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
   }
 
   // Current position rank: players within a position sorted by season points desc
-  const playerPointsData: { playerId: number; position: string; points: number }[] = draftPicks.map((pick) => ({
+  const playerPointsData: { playerId: number; position: string; points: number }[] = gradedPicks.map((pick) => ({
     playerId: pick.playerId,
     position: pick.position || 'Unknown',
     points: playerSeasonPoints.get(pick.playerId) || 0,
@@ -67,7 +73,7 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
     sortedByPoints.forEach((player, index) => currentPositionRankMap.set(player.playerId, index + 1))
   }
 
-  const totalPicks = draftPicks.length
+  const totalPicks = gradedPicks.length
 
   const picks: GradedPick[] = sortedPicks.map((pick) => {
     const team = teamMap.get(pick.teamId)
@@ -101,6 +107,8 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
       tierMovement: result.tierMovement,
       draftedTier: result.draftedTier,
       finishedTier: result.finishedTier,
+      headshot: espnHeadshotUrl(pick.playerId, sport),
+      proTeam: pick.proTeam || undefined,
     }
   })
 
@@ -148,5 +156,5 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
     myTeamKey = null
   }
 
-  return { picks, teams: gradedTeams, numTeams, myTeamKey }
+  return { picks, teams: gradedTeams, numTeams, myTeamKey, keeperCount }
 }
