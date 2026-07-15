@@ -81,18 +81,33 @@ export async function loadSleeperPointsDraft(args: {
   const numTeams = rosters.length || 12
   const totalPicks = gradedPicks.length
 
-  // Kept players — labeled with a finished tier from the FULL-pool position rank that
-  // calculatePlayerSeasonStats already produces (it ranks over all rostered players, not
-  // just draft picks), so no separate rank map is needed here.
+  // Kept players — labeled with a finished tier from a MANUAL full-pool position rank.
+  // We can't use PlayerSeasonStats.positionRank here: keepers are excluded from
+  // playerPositions (to protect the non-keeper grading pools), so the stats engine buckets
+  // them as FLEX and their positionRank is a FLEX-pool rank, not their real position. Build
+  // a separate full-pool rank over ALL picks keyed by real position + season points, exactly
+  // like the ESPN loader does. This does NOT touch playerPositions or the grading rank logic.
   const tierConfig = getTierConfig(numTeams)
+  const pointsOf = (playerId: string) => playerStats.get(playerId)?.totalPoints ?? 0
+  const byPos = new Map<string, { id: string; pts: number }[]>()
+  for (const p of draft.picks) {
+    const pos = p.metadata?.position || 'Unknown'
+    const id = String(p.player_id)
+    if (!byPos.has(pos)) byPos.set(pos, [])
+    byPos.get(pos)!.push({ id, pts: pointsOf(id) })
+  }
+  const fullPositionRankMap = new Map<string, number>()
+  for (const [, arr] of byPos) {
+    arr.sort((a, b) => b.pts - a.pts).forEach((x, i) => fullPositionRankMap.set(x.id, i + 1))
+  }
   const keepers: KeeperInfo[] = draft.picks.filter(isKeeper).map((pick: any) => {
     const position = pick.metadata?.position || 'Unknown'
     const playerName =
       pick.metadata?.first_name && pick.metadata?.last_name
         ? `${pick.metadata.first_name} ${pick.metadata.last_name}`
         : `Player ${pick.player_id}`
-    const stat = playerStats.get(pick.player_id)
     const teamInfo = teamLookup.get(pick.roster_id)
+    const id = String(pick.player_id)
     return {
       teamKey: `sleeper_${pick.roster_id}`,
       teamName: teamInfo?.name || `Team ${pick.roster_id}`,
@@ -100,8 +115,8 @@ export async function loadSleeperPointsDraft(args: {
       playerName,
       position,
       round: pick.round,
-      points: stat?.totalPoints ?? 0,
-      finishedTier: getTier(stat?.positionRank ?? 999, tierConfig),
+      points: pointsOf(id),
+      finishedTier: getTier(fullPositionRankMap.get(id) ?? 999, tierConfig),
       headshot: pick.metadata?.headshot_url || undefined,
     }
   })
