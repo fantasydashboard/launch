@@ -36,7 +36,43 @@ user pull.
    pointer). No deletion — reversible; revisit deletion after real-user feedback.
 4. **Architecture:** approach A — a dedicated composable (orchestration) + a pure tested reducer
    (highlight selection) + a lazy History section, reusing the existing
-   `draftAnalysis`/`draftGrading` engines.
+   `draftAnalysis` engine (`analyzeDraftPicks` + `calculateTeamDraftGrades`).
+
+## CORRECTION (2026-07-14, after code verification — supersedes conflicting details below)
+
+The original draft of this spec named the wrong value metric and mis-stated the engine's live
+usage. Corrected facts the plan is built on:
+
+- **Value metric = `adjustedScore`, NOT `valueAdded`.** `analyzeDraftPicks` hardcodes
+  `expectedPoints = 0` (`draftAnalysis.ts:357`), so `valueAdded` (= actualPoints − 0) is inert —
+  "max valueAdded" would just mean "highest scorer." The engine's REAL, populated value signal is
+  `adjustedScore` (`calculateAdjustedScore(positionExpectedRank, actualPositionRank, round,
+  numTeams)`): a positional value-over-expectation, elite-weighted. The engine already drives its
+  own `isSteal`/`isBust`/`pickGrade` and team `gradeScore` off `adjustedScore`. The Draft Report
+  selects steal/bust on **`adjustedScore`**; `valueAdded`/`expectedPoints` are unused. No engine
+  surgery — the engine is reused as-is.
+- **The engine is reused, not currently live.** `analyzeDraftPicks`/`calculateTeamDraftGrades` are
+  only referenced by an unrouted `DraftView.vue.backup`. The live `/draft` views
+  (`PointsDraftView`/`CategoryDraftView`) use a *different* system (`draftGrading.ts`'s
+  `calculatePickScore`/`scoreToGrade`). We deliberately build the Report on `analyzeDraftPicks`
+  (user's decision) and mirror the live views' per-platform *fetch + season-rank computation* only
+  as the data source for the engine's inputs.
+- **Engine inputs the adapters must build** (this is the composable's bulk): `analyzeDraftPicks`
+  takes `picks: SleeperDraftPick[]` (`pick_no`, `round`, `draft_slot`, `player_id`, `roster_id`,
+  `metadata.position`), `playerStats: Map<string, PlayerSeasonStats>` (per player: `totalPoints`,
+  `gamesPlayed`, `avgPPG`, `positionRank`, `overallRank`, `position`, `weeklyPoints`),
+  `playerNames: Map<string,string>`, `teamNames: Map<number,string>`, `numTeams`. **`positionRank`
+  and `overallRank` are the crux** — the adapter must rank the season's scored players by total
+  points (overall and within position) so `adjustedScore` is meaningful. The live `PointsDraftView`
+  already computes equivalent `current_position_rank` maps per platform — mirror that.
+- **`calculateTeamDraftGrades(picks: DraftPickAnalysis[], teamNames, numTeams)`** consumes the
+  `analyzeDraftPicks` output (not raw picks). `TeamDraftGrade` fields: `roster_id`, `team_name`,
+  `overallGrade`, `gradeScore`, `bestPick`/`worstPick` (each a `DraftPickAnalysis | null`).
+- **`DraftPickAnalysis` uses `pick_no`** (not `overallPick`) and `team_name`/`roster_id`
+  (snake_case). The reducer's `DraftHighlight` maps from these.
+
+The reducer §3 selection rules and useDraftReport §2 service calls below are updated accordingly;
+where older prose still says `valueAdded`, read `adjustedScore`.
 
 ## Architecture
 
@@ -162,10 +198,10 @@ export function buildDraftReport(
 ```
 
 **Selection rules (all here, all testable):**
-- **steal** = the pick with the greatest `valueAdded` (actual − expected points; positive =
-  outperformed its slot). Tiebreak: higher `pickGradeScore`. `null` if no picks.
-- **bust** = among **early picks** (`round <= 5`) the one with the lowest `valueAdded` (a high
-  pick that returned poorly); if there are no early picks, fall back to the lowest `valueAdded`
+- **steal** = the pick with the greatest `adjustedScore` (positional value-over-expectation;
+  positive = finished better than drafted). Tiebreak: higher `pickGradeScore`. `null` if no picks.
+- **bust** = among **early picks** (`round <= 5`) the one with the lowest `adjustedScore` (a high
+  pick that returned poorly); if there are no early picks, fall back to the lowest `adjustedScore`
   overall. Tiebreak: lower `pickGradeScore`. `null` if no picks. The early-round bias prevents a
   late flier from being labeled a "bust."
 - **teamGrades** = `teamGrades` mapped to rows, sorted by `gradeScore` desc; `isMe = rosterId ===
