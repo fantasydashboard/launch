@@ -1,8 +1,15 @@
 import { sleeperService } from '@/services/sleeper'
 import { draftAnalysisService } from '@/services/draftAnalysis'
 import { useLeagueStore } from '@/stores/league'
-import { calculatePickScore, scoreToGrade, calculateTeamGrade, getRelativeTeamGrade } from '@/services/draftGrading'
-import type { GradedDraft, GradedPick, GradedTeam } from './types'
+import {
+  calculatePickScore,
+  scoreToGrade,
+  calculateTeamGrade,
+  getRelativeTeamGrade,
+  getTier,
+  getTierConfig,
+} from '@/services/draftGrading'
+import type { GradedDraft, GradedPick, GradedTeam, KeeperInfo } from './types'
 
 /**
  * Grade a Sleeper points-league draft for a season, normalized to GradedDraft.
@@ -73,6 +80,31 @@ export async function loadSleeperPointsDraft(args: {
 
   const numTeams = rosters.length || 12
   const totalPicks = gradedPicks.length
+
+  // Kept players — labeled with a finished tier from the FULL-pool position rank that
+  // calculatePlayerSeasonStats already produces (it ranks over all rostered players, not
+  // just draft picks), so no separate rank map is needed here.
+  const tierConfig = getTierConfig(numTeams)
+  const keepers: KeeperInfo[] = draft.picks.filter(isKeeper).map((pick: any) => {
+    const position = pick.metadata?.position || 'Unknown'
+    const playerName =
+      pick.metadata?.first_name && pick.metadata?.last_name
+        ? `${pick.metadata.first_name} ${pick.metadata.last_name}`
+        : `Player ${pick.player_id}`
+    const stat = playerStats.get(pick.player_id)
+    const teamInfo = teamLookup.get(pick.roster_id)
+    return {
+      teamKey: `sleeper_${pick.roster_id}`,
+      teamName: teamInfo?.name || `Team ${pick.roster_id}`,
+      teamLogo: teamInfo?.avatar || '',
+      playerName,
+      position,
+      round: pick.round,
+      points: stat?.totalPoints ?? 0,
+      finishedTier: getTier(stat?.positionRank ?? 999, tierConfig),
+      headshot: pick.metadata?.headshot_url || undefined,
+    }
+  })
 
   const picks: GradedPick[] = gradedPicks.map((pick: any) => {
     const position = pick.metadata?.position || 'Unknown'
@@ -164,5 +196,5 @@ export async function loadSleeperPointsDraft(args: {
   const myRoster = args.currentUserId ? rosters.find((r: any) => r.owner_id === args.currentUserId) : undefined
   const myTeamKey = myRoster ? `sleeper_${myRoster.roster_id}` : null
 
-  return { picks, teams, numTeams, myTeamKey, keeperCount }
+  return { picks, teams, numTeams, myTeamKey, keeperCount, keepers }
 }

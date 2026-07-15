@@ -1,8 +1,15 @@
 import { espnService } from '@/services/espn'
 import type { Sport } from '@/types/supabase'
-import { calculatePickScore, scoreToGrade, calculateTeamGrade, getRelativeTeamGrade } from '@/services/draftGrading'
+import {
+  calculatePickScore,
+  scoreToGrade,
+  calculateTeamGrade,
+  getRelativeTeamGrade,
+  getTier,
+  getTierConfig,
+} from '@/services/draftGrading'
 import { espnHeadshotUrl } from '@/myteam/espn/mapRosters'
-import type { GradedDraft, GradedPick, GradedTeam } from './types'
+import type { GradedDraft, GradedPick, GradedTeam, KeeperInfo } from './types'
 
 /**
  * Fetch + grade an ESPN points-league draft for a season, normalized to GradedDraft.
@@ -41,6 +48,38 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
   // shouldn't distort the position-rank pools or team grades.
   const keeperCount = draftPicks.filter((p) => p.keeper).length
   const gradedPicks = draftPicks.filter((p) => !p.keeper)
+
+  // Full-pool current position rank (keepers INCLUDED) — used only to label kept players
+  // with a finished tier; separate from the keeper-excluded grading rank map below.
+  const fullPositionGroups = new Map<string, { playerId: number; points: number }[]>()
+  for (const pick of draftPicks) {
+    const position = pick.position || 'Unknown'
+    if (!fullPositionGroups.has(position)) fullPositionGroups.set(position, [])
+    fullPositionGroups.get(position)!.push({ playerId: pick.playerId, points: playerSeasonPoints.get(pick.playerId) || 0 })
+  }
+  const fullPositionRankMap = new Map<number, number>()
+  for (const [, players] of fullPositionGroups) {
+    const sortedByPoints = [...players].sort((a, b) => b.points - a.points)
+    sortedByPoints.forEach((player, index) => fullPositionRankMap.set(player.playerId, index + 1))
+  }
+  const tierConfig = getTierConfig(numTeams)
+  const keepers: KeeperInfo[] = draftPicks
+    .filter((p) => p.keeper)
+    .map((pick) => {
+      const team = teamMap.get(pick.teamId)
+      return {
+        teamKey: `espn_team_${pick.teamId}`,
+        teamName: team?.name || `Team ${pick.teamId}`,
+        teamLogo: team?.logo || '',
+        playerName: pick.playerName || `Player ${pick.playerId}`,
+        position: pick.position || 'Unknown',
+        round: pick.roundId,
+        points: playerSeasonPoints.get(pick.playerId) ?? 0,
+        finishedTier: getTier(fullPositionRankMap.get(pick.playerId) ?? 999, tierConfig),
+        headshot: espnHeadshotUrl(pick.playerId, sport),
+        proTeam: pick.proTeam || undefined,
+      }
+    })
 
   const sortedPicks = [...gradedPicks].sort((a, b) => a.overallPickNumber - b.overallPickNumber)
 
@@ -156,5 +195,5 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
     myTeamKey = null
   }
 
-  return { picks, teams: gradedTeams, numTeams, myTeamKey, keeperCount }
+  return { picks, teams: gradedTeams, numTeams, myTeamKey, keeperCount, keepers }
 }
