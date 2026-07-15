@@ -1218,7 +1218,6 @@ const tabs = computed(() => [
   { name: 'Trades', path: '/trades' },
   { name: 'League', path: '/league' },
   { name: 'Power Rankings', path: '/power-rankings' },
-  { name: 'Draft', path: '/draft' },
   { name: 'History', path: '/history' },
   { name: 'Free Tools', path: '/free-tools', isTool: true },
   { name: 'Ultimate Tools', path: '/ultimate-tools', isUltimate: true, isTool: true }
