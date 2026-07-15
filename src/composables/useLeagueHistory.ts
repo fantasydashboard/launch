@@ -47,6 +47,8 @@ export function useLeagueHistory() {
   const origin = ref<Map<number, { source: 'auto' | 'manual'; contributorUserId: string; isMine: boolean }>>(
     new Map(),
   )
+  // Per-season → platform-key map, so callers can re-fetch/load an older season directly.
+  const seasonKeys = ref<Map<number, string>>(new Map())
 
   // ── ESPN ──────────────────────────────────────────────────────────────────────
   async function loadEspn(leagueKey: string): Promise<HistorySeason[]> {
@@ -75,6 +77,7 @@ export function useLeagueHistory() {
 
     const out: HistorySeason[] = []
     for (let s = currentSeason; s >= currentSeason - 5; s--) {
+      seasonKeys.value.set(s, leagueId)
       try {
         const isCurrent = s === currentSeason
         const teams = isCurrent
@@ -179,6 +182,7 @@ export function useLeagueHistory() {
       try {
         const metadata = await yahooService.getLeagueMetadata(currentKey)
         const season = Number(metadata.season) || parseInt(String(currentKey).split('.')[0], 10)
+        seasonKeys.value.set(season, currentKey)
         const standings = await yahooService.getStandings(currentKey)
         if (!standings || standings.length === 0) break
 
@@ -315,6 +319,7 @@ export function useLeagueHistory() {
       try {
         const seasonStr = String(league.season)
         const season = Number(league.season)
+        seasonKeys.value.set(season, league.league_id)
         const rosters = hist.rosters.get(seasonStr) ?? []
         const users = hist.users.get(seasonStr) ?? []
         if (!rosters.length) continue
@@ -435,6 +440,7 @@ export function useLeagueHistory() {
     backfilled.value = false
     sport.value = String(leagueStore.activeSport || 'football')
     origin.value = new Map()
+    seasonKeys.value = new Map()
     try {
       const p = leagueStore.activePlatform
       platform.value = p
@@ -500,5 +506,18 @@ export function useLeagueHistory() {
     }
   }
 
-  return { data, firstYear, platform, sport, myTeamKey, backfilled, snapshotKey, origin, loading, loaded, load }
+  return {
+    data,
+    firstYear,
+    platform,
+    sport,
+    myTeamKey,
+    backfilled,
+    snapshotKey,
+    origin,
+    loading,
+    loaded,
+    load,
+    seasonKeys,
+  }
 }
