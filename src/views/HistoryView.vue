@@ -624,6 +624,10 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
             >{{ s }}</button>
           </div>
 
+          <p v-if="draft.report.value && draft.report.value.keeperCount > 0" class="mb-2 font-mono text-[10px] text-dark-textMuted">
+            {{ draft.report.value.keeperCount }} keepers excluded from grading
+          </p>
+
           <p v-if="draftReportPointsOnly" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 font-mono text-[11px] text-dark-textMuted">
             The graded Draft Report is available on points leagues for now — category-league grading is coming next.
           </p>
@@ -641,13 +645,40 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
             <div class="grid gap-3 sm:grid-cols-2">
               <div v-if="draft.report.value.steal" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
                 <div class="font-mono text-[9px] uppercase tracking-wider text-primary">Biggest steal</div>
-                <div class="mt-1 text-lg font-display font-bold text-dark-text">{{ draft.report.value.steal.playerName }}</div>
+                <div class="mt-1 flex items-center gap-2">
+                  <img v-if="draft.report.value.steal.headshot" :src="draft.report.value.steal.headshot" alt=""
+                    @error="(e) => ((e.target as HTMLElement).style.display = 'none')"
+                    class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
+                  <div class="min-w-0 text-lg font-display font-bold text-dark-text">{{ draft.report.value.steal.playerName }}</div>
+                </div>
                 <div class="font-mono text-[11px] text-dark-textMuted">{{ draft.report.value.steal.teamName }} · {{ draft.report.value.steal.valueLabel }} · {{ draft.report.value.steal.grade }}</div>
               </div>
               <div v-if="draft.report.value.bust" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
                 <div class="font-mono text-[9px] uppercase tracking-wider text-[#e0625a]">Biggest bust</div>
-                <div class="mt-1 text-lg font-display font-bold text-dark-text">{{ draft.report.value.bust.playerName }}</div>
+                <div class="mt-1 flex items-center gap-2">
+                  <img v-if="draft.report.value.bust.headshot" :src="draft.report.value.bust.headshot" alt=""
+                    @error="(e) => ((e.target as HTMLElement).style.display = 'none')"
+                    class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
+                  <div class="min-w-0 text-lg font-display font-bold text-dark-text">{{ draft.report.value.bust.playerName }}</div>
+                </div>
                 <div class="font-mono text-[11px] text-dark-textMuted">{{ draft.report.value.bust.teamName }} · {{ draft.report.value.bust.valueLabel }} · {{ draft.report.value.bust.grade }}</div>
+              </div>
+            </div>
+
+            <div v-if="draft.report.value.topSteals.length || draft.report.value.topReaches.length" class="grid gap-3 sm:grid-cols-2">
+              <div v-if="draft.report.value.topSteals.length" class="rounded-xl border border-dark-border bg-dark-card p-4">
+                <div class="mb-2 font-mono text-[10px] uppercase tracking-wider text-primary">Top steals</div>
+                <div v-for="(s, i) in draft.report.value.topSteals" :key="'st' + i" class="flex items-center justify-between py-1 text-sm">
+                  <span class="min-w-0 truncate text-dark-text">{{ s.playerName }} <span class="text-xs text-dark-textMuted">· {{ s.valueLabel }}</span></span>
+                  <span class="ml-2 shrink-0 font-display font-bold text-primary">{{ s.grade }}</span>
+                </div>
+              </div>
+              <div v-if="draft.report.value.topReaches.length" class="rounded-xl border border-dark-border bg-dark-card p-4">
+                <div class="mb-2 font-mono text-[10px] uppercase tracking-wider text-[#e0625a]">Top reaches</div>
+                <div v-for="(s, i) in draft.report.value.topReaches" :key="'re' + i" class="flex items-center justify-between py-1 text-sm">
+                  <span class="min-w-0 truncate text-dark-text">{{ s.playerName }} <span class="text-xs text-dark-textMuted">· {{ s.valueLabel }}</span></span>
+                  <span class="ml-2 shrink-0 font-display font-bold text-[#e0625a]">{{ s.grade }}</span>
+                </div>
               </div>
             </div>
 
@@ -671,23 +702,26 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
 
             <div class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
               <div class="mb-2 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">Every team, graded</div>
-              <div
-                v-for="t in draft.report.value.teamGrades"
-                :key="t.teamKey"
-                class="flex items-center justify-between gap-2 border-b border-dark-border/40 py-1.5 last:border-0"
-                :class="t.isMe ? 'text-primary' : 'text-dark-text'"
-              >
+              <div v-for="t in draft.report.value.teamGrades" :key="t.teamKey"
+                class="flex items-center justify-between border-b border-dark-border/40 py-1.5 last:border-0"
+                :class="t.isMe ? 'text-primary' : 'text-dark-text'">
                 <span class="flex min-w-0 items-center gap-2">
                   <span class="w-5 shrink-0 font-mono text-xs text-dark-textMuted">{{ t.rank }}</span>
                   <TeamAvatar :name="t.teamName" :logo="t.teamLogo" :size="24" />
-                  <span class="truncate text-sm">{{ t.teamName }}<span v-if="t.isMe" class="ml-1 text-xs">(you)</span></span>
+                  <span class="min-w-0">
+                    <span class="block truncate text-sm">{{ t.teamName }}<span v-if="t.isMe" class="ml-1 text-xs">(you)</span></span>
+                    <span v-if="t.bestPick" class="block truncate font-mono text-[10px] text-dark-textMuted">
+                      ↑{{ t.steals }} ↓{{ t.busts }} · best: {{ t.bestPick.playerName }}
+                    </span>
+                  </span>
                 </span>
-                <span class="shrink-0 font-display text-sm font-bold">{{ t.grade }}</span>
+                <span class="ml-2 shrink-0 font-display text-sm font-bold">{{ t.grade }}</span>
               </div>
             </div>
 
             <div v-if="draft.report.value.mySpotlight" class="rounded-xl border border-dark-border px-4 py-3" :style="{ backgroundColor: primaryTint(6) }">
               <div class="font-mono text-[9px] uppercase tracking-wider text-primary">Your draft</div>
+              <div v-if="draft.report.value.mySpotlight.narrative" class="mb-1 text-sm text-dark-text">{{ draft.report.value.mySpotlight.narrative }}</div>
               <div class="mt-1 text-sm text-dark-text">
                 Grade <span class="font-display text-lg font-bold text-primary">{{ draft.report.value.mySpotlight.grade }}</span>
                 · {{ ordinalRank(draft.report.value.mySpotlight.rank) }} of {{ draft.report.value.teamCount }}
