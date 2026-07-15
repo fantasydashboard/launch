@@ -1,0 +1,70 @@
+import { describe, it, expect } from 'vitest'
+import { buildDraftReport } from '@/draft/report/buildDraftReport'
+import type { GradedDraft, GradedPick, GradedTeam } from '@/draft/report/types'
+
+function pick(p: Partial<GradedPick> & { teamKey: string; playerName: string; round: number; score: number }): GradedPick {
+  return {
+    teamName: p.teamKey, teamLogo: '', position: p.position ?? 'OF',
+    overallPick: p.overallPick ?? p.round * 10, grade: p.grade ?? 'B',
+    verdict: p.verdict ?? 'SOLID', tierMovement: p.tierMovement ?? 'STARTER→STARTER',
+    draftedTier: 'STARTER', finishedTier: 'STARTER', ...p,
+  }
+}
+function team(teamKey: string, gradeScore: number, rank: number): GradedTeam {
+  return { teamKey, teamName: teamKey, teamLogo: '', gradeScore, grade: 'B', rank }
+}
+
+const draft: GradedDraft = {
+  numTeams: 3,
+  myTeamKey: 't2',
+  teams: [team('t1', 30, 1), team('t2', 10, 2), team('t3', -20, 3)],
+  picks: [
+    pick({ teamKey: 't1', playerName: 'Steal Guy', round: 8, score: 45, verdict: 'JACKPOT', tierMovement: 'WAIVER→ELITE' }),
+    pick({ teamKey: 't3', playerName: 'Bust Guy', round: 2, score: -35, verdict: 'DISASTER', tierMovement: 'ELITE→WAIVER' }),
+    pick({ teamKey: 't2', playerName: 'My Best', round: 3, score: 20 }),
+    pick({ teamKey: 't2', playerName: 'My Worst', round: 1, score: -10 }),
+    pick({ teamKey: 't1', playerName: 'Late Flier', round: 14, score: -40 }),
+  ],
+}
+
+describe('buildDraftReport', () => {
+  it('steal = highest-score pick', () => {
+    const r = buildDraftReport(draft, 2024)
+    expect(r.steal?.playerName).toBe('Steal Guy')
+    expect(r.steal?.valueLabel).toBe('Rd 8 · WAIVER→ELITE')
+  })
+  it('bust = lowest score among early (round<=5) picks, not a late flier', () => {
+    const r = buildDraftReport(draft, 2024)
+    expect(r.bust?.playerName).toBe('Bust Guy')
+  })
+  it('best/worst drafter come from ranked teams', () => {
+    const r = buildDraftReport(draft, 2024)
+    expect(r.bestDrafter?.teamKey).toBe('t1')
+    expect(r.worstDrafter?.teamKey).toBe('t3')
+    expect(r.teamGrades.map((t) => t.teamKey)).toEqual(['t1', 't2', 't3'])
+    expect(r.teamGrades.find((t) => t.teamKey === 't2')?.isMe).toBe(true)
+  })
+  it('spotlight uses my team, with my best/worst pick', () => {
+    const r = buildDraftReport(draft, 2024)
+    expect(r.mySpotlight?.rank).toBe(2)
+    expect(r.mySpotlight?.bestPick?.playerName).toBe('My Best')
+    expect(r.mySpotlight?.worstPick?.playerName).toBe('My Worst')
+  })
+  it('no myTeamKey -> null spotlight', () => {
+    const r = buildDraftReport({ ...draft, myTeamKey: null }, 2024)
+    expect(r.mySpotlight).toBeNull()
+  })
+  it('empty draft -> all null / empty, no throw', () => {
+    const r = buildDraftReport({ picks: [], teams: [], numTeams: 0, myTeamKey: null }, 2024)
+    expect(r.steal).toBeNull(); expect(r.bust).toBeNull()
+    expect(r.bestDrafter).toBeNull(); expect(r.teamGrades).toEqual([])
+    expect(r.mySpotlight).toBeNull()
+  })
+  it('bust falls back to overall min when there are no early picks', () => {
+    const late: GradedDraft = { numTeams: 1, myTeamKey: null, teams: [team('t1', 0, 1)], picks: [
+      pick({ teamKey: 't1', playerName: 'A', round: 9, score: -5 }),
+      pick({ teamKey: 't1', playerName: 'B', round: 12, score: -30 }),
+    ] }
+    expect(buildDraftReport(late, 2024).bust?.playerName).toBe('B')
+  })
+})
