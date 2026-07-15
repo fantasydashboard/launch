@@ -20,7 +20,15 @@ const history = useLeagueHistory()
 const authStore = useAuthStore()
 
 onMounted(() => history.load())
-watch(() => leagueStore.activeLeagueId, () => history.load())
+watch(() => leagueStore.activeLeagueId, () => {
+  history.load()
+  // HistoryView stays mounted across league switches → reset draft state so
+  // League A's report can't linger mislabeled as League B's.
+  showDraftReport.value = false
+  selectedDraftSeason.value = null
+  draft.report.value = null
+  draft.error.value = null
+})
 
 // ── DRAFT REPORT (Phase 1: points leagues only) ──────────────────────────────
 const draft = useDraftReport()
@@ -694,6 +702,10 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
 
             <RouterLink to="/draft" class="inline-block font-mono text-[11px] text-dark-textMuted hover:text-primary">deep draft board →</RouterLink>
           </div>
+
+          <p v-else class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 font-mono text-[11px] text-dark-textMuted">
+            No draftable seasons found for this league yet.
+          </p>
         </div>
       </section>
     </template>
