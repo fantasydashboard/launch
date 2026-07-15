@@ -74,6 +74,64 @@ usage. Corrected facts the plan is built on:
 The reducer §3 selection rules and useDraftReport §2 service calls below are updated accordingly;
 where older prose still says `valueAdded`, read `adjustedScore`.
 
+## FINAL ARCHITECTURE (2026-07-14 — supersedes the engine choice above; user chose FULL PARITY)
+
+After verification, `analyzeDraftPicks` was abandoned entirely (compile-broken imports; missing
+`gamesPlayed`/`overallRank` on ESPN & Yahoo; orphaned). The Report is built on the **live
+`draftGrading.ts` system** the current `/draft` views already use, for **full parity: points AND
+category, all three platforms, with the your-team spotlight.**
+
+**Reality that reshapes the plan:**
+- Points grading = `calculatePickScore(pickNumber, round, draftedPositionRank, finishedPositionRank,
+  position, numTeams, totalPicks, sport): PickScoreResult` (`{ totalScore, draftedTier, finishedTier,
+  tierMovement, verdict }`) → `scoreToGrade(totalScore)`. Team grade = `calculateTeamGrade(picks)` →
+  `getRelativeTeamGrade(rank, numTeams, gradeScore)`. Tiers ELITE>STARTER>BENCH>REPLACEMENT>WAIVER via
+  `getTierConfig(numTeams)`/`getTier(rank, config)`.
+- Category grading is a SEPARATE pipeline living inline in `CategoryDraftView` (`calculateCategoryPickScore`
+  / `getCategoryTierConfig` / `getCategoryTier`, ranked by aggregate category-percentile, plus an ad-hoc
+  team score — no `calculateTeamGrade` equivalent). Phase 2 promotes these into `draftGrading.ts` as shared
+  exports + adds a category team-grade.
+- Neither draft view has a "my team" concept. My-team resolution is NEW, per platform: ESPN
+  `getMyTeam(sport,leagueId,season).id`; Yahoo `getMyTeam(leagueKey)` via `.t.me` → `team_id` (string,
+  parse) then `team_key`; Sleeper the `roster_id` whose `owner_id === leagueStore.currentUserId`.
+- Neither view attributes a per-team best/worst pick or a canonical steal — that's the new reducer.
+
+**Unified data contract (both phases, all platforms) — the loaders normalize to this; the reducer +
+view depend ONLY on this, never on platform raw shapes:**
+```ts
+interface GradedPick {
+  teamKey: string          // stable per-season team id STRING: 'espn_team_<id>' | '<yahooLeagueKey>.t.<id>' | 'sleeper_<roster_id>'
+  teamName: string; teamLogo?: string
+  playerName: string; position: string
+  round: number; overallPick: number
+  score: number            // PickScoreResult.totalScore
+  grade: string            // scoreToGrade(score)
+  verdict: string          // JACKPOT|STEAL|HIT|SOLID|MISS|BUST|DISASTER
+  tierMovement: string; draftedTier: string; finishedTier: string
+}
+interface GradedTeam { teamKey: string; teamName: string; teamLogo?: string; gradeScore: number; grade: string; rank: number } // rank 1 = best
+interface GradedDraft { picks: GradedPick[]; teams: GradedTeam[]; numTeams: number; myTeamKey: string | null }
+```
+`buildDraftReport(draft: GradedDraft, season: number): DraftReport` — steal = max `score`; bust =
+min `score` among `round<=5` else min overall; teamGrades = `draft.teams` (already ranked);
+best/worstDrafter = teams[0]/teams[last]; mySpotlight (when `myTeamKey` matches a team) = its grade +
+rank + that team's max-score / min-score pick. `DraftHighlight`/`TeamGradeRow` in §3 are keyed by
+`teamKey` (string) instead of numeric `rosterId`.
+
+**Build phasing (full parity is the end state):**
+- **PHASE 1 (this plan): POINTS parity** — shared reducer + 3 platform *points* loaders (ESPN/Yahoo/Sleeper)
+  producing `GradedDraft` via `calculatePickScore`/`calculateTeamGrade`/`getRelativeTeamGrade` + my-team
+  resolution; `useLeagueHistory.seasonKeys`; `useDraftReport`; lazy `HistoryView` section + season picker +
+  states; retire `/draft` from nav. Category leagues render an honest "points only for now" note in the section.
+- **PHASE 2 (own plan after Phase 1 validates): CATEGORY parity** — promote `calculateCategoryPickScore`/
+  `getCategoryTier(Config)` into `draftGrading.ts` + a category team-grade; add ESPN/Yahoo *category* loaders
+  producing the same `GradedDraft`; drop the "points only" note. The reducer, composable, view, and nav work
+  are unchanged (they consume `GradedDraft`).
+
+**Loaders replicate, not refactor:** the per-platform fetch+rank+grade is replicated into new
+`src/draft/report/` modules; the old 2.7k/4.1k-line `/draft` views are left UNTOUCHED (they're retired from
+nav, kept reachable). Duplication is the accepted cost of isolating a large, real feature from working code.
+
 ## Architecture
 
 Three new units, each one responsibility, plus one small additive change to `useLeagueHistory`.
