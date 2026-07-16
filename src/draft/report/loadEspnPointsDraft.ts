@@ -49,10 +49,9 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
   // getTeamsWithRosters — the roster view's per-player stat breakdown can be thin or
   // missing entirely, and (more importantly) games-played stat ids are BATTER-only in
   // ESPN's baseball catalog, so a GP-based guard is a no-op for pitchers. Pitchers use
-  // innings pitched (baseball stat 17) instead; hitters/other sports use games played
-  // (falling back to at-bats for baseball hitters when GP is unavailable).
-  const GP_STAT_ID: Record<string, string> = { hockey: '30', basketball: '40', baseball: '99' }
-  const gpStatId = GP_STAT_ID[sport]
+  // innings pitched (stat 17); hitters use games played (99) else at-bats (0). These stat
+  // ids are BASEBALL-specific, so the guard is gated to baseball — other sports get
+  // undefined playing time and are never excluded (conservative, safe).
   const isPitcher = (position: string): boolean =>
     ['SP', 'RP', 'P'].includes((position || '').split(/[,/|]/)[0].trim().toUpperCase())
 
@@ -65,11 +64,10 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
   }
 
   const playingTimeOf = (playerId: number, position: string): number | undefined => {
+    if (sport !== 'baseball') return undefined // IP/GP/AB stat ids are baseball-specific
     const s = statsById.get(playerId)?.stats
     if (!s) return undefined
-    if (isPitcher(position)) return s['17'] // innings pitched (baseball pitchers)
-    if (gpStatId && s[gpStatId] !== undefined) return s[gpStatId]
-    return sport === 'baseball' ? s['0'] : undefined // AB fallback for baseball hitters only
+    return isPitcher(position) ? s['17'] : (s['99'] ?? s['0'])
   }
 
   // Exclude keeper picks from grading and rank computation entirely — a kept star
