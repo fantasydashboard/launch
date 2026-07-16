@@ -42,6 +42,7 @@ export interface GradedDraft {
   numTeams: number
   myTeamKey: string | null
   keeperCount?: number
+  incompleteCount?: number
   keepers?: KeeperInfo[]
 }
 export interface DraftHighlight {
@@ -84,6 +85,7 @@ export interface DraftReport {
   topReaches: DraftHighlight[]
   topKeepers: KeeperInfo[]
   keeperCount: number
+  incompleteCount: number
   mySpotlight: {
     grade: string
     rank: number

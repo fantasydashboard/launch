@@ -178,4 +178,8 @@ describe('buildDraftReport — critique fixes', () => {
   it('no keepers -> empty topKeepers', () => {
     expect(buildDraftReport({ ...base, keepers: undefined }, 2024).topKeepers).toEqual([])
   })
+  it('passes incompleteCount through (undefined -> 0)', () => {
+    expect(buildDraftReport({ ...base, incompleteCount: 4 }, 2024).incompleteCount).toBe(4)
+    expect(buildDraftReport(base, 2024).incompleteCount).toBe(0)
+  })
 })

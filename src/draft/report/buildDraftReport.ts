@@ -97,6 +97,7 @@ export function buildDraftReport(draft: GradedDraft, season: number): DraftRepor
     steal, bust, topSteals, topReaches, topKeepers,
     bestDrafter, worstDrafter, teamGrades,
     keeperCount: draft.keeperCount ?? 0,
+    incompleteCount: draft.incompleteCount ?? 0,
     mySpotlight,
   }
 }
