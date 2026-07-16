@@ -59,7 +59,11 @@ export function buildDraftReport(draft: GradedDraft, season: number): DraftRepor
 
   const topKeepers = (draft.keepers ?? [])
     .filter((k) => k.finishedTier === 'ELITE' || k.finishedTier === 'STARTER')
-    .sort((a, b) => (TIER_RANK[a.finishedTier] ?? 9) - (TIER_RANK[b.finishedTier] ?? 9) || b.points - a.points)
+    .sort((a, b) =>
+      (TIER_RANK[a.finishedTier] ?? 9) - (TIER_RANK[b.finishedTier] ?? 9) ||
+      b.round - a.round ||
+      b.points - a.points,
+    )
     .slice(0, 5)
 
   let mySpotlight: DraftReport['mySpotlight'] = null

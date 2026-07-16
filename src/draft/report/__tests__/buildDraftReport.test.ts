@@ -155,9 +155,19 @@ describe('buildDraftReport — critique fixes', () => {
     expect(r.teamGrades.find((t) => t.teamKey === 't1')!.scoreGap).toBe(20)
     expect(r.teamGrades.find((t) => t.teamKey === 't4')!.scoreGap).toBe(-20)
   })
-  it('top keepers = ELITE/STARTER finishers, best first; drops REPLACEMENT', () => {
-    const r = buildDraftReport(base, 2024)
-    expect(r.topKeepers.map((k) => k.playerName)).toEqual(['Held Ace', 'Held Bat'])
+  it('top keepers = ELITE/STARTER, ranked by tier then cheaper keeper round (value)', () => {
+    const d: GradedDraft = {
+      numTeams: 4, myTeamKey: null, teams: [team('t1', 0, 1)],
+      picks: [],
+      keepers: [
+        keeper('t1', 'Cheap Elite', 'ELITE', 300, 18),
+        keeper('t1', 'Pricey Elite', 'ELITE', 320, 2),
+        keeper('t1', 'Cheap Starter', 'STARTER', 250, 20),
+        keeper('t1', 'Dud', 'REPLACEMENT', 40, 15),
+      ],
+    }
+    const r = buildDraftReport(d, 2024)
+    expect(r.topKeepers.map((k) => k.playerName)).toEqual(['Cheap Elite', 'Pricey Elite', 'Cheap Starter'])
   })
   it('worst pick only shows a real bust (else null)', () => {
     const r = buildDraftReport(base, 2024)
