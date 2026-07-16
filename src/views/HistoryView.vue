@@ -42,6 +42,12 @@ const draftSeasons = computed<number[]>(() =>
 )
 const selectedDraftSeason = ref<number | null>(null)
 
+const currentYear = new Date().getFullYear()
+const draftSeasonInProgress = (s: number) => s >= currentYear
+const isSelectedInProgress = computed(
+  () => selectedDraftSeason.value != null && draftSeasonInProgress(selectedDraftSeason.value),
+)
+
 function loadDraftSeason(season: number) {
   const key = history.seasonKeys.value.get(season)
   if (!key) return
@@ -51,7 +57,8 @@ function loadDraftSeason(season: number) {
 function openDraftReport() {
   showDraftReport.value = true
   if (selectedDraftSeason.value == null && draftSeasons.value.length && !draftReportPointsOnly.value) {
-    loadDraftSeason(draftSeasons.value[0])
+    const completed = draftSeasons.value.filter((s) => !draftSeasonInProgress(s))
+    loadDraftSeason(completed.length ? completed[0] : draftSeasons.value[0])
   }
 }
 function ordinalRank(n: number): string {
@@ -621,7 +628,7 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
               :class="s === selectedDraftSeason ? 'text-primary' : 'text-dark-textMuted hover:text-dark-text'"
               :style="s === selectedDraftSeason ? { backgroundColor: primaryTint(16) } : {}"
               @click="loadDraftSeason(s)"
-            >{{ s }}</button>
+            >{{ s }}<span v-if="draftSeasonInProgress(s)" class="opacity-60"> · so far</span></button>
           </div>
 
           <p v-if="draft.report.value && draft.report.value.keeperCount > 0" class="mb-2 font-mono text-[10px] text-dark-textMuted">
@@ -650,7 +657,7 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
                   <span class="ml-2 shrink-0 font-mono font-bold text-primary">{{ s.score > 0 ? '+' : '' }}{{ Math.round(s.score) }}</span>
                 </div>
               </div>
-              <div v-if="draft.report.value.topReaches.length" class="rounded-xl border border-dark-border bg-dark-card p-4">
+              <div v-if="draft.report.value.topReaches.length && !isSelectedInProgress" class="rounded-xl border border-dark-border bg-dark-card p-4">
                 <div class="mb-2 font-mono text-[10px] uppercase tracking-wider text-[#e0625a]">Top reaches</div>
                 <div v-for="(s, i) in draft.report.value.topReaches" :key="'re' + i" class="flex items-center justify-between py-1 text-sm">
                   <span class="min-w-0 truncate text-dark-text">{{ s.playerName }} <span class="text-xs text-dark-textMuted">· {{ s.valueLabel }}</span></span>
@@ -658,6 +665,10 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
                 </div>
               </div>
             </div>
+
+            <p v-if="isSelectedInProgress && draft.report.value" class="rounded-xl border border-dark-border bg-dark-card p-4 font-mono text-[11px] text-dark-textMuted">
+              {{ selectedDraftSeason }} is still in progress — grades are "so far," and reaches are hidden (a slow start or an injury isn't a draft bust).
+            </p>
 
             <div v-if="draft.report.value.topKeepers.length" class="rounded-xl border border-dark-border bg-dark-card p-4">
               <div class="mb-2 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Top keepers held</div>
@@ -667,24 +678,6 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
                 <span class="min-w-0 flex-1 truncate text-sm text-dark-text">{{ k.playerName }}
                   <span class="text-xs text-dark-textMuted">· {{ k.teamName }} · kept Rd {{ k.round }}</span></span>
                 <span class="ml-2 shrink-0 font-mono text-[11px] uppercase" :class="k.finishedTier === 'ELITE' ? 'text-primary' : 'text-dark-textMuted'">{{ k.finishedTier }}</span>
-              </div>
-            </div>
-
-            <div v-if="draft.report.value.bestDrafter" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3">
-              <div class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">Draft MVP · best &amp; worst drafter</div>
-              <div class="mt-2 flex items-center justify-between gap-2">
-                <span class="flex min-w-0 items-center gap-2">
-                  <TeamAvatar :name="draft.report.value.bestDrafter.teamName" :logo="draft.report.value.bestDrafter.teamLogo" :size="28" />
-                  <span class="truncate text-sm text-dark-text">{{ draft.report.value.bestDrafter.teamName }}</span>
-                </span>
-                <span class="shrink-0 font-display text-lg font-bold text-primary">{{ draft.report.value.bestDrafter.grade }}</span>
-              </div>
-              <div v-if="draft.report.value.worstDrafter" class="mt-2 flex items-center justify-between gap-2">
-                <span class="flex min-w-0 items-center gap-2">
-                  <TeamAvatar :name="draft.report.value.worstDrafter.teamName" :logo="draft.report.value.worstDrafter.teamLogo" :size="28" />
-                  <span class="truncate text-sm text-dark-text">{{ draft.report.value.worstDrafter.teamName }}</span>
-                </span>
-                <span class="shrink-0 font-display text-lg font-bold text-[#e0625a]">{{ draft.report.value.worstDrafter.grade }}</span>
               </div>
             </div>
 
