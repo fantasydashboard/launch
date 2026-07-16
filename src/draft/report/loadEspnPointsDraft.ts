@@ -20,7 +20,9 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
   const sport = args.sport as Sport
   const { leagueId, season } = args
 
+  console.log('[draft report] ESPN loader START', { leagueId, season, sport })
   const draftPicks = await espnService.getDraftWithPlayers(sport, leagueId, season)
+  console.log('[draft report] ESPN got', draftPicks?.length ?? 0, 'draft picks')
   if (!draftPicks || draftPicks.length === 0) return null
 
   const teams = await espnService.getTeams(sport, leagueId, season)
@@ -64,15 +66,17 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
   if (sport === 'baseball') {
     try {
       const playerIds = draftPicks.map((p) => p.playerId)
+      console.log('[draft report] ESPN fetching player stats for', playerIds.length, 'players (6s budget)…')
       const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 6000))
       const result = await Promise.race([
         espnService.getPlayersWithStats(sport, leagueId, season, playerIds),
         timeout,
       ])
       if (result) statsById = result
-      else console.debug('[draft report] ESPN getPlayersWithStats timed out — injury guard skipped')
-    } catch {
-      // No playing-time data available — isIncomplete below will conservatively never exclude
+      else console.log('[draft report] ESPN getPlayersWithStats TIMED OUT — injury guard skipped')
+      console.log('[draft report] ESPN stats done — got stats for', statsById.size, 'players')
+    } catch (e) {
+      console.log('[draft report] ESPN getPlayersWithStats threw — injury guard skipped', e)
     }
   }
 
@@ -122,7 +126,7 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
     return true
   }
   const incompleteCount = nonKeeperPicks.filter(isIncomplete).length
-  console.debug('[draft report] ESPN incompleteCount', incompleteCount, 'of', nonKeeperPicks.length, 'non-keeper picks')
+  console.log('[draft report] ESPN incompleteCount', incompleteCount, 'of', nonKeeperPicks.length, 'non-keeper picks')
 
   // Sample the 5 lowest-points non-keeper picks so we can see WHY they were/weren't excluded.
   const pointsOf = (p: (typeof nonKeeperPicks)[number]) => playerSeasonPoints.get(p.playerId) || 0
@@ -136,7 +140,7 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
       pts: pointsOf(p),
       excl: isIncomplete(p),
     }))
-  console.debug('[draft report] ESPN low-points sample', sample)
+  console.log('[draft report] ESPN low-points sample', sample)
 
   const gradedPicks = nonKeeperPicks.filter((p) => !isIncomplete(p))
 
