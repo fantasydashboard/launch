@@ -167,6 +167,7 @@ export async function loadYahooPointsDraft(args: { leagueKey: string; sport?: st
   }
 
   // Yahoo's getDraftResults does not expose a keeper flag — keeperCount is always 0
-  // and all picks are graded (documented gap).
-  return { picks, teams, numTeams, myTeamKey, keeperCount: 0, keepers: [] }
+  // and all picks are graded (documented gap). Yahoo also has no games-played source
+  // wired up here, so the injury/incomplete-season guard never applies.
+  return { picks, teams, numTeams, myTeamKey, keeperCount: 0, keepers: [], incompleteCount: 0 }
 }

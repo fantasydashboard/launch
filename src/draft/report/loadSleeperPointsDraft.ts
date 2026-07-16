@@ -37,7 +37,7 @@ export async function loadSleeperPointsDraft(args: {
     return v === true || v === 'true' || v === 1 || v === '1'
   }
   const keeperCount = draft.picks.filter(isKeeper).length
-  const gradedPicks = draft.picks.filter((p: any) => !isKeeper(p))
+  const nonKeeperPicks = draft.picks.filter((p: any) => !isKeeper(p))
 
   const rosters = leagueStore.historicalRosters.get(seasonKey) || []
   const users = leagueStore.historicalUsers.get(seasonKey) || []
@@ -46,7 +46,7 @@ export async function loadSleeperPointsDraft(args: {
 
   // Build player positions map from draft picks
   const playerPositions = new Map<string, string>()
-  gradedPicks.forEach((pick: any) => {
+  nonKeeperPicks.forEach((pick: any) => {
     const pos = pick.metadata?.position
     if (pos && pick.player_id) playerPositions.set(pick.player_id, pos)
   })
@@ -56,6 +56,38 @@ export async function loadSleeperPointsDraft(args: {
   const playerStats = matchups
     ? draftAnalysisService.calculatePlayerSeasonStats(matchups, playoffStart - 1, playerPositions)
     : new Map()
+
+  // Injury/incomplete-season guard: a non-keeper pick is excluded from grading when it
+  // missed most of the season AND didn't produce — the points check prevents false-excluding
+  // a rookie/midseason callup with few games but big points (a real steal). posMaxGames /
+  // posMaxPoints are the max games / season points among non-keeper picks at that position.
+  const posMaxGames = new Map<string, number>()
+  const posMaxPoints = new Map<string, number>()
+  for (const pick of nonKeeperPicks as any[]) {
+    const position = pick.metadata?.position || 'Unknown'
+    const stats = playerStats.get(pick.player_id)
+    if (stats && stats.gamesPlayed !== undefined) {
+      posMaxGames.set(position, Math.max(posMaxGames.get(position) || 0, stats.gamesPlayed))
+    }
+    const points = stats?.totalPoints ?? 0
+    posMaxPoints.set(position, Math.max(posMaxPoints.get(position) || 0, points))
+  }
+  const isIncomplete = (pick: any): boolean => {
+    const stats = playerStats.get(pick.player_id)
+    if (!stats || stats.gamesPlayed === undefined) return false // unknown games — never exclude
+    const position = pick.metadata?.position || 'Unknown'
+    const maxGames = posMaxGames.get(position) || 0
+    if (maxGames < 20) return false // position pool too small to be meaningful
+    if (stats.gamesPlayed >= 0.5 * maxGames) return false
+    const points = stats.totalPoints ?? 0
+    const maxPoints = posMaxPoints.get(position) || 0
+    if (points >= 0.5 * maxPoints) return false
+    return true
+  }
+  const incompleteCount = nonKeeperPicks.filter(isIncomplete).length
+  console.debug('[draft report] Sleeper incompleteCount', incompleteCount)
+
+  const gradedPicks = nonKeeperPicks.filter((p: any) => !isIncomplete(p))
 
   // Position rank as drafted: order each position was taken in the draft
   const positionDraftOrder: Record<string, string[]> = {}
@@ -211,5 +243,5 @@ export async function loadSleeperPointsDraft(args: {
   const myRoster = args.currentUserId ? rosters.find((r: any) => r.owner_id === args.currentUserId) : undefined
   const myTeamKey = myRoster ? `sleeper_${myRoster.roster_id}` : null
 
-  return { picks, teams, numTeams, myTeamKey, keeperCount, keepers }
+  return { picks, teams, numTeams, myTeamKey, keeperCount, keepers, incompleteCount }
 }

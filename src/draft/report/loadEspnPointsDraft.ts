@@ -27,6 +27,14 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
   const teamMap = new Map(teams.map((t) => [t.id, t]))
   const numTeams = teams.length || 12
 
+  // Games-played source for the injury/incomplete-season guard below, keyed by playerId.
+  // The GP stat id differs per ESPN sport catalog (confirmed via getStatDisplayNames):
+  // hockey=30, basketball=40, baseball=99. Football has no matching GP id in that catalog,
+  // so games are left unset there — a missing value is never excluded (conservative fallback).
+  const GP_STAT_ID: Record<string, string> = { hockey: '30', basketball: '40', baseball: '99' }
+  const gpStatId = GP_STAT_ID[sport]
+  const gamesByPlayerId = new Map<number, number>()
+
   // Per-player season points, sourced from roster's actualPoints (season total)
   const playerSeasonPoints = new Map<number, number>()
   try {
@@ -36,6 +44,9 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
         for (const player of team.roster) {
           if (player.actualPoints && player.actualPoints > 0) {
             playerSeasonPoints.set(player.playerId, player.actualPoints)
+          }
+          if (gpStatId && player.stats && player.stats[gpStatId] !== undefined) {
+            gamesByPlayerId.set(player.playerId, player.stats[gpStatId])
           }
         }
       }
@@ -47,7 +58,39 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
   // Exclude keeper picks from grading and rank computation entirely — a kept star
   // shouldn't distort the position-rank pools or team grades.
   const keeperCount = draftPicks.filter((p) => p.keeper).length
-  const gradedPicks = draftPicks.filter((p) => !p.keeper)
+  const nonKeeperPicks = draftPicks.filter((p) => !p.keeper)
+
+  // Injury/incomplete-season guard: a non-keeper pick is excluded from grading when it
+  // missed most of the season AND didn't produce — the points check prevents false-excluding
+  // a rookie/midseason callup with few games but big points (a real steal). posMaxGames /
+  // posMaxPoints are the max games / season points among non-keeper picks at that position.
+  const posMaxGames = new Map<string, number>()
+  const posMaxPoints = new Map<string, number>()
+  for (const pick of nonKeeperPicks) {
+    const position = pick.position || 'Unknown'
+    const games = gamesByPlayerId.get(pick.playerId)
+    if (games !== undefined) {
+      posMaxGames.set(position, Math.max(posMaxGames.get(position) || 0, games))
+    }
+    const points = playerSeasonPoints.get(pick.playerId) || 0
+    posMaxPoints.set(position, Math.max(posMaxPoints.get(position) || 0, points))
+  }
+  const isIncomplete = (pick: (typeof nonKeeperPicks)[number]): boolean => {
+    const games = gamesByPlayerId.get(pick.playerId)
+    if (games === undefined) return false // unknown games — never exclude
+    const position = pick.position || 'Unknown'
+    const maxGames = posMaxGames.get(position) || 0
+    if (maxGames < 20) return false // position pool too small to be meaningful
+    if (games >= 0.5 * maxGames) return false
+    const points = playerSeasonPoints.get(pick.playerId) || 0
+    const maxPoints = posMaxPoints.get(position) || 0
+    if (points >= 0.5 * maxPoints) return false
+    return true
+  }
+  const incompleteCount = nonKeeperPicks.filter(isIncomplete).length
+  console.debug('[draft report] ESPN incompleteCount', incompleteCount)
+
+  const gradedPicks = nonKeeperPicks.filter((p) => !isIncomplete(p))
 
   // Full-pool current position rank (keepers INCLUDED) — used only to label kept players
   // with a finished tier; separate from the keeper-excluded grading rank map below.
@@ -195,5 +238,5 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
     myTeamKey = null
   }
 
-  return { picks, teams: gradedTeams, numTeams, myTeamKey, keeperCount, keepers }
+  return { picks, teams: gradedTeams, numTeams, myTeamKey, keeperCount, keepers, incompleteCount }
 }
