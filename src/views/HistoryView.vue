@@ -631,8 +631,9 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
             >{{ s }}<span v-if="draftSeasonInProgress(s)" class="opacity-60"> · so far</span></button>
           </div>
 
-          <p v-if="draft.report.value && draft.report.value.keeperCount > 0" class="mb-2 font-mono text-[10px] text-dark-textMuted">
-            {{ draft.report.value.keeperCount }} keepers excluded from grading
+          <p v-if="draft.report.value && (draft.report.value.keeperCount > 0 || draft.report.value.incompleteCount > 0)"
+            class="mb-2 font-mono text-[10px] text-dark-textMuted">
+            <span v-if="draft.report.value.keeperCount > 0">{{ draft.report.value.keeperCount }} keepers</span><span v-if="draft.report.value.keeperCount > 0 && draft.report.value.incompleteCount > 0"> · </span><span v-if="draft.report.value.incompleteCount > 0">{{ draft.report.value.incompleteCount }} injured/incomplete</span> excluded from grading
           </p>
 
           <p v-if="draftReportPointsOnly" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 font-mono text-[11px] text-dark-textMuted">
