@@ -56,11 +56,24 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
     ['SP', 'RP', 'P'].includes((position || '').split(/[,/|]/)[0].trim().toUpperCase())
 
   let statsById = new Map<number, { name: string; position: string; team: string; stats: Record<string, number> }>()
-  try {
-    const playerIds = draftPicks.map((p) => p.playerId)
-    statsById = await espnService.getPlayersWithStats(sport, leagueId, season, playerIds)
-  } catch {
-    // No playing-time data available — isIncomplete below will conservatively never exclude
+  // Best-effort + TIME-BOUNDED: the injury guard is an enhancement and must NEVER block or break
+  // the report. getPlayersWithStats fetches stats for every drafted player (200+ in a keeper
+  // league) in rate-limited chunks and can be slow; if it doesn't return within the budget we
+  // proceed with NO guard (report still renders, just without injury exclusion). Non-baseball
+  // never uses these stat ids, so skip the fetch entirely there.
+  if (sport === 'baseball') {
+    try {
+      const playerIds = draftPicks.map((p) => p.playerId)
+      const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 6000))
+      const result = await Promise.race([
+        espnService.getPlayersWithStats(sport, leagueId, season, playerIds),
+        timeout,
+      ])
+      if (result) statsById = result
+      else console.debug('[draft report] ESPN getPlayersWithStats timed out — injury guard skipped')
+    } catch {
+      // No playing-time data available — isIncomplete below will conservatively never exclude
+    }
   }
 
   const playingTimeOf = (playerId: number, position: string): number | undefined => {
