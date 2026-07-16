@@ -27,14 +27,6 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
   const teamMap = new Map(teams.map((t) => [t.id, t]))
   const numTeams = teams.length || 12
 
-  // Games-played source for the injury/incomplete-season guard below, keyed by playerId.
-  // The GP stat id differs per ESPN sport catalog (confirmed via getStatDisplayNames):
-  // hockey=30, basketball=40, baseball=99. Football has no matching GP id in that catalog,
-  // so games are left unset there — a missing value is never excluded (conservative fallback).
-  const GP_STAT_ID: Record<string, string> = { hockey: '30', basketball: '40', baseball: '99' }
-  const gpStatId = GP_STAT_ID[sport]
-  const gamesByPlayerId = new Map<number, number>()
-
   // Per-player season points, sourced from roster's actualPoints (season total)
   const playerSeasonPoints = new Map<number, number>()
   try {
@@ -45,14 +37,39 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
           if (player.actualPoints && player.actualPoints > 0) {
             playerSeasonPoints.set(player.playerId, player.actualPoints)
           }
-          if (gpStatId && player.stats && player.stats[gpStatId] !== undefined) {
-            gamesByPlayerId.set(player.playerId, player.stats[gpStatId])
-          }
         }
       }
     }
   } catch {
     // No season points available — ranks below will fall back to 999 / round proxy
+  }
+
+  // Playing-time source for the injury/incomplete-season guard below, keyed by playerId.
+  // Sourced from the dedicated player-stats endpoint (getPlayersWithStats), NOT
+  // getTeamsWithRosters — the roster view's per-player stat breakdown can be thin or
+  // missing entirely, and (more importantly) games-played stat ids are BATTER-only in
+  // ESPN's baseball catalog, so a GP-based guard is a no-op for pitchers. Pitchers use
+  // innings pitched (baseball stat 17) instead; hitters/other sports use games played
+  // (falling back to at-bats for baseball hitters when GP is unavailable).
+  const GP_STAT_ID: Record<string, string> = { hockey: '30', basketball: '40', baseball: '99' }
+  const gpStatId = GP_STAT_ID[sport]
+  const isPitcher = (position: string): boolean =>
+    ['SP', 'RP', 'P'].includes((position || '').split(/[,/|]/)[0].trim().toUpperCase())
+
+  let statsById = new Map<number, { name: string; position: string; team: string; stats: Record<string, number> }>()
+  try {
+    const playerIds = draftPicks.map((p) => p.playerId)
+    statsById = await espnService.getPlayersWithStats(sport, leagueId, season, playerIds)
+  } catch {
+    // No playing-time data available — isIncomplete below will conservatively never exclude
+  }
+
+  const playingTimeOf = (playerId: number, position: string): number | undefined => {
+    const s = statsById.get(playerId)?.stats
+    if (!s) return undefined
+    if (isPitcher(position)) return s['17'] // innings pitched (baseball pitchers)
+    if (gpStatId && s[gpStatId] !== undefined) return s[gpStatId]
+    return sport === 'baseball' ? s['0'] : undefined // AB fallback for baseball hitters only
   }
 
   // Exclude keeper picks from grading and rank computation entirely — a kept star
@@ -62,33 +79,53 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
 
   // Injury/incomplete-season guard: a non-keeper pick is excluded from grading when it
   // missed most of the season AND didn't produce — the points check prevents false-excluding
-  // a rookie/midseason callup with few games but big points (a real steal). posMaxGames /
-  // posMaxPoints are the max games / season points among non-keeper picks at that position.
-  const posMaxGames = new Map<string, number>()
+  // a rookie/midseason callup with little playing time but big points (a real steal).
+  // posMaxPT / posMaxPoints are the max known playing-time / season points among non-keeper
+  // picks at that position; a position group is only trusted once it has >=3 picks with
+  // KNOWN playing time (replaces the old games-specific ">=20 games" floor, which didn't
+  // make sense for an innings-pitched scale).
+  const posMaxPT = new Map<string, number>()
+  const posKnownPTCount = new Map<string, number>()
   const posMaxPoints = new Map<string, number>()
   for (const pick of nonKeeperPicks) {
     const position = pick.position || 'Unknown'
-    const games = gamesByPlayerId.get(pick.playerId)
-    if (games !== undefined) {
-      posMaxGames.set(position, Math.max(posMaxGames.get(position) || 0, games))
+    const pt = playingTimeOf(pick.playerId, position)
+    if (pt !== undefined) {
+      posMaxPT.set(position, Math.max(posMaxPT.get(position) || 0, pt))
+      posKnownPTCount.set(position, (posKnownPTCount.get(position) || 0) + 1)
     }
     const points = playerSeasonPoints.get(pick.playerId) || 0
     posMaxPoints.set(position, Math.max(posMaxPoints.get(position) || 0, points))
   }
   const isIncomplete = (pick: (typeof nonKeeperPicks)[number]): boolean => {
-    const games = gamesByPlayerId.get(pick.playerId)
-    if (games === undefined) return false // unknown games — never exclude
     const position = pick.position || 'Unknown'
-    const maxGames = posMaxGames.get(position) || 0
-    if (maxGames < 20) return false // position pool too small to be meaningful
-    if (games >= 0.5 * maxGames) return false
+    const pt = playingTimeOf(pick.playerId, position)
+    if (pt === undefined) return false // unknown playing time — never exclude
+    const knownCount = posKnownPTCount.get(position) || 0
+    if (knownCount < 3) return false // position pool too small to be meaningful
+    const maxPT = posMaxPT.get(position) || 0
+    if (maxPT <= 0 || pt >= 0.5 * maxPT) return false
     const points = playerSeasonPoints.get(pick.playerId) || 0
     const maxPoints = posMaxPoints.get(position) || 0
     if (points >= 0.5 * maxPoints) return false
     return true
   }
   const incompleteCount = nonKeeperPicks.filter(isIncomplete).length
-  console.debug('[draft report] ESPN incompleteCount', incompleteCount)
+  console.debug('[draft report] ESPN incompleteCount', incompleteCount, 'of', nonKeeperPicks.length, 'non-keeper picks')
+
+  // Sample the 5 lowest-points non-keeper picks so we can see WHY they were/weren't excluded.
+  const pointsOf = (p: (typeof nonKeeperPicks)[number]) => playerSeasonPoints.get(p.playerId) || 0
+  const sample = [...nonKeeperPicks]
+    .sort((a, b) => pointsOf(a) - pointsOf(b))
+    .slice(0, 5)
+    .map((p) => ({
+      name: p.playerName,
+      pos: p.position,
+      pt: playingTimeOf(p.playerId, p.position || 'Unknown'),
+      pts: pointsOf(p),
+      excl: isIncomplete(p),
+    }))
+  console.debug('[draft report] ESPN low-points sample', sample)
 
   const gradedPicks = nonKeeperPicks.filter((p) => !isIncomplete(p))
 
