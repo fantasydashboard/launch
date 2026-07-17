@@ -139,6 +139,9 @@ export async function loadEspnPointsDraft(args: { sport: string; leagueId: strin
       pt: playingTimeOf(p.playerId, p.position || 'Unknown'),
       pts: pointsOf(p),
       excl: isIncomplete(p),
+      // What did getPlayersWithStats actually return for this player? (diagnostic)
+      rawStats: statsById.get(p.playerId)?.stats ?? null,
+      hasPointsEntry: playerSeasonPoints.has(p.playerId),
     }))
   console.log('[draft report] ESPN low-points sample', sample)
 
