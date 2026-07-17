@@ -60,8 +60,8 @@ export function useToday(): {
   const seasonFraction = computed(() => leagueStore.seasonFractionComplete)
 
   // ── data loaders (mirror useWire.ts / useMatchupBattlePlan.ts) ────────────
-  const { players: yahooFreeAgentsRaw, load: loadYahooFreeAgents } = useAvailablePlayers()
-  const { players: yahooRosterPlayers, load: loadYahooRoster } = useMyRoster()
+  const { players: yahooFreeAgentsRaw, load: loadYahooFreeAgents, loaded: yahooFaLoaded } = useAvailablePlayers()
+  const { players: yahooRosterPlayers, load: loadYahooRoster, loaded: yahooRosterLoaded } = useMyRoster()
   const espn = useEspnCategoryTeamData()
   const { seasonMatchups, categoryLabels, loaded: seasonLoaded, load: loadSeasonData } =
     useFullSeasonCategoryData()
@@ -453,7 +453,28 @@ export function useToday(): {
     }
   }
 
-  const isLoading = computed(() => loading.value || !pointsScoringReady.value)
+  // The board's real inputs beyond the schedule are my roster + the free-agent pool.
+  // Only the two category paths load them (ESPN category → espn.loaded; Yahoo category →
+  // useMyRoster/useAvailablePlayers.loaded — both Yahoo-specific). Every other league type
+  // loads nothing into the board, so it's ready the moment the schedule settles.
+  const boardInputsReady = computed(() => {
+    if (isEspnCategoryLeague.value) return espn.loaded.value
+    if (isYahooCategoryLeague.value) return yahooRosterLoaded.value && yahooFaLoaded.value
+    return true
+  })
+
+  // Fully resolved = safe to show the board (or the genuine empty state). This is the fix
+  // for the "You're set for today" flash: `load()` awaits only the schedule (fast), but the
+  // roster + free-agent fetches settle later and weren't part of the loading signal — so the
+  // empty copy rendered in the gap. Keeping this false until the roster/FAs land holds the
+  // "Reading today's slate…" affordance up, so a fast navigate-away can't miss late data.
+  const dataReady = computed(() => {
+    if (!isBaseball.value || !platformSupported.value) return true // resolves to no-games
+    if (!scheduleLoaded.value) return false
+    if (!Object.keys(schedule.value.gamesByTeam).length) return true // no games → resolved
+    return boardInputsReady.value && pointsScoringReady.value
+  })
+  const isLoading = computed(() => !dataReady.value)
 
   return { vm, loading: isLoading, error, load }
 }

@@ -52,8 +52,14 @@ function reasonLabel(reason: string): string {
     </header>
 
     <!-- ── LOADING ─────────────────────────────────────────────────────────── -->
-    <div v-if="loading && hasNothing && !showFailed" class="py-16 text-center text-dark-textMuted">
-      Reading today's slate…
+    <!-- `loading` now reflects the full board inputs (schedule + roster + free agents),
+         not just the schedule fetch — so this stays up until the board is genuinely ready
+         and the empty "you're set" copy can't flash in the gap. -->
+    <div v-if="loading && hasNothing && !showFailed" class="py-16 text-center">
+      <div class="inline-flex items-center gap-2 font-mono text-xs text-dark-textMuted">
+        <span class="h-1.5 w-1.5 animate-ping rounded-full bg-primary"></span>
+        Reading today's slate…
+      </div>
     </div>
 
     <!-- ── FAILED ──────────────────────────────────────────────────────────── -->
