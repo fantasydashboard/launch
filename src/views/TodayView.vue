@@ -16,6 +16,14 @@ const today = computed(() =>
 
 const bar = (bucket: number) => '▓'.repeat(bucket) + '░'.repeat(6 - bucket)
 
+const scoreBar = (score: number) => bar(Math.round((Math.max(0, Math.min(100, score)) / 100) * 6))
+
+function dropLabel(play: ScoredPlay): string | null {
+  if (play.noCleanDrop) return 'no clean drop — you’d be cutting into value'
+  if (play.drop) return `drop ${play.drop.name} (${play.drop.reason})`
+  return null
+}
+
 const board = computed(() => vm.value)
 const hasNothing = computed(
   () =>
@@ -93,15 +101,20 @@ function reasonLabel(reason: string): string {
                 </span>
               </div>
               <div class="mt-1 font-mono text-xs text-dark-textMuted">{{ board.hero.detail }}</div>
-              <div class="mt-2 flex items-center gap-2 font-mono text-sm text-primary">
-                <span>{{ bar(board.hero.bucket) }}</span>
+              <div class="mt-2 flex flex-wrap items-center gap-2 font-mono text-sm text-primary">
+                <span>{{ scoreBar(board.hero.score) }}</span>
+                <span v-for="c in board.hero.helpsCats" :key="c"
+                  class="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-primary">{{ c }}</span>
               </div>
-              <p v-if="board.hero.oneDay" class="mt-2 font-mono text-[10px] text-dark-textMuted">
+              <p v-if="dropLabel(board.hero)" class="mt-2 font-mono text-[11px] text-dark-textMuted">
+                → add {{ board.hero.name }} · {{ dropLabel(board.hero) }}
+              </p>
+              <p v-else-if="board.hero.oneDay" class="mt-2 font-mono text-[10px] text-dark-textMuted">
                 one-day stream · drop tomorrow
               </p>
             </div>
             <div class="shrink-0 text-right">
-              <div class="font-display text-2xl font-bold text-primary tabular-nums">{{ board.hero.value }}</div>
+              <div class="font-display text-2xl font-bold text-primary tabular-nums">{{ board.hero.score }}</div>
               <router-link
                 v-if="board.hero.kind !== 'startSit'"
                 to="/players"
@@ -133,7 +146,7 @@ function reasonLabel(reason: string): string {
               <div class="min-w-0">
                 <span class="truncate text-sm text-primary">{{ fillLabel(slot.fill) }}</span>
                 <span v-if="slot.fill.kind !== 'startSit'" class="ml-2 font-mono text-xs text-dark-textMuted">
-                  {{ bar(slot.fill.bucket) }}
+                  {{ scoreBar(slot.fill.score) }}
                 </span>
               </div>
               <router-link
@@ -145,6 +158,9 @@ function reasonLabel(reason: string): string {
             <div v-else class="mt-2 pl-[4.5rem] font-mono text-[10px] text-dark-textMuted">
               nothing available to fill this today
             </div>
+            <p v-if="slot.fill && slot.fill.kind !== 'startSit' && dropLabel(slot.fill)" class="mt-1 pl-[4.5rem] font-mono text-[11px] text-dark-textMuted">
+              · {{ dropLabel(slot.fill) }}
+            </p>
           </div>
         </div>
       </section>
@@ -155,22 +171,27 @@ function reasonLabel(reason: string): string {
         <p class="mb-3 font-mono text-xs text-dark-textMuted">Best arms on the wire today.</p>
 
         <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
-          <div v-for="p in board.streamers" :key="p.playerKey" class="px-4 py-3 flex items-center gap-3">
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
-                <span class="truncate text-sm font-semibold text-dark-text">{{ p.name }}</span>
-                <span class="shrink-0 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
-                  {{ p.team }} · {{ p.position }}
-                </span>
+          <div v-for="p in board.streamers" :key="p.playerKey" class="px-4 py-3">
+            <div class="flex items-center gap-3">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="truncate text-sm font-semibold text-dark-text">{{ p.name }}</span>
+                  <span class="shrink-0 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
+                    {{ p.team }} · {{ p.position }}
+                  </span>
+                  <span v-for="c in p.helpsCats" :key="c"
+                    class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-primary">{{ c }}</span>
+                </div>
+                <div class="mt-0.5 font-mono text-[10px] text-dark-textMuted">{{ p.detail }}</div>
               </div>
-              <div class="mt-0.5 font-mono text-[10px] text-dark-textMuted">{{ p.detail }}</div>
+              <span class="shrink-0 font-mono text-sm text-primary">{{ scoreBar(p.score) }}</span>
+              <span class="shrink-0 font-mono text-sm font-bold text-primary tabular-nums">{{ p.score }}</span>
+              <router-link to="/players"
+                class="shrink-0 font-mono text-[10px] text-dark-textMuted underline-offset-2 hover:text-dark-text hover:underline">→ Wire</router-link>
             </div>
-            <span class="shrink-0 font-mono text-sm text-primary">{{ bar(p.bucket) }}</span>
-            <span class="shrink-0 font-mono text-sm font-bold text-primary tabular-nums">{{ p.value }}</span>
-            <router-link
-              to="/players"
-              class="shrink-0 font-mono text-[10px] text-dark-textMuted underline-offset-2 hover:text-dark-text hover:underline"
-            >→ Wire</router-link>
+            <p v-if="dropLabel(p)" class="mt-1.5 font-mono text-[11px] text-dark-textMuted">
+              → add {{ p.name }} · {{ dropLabel(p) }}
+            </p>
           </div>
         </div>
       </section>
@@ -198,23 +219,30 @@ function reasonLabel(reason: string): string {
             <span class="shrink-0 font-mono text-sm" :style="{ color: '#e0625a' }">{{ bar(p.bucket) }}</span>
           </div>
 
-          <div v-for="p in board.upgrades" :key="'up-' + p.playerKey" class="px-4 py-3 flex items-center gap-3">
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
-                <span class="truncate text-sm font-semibold text-dark-text">{{ p.name }}</span>
-                <span class="shrink-0 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
-                  {{ p.team }} · {{ p.position }}
-                </span>
+          <div v-for="p in board.upgrades" :key="'up-' + p.playerKey" class="px-4 py-3">
+            <div class="flex items-center gap-3">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="truncate text-sm font-semibold text-dark-text">{{ p.name }}</span>
+                  <span class="shrink-0 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
+                    {{ p.team }} · {{ p.position }}
+                  </span>
+                  <span v-for="c in p.helpsCats" :key="c"
+                    class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-primary">{{ c }}</span>
+                </div>
+                <div class="mt-0.5 font-mono text-[10px] text-dark-textMuted">{{ p.detail }}</div>
               </div>
-              <div class="mt-0.5 font-mono text-[10px] text-dark-textMuted">{{ p.detail }}</div>
+              <span class="shrink-0 font-mono text-sm text-primary">{{ scoreBar(p.score) }}</span>
+              <span class="shrink-0 font-mono text-sm font-bold text-primary tabular-nums">{{ p.score }}</span>
+              <router-link
+                v-if="p.kind !== 'startSit'"
+                to="/players"
+                class="shrink-0 font-mono text-[10px] text-dark-textMuted underline-offset-2 hover:text-dark-text hover:underline"
+              >→ Wire</router-link>
             </div>
-            <span class="shrink-0 font-mono text-sm text-primary">{{ bar(p.bucket) }}</span>
-            <span class="shrink-0 font-mono text-sm font-bold text-primary tabular-nums">{{ p.value }}</span>
-            <router-link
-              v-if="p.kind !== 'startSit'"
-              to="/players"
-              class="shrink-0 font-mono text-[10px] text-dark-textMuted underline-offset-2 hover:text-dark-text hover:underline"
-            >→ Wire</router-link>
+            <p v-if="dropLabel(p)" class="mt-1.5 font-mono text-[11px] text-dark-textMuted">
+              → add {{ p.name }} · {{ dropLabel(p) }}
+            </p>
           </div>
         </div>
       </section>
