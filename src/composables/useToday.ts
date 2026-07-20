@@ -26,6 +26,11 @@ import { buildTodayBoard, type ScoredPlay, type TodayBoard } from '@/today/today
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { pointsDailyValue } from '@/today/pointsDailyValue'
 import { injuryTier } from '@/myteam/injuryStatus'
+import { useValueBaseline } from '@/composables/useValueBaseline'
+import { computeRosterValue, type ValuePoolPlayer } from '@/myteam/value'
+import { pickSafeDrop, type DroppableBody, type SafeDrop } from '@/today/safeDrop'
+import { normalizeMoves } from '@/today/normalizeValue'
+import { lookupStarts } from '@/services/mlbSchedule'
 
 const EMPTY_SCHEDULE: WeekSchedule = { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
 const EMPTY_BOARD: TodayBoard = { hero: null, openSlots: [], streamers: [], upgrades: [], sitAlerts: [] }
@@ -171,6 +176,65 @@ export function useToday(): {
         volumeStatId: resolveVolumeStatId(isRatio, side, ipStatId, abStatId),
       }
     })
+  })
+
+  // ── rest-of-season value for the rostered + free-agent pools (same model as Wire/My Team,
+  // so the drop's "vs all" value matches the rest of the app) ─────────────────────────────
+  const valueBaselineSvc = useValueBaseline()
+  valueBaselineSvc.load()
+  const valueBaseline = computed(() =>
+    valueBaselineSvc.ready.value
+      ? valueBaselineSvc.build(catSpecs.value, (id) => categories.value.find((c) => c.statId === id)?.label || id)
+      : null,
+  )
+  const valueOpts = computed(() => ({ baseline: valueBaseline.value ?? undefined, zClamp: 8 }))
+
+  // roleValue (0-100 within role, over the COMBINED roster+FA pool) keyed by playerKey.
+  const roleValueByKey = computed<Map<string, number>>(() => {
+    const m = new Map<string, number>()
+    if (!valueBaseline.value) return m // gated below: board doesn't render until the baseline is ready
+    const pool: ValuePoolPlayer[] = [
+      ...rosterPlayers.value.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: p.stats })),
+      ...freeAgents.value.map((p) => ({ playerKey: p.playerKey, position: p.position ?? '', stats: p.stats })),
+    ]
+    for (const c of computeRosterValue(pool, pool.map((p) => p.playerKey), catSpecs.value, valueOpts.value)) {
+      m.set(c.playerKey, c.roleValue)
+    }
+    return m
+  })
+
+  // This league's wire replacement level per side = the best available FA's roleValue on that side.
+  // Empty wire for a side → -Infinity, so no body of that side is ever a clean drop (conservative).
+  const replacementBySide = computed<Record<'hit' | 'pit', number>>(() => {
+    const rv = roleValueByKey.value
+    const out: Record<'hit' | 'pit', number> = { hit: -Infinity, pit: -Infinity }
+    for (const fa of freeAgents.value) {
+      const v = rv.get(fa.playerKey)
+      if (v == null) continue
+      const side = sideOf(fa.position ?? '')
+      if (v > out[side]) out[side] = v
+    }
+    return out
+  })
+
+  // Rostered bodies not contributing to today's active lineup (cutting them loses zero today):
+  // IL, anyone whose MLB team is off today, and bench pitchers with no start today. A bench
+  // HITTER whose team plays today is excluded (a plausible near-term start).
+  const droppableToday = computed<DroppableBody[]>(() => {
+    const rv = roleValueByKey.value
+    const out: DroppableBody[] = []
+    for (const p of rosterPlayers.value) {
+      const side = sideOf(p.position || '')
+      let reason: 'off-day' | 'IL' | 'benched' | null = null
+      if (injuryTier(p.status) === 'il') reason = 'IL'
+      else if (!playsToday(p.team)) reason = 'off-day'
+      else if (!p.started && side === 'pit' && lookupStarts(schedule.value, p.name).length === 0) reason = 'benched'
+      if (!reason) continue
+      const v = rv.get(p.playerKey)
+      if (v == null) continue
+      out.push({ playerKey: p.playerKey, name: p.name, side, rosValue: v, reason })
+    }
+    return out
   })
 
   // Points vs category, for baseValue's branch (categories.value is empty for a
@@ -319,11 +383,16 @@ export function useToday(): {
       name: candidate.player.name,
       team: candidate.player.team,
       position: candidate.player.position,
+      side: candidate.side,
       value,
+      score: 0, // assigned by normalizeMoves
       bucket,
       detail: candidate.detail,
       oneDay: candidate.kind === 'stream',
       fillsSlot: findFillsSlot(candidate.player.position, candidate.side, openSlots.value),
+      helpsCats: Object.entries(candidate.addDelta)
+        .filter(([, v]) => Number.isFinite(v) && v > 0)
+        .map(([statId]) => categories.value.find((c) => c.statId === statId)?.label || statId),
     }
   }
 
@@ -337,9 +406,31 @@ export function useToday(): {
 
   const scoredPlays = computed<ScoredPlay[]>(() => {
     const scored = candidates.value.map(scoreCandidate)
-    if (!isPointsLeague.value) return scored
-    return scored.filter((p) => p.value > 0 && !outFaKeys.value.has(p.playerKey))
+    const filtered = !isPointsLeague.value
+      ? scored
+      : scored.filter((p) => p.value > 0 && !outFaKeys.value.has(p.playerKey))
+    const normalized = normalizeMoves(filtered)
+    return attachDrops(normalized)
   })
+
+  // Pair each free-agent add/stream with a safe drop, best moves first so they claim the cheapest
+  // expendable body; a startSit (bench move) needs no drop. Bodies are claimed once per build.
+  function attachDrops(plays: ScoredPlay[]): ScoredPlay[] {
+    const claimed = new Set<string>()
+    const replFor = (side: 'hit' | 'pit') => replacementBySide.value[side]
+    const patch = new Map<string, { drop?: SafeDrop; noCleanDrop?: boolean }>()
+    for (const p of [...plays].sort((a, b) => b.score - a.score)) {
+      if (p.kind !== 'stream' && p.kind !== 'add') continue
+      const drop = pickSafeDrop(droppableToday.value, replFor, claimed)
+      if (drop) {
+        claimed.add(drop.playerKey)
+        patch.set(p.playerKey, { drop })
+      } else {
+        patch.set(p.playerKey, { noCleanDrop: true })
+      }
+    }
+    return plays.map((p) => ({ ...p, ...(patch.get(p.playerKey) ?? {}) }))
+  }
 
   function positionsOverlap(a: string, b: string): boolean {
     const ta = new Set((a || '').split(/[,/|]/).map((t) => t.trim().toUpperCase()).filter(Boolean))
@@ -458,8 +549,9 @@ export function useToday(): {
   // useMyRoster/useAvailablePlayers.loaded — both Yahoo-specific). Every other league type
   // loads nothing into the board, so it's ready the moment the schedule settles.
   const boardInputsReady = computed(() => {
-    if (isEspnCategoryLeague.value) return espn.loaded.value
-    if (isYahooCategoryLeague.value) return yahooRosterLoaded.value && yahooFaLoaded.value
+    if (isEspnCategoryLeague.value) return espn.loaded.value && valueBaselineSvc.ready.value
+    if (isYahooCategoryLeague.value)
+      return yahooRosterLoaded.value && yahooFaLoaded.value && valueBaselineSvc.ready.value
     return true
   })
 
