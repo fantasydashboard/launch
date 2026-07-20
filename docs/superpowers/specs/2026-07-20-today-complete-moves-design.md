@@ -121,7 +121,7 @@ schedule + my roster + FA pool  (loaded, gated by dataReady incl. valueBaseline.
 
 - **Value baseline not ready** → board stays in the loading state (gated), so no drop-less flash.
 - **No droppable-today candidate at all** (full active lineup, everyone plays) → every FA move renders `no clean drop`.
-- **FA replacement value unavailable for a side/position** (empty wire at that position) → treat replacement level as `-∞` so *any* droppable body clears the bar there (an empty wire means anything is replaceable — conservative toward showing a drop); if this proves too loose in smoke, tighten to require a real FA. (Recorded as the one behavior to watch in smoke.)
+- **FA replacement value unavailable for a side** (empty wire on that side) → replacement level is `-Infinity`, so **no body of that side is ever a clean drop** (you can't safely drop what you can't replace). This is the conservative reading — an empty wire yields "no clean drop", never a forced cut.
 - Never throws — a lookup miss for one move yields no drop for that move, not a broken board (mirrors the existing Today error posture).
 
 ## Testing
@@ -143,4 +143,4 @@ schedule + my roster + FA pool  (loaded, gated by dataReady incl. valueBaseline.
 - **Isolation:** the two genuinely new behaviors are pure functions (`safeDrop`, `normalizeValue`) with no Vue/fetch coupling — independently testable. The composable only wires data into them.
 - **Reuse over reinvent:** ROS value and the drop-eligibility concept come from the existing `@/myteam/value` + `@/myteam/dropCandidates` used by Wire/My Team, so Today's numbers match the rest of the app.
 - **YAGNI:** no constraint plumbing, no points path, no board reorg, no roster-slot math — all explicitly deferred.
-- **The one thing to watch in smoke:** the empty-wire replacement-level fallback (could over-offer drops on a thin position); tighten if it misbehaves.
+- **The one thing to watch in smoke:** whether the wire-replacement bar feels right in practice — too strict (few clean drops surface in a deep league) or too loose (offers cuts that feel wrong in a shallow one). The bar is intentionally conservative; adjust the side-vs-position granularity if smoke shows it mis-calibrated.
