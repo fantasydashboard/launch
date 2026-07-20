@@ -3,6 +3,7 @@
  * board view-model. Selection only — the composable does the fetching/scoring. Deterministic.
  */
 import type { OpenSlot } from './openSlots'
+import type { SafeDrop } from './safeDrop'
 
 export type PlayKind = 'stream' | 'add' | 'startSit'
 
@@ -12,11 +13,16 @@ export interface ScoredPlay {
   name: string
   team: string
   position: string
-  value: number // scoreToday value
-  bucket: number // 0..6 matchup bar
+  side: 'hit' | 'pit'
+  value: number // raw within-side single-game value (park/SP-adjusted)
+  score: number // 0..100 normalized (percentile within side) — the number the UI shows and sorts by
+  bucket: number // 0..6 matchup bar (legacy; the view now bars off `score`)
   detail: string // e.g. "vs COL"
   oneDay: boolean // pure stream / one-day play → "drop tomorrow"
   fillsSlot?: string // the open slot this play is eligible to fill, if any
+  helpsCats: string[] // category labels this move helps (positive addDelta), for chips
+  drop?: SafeDrop // the safe body to cut for this free-agent add (stream/add only)
+  noCleanDrop?: boolean // an FA add with no expendable body to cut → "no clean drop"
 }
 
 export interface FilledSlot extends OpenSlot {
@@ -32,7 +38,7 @@ export interface TodayBoard {
 }
 
 export function buildTodayBoard(plays: ScoredPlay[], openSlots: OpenSlot[]): TodayBoard {
-  const byValue = [...plays].sort((a, b) => b.value - a.value)
+  const byValue = [...plays].sort((a, b) => b.score - a.score)
 
   // Each open slot gets the highest-value play eligible to fill it.
   const filled: FilledSlot[] = openSlots.map((slot) => ({
