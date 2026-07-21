@@ -5,7 +5,7 @@ import { useToday } from '@/composables/useToday'
 import type { ScoredPlay } from '@/today/todayBoard'
 
 const leagueStore = useLeagueStore()
-const { vm, loading, error, load } = useToday()
+const { vm, loading, error, load, isPoints } = useToday()
 
 onMounted(() => load())
 watch(() => leagueStore.activeLeagueId, () => load())
@@ -17,6 +17,9 @@ const today = computed(() =>
 const bar = (bucket: number) => '▓'.repeat(bucket) + '░'.repeat(6 - bucket)
 
 const scoreBar = (score: number) => bar(Math.round((Math.max(0, Math.min(100, score)) / 100) * 6))
+
+const moveBar = (p: ScoredPlay) => scoreBar(p.barPct ?? p.score)
+const scoreText = (p: ScoredPlay) => (isPoints.value ? `${Math.round(p.score)} pts` : String(p.score))
 
 function dropLabel(play: ScoredPlay): string | null {
   if (play.noCleanDrop) return 'no clean drop — you’d be cutting into value'
@@ -102,7 +105,7 @@ function reasonLabel(reason: string): string {
               </div>
               <div class="mt-1 font-mono text-xs text-dark-textMuted">{{ board.hero.detail }}</div>
               <div class="mt-2 flex flex-wrap items-center gap-2 font-mono text-sm text-primary">
-                <span>{{ scoreBar(board.hero.score) }}</span>
+                <span>{{ moveBar(board.hero) }}</span>
                 <span v-for="c in board.hero.helpsCats" :key="c"
                   class="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-primary">{{ c }}</span>
               </div>
@@ -114,7 +117,7 @@ function reasonLabel(reason: string): string {
               </p>
             </div>
             <div class="shrink-0 text-right">
-              <div class="font-display text-2xl font-bold text-primary tabular-nums">{{ board.hero.score }}</div>
+              <div class="font-display text-2xl font-bold text-primary tabular-nums">{{ scoreText(board.hero) }}</div>
               <router-link
                 v-if="board.hero.kind !== 'startSit'"
                 to="/players"
@@ -146,7 +149,7 @@ function reasonLabel(reason: string): string {
               <div class="min-w-0">
                 <span class="truncate text-sm text-primary">{{ fillLabel(slot.fill) }}</span>
                 <span v-if="slot.fill.kind !== 'startSit'" class="ml-2 font-mono text-xs text-dark-textMuted">
-                  {{ scoreBar(slot.fill.score) }}
+                  {{ moveBar(slot.fill) }}
                 </span>
               </div>
               <router-link
@@ -184,8 +187,8 @@ function reasonLabel(reason: string): string {
                 </div>
                 <div class="mt-0.5 font-mono text-[10px] text-dark-textMuted">{{ p.detail }}</div>
               </div>
-              <span class="shrink-0 font-mono text-sm text-primary">{{ scoreBar(p.score) }}</span>
-              <span class="shrink-0 font-mono text-sm font-bold text-primary tabular-nums">{{ p.score }}</span>
+              <span class="shrink-0 font-mono text-sm text-primary">{{ moveBar(p) }}</span>
+              <span class="shrink-0 font-mono text-sm font-bold text-primary tabular-nums">{{ scoreText(p) }}</span>
               <router-link to="/players"
                 class="shrink-0 font-mono text-[10px] text-dark-textMuted underline-offset-2 hover:text-dark-text hover:underline">→ Wire</router-link>
             </div>
@@ -232,8 +235,8 @@ function reasonLabel(reason: string): string {
                 </div>
                 <div class="mt-0.5 font-mono text-[10px] text-dark-textMuted">{{ p.detail }}</div>
               </div>
-              <span class="shrink-0 font-mono text-sm text-primary">{{ scoreBar(p.score) }}</span>
-              <span class="shrink-0 font-mono text-sm font-bold text-primary tabular-nums">{{ p.score }}</span>
+              <span class="shrink-0 font-mono text-sm text-primary">{{ moveBar(p) }}</span>
+              <span class="shrink-0 font-mono text-sm font-bold text-primary tabular-nums">{{ scoreText(p) }}</span>
               <router-link
                 v-if="p.kind !== 'startSit'"
                 to="/players"
