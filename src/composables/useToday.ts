@@ -31,6 +31,8 @@ import { computeRosterValue, type ValuePoolPlayer } from '@/myteam/value'
 import { pickSafeDrop, type DroppableBody, type SafeDrop } from '@/today/safeDrop'
 import { normalizeMoves } from '@/today/normalizeValue'
 import { lookupStarts } from '@/services/mlbSchedule'
+import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
+import { pointsRosValue } from '@/today/pointsRosValue'
 
 const EMPTY_SCHEDULE: WeekSchedule = { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
 const EMPTY_BOARD: TodayBoard = { hero: null, openSlots: [], streamers: [], upgrades: [], sitAlerts: [] }
@@ -60,6 +62,7 @@ export function useToday(): {
   loading: Ref<boolean>
   error: Ref<string | null>
   load: () => Promise<void>
+  isPoints: ComputedRef<boolean>
 } {
   const leagueStore = useLeagueStore()
   const seasonFraction = computed(() => leagueStore.seasonFractionComplete)
@@ -68,6 +71,7 @@ export function useToday(): {
   const { players: yahooFreeAgentsRaw, load: loadYahooFreeAgents, loaded: yahooFaLoaded } = useAvailablePlayers()
   const { players: yahooRosterPlayers, load: loadYahooRoster, loaded: yahooRosterLoaded } = useMyRoster()
   const espn = useEspnCategoryTeamData()
+  const espnPoints = useEspnPointsTeamData()
   const { seasonMatchups, categoryLabels, loaded: seasonLoaded, load: loadSeasonData } =
     useFullSeasonCategoryData()
 
@@ -88,22 +92,37 @@ export function useToday(): {
   const isEspnCategoryLeague = computed(
     () => leagueStore.activePlatform === 'espn' && espn.supported.value === true,
   )
+  const isEspnPointsLeague = computed(
+    () => leagueStore.activePlatform === 'espn' && espnPoints.supported.value === true,
+  )
+  const isYahooPointsLeague = computed(
+    () => leagueStore.activePlatform === 'yahoo' && isPointsLeague.value,
+  )
 
   // ── platform-switched roster / free-agent source ───────────────────────────
   // rosterPlayers carries `started` (active lineup vs bench) for MY team on both
   // platforms — the same source useMatchupBattlePlan.ts uses for its lineup engine.
   const rosterPlayers = computed(() =>
-    isEspnCategoryLeague.value ? espn.rosterPlayers.value : yahooRosterPlayers.value,
+    isEspnCategoryLeague.value
+      ? espn.rosterPlayers.value
+      : isEspnPointsLeague.value
+        ? espnPoints.rosterPlayers.value
+        : yahooRosterPlayers.value,
   )
   const rawFreeAgents = computed<AvailablePlayer[]>(() =>
-    isEspnCategoryLeague.value ? espn.freeAgents.value : yahooFreeAgentsRaw.value,
+    isEspnCategoryLeague.value
+      ? espn.freeAgents.value
+      : isEspnPointsLeague.value
+        ? espnPoints.freeAgents.value
+        : yahooFreeAgentsRaw.value,
   )
-  // ESPN's free-agent feed leaks rostered players (see useWire.ts) — exclude anyone
-  // already in the league-wide pool.
+  // ESPN's free-agent feed leaks rostered players (see useWire.ts) — exclude anyone already in
+  // that ESPN source's league-wide pool. Yahoo's feed doesn't need the guard.
   const freeAgents = computed<AvailablePlayer[]>(() => {
-    if (!isEspnCategoryLeague.value) return rawFreeAgents.value
-    const guard = espn.pool.value.length > 0
-    const rostered = new Set(espn.pool.value.map((p) => p.playerKey))
+    const espnSrc = isEspnCategoryLeague.value ? espn : isEspnPointsLeague.value ? espnPoints : null
+    if (!espnSrc) return rawFreeAgents.value
+    const guard = espnSrc.pool.value.length > 0
+    const rostered = new Set(espnSrc.pool.value.map((p) => p.playerKey))
     return rawFreeAgents.value.filter((fa) => !guard || !rostered.has(fa.playerKey))
   })
 
@@ -203,10 +222,31 @@ export function useToday(): {
     return m
   })
 
+  // Points-league drop currency: projected rest-of-season points per player (roster + FA). Empty
+  // until the FG matcher is ready (gated by pointsScoringReady in dataReady, so the board waits).
+  const pointsValueByKey = computed<Map<string, number>>(() => {
+    const matchFG = matchFGRef.value
+    if (!matchFG || !isPointsLeague.value) return new Map()
+    return pointsRosValue(
+      [...rosterPlayers.value, ...freeAgents.value].map((p) => ({
+        playerKey: p.playerKey,
+        name: p.name,
+        team: p.team,
+      })),
+      matchFG,
+      scoring.weights.value,
+    )
+  })
+
+  // The drop currency for THIS league: category roleValue, or points ROS points.
+  const rosValueByKey = computed<Map<string, number>>(() =>
+    isPointsLeague.value ? pointsValueByKey.value : roleValueByKey.value,
+  )
+
   // This league's wire replacement level per side = the best available FA's roleValue on that side.
   // Empty wire for a side → -Infinity, so no body of that side is ever a clean drop (conservative).
   const replacementBySide = computed<Record<'hit' | 'pit', number>>(() => {
-    const rv = roleValueByKey.value
+    const rv = rosValueByKey.value
     const out: Record<'hit' | 'pit', number> = { hit: -Infinity, pit: -Infinity }
     for (const fa of freeAgents.value) {
       const v = rv.get(fa.playerKey)
@@ -221,7 +261,7 @@ export function useToday(): {
   // IL, anyone whose MLB team is off today, and bench pitchers with no start today. A bench
   // HITTER whose team plays today is excluded (a plausible near-term start).
   const droppableToday = computed<DroppableBody[]>(() => {
-    const rv = roleValueByKey.value
+    const rv = rosValueByKey.value
     const out: DroppableBody[] = []
     for (const p of rosterPlayers.value) {
       const side = sideOf(p.position || '')
@@ -409,9 +449,21 @@ export function useToday(): {
     const filtered = !isPointsLeague.value
       ? scored
       : scored.filter((p) => p.value > 0 && !outFaKeys.value.has(p.playerKey))
-    const normalized = normalizeMoves(filtered)
-    return attachDrops(normalized)
+    const ranked = isPointsLeague.value ? pointsRanked(filtered) : normalizeMoves(filtered)
+    return attachDrops(ranked)
   })
+
+  // Points display: no percentile normalization — `score` IS the raw per-game points (so the board
+  // sorts by real points and a pitcher's start correctly tops a hitter-game), and `barPct` fills
+  // proportional to the day's top move (points are cross-type comparable).
+  function pointsRanked(plays: ScoredPlay[]): ScoredPlay[] {
+    const max = plays.reduce((m, p) => Math.max(m, p.value), 0)
+    return plays.map((p) => ({
+      ...p,
+      score: p.value,
+      barPct: max > 0 ? Math.round((p.value / max) * 100) : 0,
+    }))
+  }
 
   // Pair each free-agent add/stream with a safe drop, best moves first so they claim the cheapest
   // expendable body; a startSit (bench move) needs no drop. Bodies are claimed once per build.
@@ -491,10 +543,13 @@ export function useToday(): {
     if (id && isYahooCategoryLeague.value) loadSeasonData(id)
   }
   function maybeLoadEspn() {
-    if (leagueStore.activePlatform === 'espn') espn.load()
+    if (leagueStore.activePlatform === 'espn') {
+      espn.load() // self-bails unless H2H_CATEGORY
+      espnPoints.load() // self-bails unless points
+    }
   }
   function maybeLoadYahoo() {
-    if (!isYahooCategoryLeague.value) return
+    if (leagueStore.activePlatform !== 'yahoo') return
     if (!yahooRosterPlayers.value.length) loadYahooRoster()
     if (!yahooFreeAgentsRaw.value.length) loadYahooFreeAgents()
   }
@@ -504,7 +559,7 @@ export function useToday(): {
   // half-ready store — otherwise an early load can resolve empty and clobber a
   // later good load.
   const yahooRosterReady = computed(
-    () => isYahooCategoryLeague.value && !!leagueStore.yahooTeams?.find((t: any) => t.is_my_team)?.team_key,
+    () => leagueStore.activePlatform === 'yahoo' && !!leagueStore.yahooTeams?.find((t: any) => t.is_my_team)?.team_key,
   )
   watch(yahooRosterReady, (ready) => { if (ready) maybeLoadYahoo() }, { immediate: true })
 
@@ -550,8 +605,10 @@ export function useToday(): {
   // loads nothing into the board, so it's ready the moment the schedule settles.
   const boardInputsReady = computed(() => {
     if (isEspnCategoryLeague.value) return espn.loaded.value && valueBaselineSvc.ready.value
+    if (isEspnPointsLeague.value) return espnPoints.loaded.value
     if (isYahooCategoryLeague.value)
       return yahooRosterLoaded.value && yahooFaLoaded.value && valueBaselineSvc.ready.value
+    if (isYahooPointsLeague.value) return yahooRosterLoaded.value && yahooFaLoaded.value
     return true
   })
 
@@ -568,5 +625,5 @@ export function useToday(): {
   })
   const isLoading = computed(() => !dataReady.value)
 
-  return { vm, loading: isLoading, error, load }
+  return { vm, loading: isLoading, error, load, isPoints: isPointsLeague }
 }
