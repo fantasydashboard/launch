@@ -542,14 +542,18 @@ export function useToday(): {
     const id = leagueStore.activeLeagueId
     if (id && isYahooCategoryLeague.value) loadSeasonData(id)
   }
+  // Today is baseball-only, so no roster/FA loader should fire for a non-baseball active league —
+  // gate every trigger on isBaseball (the broadened points triggers otherwise fetch full rosters
+  // for football/hockey/etc. leagues that render an empty board anyway).
   function maybeLoadEspn() {
+    if (!isBaseball.value) return
     if (leagueStore.activePlatform === 'espn') {
       espn.load() // self-bails unless H2H_CATEGORY
       espnPoints.load() // self-bails unless points
     }
   }
   function maybeLoadYahoo() {
-    if (leagueStore.activePlatform !== 'yahoo') return
+    if (!isBaseball.value || leagueStore.activePlatform !== 'yahoo') return
     if (!yahooRosterPlayers.value.length) loadYahooRoster()
     if (!yahooFreeAgentsRaw.value.length) loadYahooFreeAgents()
   }
@@ -559,7 +563,7 @@ export function useToday(): {
   // half-ready store — otherwise an early load can resolve empty and clobber a
   // later good load.
   const yahooRosterReady = computed(
-    () => leagueStore.activePlatform === 'yahoo' && !!leagueStore.yahooTeams?.find((t: any) => t.is_my_team)?.team_key,
+    () => isBaseball.value && leagueStore.activePlatform === 'yahoo' && !!leagueStore.yahooTeams?.find((t: any) => t.is_my_team)?.team_key,
   )
   watch(yahooRosterReady, (ready) => { if (ready) maybeLoadYahoo() }, { immediate: true })
 
