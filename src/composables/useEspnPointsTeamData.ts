@@ -42,6 +42,8 @@ export function useEspnPointsTeamData() {
   const teamLogos = ref<Record<string, string>>({}) // pool teamKey → team logo url
   const teamRecords = ref<Record<string, { wins: number; losses: number; ties: number; pointsFor: number }>>({})
   const rosterSlots = ref<Record<string, number>>({})
+  const acquisitionSettings = ref<any>(null)
+  const myTeamTransactionCounter = ref<any>(null)
   const playoffTeamCount = ref(0)
   const supported = ref<boolean | null>(null)
   const loading = ref(false)
@@ -55,6 +57,8 @@ export function useEspnPointsTeamData() {
     freeAgents.value = []
     myTeamId.value = null
     rosterSlots.value = {}
+    acquisitionSettings.value = null
+    myTeamTransactionCounter.value = null
     playoffTeamCount.value = 0
     supported.value = null
     loaded.value = false
@@ -91,6 +95,7 @@ export function useEspnPointsTeamData() {
       }
       supported.value = true
       rosterSlots.value = parseRosterSlots('espn', { rosterSettings: league.settings?.rosterSettings })
+      acquisitionSettings.value = league.settings?.acquisitionSettings ?? null
       playoffTeamCount.value = Number(league.settings?.playoffTeamCount) || 0
 
       const [teams, myTeam] = await Promise.all([
@@ -98,6 +103,7 @@ export function useEspnPointsTeamData() {
         espnService.getMyTeam(sport, leagueId, season),
       ])
       if (leagueStore.activeLeagueId !== requestedId) return
+      myTeamTransactionCounter.value = (myTeam as any)?.transactionCounter ?? null
 
       pool.value = mapRostersToPool(teams, sport)
       teamNames.value = Object.fromEntries(teams.map((t) => [`espn_${t.id}`, String((t as any).name ?? '')]))
@@ -159,6 +165,8 @@ export function useEspnPointsTeamData() {
     teamLogos,
     teamRecords,
     rosterSlots,
+    acquisitionSettings,
+    myTeamTransactionCounter,
     playoffTeamCount,
     supported,
     loading,

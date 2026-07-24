@@ -5,7 +5,7 @@ import { useToday } from '@/composables/useToday'
 import type { ScoredPlay } from '@/today/todayBoard'
 
 const leagueStore = useLeagueStore()
-const { vm, loading, error, load, isPoints } = useToday()
+const { vm, loading, error, load, isPoints, budget } = useToday()
 
 onMounted(() => load())
 watch(() => leagueStore.activeLeagueId, () => load())
@@ -50,6 +50,19 @@ function reasonLabel(reason: string): string {
   if (reason === 'injured') return 'injured'
   return 'empty'
 }
+
+const budgetBanner = computed(() => {
+  const b = budget.value
+  if (b.kind === 'count') return `${b.remaining} of ${b.limit} adds left this week`
+  if (b.kind === 'faab') return b.budget != null ? `$${b.remaining} of $${b.budget} FAAB left` : `$${b.remaining} FAAB left`
+  return null
+})
+function budgetTagText(p: ScoredPlay): string | null {
+  if (p.budgetTag === 'worth-add') return '✓ worth an add'
+  if (p.budgetTag === 'worth-bid') return 'worth a bid'
+  if (p.budgetTag === 'save-add') return budget.value.kind === 'faab' ? 'no FAAB budget left' : 'save your add'
+  return null
+}
 </script>
 
 <template>
@@ -61,6 +74,10 @@ function reasonLabel(reason: string): string {
         Stream an arm, plug your holes — win the day.
       </p>
     </header>
+
+    <p v-if="budgetBanner" class="mb-4 font-mono text-[11px] uppercase tracking-wider text-dark-textMuted">
+      {{ budgetBanner }}
+    </p>
 
     <!-- ── LOADING ─────────────────────────────────────────────────────────── -->
     <!-- `loading` now reflects the full board inputs (schedule + roster + free agents),
@@ -111,6 +128,8 @@ function reasonLabel(reason: string): string {
               </div>
               <p v-if="dropLabel(board.hero)" class="mt-2 font-mono text-[11px] text-dark-textMuted">
                 → add {{ board.hero.name }} · {{ dropLabel(board.hero) }}
+                <span v-if="budgetTagText(board.hero)" class="ml-2 font-mono text-[10px]"
+                  :class="board.hero.budgetTag === 'save-add' ? 'text-dark-textMuted' : 'text-primary'">{{ budgetTagText(board.hero) }}</span>
               </p>
               <p v-else-if="board.hero.oneDay" class="mt-2 font-mono text-[10px] text-dark-textMuted">
                 one-day stream · drop tomorrow
@@ -163,6 +182,8 @@ function reasonLabel(reason: string): string {
             </div>
             <p v-if="slot.fill && slot.fill.kind !== 'startSit' && dropLabel(slot.fill)" class="mt-1 pl-[4.5rem] font-mono text-[11px] text-dark-textMuted">
               · {{ dropLabel(slot.fill) }}
+              <span v-if="budgetTagText(slot.fill)" class="ml-2 font-mono text-[10px]"
+                :class="slot.fill.budgetTag === 'save-add' ? 'text-dark-textMuted' : 'text-primary'">{{ budgetTagText(slot.fill) }}</span>
             </p>
           </div>
         </div>
@@ -194,6 +215,8 @@ function reasonLabel(reason: string): string {
             </div>
             <p v-if="dropLabel(p)" class="mt-1.5 font-mono text-[11px] text-dark-textMuted">
               → add {{ p.name }} · {{ dropLabel(p) }}
+              <span v-if="budgetTagText(p)" class="ml-2 font-mono text-[10px]"
+                :class="p.budgetTag === 'save-add' ? 'text-dark-textMuted' : 'text-primary'">{{ budgetTagText(p) }}</span>
             </p>
           </div>
         </div>
@@ -245,6 +268,8 @@ function reasonLabel(reason: string): string {
             </div>
             <p v-if="dropLabel(p)" class="mt-1.5 font-mono text-[11px] text-dark-textMuted">
               → add {{ p.name }} · {{ dropLabel(p) }}
+              <span v-if="budgetTagText(p)" class="ml-2 font-mono text-[10px]"
+                :class="p.budgetTag === 'save-add' ? 'text-dark-textMuted' : 'text-primary'">{{ budgetTagText(p) }}</span>
             </p>
           </div>
         </div>

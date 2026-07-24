@@ -33,6 +33,9 @@ import { normalizeMoves } from '@/today/normalizeValue'
 import { lookupStarts } from '@/services/mlbSchedule'
 import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
 import { pointsRosValue } from '@/today/pointsRosValue'
+import { yahooService } from '@/services/yahoo'
+import { parseEspnAddBudget, parseYahooAddBudget } from '@/wire/acquisition'
+import { annotateAddBudget, type AddBudget } from '@/today/addBudget'
 
 const EMPTY_SCHEDULE: WeekSchedule = { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
 const EMPTY_BOARD: TodayBoard = { hero: null, openSlots: [], streamers: [], upgrades: [], sitAlerts: [] }
@@ -63,6 +66,7 @@ export function useToday(): {
   error: Ref<string | null>
   load: () => Promise<void>
   isPoints: ComputedRef<boolean>
+  budget: ComputedRef<AddBudget>
 } {
   const leagueStore = useLeagueStore()
   const seasonFraction = computed(() => leagueStore.seasonFractionComplete)
@@ -98,6 +102,14 @@ export function useToday(): {
   const isYahooPointsLeague = computed(
     () => leagueStore.activePlatform === 'yahoo' && isPointsLeague.value,
   )
+
+  // The active league's add constraint (count limit / FAAB / unlimited). Unlimited fallback everywhere.
+  const addBudget = computed<AddBudget>(() => {
+    if (isEspnCategoryLeague.value) return parseEspnAddBudget(espn.acquisitionSettings.value, espn.myTeamTransactionCounter.value)
+    if (isEspnPointsLeague.value) return parseEspnAddBudget(espnPoints.acquisitionSettings.value, espnPoints.myTeamTransactionCounter.value)
+    if (leagueStore.activePlatform === 'yahoo') return parseYahooAddBudget(yahooSettings.value, yahooAddInfo.value)
+    return { kind: 'unlimited' }
+  })
 
   // ── platform-switched roster / free-agent source ───────────────────────────
   // rosterPlayers carries `started` (active lineup vs bench) for MY team on both
@@ -307,6 +319,10 @@ export function useToday(): {
   const scheduleLoaded = ref(false)
   const playsToday = (team: string) => (schedule.value.gamesByTeam[team] ?? 0) > 0
 
+  // ── Yahoo add-limit inputs (league settings + my-team weekly-adds/FAAB) ────────
+  const yahooSettings = ref<any>(null)
+  const yahooAddInfo = ref<{ weeklyAddsUsed: number | null; faabBalance: number | null }>({ weeklyAddsUsed: null, faabBalance: null })
+
   // ── FanGraphs matcher — best-effort opposing-SP quality, degrades to null ────
   const matchFGRef = ref<((p: { full_name?: string; mlb_team?: string }) => FGProjection | null) | null>(
     null,
@@ -450,7 +466,7 @@ export function useToday(): {
       ? scored
       : scored.filter((p) => p.value > 0 && !outFaKeys.value.has(p.playerKey))
     const ranked = isPointsLeague.value ? pointsRanked(filtered) : normalizeMoves(filtered)
-    return attachDrops(ranked)
+    return annotateAddBudget(attachDrops(ranked), addBudget.value)
   })
 
   // Points display: no percentile normalization — `score` IS the raw per-game points (so the board
@@ -591,6 +607,15 @@ export function useToday(): {
       maybeLoadSeasonData()
       maybeLoadYahoo()
       scoring.load()
+      if (leagueStore.activePlatform === 'yahoo') {
+        try {
+          const lk = leagueStore.activeLeagueId
+          if (lk) {
+            yahooSettings.value = await yahooService.getLeagueSettings(lk)
+            yahooAddInfo.value = await yahooService.getTeamAddInfo(lk)
+          }
+        } catch { /* leave as unlimited */ }
+      }
       const today = ymd(new Date())
       schedule.value = await getWeekSchedule(today, today)
       error.value = Object.keys(schedule.value.gamesByTeam).length ? null : 'no-games'
@@ -629,5 +654,5 @@ export function useToday(): {
   })
   const isLoading = computed(() => !dataReady.value)
 
-  return { vm, loading: isLoading, error, load, isPoints: isPointsLeague }
+  return { vm, loading: isLoading, error, load, isPoints: isPointsLeague, budget: addBudget }
 }

@@ -987,6 +987,35 @@ export class YahooFantasyService {
   }
 
   /**
+   * My team's weekly adds-used (roster_adds.value) and FAAB balance, read from the plain team
+   * resource metadata. Defensive: any failure or missing field yields null (caller treats as unknown).
+   */
+  async getTeamAddInfo(leagueKey: string): Promise<{ weeklyAddsUsed: number | null; faabBalance: number | null }> {
+    try {
+      const teams = await this.getTeams(leagueKey)
+      const myKey = teams.find((t: any) => t.is_my_team)?.team_key
+      if (!myKey) return { weeklyAddsUsed: null, faabBalance: null }
+      const data = await this.apiRequest(`/team/${myKey}?format=json`)
+      const meta = data?.fantasy_content?.team?.[0]
+      const items: any[] = Array.isArray(meta) ? meta.flat() : meta && typeof meta === 'object' ? Object.values(meta) : []
+      let weeklyAddsUsed: number | null = null
+      let faabBalance: number | null = null
+      for (const it of items) {
+        if (it && typeof it === 'object') {
+          if ((it as any).roster_adds && (it as any).roster_adds.value != null) weeklyAddsUsed = Number((it as any).roster_adds.value)
+          if ((it as any).faab_balance != null) faabBalance = Number((it as any).faab_balance)
+        }
+      }
+      return {
+        weeklyAddsUsed: Number.isFinite(weeklyAddsUsed as number) ? weeklyAddsUsed : null,
+        faabBalance: Number.isFinite(faabBalance as number) ? faabBalance : null,
+      }
+    } catch {
+      return { weeklyAddsUsed: null, faabBalance: null }
+    }
+  }
+
+  /**
    * Get transactions for a league
    */
   async getTransactions(leagueKey: string): Promise<any[]> {
