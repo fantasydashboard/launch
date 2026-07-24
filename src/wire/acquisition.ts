@@ -7,6 +7,8 @@
  * Budget: ESPN exposes the FAAB budget on the league; Yahoo does not (it lives on
  * the team as faab_balance), so Yahoo FAAB tips are tier-only, no dollar figures.
  */
+import type { AddBudget } from '@/today/addBudget'
+
 export type AcquisitionMode = 'faab' | 'continuous' | 'waiver' | 'unknown'
 
 export interface AcquisitionInfo {
@@ -53,4 +55,33 @@ export function acquisitionTip(mode: AcquisitionMode, deltaEcw: number, budget: 
   if (mode === 'continuous') return 'continuous waivers · free add'
   if (mode === 'waiver') return strong ? 'worth a top waiver claim' : 'low-priority waiver claim'
   return ''
+}
+
+/** ESPN add budget: acquisitionSettings (league.settings.acquisitionSettings) + team.transactionCounter. */
+export function parseEspnAddBudget(acquisitionSettings: any, transactionCounter: any): AddBudget {
+  const acq = acquisitionSettings
+  if (acq?.isUsingAcquisitionBudget) {
+    const budget = typeof acq.acquisitionBudget === 'number' ? acq.acquisitionBudget : null
+    const spent = typeof transactionCounter?.acquisitionBudgetSpent === 'number' ? transactionCounter.acquisitionBudgetSpent : 0
+    return { kind: 'faab', budget, remaining: (budget ?? 0) - spent }
+  }
+  const limit = typeof acq?.acquisitionLimit === 'number' ? acq.acquisitionLimit : -1
+  if (limit < 0) return { kind: 'unlimited' }
+  const used = typeof transactionCounter?.acquisitions === 'number' ? transactionCounter.acquisitions : 0
+  return { kind: 'count', limit, used, remaining: Math.max(0, limit - used) }
+}
+
+/** Yahoo add budget: league settings + { weeklyAddsUsed, faabBalance } from the my-team resource. */
+export function parseYahooAddBudget(
+  settings: any,
+  teamInfo: { weeklyAddsUsed: number | null; faabBalance: number | null },
+): AddBudget {
+  const usesFaab = settings?.uses_faab === '1' || settings?.uses_faab === 1 || settings?.uses_faab === true
+  if (usesFaab) {
+    return teamInfo.faabBalance == null ? { kind: 'unlimited' } : { kind: 'faab', budget: null, remaining: teamInfo.faabBalance }
+  }
+  const limit = Number(settings?.max_weekly_adds)
+  if (!Number.isFinite(limit) || limit <= 0) return { kind: 'unlimited' }
+  const used = teamInfo.weeklyAddsUsed ?? 0
+  return { kind: 'count', limit, used, remaining: Math.max(0, limit - used) }
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseEspnAcquisition, parseYahooAcquisition, acquisitionTip } from '../acquisition'
+import { parseEspnAcquisition, parseYahooAcquisition, acquisitionTip, parseEspnAddBudget, parseYahooAddBudget } from '../acquisition'
 
 describe('parseEspnAcquisition', () => {
   it('detects FAAB with budget, continuous, and priority waivers', () => {
@@ -30,5 +30,33 @@ describe('acquisitionTip', () => {
     expect(acquisitionTip('waiver', 0.5, null)).toContain('top waiver claim')
     expect(acquisitionTip('waiver', 0.1, null)).toContain('low-priority')
     expect(acquisitionTip('unknown', 0.5, null)).toBe('')
+  })
+})
+
+describe('parseEspnAddBudget', () => {
+  it('FAAB when isUsingAcquisitionBudget', () => {
+    const b = parseEspnAddBudget({ isUsingAcquisitionBudget: true, acquisitionBudget: 100 }, { acquisitionBudgetSpent: 20 })
+    expect(b).toEqual({ kind: 'faab', budget: 100, remaining: 80 })
+  })
+  it('unlimited when acquisitionLimit is -1', () => {
+    expect(parseEspnAddBudget({ isUsingAcquisitionBudget: false, acquisitionLimit: -1 }, { acquisitions: 75 })).toEqual({ kind: 'unlimited' })
+  })
+  it('count when acquisitionLimit >= 0', () => {
+    expect(parseEspnAddBudget({ isUsingAcquisitionBudget: false, acquisitionLimit: 40 }, { acquisitions: 30 }))
+      .toEqual({ kind: 'count', limit: 40, used: 30, remaining: 10 })
+  })
+})
+
+describe('parseYahooAddBudget', () => {
+  it('count from max_weekly_adds + weekly used', () => {
+    expect(parseYahooAddBudget({ uses_faab: '0', max_weekly_adds: '5' }, { weeklyAddsUsed: 2, faabBalance: null }))
+      .toEqual({ kind: 'count', limit: 5, used: 2, remaining: 3 })
+  })
+  it('faab when uses_faab, remaining = faab_balance', () => {
+    expect(parseYahooAddBudget({ uses_faab: '1' }, { weeklyAddsUsed: null, faabBalance: 34 }))
+      .toEqual({ kind: 'faab', budget: null, remaining: 34 })
+  })
+  it('unlimited when no weekly-add limit', () => {
+    expect(parseYahooAddBudget({ uses_faab: '0' }, { weeklyAddsUsed: null, faabBalance: null })).toEqual({ kind: 'unlimited' })
   })
 })
