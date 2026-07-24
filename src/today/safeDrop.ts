@@ -17,25 +17,28 @@ export interface DroppableBody {
   playerKey: string
   name: string
   side: 'hit' | 'pit'
-  rosValue: number // roleValue 0-100 from computeRosterValue, over the combined roster+FA pool
+  // Cross-comparable rest-of-season value used ONLY to rank eligible bodies against each other
+  // (lowest first) — a hitter's and a pitcher's number must be on the SAME scale here (category:
+  // crossPercentile; points: projected ROS points, already one currency). NOT within-role/side.
+  rosValue: number
+  // True when this body sits in the bottom tier of the MANAGER'S OWN roster (category:
+  // valueTier(roleValue) === 'fringe'; points: bottom-third by points within its own side of the
+  // manager's roster). This — not "worse than the best free agent" — is what makes a body a
+  // genuinely safe cut: a deep wire must never make a core/solid body look expendable.
+  bottomTier: boolean
   reason: 'off-day' | 'IL' | 'benched'
 }
 
 /**
  * The safe drop for one free-agent move: the lowest rest-of-season-value droppable-today body
- * that is at or below this league's wire replacement level for its side (i.e. genuinely
- * replaceable off the wire) and not already claimed. `null` when nothing is expendable — the
- * caller renders "no clean drop". An empty wire for a side yields replacement -Infinity, so no
- * body of that side is ever cut (you can't safely drop what you can't replace).
+ * that is in the bottom tier of the manager's own roster (genuinely expendable — never a core or
+ * solid body, no matter how deep the wire is) and not already claimed. `null` when nothing
+ * expendable is available — the caller renders "no clean drop".
  */
-export function pickSafeDrop(
-  candidates: DroppableBody[],
-  replacementValueForSide: (side: 'hit' | 'pit') => number,
-  claimed: Set<string>,
-): SafeDrop | null {
+export function pickSafeDrop(candidates: DroppableBody[], claimed: Set<string>): SafeDrop | null {
   const eligible = candidates
     .filter((b) => !claimed.has(b.playerKey))
-    .filter((b) => b.rosValue <= replacementValueForSide(b.side))
+    .filter((b) => b.bottomTier)
     .sort((a, b) => a.rosValue - b.rosValue)
   const pick = eligible[0]
   return pick ? { playerKey: pick.playerKey, name: pick.name, reason: pick.reason } : null

@@ -27,7 +27,7 @@ import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { pointsDailyValue } from '@/today/pointsDailyValue'
 import { injuryTier } from '@/myteam/injuryStatus'
 import { useValueBaseline } from '@/composables/useValueBaseline'
-import { computeRosterValue, type ValuePoolPlayer } from '@/myteam/value'
+import { computeRosterValue, valueTier, type ValuePoolPlayer } from '@/myteam/value'
 import { pickSafeDrop, type DroppableBody, type SafeDrop } from '@/today/safeDrop'
 import { normalizeMoves } from '@/today/normalizeValue'
 import { lookupStarts } from '@/services/mlbSchedule'
@@ -220,16 +220,24 @@ export function useToday(): {
   )
   const valueOpts = computed(() => ({ baseline: valueBaseline.value ?? undefined, zClamp: 8 }))
 
-  // roleValue (0-100 within role, over the COMBINED roster+FA pool) keyed by playerKey.
-  const roleValueByKey = computed<Map<string, number>>(() => {
-    const m = new Map<string, number>()
+  // Category value map (0-100, over the COMBINED roster+FA pool) keyed by playerKey — TWO
+  // different numbers, used for two different jobs:
+  //  - roleValue: within-role percentile. Drives THIS body's own tier (valueTier -> core/solid/
+  //    fringe) — "is this a body I can afford to lose", judged against its own role's pool.
+  //  - crossPercentile: cross-role comparable value (the same number My Team's "vs all" shows).
+  //    A hitter's and a pitcher's roleValue are on separate scales and are NOT comparable to each
+  //    other — ranking a mixed hitter/pitcher drop pool by roleValue picks the wrong body (e.g. an
+  //    IL pitcher over a far-less-valuable IL hitter). crossPercentile is the single comparable
+  //    scale used to rank eligible drop candidates against each other.
+  const categoryValueByKey = computed<Map<string, { roleValue: number; crossPercentile: number }>>(() => {
+    const m = new Map<string, { roleValue: number; crossPercentile: number }>()
     if (!valueBaseline.value) return m // gated below: board doesn't render until the baseline is ready
     const pool: ValuePoolPlayer[] = [
       ...rosterPlayers.value.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: p.stats })),
       ...freeAgents.value.map((p) => ({ playerKey: p.playerKey, position: p.position ?? '', stats: p.stats })),
     ]
     for (const c of computeRosterValue(pool, pool.map((p) => p.playerKey), catSpecs.value, valueOpts.value)) {
-      m.set(c.playerKey, c.roleValue)
+      m.set(c.playerKey, { roleValue: c.roleValue, crossPercentile: c.crossPercentile })
     }
     return m
   })
@@ -250,13 +258,50 @@ export function useToday(): {
     )
   })
 
-  // The drop currency for THIS league: category roleValue, or points ROS points.
-  const rosValueByKey = computed<Map<string, number>>(() =>
-    isPointsLeague.value ? pointsValueByKey.value : roleValueByKey.value,
-  )
+  // The cross-comparable drop-ranking currency for THIS league: category crossPercentile (see
+  // categoryValueByKey above — NOT roleValue, which isn't comparable across hitter/pitcher), or
+  // points ROS points (already one currency).
+  const rosValueByKey = computed<Map<string, number>>(() => {
+    if (isPointsLeague.value) return pointsValueByKey.value
+    const m = new Map<string, number>()
+    for (const [k, v] of categoryValueByKey.value) m.set(k, v.crossPercentile)
+    return m
+  })
 
-  // This league's wire replacement level per side = the best available FA's roleValue on that side.
-  // Empty wire for a side → -Infinity, so no body of that side is ever a clean drop (conservative).
+  // Points-league bottom tier: within-MY-OWN-ROSTER (not the combined roster+FA pool — a deep
+  // wire must never make a fringe body look "core"), per-side percentile — mirrors My Team's own
+  // CORE/SOLID/FRINGE tiering (src/myteam/pointsTeam.ts's rosterRows tiers) so "fringe" means the
+  // same thing here as everywhere else in the app. Bottom third of MY roster, by side, is fringe.
+  const pointsFringeKeys = computed<Set<string>>(() => {
+    const out = new Set<string>()
+    if (!isPointsLeague.value) return out
+    const pv = pointsValueByKey.value
+    for (const side of ['hit', 'pit'] as const) {
+      const rows = rosterPlayers.value
+        .filter((p) => sideOf(p.position || '') === side && pv.has(p.playerKey))
+        .map((p) => ({ playerKey: p.playerKey, points: pv.get(p.playerKey)! }))
+        .sort((a, b) => b.points - a.points)
+      const n = rows.length
+      rows.forEach((r, i) => {
+        const pct = n < 2 ? 50 : Math.round(((n - 1 - i) / (n - 1)) * 100)
+        if (pct < 33) out.add(r.playerKey)
+      })
+    }
+    return out
+  })
+
+  // Whether a rostered body is in the bottom tier of the manager's OWN roster — the "genuinely
+  // expendable" test a safe drop must pass, independent of how deep the wire is (see safeDrop.ts).
+  function isBottomTier(playerKey: string): boolean {
+    if (isPointsLeague.value) return pointsFringeKeys.value.has(playerKey)
+    const roleValue = categoryValueByKey.value.get(playerKey)?.roleValue
+    return roleValue != null && valueTier(roleValue) === 'fringe'
+  }
+
+  // This league's wire replacement level per side = the best available FA's rosValue (crossPercentile
+  // for category, ROS points for points) on that side. Feeds the `dropCandidate` flag below only —
+  // NOT pickSafeDrop, which uses the bottom-tier-of-MY-roster test instead (see safeDrop.ts).
+  // Empty wire for a side → -Infinity, so no body of that side is ever flagged (conservative).
   const replacementBySide = computed<Record<'hit' | 'pit', number>>(() => {
     const rv = rosValueByKey.value
     const out: Record<'hit' | 'pit', number> = { hit: -Infinity, pit: -Infinity }
@@ -284,7 +329,7 @@ export function useToday(): {
       if (!reason) continue
       const v = rv.get(p.playerKey)
       if (v == null) continue
-      out.push({ playerKey: p.playerKey, name: p.name, side, rosValue: v, reason })
+      out.push({ playerKey: p.playerKey, name: p.name, side, rosValue: v, bottomTier: isBottomTier(p.playerKey), reason })
     }
     return out
   })
@@ -433,7 +478,10 @@ export function useToday(): {
       parkFactor: parkVal,
       spFactor: spFactorFor(candidate),
     })
-    // Same "clean drop" test as pickSafeDrop: at/below this side's wire replacement level.
+    // Rest-of-season "drop candidate" flag: is this play's OWN body at/below this side's wire
+    // replacement level (i.e. the rest of the app would flag it to drop, not start)? Deliberately
+    // a DIFFERENT, looser test than pickSafeDrop's bottom-tier-of-MY-roster bar (see safeDrop.ts) —
+    // this one only gates the hero/upgrade sections (todayBoard.ts), not which body gets cut.
     // Streams are exempt — a streamer is disposable by design, not a roster asset being pitched
     // as a keeper. -Infinity replacement (empty wire) never flags a candidate (conservative).
     const rosValue = rosValueByKey.value.get(candidate.player.key)
@@ -492,11 +540,10 @@ export function useToday(): {
   // expendable body; a startSit (bench move) needs no drop. Bodies are claimed once per build.
   function attachDrops(plays: ScoredPlay[]): ScoredPlay[] {
     const claimed = new Set<string>()
-    const replFor = (side: 'hit' | 'pit') => replacementBySide.value[side]
     const patch = new Map<string, { drop?: SafeDrop; noCleanDrop?: boolean }>()
     for (const p of [...plays].sort((a, b) => b.score - a.score)) {
       if (p.kind !== 'stream' && p.kind !== 'add') continue
-      const drop = pickSafeDrop(droppableToday.value, replFor, claimed)
+      const drop = pickSafeDrop(droppableToday.value, claimed)
       if (drop) {
         claimed.add(drop.playerKey)
         patch.set(p.playerKey, { drop })
