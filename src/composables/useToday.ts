@@ -22,7 +22,7 @@ import { findOpenSlots, type LineupSlot, type OpenSlot } from '@/today/openSlots
 import { scoreToday } from '@/today/scoreToday'
 import { parkFactor } from '@/today/parkFactors'
 import { opposingStarterName, spQualityFactor, type PitcherQuality } from '@/today/oppMatchup'
-import { buildTodayBoard, type ScoredPlay, type TodayBoard } from '@/today/todayBoard'
+import { buildTodayBoard, positionsOverlap, type ScoredPlay, type TodayBoard, type LineupValue } from '@/today/todayBoard'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { pointsDailyValue } from '@/today/pointsDailyValue'
 import { injuryTier } from '@/myteam/injuryStatus'
@@ -278,7 +278,7 @@ export function useToday(): {
     for (const p of rosterPlayers.value) {
       const side = sideOf(p.position || '')
       let reason: 'off-day' | 'IL' | 'benched' | null = null
-      if (injuryTier(p.status) === 'il') reason = 'IL'
+      if (injuryTier(p.status, p.onIL) === 'il') reason = 'IL'
       else if (!playsToday(p.team)) reason = 'off-day'
       else if (!p.started && side === 'pit' && lookupStarts(schedule.value, p.name).length === 0) reason = 'benched'
       if (!reason) continue
@@ -433,6 +433,12 @@ export function useToday(): {
       parkFactor: parkVal,
       spFactor: spFactorFor(candidate),
     })
+    // Same "clean drop" test as pickSafeDrop: at/below this side's wire replacement level.
+    // Streams are exempt — a streamer is disposable by design, not a roster asset being pitched
+    // as a keeper. -Infinity replacement (empty wire) never flags a candidate (conservative).
+    const rosValue = rosValueByKey.value.get(candidate.player.key)
+    const dropCandidate =
+      candidate.kind !== 'stream' && rosValue != null && rosValue <= replacementBySide.value[candidate.side]
     return {
       kind: candidate.kind,
       playerKey: candidate.player.key,
@@ -449,6 +455,7 @@ export function useToday(): {
       helpsCats: Object.entries(candidate.addDelta)
         .filter(([, v]) => Number.isFinite(v) && v > 0)
         .map(([statId]) => categories.value.find((c) => c.statId === statId)?.label || statId),
+      dropCandidate,
     }
   }
 
@@ -500,27 +507,13 @@ export function useToday(): {
     return plays.map((p) => ({ ...p, ...(patch.get(p.playerKey) ?? {}) }))
   }
 
-  function positionsOverlap(a: string, b: string): boolean {
-    const ta = new Set((a || '').split(/[,/|]/).map((t) => t.trim().toUpperCase()).filter(Boolean))
-    return (b || '')
-      .split(/[,/|]/)
-      .map((t) => t.trim().toUpperCase())
-      .filter(Boolean)
-      .some((t) => ta.has(t))
-  }
-
-  // ── sit alerts (capped at 2) ─────────────────────────────────────────────────
-  // A rostered active hitter playing today with a poor matchup (bucket <= 1) whose
-  // bench/FA startSit alternative at a compatible position projects higher. Scores
-  // the started player through the exact same pipeline as every other candidate so
-  // the comparison is apples-to-apples; never throws — an unresolved lookup for one
-  // slot just yields no alert for that slot.
-  const sitAlerts = computed<ScoredPlay[]>(() => {
-    const alerts: ScoredPlay[] = []
-    const benchPlays = scoredPlays.value.filter((p) => p.kind === 'startSit')
-    if (!benchPlays.length) return alerts
+  // Today's matchup-adjusted value for each currently-started hitter whose team plays today,
+  // scored through the exact same pipeline as every other candidate (apples-to-apples). Shared by
+  // sitAlerts (a poor-matchup starter vs. the bench) and the Upgrades gate in buildTodayBoard (any
+  // starter a bench/FA play must actually beat to count as a genuine upgrade).
+  const activeLineupScored = computed<ScoredPlay[]>(() => {
+    const out: ScoredPlay[] = []
     for (const p of lineup.value) {
-      if (alerts.length >= MAX_SIT_ALERTS) break
       if (!p.playerKey || sideOf(p.position) !== 'hit' || !playsToday(p.team)) continue
       const startedCandidate: MoveCandidate = {
         kind: 'startSit',
@@ -529,15 +522,35 @@ export function useToday(): {
         addDelta: projectGames(statsByKey.value.get(p.playerKey) ?? {}, null, catSpecs.value, 1, seasonFraction.value),
         detail: '',
       }
-      const startedScore = scoreCandidate(startedCandidate)
+      out.push(scoreCandidate(startedCandidate))
+    }
+    return out
+  })
+
+  // ── sit alerts (capped at 2) ─────────────────────────────────────────────────
+  // A rostered active hitter playing today with a poor matchup (bucket <= 1) whose
+  // bench/FA startSit alternative at a compatible position projects higher. Never
+  // throws — an unresolved lookup for one slot just yields no alert for that slot.
+  const sitAlerts = computed<ScoredPlay[]>(() => {
+    const alerts: ScoredPlay[] = []
+    const benchPlays = scoredPlays.value.filter((p) => p.kind === 'startSit')
+    if (!benchPlays.length) return alerts
+    for (const startedScore of activeLineupScored.value) {
+      if (alerts.length >= MAX_SIT_ALERTS) break
       if (startedScore.bucket > 1) continue
-      const better = benchPlays.find((b) => b.value > startedScore.value && positionsOverlap(b.position, p.position))
+      const better = benchPlays.find((b) => b.value > startedScore.value && positionsOverlap(b.position, startedScore.position))
       if (better) alerts.push({ ...startedScore, detail: `Tough matchup today — ${better.name} projects higher` })
     }
     return alerts
   })
 
-  const board = computed<TodayBoard>(() => buildTodayBoard(scoredPlays.value, openSlots.value))
+  const board = computed<TodayBoard>(() =>
+    buildTodayBoard(
+      scoredPlays.value,
+      openSlots.value,
+      activeLineupScored.value.map((p): LineupValue => ({ playerKey: p.playerKey, position: p.position, value: p.value })),
+    ),
+  )
 
   const loading = ref(false)
   const error = ref<string | null>(null)

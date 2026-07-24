@@ -15,6 +15,7 @@ export interface RosterPlayer {
   stats: Record<string, number> // keyed by Yahoo stat_id (season totals)
   started: boolean // in the active lineup this period (false = bench/IL)
   eligiblePositions?: string[] // every position this player qualifies for, e.g. ['1B','OF']
+  onIL?: boolean // sits in an IL/NA reserve slot (not an active roster spot)
 }
 
 // Eligible positions: prefer the parsed eligible_positions, else split the
@@ -31,6 +32,8 @@ function eligibleFrom(raw: any): string[] {
 
 // Yahoo lineup slots that are NOT accruing stats this period.
 const BENCH_SLOTS = new Set(['BN', 'IL', 'IL+', 'IL60', 'NA', 'DL'])
+// The subset of BENCH_SLOTS that are specifically an IL/NA reserve slot (not a plain bench spot).
+const IL_SLOTS = new Set(['IL', 'IL+', 'IL60', 'NA', 'DL'])
 
 function normalizeRosterPlayer(raw: any): RosterPlayer {
   const selected = String(raw.selected_position ?? '').toUpperCase()
@@ -48,6 +51,7 @@ function normalizeRosterPlayer(raw: any): RosterPlayer {
     stats: raw.stats && typeof raw.stats === 'object' ? { ...raw.stats } : {},
     started,
     eligiblePositions: eligibleFrom(raw),
+    onIL: IL_SLOTS.has(selected),
   }
 }
 

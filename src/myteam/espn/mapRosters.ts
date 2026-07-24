@@ -76,5 +76,6 @@ export function mapRosterToPlayers(team: EspnTeamRosterLike, sport: Sport): Rost
     totalPoints: typeof p.actualPoints === 'number' ? p.actualPoints : 0,
     stats: p.stats && typeof p.stats === 'object' ? { ...p.stats } : {},
     started: p.started,
+    onIL: isEspnIL(p.lineupSlot),
   }))
 }

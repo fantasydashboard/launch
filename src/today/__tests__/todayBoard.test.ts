@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildTodayBoard, type ScoredPlay } from '../todayBoard'
+import { buildTodayBoard, positionsOverlap, type ScoredPlay, type LineupValue } from '../todayBoard'
 import type { OpenSlot } from '../openSlots'
 
 function play(p: Partial<ScoredPlay> & { name: string; value: number }): ScoredPlay {
@@ -51,5 +51,97 @@ describe('buildTodayBoard', () => {
     expect(board.streamers.map((s) => s.playerKey)).toEqual(['ScoreBig', 'RawBig'])
     expect(board.hero?.drop?.name).toBe('Cut Me')
     expect(board.streamers[1].helpsCats).toEqual(['K'])
+  })
+
+  // BUG 4: "Upgrade today" was an unbounded dump — every bench/FA hitter who merely played
+  // today, regardless of whether they'd actually improve the active lineup.
+  describe('upgrades gate (BUG 4)', () => {
+    const hitPlay = (name: string, value: number, position = 'OF') =>
+      play({ name, value, score: value, kind: 'add', side: 'hit', position, bucket: 4 })
+
+    it('excludes a non-stream play that does not beat any active starter at a compatible position', () => {
+      const plays = [hitPlay('MerelyPlays', 5)]
+      const activeLineup: LineupValue[] = [{ playerKey: 'Starter', position: 'OF', value: 8 }]
+      const board = buildTodayBoard(plays, [], activeLineup)
+      expect(board.upgrades).toEqual([])
+    })
+
+    it('includes a non-stream play that genuinely beats a compatible-position starter', () => {
+      const plays = [hitPlay('GenuineUpgrade', 15)]
+      const activeLineup: LineupValue[] = [{ playerKey: 'Starter', position: 'OF', value: 8 }]
+      const board = buildTodayBoard(plays, [], activeLineup)
+      expect(board.upgrades.map((p) => p.playerKey)).toEqual(['GenuineUpgrade'])
+    })
+
+    it('ignores a "beat" at an incompatible position', () => {
+      const plays = [hitPlay('WrongPosition', 20, 'C')]
+      const activeLineup: LineupValue[] = [{ playerKey: 'Starter', position: 'OF', value: 8 }]
+      const board = buildTodayBoard(plays, [], activeLineup)
+      expect(board.upgrades).toEqual([])
+    })
+
+    it('caps the list at 6 even when many plays clear the bar', () => {
+      const plays = Array.from({ length: 12 }, (_, i) => hitPlay(`Up${i}`, 20 - i))
+      const activeLineup: LineupValue[] = [{ playerKey: 'Starter', position: 'OF', value: 1 }]
+      const board = buildTodayBoard(plays, [], activeLineup)
+      expect(board.upgrades.length).toBe(6)
+      // highest-scored plays win the cap
+      expect(board.upgrades.map((p) => p.playerKey)).toEqual(['Up0', 'Up1', 'Up2', 'Up3', 'Up4', 'Up5'])
+    })
+
+    it('defaults to no active-lineup data → no upgrades surface (conservative)', () => {
+      const plays = [hitPlay('NoLineupData', 50)]
+      expect(buildTodayBoard(plays, []).upgrades).toEqual([])
+    })
+  })
+
+  // BUG 6: a play whose rest-of-season value is bottom-tier (a DROP? candidate everywhere else
+  // in the app) must never surface as the hero or an "upgrade" — only streams (disposable by
+  // design) are exempt from the dropCandidate gate.
+  describe('dropCandidate gate (BUG 6)', () => {
+    it('hero skips a top-scored dropCandidate non-stream play in favor of the next best', () => {
+      const plays: ScoredPlay[] = [
+        play({ name: 'Goldschmidt', value: 99, score: 100, kind: 'startSit', side: 'hit', position: 'OF', dropCandidate: true }),
+        play({ name: 'RealHero', value: 20, score: 60, kind: 'stream', side: 'pit' }),
+      ]
+      const board = buildTodayBoard(plays, [])
+      expect(board.hero?.playerKey).toBe('RealHero')
+    })
+
+    it('falls back to a dropCandidate play as hero only when nothing else is eligible', () => {
+      const plays: ScoredPlay[] = [
+        play({ name: 'OnlyOption', value: 99, score: 100, kind: 'startSit', side: 'hit', dropCandidate: true }),
+      ]
+      const board = buildTodayBoard(plays, [])
+      expect(board.hero?.playerKey).toBe('OnlyOption')
+    })
+
+    it('a dropCandidate is excluded from upgrades even if it would otherwise beat a starter', () => {
+      const plays: ScoredPlay[] = [
+        play({ name: 'Goldschmidt', value: 99, score: 100, kind: 'startSit', side: 'hit', position: 'OF', dropCandidate: true }),
+      ]
+      const activeLineup: LineupValue[] = [{ playerKey: 'Starter', position: 'OF', value: 8 }]
+      const board = buildTodayBoard(plays, [], activeLineup)
+      expect(board.upgrades).toEqual([])
+    })
+
+    it('a stream is never excluded by dropCandidate (disposable by design)', () => {
+      const plays: ScoredPlay[] = [
+        play({ name: 'CheapStream', value: 5, score: 5, kind: 'stream', side: 'pit', dropCandidate: true }),
+      ]
+      const board = buildTodayBoard(plays, [])
+      expect(board.hero?.playerKey).toBe('CheapStream')
+      expect(board.streamers.map((p) => p.playerKey)).toEqual(['CheapStream'])
+    })
+  })
+})
+
+describe('positionsOverlap', () => {
+  it('true when eligibility strings share a token', () => {
+    expect(positionsOverlap('1B,OF', 'OF')).toBe(true)
+    expect(positionsOverlap('OF', '1B/OF')).toBe(true)
+  })
+  it('false when they share nothing', () => {
+    expect(positionsOverlap('C', 'OF')).toBe(false)
   })
 })

@@ -56,6 +56,26 @@ describe('mapRosters', () => {
     })
   })
 
+  // Regression: Today's droppableToday flags IL via `onIL` (see injuryTier's onIL param), and
+  // mapRosterToPlayers previously never set it — only the league-wide pool mapper did — so an
+  // ESPN player parked in an IL lineup slot (e.g. a hitter whose injuryStatus string doesn't
+  // land in injuryTier's IL_CODES) was invisible to Today's safe-drop search.
+  it('mapRosterToPlayers flags IL lineup-slot players onIL regardless of injuryStatus string', () => {
+    const teams = [
+      {
+        id: 5,
+        name: 'IL team',
+        roster: [
+          { ...player(50, {}), lineupSlot: 'IL', injuryStatus: '' }, // hitter on IL, no recognized injuryStatus code
+          { ...player(51, {}), lineupSlot: 'BE' },
+        ],
+      },
+    ]
+    const rows = mapRosterToPlayers(teams[0], 'baseball')
+    expect(rows.find((r) => r.playerKey === '50')?.onIL).toBe(true)
+    expect(rows.find((r) => r.playerKey === '51')?.onIL).toBe(false)
+  })
+
   it('handles a team with no roster', () => {
     expect(mapRostersToPool([{ id: 9, name: 'X' }])).toHaveLength(0)
     expect(mapRosterToPlayers({ id: 9, name: 'X' }, 'baseball')).toHaveLength(0)

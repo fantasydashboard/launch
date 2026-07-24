@@ -44,4 +44,21 @@ describe('pickSafeDrop', () => {
       reason: 'IL',
     })
   })
+
+  // Regression (BUG 5): two IL bodies (e.g. Griffin ~0, Helsley ~12) — the first stream must
+  // claim the LOWEST-value one, leaving the second-lowest available for the next stream, instead
+  // of both moves colliding on the same (wrong, higher-value) body.
+  it('two IL bodies: first stream claims the lower-value one, second stream claims the other', () => {
+    const cands = [
+      body({ playerKey: 'Helsley', rosValue: 12, side: 'pit', reason: 'IL' }),
+      body({ playerKey: 'Griffin', rosValue: 0, side: 'hit', reason: 'IL' }),
+    ]
+    const replLevel = repl({ pit: 50, hit: 50 })
+    const claimed = new Set<string>()
+    const first = pickSafeDrop(cands, replLevel, claimed)
+    expect(first?.playerKey).toBe('Griffin') // lowest value picked first
+    claimed.add(first!.playerKey)
+    const second = pickSafeDrop(cands, replLevel, claimed)
+    expect(second?.playerKey).toBe('Helsley') // second stream gets the other IL body, not "no clean drop"
+  })
 })
