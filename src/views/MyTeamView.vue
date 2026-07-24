@@ -15,6 +15,7 @@ import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
 import { rankAddsForHoles } from '@/players/rankAdds'
 import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
+import { buildPlayerMatchers } from '@/services/projectionService'
 import { computeRosterValue, type CatSpec } from '@/myteam/value'
 import { resolveVolumeStatId } from '@/myteam/catVolume'
 import { toEffectiveStats } from '@/myteam/effectiveStats'
@@ -379,7 +380,9 @@ const holes = computed<Hole[]>(() => {
 // statId -> top add (for the inline "Add {name} {statValue} {label}" line).
 const addsByStatId = computed<Record<string, { name: string; statValue: number; label: string; isRatio: boolean }>>(() => {
   if (!holes.value.length || !players.value.length) return {}
-  const groups = rankAddsForHoles(players.value, holes.value, { perHole: 1 })
+  // Rank off FG-projected/effective stats (effectiveFreeAgents), NOT raw season-to-date totals —
+  // see the faFgByKey/effectiveFreeAgents comment above for why (accumulation bias).
+  const groups = rankAddsForHoles(effectiveFreeAgents.value, holes.value, { perHole: 1 })
   const map: Record<string, { name: string; statValue: number; label: string; isRatio: boolean }> = {}
   for (const group of groups) {
     const top = group.adds[0]
@@ -548,6 +551,39 @@ const fgStatsByKey = computed<Record<string, Record<string, number>>>(() => {
   const labelByStatId = new Map(categories.value.map((c) => [c.statId, c.label || c.name || c.statId]))
   return mapFgStatsByKey(fgMap, catSpecs.value, (id) => labelByStatId.get(id) ?? id)
 })
+
+// FanGraphs ROS match for the FREE-AGENT pool — mirrors fgStatsByKey above but for `players`
+// (unrostered). Without this, the per-cat "add" chip below ranks off raw ESPN/Yahoo season-
+// TO-DATE stats only: a long-tenured compiler's higher accumulated total can beat a recently-
+// arrived / limited-usage specialist even when the specialist projects far better for that
+// category (e.g. a full-time closer's accumulated K's outpacing a hot rookie starter's, simply
+// because he's had more games to compile them) — this is why My Team's per-cat "add" chip could
+// surface a low-K reliever for the K hole while the Wire (which already ranks free agents off
+// FG-projected effective stats) correctly surfaces a real strikeout starter. Same fix, applied
+// here too: FG-match the free-agent pool and rank off projected/effective stats, not raw totals.
+let faMatchersPromise: ReturnType<typeof buildPlayerMatchers> | null = null
+const getFaPlayerMatchers = () => (faMatchersPromise ??= buildPlayerMatchers())
+const faFgByKey = ref<Record<string, Record<string, number>>>({})
+watch(
+  [players, catSpecs],
+  async () => {
+    if (!players.value.length || !catSpecs.value.length) return
+    const { matchFG } = await getFaPlayerMatchers()
+    const labelByStatId = new Map(categories.value.map((c) => [c.statId, c.label || c.name || c.statId]))
+    const raw: Record<string, ReturnType<typeof matchFG>> = {}
+    for (const fa of players.value) raw[fa.playerKey] = matchFG({ full_name: fa.name, mlb_team: fa.team })
+    faFgByKey.value = mapFgStatsByKey(raw, catSpecs.value, (id) => labelByStatId.get(id) ?? id)
+  },
+  { immediate: true },
+)
+// Free agents with FG-projected (or season-fraction-extrapolated) full-season stats — the
+// pool the per-category "add" suggestion ranks off, instead of raw season-to-date totals.
+const effectiveFreeAgents = computed(() =>
+  players.value.map((fa) => ({
+    ...fa,
+    stats: toEffectiveStats(fa.stats, faFgByKey.value[fa.playerKey] ?? null, catSpecs.value, seasonFraction.value),
+  })),
+)
 
 // REST-OF-SEASON PROJECTED league pool — the SAME source the Wire and Trades rank/value off
 // (FG ROS, no raw stats). My Team's category rank AND player values use this (not useMyRoster's

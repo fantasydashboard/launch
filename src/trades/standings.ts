@@ -226,6 +226,12 @@ export interface AddDropDelta {
  * ECW impact of a one-sided waiver move: add `addStats`, optionally drop `dropStats`, on MY team
  * only — the rest of the league is unchanged (the added player was unowned). `fixes` are categories
  * my rank improved; `holds` are categories I'm already winning (top half) that the move preserves.
+ *
+ * `addSide`/`dropSide` (when known) restrict `fixes`/`holds` to categories either player can
+ * actually touch — a hitter can never fix/hold a pitching cat and vice versa. Without a side
+ * (the added/dropped player is null, or the caller doesn't know), every cat stays eligible
+ * (legacy behavior). Passing a side is a UI-facing filter only: it does NOT change `deltaEcw`,
+ * since a raw off-side stat contributes nothing to `applySwapToTeam` regardless.
  */
 export function addDropDelta(
   totals: TeamCategoryTotals[],
@@ -233,6 +239,7 @@ export function addDropDelta(
   myTeamId: string,
   addStats: Record<string, number>,
   dropStats: Record<string, number> | null,
+  sides?: { addSide?: 'hit' | 'pit' | null; dropSide?: 'hit' | 'pit' | null },
 ): AddDropDelta {
   const myTeam = totals.find((t) => t.teamId === myTeamId)
   if (!myTeam) return { deltaEcw: 0, ecwBefore: 0, ecwAfter: 0, fixes: [], holds: [] }
@@ -248,9 +255,13 @@ export function addDropDelta(
   // average ranks for ties (a 2-way tie for 1st is 1.5), which a strict `<= half`
   // would wrongly exclude when a tie group straddles the half line.
   const half = Math.ceil(totals.length / 2)
+  const eligibleSides = new Set<'hit' | 'pit'>()
+  if (sides?.addSide) eligibleSides.add(sides.addSide)
+  if (sides?.dropSide) eligibleSides.add(sides.dropSide)
   const fixes: string[] = []
   const holds: string[] = []
   for (const c of cats) {
+    if (eligibleSides.size > 0 && !eligibleSides.has(c.side)) continue
     const rb = rankBefore.get(c.statId)!
     const ra = rankInCategory(after, c).get(myTeamId) ?? after.length
     if (ra < rb) fixes.push(c.statId)

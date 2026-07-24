@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { rankAddsForHoles } from '@/players/rankAdds'
 import type { AvailablePlayer, Hole } from '@/players/types'
+import { toEffectiveStats } from '@/myteam/effectiveStats'
+import type { CatSpec } from '@/myteam/types'
 
 function p(key: string, stats: Record<string, number>, position = 'P'): AvailablePlayer {
   return { playerKey: key, name: key, position, team: 'X', percentOwned: 0, stats }
@@ -59,5 +61,35 @@ describe('rankAddsForHoles', () => {
     ]
     const result = rankAddsForHoles(sided, [{ statId: 'R', name: 'Runs', rank: 9, lowerIsBetter: false, side: 'hit' }])
     expect(result[0].adds.map((a) => a.player.playerKey)).toEqual(['leadoff'])
+  })
+
+  it('BUG 3 repro: raw season-to-date stats pick a compiler over the real category source; projected/effective stats fix it', () => {
+    // Same-side (both 'pit'), so the side gate alone can't tell them apart — this is exactly
+    // the "add Carlos Estevez · K" bug: a low-K reliever who has simply pitched all season
+    // (so his RAW accumulated K total is higher) beats a recently-up starter who projects
+    // far better for K but hasn't had time to accumulate a season-to-date total to match.
+    const cats: CatSpec[] = [{ statId: 'K', lowerIsBetter: false, side: 'pit', isRatio: false }]
+    const hole: Hole = { statId: 'K', name: 'Strikeouts', rank: 10, lowerIsBetter: false, side: 'pit' }
+    const raw: AvailablePlayer[] = [
+      p('closer', { K: 45 }, 'RP'), // low-K reliever, accumulated all year
+      p('starter', { K: 30 }, 'SP'), // recently up — season-to-date total trails
+    ]
+
+    // Ranking straight off raw season-to-date stats reproduces the bug: the compiler wins.
+    const buggy = rankAddsForHoles(raw, [hole], { perHole: 1 })
+    expect(buggy[0].adds[0].player.playerKey).toBe('closer')
+
+    // Ranking off FG-projected/effective stats (what MyTeamView now feeds rankAddsForHoles,
+    // matching the Wire) surfaces the genuine strikeout source instead.
+    const fgByKey: Record<string, Record<string, number> | null> = {
+      closer: { K: 40 }, // projects to keep pace — still a weak K source
+      starter: { K: 150 }, // projects a real rest-of-season strikeout workload
+    }
+    const effective = raw.map((pl) => ({
+      ...pl,
+      stats: toEffectiveStats(pl.stats, fgByKey[pl.playerKey] ?? null, cats, 1),
+    }))
+    const fixed = rankAddsForHoles(effective, [hole], { perHole: 1 })
+    expect(fixed[0].adds[0].player.playerKey).toBe('starter')
   })
 })

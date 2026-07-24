@@ -169,4 +169,29 @@ describe('addDropDelta', () => {
     expect(d.fixes).not.toContain('SB')
     expect(d.holds).toContain('SB')
   })
+
+  it('excludes off-side cats from holds/fixes when addSide/dropSide are given (BUG 1)', () => {
+    // Mixed hit/pit cats. T1 already leads the pitching cat W outright — a pure hit-side add
+    // can't touch W, so passing addSide:'hit' must keep W out of both fixes and holds even
+    // though W's rank happens to be unchanged and top-half (the pre-fix false-positive).
+    const mixedCats: CatSpec[] = [
+      { statId: 'SB', lowerIsBetter: false, side: 'hit', isRatio: false },
+      { statId: 'W', lowerIsBetter: false, side: 'pit', isRatio: false },
+    ]
+    const t = aggregateTeamCatTotals(
+      [
+        { teamId: 'T1', players: [{ playerKey: 'mine', stats: { SB: 1, W: 20 } }] },
+        { teamId: 'T2', players: [{ playerKey: 'b', stats: { SB: 20, W: 10 } }] },
+        { teamId: 'T3', players: [{ playerKey: 'c', stats: { SB: 30, W: 5 } }] },
+      ],
+      mixedCats,
+    )
+    // Without a side hint (legacy call), W leaks into holds — unaffected + top-half rank.
+    const legacy = addDropDelta(t, mixedCats, 'T1', { SB: 40 }, { SB: 1 })
+    expect(legacy.holds).toContain('W')
+    // With addSide/dropSide supplied, a hit-side move can never hold/fix a pitching cat.
+    const fixed = addDropDelta(t, mixedCats, 'T1', { SB: 40 }, { SB: 1 }, { addSide: 'hit', dropSide: 'hit' })
+    expect(fixed.holds).not.toContain('W')
+    expect(fixed.fixes).not.toContain('W')
+  })
 })

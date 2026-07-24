@@ -803,7 +803,12 @@ export function useWire() {
     const addFa = addKey ? wireFreeAgents.value.find((f) => f.playerKey === addKey) : undefined
     const addStats = addFa ? addFa.effStats : {}
     const dropStats = dropKey ? effStatsByKey.value[dropKey] ?? {} : null
-    const d = addDropDelta(leagueTotals.value, catSpecs.value, myTeamId.value, addStats, dropStats)
+    const dropRole = dropKey ? contributions.value.find((c) => c.playerKey === dropKey)?.role : undefined
+    const dropSide: 'hit' | 'pit' | null = dropRole ? (dropRole === 'pitcher' ? 'pit' : 'hit') : null
+    const d = addDropDelta(leagueTotals.value, catSpecs.value, myTeamId.value, addStats, dropStats, {
+      addSide: addFa?.side ?? null,
+      dropSide,
+    })
     const addMeta = addKey ? metaByKey.value.get(addKey) : undefined
     const dropMeta = dropKey ? metaByKey.value.get(dropKey) : undefined
     const addPct = addKey ? pctByKeyCat.value.get(addKey) : undefined

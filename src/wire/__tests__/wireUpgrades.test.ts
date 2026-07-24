@@ -75,6 +75,33 @@ describe('rankUpgrades', () => {
     expect(out[0]?.dropKey ?? null).toBeNull()
   })
 
+  it('does not leak off-side cats into holds for a same-side add/drop (BUG 1)', () => {
+    // Mixed hit/pit league: SB (hit) + W (pit). My team (T1) already leads W outright — that
+    // pitching lead is totally unaffected by a hit-side add/drop, so it must never show up as
+    // something this hit-side move "holds" (a hitter can't hold a pitching category).
+    const mixedCats: CatSpec[] = [
+      { statId: 'SB', lowerIsBetter: false, side: 'hit', isRatio: false },
+      { statId: 'W', lowerIsBetter: false, side: 'pit', isRatio: false },
+    ]
+    const mixedTotals = aggregateTeamCatTotals(
+      [
+        { teamId: 'T1', players: [{ playerKey: 'weakHitter', stats: { SB: 1, W: 20 } }] },
+        { teamId: 'T2', players: [{ playerKey: 'b', stats: { SB: 20, W: 10 } }] },
+        { teamId: 'T3', players: [{ playerKey: 'c', stats: { SB: 30, W: 5 } }] },
+      ],
+      mixedCats,
+    )
+    const out = rankUpgrades({
+      freeAgents: [{ playerKey: 'speedster', name: 'Speedster', position: 'OF', team: 'ARI', effStats: { SB: 40 }, side: 'hit' }],
+      leagueTotals: mixedTotals,
+      myTeamId: 'T1',
+      cats: mixedCats,
+      dropOptions: [{ playerKey: 'weakHitter', side: 'hit' as const, effStats: { SB: 1 } }],
+      minDelta: 0.05,
+    })
+    expect(out[0].holds).not.toContain('W')
+  })
+
   it('pairs a pitcher free agent with a pit-side drop', () => {
     const pcats = [{ statId: 'K', lowerIsBetter: false, side: 'pit' as const, isRatio: false }]
     const totals = aggregateTeamCatTotals(

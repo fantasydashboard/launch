@@ -59,7 +59,10 @@ export function rankUpgrades(args: {
   const ranked: { fa: WireFreeAgent; best: number }[] = []
   for (const fa of args.freeAgents) {
     const drop = args.dropOptions.find((d) => d.side === fa.side) ?? null
-    const d = addDropDelta(args.leagueTotals, args.cats, args.myTeamId, fa.effStats, drop?.effStats ?? null)
+    const d = addDropDelta(args.leagueTotals, args.cats, args.myTeamId, fa.effStats, drop?.effStats ?? null, {
+      addSide: fa.side,
+      dropSide: drop?.side ?? null,
+    })
     if (d.deltaEcw < minDelta) continue
     ranked.push({ fa, best: d.deltaEcw })
   }
@@ -74,7 +77,10 @@ export function rankUpgrades(args: {
     const spreadable = diversify ? sideDrops.filter((d) => diversify.has(d.playerKey)) : sideDrops
     const drop = spreadable.find((d) => !used.has(d.playerKey)) ?? sideDrops[0] ?? null
     if (drop && (!diversify || diversify.has(drop.playerKey))) used.add(drop.playerKey)
-    const d = addDropDelta(args.leagueTotals, args.cats, args.myTeamId, fa.effStats, drop?.effStats ?? null)
+    const d = addDropDelta(args.leagueTotals, args.cats, args.myTeamId, fa.effStats, drop?.effStats ?? null, {
+      addSide: fa.side,
+      dropSide: drop?.side ?? null,
+    })
     out.push({
       player: { key: fa.playerKey, name: fa.name, position: fa.position, team: fa.team, headshot: fa.headshot },
       deltaEcw: d.deltaEcw,
