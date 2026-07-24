@@ -43,14 +43,14 @@ describe('parseEspnAddBudget', () => {
   })
   it('count when acquisitionLimit >= 0', () => {
     expect(parseEspnAddBudget({ isUsingAcquisitionBudget: false, acquisitionLimit: 40 }, { acquisitions: 30 }))
-      .toEqual({ kind: 'count', limit: 40, used: 30, remaining: 10 })
+      .toEqual({ kind: 'count', limit: 40, used: 30, remaining: 10, period: 'season' })
   })
 })
 
 describe('parseYahooAddBudget', () => {
   it('count from max_weekly_adds + weekly used', () => {
     expect(parseYahooAddBudget({ uses_faab: '0', max_weekly_adds: '5' }, { weeklyAddsUsed: 2, faabBalance: null }))
-      .toEqual({ kind: 'count', limit: 5, used: 2, remaining: 3 })
+      .toEqual({ kind: 'count', limit: 5, used: 2, remaining: 3, period: 'week' })
   })
   it('faab when uses_faab, remaining = faab_balance', () => {
     expect(parseYahooAddBudget({ uses_faab: '1' }, { weeklyAddsUsed: null, faabBalance: 34 }))

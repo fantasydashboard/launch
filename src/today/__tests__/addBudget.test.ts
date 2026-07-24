@@ -14,7 +14,7 @@ describe('annotateAddBudget', () => {
     const plays = [
       play('A', 'stream', 30), play('B', 'add', 20), play('C', 'stream', 10), play('bench', 'startSit', 99),
     ]
-    const out = annotateAddBudget(plays, { kind: 'count', limit: 5, used: 3, remaining: 2 })
+    const out = annotateAddBudget(plays, { kind: 'count', limit: 5, used: 3, remaining: 2, period: 'week' })
     const tag = Object.fromEntries(out.map((p) => [p.playerKey, p.budgetTag]))
     expect(tag.A).toBe('worth-add')
     expect(tag.B).toBe('worth-add')
@@ -22,7 +22,7 @@ describe('annotateAddBudget', () => {
     expect(tag.bench).toBeUndefined()
   })
   it('count remaining 0 → all add-moves save-add', () => {
-    const out = annotateAddBudget([play('A', 'stream', 30)], { kind: 'count', limit: 5, used: 5, remaining: 0 })
+    const out = annotateAddBudget([play('A', 'stream', 30)], { kind: 'count', limit: 5, used: 5, remaining: 0, period: 'week' })
     expect(out[0].budgetTag).toBe('save-add')
   })
   it('faab: remaining>0 → worth-bid; remaining<=0 → save-add', () => {

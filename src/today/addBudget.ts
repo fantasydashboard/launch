@@ -2,7 +2,7 @@ import type { ScoredPlay } from './todayBoard'
 
 /** The active league's add constraint. `budget: null` on FAAB = total unknown (Yahoo). */
 export type AddBudget =
-  | { kind: 'count'; limit: number; used: number; remaining: number }
+  | { kind: 'count'; limit: number; used: number; remaining: number; period: 'week' | 'season' }
   | { kind: 'faab'; budget: number | null; remaining: number }
   | { kind: 'unlimited' }
 

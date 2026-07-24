@@ -63,12 +63,13 @@ export function parseEspnAddBudget(acquisitionSettings: any, transactionCounter:
   if (acq?.isUsingAcquisitionBudget) {
     const budget = typeof acq.acquisitionBudget === 'number' ? acq.acquisitionBudget : null
     const spent = typeof transactionCounter?.acquisitionBudgetSpent === 'number' ? transactionCounter.acquisitionBudgetSpent : 0
-    return { kind: 'faab', budget, remaining: (budget ?? 0) - spent }
+    return { kind: 'faab', budget, remaining: Math.max(0, (budget ?? 0) - spent) }
   }
   const limit = typeof acq?.acquisitionLimit === 'number' ? acq.acquisitionLimit : -1
   if (limit < 0) return { kind: 'unlimited' }
   const used = typeof transactionCounter?.acquisitions === 'number' ? transactionCounter.acquisitions : 0
-  return { kind: 'count', limit, used, remaining: Math.max(0, limit - used) }
+  // ESPN's acquisitionLimit is a SEASON-cumulative cap (not a weekly reset like Yahoo's).
+  return { kind: 'count', limit, used, remaining: Math.max(0, limit - used), period: 'season' }
 }
 
 /** Yahoo add budget: league settings + { weeklyAddsUsed, faabBalance } from the my-team resource. */
@@ -83,5 +84,5 @@ export function parseYahooAddBudget(
   const limit = Number(settings?.max_weekly_adds)
   if (!Number.isFinite(limit) || limit <= 0) return { kind: 'unlimited' }
   const used = teamInfo.weeklyAddsUsed ?? 0
-  return { kind: 'count', limit, used, remaining: Math.max(0, limit - used) }
+  return { kind: 'count', limit, used, remaining: Math.max(0, limit - used), period: 'week' }
 }

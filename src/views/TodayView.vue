@@ -53,7 +53,7 @@ function reasonLabel(reason: string): string {
 
 const budgetBanner = computed(() => {
   const b = budget.value
-  if (b.kind === 'count') return `${b.remaining} of ${b.limit} adds left this week`
+  if (b.kind === 'count') return `${b.remaining} of ${b.limit} adds left ${b.period === 'week' ? 'this week' : 'this season'}`
   if (b.kind === 'faab') return b.budget != null ? `$${b.remaining} of $${b.budget} FAAB left` : `$${b.remaining} FAAB left`
   return null
 })

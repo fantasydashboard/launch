@@ -607,14 +607,15 @@ export function useToday(): {
       maybeLoadSeasonData()
       maybeLoadYahoo()
       scoring.load()
+      // Add-budget data is annotation-only — fire-and-forget so it NEVER delays the board (the
+      // addBudget computed picks it up reactively once it lands). Awaiting here would block the
+      // schedule fetch on 2+ extra Yahoo round-trips (getTeams + team resource).
       if (leagueStore.activePlatform === 'yahoo') {
-        try {
-          const lk = leagueStore.activeLeagueId
-          if (lk) {
-            yahooSettings.value = await yahooService.getLeagueSettings(lk)
-            yahooAddInfo.value = await yahooService.getTeamAddInfo(lk)
-          }
-        } catch { /* leave as unlimited */ }
+        const lk = leagueStore.activeLeagueId
+        if (lk) {
+          yahooService.getLeagueSettings(lk).then((s) => { yahooSettings.value = s }).catch(() => {})
+          yahooService.getTeamAddInfo(lk).then((info) => { yahooAddInfo.value = info }).catch(() => {})
+        }
       }
       const today = ymd(new Date())
       schedule.value = await getWeekSchedule(today, today)
