@@ -17,6 +17,7 @@ export interface ScoredPlay {
   value: number // raw within-side single-game value (park/SP-adjusted)
   score: number // 0..100 normalized (percentile within side) — the number the UI shows and sorts by
   barPct?: number // 0..100 bar fill; when unset the view falls back to `score` (category)
+  budgetTag?: 'worth-add' | 'save-add' | 'worth-bid' // set by annotateAddBudget for FA add-moves
   bucket: number // 0..6 matchup bar (legacy; the view now bars off `score`)
   detail: string // e.g. "vs COL"
   oneDay: boolean // pure stream / one-day play → "drop tomorrow"
