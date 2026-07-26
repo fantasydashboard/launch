@@ -415,6 +415,15 @@ export function useToday(): {
   )
   const statsByKey = computed(() => new Map(rosterPlayers.value.map((p) => [p.playerKey, p.stats])))
 
+  // Player headshot lookup by playerKey, over the combined roster + free-agent pools — mirrors
+  // the Wire's headshot treatment (RosterPlayer/AvailablePlayer both carry `headshot`).
+  const headshotByKey = computed<Map<string, string | undefined>>(() => {
+    const m = new Map<string, string | undefined>()
+    for (const p of rosterPlayers.value) if (p.headshot) m.set(p.playerKey, p.headshot)
+    for (const p of freeAgents.value) if (p.headshot) m.set(p.playerKey, p.headshot)
+    return m
+  })
+
   // ── candidates (mirror useYourMove.ts's daily layer) ────────────────────────
   const candidates = computed<MoveCandidate[]>(() =>
     dailyCandidates(freeAgents.value, benched.value, schedule.value, catSpecs.value, seasonFraction.value),
@@ -493,6 +502,7 @@ export function useToday(): {
       name: candidate.player.name,
       team: candidate.player.team,
       position: candidate.player.position,
+      headshot: headshotByKey.value.get(candidate.player.key),
       side: candidate.side,
       value,
       score: 0, // assigned by normalizeMoves

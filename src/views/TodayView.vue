@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, reactive, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useToday } from '@/composables/useToday'
 import type { ScoredPlay } from '@/today/todayBoard'
+import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
 const leagueStore = useLeagueStore()
 const { vm, loading, error, load, isPoints, budget } = useToday()
@@ -43,6 +44,19 @@ const showFailed = computed(() => error.value === 'failed')
 
 function fillLabel(play: ScoredPlay): string {
   return play.kind === 'startSit' ? `(free) start ${play.name} from your bench` : `add ${play.name}`
+}
+
+// Team-logo <img> load failure → hide the broken image (mirrors PointsWireView.vue's onLogoErr).
+const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none')
+// Headshot <img> load failure → fall back to the neutral placeholder circle by swapping which
+// element renders, mirroring the v-if/v-else pattern used elsewhere for a missing headshot.
+// Keyed by playerKey (not object identity) so the flag survives the board's re-computation.
+const brokenHeadshots = reactive(new Set<string>())
+function onHeadshotErr(playerKey: string) {
+  brokenHeadshots.add(playerKey)
+}
+function hasHeadshot(play: ScoredPlay): boolean {
+  return !!play.headshot && !brokenHeadshots.has(play.playerKey)
 }
 
 function reasonLabel(reason: string): string {
@@ -113,27 +127,32 @@ function budgetTagText(p: ScoredPlay): string | null {
 
         <div class="rounded-xl border border-dark-border bg-dark-card px-4 py-4">
           <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <span class="truncate text-base font-semibold text-dark-text">{{ board.hero.name }}</span>
-                <span class="shrink-0 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
-                  {{ board.hero.team }} · {{ board.hero.position }}
-                </span>
+            <div class="flex min-w-0 items-start gap-3">
+              <img v-if="hasHeadshot(board.hero)" :src="board.hero.headshot" :alt="board.hero.name" loading="lazy"
+                class="h-10 w-10 shrink-0 rounded-full bg-dark-border object-cover" @error="onHeadshotErr(board.hero.playerKey)" />
+              <span v-else class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[10px] text-dark-textMuted">{{ board.hero.position }}</span>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="truncate text-base font-semibold text-dark-text">{{ board.hero.name }}</span>
+                  <span class="flex shrink-0 items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
+                    {{ board.hero.position }} · <img :src="mlbTeamLogo(board.hero.team)" alt="" loading="lazy" @error="onLogoErr" class="h-3 w-3 object-contain" /> {{ board.hero.team }}
+                  </span>
+                </div>
+                <div class="mt-1 font-mono text-xs text-dark-textMuted">{{ board.hero.detail }}</div>
+                <div class="mt-2 flex flex-wrap items-center gap-2 font-mono text-sm text-primary">
+                  <span>{{ moveBar(board.hero) }}</span>
+                  <span v-for="c in board.hero.helpsCats" :key="c"
+                    class="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-primary">{{ c }}</span>
+                </div>
+                <p v-if="dropLabel(board.hero)" class="mt-2 font-mono text-[11px] text-dark-textMuted">
+                  → add {{ board.hero.name }} · {{ dropLabel(board.hero) }}
+                  <span v-if="budgetTagText(board.hero)" class="ml-2 font-mono text-[10px]"
+                    :class="board.hero.budgetTag === 'save-add' ? 'text-dark-textMuted' : 'text-primary'">{{ budgetTagText(board.hero) }}</span>
+                </p>
+                <p v-else-if="board.hero.oneDay" class="mt-2 font-mono text-[10px] text-dark-textMuted">
+                  one-day stream · drop tomorrow
+                </p>
               </div>
-              <div class="mt-1 font-mono text-xs text-dark-textMuted">{{ board.hero.detail }}</div>
-              <div class="mt-2 flex flex-wrap items-center gap-2 font-mono text-sm text-primary">
-                <span>{{ moveBar(board.hero) }}</span>
-                <span v-for="c in board.hero.helpsCats" :key="c"
-                  class="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-primary">{{ c }}</span>
-              </div>
-              <p v-if="dropLabel(board.hero)" class="mt-2 font-mono text-[11px] text-dark-textMuted">
-                → add {{ board.hero.name }} · {{ dropLabel(board.hero) }}
-                <span v-if="budgetTagText(board.hero)" class="ml-2 font-mono text-[10px]"
-                  :class="board.hero.budgetTag === 'save-add' ? 'text-dark-textMuted' : 'text-primary'">{{ budgetTagText(board.hero) }}</span>
-              </p>
-              <p v-else-if="board.hero.oneDay" class="mt-2 font-mono text-[10px] text-dark-textMuted">
-                one-day stream · drop tomorrow
-              </p>
             </div>
             <div class="shrink-0 text-right">
               <div class="font-display text-2xl font-bold text-primary tabular-nums">{{ scoreText(board.hero) }}</div>
@@ -164,18 +183,28 @@ function budgetTagText(p: ScoredPlay): string | null {
               </span>
             </div>
 
-            <div v-if="slot.fill" class="mt-2 flex items-center justify-between gap-3 pl-[4.5rem]">
-              <div class="min-w-0">
-                <span class="truncate text-sm text-primary">{{ fillLabel(slot.fill) }}</span>
-                <span v-if="slot.fill.kind !== 'startSit'" class="ml-2 font-mono text-xs text-dark-textMuted">
-                  {{ moveBar(slot.fill) }}
-                </span>
+            <div v-if="slot.fill" class="mt-2 flex items-start gap-2 pl-[4.5rem]">
+              <img v-if="hasHeadshot(slot.fill)" :src="slot.fill.headshot" :alt="slot.fill.name" loading="lazy"
+                class="mt-0.5 h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" @error="onHeadshotErr(slot.fill.playerKey)" />
+              <span v-else class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[8px] text-dark-textMuted">{{ slot.fill.position }}</span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="min-w-0">
+                    <span class="truncate text-sm text-primary">{{ fillLabel(slot.fill) }}</span>
+                    <span v-if="slot.fill.kind !== 'startSit'" class="ml-2 font-mono text-xs text-dark-textMuted">
+                      {{ moveBar(slot.fill) }}
+                    </span>
+                  </div>
+                  <router-link
+                    v-if="slot.fill.kind !== 'startSit'"
+                    to="/players"
+                    class="shrink-0 font-mono text-[10px] text-dark-textMuted underline-offset-2 hover:text-dark-text hover:underline"
+                  >→ Wire</router-link>
+                </div>
+                <div class="flex items-center gap-1 font-mono text-[10px] text-dark-textMuted">
+                  {{ slot.fill.position }} · <img :src="mlbTeamLogo(slot.fill.team)" alt="" loading="lazy" @error="onLogoErr" class="h-3 w-3 object-contain" /> {{ slot.fill.team }}
+                </div>
               </div>
-              <router-link
-                v-if="slot.fill.kind !== 'startSit'"
-                to="/players"
-                class="shrink-0 font-mono text-[10px] text-dark-textMuted underline-offset-2 hover:text-dark-text hover:underline"
-              >→ Wire</router-link>
             </div>
             <div v-else class="mt-2 pl-[4.5rem] font-mono text-[10px] text-dark-textMuted">
               nothing available to fill this today
@@ -197,11 +226,14 @@ function budgetTagText(p: ScoredPlay): string | null {
         <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
           <div v-for="p in board.streamers" :key="p.playerKey" class="px-4 py-3">
             <div class="flex items-center gap-3">
+              <img v-if="hasHeadshot(p)" :src="p.headshot" :alt="p.name" loading="lazy"
+                class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" @error="onHeadshotErr(p.playerKey)" />
+              <span v-else class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[9px] text-dark-textMuted">{{ p.position }}</span>
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
                   <span class="truncate text-sm font-semibold text-dark-text">{{ p.name }}</span>
-                  <span class="shrink-0 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
-                    {{ p.team }} · {{ p.position }}
+                  <span class="flex shrink-0 items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
+                    {{ p.position }} · <img :src="mlbTeamLogo(p.team)" alt="" loading="lazy" @error="onLogoErr" class="h-3 w-3 object-contain" /> {{ p.team }}
                   </span>
                   <span v-for="c in p.helpsCats" :key="c"
                     class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-primary">{{ c }}</span>
@@ -247,11 +279,14 @@ function budgetTagText(p: ScoredPlay): string | null {
 
           <div v-for="p in board.upgrades" :key="'up-' + p.playerKey" class="px-4 py-3">
             <div class="flex items-center gap-3">
+              <img v-if="hasHeadshot(p)" :src="p.headshot" :alt="p.name" loading="lazy"
+                class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" @error="onHeadshotErr(p.playerKey)" />
+              <span v-else class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[9px] text-dark-textMuted">{{ p.position }}</span>
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
                   <span class="truncate text-sm font-semibold text-dark-text">{{ p.name }}</span>
-                  <span class="shrink-0 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
-                    {{ p.team }} · {{ p.position }}
+                  <span class="flex shrink-0 items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
+                    {{ p.position }} · <img :src="mlbTeamLogo(p.team)" alt="" loading="lazy" @error="onLogoErr" class="h-3 w-3 object-contain" /> {{ p.team }}
                   </span>
                   <span v-for="c in p.helpsCats" :key="c"
                     class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-primary">{{ c }}</span>

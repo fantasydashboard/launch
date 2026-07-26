@@ -13,6 +13,7 @@ export interface ScoredPlay {
   name: string
   team: string
   position: string
+  headshot?: string // player headshot URL, when known (roster/free-agent pool lookup by playerKey)
   side: 'hit' | 'pit'
   value: number // raw within-side single-game value (park/SP-adjusted)
   score: number // 0..100 normalized (percentile within side) — the number the UI shows and sorts by
