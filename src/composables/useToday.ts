@@ -27,10 +27,12 @@ import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { pointsDailyValue } from '@/today/pointsDailyValue'
 import { injuryTier } from '@/myteam/injuryStatus'
 import { useValueBaseline } from '@/composables/useValueBaseline'
-import { computeRosterValue, valueTier, type ValuePoolPlayer } from '@/myteam/value'
+import { computeRosterValue, type ValuePoolPlayer } from '@/myteam/value'
+import { computeDropCandidates } from '@/myteam/dropCandidates'
+import { expendableKeys, parseEligible } from '@/wire/dropEligibility'
+import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { pickSafeDrop, type DroppableBody, type SafeDrop } from '@/today/safeDrop'
 import { normalizeMoves } from '@/today/normalizeValue'
-import { lookupStarts } from '@/services/mlbSchedule'
 import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
 import { pointsRosValue } from '@/today/pointsRosValue'
 import { yahooService } from '@/services/yahoo'
@@ -73,7 +75,12 @@ export function useToday(): {
 
   // ── data loaders (mirror useWire.ts / useMatchupBattlePlan.ts) ────────────
   const { players: yahooFreeAgentsRaw, load: loadYahooFreeAgents, loaded: yahooFaLoaded } = useAvailablePlayers()
-  const { players: yahooRosterPlayers, load: loadYahooRoster, loaded: yahooRosterLoaded } = useMyRoster()
+  const {
+    players: yahooRosterPlayers,
+    load: loadYahooRoster,
+    loaded: yahooRosterLoaded,
+    rosterSlots: yahooRosterSlots,
+  } = useMyRoster()
   const espn = useEspnCategoryTeamData()
   const espnPoints = useEspnPointsTeamData()
   const { seasonMatchups, categoryLabels, loaded: seasonLoaded, load: loadSeasonData } =
@@ -101,6 +108,16 @@ export function useToday(): {
   )
   const isYahooPointsLeague = computed(
     () => leagueStore.activePlatform === 'yahoo' && isPointsLeague.value,
+  )
+
+  // Position-aware drop eligibility needs the league's required starting-slot counts (mirrors
+  // useWire.ts) — same per-platform switch as the roster/free-agent sources.
+  const rosterSlots = computed(() =>
+    isEspnCategoryLeague.value
+      ? espn.rosterSlots.value
+      : isEspnPointsLeague.value
+        ? espnPoints.rosterSlots.value
+        : yahooRosterSlots.value,
   )
 
   // The active league's add constraint (count limit / FAAB / unlimited). Unlimited fallback everywhere.
@@ -220,26 +237,69 @@ export function useToday(): {
   )
   const valueOpts = computed(() => ({ baseline: valueBaseline.value ?? undefined, zClamp: 8 }))
 
-  // Category value map (0-100, over the COMBINED roster+FA pool) keyed by playerKey — TWO
-  // different numbers, used for two different jobs:
-  //  - roleValue: within-role percentile. Drives THIS body's own tier (valueTier -> core/solid/
-  //    fringe) — "is this a body I can afford to lose", judged against its own role's pool.
-  //  - crossPercentile: cross-role comparable value (the same number My Team's "vs all" shows).
-  //    A hitter's and a pitcher's roleValue are on separate scales and are NOT comparable to each
+  // Category contributions (roster + FA pool), computed once — the same shape the Wire feeds into
+  // computeDropCandidates (src/composables/useWire.ts ~line 213). myPlayerKeys spans the WHOLE
+  // pool here (roster + FA) because this map also serves FA lookups (rosValueByKey/
+  // replacementBySide below) — computeRosterValue returns every requested key, not just "my team".
+  //  - roleValue: within-role percentile — "is this a body I can afford to lose", judged against
+  //    its own role's pool.
+  //  - crossPercentile: cross-role comparable value (the same number My Team's "vs all" shows). A
+  //    hitter's and a pitcher's roleValue are on separate scales and are NOT comparable to each
   //    other — ranking a mixed hitter/pitcher drop pool by roleValue picks the wrong body (e.g. an
   //    IL pitcher over a far-less-valuable IL hitter). crossPercentile is the single comparable
   //    scale used to rank eligible drop candidates against each other.
-  const categoryValueByKey = computed<Map<string, { roleValue: number; crossPercentile: number }>>(() => {
-    const m = new Map<string, { roleValue: number; crossPercentile: number }>()
-    if (!valueBaseline.value) return m // gated below: board doesn't render until the baseline is ready
+  const categoryContributions = computed(() => {
+    if (!valueBaseline.value || !rosterPlayers.value.length || !catSpecs.value.length) return []
     const pool: ValuePoolPlayer[] = [
       ...rosterPlayers.value.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: p.stats })),
       ...freeAgents.value.map((p) => ({ playerKey: p.playerKey, position: p.position ?? '', stats: p.stats })),
     ]
-    for (const c of computeRosterValue(pool, pool.map((p) => p.playerKey), catSpecs.value, valueOpts.value)) {
-      m.set(c.playerKey, { roleValue: c.roleValue, crossPercentile: c.crossPercentile })
-    }
+    return computeRosterValue(pool, pool.map((p) => p.playerKey), catSpecs.value, valueOpts.value)
+  })
+  const categoryValueByKey = computed<Map<string, { roleValue: number; crossPercentile: number }>>(() => {
+    const m = new Map<string, { roleValue: number; crossPercentile: number }>()
+    for (const c of categoryContributions.value) m.set(c.playerKey, { roleValue: c.roleValue, crossPercentile: c.crossPercentile })
     return m
+  })
+  // MY roster's contributions only (a filter of the above, not a second computeRosterValue pass) —
+  // the exact input computeDropCandidates expects (mirrors useWire.ts's `contributions`).
+  const myCategoryContributions = computed(() => {
+    const mine = new Set(rosterPlayers.value.map((p) => p.playerKey))
+    return categoryContributions.value.filter((c) => mine.has(c.playerKey))
+  })
+
+  // The Wire's actual drop-to-make-room set for CATEGORY leagues (verbatim pipeline from
+  // src/composables/useWire.ts ~lines 400-415): bottom-tier-of-role candidates (computeDropCandidates
+  // — protects roleValue >= 50, candidates < 25) intersected with position-legal expendability
+  // (expendableKeys — excludes IL bodies, since dropping one never frees an active spot, plus any
+  // body whose loss would leave the lineup unfillable). Today's drop MUST equal this set so the two
+  // pages can never disagree — this is the fix for the Helsley/Griffin IL-drop bug: Today's own
+  // "not-contributing-today" heuristic diverged from the Wire's real expendability test.
+  const categoryEligibility = computed(() =>
+    rosterPlayers.value
+      .filter((p) => !p.onIL)
+      .map((p) => ({
+        playerKey: p.playerKey,
+        eligiblePositions: p.eligiblePositions?.length
+          ? p.eligiblePositions.map((s) => s.toUpperCase())
+          : parseEligible(p.position),
+      })),
+  )
+  const categoryExpendable = computed(() => expendableKeys(categoryEligibility.value, rosterSlots.value))
+  const categoryDropCandidates = computed(() => computeDropCandidates(myCategoryContributions.value))
+  const categoryDropSet = computed<DroppableBody[]>(() => {
+    const nameByKey = new Map(rosterPlayers.value.map((p) => [p.playerKey, p.name]))
+    const roleByKey = new Map(myCategoryContributions.value.map((c) => [c.playerKey, c.role]))
+    return categoryDropCandidates.value.candidates
+      .filter((c) => categoryExpendable.value.has(c.playerKey))
+      .map((c) => ({
+        playerKey: c.playerKey,
+        name: nameByKey.get(c.playerKey) ?? c.playerKey,
+        side: roleByKey.get(c.playerKey) === 'pitcher' ? ('pit' as const) : ('hit' as const),
+        rosValue: categoryValueByKey.value.get(c.playerKey)?.crossPercentile ?? 0,
+        bottomTier: true,
+        reason: c.reason,
+      }))
   })
 
   // Points-league drop currency: projected rest-of-season points per player (roster + FA). Empty
@@ -268,39 +328,9 @@ export function useToday(): {
     return m
   })
 
-  // Points-league bottom tier: within-MY-OWN-ROSTER (not the combined roster+FA pool — a deep
-  // wire must never make a fringe body look "core"), per-side percentile — mirrors My Team's own
-  // CORE/SOLID/FRINGE tiering (src/myteam/pointsTeam.ts's rosterRows tiers) so "fringe" means the
-  // same thing here as everywhere else in the app. Bottom third of MY roster, by side, is fringe.
-  const pointsFringeKeys = computed<Set<string>>(() => {
-    const out = new Set<string>()
-    if (!isPointsLeague.value) return out
-    const pv = pointsValueByKey.value
-    for (const side of ['hit', 'pit'] as const) {
-      const rows = rosterPlayers.value
-        .filter((p) => sideOf(p.position || '') === side && pv.has(p.playerKey))
-        .map((p) => ({ playerKey: p.playerKey, points: pv.get(p.playerKey)! }))
-        .sort((a, b) => b.points - a.points)
-      const n = rows.length
-      rows.forEach((r, i) => {
-        const pct = n < 2 ? 50 : Math.round(((n - 1 - i) / (n - 1)) * 100)
-        if (pct < 33) out.add(r.playerKey)
-      })
-    }
-    return out
-  })
-
-  // Whether a rostered body is in the bottom tier of the manager's OWN roster — the "genuinely
-  // expendable" test a safe drop must pass, independent of how deep the wire is (see safeDrop.ts).
-  function isBottomTier(playerKey: string): boolean {
-    if (isPointsLeague.value) return pointsFringeKeys.value.has(playerKey)
-    const roleValue = categoryValueByKey.value.get(playerKey)?.roleValue
-    return roleValue != null && valueTier(roleValue) === 'fringe'
-  }
-
   // This league's wire replacement level per side = the best available FA's rosValue (crossPercentile
   // for category, ROS points for points) on that side. Feeds the `dropCandidate` flag below only —
-  // NOT pickSafeDrop, which uses the bottom-tier-of-MY-roster test instead (see safeDrop.ts).
+  // NOT pickSafeDrop, which uses the Wire's drop-to-make-room set instead (see below).
   // Empty wire for a side → -Infinity, so no body of that side is ever flagged (conservative).
   const replacementBySide = computed<Record<'hit' | 'pit', number>>(() => {
     const rv = rosValueByKey.value
@@ -314,25 +344,50 @@ export function useToday(): {
     return out
   })
 
-  // Rostered bodies not contributing to today's active lineup (cutting them loses zero today):
-  // IL, anyone whose MLB team is off today, and bench pitchers with no start today. A bench
-  // HITTER whose team plays today is excluded (a plausible near-term start).
-  const droppableToday = computed<DroppableBody[]>(() => {
-    const rv = rosValueByKey.value
-    const out: DroppableBody[] = []
-    for (const p of rosterPlayers.value) {
-      const side = sideOf(p.position || '')
-      let reason: 'off-day' | 'IL' | 'benched' | null = null
-      if (injuryTier(p.status, p.onIL) === 'il') reason = 'IL'
-      else if (!playsToday(p.team)) reason = 'off-day'
-      else if (!p.started && side === 'pit' && lookupStarts(schedule.value, p.name).length === 0) reason = 'benched'
-      if (!reason) continue
-      const v = rv.get(p.playerKey)
-      if (v == null) continue
-      out.push({ playerKey: p.playerKey, name: p.name, side, rosValue: v, bottomTier: isBottomTier(p.playerKey), reason })
-    }
-    return out
+  // The Wire's actual drop-to-make-room set for POINTS leagues (mirrors PointsWireView.vue's "Drop
+  // to make room": src/myteam/pointsTeam.ts's buildPointsTeam, called on JUST my roster — its
+  // within-roster CORE/SOLID/FRINGE tiering, identical formula/cutoffs to My Team, needs no
+  // league-wide pool to compute rosterRows). Never a CORE/SOLID body (only FRINGE is a safe cut)
+  // and never an IL body (dropping one never frees an active spot — mirrors buildPointsWire's
+  // `weakest()` helper in src/myteam/pointsWire.ts, which filters `!b.onIL` the same way).
+  const pointsRosterModel = computed(() => {
+    const matchFG = matchFGRef.value
+    if (!isPointsLeague.value || !matchFG || !rosterPlayers.value.length) return null
+    const fgByKey: Record<string, FGProjection | null> = {}
+    const pool: PointsPoolPlayer[] = rosterPlayers.value.map((p) => {
+      const hasTeam = !!p.team && p.team.toUpperCase() !== 'FA'
+      fgByKey[p.playerKey] = hasTeam ? matchFG({ full_name: p.name, mlb_team: p.team }) : null
+      return {
+        playerKey: p.playerKey,
+        name: p.name,
+        position: p.position,
+        eligiblePositions: p.eligiblePositions,
+        teamKey: 'me',
+        onIL: p.onIL,
+        status: p.status,
+      }
+    })
+    return buildPointsTeam(pool, fgByKey, scoring.weights.value, 'me', rosterSlots.value)
   })
+  const pointsDropSet = computed<DroppableBody[]>(() =>
+    (pointsRosterModel.value?.rosterRows ?? [])
+      .filter((r) => !r.player.onIL && r.tier === 'FRINGE')
+      .map((r) => ({
+        playerKey: r.player.playerKey,
+        name: r.player.name,
+        side: r.side,
+        rosValue: r.points,
+        bottomTier: true,
+        reason: 'lowest projected',
+      })),
+  )
+
+  // The candidate set pickSafeDrop chooses from — the Wire's drop-to-make-room set for THIS
+  // league, cats or points. Replaces the old "not contributing today" heuristic: that gate
+  // excluded any hitter whose MLB team played today (most of the roster), so it routinely
+  // surfaced only an IL body (Helsley/Griffin) or nothing at all. The Wire's set has no notion of
+  // "today" — a safe cut is safe every day.
+  const wireDropSet = computed<DroppableBody[]>(() => (isPointsLeague.value ? pointsDropSet.value : categoryDropSet.value))
 
   // Points vs category, for baseValue's branch (categories.value is empty for a
   // points league on both platforms today, so this currently only tilts which
@@ -553,7 +608,7 @@ export function useToday(): {
     const patch = new Map<string, { drop?: SafeDrop; noCleanDrop?: boolean }>()
     for (const p of [...plays].sort((a, b) => b.score - a.score)) {
       if (p.kind !== 'stream' && p.kind !== 'add') continue
-      const drop = pickSafeDrop(droppableToday.value, claimed)
+      const drop = pickSafeDrop(wireDropSet.value, claimed)
       if (drop) {
         claimed.add(drop.playerKey)
         patch.set(p.playerKey, { drop })

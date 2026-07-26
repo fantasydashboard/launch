@@ -8,11 +8,14 @@
 export interface SafeDrop {
   playerKey: string
   name: string
-  reason: 'off-day' | 'IL' | 'benched'
+  // Freeform: why this body is a safe cut (e.g. a dropCandidates reason like "bottom-tier pitcher",
+  // or "lowest projected" for points) — no longer tied to today's schedule (see DroppableBody).
+  reason: string
 }
 
-/** A rostered body that is not contributing to today's active lineup (so cutting it loses zero
- * of today's production), with the rest-of-season value used to test expendability. */
+/** A rostered body in the Wire's drop-to-make-room set (computeDropCandidates ∩ expendable for
+ * category leagues; bottom-tier-by-points for points leagues — see useToday.ts), with the
+ * rest-of-season value used to rank eligible bodies against each other. */
 export interface DroppableBody {
   playerKey: string
   name: string
@@ -21,12 +24,12 @@ export interface DroppableBody {
   // (lowest first) — a hitter's and a pitcher's number must be on the SAME scale here (category:
   // crossPercentile; points: projected ROS points, already one currency). NOT within-role/side.
   rosValue: number
-  // True when this body sits in the bottom tier of the MANAGER'S OWN roster (category:
-  // valueTier(roleValue) === 'fringe'; points: bottom-third by points within its own side of the
-  // manager's roster). This — not "worse than the best free agent" — is what makes a body a
-  // genuinely safe cut: a deep wire must never make a core/solid body look expendable.
+  // True when this body is in the Wire's genuine drop-to-make-room set (category:
+  // computeDropCandidates ∩ expendableKeys; points: FRINGE tier, non-IL). This — not "worse than
+  // the best free agent" — is what makes a body a genuinely safe cut: a deep wire must never make
+  // a core/solid body look expendable, and an IL body never frees an active spot.
   bottomTier: boolean
-  reason: 'off-day' | 'IL' | 'benched'
+  reason: string
 }
 
 /**
