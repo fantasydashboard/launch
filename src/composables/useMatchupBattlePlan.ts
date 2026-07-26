@@ -526,13 +526,27 @@ export function useMatchupBattlePlan(): {
     // TODO(phase-2): plumb the real playoff-spots league setting; half-league is the common default. The manual stakes override covers leagues that differ.
     const playoffSpots = Math.round(leagueSize / 2)
 
-    // My team rank: from yahooTeams is_my_team entry (same source as MyTeamView yahooMyOverallRank)
+    // My team rank: prefer the platform's REAL standings rank so Matchup's "Nth of
+    // N" always agrees with My Team / League for the same team.
+    // - ESPN: espn.myOverallRank — position among teams by total category wins,
+    //   the exact source MyTeamView.vue's `myOverallRank` computed uses for ESPN
+    //   category leagues (see useEspnCategoryTeamData.ts). Already loaded here via
+    //   maybeLoadEspn(), so no new plumbing needed.
+    // - Yahoo: unchanged — the yahooTeams is_my_team entry's `rank` (or its index
+    //   in the standings array as a fallback).
+    // Only fall back to mid-table when NEITHER real source is available (e.g. an
+    // early render before ESPN/Yahoo data has loaded).
     const myTeamRank: number = (() => {
+      if (isEspnCategoryLeague.value && espn.myOverallRank.value > 0) {
+        return espn.myOverallRank.value
+      }
       const t = myTeam.value
-      if (!t) return Math.ceil(leagueSize / 2) // ESPN standings rank isn't loaded here → falls back to mid-table, so ESPN stakes auto-detect to 'clinch' unless the user sets the manual override.
-      if (t.rank && Number(t.rank) > 0) return Number(t.rank)
-      const idx = (leagueStore.yahooTeams || []).indexOf(t)
-      return idx >= 0 ? idx + 1 : Math.ceil(leagueSize / 2)
+      if (t) {
+        if (t.rank && Number(t.rank) > 0) return Number(t.rank)
+        const idx = (leagueStore.yahooTeams || []).indexOf(t)
+        if (idx >= 0) return idx + 1
+      }
+      return Math.ceil(leagueSize / 2) // no real rank reachable yet — mid-table placeholder
     })()
 
     const auto = seasonStakes({ rank: myTeamRank, leagueSize, weeksLeft, playoffSpots })
