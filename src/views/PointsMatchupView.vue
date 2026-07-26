@@ -11,6 +11,8 @@ import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { useWinProbTrend } from '@/composables/useWinProbTrend'
 import MatchupWinProbChart from '@/components/matchup/MatchupWinProbChart.vue'
 import { seasonStakes } from '@/myteam/seasonStakes'
+import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
+import type { OutlookTeamMeta } from '@/myteam/seasonOutlook'
 
 const leagueStore = useLeagueStore()
 const isEspn = computed(() => leagueStore.activePlatform === 'espn')
@@ -94,12 +96,46 @@ const OPP = '#e69a4a'
 
 // ── Season stakes (reuses the category engine) ────────────────────────────────
 const leagueSize = computed(() => new Set(pool.value.map((p) => p.teamKey)).size || (leagueStore.yahooTeams?.length ?? 12))
+
+// Real standings rank: same source as My Team's Season Outlook ("2nd of 12"),
+// so the Matchup's "Nth of N" always agrees with My Team / League for the same
+// team. Mirrors PointsMyTeamView.vue's teamMeta + useSeasonOutlook wiring.
+const teamMeta = computed<Record<string, OutlookTeamMeta>>(() => {
+  if (isEspn.value) {
+    const out: Record<string, OutlookTeamMeta> = {}
+    for (const [k, r] of Object.entries(espnPoints.teamRecords.value)) {
+      out[k] = { wins: r.wins, losses: r.losses, ties: r.ties, pointsFor: r.pointsFor }
+    }
+    return out
+  }
+  const out: Record<string, OutlookTeamMeta> = {}
+  for (const t of (leagueStore.yahooTeams ?? []) as any[]) {
+    out[String(t.team_key)] = {
+      wins: Number(t.wins ?? 0),
+      losses: Number(t.losses ?? 0),
+      ties: Number(t.ties ?? 0),
+      pointsFor: Number(t.points_for ?? 0),
+    }
+  }
+  return out
+})
+const { outlook } = useSeasonOutlook({
+  pool,
+  fgByKey,
+  rosterSlots,
+  weights: scoring.weights,
+  myTeamKey,
+  teamMeta,
+})
+
 const myRank = computed(() => {
+  const real = outlook.value?.recordRank ?? 0
+  if (real > 0) return real
   if (!isEspn.value) {
     const t = (leagueStore.yahooTeams ?? []).find((x: any) => x?.is_my_team)
     if (t?.rank && Number(t.rank) > 0) return Number(t.rank)
   }
-  return Math.ceil(leagueSize.value / 2) // ESPN/unknown rank → mid-table (auto-detects to 'clinch')
+  return Math.ceil(leagueSize.value / 2) // no real rank reachable yet (early render) → mid-table placeholder
 })
 const weeksLeft = computed(() => Math.max(0, leagueStore.playoffWeekStart - leagueStore.currentWeek))
 const stakes = computed(() =>
