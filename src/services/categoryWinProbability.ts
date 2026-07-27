@@ -97,6 +97,12 @@ function normalCdf(z: number): number {
 
 /** Deterministic probability that team1 wins one category [0..1]. */
 export function catWinProbClosed(v1: number, v2: number, id: string, days: number, platform: Platform): number {
+  // Coerce non-finite inputs — a NaN days or stat (seen in some ESPN cats snapshots)
+  // must degrade to the deterministic "0 days" outcome, never poison the probability
+  // (a single NaN here cascades to +NaN% on every downstream swing move).
+  if (!Number.isFinite(v1)) v1 = 0
+  if (!Number.isFinite(v2)) v2 = 0
+  if (!Number.isFinite(days)) days = 0
   const inv = INVERSE_STATS[platform].includes(id)
   if (days <= 0) {
     const t1Better = inv ? v1 < v2 : v1 > v2

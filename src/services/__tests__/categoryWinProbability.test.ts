@@ -34,6 +34,17 @@ describe('categoryWinProbability', () => {
     expect(catWinProbClosed(2.5, 4.0, '26', 4, 'yahoo')).toBeGreaterThan(0.5) // inverse (ERA)
   })
 
+  // Regression: a non-finite days or stat (seen in some ESPN cats snapshots) poisoned the
+  // whole win-prob chain → +NaN% on every matchup swing move. Coerce, never return NaN.
+  it('catWinProbClosed: never returns NaN on non-finite inputs', () => {
+    expect(Number.isFinite(catWinProbClosed(10, 5, '12', NaN, 'yahoo'))).toBe(true)
+    expect(Number.isFinite(catWinProbClosed(NaN, 5, '12', 4, 'yahoo'))).toBe(true)
+    expect(Number.isFinite(catWinProbClosed(10, NaN, '12', 4, 'yahoo'))).toBe(true)
+    // NaN days degrades to the deterministic 0-days outcome: ahead → 1.
+    expect(catWinProbClosed(20, 10, '12', NaN, 'yahoo')).toBe(1)
+    expect(Number.isFinite(overallWinProbClosed({ '12': 10 }, { '12': 8 }, ['12'], NaN, 'yahoo'))).toBe(true)
+  })
+
   it('overallWinProbClosed: deterministic and monotonic in your stats', () => {
     const opp = { '12': 10, '60': 30 }
     const a = overallWinProbClosed({ '12': 10, '60': 30 }, opp, ['12', '60'], 4, 'yahoo')

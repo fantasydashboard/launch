@@ -37,6 +37,24 @@ describe('buildTodayBoard', () => {
     const fills = Object.fromEntries(board.openSlots.map((o) => [o.slot, o.fill?.playerKey ?? null]))
     expect(fills).toEqual({ SP: 'Ace', OF: 'BenchBat' })
   })
+  it('dedupes fills across same-position slots (no adding one FA twice; no double-drop)', () => {
+    // Two open SP slots + two eligible SP streamers, both whose safe-drop is the same body.
+    const plays: ScoredPlay[] = [
+      play({ name: 'Sproat', value: 20, kind: 'stream', fillsSlot: 'SP', drop: { playerKey: 'dw', name: 'Devin Williams', reason: 'bottom-tier' } }),
+      play({ name: 'Keller', value: 15, kind: 'stream', fillsSlot: 'SP', drop: { playerKey: 'dw', name: 'Devin Williams', reason: 'bottom-tier' } }),
+    ]
+    const openSlots: OpenSlot[] = [
+      { slot: 'SP', reason: 'empty' },
+      { slot: 'SP', reason: 'empty' },
+    ]
+    const board = buildTodayBoard(plays, openSlots)
+    // Distinct players fill the two slots — never the same FA twice.
+    expect(board.openSlots.map((o) => o.fill?.playerKey)).toEqual(['Sproat', 'Keller'])
+    // First slot cuts the body; second can't cut the same one → no-clean-drop, not a double-drop.
+    expect(board.openSlots[0].fill?.drop?.name).toBe('Devin Williams')
+    expect(board.openSlots[1].fill?.drop).toBeUndefined()
+    expect(board.openSlots[1].fill?.noCleanDrop).toBe(true)
+  })
   it('empty inputs → all empty, hero null', () => {
     const b = buildTodayBoard([], [])
     expect(b).toEqual({ hero: null, openSlots: [], streamers: [], upgrades: [], sitAlerts: [] })

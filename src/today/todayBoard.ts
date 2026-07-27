@@ -71,11 +71,23 @@ export function buildTodayBoard(
 ): TodayBoard {
   const byValue = [...plays].sort((a, b) => b.score - a.score)
 
-  // Each open slot gets the highest-value play eligible to fill it.
-  const filled: FilledSlot[] = openSlots.map((slot) => ({
-    ...slot,
-    fill: byValue.find((p) => p.fillsSlot === slot.slot),
-  }))
+  // Each open slot gets the highest-value ELIGIBLE, NOT-YET-CLAIMED play — so two
+  // same-position slots (e.g. two open SP) don't both suggest adding the same free
+  // agent, and no body is cut twice. When an add's safe-drop is already spoken for by
+  // an earlier slot, present it as no-clean-drop rather than double-dropping one body.
+  const usedFillKeys = new Set<string>()
+  const usedDropKeys = new Set<string>()
+  const filled: FilledSlot[] = openSlots.map((slot) => {
+    const play = byValue.find((p) => p.fillsSlot === slot.slot && !usedFillKeys.has(p.playerKey))
+    if (!play) return { ...slot, fill: undefined }
+    usedFillKeys.add(play.playerKey)
+    const dropKey = play.drop?.playerKey
+    if (dropKey && usedDropKeys.has(dropKey)) {
+      return { ...slot, fill: { ...play, drop: undefined, noCleanDrop: true } }
+    }
+    if (dropKey) usedDropKeys.add(dropKey)
+    return { ...slot, fill: play }
+  })
 
   const streamers = byValue.filter((p) => p.kind === 'stream')
 

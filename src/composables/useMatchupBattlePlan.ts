@@ -22,6 +22,7 @@ import type { RosterSlotPlayer } from '@/myteam/yourMove/pairDrop'
 import { getWeekSchedule } from '@/services/mlbSchedule'
 import { classifyContested, isAccumulatorCat } from '@/myteam/contestedTiers'
 import { useWinProbTrend } from '@/composables/useWinProbTrend'
+import { displayLift } from '@/myteam/yourMove/displayLift'
 
 export interface CoinFlip {
   statId: string
@@ -616,7 +617,7 @@ export function useMatchupBattlePlan(): {
         }
         move = {
           text,
-          lift: Math.round(bestMove.winProbLift),
+          lift: displayLift(bestMove.winProbLift),
           today: bestMove.layer === 'today',
         }
       }

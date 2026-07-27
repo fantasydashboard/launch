@@ -9,6 +9,7 @@ const LIFT_COMPRESS = 0.35 // slope above the cap
 
 /** Shape a raw win-prob lift into the integer percentage points shown to the user. */
 export function displayLift(winProbLift: number): number {
+  if (!Number.isFinite(winProbLift)) return 0
   const raw = Math.max(0, winProbLift)
   const shaped = raw <= LIFT_SOFT_CAP ? raw : LIFT_SOFT_CAP + (raw - LIFT_SOFT_CAP) * LIFT_COMPRESS
   return Math.round(shaped)
