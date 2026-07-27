@@ -11,8 +11,9 @@ export interface CatValueCat {
 
 /**
  * Summed per-category z-score of each player within the given pool (the drafted players).
- * A missing/non-finite stat contributes 0 for that category (pool mean), never NaN. A
- * category whose pool has zero variance contributes 0 for everyone (can't differentiate).
+ * A missing/non-finite stat is treated as 0 (counted as no production) and included in the
+ * pool, so a player who accrued nothing sorts to the bottom — the correct grading outcome. A
+ * category whose pool has zero variance contributes 0 to everyone (can't differentiate).
  * lowerIsBetter cats are negated so "better" is always more-positive.
  */
 export function categorySeasonValue(

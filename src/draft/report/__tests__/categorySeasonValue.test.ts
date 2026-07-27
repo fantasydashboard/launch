@@ -44,6 +44,7 @@ describe('categorySeasonValue', () => {
     expect(Number.isFinite(v.get('a')!)).toBe(true)
     expect(Number.isFinite(v.get('b')!)).toBe(true)
     expect(v.get('a')!).toBeGreaterThan(v.get('b')!)
+    expect(v.get('b')!).toBeLessThan(0)
   })
 
   it('single-player pool → std 0 → value 0 (no NaN)', () => {
