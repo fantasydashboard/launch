@@ -13,6 +13,7 @@ import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { useValueBaseline } from '@/composables/useValueBaseline'
 import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
 import { rankAddsForHoles } from '@/players/rankAdds'
+import { sideOf } from '@/myteam/yourMove/helpedCats'
 import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
 import { buildPlayerMatchers } from '@/services/projectionService'
@@ -637,6 +638,33 @@ const baselineDump = computed(() => {
   }))
 })
 const showFgAudit = new URLSearchParams(window.location.search).has('fgaudit')
+// Dev diagnostic (?catadd=1): for each weak cat, the ranked eligible free-agent pool the
+// per-cat "add X" chip picks from — name, position, side-gate result, projected stat value,
+// and pool percentile. Reveals whether a suspect suggestion (e.g. a catcher topping SB) is a
+// thin-pool artifact (real but weak values) or a data leak (a garbage/leaked stat value).
+const showCatAdd = new URLSearchParams(window.location.search).has('catadd')
+const catAddDump = computed(() => {
+  if (!holes.value.length || !players.value.length) return []
+  const groups = rankAddsForHoles(effectiveFreeAgents.value, holes.value, { perHole: 8 })
+  return groups.map((g) => {
+    const cat = categories.value.find((c) => c.statId === g.hole.statId)
+    return {
+      statId: g.hole.statId,
+      label: cat?.label ?? g.hole.statId,
+      side: g.hole.side ?? '—',
+      poolSize: effectiveFreeAgents.value.filter(
+        (pl) => !g.hole.side || sideOf(pl.position ?? '') === g.hole.side,
+      ).length,
+      adds: g.adds.map((a) => ({
+        name: a.player.name,
+        pos: a.player.position ?? '?',
+        side: sideOf(a.player.position ?? ''),
+        val: Math.round((a.statValue ?? 0) * 1000) / 1000,
+        pct: Math.round(a.percentile * 100) / 100,
+      })),
+    }
+  })
+})
 // Dev diagnostic (?catdebug=1): My Team's category inputs + my per-cat production rank, in the
 // SAME shape the Wire dumps, so the two can be compared row-for-row to find the Yahoo divergence.
 const showCatDebug = new URLSearchParams(window.location.search).has('catdebug')
@@ -1116,6 +1144,41 @@ watch(categories, () => {
           <span class="w-24 tabular-nums" :class="r.std === 0 ? 'text-[#f26d6d] font-bold' : 'text-dark-textSecondary'">std {{ r.std }}</span>
           <span class="tabular-nums text-dark-textMuted">mean {{ r.mean }}</span>
         </div>
+      </div>
+    </section>
+
+    <!-- Dev-only per-cat add pool (?catadd=1) — why a suspect chip (e.g. a catcher for SB)
+         gets picked: shows the ranked eligible FA pool with projected stat value + percentile. -->
+    <section v-if="showCatAdd && catAddDump.length" class="space-y-2">
+      <h2 class="font-mono text-[11px] uppercase tracking-wide text-[#5ec8e6]">
+        PER-CAT ADD POOL (dev only) · what the "add X · cat" chip picks from
+      </h2>
+      <div class="space-y-3">
+        <div
+          v-for="c in catAddDump"
+          :key="c.statId"
+          class="overflow-x-auto rounded-xl border border-[#5ec8e6]/30 bg-dark-card px-3 py-2 font-mono text-[11px]"
+        >
+          <div class="mb-1 flex items-center gap-3 border-b border-dark-border/40 pb-1">
+            <span class="font-bold text-dark-text">{{ c.label }}</span>
+            <span class="text-dark-textMuted">stat {{ c.statId }}</span>
+            <span class="text-dark-textMuted">hole.side={{ c.side }}</span>
+            <span class="text-dark-textMuted">pool={{ c.poolSize }}</span>
+          </div>
+          <div v-for="(a, i) in c.adds" :key="a.name" class="flex items-center gap-2 py-0.5">
+            <span class="w-4 text-right text-dark-textMuted">{{ i + 1 }}</span>
+            <span class="w-40 truncate" :class="i === 0 ? 'text-primary font-bold' : 'text-dark-text'">{{ a.name }}</span>
+            <span class="w-10 text-dark-textMuted">{{ a.pos }}</span>
+            <span class="w-8" :class="a.side === c.side ? 'text-dark-textMuted' : 'text-[#f26d6d] font-bold'">{{ a.side }}</span>
+            <span class="w-20 tabular-nums text-dark-textSecondary">val {{ a.val }}</span>
+            <span class="w-16 tabular-nums text-dark-textMuted">pct {{ a.pct }}</span>
+          </div>
+        </div>
+        <p class="font-mono text-[10px] text-dark-textMuted">
+          Row 1 (highlighted) is what the chip shows. If its <b>val</b> is a real-but-tiny number
+          in a small <b>pool</b>, it's a thin-pool artifact (suppress token adds). If <b>val</b>
+          looks garbage or <b>side</b> is red (wrong side), it's a data leak (filter it).
+        </p>
       </div>
     </section>
 
