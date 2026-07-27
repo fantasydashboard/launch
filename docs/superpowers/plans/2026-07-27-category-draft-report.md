@@ -438,12 +438,31 @@ In `src/views/HistoryView.vue`, the `scoring` computed (line 103) already yields
   draft.load({ platform: history.platform.value, seasonKey: key, sport: history.sport.value, season, isCategory: scoring.value === 'category' })
 ```
 
-- [ ] **Step 3: Verify it compiles**
+- [ ] **Step 3: Lift the points-only UI gate for Yahoo category** (discovered during execution — the report is otherwise unreachable)
+
+`HistoryView.vue` has a `draftReportPointsOnly` computed (~line 37) that hides the whole Draft Report for non-points leagues. Change it to allow Yahoo category through (ESPN/Sleeper category stay gated — ESPN is deferred):
+
+```ts
+const draftReportPointsOnly = computed(() => {
+  const isPoints = getLeagueType(leagueStore.currentLeague?.scoring_type ?? undefined) === 'points'
+  if (isPoints) return false
+  // Category Draft Report is supported for Yahoo only (ESPN/Sleeper category deferred).
+  if (leagueStore.activePlatform === 'yahoo' && scoring.value === 'category') return false
+  return true
+})
+```
+
+And update the gated message (~line 640) text to:
+```
+The graded Draft Report supports points leagues and Yahoo category leagues — ESPN category grading is coming next.
+```
+
+- [ ] **Step 4: Verify it compiles**
 
 Run: `npm run build`
 Expected: `✓ built in …` with no TypeScript errors.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/composables/useDraftReport.ts src/views/HistoryView.vue

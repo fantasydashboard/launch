@@ -34,9 +34,13 @@ watch(() => leagueStore.activeLeagueId, () => {
 const draft = useDraftReport()
 const showDraftReport = ref(false)
 
-const draftReportPointsOnly = computed(
-  () => getLeagueType(leagueStore.currentLeague?.scoring_type ?? undefined) !== 'points',
-)
+const draftReportPointsOnly = computed(() => {
+  const isPoints = getLeagueType(leagueStore.currentLeague?.scoring_type ?? undefined) === 'points'
+  if (isPoints) return false
+  // Category Draft Report is supported for Yahoo only (ESPN/Sleeper category deferred).
+  if (leagueStore.activePlatform === 'yahoo' && scoring.value === 'category') return false
+  return true
+})
 const draftSeasons = computed<number[]>(() =>
   [...history.seasonKeys.value.keys()].sort((a, b) => b - a),
 )
@@ -637,7 +641,7 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
           </p>
 
           <p v-if="draftReportPointsOnly" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 font-mono text-[11px] text-dark-textMuted">
-            The graded Draft Report is available on points leagues for now — category-league grading is coming next.
+            The graded Draft Report supports points leagues and Yahoo category leagues — ESPN category grading is coming next.
           </p>
           <p v-else-if="draft.loading.value" class="rounded-xl border border-dark-border bg-dark-card px-4 py-3 font-mono text-[11px] text-dark-textMuted">
             Grading the draft…
