@@ -1163,7 +1163,7 @@ export const useLeagueStore = defineStore('league', () => {
                 sport: savedLeague?.sport || 'nfl',
                 settings: {
                   leg: prevMetadata.currentWeek,
-                  playoff_week_start: 15,
+                  playoff_week_start: prevMetadata.playoffStartWeek || 15,
                   start_week: prevMetadata.startWeek,
                   end_week: prevMetadata.endWeek
                 },
@@ -1339,7 +1339,9 @@ export const useLeagueStore = defineStore('league', () => {
         sport: savedLeague?.sport || 'nfl',
         settings: {
           leg: metadata.currentWeek,
-          playoff_week_start: 15, // TODO: Get from Yahoo settings
+          // Real playoff start week from Yahoo's settings resource; falls back to 15 only
+          // when the settings fetch didn't return it (keeps prior behavior, no regression).
+          playoff_week_start: metadata.playoffStartWeek || 15,
           start_week: metadata.startWeek,
           end_week: metadata.endWeek
         },

@@ -338,9 +338,9 @@ export class YahooFantasyService {
   /**
    * Get current week and league metadata
    */
-  async getLeagueMetadata(leagueKey: string): Promise<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean; scoring_type?: string; renew?: string; season?: string; draft_status?: string }> {
+  async getLeagueMetadata(leagueKey: string): Promise<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean; scoring_type?: string; renew?: string; season?: string; draft_status?: string; playoffStartWeek?: number }> {
     // Check cache first
-    const cached = cache.get<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean; scoring_type?: string; renew?: string; season?: string; draft_status?: string }>(
+    const cached = cache.get<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean; scoring_type?: string; renew?: string; season?: string; draft_status?: string; playoffStartWeek?: number }>(
       CACHE_KEYS.YAHOO_METADATA, leagueKey
     )
     
@@ -357,7 +357,20 @@ export class YahooFantasyService {
     )
     
     const league = data.fantasy_content?.league?.[0]
-    
+
+    // Playoff start week lives in the SETTINGS resource, not metadata. Best-effort +
+    // defensive: any failure leaves it undefined and the caller falls back to the league
+    // default (was hardcoded 15). Runs once per cache miss, so it's not a hot-path cost.
+    let playoffStartWeek: number | undefined
+    try {
+      const settingsData = await this.apiRequest(`/league/${leagueKey}/settings?format=json`)
+      const settings = settingsData?.fantasy_content?.league?.[1]?.settings?.[0]
+      const psw = parseInt(settings?.playoff_start_week)
+      if (Number.isFinite(psw) && psw > 0) playoffStartWeek = psw
+    } catch (e) {
+      console.log(`[Yahoo] settings fetch failed for ${leagueKey} — playoffStartWeek unknown`, e)
+    }
+
     const result = {
       currentWeek: parseInt(league?.current_week || '1'),
       startWeek: parseInt(league?.start_week || '1'),
@@ -366,7 +379,8 @@ export class YahooFantasyService {
       scoring_type: league?.scoring_type,
       renew: league?.renew,
       season: league?.season,
-      draft_status: league?.draft_status  // 'predraft' | 'drafting' | 'postdraft'
+      draft_status: league?.draft_status,  // 'predraft' | 'drafting' | 'postdraft'
+      playoffStartWeek,
     }
     
     console.log(`[Cache MISS] League metadata for ${leagueKey}: scoring_type=${result.scoring_type}`)
