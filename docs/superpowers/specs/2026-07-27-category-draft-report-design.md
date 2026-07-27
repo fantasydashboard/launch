@@ -70,7 +70,7 @@ Mirrors `loadYahooPointsDraft.ts`, differing only where it needs category value 
 3. Read the league's categories (statId + `lowerIsBetter`) from settings / the existing category signal.
 4. `catValue = categorySeasonValue(players, cats)`.
 5. `currentPositionRank` = rank within position by `catValue` desc.
-6. **Injury guard:** reuse the playing-time check verbatim. Its "did they produce?" test changes from `points >= 0.5 * maxPoints` to **`catValue >= positionMedian(catValue)`** — median tolerates negative z-scores where a 0.5×max ratio does not. A player excluded only when low playing time AND below-median category value.
+6. **Injury guard:** the **Yahoo points loader has no injury guard** (no games-played source is wired up — see `loadYahooPointsDraft.ts:171-174`, `incompleteCount: 0`). The Yahoo category loader matches that: no guard, all non-predraft picks graded. The median-based guard described earlier applies only to the future **ESPN** category loader (which inherits ESPN's playing-time source); it is out of scope for Yahoo-first.
 7. `positionRankDrafted`, `calculatePickScore(...)`, `GradedPick` assembly, team grading — all identical to the points loader.
 
 ### 3. Routing — `src/composables/useDraftReport.ts`
