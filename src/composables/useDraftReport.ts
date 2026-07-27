@@ -5,13 +5,14 @@ import type { DraftReport } from '@/draft/report/types'
 import { loadEspnPointsDraft } from '@/draft/report/loadEspnPointsDraft'
 import { loadYahooPointsDraft } from '@/draft/report/loadYahooPointsDraft'
 import { loadSleeperPointsDraft } from '@/draft/report/loadSleeperPointsDraft'
+import { loadYahooCategoryDraft } from '@/draft/report/loadYahooCategoryDraft'
 import type { GradedDraft } from '@/draft/report/types'
 
 export function useDraftReport(): {
   report: Ref<DraftReport | null>
   loading: Ref<boolean>
   error: Ref<'no-data' | 'failed' | null>
-  load: (args: { platform: string; seasonKey: string; sport: string; season: number }) => Promise<void>
+  load: (args: { platform: string; seasonKey: string; sport: string; season: number; isCategory?: boolean }) => Promise<void>
 } {
   const leagueStore = useLeagueStore()
   const report = ref<DraftReport | null>(null)
@@ -21,7 +22,7 @@ export function useDraftReport(): {
   // in-flight prior-league load) can't overwrite a newer one's result.
   let loadToken = 0
 
-  async function load(args: { platform: string; seasonKey: string; sport: string; season: number }) {
+  async function load(args: { platform: string; seasonKey: string; sport: string; season: number; isCategory?: boolean }) {
     const token = ++loadToken
     loading.value = true
     error.value = null
@@ -31,7 +32,9 @@ export function useDraftReport(): {
       if (args.platform === 'espn') {
         draft = await loadEspnPointsDraft({ sport: args.sport, leagueId: args.seasonKey, season: args.season })
       } else if (args.platform === 'yahoo') {
-        draft = await loadYahooPointsDraft({ leagueKey: args.seasonKey, sport: args.sport })
+        draft = args.isCategory
+          ? await loadYahooCategoryDraft({ leagueKey: args.seasonKey, sport: args.sport })
+          : await loadYahooPointsDraft({ leagueKey: args.seasonKey, sport: args.sport })
       } else if (args.platform === 'sleeper') {
         draft = await loadSleeperPointsDraft({
           season: args.season,

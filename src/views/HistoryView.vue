@@ -52,7 +52,7 @@ function loadDraftSeason(season: number) {
   const key = history.seasonKeys.value.get(season)
   if (!key) return
   selectedDraftSeason.value = season
-  draft.load({ platform: history.platform.value, seasonKey: key, sport: history.sport.value, season })
+  draft.load({ platform: history.platform.value, seasonKey: key, sport: history.sport.value, season, isCategory: scoring.value === 'category' })
 }
 function openDraftReport() {
   showDraftReport.value = true
