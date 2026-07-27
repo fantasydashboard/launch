@@ -79,6 +79,10 @@ export async function loadYahooCategoryDraft(args: { leagueKey: string; sport?: 
       stats: (stat?.stats as Record<string, number>) || {},
     }
   })
+  // catValue is consumed ONLY as a within-position ordinal rank below (never a magnitude
+  // or cross-position comparison). That's what makes the mixed hitter/pitcher pool safe:
+  // off-type cats add a constant offset within each position group that cancels in the
+  // within-position sort. Don't reuse catValue for global/cross-position grading.
   const catValue = categorySeasonValue(valuePlayers, cats)
 
   // Position rank as drafted: order each position was taken in the draft
