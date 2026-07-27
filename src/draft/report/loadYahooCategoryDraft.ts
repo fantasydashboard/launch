@@ -54,9 +54,12 @@ export async function loadYahooCategoryDraft(args: { leagueKey: string; sport?: 
         const d = c.stat?.is_only_display_stat ?? c.is_only_display_stat
         return d !== '1' && d !== 1
       })
-      .map((c: any) => String(c.stat?.stat_id ?? c.stat_id))
-      .filter((id: string) => id && id !== 'undefined')
-      .map((statId: string) => ({ statId, lowerIsBetter: isLowerBetter(statId) }))
+      .map((c: any) => {
+        const statId = String(c.stat?.stat_id ?? c.stat_id)
+        const label = String(c.stat?.display_name ?? c.stat?.name ?? statId)
+        return { statId, lowerIsBetter: isLowerBetter(label) }
+      })
+      .filter((c: any) => c.statId && c.statId !== 'undefined')
   } catch {
     cats = []
   }

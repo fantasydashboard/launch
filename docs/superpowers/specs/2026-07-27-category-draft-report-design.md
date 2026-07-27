@@ -49,9 +49,9 @@ export interface CatValueCat {
 
 /**
  * Summed per-category z-score of each player within the given pool (the drafted
- * players). A missing/undefined stat contributes 0 (mean) for that category, never NaN.
- * lowerIsBetter cats are negated so "better" is always more-positive. A category whose
- * pool has zero variance (all equal) contributes 0 for everyone (can't differentiate).
+ * players). A missing/non-finite stat is treated as raw 0 (no production) and included in
+ * the pool, so a no-data player sorts to the bottom; never NaN. lowerIsBetter cats are
+ * negated so "better" is more-positive. Zero-variance category → 0 for everyone.
  */
 export function categorySeasonValue(
   players: CatValuePlayer[],
@@ -59,7 +59,7 @@ export function categorySeasonValue(
 ): Map<string | number, number>
 ```
 
-Per category: compute mean and population std across the pool; each player's z = `(v - mean) / std` (0 if std === 0), negated when `lowerIsBetter`. Sum z across cats → the player's value. Non-finite guards throughout (mirrors the win-prob NaN lessons — coerce missing/NaN stat to the pool mean, i.e. contribute 0).
+Per category: compute mean and population std across the pool; each player's z = `(v - mean) / std` (0 if std === 0), negated when `lowerIsBetter`. Sum z across cats → the player's value. A missing/non-finite stat is treated as raw `0` (counted as no production) and included in the pool, so a player who accrued nothing sorts to the bottom — the correct grading outcome. Never NaN (zero-variance category contributes 0 to everyone).
 
 ### 2. `src/draft/report/loadYahooCategoryDraft.ts` (new)
 
