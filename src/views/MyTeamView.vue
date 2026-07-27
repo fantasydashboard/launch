@@ -14,6 +14,7 @@ import { useValueBaseline } from '@/composables/useValueBaseline'
 import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
 import { rankAddsForHoles } from '@/players/rankAdds'
 import { sideOf } from '@/myteam/yourMove/helpedCats'
+import { espnBaseballStatNames } from '@/myteam/espn/statNames'
 import { isLowerBetter } from '@/players/direction'
 import type { Hole } from '@/players/types'
 import { buildPlayerMatchers } from '@/services/projectionService'
@@ -646,8 +647,17 @@ const showCatAdd = new URLSearchParams(window.location.search).has('catadd')
 const catAddDump = computed(() => {
   if (!holes.value.length || !players.value.length) return []
   const groups = rankAddsForHoles(effectiveFreeAgents.value, holes.value, { perHole: 8 })
+  const statMap = espnBaseballStatNames
   return groups.map((g) => {
     const cat = categories.value.find((c) => c.statId === g.hole.statId)
+    // Full raw-stat line for the top add — every non-zero id with its map display, so a
+    // wrong-stat mapping (SB=5 pulling HR) is visible: find which raw id ACTUALLY holds SB/W.
+    const topRaw = g.adds[0]
+      ? Object.entries(g.adds[0].player.stats)
+          .filter(([, v]) => typeof v === 'number' && v !== 0)
+          .map(([id, v]) => ({ id, disp: statMap[Number(id)]?.display ?? '?', v: Math.round((v as number) * 100) / 100 }))
+          .sort((a, b) => Number(a.id) - Number(b.id))
+      : []
     return {
       statId: g.hole.statId,
       label: cat?.label ?? g.hole.statId,
@@ -655,6 +665,8 @@ const catAddDump = computed(() => {
       poolSize: effectiveFreeAgents.value.filter(
         (pl) => !g.hole.side || sideOf(pl.position ?? '') === g.hole.side,
       ).length,
+      topName: g.adds[0]?.player.name ?? '—',
+      topRaw,
       adds: g.adds.map((a) => ({
         name: a.player.name,
         pos: a.player.position ?? '?',
@@ -1172,6 +1184,10 @@ watch(categories, () => {
             <span class="w-8" :class="a.side === c.side ? 'text-dark-textMuted' : 'text-[#f26d6d] font-bold'">{{ a.side }}</span>
             <span class="w-20 tabular-nums text-dark-textSecondary">val {{ a.val }}</span>
             <span class="w-16 tabular-nums text-dark-textMuted">pct {{ a.pct }}</span>
+          </div>
+          <div class="mt-1 border-t border-dark-border/40 pt-1 text-[10px] text-dark-textMuted">
+            <span class="text-dark-textSecondary">{{ c.topName }} raw:</span>
+            <span v-for="r in c.topRaw" :key="r.id" class="ml-1.5 tabular-nums">{{ r.id }}={{ r.disp }}:{{ r.v }}</span>
           </div>
         </div>
         <p class="font-mono text-[10px] text-dark-textMuted">
