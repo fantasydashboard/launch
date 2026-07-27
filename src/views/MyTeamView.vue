@@ -379,6 +379,9 @@ const holes = computed<Hole[]>(() => {
     }))
 })
 
+// Confirmed-misaligned ESPN category labels whose free-agent player-stat lookup returns a
+// different stat (see ?catadd=1 probe). Interim suppression until the player-stat id remap.
+const ESPN_UNTRUSTED_ADD_CATS = new Set(['SB', 'W'])
 // statId -> top add (for the inline "Add {name} {statValue} {label}" line).
 const addsByStatId = computed<Record<string, { name: string; statValue: number; label: string; isRatio: boolean }>>(() => {
   if (!holes.value.length || !players.value.length) return {}
@@ -393,6 +396,12 @@ const addsByStatId = computed<Record<string, { name: string; statValue: number; 
     // Accumulator cats (Games/IP/AB/BF…) aren't fixed by a waiver add — surfacing
     // "Add X +1 G" is noise. Skip them so only roster-quality holes get a nudge.
     if (isAccumulatorCat(cat?.label ?? group.hole.statId)) continue
+    // INTERIM (pending ESPN player-stat id remap): ESPN's free-agent player.stats object is
+    // keyed in an id space that doesn't reliably match the category ids. Confirmed via the
+    // ?catadd=1 probe for SB and W — the lookup returns a different stat (a catcher topped SB
+    // on his HR value; a back-end SP topped W on a garbage counter). Suppress those two on
+    // ESPN so we never surface a misleading add. Yahoo resolves correctly and is untouched.
+    if (isEspnCategoryLeague.value && ESPN_UNTRUSTED_ADD_CATS.has(cat?.label ?? '')) continue
     const spec = catSpecs.value.find((c) => c.statId === group.hole.statId)
     const isRatio = spec?.isRatio ?? false
     // Ratio cats (ERA/WHIP/OBA) read as 2 decimals; counting cats as whole numbers.
