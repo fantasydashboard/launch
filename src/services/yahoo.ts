@@ -255,7 +255,12 @@ export class YahooFantasyService {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
       console.error('Yahoo API proxy error:', response.status, errorData)
-      throw new Error(errorData.error || `Yahoo API error: ${response.status}`)
+      // Surface Yahoo's actual reason (the proxy returns it as `details`) — otherwise every
+      // failure collapses to an opaque "Yahoo API error: 403" that hides whether it's a
+      // rate-limit, dead app credentials, a rejected token, etc.
+      const base = errorData.error || `Yahoo API error: ${response.status}`
+      const detail = errorData.details ? ` — ${String(errorData.details).slice(0, 400)}` : ''
+      throw new Error(base + detail)
     }
 
     return response.json()
