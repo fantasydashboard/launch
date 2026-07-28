@@ -442,6 +442,27 @@ class SleeperService {
   }
 
   /**
+   * Current NFL state (week/season) from Sleeper. Used to bound the rest-of-season
+   * projection range. Any failure returns a full-season default (week 1) so preseason
+   * and off-season degrade to a whole-season projection rather than throwing.
+   */
+  async getNflState(): Promise<{ week: number; season: string; season_type: string }> {
+    try {
+      const res = await fetch(`${BASE_URL}/state/nfl`)
+      if (!res.ok) throw new Error(`state ${res.status}`)
+      const d = await res.json()
+      return {
+        week: Number(d.week) || 1,
+        season: String(d.season || new Date().getFullYear()),
+        season_type: d.season_type || 'regular',
+      }
+    } catch (e) {
+      console.warn('[sleeper] getNflState failed — defaulting to full season', e)
+      return { week: 1, season: String(new Date().getFullYear()), season_type: 'regular' }
+    }
+  }
+
+  /**
    * Fetch raw MLB player stats for a single (season, week).
    *
    * Endpoint: https://api.sleeper.app/v1/stats/mlb/regular/{season}/{week}
