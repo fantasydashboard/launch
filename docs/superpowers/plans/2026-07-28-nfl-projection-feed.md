@@ -178,11 +178,16 @@ export async function fetchSeasonProjectionStats(
 ): Promise<WeekProjections> {
   const weeks: WeekProjections[] = []
   for (let w = startWeek; w <= endWeek; w++) {
-    weeks.push((await sleeperService.getAllWeekProjections(season, w)) as WeekProjections)
+    // getWeekProjections NORMALIZES Sleeper's raw array/object response into a flat
+    // player_id -> stats map (extracting the nested `.stats`) and caches it — that
+    // normalized shape is what sumWeekProjections expects. (getAllWeekProjections
+    // returns the RAW array and would accumulate nothing — see the final-review fix.)
+    weeks.push(await sleeperService.getWeekProjections('football', season, w))
   }
   return sumWeekProjections(weeks)
 }
 ```
+> **Note (final-review correction):** use `sleeperService.getWeekProjections('football', season, w)` (sleeper.ts:598, returns a normalized `player_id → stats` map), **not** `getAllWeekProjections` (which returns Sleeper's raw array with nested `.stats` — it would sum to nothing). A regression test asserts `getWeekProjections('football', …)` is the method called.
 
 - [ ] **Step 4: Run test to verify it passes**
 

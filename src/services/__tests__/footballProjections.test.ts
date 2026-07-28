@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import { sumWeekProjections, type WeekProjections } from '../footballProjections'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { sumWeekProjections, fetchSeasonProjectionStats, type WeekProjections } from '../footballProjections'
+import { sleeperService } from '../sleeper'
 
 describe('sumWeekProjections', () => {
   const keys = ['pass_yd', 'pass_td', 'rush_yd', 'rec']
@@ -34,5 +35,23 @@ describe('sumWeekProjections', () => {
 
   it('empty input → empty map', () => {
     expect(sumWeekProjections([], keys)).toEqual({})
+  })
+})
+
+describe('fetchSeasonProjectionStats', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('sums the NORMALIZED weekly maps from getWeekProjections across the range', async () => {
+    const spy = vi.spyOn(sleeperService, 'getWeekProjections').mockImplementation(
+      async (_sport: string, _season: string, week: number) =>
+        week === 1
+          ? { '100': { pass_yd: 250, pass_td: 2 } }
+          : { '100': { pass_yd: 300, pass_td: 1 } },
+    )
+    const out = await fetchSeasonProjectionStats('2026', 1, 2)
+    expect(spy).toHaveBeenCalledWith('football', '2026', 1)
+    expect(spy).toHaveBeenCalledWith('football', '2026', 2)
+    expect(out['100'].pass_yd).toBe(550)
+    expect(out['100'].pass_td).toBe(3)
   })
 })
