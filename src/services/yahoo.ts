@@ -255,11 +255,20 @@ export class YahooFantasyService {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
       console.error('Yahoo API proxy error:', response.status, errorData)
-      // Surface Yahoo's actual reason (the proxy returns it as `details`) — otherwise every
-      // failure collapses to an opaque "Yahoo API error: 403" that hides whether it's a
-      // rate-limit, dead app credentials, a rejected token, etc.
       const base = errorData.error || `Yahoo API error: ${response.status}`
-      const detail = errorData.details ? ` — ${String(errorData.details).slice(0, 400)}` : ''
+      const detailRaw = errorData.details ? String(errorData.details) : ''
+      // Yahoo revoked open Fantasy API access (~Jul 2026): tokens still refresh, but every
+      // Fantasy call returns 403 "not authorized to perform this action". Until our access
+      // application is approved, surface ONE clear, user-friendly message app-wide instead
+      // of raw "Yahoo API error: 403 — {xml…}" spam. See memory `yahoo-fantasy-api-access`.
+      if (response.status === 403 && /not authorized to perform this action/i.test(detailRaw)) {
+        throw new Error(
+          "Yahoo Fantasy is temporarily unavailable — Yahoo changed their API access and we've applied to restore it. Your ESPN and Sleeper leagues are unaffected.",
+        )
+      }
+      // Otherwise surface Yahoo's actual reason (the proxy returns it as `details`) so a
+      // failure isn't an opaque status (rate-limit vs rejected token vs bad credentials).
+      const detail = detailRaw ? ` — ${detailRaw.slice(0, 400)}` : ''
       throw new Error(base + detail)
     }
 
