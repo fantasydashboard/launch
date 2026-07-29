@@ -315,6 +315,7 @@ import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { useFootballProjections } from '@/composables/useFootballProjections'
 import { usePowerTrajectory } from '@/composables/usePowerTrajectory'
 import { buildPlayerMatchers } from '@/services/projectionService'
+import { defaultWeights } from '@/myteam/pointsScoring'
 
 export function poolToProjPlayers(pool: PointsPoolPlayer[]): ProjPlayer[] {
   return pool.map((p) => ({ key: p.playerKey, name: p.name, position: p.position }))
@@ -351,9 +352,12 @@ export function usePointsValue(inputs: {
   const weeksLeft = computed(() => Math.max(1, trajectory.weeksLeft?.value ?? 1))
 
   const projPlayers = computed(() => (isFootball.value ? poolToProjPlayers(inputs.pool.value) : []))
+  // v1: football uses the football pointsConfig defaults, NOT useLeagueScoring
+  // (whose weights + normalizers are baseball-only). Custom football scoring is later.
+  const footballScoring = computed(() => defaultWeights('football'))
   const football = useFootballProjections({
     players: projPlayers,
-    scoring: scoring.weights,
+    scoring: footballScoring,
     season: inputs.season,
     enabled: isFootball,
   })
@@ -362,10 +366,13 @@ export function usePointsValue(inputs: {
   const matchFG = ref<((p: { full_name?: string; mlb_team?: string }) => FGProjection | null) | null>(null)
 
   function load() {
-    scoring.load()
-    trajectory.load() // populates weeksLeft (defaults to 0 until loaded ⇒ Math.max(1,…) guards it)
-    if (isFootball.value) football.load()
-    else if (!matchFG.value) buildPlayerMatchers().then((m) => { matchFG.value = m.matchFG })
+    if (isFootball.value) {
+      trajectory.load() // populates weeksLeft (defaults to 0 until loaded ⇒ Math.max(1,…) guards it)
+      football.load()
+    } else {
+      scoring.load()
+      if (!matchFG.value) buildPlayerMatchers().then((m) => { matchFG.value = m.matchFG })
+    }
   }
   watch([inputs.sport, inputs.season], load, { immediate: true })
 
