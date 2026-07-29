@@ -31,7 +31,7 @@ import { computeRosterValue, type ValuePoolPlayer } from '@/myteam/value'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
 import { expendableKeys, parseEligible } from '@/wire/dropEligibility'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
-import { buildBaseballValue } from '@/myteam/playerValue'
+import { buildBaseballValue, baseballValueOne, type PlayerValue } from '@/myteam/playerValue'
 import { pickSafeDrop, type DroppableBody, type SafeDrop } from '@/today/safeDrop'
 import { normalizeMoves } from '@/today/normalizeValue'
 import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
@@ -313,9 +313,9 @@ export function useToday(): {
         playerKey: p.playerKey,
         name: p.name,
         team: p.team,
+        position: p.position,
       })),
-      matchFG,
-      scoring.weights.value,
+      baseballValueOfWith(matchFG),
     )
   })
 
@@ -400,6 +400,18 @@ export function useToday(): {
   // League points weights (for the points-league daily base value). Loaded alongside the
   // other sources; empty until loaded, which keeps the board on its loading/empty state.
   const scoring = useLeagueScoring()
+
+  // Baseball PlayerValue resolver bound to a FanGraphs matcher + the league's live weights —
+  // the shared `valueOf` shape the points value modules (pointsRosValue / pointsDailyValue)
+  // consume. A bare 'FA' team can't be projected (name-only match collides prospects), so it
+  // resolves to null, exactly as the pre-value FG path did.
+  const baseballValueOfWith =
+    (matchFG: (p: { full_name?: string; mlb_team?: string }) => FGProjection | null) =>
+    (p: { name?: string; position?: string; team?: string }): PlayerValue | null => {
+      const hasTeam = !!p.team && p.team.toUpperCase() !== 'FA'
+      const fg = hasTeam ? matchFG({ full_name: p.name, mlb_team: p.team }) : null
+      return fg ? baseballValueOne(fg, scoring.weights.value) : null
+    }
 
   // On points leagues the daily base value needs the FanGraphs matcher + league weights loaded
   // (scoring.ready — the real league weights, not the default seed). Until both settle, every play
@@ -493,7 +505,7 @@ export function useToday(): {
     if (isPointsLeague.value) {
       const matchFG = matchFGRef.value
       if (!matchFG) return 0
-      return pointsDailyValue(candidate.player.name, candidate.player.team, matchFG, scoring.weights.value)
+      return pointsDailyValue(candidate.player.name, candidate.player.team, candidate.player.position, baseballValueOfWith(matchFG))
     }
     // Category league: sum of the positive (helped-cat) deltas — a single comparable magnitude.
     const vals = Object.values(candidate.addDelta).filter((v) => Number.isFinite(v))

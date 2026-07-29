@@ -1,22 +1,25 @@
 import { describe, it, expect } from 'vitest'
 import { buildPointsWire } from '../pointsWire'
+import type { PlayerValue } from '@/myteam/playerValue'
 import type { AvailablePlayer } from '@/players/types'
-import type { FGProjection } from '@/services/projectionService'
 import type { WeekSchedule } from '@/services/mlbSchedule'
-
-const weights = { HR: 4, R: 1, RBI: 1, K: 1, IP: 3, SV: 5 }
 
 function fa(p: Partial<AvailablePlayer>): AvailablePlayer {
   return { playerKey: p.name!, name: p.name!, position: 'OF', team: 'NYY', percentOwned: 5, stats: {}, ...p }
 }
 
-const FG: Record<string, FGProjection> = {
-  BigBat: { mlbam_id: 1, player_name: 'BigBat', team: 'NYY', position: 'OF', player_type: 'batter', hr: 30, r: 90, rbi: 90, g: 150 },
-  SmallBat: { mlbam_id: 2, player_name: 'SmallBat', team: 'LAD', position: 'OF', player_type: 'batter', hr: 8, r: 40, rbi: 40, g: 150 },
-  TwoStartSP: { mlbam_id: 3, player_name: 'TwoStartSP', team: 'BOS', position: 'SP', player_type: 'pitcher', ip: 180, so: 200, gp: 30, gs: 30 },
-  Closer: { mlbam_id: 4, player_name: 'Closer', team: 'SD', position: 'RP', player_type: 'pitcher', ip: 60, so: 80, sv: 30, gp: 60 },
+// PlayerValue fixtures (post-refactor: the Wire consumes a PlayerValue resolver, not a raw
+// FGProjection + weights). total/side chosen to preserve the pre-value ranking + chip assertions.
+const VALUES: Record<string, PlayerValue> = {
+  BigBat: { total: 300, games: 150, perStat: {}, side: 'hit', weeklyCap: 6.5 },
+  SmallBat: { total: 120, games: 150, perStat: {}, side: 'hit', weeklyCap: 6.5 },
+  TwoStartSP: { total: 740, games: 30, perStat: {}, side: 'pit', weeklyCap: 1.3 },
+  Closer: { total: 230, games: 60, perStat: { SV: 150 }, side: 'pit', weeklyCap: 3.5 },
 }
-const matchFG = (p: { full_name?: string }) => FG[p.full_name ?? ''] ?? null
+// valueOf resolves only players with a real team (mirrors the FG no-team/no-match guard):
+// a bare 'FA' team → null, an unmatched name → null.
+const valueOf = (p: { name?: string; team?: string }): PlayerValue | null =>
+  p.team && p.team.toUpperCase() !== 'FA' ? VALUES[p.name ?? ''] ?? null : null
 
 const schedule: WeekSchedule = {
   gamesByTeam: { NYY: 6, LAD: 2, BOS: 5, SD: 5 },
@@ -33,13 +36,13 @@ describe('buildPointsWire', () => {
   ]
 
   it('ranks available bats and arms by projected points', () => {
-    const w = buildPointsWire(agents, matchFG, weights, schedule)
+    const w = buildPointsWire(agents, valueOf, schedule)
     expect(w.topHitters[0].player.name).toBe('BigBat')
     expect(w.topPitchers.map((r) => r.player.name)).toContain('TwoStartSP')
   })
 
   it('surfaces two-start arms and full-slate bats for streaming', () => {
-    const w = buildPointsWire(agents, matchFG, weights, schedule)
+    const w = buildPointsWire(agents, valueOf, schedule)
     expect(w.twoStart.map((r) => r.player.name)).toEqual(['TwoStartSP'])
     expect(w.hotBats[0].player.name).toBe('BigBat') // NYY plays 6 this week
   })
@@ -51,7 +54,7 @@ describe('buildPointsWire', () => {
       // An IL body projects lowest but frees only an IL slot — must NOT be the drop.
       { name: 'HurtIL', position: 'OF', points: 5, side: 'hit' as const, onIL: true },
     ]
-    const w = buildPointsWire(agents, matchFG, weights, schedule, roster)
+    const w = buildPointsWire(agents, valueOf, schedule, roster)
     expect(w.swaps.length).toBeGreaterThan(0)
     const top = w.swaps[0]
     expect(top.add.player.name).toBe('BigBat') // best available hitter
@@ -60,7 +63,7 @@ describe('buildPointsWire', () => {
   })
 
   it('chips a specialist (closer shows SV) and excludes IL players', () => {
-    const w = buildPointsWire(agents, matchFG, weights, schedule)
+    const w = buildPointsWire(agents, valueOf, schedule)
     const closer = w.topPitchers.find((r) => r.player.name === 'Closer')
     expect(closer?.chips).toContain('SV')
     const names = [...w.topHitters, ...w.topPitchers].map((r) => r.player.name)

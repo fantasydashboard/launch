@@ -1,15 +1,18 @@
 import { describe, it, expect } from 'vitest'
 import { pointsRosValue } from '../pointsRosValue'
-import type { FGProjection } from '@/services/projectionService'
+import type { PlayerValue } from '@/myteam/playerValue'
 
-// Minimal stub matcher: returns a canned FGProjection for known names, null otherwise.
-function stubMatcher(byName: Record<string, FGProjection>) {
-  return (p: { full_name?: string }) => byName[p.full_name ?? ''] ?? null
+// Stub valueOf: resolves a canned PlayerValue for a real-team match, null otherwise (a bare 'FA'/
+// blank team or an unmatched name → null, mirroring the shared resolver's no-team/no-match guard).
+function stubValueOf(byName: Record<string, PlayerValue>) {
+  return (p: { name?: string; team?: string }): PlayerValue | null =>
+    p.team && p.team.toUpperCase() !== 'FA' ? byName[p.name ?? ''] ?? null : null
 }
 
+const V = (total: number): PlayerValue => ({ total, games: 150, perStat: {}, side: 'hit', weeklyCap: 6.5 })
+
 describe('pointsRosValue', () => {
-  it('sets an entry for every matched player; omits no-team and unmatched players', () => {
-    const fg = {} as unknown as FGProjection // matched but unmappable → total 0, still keyed
+  it('sets an entry for every resolved player; omits no-team and unmatched players', () => {
     const m = pointsRosValue(
       [
         { playerKey: 'matched', name: 'Bat Man', team: 'LAD' },
@@ -17,8 +20,7 @@ describe('pointsRosValue', () => {
         { playerKey: 'blankTeam', name: 'Blank', team: '' },
         { playerKey: 'noMatch', name: 'Ghost', team: 'NYY' },
       ],
-      stubMatcher({ 'Bat Man': fg }),
-      { R: 1 },
+      stubValueOf({ 'Bat Man': V(300) }),
     )
     expect(m.has('matched')).toBe(true)
     expect(m.has('noTeam')).toBe(false)
@@ -26,9 +28,8 @@ describe('pointsRosValue', () => {
     expect(m.has('noMatch')).toBe(false)
   })
 
-  it('returns the projectPlayerPoints total for a matched player (numeric)', () => {
-    const fg = {} as unknown as FGProjection
-    const m = pointsRosValue([{ playerKey: 'k', name: 'X', team: 'LAD' }], stubMatcher({ X: fg }), { R: 1 })
-    expect(typeof m.get('k')).toBe('number')
+  it('returns the PlayerValue total for a resolved player (numeric)', () => {
+    const m = pointsRosValue([{ playerKey: 'k', name: 'X', team: 'LAD' }], stubValueOf({ X: V(275) }))
+    expect(m.get('k')).toBe(275)
   })
 })

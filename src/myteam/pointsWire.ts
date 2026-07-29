@@ -4,9 +4,9 @@
  * the most points," plus the timely streaming edge native apps skip: a free-agent
  * two-start pitcher this week, or a bat on a full slate to plug an open day.
  */
-import { projectPlayerPoints, type PointsSide } from '@/myteam/pointsValue'
+import { type PointsSide } from '@/myteam/pointsValue'
 import { lookupStarts, type WeekSchedule } from '@/services/mlbSchedule'
-import type { FGProjection } from '@/services/projectionService'
+import type { PlayerValue } from '@/myteam/playerValue'
 import type { AvailablePlayer } from '@/players/types'
 
 export interface WireAdd {
@@ -61,8 +61,7 @@ function pctileNonzero(vals: number[], p: number): number {
 
 export function buildPointsWire(
   freeAgents: AvailablePlayer[],
-  matchFG: (player: { full_name?: string; mlb_team?: string }) => FGProjection | null,
-  weights: Record<string, number>,
+  valueOf: (fa: { name?: string; position?: string; team?: string }) => PlayerValue | null,
   schedule: WeekSchedule,
   myRoster: RosterBody[] = [],
 ): PointsWire {
@@ -72,22 +71,19 @@ export function buildPointsWire(
   const rows: Row[] = []
   for (const fa of freeAgents) {
     if (isOut(fa.status)) continue
-    // A free agent with no MLB team ('FA') can only match by name, which collides a
-    // same-named prospect onto a star's projection (e.g. a "Julio Rodriguez" catcher
-    // inheriting the Mariners star's points). Require a real team to project.
-    const hasTeam = fa.team && fa.team.toUpperCase() !== 'FA'
-    const fg = hasTeam ? matchFG({ full_name: fa.name, mlb_team: fa.team }) : null
-    const pp = projectPlayerPoints(fg, weights)
-    const side: PointsSide = fg ? (fg.player_type === 'pitcher' ? 'pit' : 'hit') : isPitcherPos(fa.position) ? 'pit' : 'hit'
+    // valueOf owns the FanGraphs match + no-team guard (a bare 'FA' team collides a
+    // same-named prospect onto a star's projection, so it resolves to null there).
+    const v = valueOf({ name: fa.name, position: fa.position, team: fa.team })
+    const side: PointsSide = v?.side ?? (isPitcherPos(fa.position) ? 'pit' : 'hit')
     rows.push({
       player: fa,
       side,
-      points: pp.total,
-      perGame: pp.games > 0 ? pp.total / pp.games : 0,
+      points: v?.total ?? 0,
+      perGame: v && v.games > 0 ? v.total / v.games : 0,
       gamesThisWeek: schedule.gamesByTeam[fa.team] ?? 0,
       startsThisWeek: lookupStarts(schedule, fa.name).length,
       chips: [],
-      perStat: pp.perStat,
+      perStat: v?.perStat ?? {},
     })
   }
 

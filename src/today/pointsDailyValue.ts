@@ -1,21 +1,17 @@
-import { projectPlayerPoints } from '@/myteam/pointsValue'
-import type { FGProjection } from '@/services/projectionService'
+import type { PlayerValue } from '@/myteam/playerValue'
 
 /**
  * A daily play's points-league base value = the player's projected per-game fantasy points.
- * Reuses the same FG-match → projectPlayerPoints path buildPointsWire uses for free agents.
- * Returns 0 when the player has no real MLB team ('FA'/blank) or no FanGraphs match — those
- * players can't be projected and must sink out of the board (mirrors the Wire's points>0 filter).
+ * Resolution is owned by the shared `valueOf` (PlayerValue) resolver the Wire also consumes.
+ * Returns 0 when the player can't be projected (no MLB team / no FanGraphs match → valueOf
+ * null, or zero projected games) — those players sink out of the board (mirrors the Wire).
  */
 export function pointsDailyValue(
   name: string,
   team: string | undefined,
-  matchFG: (p: { full_name?: string; mlb_team?: string }) => FGProjection | null,
-  weights: Record<string, number>,
+  position: string | undefined,
+  valueOf: (p: { name?: string; position?: string; team?: string }) => PlayerValue | null,
 ): number {
-  const hasTeam = !!team && team.toUpperCase() !== 'FA'
-  const fg = hasTeam ? matchFG({ full_name: name, mlb_team: team }) : null
-  if (!fg) return 0
-  const pp = projectPlayerPoints(fg, weights)
-  return pp.games > 0 ? pp.total / pp.games : 0
+  const v = valueOf({ name, team, position })
+  return v && v.games > 0 ? v.total / v.games : 0
 }

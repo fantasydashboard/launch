@@ -17,14 +17,16 @@ export function poolToProjPlayers(pool: PointsPoolPlayer[]): ProjPlayer[] {
   return pool.map((p) => ({ key: p.playerKey, name: p.name, position: p.position }))
 }
 
-/** name+position → FootballProjection, for resolving players not in valueByKey (free agents). */
+/** name+position → FootballProjection, for resolving players not in valueByKey (free agents).
+ *  `players` accepts anything with `{ playerKey?, name, position }` (rostered pool OR free
+ *  agents), looked up in projByKey by roster key, falling back to the `fa:<name>` FA key. */
 export function footballNamePosIndex(
   projByKey: Record<string, FootballProjection>,
-  pool: PointsPoolPlayer[],
+  players: Array<{ playerKey?: string; name: string; position: string }>,
 ): Map<string, FootballProjection> {
   const idx = new Map<string, FootballProjection>()
-  for (const p of pool) {
-    const proj = projByKey[p.playerKey]
+  for (const p of players) {
+    const proj = projByKey[p.playerKey ?? `fa:${p.name}`]
     if (proj) idx.set(`${normalizeNflName(p.name)}|${(p.position || '').toUpperCase().split(/[,/|]/)[0]}`, proj)
   }
   return idx
@@ -35,6 +37,9 @@ export function usePointsValue(inputs: {
   fgByKey: Ref<Record<string, FGProjection | null>>
   sport: Ref<string>
   season: Ref<string>
+  // Optional free-agent pool (Wire only). Football projects + indexes these so a FA
+  // that isn't in the rostered pool still resolves through valueOf.
+  freeAgents?: Ref<Array<{ playerKey?: string; name: string; position: string; team?: string }>>
 }): {
   valueByKey: ComputedRef<ValueByKey>
   valueOf: ComputedRef<(p: { name?: string; position?: string; team?: string }) => PlayerValue | null>
@@ -47,7 +52,13 @@ export function usePointsValue(inputs: {
   const trajectory = usePowerTrajectory()
   const weeksLeft = computed(() => Math.max(1, trajectory.weeksLeft?.value ?? 1))
 
-  const projPlayers = computed(() => (isFootball.value ? poolToProjPlayers(inputs.pool.value) : []))
+  const projPlayers = computed<ProjPlayer[]>(() => {
+    if (!isFootball.value) return []
+    const fas = (inputs.freeAgents?.value ?? []).map((fa) => ({
+      key: fa.playerKey ?? `fa:${fa.name}`, name: fa.name, position: fa.position,
+    }))
+    return [...poolToProjPlayers(inputs.pool.value), ...fas]
+  })
   // v1: football uses the football pointsConfig defaults, NOT useLeagueScoring
   // (whose weights + normalizers are baseball-only). Custom football scoring is later.
   const footballScoring = computed(() => defaultWeights('football'))
@@ -78,9 +89,14 @@ export function usePointsValue(inputs: {
       : buildBaseballValue(inputs.fgByKey.value, scoring.weights.value),
   )
 
-  const faIndex = computed(() =>
-    isFootball.value ? footballNamePosIndex(football.projByKey.value, inputs.pool.value) : new Map<string, FootballProjection>(),
-  )
+  const faIndex = computed(() => {
+    if (!isFootball.value) return new Map<string, FootballProjection>()
+    const players = [
+      ...inputs.pool.value.map((p) => ({ playerKey: p.playerKey, name: p.name, position: p.position })),
+      ...(inputs.freeAgents?.value ?? []).map((fa) => ({ playerKey: fa.playerKey ?? `fa:${fa.name}`, name: fa.name, position: fa.position })),
+    ]
+    return footballNamePosIndex(football.projByKey.value, players)
+  })
 
   const valueOf = computed(() => (p: { name?: string; position?: string; team?: string }): PlayerValue | null => {
     if (isFootball.value) {

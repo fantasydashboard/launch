@@ -8,7 +8,6 @@ import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { buildPointsWire, type WireAdd } from '@/myteam/pointsWire'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
-import { buildPlayerMatchers, type FGProjection } from '@/services/projectionService'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
@@ -20,7 +19,6 @@ const espnPoints = useEspnPointsTeamData()
 const avail = useAvailablePlayers()
 const scoring = useLeagueScoring()
 const schedule = ref<WeekSchedule>({ gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} })
-const matchFG = ref<((p: { full_name?: string; mlb_team?: string }) => FGProjection | null) | null>(null)
 
 async function loadSchedule() {
   const today = new Date()
@@ -39,11 +37,7 @@ function loadAll() {
     avail.load(200)
   }
 }
-onMounted(async () => {
-  loadAll()
-  const { matchFG: fn } = await buildPlayerMatchers()
-  matchFG.value = fn
-})
+onMounted(loadAll)
 watch(() => leagueStore.activeLeagueId, loadAll)
 
 const pool = computed<PointsPoolPlayer[]>(() =>
@@ -57,16 +51,23 @@ const myTeamKey = computed<string>(() => {
   return me ? String(me.team_key) : ''
 })
 
-// Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
-const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
-const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
-
 // Free agents minus anyone already rostered (the platform FA feed leaks rostered players).
 const freeAgents = computed(() => {
   const src = isEspn.value ? espnPoints.freeAgents.value : avail.players.value
   const rostered = new Set(pool.value.map((p) => p.playerKey))
   const guard = pool.value.length > 0
   return src.filter((fa) => !guard || !rostered.has(fa.playerKey))
+})
+
+// Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
+// Free agents are fed in too so football FAs (not in the rostered pool) resolve through valueOf.
+const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
+const { valueByKey, valueOf } = usePointsValue({
+  pool,
+  fgByKey,
+  sport: computed(() => leagueStore.activeSport),
+  season,
+  freeAgents,
 })
 
 const teamModel = computed(() => {
@@ -77,8 +78,8 @@ const rosterBodies = computed(() =>
   (teamModel.value?.rosterRows ?? []).map((r) => ({ name: r.player.name, position: r.player.position, points: r.points, side: r.side, onIL: r.player.onIL })),
 )
 const wire = computed(() => {
-  if (!matchFG.value || !freeAgents.value.length) return null
-  return buildPointsWire(freeAgents.value, matchFG.value, scoring.weights.value, schedule.value, rosterBodies.value)
+  if (!freeAgents.value.length) return null
+  return buildPointsWire(freeAgents.value, valueOf.value, schedule.value, rosterBodies.value)
 })
 
 // Drop candidates: your weakest rostered bodies (lowest projected points).
