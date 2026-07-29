@@ -26,7 +26,16 @@ export type PositionalLandscape = Map<string, Map<string, PosStanding>>
  * Without this, deep-lineup formats (ESPN: MI + CI + 2×UTIL) absorb every spare hitter into a
  * "starting" slot and a loaded roster reads as having surplus nowhere.
  */
-export const SURPLUS_FLEX = new Set(['UTIL', 'DH', 'IF', 'MI', 'CI', '2B/SS', '1B/3B', 'P'])
+export const SURPLUS_FLEX = new Set(['UTIL', 'DH', 'IF', 'MI', 'CI', '2B/SS', '1B/3B', 'P', 'FLEX', 'SUPER_FLEX'])
+
+const MLB_POSITION_ROWS = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
+const NFL_POSITION_ROWS = ['QB', 'RB', 'WR', 'TE']
+
+/** Concrete positions worth ranking/comparing for a sport (flex/util are overflow, not a
+ *  target position; football K/DEF are low-value / no-projection in v1). */
+export function positionRowsFor(sport: string): string[] {
+  return sport === 'football' ? [...NFL_POSITION_ROWS] : [...MLB_POSITION_ROWS]
+}
 
 /** A player below this cross-role value isn't a startable body — depth filler, not surplus. */
 export const STARTABLE_BAR = 45

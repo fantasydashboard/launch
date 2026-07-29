@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { assignSlots, buildPositionalLandscape, type DepthPlayer } from '../positionalLandscape'
+import { assignSlots, buildPositionalLandscape, coversSlot, positionRowsFor, type DepthPlayer } from '../positionalLandscape'
 
 // value high enough to be "startable" (>= STARTABLE_BAR=45 default).
 const P = (key: string, elig: string[], value: number, status = ''): DepthPlayer =>
@@ -73,5 +73,31 @@ describe('buildPositionalLandscape', () => {
     const pool = mk('t1', [['hurt', ['3B'], 80, 'IL']])
     const ls = buildPositionalLandscape(pool, { '3B': 1 }, 45)
     expect(ls.get('t1')!.get('3B')!.need).toBeGreaterThan(0)
+  })
+})
+
+describe('football flex eligibility', () => {
+  it('an RB fills a FLEX slot; a QB does not', () => {
+    expect(coversSlot(['RB'], 'FLEX')).toBe(true)
+    expect(coversSlot(['WR'], 'FLEX')).toBe(true)
+    expect(coversSlot(['TE'], 'FLEX')).toBe(true)
+    expect(coversSlot(['QB'], 'FLEX')).toBe(false)
+  })
+
+  it('a QB fills SUPER_FLEX; concrete positions still match themselves', () => {
+    expect(coversSlot(['QB'], 'SUPER_FLEX')).toBe(true)
+    expect(coversSlot(['RB'], 'SUPER_FLEX')).toBe(true)
+    expect(coversSlot(['QB'], 'QB')).toBe(true)
+    expect(coversSlot(['WR'], 'RB')).toBe(false)
+  })
+})
+
+describe('positionRowsFor', () => {
+  it('football → skill positions', () => {
+    expect(positionRowsFor('football')).toEqual(['QB', 'RB', 'WR', 'TE'])
+  })
+  it('baseball / unknown → MLB positions', () => {
+    expect(positionRowsFor('baseball')).toEqual(['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'])
+    expect(positionRowsFor('hockey')).toEqual(['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'])
   })
 })

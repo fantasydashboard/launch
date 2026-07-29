@@ -35,6 +35,9 @@ export const FLEX_ELIGIBILITY: Record<string, string[]> = {
   P: ['SP', 'RP', 'P'],
   '2B/SS': ['2B', 'SS'],
   '1B/3B': ['1B', '3B'],
+  // Football flex slots (keys don't collide with the baseball entries above).
+  FLEX: ['RB', 'WR', 'TE'],
+  SUPER_FLEX: ['QB', 'RB', 'WR', 'TE'],
 }
 
 /** Standard 12-team mixed-league baseball roster when settings are unavailable. */
