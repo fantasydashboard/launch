@@ -6,11 +6,10 @@
  * week from the MLB schedule (games per team, probable two-start pitchers) on
  * top of the rest-of-season per-game rates.
  */
-import { projectPlayerPoints } from '@/myteam/pointsValue'
 import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
 import { parseEligible, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { lookupStarts, type WeekSchedule } from '@/services/mlbSchedule'
-import type { FGProjection } from '@/services/projectionService'
+import { ZERO_VALUE, type ValueByKey } from '@/myteam/playerValue'
 
 const PITCHER_SLOTS = new Set(['SP', 'RP', 'P', 'SP/RP', 'RP/SP'])
 const isPitcherSlot = (pos: string) => PITCHER_SLOTS.has(pos.toUpperCase())
@@ -39,14 +38,17 @@ export interface PointsMatchup {
   volumeRead: string
 }
 
+// NOTE: the weekly hitter/pitcher figures derive from an MLB schedule (gamesByTeam,
+// two-start pitchers). For football, valueByKey has undefined side and the MLB
+// schedule is empty, so this renders season-total lineup strength (startingPoints)
+// only — football's NFL-schedule-driven weekly matchup lands in Phase 4.
 function teamWeek(
   players: PointsPoolPlayer[],
-  fgByKey: Record<string, FGProjection | null>,
-  weights: Record<string, number>,
+  valueByKey: ValueByKey,
   slots: Record<string, number>,
   schedule: WeekSchedule,
 ): TeamWeek {
-  const ptsBy = new Map(players.map((p) => [p.playerKey, projectPlayerPoints(fgByKey[p.playerKey], weights)]))
+  const ptsBy = new Map(players.map((p) => [p.playerKey, valueByKey[p.playerKey] ?? ZERO_VALUE]))
   const byKey = new Map(players.map((p) => [p.playerKey, p]))
   const dp: DepthPlayer[] = players.map((p) => ({
     playerKey: p.playerKey,
@@ -105,8 +107,7 @@ function teamWeek(
 
 export function buildPointsMatchup(
   pool: PointsPoolPlayer[],
-  fgByKey: Record<string, FGProjection | null>,
-  weights: Record<string, number>,
+  valueByKey: ValueByKey,
   myTeamKey: string,
   oppTeamKey: string,
   slots: Record<string, number>,
@@ -117,8 +118,8 @@ export function buildPointsMatchup(
   const theirs = pool.filter((p) => p.teamKey === oppTeamKey)
   if (!mine.length || !theirs.length) return null
 
-  const my = teamWeek(mine, fgByKey, weights, slots, schedule)
-  const opp = teamWeek(theirs, fgByKey, weights, slots, schedule)
+  const my = teamWeek(mine, valueByKey, slots, schedule)
+  const opp = teamWeek(theirs, valueByKey, slots, schedule)
   const gamesDiff = my.hitterGames - opp.hitterGames
 
   // Win probability from the projected weekly-points margin. Logistic with a

@@ -53,8 +53,8 @@ const fgByKey = computed(() => (isEspn.value ? espnPoints.fgByKey.value : yahooL
 const rosterSlots = computed(() => (isEspn.value ? espnPoints.rosterSlots.value : yahooLeague.rosterSlots.value))
 const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooLeague.loading.value))
 
-// Precomputed player value for Season Outlook (baseball from FG, football from Sleeper).
-// buildPointsMatchup below still consumes fgByKey directly (migrated in a later task).
+// Precomputed player value for Season Outlook and buildPointsMatchup (baseball from FG,
+// football from Sleeper).
 const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
 const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
 
@@ -77,13 +77,13 @@ const myTeamLogo = computed<string>(() => {
 const matchup = computed(() => {
   const opp = oppSvc.opponent.value
   if (!opp || !pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
-  return buildPointsMatchup(pool.value, fgByKey.value, scoring.weights.value, myTeamKey.value, opp.opponentKey, rosterSlots.value, schedule.value)
+  return buildPointsMatchup(pool.value, valueByKey.value, myTeamKey.value, opp.opponentKey, rosterSlots.value, schedule.value)
 })
 // Today-only volume, for the daily cadence ("X hitter-games and Y starts today").
 const dayMatchup = computed(() => {
   const opp = oppSvc.opponent.value
   if (!opp || !pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
-  return buildPointsMatchup(pool.value, fgByKey.value, scoring.weights.value, myTeamKey.value, opp.opponentKey, rosterSlots.value, todaySchedule.value)
+  return buildPointsMatchup(pool.value, valueByKey.value, myTeamKey.value, opp.opponentKey, rosterSlots.value, todaySchedule.value)
 })
 const volMatchup = computed(() => (cadence.value === 'daily' ? dayMatchup.value : matchup.value))
 

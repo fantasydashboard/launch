@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildPointsMatchup } from '../pointsMatchup'
+import { buildBaseballValue } from '../playerValue'
 import type { PointsPoolPlayer } from '../pointsTeam'
 import type { FGProjection } from '@/services/projectionService'
 import type { WeekSchedule } from '@/services/mlbSchedule'
@@ -30,9 +31,10 @@ describe('buildPointsMatchup', () => {
     gamesByTeam: { NYY: 4, LAD: 2 },
     startsByPitcher: { myarm: [{ pitcherName: 'MyArm', teamAbbr: 'XXX', opponentAbbr: 'BOS', date: '' }, { pitcherName: 'MyArm', teamAbbr: 'XXX', opponentAbbr: 'TOR', date: '' }] },
   }
+  const valueByKey = buildBaseballValue(fg, weights)
 
   it('counts hitter-games and the volume edge from the schedule', () => {
-    const m = buildPointsMatchup(pool, fg, weights, 'A', 'B', slots, schedule)!
+    const m = buildPointsMatchup(pool, valueByKey, 'A', 'B', slots, schedule)!
     expect(m.my.hitterGames).toBe(4)
     expect(m.opp.hitterGames).toBe(2)
     expect(m.gamesDiff).toBe(2)
@@ -41,20 +43,20 @@ describe('buildPointsMatchup', () => {
   })
 
   it('favors the side with more projected weekly points', () => {
-    const m = buildPointsMatchup(pool, fg, weights, 'A', 'B', slots, schedule)!
+    const m = buildPointsMatchup(pool, valueByKey, 'A', 'B', slots, schedule)!
     expect(m.my.totalWeekly).toBeGreaterThan(m.opp.totalWeekly) // more games + a two-start arm
     expect(m.myWinPct).toBeGreaterThan(50)
     expect(m.myWinPct).toBeLessThanOrEqual(100)
   })
 
   it('flags two-start pitchers from the probable-starter list', () => {
-    const m = buildPointsMatchup(pool, fg, weights, 'A', 'B', slots, schedule)!
+    const m = buildPointsMatchup(pool, valueByKey, 'A', 'B', slots, schedule)!
     expect(m.my.twoStartArms).toHaveLength(1)
     expect(m.my.twoStartArms[0].name).toBe('MyArm')
     expect(m.opp.twoStartArms).toHaveLength(0)
   })
 
   it('returns null without both rosters', () => {
-    expect(buildPointsMatchup(pool, fg, weights, 'A', '', slots, schedule)).toBeNull()
+    expect(buildPointsMatchup(pool, valueByKey, 'A', '', slots, schedule)).toBeNull()
   })
 })
