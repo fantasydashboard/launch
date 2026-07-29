@@ -93,5 +93,7 @@ export function usePointsValue(inputs: {
     return fg ? baseballValueOne(fg, scoring.weights.value) : null
   })
 
-  return { valueByKey, valueOf, loading: scoring.loading, load }
+  const loading = computed(() => (isFootball.value ? football.loading.value : scoring.loading.value))
+
+  return { valueByKey, valueOf, loading, load }
 }
