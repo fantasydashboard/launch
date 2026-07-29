@@ -1,5 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeYahooWeights, normalizeEspnWeights, weightsAreUsable } from '../pointsScoring'
+import { normalizeYahooWeights, normalizeEspnWeights, weightsAreUsable, defaultWeights } from '../pointsScoring'
+
+describe('defaultWeights(sport)', () => {
+  it('defaults to baseball (HR present, no pass_td)', () => {
+    const w = defaultWeights()
+    expect(w.HR).toBeDefined()
+    expect(w.pass_td).toBeUndefined()
+  })
+  it('football returns football config defaults (pass_td present)', () => {
+    const w = defaultWeights('football')
+    expect(w.pass_td).toBe(4)
+    expect(w.rec).toBe(1)
+    expect(w.HR).toBeUndefined()
+  })
+})
 
 describe('normalizeYahooWeights', () => {
   // Yahoo splits batting/pitching homonyms via position_type, not the name.

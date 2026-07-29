@@ -16,7 +16,8 @@
  * league yields no usable weights we fall back to the sport's generic defaults
  * so the page still renders (flagged as source: 'default').
  */
-import { baseballConfig } from '@/config/sports/baseball'
+import { getSportConfig } from '@/config/sports'
+import type { SportType } from '@/config/sports'
 
 export type ScoringSource = 'yahoo' | 'espn' | 'default'
 
@@ -26,8 +27,8 @@ export interface LeagueScoring {
 }
 
 /** Sport defaults, used when a league reports no usable scoring weights. */
-export function defaultWeights(): Record<string, number> {
-  return { ...(baseballConfig.pointsConfig.defaults as Record<string, number>) }
+export function defaultWeights(sport: SportType = 'baseball'): Record<string, number> {
+  return { ...(getSportConfig(sport).pointsConfig.defaults as Record<string, number>) }
 }
 
 // ─── Yahoo ───────────────────────────────────────────────────────────────────
