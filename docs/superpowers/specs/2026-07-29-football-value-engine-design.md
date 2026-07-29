@@ -82,16 +82,21 @@ There are no `if (football)` branches — absence of `side` is the only signal.
 
 **Matchup schedule coupling (scope boundary):** `buildPointsMatchup` derives its *weekly* figures from an MLB schedule (`schedule.gamesByTeam`, two-start pitchers, reliever appearances). Its value sourcing becomes sport-generic in this phase (reads `valueByKey`, guards `side`), so it compiles and works unchanged for baseball, and for football renders **season-total lineup strength** (`startingPoints`) without crashing. Football's true NFL-schedule-driven weekly matchup — one game per team, no two-start logic — lands in **Phase 4** alongside the weekly start/sit tab and the NFL schedule feed. This phase does not build an NFL schedule.
 
-### §4 — Sport dispatch in the ESPN and Yahoo sources
+### §4 — Sport dispatch: a single `usePointsValue` composable
 
-Both `useEspnPointsTeamData` and `useYahooLeaguePool` gain a football branch and expose a new `valueByKey` ref **alongside** the existing `fgByKey` (kept for the category engine and other consumers; the points views switch to `valueByKey`):
+The sources (`useEspnPointsTeamData`, `useYahooLeaguePool`) are **left untouched** — they keep exposing `fgByKey`, `pool`, etc. Sport dispatch lives in one new composable so the football wiring isn't duplicated across both sources:
 
-- **Baseball branch (unchanged behavior):** build `fgByKey` as today via `buildPlayerMatchers()` + `matchFG`, then `valueByKey = buildBaseballValue(fgByKey, weights)`. Weights come from `useLeagueScoring()`, which each view already loads; the composables read the same scoring so the value is built once at the source. (`weeklyRate`'s `weeksLeft` is applied later, in the engines, exactly as today.)
-- **Football branch:** roster players (name + position + proTeam) → Sleeper NFL projections via the Phase-1 `buildFootballProjectionsByKey` name+position match → `valueByKey = buildFootballValue(projByKey, weeksLeft)`, keyed by the platform's own `playerKey`. `weeksLeft` from `usePowerTrajectory()` (the existing `end_week − current_week + 1`).
-- Sport is chosen from `leagueStore.activeSport === 'football'`.
-- Football scoring = `football.ts` defaults (v1); a `defaultWeights('football')` overload in `pointsScoring.ts` returns `footballConfig.pointsConfig.defaults`.
+`usePointsValue(inputs: { pool: Ref<PointsPoolPlayer[]>; fgByKey: Ref<Record<string, FGProjection | null>>; sport: Ref<string>; season: Ref<string> }): { valueByKey: ComputedRef<ValueByKey> }`
 
-Views: the `fgByKey` computed feeding the points engines becomes a `valueByKey` computed (`isEspn ? espn.valueByKey : yahoo.valueByKey`); `buildPointsTeam` etc. receive `valueByKey`; the audit panel reads `valueByKey[key].perStat`. **Football per-week display:** the views already surface `perGame` (`total/games`); for football `games = weeksLeft`, so `perGame` **is** the per-week average — the headline number for football skill players.
+Internals:
+- Owns its own `useLeagueScoring()` instance (per-instance is fine — `load()` is idempotent and the extra scoring fetch is cheap); calls `defaultWeights(sport.value)` so football starts from `footballConfig.pointsConfig.defaults`.
+- **Baseball** (`sport !== 'football'`): `valueByKey = buildBaseballValue(fgByKey.value, weights.value)` — identical numbers to today.
+- **Football**: owns a `useFootballProjections({ players, scoring: weights, season, enabled })` instance, where `players` maps `pool` → `ProjPlayer[]` (`{ key: playerKey, name, position }`; name+position match, no `sleeperId` needed for ESPN/Yahoo) and `enabled = sport === 'football'`. `valueByKey = buildFootballValue(projByKey.value, weeksLeft.value)`, `weeksLeft` from `usePowerTrajectory()`.
+- Football scoring = `football.ts` defaults (v1); the `defaultWeights(sport = 'baseball')` overload in `pointsScoring.ts` returns `footballConfig.pointsConfig.defaults` for `'football'`.
+
+Each consumer that today derives `fgByKey` for a points engine instead calls `usePointsValue(...)` and feeds `valueByKey`: the 4 points views, plus `PowerRankingsRedesignView`, `LeagueView`, and (by receiving `valueByKey` in place of `fgByKey`) `useSeasonOutlook` and `useToday`. `fgByKey` stays wired to the category engine and the `?ptsaudit` raw panel.
+
+**Football per-week display:** the views already surface `perGame` (`total/games`); for football `games = weeksLeft`, so `perGame` **is** the per-week average — the headline number for football skill players.
 
 ### §5 — Data flow
 
@@ -130,7 +135,7 @@ activeSport === 'baseball'                                                   ▼
 - **Modify (downstream swap — `fgByKey`+`weights` → `valueByKey`):** `pointsTeam.ts`, `pointsMatchup.ts`, `pointsWire.ts` (incl. `matchFG`→`valueOf` resolver), `pointsTrades.ts`, `pointsTradeLandscape.ts`, `league/pointsPositional.ts`, `today/pointsRosValue.ts`, `today/pointsDailyValue.ts`, and their tests.
 - **Modify (other `buildPointsTeam` callers — must migrate to `valueByKey` in the same swap):** `useSeasonOutlook.ts`, `useToday.ts`, `PowerRankingsRedesignView.vue`, `LeagueView.vue` (these pass `fgByKey`+`weights` today; the ripple is unavoidable but mechanical — each already has a `valueByKey` available from its source composable). These views are **baseball-behavior-preserving only** — no football wiring in this phase, just the signature migration.
 - **Modify (scoring):** `pointsScoring.ts` — `defaultWeights(sport = 'baseball')` returns `footballConfig.pointsConfig.defaults` for football.
-- **Modify (sources):** `useEspnPointsTeamData.ts`, `useYahooLeaguePool.ts` — add `valueByKey` ref + football branch.
-- **Modify (points views):** `PointsMyTeamView.vue`, `PointsMatchupView.vue`, `PointsWireView.vue`, `PointsTradesView.vue` — feed `valueByKey`; football per-week display via `perGame`.
+- **Create (sport dispatch):** `src/composables/usePointsValue.ts` (baseball/football → `valueByKey`), `src/composables/__tests__/usePointsValue.test.ts`. Sources (`useEspnPointsTeamData.ts`, `useYahooLeaguePool.ts`) are **not** modified.
+- **Modify (points views):** `PointsMyTeamView.vue`, `PointsMatchupView.vue`, `PointsWireView.vue`, `PointsTradesView.vue` — call `usePointsValue`, feed `valueByKey`; football per-week display via `perGame`.
 
 **Build-green strategy:** because `buildPointsTeam` (and the other engines) have callers beyond the 4 points views, each engine's signature swap must land **together with all its call sites** in the same task, so `npm run build` stays green after every task. Task order below is arranged accordingly.
