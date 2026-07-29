@@ -5,11 +5,11 @@
  * list, and the landscape heatmap — the points analogs of the category Trades
  * scaffolding.
  */
-import { projectPlayerPoints } from '@/myteam/pointsValue'
 import { coversSlot, positionRowsFor } from '@/trades/positionalLandscape'
 import { lineupEligFor } from '@/trades/lineupEligibility'
 import { type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { FGProjection } from '@/services/projectionService'
+import { type ValueByKey } from '@/myteam/playerValue'
 
 
 export interface TradePartner {
@@ -33,8 +33,8 @@ export interface PointsTradeLandscape {
 
 export function buildPointsTradeLandscape(
   pool: PointsPoolPlayer[],
+  valueByKey: ValueByKey,
   fgByKey: Record<string, FGProjection | null>,
-  weights: Record<string, number>,
   myTeamKey: string,
   teamNames: Record<string, string> = {},
   sport: string = 'baseball',
@@ -45,7 +45,7 @@ export function buildPointsTradeLandscape(
   interface P { eligible: string[]; points: number }
   const byTeam = new Map<string, P[]>()
   for (const p of pool) {
-    const points = projectPlayerPoints(fgByKey[p.playerKey], weights).total
+    const points = valueByKey[p.playerKey]?.total ?? 0
     // Role-based eligibility: a starter counts for SP, a reliever for RP — ESPN
     // lists most pitchers as eligible for BOTH, which made the SP/RP rows identical.
     ;(byTeam.get(p.teamKey) ?? byTeam.set(p.teamKey, []).get(p.teamKey)!).push({ eligible: lineupEligFor(p, fgByKey), points })

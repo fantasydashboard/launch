@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildPointsTradeLandscape } from '../pointsTradeLandscape'
+import { buildBaseballValue } from '../playerValue'
 import type { PointsPoolPlayer } from '../pointsTeam'
 import type { FGProjection } from '@/services/projectionService'
 
@@ -28,7 +29,7 @@ describe('buildPointsTradeLandscape', () => {
   const names = { A: 'My Team', B: 'Their Team', C: 'Mid Team' }
 
   it('ranks each team at each position and reads my strengths / holes', () => {
-    const ls = buildPointsTradeLandscape(pool, fg, weights, 'A', names)!
+    const ls = buildPointsTradeLandscape(pool, buildBaseballValue(fg, weights), fg, 'A', names)!
     expect(ls.rank.SP.A).toBe(1) // A has the best SP
     expect(ls.rank.OF.A).toBe(3) // A has the worst OF
     expect(ls.myStrong).toContain('SP')
@@ -36,7 +37,7 @@ describe('buildPointsTradeLandscape', () => {
   })
 
   it('finds the complementary partner (they hold what you need)', () => {
-    const ls = buildPointsTradeLandscape(pool, fg, weights, 'A', names)!
+    const ls = buildPointsTradeLandscape(pool, buildBaseballValue(fg, weights), fg, 'A', names)!
     const b = ls.partners.find((p) => p.teamKey === 'B')!
     expect(b.youBuy).toContain('OF') // B strong OF, A weak OF
     expect(b.theyNeed).toContain('SP') // A strong SP, B weak SP

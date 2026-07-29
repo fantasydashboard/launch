@@ -8,10 +8,9 @@
  * Everything is measured in the one currency (projected points) by re-solving
  * each side's optimal lineup (assignSlots) with the swap applied.
  */
-import { projectPlayerPoints } from '@/myteam/pointsValue'
 import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
 import { parseEligible, type PointsPoolPlayer } from '@/myteam/pointsTeam'
-import type { FGProjection } from '@/services/projectionService'
+import { type ValueByKey } from '@/myteam/playerValue'
 
 export interface TradeSide {
   playerKey: string
@@ -52,8 +51,7 @@ const CAND = 5 // surplus candidates considered per side (keeps the search small
 
 export function buildPointsTrades(
   pool: PointsPoolPlayer[],
-  fgByKey: Record<string, FGProjection | null>,
-  weights: Record<string, number>,
+  valueByKey: ValueByKey,
   myTeamKey: string,
   slots: Record<string, number>,
   teamNames: Record<string, string> = {},
@@ -64,7 +62,7 @@ export function buildPointsTrades(
   const ptsByKey = new Map<string, number>()
   const byTeam = new Map<string, Dp[]>()
   for (const p of pool) {
-    const pts = projectPlayerPoints(fgByKey[p.playerKey], weights).total
+    const pts = valueByKey[p.playerKey]?.total ?? 0
     ptsByKey.set(p.playerKey, pts)
     meta.set(p.playerKey, p)
     const dp: Dp = { playerKey: p.playerKey, teamKey: p.teamKey, eligiblePositions: parseEligible(p), value: pts, points: pts, status: p.onIL ? 'IL' : '' }

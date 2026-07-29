@@ -4,6 +4,7 @@ import { useLeagueStore } from '@/stores/league'
 import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
 import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
+import { usePointsValue } from '@/composables/usePointsValue'
 import { buildPointsTrades } from '@/myteam/pointsTrades'
 import { buildPointsTradeLandscape } from '@/myteam/pointsTradeLandscape'
 import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
@@ -41,14 +42,17 @@ const teamNames = computed<Record<string, string>>(() => {
   return Object.fromEntries((leagueStore.yahooTeams ?? []).map((t: any) => [String(t.team_key), String(t.name ?? '')]))
 })
 
+const season = computed(() => '')
+const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
+
 const ideas = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return []
-  return buildPointsTrades(pool.value, fgByKey.value, scoring.weights.value, myTeamKey.value, rosterSlots.value, teamNames.value)
+  return buildPointsTrades(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value, teamNames.value)
 })
 
 const landscape = computed(() => {
   if (!pool.value.length || !myTeamKey.value) return null
-  return buildPointsTradeLandscape(pool.value, fgByKey.value, scoring.weights.value, myTeamKey.value, teamNames.value, leagueStore.activeSport)
+  return buildPointsTradeLandscape(pool.value, valueByKey.value, fgByKey.value, myTeamKey.value, teamNames.value, leagueStore.activeSport)
 })
 
 // Short column label for the heatmap (initials / first chars of the team name).

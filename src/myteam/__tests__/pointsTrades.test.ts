@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildPointsTrades } from '../pointsTrades'
+import { buildBaseballValue } from '../playerValue'
 import type { PointsPoolPlayer } from '../pointsTeam'
 import type { FGProjection } from '@/services/projectionService'
 
@@ -36,7 +37,7 @@ describe('buildPointsTrades', () => {
   const names = { A: 'My Team', B: 'Their Team' }
 
   it('finds a win-win: send surplus OF, get a surplus SP that starts for me', () => {
-    const ideas = buildPointsTrades(pool, fg, weights, 'A', slots, names)
+    const ideas = buildPointsTrades(pool, buildBaseballValue(fg, weights), 'A', slots, names)
     expect(ideas.length).toBeGreaterThan(0)
     const top = ideas[0]
     expect(top.give.playerKey).toBe('A_OF2') // my benched OF
@@ -49,7 +50,7 @@ describe('buildPointsTrades', () => {
   it('returns nothing when there is no mutual upgrade', () => {
     // Only my team in the pool → no partners.
     const solo = pool.filter((p) => p.teamKey === 'A')
-    const ideas = buildPointsTrades(solo, fg, weights, 'A', slots, names)
+    const ideas = buildPointsTrades(solo, buildBaseballValue(fg, weights), 'A', slots, names)
     expect(ideas).toEqual([])
   })
 })
