@@ -1,8 +1,9 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
 import type { CatSpec } from '@/myteam/value'
 import type { Landscape } from '@/trades/landscape'
-import { coversSlot } from '@/trades/positionalLandscape'
+import { coversSlot, positionRowsFor } from '@/trades/positionalLandscape'
 import { eligOf, isPitcherElig, pitcherRoleFor } from '@/trades/lineupEligibility'
+import { useLeagueStore } from '@/stores/league'
 import type { FGProjection } from '@/services/projectionService'
 import type { PoolPlayer } from '@/composables/useMyRoster'
 
@@ -23,10 +24,6 @@ export interface LandscapeView {
   numTeams: number
 }
 
-// Concrete fielding positions worth comparing for trades (flex/util slots are overflow, not a
-// position you target). SP/RP are derived from projected pitcher role.
-const POSITION_ROWS = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
-
 function shorten(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean)
   if (words.length >= 2) return (words[0][0] + words[1].slice(0, 2)).toUpperCase()
@@ -43,6 +40,7 @@ export function useLeagueLandscape(inputs: {
   teamNameByKey: Ref<Map<string, string>>
   labelOf: (statId: string) => string
 }): { view: ComputedRef<LandscapeView | null> } {
+  const leagueStore = useLeagueStore()
   const view = computed<LandscapeView | null>(() => {
     const pool = inputs.pool.value
     const ls = inputs.landscape.value
@@ -87,7 +85,8 @@ export function useLeagueLandscape(inputs: {
       return !isPitcherElig(elig) && coversSlot(elig, pos)
     }
     const positionRows: LandscapeRow[] = []
-    for (const pos of POSITION_ROWS) {
+    const rowPositions = positionRowsFor(leagueStore.activeSport)
+    for (const pos of rowPositions) {
       const bestByTeam = new Map<string, number | null>()
       let anyTeam = false
       for (const tk of teamKeys) {

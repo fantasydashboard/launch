@@ -48,7 +48,7 @@ const ideas = computed(() => {
 
 const landscape = computed(() => {
   if (!pool.value.length || !myTeamKey.value) return null
-  return buildPointsTradeLandscape(pool.value, fgByKey.value, scoring.weights.value, myTeamKey.value, teamNames.value)
+  return buildPointsTradeLandscape(pool.value, fgByKey.value, scoring.weights.value, myTeamKey.value, teamNames.value, leagueStore.activeSport)
 })
 
 // Short column label for the heatmap (initials / first chars of the team name).

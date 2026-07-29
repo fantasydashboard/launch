@@ -6,13 +6,11 @@
  * scaffolding.
  */
 import { projectPlayerPoints } from '@/myteam/pointsValue'
-import { coversSlot } from '@/trades/positionalLandscape'
+import { coversSlot, positionRowsFor } from '@/trades/positionalLandscape'
 import { lineupEligFor } from '@/trades/lineupEligibility'
 import { type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { FGProjection } from '@/services/projectionService'
 
-// Canonical positions for the trade grid (flex/UTIL/P are redundant for fit).
-const POSITIONS = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
 
 export interface TradePartner {
   teamKey: string
@@ -39,6 +37,7 @@ export function buildPointsTradeLandscape(
   weights: Record<string, number>,
   myTeamKey: string,
   teamNames: Record<string, string> = {},
+  sport: string = 'baseball',
 ): PointsTradeLandscape | null {
   if (!myTeamKey || !pool.length) return null
 
@@ -61,7 +60,7 @@ export function buildPointsTradeLandscape(
     for (const pl of byTeam.get(team) ?? []) if (coversSlot(pl.eligible, pos) && pl.points > best) best = pl.points
     return best
   }
-  const positions = POSITIONS.filter((pos) => teamKeys.some((t) => bestAt(t, pos) > 0))
+  const positions = positionRowsFor(sport).filter((pos) => teamKeys.some((t) => bestAt(t, pos) > 0))
   const rank: Record<string, Record<string, number>> = {}
   for (const pos of positions) {
     const rows = teamKeys.map((t) => ({ t, v: bestAt(t, pos) })).sort((a, b) => b.v - a.v)
