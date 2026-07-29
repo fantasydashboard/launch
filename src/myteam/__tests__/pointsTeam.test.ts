@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildPointsTeam, parseEligible, type PointsPoolPlayer } from '../pointsTeam'
+import { buildBaseballValue } from '@/myteam/playerValue'
 import type { FGProjection } from '@/services/projectionService'
 
 const weights = { HR: 4, R: 1, RBI: 1, K: 1, W: 5, IP: 3, ER: -2 }
@@ -36,7 +37,7 @@ describe('buildPointsTeam', () => {
   rows.forEach((r) => (fgByKey[r.p.playerKey] = r.fg))
 
   it('tiers my roster by projected points and ranks the lineup vs the league', () => {
-    const m = buildPointsTeam(pool, fgByKey, weights, 'A', slots)
+    const m = buildPointsTeam(pool, buildBaseballValue(fgByKey, weights), 'A', slots)
     expect(m.rosterRows).toHaveLength(3)
     // Stud2B is the highest-scoring HITTER on my team (pitchers rank within their own side)
     const myHitters = m.rosterRows.filter((r) => r.side === 'hit')
@@ -48,7 +49,7 @@ describe('buildPointsTeam', () => {
   })
 
   it('ranks each position starter against the other team at that slot', () => {
-    const m = buildPointsTeam(pool, fgByKey, weights, 'A', slots)
+    const m = buildPointsTeam(pool, buildBaseballValue(fgByKey, weights), 'A', slots)
     const my2B = m.slotRanks.find((s) => s.slot === '2B')!
     expect(my2B.starterName).toBe('Stud2B')
     expect(my2B.rank).toBe(1) // Stud2B (270) beats Weak2B
@@ -60,7 +61,7 @@ describe('buildPointsTeam', () => {
   })
 
   it('folds pitching into one staff rank with arms listed by points', () => {
-    const m = buildPointsTeam(pool, fgByKey, weights, 'A', slots)
+    const m = buildPointsTeam(pool, buildBaseballValue(fgByKey, weights), 'A', slots)
     // AceA staff (795) trails AceB staff (860) → my pitching ranks 2nd.
     expect(m.pitching?.rank).toBe(2)
     expect(m.pitching?.teams).toBe(2)
@@ -78,7 +79,7 @@ describe('buildPointsTeam', () => {
     const pool2 = rows2.map((r) => r.p)
     const fg2: Record<string, FGProjection | null> = {}
     rows2.forEach((r) => (fg2[r.p.playerKey] = r.fg))
-    const m = buildPointsTeam(pool2, fg2, w, 'A', { OF: 1 })
+    const m = buildPointsTeam(pool2, buildBaseballValue(fg2, w), 'A', { OF: 1 })
     const chip = (k: string) => m.rosterRows.find((r) => r.player.playerKey === k)?.chips ?? []
     expect(chip('Burner1')).toContain('SB')
     expect(chip('Plodder3')).not.toContain('SB') // accrues SB points, but not a standout
@@ -94,8 +95,8 @@ describe('buildPointsTeam', () => {
       : p.playerKey === 'WeakOF' ? { ...p, status: 'DTD' } // DTD
       : p,
     )
-    const healthy = buildPointsTeam(pool, fgByKey, weights, 'A', slots)
-    const injured = buildPointsTeam(injPool, fgByKey, weights, 'A', slots)
+    const healthy = buildPointsTeam(pool, buildBaseballValue(fgByKey, weights), 'A', slots)
+    const injured = buildPointsTeam(injPool, buildBaseballValue(fgByKey, weights), 'A', slots)
 
     const row = (m: ReturnType<typeof buildPointsTeam>, key: string) =>
       m.rosterRows.find((r) => r.player.playerKey === key)!
@@ -120,8 +121,8 @@ describe('buildPointsTeam', () => {
     // WeakOF is team A's only OF, so he starts. DTD keeps him startable at x0.9, so the
     // 0.1 haircut must show up in standings strength — proving the discount, not exclusion, moved it.
     const dtdPool = pool.map((p) => (p.playerKey === 'WeakOF' ? { ...p, status: 'DTD' } : p))
-    const healthy = buildPointsTeam(pool, fgByKey, weights, 'A', slots)
-    const dtd = buildPointsTeam(dtdPool, fgByKey, weights, 'A', slots)
+    const healthy = buildPointsTeam(pool, buildBaseballValue(fgByKey, weights), 'A', slots)
+    const dtd = buildPointsTeam(dtdPool, buildBaseballValue(fgByKey, weights), 'A', slots)
     const strengthA = (m: ReturnType<typeof buildPointsTeam>) =>
       m.standings.find((s) => s.teamKey === 'A')!.startingPoints
     const weakOfPoints = healthy.rosterRows.find((r) => r.player.playerKey === 'WeakOF')!.points
@@ -133,13 +134,40 @@ describe('buildPointsTeam', () => {
     // AceA is team A's only SP. Marking him OUT via status alone (onIL stays false) should EXCLUDE
     // him from the lineup (SP slot empties) — removing his FULL value from strength, not just x0.5.
     const outPool = pool.map((p) => (p.playerKey === 'AceA' ? { ...p, status: 'OUT' } : p))
-    const healthy = buildPointsTeam(pool, fgByKey, weights, 'A', slots)
-    const out = buildPointsTeam(outPool, fgByKey, weights, 'A', slots)
+    const healthy = buildPointsTeam(pool, buildBaseballValue(fgByKey, weights), 'A', slots)
+    const out = buildPointsTeam(outPool, buildBaseballValue(fgByKey, weights), 'A', slots)
     const strengthA = (m: ReturnType<typeof buildPointsTeam>) =>
       m.standings.find((s) => s.teamKey === 'A')!.startingPoints
     const aceHealthyPts = healthy.rosterRows.find((r) => r.player.playerKey === 'AceA')!.points
     // Excluded → full ace value removed (a mere 0.5x discount would remove only half)
     expect(strengthA(healthy) - strengthA(out)).toBeCloseTo(aceHealthyPts, 3)
     expect(out.rosterRows.find((r) => r.player.playerKey === 'AceA')!.injury).toBe('il')
+  })
+
+  it('groups an unmatched pitcher (null projection) by POSITION, not under hitters', () => {
+    // matchFG misses the reliever, so his fgByKey entry is null. He must still file under
+    // pitchers via isPitcherPos(position) — the Carlos Estevez bug guard. Regression for the
+    // valueByKey migration: buildBaseballValue must give a null projection NO side.
+    const local = [bat('Bat', 'A', 'OF', 20, 60, 60)]
+    const localPool = local.map((r) => r.p)
+    localPool.push({ playerKey: 'Reliever', name: 'Reliever', position: 'RP', teamKey: 'A', eligiblePositions: ['RP'] })
+    const localFg: Record<string, FGProjection | null> = { Bat: local[0].fg, Reliever: null }
+    const m = buildPointsTeam(localPool, buildBaseballValue(localFg, weights), 'A', { OF: 1, RP: 1 })
+    const rel = m.rosterRows.find((r) => r.player.playerKey === 'Reliever')!
+    expect(rel.side).toBe('pit')
+  })
+
+  it('football: undefined side ⇒ single group, no chips, ranks by total', () => {
+    const valueByKey = {
+      a: { total: 300, games: 15, perStat: {}, side: undefined, weeklyCap: 999 },
+      b: { total: 150, games: 15, perStat: {}, side: undefined, weeklyCap: 999 },
+    }
+    const pool = [
+      { playerKey: 'a', name: 'QB A', position: 'QB', teamKey: 'me' },
+      { playerKey: 'b', name: 'RB B', position: 'RB', teamKey: 'me' },
+    ]
+    const m = buildPointsTeam(pool as any, valueByKey as any, 'me', { QB: 1, RB: 1 })
+    expect(m.rosterRows.map((r) => r.player.playerKey)).toEqual(['a', 'b'])
+    expect(m.rosterRows.every((r) => r.chips.length === 0)).toBe(true)
   })
 })

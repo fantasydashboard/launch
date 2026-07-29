@@ -7,6 +7,7 @@ import { useAvailablePlayers } from '@/composables/useAvailablePlayers'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { buildPointsWire, type WireAdd } from '@/myteam/pointsWire'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
+import { usePointsValue } from '@/composables/usePointsValue'
 import { buildPlayerMatchers, type FGProjection } from '@/services/projectionService'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
@@ -56,6 +57,10 @@ const myTeamKey = computed<string>(() => {
   return me ? String(me.team_key) : ''
 })
 
+// Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
+const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
+const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
+
 // Free agents minus anyone already rostered (the platform FA feed leaks rostered players).
 const freeAgents = computed(() => {
   const src = isEspn.value ? espnPoints.freeAgents.value : avail.players.value
@@ -66,7 +71,7 @@ const freeAgents = computed(() => {
 
 const teamModel = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
-  return buildPointsTeam(pool.value, fgByKey.value, scoring.weights.value, myTeamKey.value, rosterSlots.value)
+  return buildPointsTeam(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value)
 })
 const rosterBodies = computed(() =>
   (teamModel.value?.rosterRows ?? []).map((r) => ({ name: r.player.name, position: r.player.position, points: r.points, side: r.side, onIL: r.player.onIL })),

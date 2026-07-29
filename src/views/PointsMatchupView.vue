@@ -7,6 +7,7 @@ import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { useThisWeekOpponent } from '@/composables/useThisWeekOpponent'
 import { buildPointsMatchup } from '@/myteam/pointsMatchup'
 import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
+import { usePointsValue } from '@/composables/usePointsValue'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { useWinProbTrend } from '@/composables/useWinProbTrend'
 import MatchupWinProbChart from '@/components/matchup/MatchupWinProbChart.vue'
@@ -51,6 +52,11 @@ const pool = computed<PointsPoolPlayer[]>(() =>
 const fgByKey = computed(() => (isEspn.value ? espnPoints.fgByKey.value : yahooLeague.fgByKey.value))
 const rosterSlots = computed(() => (isEspn.value ? espnPoints.rosterSlots.value : yahooLeague.rosterSlots.value))
 const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooLeague.loading.value))
+
+// Precomputed player value for Season Outlook (baseball from FG, football from Sleeper).
+// buildPointsMatchup below still consumes fgByKey directly (migrated in a later task).
+const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
+const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
 
 const myTeamKey = computed<string>(() => {
   if (isEspn.value) return espnPoints.myTeamId.value ?? ''
@@ -121,9 +127,8 @@ const teamMeta = computed<Record<string, OutlookTeamMeta>>(() => {
 })
 const { outlook } = useSeasonOutlook({
   pool,
-  fgByKey,
+  valueByKey,
   rosterSlots,
-  weights: scoring.weights,
   myTeamKey,
   teamMeta,
 })

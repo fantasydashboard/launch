@@ -41,7 +41,12 @@ export function buildBaseballValue(
   weights: Record<string, number>,
 ): ValueByKey {
   const out: ValueByKey = {}
-  for (const [key, fg] of Object.entries(fgByKey)) out[key] = baseballValueOne(fg, weights)
+  // An unmatched player (null projection) carries NO side, so pointsTeam falls back
+  // to POSITION for it (isPitcherPos) — same as the pre-value engine, which read the
+  // raw fg and used position when it was absent. Leaving side='hit' here (what
+  // projectPlayerPoints(null) yields) would file a projection-less reliever under
+  // hitters (the Carlos Estevez / category-Cantillo bug). ZERO_VALUE = side undefined.
+  for (const [key, fg] of Object.entries(fgByKey)) out[key] = fg ? baseballValueOne(fg, weights) : { ...ZERO_VALUE }
   return out
 }
 

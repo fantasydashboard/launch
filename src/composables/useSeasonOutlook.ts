@@ -2,8 +2,8 @@ import { computed, onMounted, watch, type Ref } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { usePowerTrajectory } from './usePowerTrajectory'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
+import type { ValueByKey } from '@/myteam/playerValue'
 import { buildSeasonOutlook, type OutlookTeamMeta, type SeasonOutlook } from '@/myteam/seasonOutlook'
-import type { FGProjection } from '@/services/projectionService'
 
 /**
  * Reactive Season Outlook for the active points team. Owns the schedule/playoff-spots trajectory,
@@ -12,9 +12,8 @@ import type { FGProjection } from '@/services/projectionService'
  */
 export function useSeasonOutlook(inputs: {
   pool: Ref<PointsPoolPlayer[]>
-  fgByKey: Ref<Record<string, FGProjection | null>>
+  valueByKey: Ref<ValueByKey>
   rosterSlots: Ref<Record<string, number>>
-  weights: Ref<Record<string, number>>
   myTeamKey: Ref<string>
   teamMeta: Ref<Record<string, OutlookTeamMeta>>
 }): { outlook: Ref<SeasonOutlook | null> } {
@@ -36,8 +35,7 @@ export function useSeasonOutlook(inputs: {
     const playoffSpots = trajectory.playoffSpots.value || Math.max(2, Math.round(leagueSize / 2))
     const model = buildPointsTeam(
       inputs.pool.value,
-      inputs.fgByKey.value,
-      inputs.weights.value,
+      inputs.valueByKey.value,
       inputs.myTeamKey.value,
       inputs.rosterSlots.value,
       { basis: wl > 0 ? 'perWeek' : 'total', weeksLeft: wl },

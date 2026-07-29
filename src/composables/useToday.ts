@@ -31,6 +31,7 @@ import { computeRosterValue, type ValuePoolPlayer } from '@/myteam/value'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
 import { expendableKeys, parseEligible } from '@/wire/dropEligibility'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
+import { buildBaseballValue } from '@/myteam/playerValue'
 import { pickSafeDrop, type DroppableBody, type SafeDrop } from '@/today/safeDrop'
 import { normalizeMoves } from '@/today/normalizeValue'
 import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
@@ -367,7 +368,7 @@ export function useToday(): {
         status: p.status,
       }
     })
-    return buildPointsTeam(pool, fgByKey, scoring.weights.value, 'me', rosterSlots.value)
+    return buildPointsTeam(pool, buildBaseballValue(fgByKey, scoring.weights.value), 'me', rosterSlots.value)
   })
   const pointsDropSet = computed<DroppableBody[]>(() =>
     (pointsRosterModel.value?.rosterRows ?? [])

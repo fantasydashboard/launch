@@ -10,6 +10,7 @@ import { useLeagueLandscape } from '@/composables/useLeagueLandscape'
 import { buildPowerRankings, type PowerTeamInput } from '@/league/powerRankings'
 import { buildLeagueStandings, type StakesTag } from '@/league/leagueStandings'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
+import { usePointsValue } from '@/composables/usePointsValue'
 import { buildPointsPositional } from '@/league/pointsPositional'
 import { seasonStakes } from '@/myteam/seasonStakes'
 import { buildTrajectory } from '@/league/powerTrajectory'
@@ -59,6 +60,10 @@ const pointsMyTeamKey = computed<string>(() => {
   const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
   return me ? String(me.team_key) : ''
 })
+
+// Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
+const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
+const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
 
 function detectManagerless(t: any): boolean {
   return /manager-?less/i.test(String(t?.name ?? ''))
@@ -117,7 +122,7 @@ const catRankings = computed(() => {
 const pointsRankings = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !pointsMyTeamKey.value) return null
   const wl = trajectory.weeksLeft.value
-  const model = buildPointsTeam(pool.value, fgByKey.value, scoring.weights.value, pointsMyTeamKey.value, rosterSlots.value, {
+  const model = buildPointsTeam(pool.value, valueByKey.value, pointsMyTeamKey.value, rosterSlots.value, {
     basis: wl > 0 ? 'perWeek' : 'total',
     weeksLeft: wl,
   })

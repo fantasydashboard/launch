@@ -9,9 +9,9 @@
  * (projected fantasy points), so there are no per-category z-scores, no ratio
  * cats, no baselines — just points and ranks.
  */
-import { projectPlayerPoints, weeklyRate, type PointsSide } from '@/myteam/pointsValue'
+import { type PointsSide } from '@/myteam/pointsValue'
+import { weeklyRate, ZERO_VALUE, type PlayerValue, type ValueByKey } from '@/myteam/playerValue'
 import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
-import type { FGProjection } from '@/services/projectionService'
 import { injuryTier, injuryDiscount, type InjuryTier } from './injuryStatus'
 
 export interface PointsPoolPlayer {
@@ -98,8 +98,7 @@ const slotIdx = (s: string) => {
 
 export function buildPointsTeam(
   pool: PointsPoolPlayer[],
-  fgByKey: Record<string, FGProjection | null>,
-  weights: Record<string, number>,
+  valueByKey: ValueByKey,
   myTeamKey: string | null,
   slots: Record<string, number>,
   // `basis` controls how a player's lineup value is measured. 'total' (default,
@@ -112,9 +111,9 @@ export function buildPointsTeam(
   const basis = opts.basis ?? 'total'
   const weeksLeft = opts.weeksLeft ?? 1
 
-  // 1) Project every rostered player's points once.
-  const ptsByKey = new Map<string, ReturnType<typeof projectPlayerPoints>>()
-  for (const p of pool) ptsByKey.set(p.playerKey, projectPlayerPoints(fgByKey[p.playerKey], weights))
+  // 1) Precomputed value per rostered player (sport-agnostic PlayerValue).
+  const ptsByKey = new Map<string, PlayerValue>()
+  for (const p of pool) ptsByKey.set(p.playerKey, valueByKey[p.playerKey] ?? ZERO_VALUE)
 
   // Injury haircut per player (IL x0.5 / DTD x0.9). IL-tier players are already excluded from the
   // optimal lineup by assignSlots (DepthPlayer.status below), so for them the discount governs the
@@ -127,7 +126,7 @@ export function buildPointsTeam(
   const valueOf = (key: string): number => {
     const r = ptsByKey.get(key)
     if (!r) return 0
-    const base = basis === 'perWeek' ? weeklyRate(r, fgByKey[key], weeksLeft) : r.total
+    const base = basis === 'perWeek' ? weeklyRate(r, weeksLeft) : r.total
     return base * discountOf(key)
   }
 
@@ -135,15 +134,18 @@ export function buildPointsTeam(
   // accrues a scored stat (every hitter steals a few bases, every starter logs a
   // few QS). Threshold = the 65th percentile among the league pool's NONZERO
   // contributors on that side, so only the upper slice earns the chip.
-  // Side per player. An unmatched player (no FG row) has no player_type, so fall
-  // back to POSITION — otherwise a projection-less reliever defaults to 'hit' and
-  // shows up under your hitters (the Carlos Estevez / category-Cantillo bug).
+  // Side per player. Source the side from the value; an unmatched player (no value
+  // row, so no side) falls back to POSITION — otherwise a projection-less reliever
+  // defaults to 'hit' and shows up under your hitters (the Carlos Estevez /
+  // category-Cantillo bug). Football values carry no side (undefined), so every
+  // player falls to isPitcherPos('QB'/'RB'/…) = false = 'hit': one combined group,
+  // no pitcher split.
   const isPitcherPos = (pos: string) =>
     String(pos || '').split(/[,/|]/).some((t) => ['SP', 'RP', 'P'].includes(t.trim().toUpperCase()))
   const sideByKey = new Map<string, PointsSide>()
   for (const p of pool) {
-    const fg = fgByKey[p.playerKey]
-    sideByKey.set(p.playerKey, fg ? (fg.player_type === 'pitcher' ? 'pit' : 'hit') : isPitcherPos(p.position) ? 'pit' : 'hit')
+    const v = valueByKey[p.playerKey]
+    sideByKey.set(p.playerKey, v?.side ?? (isPitcherPos(p.position) ? 'pit' : 'hit'))
   }
 
   const SPECIALIST_STATS = ['SB', 'SV', 'HLD', 'QS']

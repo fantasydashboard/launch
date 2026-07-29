@@ -6,6 +6,7 @@ import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
 import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
+import { usePointsValue } from '@/composables/usePointsValue'
 import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
 import type { OutlookTeamMeta } from '@/myteam/seasonOutlook'
 import { projectPlayerPoints } from '@/myteam/pointsValue'
@@ -36,6 +37,10 @@ const pool = computed<PointsPoolPlayer[]>(() =>
 const fgByKey = computed(() => (isEspn.value ? espnPoints.fgByKey.value : yahooLeague.fgByKey.value))
 const rosterSlots = computed(() => (isEspn.value ? espnPoints.rosterSlots.value : yahooLeague.rosterSlots.value))
 const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooLeague.loading.value))
+
+// Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
+const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
+const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
 
 // My team key as the POOL labels it (full Yahoo team_key / `espn_{id}`).
 const myTeamKey = computed<string>(() => {
@@ -78,9 +83,8 @@ const teamMeta = computed<Record<string, OutlookTeamMeta>>(() => {
 
 const { outlook } = useSeasonOutlook({
   pool,
-  fgByKey,
+  valueByKey,
   rosterSlots,
-  weights: scoring.weights,
   myTeamKey,
   teamMeta,
 })
@@ -111,7 +115,7 @@ const luckColor = computed(() => {
 // ── The model ────────────────────────────────────────────────────────────────
 const model = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
-  return buildPointsTeam(pool.value, fgByKey.value, scoring.weights.value, myTeamKey.value, rosterSlots.value)
+  return buildPointsTeam(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value)
 })
 
 const hitters = computed(() => model.value?.rosterRows.filter((r) => r.side === 'hit') ?? [])

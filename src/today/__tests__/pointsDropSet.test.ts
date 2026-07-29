@@ -13,6 +13,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
+import { buildBaseballValue } from '@/myteam/playerValue'
 import { pickSafeDrop, type DroppableBody } from '@/today/safeDrop'
 import type { FGProjection } from '@/services/projectionService'
 
@@ -44,7 +45,7 @@ rows.forEach((r) => (fgByKey[r.p.playerKey] = r.fg))
 
 /** Mirrors useToday.ts's pointsDropSet computed exactly. */
 function buildPointsDropSet(): DroppableBody[] {
-  const model = buildPointsTeam(pool, fgByKey, weights, 'me', { SP: 1 })
+  const model = buildPointsTeam(pool, buildBaseballValue(fgByKey, weights), 'me', { SP: 1 })
   return model.rosterRows
     .filter((r) => !r.player.onIL && r.tier === 'FRINGE')
     .map((r) => ({
@@ -90,7 +91,7 @@ describe('pointsDropSet (points-league Wire drop-to-make-room, replicated for To
     const soloPool = soloRows.map((r) => r.p)
     const soloFg: Record<string, FGProjection | null> = {}
     soloRows.forEach((r) => (soloFg[r.p.playerKey] = r.fg))
-    const model = buildPointsTeam(soloPool, soloFg, weights, 'me', { SP: 1 })
+    const model = buildPointsTeam(soloPool, buildBaseballValue(soloFg, weights), 'me', { SP: 1 })
     const dropSet = model.rosterRows
       .filter((r) => !r.player.onIL && r.tier === 'FRINGE')
       .map((r) => ({ playerKey: r.player.playerKey, name: r.player.name, side: r.side, rosValue: r.points, bottomTier: true, reason: 'lowest projected' }))

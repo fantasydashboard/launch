@@ -7,6 +7,7 @@ import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { usePowerTrajectory } from '@/composables/usePowerTrajectory'
 import { useCategoryStrength } from '@/composables/useCategoryStrength'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
+import { usePointsValue } from '@/composables/usePointsValue'
 import { buildPowerRankings, type PowerTeamInput } from '@/league/powerRankings'
 import { seasonStakes } from '@/myteam/seasonStakes'
 import { buildTrajectory, type TalentSnapshot } from '@/league/powerTrajectory'
@@ -61,6 +62,10 @@ const myTeamKey = computed<string>(() => {
   const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
   return me ? String(me.team_key) : ''
 })
+
+// Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
+const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
+const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
 
 // Abandoned-team detection. Yahoo auto-renames an unowned team to the literal
 // "Manager-less Team N" — a reliable signal that nobody's setting its lineup, so
@@ -127,7 +132,7 @@ const pointsRankings = computed(() => {
   // two-start week can't inflate a roster's strength. Falls back to season totals
   // until weeks-left resolves (same order mid-season anyway).
   const wl = trajectory.weeksLeft.value
-  const model = buildPointsTeam(pool.value, fgByKey.value, scoring.weights.value, myTeamKey.value, rosterSlots.value, {
+  const model = buildPointsTeam(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value, {
     basis: wl > 0 ? 'perWeek' : 'total',
     weeksLeft: wl,
   })
