@@ -23,6 +23,7 @@ export interface RosterBody {
   name: string
   position: string
   points: number
+  perGame?: number // optional — callers that don't need the football per-week display can omit it
   side: PointsSide
   onIL?: boolean // an IL body frees only an IL slot, so it can't be the drop for an active add
 }
@@ -32,6 +33,7 @@ export interface Swap {
   dropName: string
   dropPos: string
   dropPoints: number
+  dropPerGame: number
   upgrade: number // add.points − drop.points (rest-of-season)
 }
 
@@ -124,7 +126,9 @@ export function buildPointsWire(
       const drop = add.side === 'hit' ? wHit : wPit
       if (!drop) return null
       const upgrade = add.points - drop.points
-      return upgrade > 0 ? { add, dropName: drop.name, dropPos: drop.position, dropPoints: drop.points, upgrade } : null
+      return upgrade > 0
+        ? { add, dropName: drop.name, dropPos: drop.position, dropPoints: drop.points, dropPerGame: drop.perGame ?? 0, upgrade }
+        : null
     })
     .filter((s): s is Swap => s !== null)
     .sort((a, b) => b.upgrade - a.upgrade)

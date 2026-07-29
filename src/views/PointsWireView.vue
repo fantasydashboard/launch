@@ -5,7 +5,7 @@ import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
 import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
 import { useAvailablePlayers } from '@/composables/useAvailablePlayers'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
-import { buildPointsWire, type WireAdd } from '@/myteam/pointsWire'
+import { buildPointsWire, type Swap } from '@/myteam/pointsWire'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
@@ -13,6 +13,7 @@ import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
 const leagueStore = useLeagueStore()
 const isEspn = computed(() => leagueStore.activePlatform === 'espn')
+const isFootball = computed(() => leagueStore.activeSport === 'football')
 
 const yahooLeague = useYahooLeaguePool()
 const espnPoints = useEspnPointsTeamData()
@@ -62,7 +63,7 @@ const freeAgents = computed(() => {
 // Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
 // Free agents are fed in too so football FAs (not in the rostered pool) resolve through valueOf.
 const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
-const { valueByKey, valueOf } = usePointsValue({
+const { valueByKey, valueOf, loading: valueLoading } = usePointsValue({
   pool,
   fgByKey,
   sport: computed(() => leagueStore.activeSport),
@@ -75,7 +76,9 @@ const teamModel = computed(() => {
   return buildPointsTeam(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value)
 })
 const rosterBodies = computed(() =>
-  (teamModel.value?.rosterRows ?? []).map((r) => ({ name: r.player.name, position: r.player.position, points: r.points, side: r.side, onIL: r.player.onIL })),
+  (teamModel.value?.rosterRows ?? []).map((r) => ({
+    name: r.player.name, position: r.player.position, points: r.points, perGame: r.perGame, side: r.side, onIL: r.player.onIL,
+  })),
 )
 const wire = computed(() => {
   if (!freeAgents.value.length) return null
@@ -86,6 +89,10 @@ const wire = computed(() => {
 const drops = computed(() => [...(teamModel.value?.rosterRows ?? [])].sort((a, b) => a.points - b.points).slice(0, 5))
 
 const round = (n: number) => Math.round(n)
+// Football's currency is per-week; baseball's is rest-of-season. Both the drop's
+// points and the swap's upgrade need the same basis so the two stay comparable.
+const dropDisplay = (s: Swap) => (isFootball.value ? s.dropPerGame : s.dropPoints)
+const upgradeDisplay = (s: Swap) => (isFootball.value ? s.add.perGame - s.dropPerGame : s.upgrade)
 // Injury badge (health) — separate from the onIL reserve-slot mechanic below, so a discounted
 // but still-active injured body (DTD / status-only IL) isn't captioned as merely "lowest projected".
 const injuryBadge = (injury: string) =>
@@ -93,7 +100,11 @@ const injuryBadge = (injury: string) =>
   : injury === 'dtd' ? { label: 'DTD', cls: 'bg-amber-500/15 text-amber-400' }
   : null
 const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none')
-const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooLeague.loading.value || avail.loading.value))
+// OR in usePointsValue's own loading (baseball's matchFG lands async, after the
+// pool/free-agent fetch resolves) — otherwise the wire can flash empty for a beat.
+const loading = computed(
+  () => (isEspn.value ? espnPoints.loading.value : yahooLeague.loading.value || avail.loading.value) || valueLoading.value,
+)
 </script>
 
 <template>
@@ -121,12 +132,12 @@ const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooL
                 <span class="text-[11px] text-dark-textMuted"> {{ s.add.player.position }} · {{ s.add.player.team }}</span>
               </span>
               <span class="block text-xs text-dark-textMuted">
-                <span class="font-mono text-[10px] uppercase">drop</span> {{ s.dropName }} <span class="opacity-60">({{ round(s.dropPoints) }})</span>
+                <span class="font-mono text-[10px] uppercase">drop</span> {{ s.dropName }} <span class="opacity-60">({{ round(dropDisplay(s)) }})</span>
               </span>
             </span>
             <span class="shrink-0 text-right">
-              <span class="font-mono text-sm font-bold text-primary">+{{ round(s.upgrade) }}</span>
-              <span class="block font-mono text-[9px] uppercase text-dark-textMuted">pts ROS</span>
+              <span class="font-mono text-sm font-bold text-primary">+{{ round(upgradeDisplay(s)) }}</span>
+              <span class="block font-mono text-[9px] uppercase text-dark-textMuted">{{ isFootball ? 'pts/wk' : 'pts ROS' }}</span>
             </span>
           </div>
         </template>
@@ -150,7 +161,7 @@ const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooL
               </span>
             </span>
             <span class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary">{{ r.startsThisWeek }} starts</span>
-            <span class="w-12 shrink-0 text-right font-mono text-sm text-dark-text">{{ round(r.points) }}</span>
+            <span class="w-12 shrink-0 text-right font-mono text-sm text-dark-text">{{ round(isFootball ? r.perGame : r.points) }}</span>
           </div>
         </template>
 
@@ -167,7 +178,7 @@ const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooL
             </span>
             <span v-for="c in r.chips" :key="c" class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary">{{ c }}</span>
             <span class="shrink-0 rounded bg-dark-border/50 px-1.5 py-0.5 font-mono text-[10px] text-dark-textMuted">{{ r.gamesThisWeek }} games</span>
-            <span class="w-12 shrink-0 text-right font-mono text-sm text-dark-text">{{ round(r.points) }}</span>
+            <span class="w-12 shrink-0 text-right font-mono text-sm text-dark-text">{{ round(isFootball ? r.perGame : r.points) }}</span>
           </div>
         </template>
       </section>
@@ -191,8 +202,9 @@ const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooL
               </span>
               <span v-for="c in r.chips" :key="c" class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary">{{ c }}</span>
               <span class="w-16 shrink-0 text-right">
-                <span class="font-mono text-sm font-semibold text-dark-text">{{ round(r.points) }}</span>
-                <span class="ml-1 font-mono text-[10px] text-dark-textMuted">{{ r.perGame.toFixed(1) }}/g</span>
+                <span class="font-mono text-sm font-semibold text-dark-text">{{ round(isFootball ? r.perGame : r.points) }}</span>
+                <span v-if="!isFootball" class="ml-1 font-mono text-[10px] text-dark-textMuted">{{ r.perGame.toFixed(1) }}/g</span>
+                <span v-else class="ml-1 font-mono text-[10px] text-dark-textMuted">/wk</span>
               </span>
             </div>
           </template>
@@ -211,7 +223,7 @@ const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooL
               <span class="ml-1 text-[11px] text-dark-textMuted/70">{{ r.player.onIL ? "won't free an active spot" : 'lowest projected' }}</span>
             </span>
             <span class="font-mono text-[10px] uppercase text-dark-textMuted">{{ r.tier }}</span>
-            <span class="w-12 shrink-0 text-right font-mono text-sm text-dark-textMuted">{{ round(r.points) }}</span>
+            <span class="w-12 shrink-0 text-right font-mono text-sm text-dark-textMuted">{{ round(isFootball ? r.perGame : r.points) }}</span>
           </div>
         </template>
         <p class="mt-3 font-mono text-[10px] text-dark-textMuted">your lowest-projecting rostered bodies — cut one of these for an add above</p>

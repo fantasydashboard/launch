@@ -9,7 +9,6 @@ import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
 import type { OutlookTeamMeta } from '@/myteam/seasonOutlook'
-import { projectPlayerPoints } from '@/myteam/pointsValue'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
 const route = useRoute()
@@ -17,6 +16,7 @@ const leagueStore = useLeagueStore()
 const showAudit = computed(() => route.query.ptsaudit != null)
 
 const isEspn = computed(() => leagueStore.activePlatform === 'espn')
+const isFootball = computed(() => leagueStore.activeSport === 'football')
 
 const yahooLeague = useYahooLeaguePool()
 const espnPoints = useEspnPointsTeamData()
@@ -134,7 +134,12 @@ const verdict = computed(() => {
   return { best, worst }
 })
 
-const hasProj = (key: string) => !!fgByKey.value[key]
+// Sport-agnostic "was this player actually matched to a projection" check —
+// weeklyCap is 0 only for ZERO_VALUE (unmatched), and always >0 for a real
+// baseball (6.5 / 1.3 / 3.5) or football (999) match. Reading fgByKey directly
+// here would always read empty for football (it's baseball-only FanGraphs
+// data), hiding every football roster row behind "no projection".
+const hasProj = (key: string) => (valueByKey.value[key]?.weeklyCap ?? 0) > 0
 
 const ord = (n: number) => {
   const s = ['th', 'st', 'nd', 'rd'], v = n % 100
@@ -176,7 +181,7 @@ const auditRows = computed(() => {
     side: r.side,
     points: round(r.points),
     perGame: r.perGame.toFixed(1),
-    perStat: Object.entries(projectPlayerPoints(fgByKey.value[r.player.playerKey], scoring.weights.value).perStat)
+    perStat: Object.entries(valueByKey.value[r.player.playerKey]?.perStat ?? {})
       .map(([k, v]) => `${k} ${v > 0 ? '+' : ''}${round(v)}`)
       .join('  '),
     injury: r.injury,
@@ -377,8 +382,9 @@ const injuredCount = computed(() =>
               <span v-if="!hasProj(row.player.playerKey)"
                 class="ml-auto shrink-0 font-mono text-[11px] italic text-dark-textMuted/50">no projection</span>
               <span v-else class="ml-auto flex shrink-0 items-baseline gap-1.5">
-                <span class="font-mono text-sm font-semibold text-dark-text">{{ round(row.points) }}</span>
-                <span class="font-mono text-[10px] text-dark-textMuted">{{ row.perGame.toFixed(1) }}/g</span>
+                <span class="font-mono text-sm font-semibold text-dark-text">{{ round(isFootball ? row.perGame : row.points) }}</span>
+                <span v-if="!isFootball" class="font-mono text-[10px] text-dark-textMuted">{{ row.perGame.toFixed(1) }}/g</span>
+                <span v-else class="font-mono text-[10px] text-dark-textMuted">/wk</span>
               </span>
             </div>
           </template>

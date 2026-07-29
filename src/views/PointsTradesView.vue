@@ -12,6 +12,7 @@ import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
 const leagueStore = useLeagueStore()
 const isEspn = computed(() => leagueStore.activePlatform === 'espn')
+const isFootball = computed(() => leagueStore.activeSport === 'football')
 
 const yahooLeague = useYahooLeaguePool()
 const espnPoints = useEspnPointsTeamData()
@@ -71,6 +72,15 @@ function heatClass(rank: number, teams: number): string {
 }
 
 const round = (n: number) => Math.round(n)
+// Football's headline currency is per-week, not season total — TradeSide only
+// carries the season total, so look the per-week rate up from valueByKey
+// (same PlayerValue every points engine already reads) rather than plumbing a
+// second field through pointsTrades.ts.
+const perGameOf = (key: string): number => {
+  const v = valueByKey.value[key]
+  return v && v.games > 0 ? v.total / v.games : 0
+}
+const tradePoints = (key: string, seasonTotal: number) => (isFootball.value ? perGameOf(key) : seasonTotal)
 const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none')
 // Fairness read: who the deal favors, by comparing the two lineup gains honestly.
 function fairness(myGain: number, theirGain: number): string {
@@ -135,7 +145,7 @@ function fairness(myGain: number, theirGain: number): string {
               <span class="flex items-center gap-1 text-[11px] text-dark-textMuted">
                 {{ idea.get.position }} ·
                 <img :src="mlbTeamLogo(idea.get.proTeam)" alt="" @error="onLogoErr" class="h-3 w-3 object-contain" />{{ idea.get.proTeam }} ·
-                {{ round(idea.get.points) }} pts
+                {{ round(tradePoints(idea.get.playerKey, idea.get.points)) }} {{ isFootball ? 'pts/wk' : 'pts' }}
               </span>
             </span>
           </div>
@@ -152,7 +162,7 @@ function fairness(myGain: number, theirGain: number): string {
               <span class="flex flex-row-reverse items-center gap-1 text-[11px] text-dark-textMuted">
                 {{ idea.give.position }} ·
                 <img :src="mlbTeamLogo(idea.give.proTeam)" alt="" @error="onLogoErr" class="h-3 w-3 object-contain" />{{ idea.give.proTeam }} ·
-                {{ round(idea.give.points) }} pts
+                {{ round(tradePoints(idea.give.playerKey, idea.give.points)) }} {{ isFootball ? 'pts/wk' : 'pts' }}
               </span>
             </span>
           </div>
