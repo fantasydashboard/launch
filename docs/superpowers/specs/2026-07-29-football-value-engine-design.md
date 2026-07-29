@@ -31,55 +31,67 @@ Approach A — **normalized value provider**. All sport-specific projection logi
 
 ### §1 — Normalized value interface
 
-New file `src/myteam/playerValue.ts`:
+New file `src/myteam/playerValue.ts`. `PlayerValue` carries the **raw rest-of-season ingredients** every engine needs — not a pre-resolved basis — because different engines consume different bases *simultaneously* (matchup needs season-total AND per-game; tiers need total while lineup value can switch to per-week). Basis math stays downstream, but sourced entirely from `PlayerValue` (no raw `FGProjection`), which is what makes the engines sport-agnostic.
 
 ```ts
+import type { PointsSide } from '@/myteam/pointsValue'  // 'hit' | 'pit'
+
 export interface PlayerValue {
-  total: number                    // ranking number, already resolved to the view's basis
+  total: number                    // projected rest-of-season fantasy points
+  games: number                    // projected games (→ perGame = total / games)
   perStat: Record<string, number>  // unified stat key → points contributed (audit panel)
-  side?: 'batter' | 'pitcher'      // baseball only; undefined ⇒ football
-  games?: number                   // projected games remaining (baseball detail)
+  side?: PointsSide                // baseball 'hit'|'pit'; undefined ⇒ football (no side split)
+  weeklyCap: number                // games-per-week ceiling for weeklyRate (baseball role-based; football set high so it never binds)
 }
 export type ValueByKey = Record<string, PlayerValue>
 ```
 
-`PlayerValue` generalizes the existing `PlayerPoints` (`side`/`games` become optional). `FGProjection` is untouched.
+`PlayerValue` is what `projectPlayerPoints` already produces (`total`/`perStat`/`side`/`games`) **plus** a precomputed `weeklyCap` and an optional `side`. `FGProjection` is untouched. `weeklyCap` folds the one thing `weeklyRate` currently reads off raw `fg` (the pitcher starter-vs-reliever flag: `6.5` hitters, `1.3` starters, `3.5` relievers) into the value object, so `weeklyRate` no longer needs `fg`.
 
-### §2 — Edge builders (basis resolved at the edge)
+### §2 — Edge builders + `weeklyRate` on `PlayerValue`
 
-Two builders, both emitting `ValueByKey`. **Basis (total vs per-week) is resolved here**, so no downstream engine does basis math — it ranks by `.total`.
+Two builders emit `ValueByKey`; the shared `weeklyRate` helper is refactored to read a `PlayerValue` instead of `(PlayerPoints, fg)`:
 
-- `buildBaseballValue(fgByKey, weights, opts: { basis: 'total' | 'perWeek'; weeksLeft: number }): ValueByKey`
-  Wraps the existing `projectPlayerPoints` and the current per-week / pitcher-cadence logic (`weeklyRate`), emitting `PlayerValue` with `side` and `games` populated. Must produce numbers **identical** to today's baseball path (no-regression tests enforce this).
+```ts
+export function weeklyRate(v: PlayerValue, weeksLeft: number): number {
+  if (v.games <= 0 || v.total === 0) return 0
+  const wl = Math.max(1, weeksLeft)
+  return (v.total / v.games) * Math.min(v.games / wl, v.weeklyCap)
+}
+```
 
-- `buildFootballValue(projByKey: Record<string, FootballProjection>, opts: { weeksLeft: number }): ValueByKey`
-  From `FootballProjection { stats, points }`: `total = points / max(1, weeksLeft)` (per-week); `perStat` derived from `stats`; `side` and `games` undefined.
+- `buildBaseballValue(fgByKey, weights): ValueByKey` — per key: `projectPlayerPoints(fg, weights)` → `PlayerValue` with `weeklyCap` computed from the same `gs/gp` starter logic `weeklyRate` uses today. Numbers **identical** to today's baseball path (no-regression tests enforce this). No basis/`weeksLeft` arg — basis stays in the engines.
+- `buildFootballValue(projByKey: Record<string, FootballProjection>, weeksLeft): ValueByKey` — per key: `total = points` (ROS), `games = max(1, weeksLeft)` (each NFL player plays ~once/week, so `perGame = total/games` **is** the per-week average — the chosen football currency), `perStat` from `stats`, `side = undefined`, `weeklyCap = 999` (never binds; ranking by `.total` is order-identical to per-week since `weeksLeft` is uniform across NFL players).
 
 ### §3 — Downstream swap + neutralized baseball concepts
 
-The ~9 consumers swap their `fgByKey: Record<string, FGProjection | null>` (+ `weights`, + basis args where present) for a single `valueByKey: ValueByKey`:
+The consumers swap their `fgByKey: Record<string, FGProjection | null>` + `weights` params for a single `valueByKey: ValueByKey`, and read `valueByKey[key]` where they used to call `projectPlayerPoints(fgByKey[key], weights)`:
 
-`buildPointsTeam`, `buildPointsMatchup`, `buildPointsWire`, `buildPointsTrades`, `buildPointsTradeLandscape`, `pointsPositional`, `today/pointsRosValue`, `today/pointsDailyValue`, and the `?ptsaudit` panel in `PointsMyTeamView.vue`.
+`buildPointsTeam`, `buildPointsMatchup`, `buildPointsWire`, `buildPointsTrades`, `buildPointsTradeLandscape`, `buildPointsPositional`, `today/pointsRosValue`, `today/pointsDailyValue`, and the `?ptsaudit` panel in `PointsMyTeamView.vue`.
+
+`buildPointsTeam` keeps its `opts: { basis; weeksLeft }` and calls the new `weeklyRate(valueByKey[key], weeksLeft)` for the `perWeek` branch (no more raw `fg`). All other engines are pure `.total` / `perGame` consumers and drop `weights` entirely.
 
 Baseball-only reads become optional-guarded on `side`:
-- `side === undefined` ⇒ skip the batter/pitcher split.
-- No `side` ⇒ no SB/SV/HLD specialist chips (`SPECIALIST_STATS`).
-- No `side` ⇒ generic slot ordering (skip `PITCHER_SLOTS` special-casing).
+- `side === undefined` ⇒ one combined ranking group instead of the batter/pitcher (`['hit','pit']`) split.
+- No `side` ⇒ no SB/SV/HLD/QS specialist chips.
+- No `side` ⇒ generic slot ordering (players flow through the non-pitcher path; `PITCHER_SLOTS` set is empty for football rosters anyway).
 
-`weeklyRate(pp, fg, weeksLeft)` stays a **baseball-internal** helper called only from `buildBaseballValue` (which has `fg` in scope). It is no longer called by any downstream engine — per-week is already baked into `.total` at the edge, so downstream engines never touch raw `fg` or basis math again.
+There are no `if (football)` branches — absence of `side` is the only signal.
 
-`pointsWire`'s separate `matchFG` free-agent entry point (`buildPointsWire(freeAgents, matchFG, …)`) gets a parallel value-producing signature so football free agents score through the same `buildFootballValue` path.
+`pointsWire`'s separate `matchFG` free-agent entry point (`buildPointsWire(freeAgents, matchFG, …)`) is refactored to take a `valueOf: (fa) => PlayerValue | null` resolver so football free agents score through the same `buildFootballValue` path. The two `today/` helpers (`pointsRosValue`, `pointsDailyValue`) get the same `valueOf`-resolver treatment.
+
+**Matchup schedule coupling (scope boundary):** `buildPointsMatchup` derives its *weekly* figures from an MLB schedule (`schedule.gamesByTeam`, two-start pitchers, reliever appearances). Its value sourcing becomes sport-generic in this phase (reads `valueByKey`, guards `side`), so it compiles and works unchanged for baseball, and for football renders **season-total lineup strength** (`startingPoints`) without crashing. Football's true NFL-schedule-driven weekly matchup — one game per team, no two-start logic — lands in **Phase 4** alongside the weekly start/sit tab and the NFL schedule feed. This phase does not build an NFL schedule.
 
 ### §4 — Sport dispatch in the ESPN and Yahoo sources
 
-Both `useEspnPointsTeamData` and `useYahooLeaguePool` gain a football branch and expose `valueByKey` (replacing `fgByKey`):
+Both `useEspnPointsTeamData` and `useYahooLeaguePool` gain a football branch and expose a new `valueByKey` ref **alongside** the existing `fgByKey` (kept for the category engine and other consumers; the points views switch to `valueByKey`):
 
-- **Baseball branch (unchanged behavior):** build `fgByKey` as today via `buildPlayerMatchers()` + `matchFG`, then `buildBaseballValue(fgByKey, weights, { basis, weeksLeft })`.
-- **Football branch:** roster players (name + position + proTeam) → Sleeper NFL projections via the Phase-1 `buildFootballProjectionsByKey` name+position match → `buildFootballValue(projByKey, { weeksLeft })`, keyed by the platform's own `playerKey`.
+- **Baseball branch (unchanged behavior):** build `fgByKey` as today via `buildPlayerMatchers()` + `matchFG`, then `valueByKey = buildBaseballValue(fgByKey, weights)`. Weights come from `useLeagueScoring()`, which each view already loads; the composables read the same scoring so the value is built once at the source. (`weeklyRate`'s `weeksLeft` is applied later, in the engines, exactly as today.)
+- **Football branch:** roster players (name + position + proTeam) → Sleeper NFL projections via the Phase-1 `buildFootballProjectionsByKey` name+position match → `valueByKey = buildFootballValue(projByKey, weeksLeft)`, keyed by the platform's own `playerKey`. `weeksLeft` from `usePowerTrajectory()` (the existing `end_week − current_week + 1`).
 - Sport is chosen from `leagueStore.activeSport === 'football'`.
-- Football scoring = `football.ts` defaults (v1).
+- Football scoring = `football.ts` defaults (v1); a `defaultWeights('football')` overload in `pointsScoring.ts` returns `footballConfig.pointsConfig.defaults`.
 
-Views: the `fgByKey` computed becomes a `valueByKey` computed (`isEspn ? espn.valueByKey : yahoo.valueByKey`); `buildPointsTeam` etc. receive `valueByKey`; the audit panel reads `value.perStat`.
+Views: the `fgByKey` computed feeding the points engines becomes a `valueByKey` computed (`isEspn ? espn.valueByKey : yahoo.valueByKey`); `buildPointsTeam` etc. receive `valueByKey`; the audit panel reads `valueByKey[key].perStat`. **Football per-week display:** the views already surface `perGame` (`total/games`); for football `games = weeksLeft`, so `perGame` **is** the per-week average — the headline number for football skill players.
 
 ### §5 — Data flow
 
@@ -100,8 +112,8 @@ activeSport === 'baseball'                                                   ▼
 
 ## Error handling
 
-- Missing projection for a player ⇒ omitted from `valueByKey` (already how unmatched players behave; downstream treats a missing key as "no projection", same as today's `!fgByKey[key]`).
-- `weeksLeft <= 0` ⇒ clamp to 1 (avoid divide-by-zero in per-week).
+- Missing projection for a player ⇒ absent from `valueByKey`; engines that index `valueByKey[key]` must treat a missing entry as a zero-value player (`total: 0, games: 0, perStat: {}, side: undefined, weeklyCap: 0`) so a projection-less player scores 0 rather than throwing — matching today's `projectPlayerPoints(null, …)` behavior.
+- `weeksLeft <= 0` ⇒ clamp to 1 (avoid divide-by-zero in `weeklyRate` and in football `games = max(1, weeksLeft)`).
 - Yahoo football branch runs but returns empty while Yahoo API access is revoked; the existing outage banner already covers the user-facing state.
 
 ## Testing
@@ -113,8 +125,12 @@ activeSport === 'baseball'                                                   ▼
 
 ## Files
 
-- **Create:** `src/myteam/playerValue.ts` (interface + `buildBaseballValue` + `buildFootballValue`), `src/myteam/__tests__/playerValue.test.ts`.
-- **Modify (downstream swap):** `pointsTeam.ts`, `pointsMatchup.ts`, `pointsWire.ts`, `pointsTrades.ts`, `pointsTradeLandscape.ts`, `league/pointsPositional.ts`, `today/pointsRosValue.ts`, `today/pointsDailyValue.ts`, and their tests.
-- **Modify (sources):** `useEspnPointsTeamData.ts`, `useYahooLeaguePool.ts`.
-- **Modify (views):** `PointsMyTeamView.vue`, `PointsMatchupView.vue`, `PointsWireView.vue`, `PointsTradesView.vue`.
-- **Touch (value math):** `pointsValue.ts` (generalize `PlayerPoints`→`PlayerValue`, drop raw-`fg` from `weeklyRate`).
+- **Create:** `src/myteam/playerValue.ts` (`PlayerValue`/`ValueByKey` + `buildBaseballValue` + `buildFootballValue` + the new `weeklyRate(v, weeksLeft)`), `src/myteam/__tests__/playerValue.test.ts`.
+- **Modify (value math):** `pointsValue.ts` — move `weeklyRate` out (or re-export from `playerValue.ts`); `projectPlayerPoints` keeps producing `PlayerPoints` (baseball edge builder consumes it and adds `weeklyCap`/`side`).
+- **Modify (downstream swap — `fgByKey`+`weights` → `valueByKey`):** `pointsTeam.ts`, `pointsMatchup.ts`, `pointsWire.ts` (incl. `matchFG`→`valueOf` resolver), `pointsTrades.ts`, `pointsTradeLandscape.ts`, `league/pointsPositional.ts`, `today/pointsRosValue.ts`, `today/pointsDailyValue.ts`, and their tests.
+- **Modify (other `buildPointsTeam` callers — must migrate to `valueByKey` in the same swap):** `useSeasonOutlook.ts`, `useToday.ts`, `PowerRankingsRedesignView.vue`, `LeagueView.vue` (these pass `fgByKey`+`weights` today; the ripple is unavoidable but mechanical — each already has a `valueByKey` available from its source composable). These views are **baseball-behavior-preserving only** — no football wiring in this phase, just the signature migration.
+- **Modify (scoring):** `pointsScoring.ts` — `defaultWeights(sport = 'baseball')` returns `footballConfig.pointsConfig.defaults` for football.
+- **Modify (sources):** `useEspnPointsTeamData.ts`, `useYahooLeaguePool.ts` — add `valueByKey` ref + football branch.
+- **Modify (points views):** `PointsMyTeamView.vue`, `PointsMatchupView.vue`, `PointsWireView.vue`, `PointsTradesView.vue` — feed `valueByKey`; football per-week display via `perGame`.
+
+**Build-green strategy:** because `buildPointsTeam` (and the other engines) have callers beyond the 4 points views, each engine's signature swap must land **together with all its call sites** in the same task, so `npm run build` stays green after every task. Task order below is arranged accordingly.
