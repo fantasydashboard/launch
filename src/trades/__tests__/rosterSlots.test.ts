@@ -50,3 +50,55 @@ describe('parseRosterSlots', () => {
     expect(FLEX_ELIGIBILITY.P).toEqual(expect.arrayContaining(['SP', 'RP']))
   })
 })
+
+describe('parseRosterSlots — football', () => {
+  it('ESPN football: numeric lineupSlotCounts → NFL roster shape (bench excluded)', () => {
+    const settings = {
+      rosterSettings: { lineupSlotCounts: { '0': 1, '2': 2, '4': 2, '6': 1, '23': 1, '16': 1, '17': 1, '20': 6 } },
+    }
+    expect(parseRosterSlots('espn', settings, 'football')).toEqual({
+      QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, DEF: 1, K: 1,
+    })
+  })
+
+  it('Sleeper football: roster_positions labels → NFL roster shape (BN/IR/TAXI excluded)', () => {
+    const settings = {
+      roster_positions: ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'K', 'DEF', 'BN', 'BN', 'IR', 'TAXI'],
+    }
+    expect(parseRosterSlots('sleeper', settings, 'football')).toEqual({
+      QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, K: 1, DEF: 1,
+    })
+  })
+
+  it('Sleeper football: flex aliases normalize to FLEX / SUPER_FLEX', () => {
+    const settings = { roster_positions: ['QB', 'WRRB_FLEX', 'REC_FLEX', 'SUPER_FLEX'] }
+    expect(parseRosterSlots('sleeper', settings, 'football')).toEqual({
+      QB: 1, FLEX: 2, SUPER_FLEX: 1,
+    })
+  })
+
+  it('Yahoo football: position labels incl. W/R/T flex → FLEX', () => {
+    const settings = {
+      roster_positions: [
+        { roster_position: { position: 'QB', count: 1 } },
+        { roster_position: { position: 'RB', count: 2 } },
+        { roster_position: { position: 'WR', count: 2 } },
+        { roster_position: { position: 'TE', count: 1 } },
+        { roster_position: { position: 'W/R/T', count: 1 } },
+        { roster_position: { position: 'Q/W/R/T', count: 1 } },
+        { roster_position: { position: 'K', count: 1 } },
+        { roster_position: { position: 'DEF', count: 1 } },
+        { roster_position: { position: 'BN', count: 5 } },
+      ],
+    }
+    expect(parseRosterSlots('yahoo', settings, 'football')).toEqual({
+      QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SUPER_FLEX: 1, K: 1, DEF: 1,
+    })
+  })
+
+  it('football fallback when settings are empty', () => {
+    expect(parseRosterSlots('sleeper', null, 'football')).toEqual({
+      QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, K: 1, DEF: 1,
+    })
+  })
+})
