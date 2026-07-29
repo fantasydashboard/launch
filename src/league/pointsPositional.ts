@@ -1,6 +1,5 @@
-import { projectPlayerPoints } from '@/myteam/pointsValue'
 import { parseEligible, type PointsPoolPlayer } from '@/myteam/pointsTeam'
-import type { FGProjection } from '@/services/projectionService'
+import type { ValueByKey } from '@/myteam/playerValue'
 
 const POSITIONS = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
 
@@ -21,11 +20,10 @@ export interface PositionalGrid {
  *  league — the points-league analog of the category landscape. */
 export function buildPointsPositional(
   pool: PointsPoolPlayer[],
-  fgByKey: Record<string, FGProjection | null>,
-  weights: Record<string, number>,
+  valueByKey: ValueByKey,
   teamKeys: string[],
 ): PositionalGrid {
-  const ptsOf = (key: string) => projectPlayerPoints(fgByKey[key], weights).total
+  const ptsOf = (key: string) => valueByKey[key]?.total ?? 0
   const positions: PosRow[] = POSITIONS.map((pos) => {
     const best = new Map<string, number>()
     for (const p of pool) {

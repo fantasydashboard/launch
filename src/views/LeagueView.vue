@@ -211,7 +211,7 @@ const pointsOrderedTeamKeys = computed<string[]>(() => {
 
 const pointsPositional = computed(() => {
   if (!pool.value.length) return null
-  return buildPointsPositional(pool.value, fgByKey.value, scoring.weights.value, pointsOrderedTeamKeys.value)
+  return buildPointsPositional(pool.value, valueByKey.value, pointsOrderedTeamKeys.value)
 })
 
 // ── LOADING ───────────────────────────────────────────────────────────────────
