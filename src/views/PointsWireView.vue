@@ -87,7 +87,7 @@ const injuryBadge = (injury: string) =>
 const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none')
 // OR in usePointsValue's own loading (baseball's matchFG lands async, after the
 // pool/free-agent fetch resolves) — otherwise the wire can flash empty for a beat.
-const loading = computed(() => source.loading.value || valueLoading.value)
+const loading = computed(() => source.loading.value || source.freeAgentsLoading.value || valueLoading.value)
 </script>
 
 <template>

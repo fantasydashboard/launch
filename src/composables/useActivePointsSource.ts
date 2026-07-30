@@ -43,6 +43,7 @@ export interface ActivePointsSource {
   teamNames: ComputedRef<Record<string, string>>
   teamMeta: ComputedRef<Record<string, OutlookTeamMeta>>
   freeAgents: ComputedRef<AvailablePlayer[]>
+  freeAgentsLoading: ComputedRef<boolean>
   load: () => void
   loadFreeAgents: (count?: number) => void
 }
@@ -92,6 +93,10 @@ export function useActivePointsSource(): ActivePointsSource {
   const freeAgents = computed<AvailablePlayer[]>(() =>
     isEspn.value ? (espn.freeAgents.value as any) : isSleeper.value ? sleeper.freeAgents.value : avail.players.value,
   )
+  // ESPN loads FAs inside its own load()/loading; Sleeper derives them synchronously —
+  // so only Yahoo has a separate FA-loading window (avail.load w/ retry/backoff) that can
+  // still be running after yahoo.loading flips false.
+  const freeAgentsLoading = computed(() => (!isEspn.value && !isSleeper.value ? avail.loading.value : false))
 
   function load() {
     if (isEspn.value) espn.load()
@@ -102,5 +107,5 @@ export function useActivePointsSource(): ActivePointsSource {
     if (!isEspn.value && !isSleeper.value) avail.load(count)
   }
 
-  return { pool, fgByKey, rosterSlots, loading, myTeamKey, myTeamName, myTeamLogo, myRecord, teamNames, teamMeta, freeAgents, load, loadFreeAgents }
+  return { pool, fgByKey, rosterSlots, loading, myTeamKey, myTeamName, myTeamLogo, myRecord, teamNames, teamMeta, freeAgents, freeAgentsLoading, load, loadFreeAgents }
 }
