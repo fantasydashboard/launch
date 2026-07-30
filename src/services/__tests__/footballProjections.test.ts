@@ -41,17 +41,15 @@ describe('sumWeekProjections', () => {
 describe('fetchSeasonProjectionStats', () => {
   afterEach(() => vi.restoreAllMocks())
 
-  it('sums the NORMALIZED weekly maps from getWeekProjections across the range', async () => {
-    const spy = vi.spyOn(sleeperService, 'getWeekProjections').mockImplementation(
-      async (_sport: string, _season: string, week: number) =>
-        week === 1
-          ? { '100': { pass_yd: 250, pass_td: 2 } }
-          : { '100': { pass_yd: 300, pass_td: 1 } },
-    )
-    const out = await fetchSeasonProjectionStats('2026', 1, 2)
-    expect(spy).toHaveBeenCalledWith('football', '2026', 1)
-    expect(spy).toHaveBeenCalledWith('football', '2026', 2)
-    expect(out['100'].pass_yd).toBe(550)
-    expect(out['100'].pass_td).toBe(3)
+  it('uses the SEASON endpoint (no summing) and filters to statKeys', async () => {
+    const spy = vi.spyOn(sleeperService, 'getSeasonProjections').mockResolvedValue({
+      '100': { rec: 80, rec_yd: 1189, pass_yd: 4008, junk: 5 },
+    })
+    const out = await fetchSeasonProjectionStats('2026')
+    expect(spy).toHaveBeenCalledWith('football', '2026')
+    expect(out['100'].rec).toBe(80)
+    expect(out['100'].rec_yd).toBe(1189)
+    expect(out['100'].pass_yd).toBe(4008)
+    expect(out['100'].junk).toBeUndefined()
   })
 })

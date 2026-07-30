@@ -11,7 +11,7 @@ import {
 /**
  * The football fgByKey analog. Given the active league's players, its scoring settings,
  * and the season, produces Record<playerKey, { stats, points }> from Sleeper NFL
- * projections summed over the rest of the season. `enabled` gates it to football leagues.
+ * full-season projections. `enabled` gates it to football leagues.
  */
 export function useFootballProjections(inputs: {
   players: Ref<ProjPlayer[]>
@@ -30,11 +30,9 @@ export function useFootballProjections(inputs: {
     loading.value = true
     try {
       const state = await sleeperService.getNflState()
-      const startWeek = Math.max(1, state.week || 1)
-      const endWeek = 18
       const season = inputs.season.value || state.season
       const [summed, playersMap] = await Promise.all([
-        fetchSeasonProjectionStats(season, startWeek, endWeek),
+        fetchSeasonProjectionStats(season),
         sleeperService.getPlayers(),
       ])
       const sleeperMeta: Record<string, SleeperPlayerMeta> = {}

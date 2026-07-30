@@ -661,6 +661,77 @@ class SleeperService {
   }
 
   /**
+   * Get SEASON (full-season, non-weekly) projections for any sport.
+   * Identical to getWeekProjections but hits the season-only endpoint (no week segment),
+   * which returns correct full-season totals in one call — robust to players who are
+   * missing projections in individual weeks (recently traded, injured, etc.), which
+   * would otherwise collapse a summed-weeks total to near-zero.
+   * Returns a map of player_id -> projected stats.
+   */
+  async getSeasonProjections(
+    sport: string,
+    season: string
+  ): Promise<Record<string, Record<string, number>>> {
+    // Map our sport names to Sleeper's API sport codes
+    const sportMap: Record<string, string> = {
+      'football': 'nfl',
+      'nfl': 'nfl',
+      'basketball': 'nba',
+      'nba': 'nba',
+      'baseball': 'mlb',
+      'mlb': 'mlb',
+      'hockey': 'nhl',
+      'nhl': 'nhl'
+    }
+    const sleeperSport = sportMap[sport] || sport
+
+    const cacheKey = `season_projections_${sleeperSport}_${season}`
+    const cached = cache.get<Record<string, Record<string, number>>>('sleeper_projections', cacheKey)
+    if (cached) return cached
+
+    try {
+      const url = `https://api.sleeper.app/projections/${sleeperSport}/${season}?season_type=regular`
+      const response = await fetch(url)
+      if (!response.ok) {
+        console.warn(`[Sleeper] Season projections endpoint returned ${response.status} for ${sleeperSport}`)
+        return {}
+      }
+      const data = await response.json()
+
+      // Data is either an array or object keyed by player_id
+      // Each entry has a `stats` object with stat projections
+      const projMap: Record<string, Record<string, number>> = {}
+
+      if (Array.isArray(data)) {
+        for (const entry of data) {
+          if (entry.player_id && entry.stats) {
+            projMap[entry.player_id] = entry.stats
+          }
+        }
+      } else if (typeof data === 'object' && data !== null) {
+        for (const [playerId, entry] of Object.entries(data)) {
+          const e = entry as any
+          if (e?.stats) {
+            projMap[playerId] = e.stats
+          } else if (typeof e === 'object' && e !== null) {
+            // Some endpoints return stats directly
+            projMap[playerId] = e
+          }
+        }
+      }
+
+      // Cache for 30 minutes
+      cache.set('sleeper_projections', projMap, 30 * 60 * 1000, cacheKey)
+
+      console.log(`[Sleeper] Got season projections for ${Object.keys(projMap).length} players (${sleeperSport} ${season})`)
+      return projMap
+    } catch (error) {
+      console.error('[Sleeper] getSeasonProjections failed', error)
+      return {}
+    }
+  }
+
+  /**
    * Calculate projected fantasy points for each team in a matchup week
    * Returns a map of roster_id -> projected points
    */

@@ -31,22 +31,22 @@ export function sumWeekProjections(
 }
 
 /**
- * Fetch Sleeper NFL weekly projections for [startWeek..endWeek] and sum into per-player
- * raw projected stats. A missing/failed week contributes nothing (getWeekProjections
- * returns {} on failure).
+ * Fetch Sleeper NFL SEASON projections (one call) → per-player raw projected stats,
+ * filtered to scoring-relevant keys. Uses the season endpoint (not per-week summing),
+ * which is robust to players missing individual weeks (traded/injured) — summing weeks
+ * collapsed such players to ~0.
  */
-export async function fetchSeasonProjectionStats(
-  season: string,
-  startWeek: number,
-  endWeek: number,
-): Promise<WeekProjections> {
-  const weeks: WeekProjections[] = []
-  for (let w = startWeek; w <= endWeek; w++) {
-    // getWeekProjections normalizes Sleeper's raw array/object response into a flat
-    // player_id -> stats map (extracting the nested `.stats`) and caches it — that
-    // normalized shape is what sumWeekProjections expects. (getAllWeekProjections
-    // returns the RAW array, which would accumulate nothing.)
-    weeks.push(await sleeperService.getWeekProjections('football', season, w))
+export async function fetchSeasonProjectionStats(season: string): Promise<WeekProjections> {
+  const raw = await sleeperService.getSeasonProjections('football', season)
+  const out: WeekProjections = {}
+  for (const [playerId, stats] of Object.entries(raw)) {
+    if (!stats || typeof stats !== 'object') continue
+    const acc: Record<string, number> = {}
+    for (const k of NFL_STAT_KEYS) {
+      const v = (stats as Record<string, number>)[k]
+      if (typeof v === 'number' && Number.isFinite(v)) acc[k] = v
+    }
+    out[playerId] = acc
   }
-  return sumWeekProjections(weeks)
+  return out
 }
