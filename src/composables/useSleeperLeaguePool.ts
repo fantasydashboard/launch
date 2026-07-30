@@ -53,6 +53,20 @@ export function buildSleeperTeamNames(rosters: SleeperRoster[], users: SleeperUs
   return out
 }
 
+// All-teams avatar map (not just "my team") — used by league-wide boards (Power
+// Rankings, League) that render every roster's logo, not only the viewer's own.
+export function buildSleeperTeamLogos(
+  rosters: SleeperRoster[],
+  users: SleeperUser[],
+  league: import('@/types/sleeper').SleeperLeague | null,
+): Record<string, string> {
+  if (!league) return {}
+  const userById = new Map(users.map((u) => [u.user_id, u]))
+  const out: Record<string, string> = {}
+  for (const r of rosters) out[String(r.roster_id)] = sleeperService.getAvatarUrl(r, userById.get(r.owner_id), league)
+  return out
+}
+
 export function buildSleeperTeamMeta(rosters: SleeperRoster[]): Record<string, OutlookTeamMeta> {
   const out: Record<string, OutlookTeamMeta> = {}
   for (const r of rosters) {
@@ -103,6 +117,7 @@ export function useSleeperLeaguePool(): {
   myRecord: ComputedRef<string>
   teamNames: ComputedRef<Record<string, string>>
   teamMeta: ComputedRef<Record<string, OutlookTeamMeta>>
+  teamLogos: ComputedRef<Record<string, string>>
   freeAgents: ComputedRef<AvailablePlayer[]>
   loading: ComputedRef<boolean>
   loaded: ComputedRef<boolean>
@@ -129,6 +144,7 @@ export function useSleeperLeaguePool(): {
   const myTeamKey = computed(() => sleeperMyTeamKey(leagueStore.rosters as any, leagueStore.currentUserId))
   const teamNames = computed(() => buildSleeperTeamNames(leagueStore.rosters as any, leagueStore.users as any))
   const teamMeta = computed(() => buildSleeperTeamMeta(leagueStore.rosters as any))
+  const teamLogos = computed(() => buildSleeperTeamLogos(leagueStore.rosters as any, leagueStore.users as any, leagueStore.currentLeague as any))
   const freeAgents = computed(() => buildSleeperFreeAgents(leagueStore.rosters as any, leagueStore.players as any))
 
   const myRoster = computed(() => (leagueStore.rosters as any as SleeperRoster[]).find((r) => r.owner_id === leagueStore.currentUserId))
@@ -155,5 +171,5 @@ export function useSleeperLeaguePool(): {
     if (!matchFG.value) buildPlayerMatchers().then((m) => { matchFG.value = m.matchFG })
   }
 
-  return { pool, fgByKey, rosterSlots, myTeamKey, myTeamName, myTeamLogo, myRecord, teamNames, teamMeta, freeAgents, loading, loaded, supported, load }
+  return { pool, fgByKey, rosterSlots, myTeamKey, myTeamName, myTeamLogo, myRecord, teamNames, teamMeta, teamLogos, freeAgents, loading, loaded, supported, load }
 }

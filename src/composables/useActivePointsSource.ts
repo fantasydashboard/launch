@@ -25,6 +25,9 @@ export function yahooTeamMeta(teams: any[]): Record<string, OutlookTeamMeta> {
   }
   return out
 }
+export function yahooTeamLogos(teams: any[]): Record<string, string> {
+  return Object.fromEntries((teams ?? []).map((t) => [String(t.team_key), String(t.logo_url ?? '')]))
+}
 export function espnTeamMeta(recs: Record<string, { wins: number; losses: number; ties: number; pointsFor: number }>): Record<string, OutlookTeamMeta> {
   const out: Record<string, OutlookTeamMeta> = {}
   for (const [k, r] of Object.entries(recs ?? {})) out[k] = { wins: r.wins, losses: r.losses, ties: r.ties, pointsFor: r.pointsFor }
@@ -42,6 +45,7 @@ export interface ActivePointsSource {
   myRecord: ComputedRef<string>
   teamNames: ComputedRef<Record<string, string>>
   teamMeta: ComputedRef<Record<string, OutlookTeamMeta>>
+  teamLogos: ComputedRef<Record<string, string>>
   freeAgents: ComputedRef<AvailablePlayer[]>
   freeAgentsLoading: ComputedRef<boolean>
   load: () => void
@@ -89,6 +93,9 @@ export function useActivePointsSource(): ActivePointsSource {
   const teamMeta = computed(() =>
     isEspn.value ? espnTeamMeta(espn.teamRecords.value) : isSleeper.value ? sleeper.teamMeta.value : yahooTeamMeta(leagueStore.yahooTeams as any),
   )
+  const teamLogos = computed(() =>
+    isEspn.value ? espn.teamLogos.value : isSleeper.value ? sleeper.teamLogos.value : yahooTeamLogos(leagueStore.yahooTeams as any),
+  )
 
   const freeAgents = computed<AvailablePlayer[]>(() =>
     isEspn.value ? (espn.freeAgents.value as any) : isSleeper.value ? sleeper.freeAgents.value : avail.players.value,
@@ -107,5 +114,5 @@ export function useActivePointsSource(): ActivePointsSource {
     if (!isEspn.value && !isSleeper.value) avail.load(count)
   }
 
-  return { pool, fgByKey, rosterSlots, loading, myTeamKey, myTeamName, myTeamLogo, myRecord, teamNames, teamMeta, freeAgents, freeAgentsLoading, load, loadFreeAgents }
+  return { pool, fgByKey, rosterSlots, loading, myTeamKey, myTeamName, myTeamLogo, myRecord, teamNames, teamMeta, teamLogos, freeAgents, freeAgentsLoading, load, loadFreeAgents }
 }

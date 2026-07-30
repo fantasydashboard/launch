@@ -2,8 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useCategoryStrength } from '@/composables/useCategoryStrength'
-import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
-import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
+import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { usePowerTrajectory } from '@/composables/usePowerTrajectory'
 import { useLeagueLandscape } from '@/composables/useLeagueLandscape'
@@ -26,11 +25,12 @@ const props = withDefaults(defineProps<{ scoring?: 'points' | 'category' }>(), {
 const isCategory = computed(() => props.scoring === 'category')
 
 const leagueStore = useLeagueStore()
+// isEspn is still needed by the category-strength managerless detection below (ESPN
+// has no equivalent "unowned team" signal, unlike Yahoo's "Manager-less Team N" name).
 const isEspn = computed(() => leagueStore.activePlatform === 'espn')
 
 const cat = useCategoryStrength()
-const yahooLeague = useYahooLeaguePool()
-const espnPoints = useEspnPointsTeamData()
+const source = useActivePointsSource()
 const scoring = useLeagueScoring()
 const trajectory = usePowerTrajectory()
 
@@ -40,8 +40,7 @@ function loadAll() {
     cat.load()
   } else {
     scoring.load()
-    if (isEspn.value) espnPoints.load()
-    else yahooLeague.load()
+    source.load()
   }
 }
 onMounted(loadAll)
@@ -49,17 +48,11 @@ watch(() => leagueStore.activeLeagueId, loadAll)
 
 // ── POINTS branch data ────────────────────────────────────────────────────────
 
-const pool = computed<PointsPoolPlayer[]>(() =>
-  (isEspn.value ? espnPoints.pool.value : yahooLeague.pool.value) as PointsPoolPlayer[],
-)
-const fgByKey = computed(() => (isEspn.value ? espnPoints.fgByKey.value : yahooLeague.fgByKey.value))
-const rosterSlots = computed(() => (isEspn.value ? espnPoints.rosterSlots.value : yahooLeague.rosterSlots.value))
+const pool = computed<PointsPoolPlayer[]>(() => source.pool.value as PointsPoolPlayer[])
+const fgByKey = source.fgByKey
+const rosterSlots = source.rosterSlots
 
-const pointsMyTeamKey = computed<string>(() => {
-  if (isEspn.value) return espnPoints.myTeamId.value ?? ''
-  const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
-  return me ? String(me.team_key) : ''
-})
+const pointsMyTeamKey = computed<string>(() => source.myTeamKey.value)
 
 // Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
 const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
@@ -80,27 +73,20 @@ interface PointsMeta {
 }
 
 const pointsTeamMeta = computed<Record<string, PointsMeta>>(() => {
-  if (isEspn.value) {
-    const names = espnPoints.teamNames.value
-    const logos = espnPoints.teamLogos.value
-    const recs = espnPoints.teamRecords.value
-    const out: Record<string, PointsMeta> = {}
-    for (const k of Object.keys(names)) {
-      const r = recs[k] ?? { wins: 0, losses: 0, ties: 0, pointsFor: 0 }
-      out[k] = { name: names[k] || 'Team', logo: logos[k] || '', wins: r.wins, losses: r.losses, ties: r.ties, pointsFor: r.pointsFor, managerless: false }
-    }
-    return out
-  }
+  const names = source.teamNames.value
+  const logos = source.teamLogos.value
+  const stats = source.teamMeta.value
   const out: Record<string, PointsMeta> = {}
-  for (const t of leagueStore.yahooTeams ?? []) {
-    out[String(t.team_key)] = {
-      name: String(t.name ?? 'Team'),
-      logo: String(t.logo_url ?? ''),
-      wins: Number(t.wins ?? 0),
-      losses: Number(t.losses ?? 0),
-      ties: Number(t.ties ?? 0),
-      pointsFor: Number(t.points_for ?? 0),
-      managerless: detectManagerless(t),
+  for (const k of Object.keys(names)) {
+    const s = stats[k] ?? { wins: 0, losses: 0, ties: 0, pointsFor: 0 }
+    out[k] = {
+      name: names[k] || 'Team',
+      logo: logos[k] || '',
+      wins: s.wins,
+      losses: s.losses,
+      ties: s.ties,
+      pointsFor: s.pointsFor,
+      managerless: isEspn.value ? false : detectManagerless({ name: names[k] }),
     }
   }
   return out
@@ -216,13 +202,7 @@ const pointsPositional = computed(() => {
 
 // ── LOADING ───────────────────────────────────────────────────────────────────
 
-const loading = computed(() =>
-  isCategory.value
-    ? cat.loading.value
-    : isEspn.value
-      ? espnPoints.loading.value
-      : yahooLeague.loading.value,
-)
+const loading = computed(() => (isCategory.value ? cat.loading.value : source.loading.value))
 
 // ── SHARED HELPERS ────────────────────────────────────────────────────────────
 

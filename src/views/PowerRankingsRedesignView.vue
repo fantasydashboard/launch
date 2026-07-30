@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
-import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
-import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
+import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { usePowerTrajectory } from '@/composables/usePowerTrajectory'
 import { useCategoryStrength } from '@/composables/useCategoryStrength'
@@ -21,10 +20,11 @@ const props = withDefaults(defineProps<{ scoring?: 'points' | 'category' }>(), {
 const isCategory = computed(() => props.scoring === 'category')
 
 const leagueStore = useLeagueStore()
+// isEspn is still needed by the category-strength managerless detection below (ESPN
+// has no equivalent "unowned team" signal, unlike Yahoo's "Manager-less Team N" name).
 const isEspn = computed(() => leagueStore.activePlatform === 'espn')
 
-const yahooLeague = useYahooLeaguePool()
-const espnPoints = useEspnPointsTeamData()
+const source = useActivePointsSource()
 const scoring = useLeagueScoring()
 const trajectory = usePowerTrajectory()
 const catStrength = useCategoryStrength()
@@ -38,30 +38,16 @@ function loadAll() {
     return
   }
   scoring.load()
-  if (isEspn.value) espnPoints.load()
-  else yahooLeague.load()
+  source.load()
 }
 onMounted(loadAll)
 watch(() => leagueStore.activeLeagueId, loadAll)
 
-const pool = computed<PointsPoolPlayer[]>(() =>
-  (isEspn.value ? espnPoints.pool.value : yahooLeague.pool.value) as PointsPoolPlayer[],
-)
-const fgByKey = computed(() => (isEspn.value ? espnPoints.fgByKey.value : yahooLeague.fgByKey.value))
-const rosterSlots = computed(() => (isEspn.value ? espnPoints.rosterSlots.value : yahooLeague.rosterSlots.value))
-const loading = computed(() =>
-  isCategory.value
-    ? catStrength.loading.value
-    : isEspn.value
-      ? espnPoints.loading.value
-      : yahooLeague.loading.value,
-)
-const myTeamKey = computed<string>(() => {
-  if (isCategory.value) return catStrength.myTeamKey.value
-  if (isEspn.value) return espnPoints.myTeamId.value ?? ''
-  const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
-  return me ? String(me.team_key) : ''
-})
+const pool = computed<PointsPoolPlayer[]>(() => source.pool.value as PointsPoolPlayer[])
+const fgByKey = source.fgByKey
+const rosterSlots = source.rosterSlots
+const loading = computed(() => (isCategory.value ? catStrength.loading.value : source.loading.value))
+const myTeamKey = computed<string>(() => (isCategory.value ? catStrength.myTeamKey.value : source.myTeamKey.value))
 
 // Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
 const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
@@ -74,30 +60,23 @@ function detectManagerless(t: any): boolean {
   return /manager-?less/i.test(String(t?.name ?? ''))
 }
 
-// teamKey → {name, logo, wins, losses, ties, pointsFor, managerless} for both platforms.
+// teamKey → {name, logo, wins, losses, ties, pointsFor, managerless} for all platforms.
 interface Meta { name: string; logo: string; wins: number; losses: number; ties: number; pointsFor: number; managerless: boolean }
 const teamMeta = computed<Record<string, Meta>>(() => {
-  if (isEspn.value) {
-    const names = espnPoints.teamNames.value
-    const logos = espnPoints.teamLogos.value
-    const recs = espnPoints.teamRecords.value
-    const out: Record<string, Meta> = {}
-    for (const k of Object.keys(names)) {
-      const r = recs[k] ?? { wins: 0, losses: 0, ties: 0, pointsFor: 0 }
-      out[k] = { name: names[k] || 'Team', logo: logos[k] || '', wins: r.wins, losses: r.losses, ties: r.ties, pointsFor: r.pointsFor, managerless: false }
-    }
-    return out
-  }
+  const names = source.teamNames.value
+  const logos = source.teamLogos.value
+  const stats = source.teamMeta.value
   const out: Record<string, Meta> = {}
-  for (const t of leagueStore.yahooTeams ?? []) {
-    out[String(t.team_key)] = {
-      name: String(t.name ?? 'Team'),
-      logo: String(t.logo_url ?? ''),
-      wins: Number(t.wins ?? 0),
-      losses: Number(t.losses ?? 0),
-      ties: Number(t.ties ?? 0),
-      pointsFor: Number(t.points_for ?? 0),
-      managerless: detectManagerless(t),
+  for (const k of Object.keys(names)) {
+    const s = stats[k] ?? { wins: 0, losses: 0, ties: 0, pointsFor: 0 }
+    out[k] = {
+      name: names[k] || 'Team',
+      logo: logos[k] || '',
+      wins: s.wins,
+      losses: s.losses,
+      ties: s.ties,
+      pointsFor: s.pointsFor,
+      managerless: isEspn.value ? false : detectManagerless({ name: names[k] }),
     }
   }
   return out
