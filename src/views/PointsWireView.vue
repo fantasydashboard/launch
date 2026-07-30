@@ -1,23 +1,18 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
-import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
-import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
-import { useAvailablePlayers } from '@/composables/useAvailablePlayers'
+import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { buildPointsWire, type Swap } from '@/myteam/pointsWire'
-import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
+import { buildPointsTeam } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
 const leagueStore = useLeagueStore()
-const isEspn = computed(() => leagueStore.activePlatform === 'espn')
 const isFootball = computed(() => leagueStore.activeSport === 'football')
 
-const yahooLeague = useYahooLeaguePool()
-const espnPoints = useEspnPointsTeamData()
-const avail = useAvailablePlayers()
+const source = useActivePointsSource()
 const scoring = useLeagueScoring()
 const schedule = ref<WeekSchedule>({ gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} })
 
@@ -32,32 +27,22 @@ async function loadSchedule() {
 function loadAll() {
   scoring.load()
   loadSchedule()
-  if (isEspn.value) espnPoints.load()
-  else {
-    yahooLeague.load()
-    avail.load(200)
-  }
+  source.load()
+  source.loadFreeAgents(200)
 }
 onMounted(loadAll)
 watch(() => leagueStore.activeLeagueId, loadAll)
 
-const pool = computed<PointsPoolPlayer[]>(() =>
-  (isEspn.value ? espnPoints.pool.value : yahooLeague.pool.value) as PointsPoolPlayer[],
-)
-const fgByKey = computed(() => (isEspn.value ? espnPoints.fgByKey.value : yahooLeague.fgByKey.value))
-const rosterSlots = computed(() => (isEspn.value ? espnPoints.rosterSlots.value : yahooLeague.rosterSlots.value))
-const myTeamKey = computed<string>(() => {
-  if (isEspn.value) return espnPoints.myTeamId.value ?? ''
-  const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
-  return me ? String(me.team_key) : ''
-})
+const pool = source.pool
+const fgByKey = source.fgByKey
+const rosterSlots = source.rosterSlots
+const myTeamKey = source.myTeamKey
 
 // Free agents minus anyone already rostered (the platform FA feed leaks rostered players).
 const freeAgents = computed(() => {
-  const src = isEspn.value ? espnPoints.freeAgents.value : avail.players.value
   const rostered = new Set(pool.value.map((p) => p.playerKey))
   const guard = pool.value.length > 0
-  return src.filter((fa) => !guard || !rostered.has(fa.playerKey))
+  return source.freeAgents.value.filter((fa) => !guard || !rostered.has(fa.playerKey))
 })
 
 // Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
@@ -102,9 +87,7 @@ const injuryBadge = (injury: string) =>
 const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none')
 // OR in usePointsValue's own loading (baseball's matchFG lands async, after the
 // pool/free-agent fetch resolves) — otherwise the wire can flash empty for a beat.
-const loading = computed(
-  () => (isEspn.value ? espnPoints.loading.value : yahooLeague.loading.value || avail.loading.value) || valueLoading.value,
-)
+const loading = computed(() => source.loading.value || valueLoading.value)
 </script>
 
 <template>
