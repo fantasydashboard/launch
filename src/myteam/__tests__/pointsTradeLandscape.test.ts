@@ -42,4 +42,29 @@ describe('buildPointsTradeLandscape', () => {
     expect(b.youBuy).toContain('OF') // B strong OF, A weak OF
     expect(b.theyNeed).toContain('SP') // A strong SP, B weak SP
   })
+
+  it('surfaces a pure sell-from-strength target when I have no weak spot of my own', () => {
+    // 3 teams. X: best SP AND best OF — stacked, no glaring hole. Y: middling.
+    // Z: worst SP and worst OF — weak everywhere X is strong.
+    const rowsStacked = [
+      player('X_SP', 'X', 'SP', true, 100),
+      player('X_OF', 'X', 'OF', false, 40),
+      player('Y_SP', 'Y', 'SP', true, 50),
+      player('Y_OF', 'Y', 'OF', false, 20),
+      player('Z_SP', 'Z', 'SP', true, 10),
+      player('Z_OF', 'Z', 'OF', false, 2),
+    ]
+    const poolStacked = rowsStacked.map((r) => r.p)
+    const fgStacked: Record<string, FGProjection | null> = {}
+    rowsStacked.forEach((r) => (fgStacked[r.p.playerKey] = r.fg))
+    const namesStacked = { X: 'My Team', Y: 'Mid Team', Z: 'Weak Team' }
+
+    const ls = buildPointsTradeLandscape(poolStacked, buildBaseballValue(fgStacked, weights), fgStacked, 'X', namesStacked)!
+    expect(ls.myWeak).toEqual([]) // no glaring hole — a stacked roster
+
+    const z = ls.partners.find((p) => p.teamKey === 'Z')
+    expect(z).toBeDefined()
+    expect(z!.youBuy).toEqual([]) // nothing to acquire — I have no need
+    expect(z!.theyNeed).toEqual(expect.arrayContaining(['SP', 'OF'])) // they're thin where I'm loaded
+  })
 })

@@ -83,18 +83,21 @@ export function buildPointsTradeLandscape(
   const myWeak = positions.filter((pos) => isWeak(myTeamKey, pos))
 
   // Partner fit: they're strong where you're weak (you buy) and weak where you're
-  // strong (your leverage). More complementary positions = better partner.
+  // strong (your leverage). More complementary positions = better partner. A partner
+  // qualifies if EITHER side holds — a two-way fit (youBuy > 0) or a pure sell-from-
+  // strength target (theyNeed > 0, youBuy 0): a team weak where you're loaded is
+  // worth surfacing even if you have no hole of your own to fill. A stacked roster
+  // (myWeak empty) would otherwise get zero partners, which is the bug this fixes.
   const partners: TradePartner[] = []
   for (const t of teamKeys) {
     if (t === myTeamKey) continue
     const youBuy = myWeak.filter((pos) => isStrong(t, pos))
     const theyNeed = myStrong.filter((pos) => isWeak(t, pos))
     const fit = youBuy.length + theyNeed.length
-    // A useful partner must hold something at YOUR weak spot (you buy > 0) — a team
-    // that only needs your surplus is a sell target, not a deal that improves you.
-    if (youBuy.length > 0) partners.push({ teamKey: t, teamName: teamNames[t] || 'Team', fit, youBuy, theyNeed })
+    if (youBuy.length > 0 || theyNeed.length > 0) partners.push({ teamKey: t, teamName: teamNames[t] || 'Team', fit, youBuy, theyNeed })
   }
-  // Most to acquire first, then easiest deal (they also need what you've got).
+  // Two-way fits first (most to acquire, then easiest deal); pure sell targets follow,
+  // ranked by how much leverage you'd have (more positions they need from you).
   partners.sort((a, b) => b.youBuy.length - a.youBuy.length || b.theyNeed.length - a.theyNeed.length)
 
   return {

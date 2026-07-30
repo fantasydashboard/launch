@@ -166,7 +166,7 @@ function fairness(myGain: number, theirGain: number): string {
       <!-- BEST TRADE PARTNERS -->
       <section v-if="landscape && landscape.partners.length" class="mb-4">
         <p class="mb-1 font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Best trade partners</p>
-        <p class="mb-2 font-mono text-[9px] text-dark-textMuted">they hold what you need, you hold what they need</p>
+        <p class="mb-2 font-mono text-[9px] text-dark-textMuted">two-way fits first — they hold what you need, you hold what they need — then sell targets, where they're thin at a spot you're loaded</p>
         <div class="divide-y divide-dark-border/40 rounded-xl border border-dark-border bg-dark-card">
           <div v-for="p in landscape.partners" :key="p.teamKey" class="flex items-center gap-3 px-4 py-2.5">
             <span class="w-32 shrink-0 truncate text-sm text-dark-text">{{ p.teamName }}</span>
@@ -179,10 +179,14 @@ function fairness(myGain: number, theirGain: number): string {
                 <span class="text-dark-textMuted">they need</span>
                 <span v-for="x in p.theyNeed" :key="'n' + x" class="text-[#e69a4a]">{{ x }}</span>
               </template>
+              <span v-if="!p.youBuy.length && p.theyNeed.length" class="rounded bg-[#e69a4a]/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-[#e69a4a]">sell target</span>
             </span>
           </div>
         </div>
       </section>
+      <p v-else-if="landscape && landscape.myStrong.length" class="mb-4 rounded-xl border border-dark-border bg-dark-card px-4 py-6 text-center text-sm text-dark-textMuted">
+        No trade partners lining up right now — nobody's weak where you're loaded, and nobody's strong where you're thin.
+      </p>
 
       <!-- TRADE LANDSCAPE -->
       <section v-if="landscape && landscape.positions.length">
