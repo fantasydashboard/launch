@@ -1,47 +1,32 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
-import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
-import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
+import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { buildPointsTrades } from '@/myteam/pointsTrades'
 import { buildPointsTradeLandscape } from '@/myteam/pointsTradeLandscape'
-import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
 const leagueStore = useLeagueStore()
-const isEspn = computed(() => leagueStore.activePlatform === 'espn')
 const isFootball = computed(() => leagueStore.activeSport === 'football')
 
-const yahooLeague = useYahooLeaguePool()
-const espnPoints = useEspnPointsTeamData()
+const source = useActivePointsSource()
 const scoring = useLeagueScoring()
 
 function loadAll() {
   scoring.load()
-  if (isEspn.value) espnPoints.load()
-  else yahooLeague.load()
+  source.load()
 }
 onMounted(loadAll)
 watch(() => leagueStore.activeLeagueId, loadAll)
 
-const pool = computed<PointsPoolPlayer[]>(() =>
-  (isEspn.value ? espnPoints.pool.value : yahooLeague.pool.value) as PointsPoolPlayer[],
-)
-const fgByKey = computed(() => (isEspn.value ? espnPoints.fgByKey.value : yahooLeague.fgByKey.value))
-const rosterSlots = computed(() => (isEspn.value ? espnPoints.rosterSlots.value : yahooLeague.rosterSlots.value))
-const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooLeague.loading.value))
-
-const myTeamKey = computed<string>(() => {
-  if (isEspn.value) return espnPoints.myTeamId.value ?? ''
-  const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
-  return me ? String(me.team_key) : ''
-})
-const teamNames = computed<Record<string, string>>(() => {
-  if (isEspn.value) return espnPoints.teamNames.value
-  return Object.fromEntries((leagueStore.yahooTeams ?? []).map((t: any) => [String(t.team_key), String(t.name ?? '')]))
-})
+const pool = source.pool
+const fgByKey = source.fgByKey
+const rosterSlots = source.rosterSlots
+const loading = source.loading
+const myTeamKey = source.myTeamKey
+const teamNames = source.teamNames
 
 const season = computed(() => '')
 const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
