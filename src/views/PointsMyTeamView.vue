@@ -2,84 +2,47 @@
 import { computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
-import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
-import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
+import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
-import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
+import { buildPointsTeam } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
-import type { OutlookTeamMeta } from '@/myteam/seasonOutlook'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 
 const route = useRoute()
 const leagueStore = useLeagueStore()
 const showAudit = computed(() => route.query.ptsaudit != null)
 
-const isEspn = computed(() => leagueStore.activePlatform === 'espn')
 const isFootball = computed(() => leagueStore.activeSport === 'football')
 
-const yahooLeague = useYahooLeaguePool()
-const espnPoints = useEspnPointsTeamData()
+const source = useActivePointsSource()
 const scoring = useLeagueScoring()
 
 function loadAll() {
   scoring.load()
-  if (isEspn.value) espnPoints.load()
-  else yahooLeague.load()
+  source.load()
 }
 onMounted(loadAll)
 watch(() => leagueStore.activeLeagueId, loadAll)
 
 // ── Platform-neutral inputs ──────────────────────────────────────────────────
-const pool = computed<PointsPoolPlayer[]>(() =>
-  (isEspn.value ? espnPoints.pool.value : yahooLeague.pool.value) as PointsPoolPlayer[],
-)
-const fgByKey = computed(() => (isEspn.value ? espnPoints.fgByKey.value : yahooLeague.fgByKey.value))
-const rosterSlots = computed(() => (isEspn.value ? espnPoints.rosterSlots.value : yahooLeague.rosterSlots.value))
-const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooLeague.loading.value))
+const pool = source.pool
+const fgByKey = source.fgByKey
+const rosterSlots = source.rosterSlots
+const loading = source.loading
 
 // Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
 const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
 const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
 
 // My team key as the POOL labels it (full Yahoo team_key / `espn_{id}`).
-const myTeamKey = computed<string>(() => {
-  if (isEspn.value) return espnPoints.myTeamId.value ?? ''
-  const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
-  return me ? String(me.team_key) : ''
-})
-const myTeamName = computed<string>(() => {
-  if (isEspn.value) return espnPoints.myTeamName.value || 'My Team'
-  const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
-  return String(me?.name ?? 'My Team')
-})
-const myRecord = computed<string>(() => (isEspn.value ? espnPoints.myRecord.value : ''))
-const myTeamLogo = computed<string>(() => {
-  if (isEspn.value) return espnPoints.myTeamLogo.value
-  const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
-  return String(me?.logo_url ?? '')
-})
+const myTeamKey = source.myTeamKey
+const myTeamName = source.myTeamName
+const myRecord = source.myRecord
+const myTeamLogo = source.myTeamLogo
 
 // All-team records for the playoff sim (mirror LeagueView's pointsTeamMeta, records only).
-const teamMeta = computed<Record<string, OutlookTeamMeta>>(() => {
-  if (isEspn.value) {
-    const out: Record<string, OutlookTeamMeta> = {}
-    for (const [k, r] of Object.entries(espnPoints.teamRecords.value)) {
-      out[k] = { wins: r.wins, losses: r.losses, ties: r.ties, pointsFor: r.pointsFor }
-    }
-    return out
-  }
-  const out: Record<string, OutlookTeamMeta> = {}
-  for (const t of (leagueStore.yahooTeams ?? []) as any[]) {
-    out[String(t.team_key)] = {
-      wins: Number(t.wins ?? 0),
-      losses: Number(t.losses ?? 0),
-      ties: Number(t.ties ?? 0),
-      pointsFor: Number(t.points_for ?? 0),
-    }
-  }
-  return out
-})
+const teamMeta = source.teamMeta
 
 const { outlook } = useSeasonOutlook({
   pool,
