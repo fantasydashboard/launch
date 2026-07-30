@@ -225,6 +225,19 @@ export function usePowerTrajectory() {
     return perWeek.filter((w): w is WeekOutcomes => w != null)
   }
 
+  // Sleeper: no weekly matchup fetch here (yet) — but we still resolve weeks-left from the
+  // league's own week bounds so the per-week value basis works (games remaining = the divisor
+  // for a player's per-week projection). weeksLeft = regular-season weeks remaining incl. current
+  // = playoff_week_start − current_week, clamped to ≥ 1 (a completed league yields 1). Outcomes
+  // stay empty (the standings-race chart simply hides), which is fine for football in-season v1.
+  function loadSleeper(): WeekOutcomes[] {
+    const leagueStore = useLeagueStore()
+    const cw = leagueStore.currentWeek
+    currentWeek.value = cw
+    weeksLeft.value = Math.max(1, leagueStore.playoffWeekStart - cw)
+    return []
+  }
+
   async function load(opts?: { categoryForm?: boolean }) {
     const leagueStore = useLeagueStore()
     const leagueKey = leagueStore.activeLeagueId
@@ -232,8 +245,13 @@ export function usePowerTrajectory() {
     const requested = leagueKey
     loading.value = true
     try {
-      const isEspn = leagueStore.activePlatform === 'espn'
-      const result = isEspn ? await loadEspn(leagueKey) : await loadYahoo(leagueKey, opts?.categoryForm)
+      const platform = leagueStore.activePlatform
+      const result =
+        platform === 'espn'
+          ? await loadEspn(leagueKey)
+          : platform === 'sleeper'
+            ? loadSleeper()
+            : await loadYahoo(leagueKey, opts?.categoryForm)
       if (leagueStore.activeLeagueId !== requested) return
       outcomes.value = result
       loaded.value = true
