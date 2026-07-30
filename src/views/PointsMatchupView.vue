@@ -1,25 +1,20 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
-import { useYahooLeaguePool } from '@/composables/useYahooLeaguePool'
-import { useEspnPointsTeamData } from '@/composables/useEspnPointsTeamData'
+import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { useThisWeekOpponent } from '@/composables/useThisWeekOpponent'
 import { buildPointsMatchup } from '@/myteam/pointsMatchup'
-import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { useWinProbTrend } from '@/composables/useWinProbTrend'
 import MatchupWinProbChart from '@/components/matchup/MatchupWinProbChart.vue'
 import { seasonStakes } from '@/myteam/seasonStakes'
 import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
-import type { OutlookTeamMeta } from '@/myteam/seasonOutlook'
 
 const leagueStore = useLeagueStore()
-const isEspn = computed(() => leagueStore.activePlatform === 'espn')
 
-const yahooLeague = useYahooLeaguePool()
-const espnPoints = useEspnPointsTeamData()
+const source = useActivePointsSource()
 const scoring = useLeagueScoring()
 const oppSvc = useThisWeekOpponent()
 const schedule = ref<WeekSchedule>({ gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} })
@@ -40,39 +35,24 @@ function loadAll() {
   scoring.load()
   oppSvc.load()
   loadSchedule()
-  if (isEspn.value) espnPoints.load()
-  else yahooLeague.load()
+  source.load()
 }
 onMounted(loadAll)
 watch(() => leagueStore.activeLeagueId, loadAll)
 
-const pool = computed<PointsPoolPlayer[]>(() =>
-  (isEspn.value ? espnPoints.pool.value : yahooLeague.pool.value) as PointsPoolPlayer[],
-)
-const fgByKey = computed(() => (isEspn.value ? espnPoints.fgByKey.value : yahooLeague.fgByKey.value))
-const rosterSlots = computed(() => (isEspn.value ? espnPoints.rosterSlots.value : yahooLeague.rosterSlots.value))
-const loading = computed(() => (isEspn.value ? espnPoints.loading.value : yahooLeague.loading.value))
+const pool = source.pool
+const fgByKey = source.fgByKey
+const rosterSlots = source.rosterSlots
+const loading = source.loading
 
 // Precomputed player value for Season Outlook and buildPointsMatchup (baseball from FG,
 // football from Sleeper).
 const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
 const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
 
-const myTeamKey = computed<string>(() => {
-  if (isEspn.value) return espnPoints.myTeamId.value ?? ''
-  const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
-  return me ? String(me.team_key) : ''
-})
-const myTeamName = computed<string>(() => {
-  if (isEspn.value) return espnPoints.myTeamName.value || 'My Team'
-  const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
-  return String(me?.name ?? 'My Team')
-})
-const myTeamLogo = computed<string>(() => {
-  if (isEspn.value) return espnPoints.myTeamLogo.value
-  const me = (leagueStore.yahooTeams ?? []).find((t: any) => t?.is_my_team)
-  return String(me?.logo_url ?? '')
-})
+const myTeamKey = source.myTeamKey
+const myTeamName = source.myTeamName
+const myTeamLogo = source.myTeamLogo
 
 const matchup = computed(() => {
   const opp = oppSvc.opponent.value
@@ -106,25 +86,7 @@ const leagueSize = computed(() => new Set(pool.value.map((p) => p.teamKey)).size
 // Real standings rank: same source as My Team's Season Outlook ("2nd of 12"),
 // so the Matchup's "Nth of N" always agrees with My Team / League for the same
 // team. Mirrors PointsMyTeamView.vue's teamMeta + useSeasonOutlook wiring.
-const teamMeta = computed<Record<string, OutlookTeamMeta>>(() => {
-  if (isEspn.value) {
-    const out: Record<string, OutlookTeamMeta> = {}
-    for (const [k, r] of Object.entries(espnPoints.teamRecords.value)) {
-      out[k] = { wins: r.wins, losses: r.losses, ties: r.ties, pointsFor: r.pointsFor }
-    }
-    return out
-  }
-  const out: Record<string, OutlookTeamMeta> = {}
-  for (const t of (leagueStore.yahooTeams ?? []) as any[]) {
-    out[String(t.team_key)] = {
-      wins: Number(t.wins ?? 0),
-      losses: Number(t.losses ?? 0),
-      ties: Number(t.ties ?? 0),
-      pointsFor: Number(t.points_for ?? 0),
-    }
-  }
-  return out
-})
+const teamMeta = source.teamMeta
 const { outlook } = useSeasonOutlook({
   pool,
   valueByKey,
@@ -136,7 +98,7 @@ const { outlook } = useSeasonOutlook({
 const myRank = computed(() => {
   const real = outlook.value?.recordRank ?? 0
   if (real > 0) return real
-  if (!isEspn.value) {
+  if (leagueStore.activePlatform === 'yahoo') {
     const t = (leagueStore.yahooTeams ?? []).find((x: any) => x?.is_my_team)
     if (t?.rank && Number(t.rank) > 0) return Number(t.rank)
   }
