@@ -631,8 +631,15 @@ export const useLeagueStore = defineStore('league', () => {
       currentUserId.value = user.user_id
       currentUsername.value = username
       saveToLocalStorage()
-      
-      const fetchedLeagues = await sleeperService.getUserLeagues(user.user_id, currentSeason.value)
+
+      // Fetch leagues for the CURRENT NFL season — not `currentSeason` (which derives from the
+      // already-loaded league). Dynasty leagues roll over to a NEW league_id each season, so
+      // deriving the season from a stale loaded league (e.g. last year's) makes us re-fetch the
+      // old season forever and never discover this year's league. getNflState() is the source of
+      // truth for the active season; fall back to the calendar year if it fails.
+      const nflState = await sleeperService.getNflState().catch(() => null)
+      const fetchSeason = nflState?.season || new Date().getFullYear().toString()
+      const fetchedLeagues = await sleeperService.getUserLeagues(user.user_id, fetchSeason)
       
       // Merge with saved leagues (avoid duplicates)
       const savedIds = new Set(savedLeagues.value.map(l => l.league_id))
