@@ -145,7 +145,9 @@ export function useSleeperLeaguePool(): {
     return `${s.wins ?? 0}-${s.losses ?? 0}${s.ties ? `-${s.ties}` : ''}`
   })
 
-  const loading = computed(() => Object.keys(leagueStore.players ?? {}).length === 0 && (leagueStore.rosters?.length ?? 0) === 0)
+  // Loading until BOTH the roster list AND the players map are present — the pool needs both,
+  // so `||` avoids flipping false (and flashing an empty pool) the instant rosters arrive.
+  const loading = computed(() => Object.keys(leagueStore.players ?? {}).length === 0 || (leagueStore.rosters?.length ?? 0) === 0)
   const loaded = computed(() => (leagueStore.rosters?.length ?? 0) > 0)
   const supported = computed(() => true)
 
