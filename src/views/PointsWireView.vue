@@ -8,9 +8,11 @@ import { buildPointsTeam } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
+import { nflTeamLogo } from '@/players/nflTeamLogo'
 
 const leagueStore = useLeagueStore()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
+const teamLogo = (abbr?: string) => (isFootball.value ? nflTeamLogo(abbr) : mlbTeamLogo(abbr))
 
 const source = useActivePointsSource()
 const scoring = useLeagueScoring()
@@ -140,7 +142,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
             <span class="min-w-0 flex-1">
               <span class="truncate text-sm font-semibold text-dark-text">{{ r.player.name }}</span>
               <span class="flex items-center gap-1 text-xs text-dark-textMuted">
-                {{ r.player.position }} · <img :src="mlbTeamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 object-contain" /> {{ r.player.team }}
+                {{ r.player.position }} · <img :src="teamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 object-contain" /> {{ r.player.team }}
               </span>
             </span>
             <span class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary">{{ r.startsThisWeek }} starts</span>
@@ -156,7 +158,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
             <span class="min-w-0 flex-1">
               <span class="truncate text-sm font-semibold text-dark-text">{{ r.player.name }}</span>
               <span class="flex items-center gap-1 text-xs text-dark-textMuted">
-                {{ r.player.position }} · <img :src="mlbTeamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 object-contain" /> {{ r.player.team }}
+                {{ r.player.position }} · <img :src="teamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 object-contain" /> {{ r.player.team }}
               </span>
             </span>
             <span v-for="c in r.chips" :key="c" class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary">{{ c }}</span>
@@ -180,7 +182,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
               <span class="min-w-0 flex-1">
                 <span class="truncate text-sm font-semibold text-dark-text">{{ r.player.name }}</span>
                 <span class="flex items-center gap-1 text-xs text-dark-textMuted">
-                  {{ r.player.position }} · <img :src="mlbTeamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 object-contain" /> {{ r.player.team }}
+                  {{ r.player.position }} · <img :src="teamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 object-contain" /> {{ r.player.team }}
                 </span>
               </span>
               <span v-for="c in r.chips" :key="c" class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary">{{ c }}</span>

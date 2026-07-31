@@ -8,12 +8,14 @@ import { buildPointsTeam } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
+import { nflTeamLogo } from '@/players/nflTeamLogo'
 
 const route = useRoute()
 const leagueStore = useLeagueStore()
 const showAudit = computed(() => route.query.ptsaudit != null)
 
 const isFootball = computed(() => leagueStore.activeSport === 'football')
+const teamLogo = (abbr?: string) => (isFootball.value ? nflTeamLogo(abbr) : mlbTeamLogo(abbr))
 
 const source = useActivePointsSource()
 const scoring = useLeagueScoring()
@@ -322,7 +324,7 @@ const injuredCount = computed(() =>
                   {{ row.player.position }}
                   <template v-if="row.player.proTeam">
                     ·
-                    <img :src="mlbTeamLogo(row.player.proTeam)" alt="" @error="onLogoErr"
+                    <img :src="teamLogo(row.player.proTeam)" alt="" @error="onLogoErr"
                       class="h-3.5 w-3.5 shrink-0 object-contain" />
                     {{ row.player.proTeam }}
                   </template>

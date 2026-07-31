@@ -7,9 +7,11 @@ import { usePointsValue } from '@/composables/usePointsValue'
 import { buildPointsTrades } from '@/myteam/pointsTrades'
 import { buildPointsTradeLandscape } from '@/myteam/pointsTradeLandscape'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
+import { nflTeamLogo } from '@/players/nflTeamLogo'
 
 const leagueStore = useLeagueStore()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
+const teamLogo = (abbr?: string) => (isFootball.value ? nflTeamLogo(abbr) : mlbTeamLogo(abbr))
 
 const source = useActivePointsSource()
 const scoring = useLeagueScoring()
@@ -129,7 +131,7 @@ function fairness(myGain: number, theirGain: number): string {
               <span class="truncate text-sm font-semibold text-dark-text">{{ idea.get.name }}</span>
               <span class="flex items-center gap-1 text-[11px] text-dark-textMuted">
                 {{ idea.get.position }} ·
-                <img :src="mlbTeamLogo(idea.get.proTeam)" alt="" @error="onLogoErr" class="h-3 w-3 object-contain" />{{ idea.get.proTeam }} ·
+                <img :src="teamLogo(idea.get.proTeam)" alt="" @error="onLogoErr" class="h-3 w-3 object-contain" />{{ idea.get.proTeam }} ·
                 {{ round(tradePoints(idea.get.playerKey, idea.get.points)) }} {{ isFootball ? 'pts/wk' : 'pts' }}
               </span>
             </span>
@@ -146,7 +148,7 @@ function fairness(myGain: number, theirGain: number): string {
               <span class="truncate text-sm font-semibold text-dark-text">{{ idea.give.name }}</span>
               <span class="flex flex-row-reverse items-center gap-1 text-[11px] text-dark-textMuted">
                 {{ idea.give.position }} ·
-                <img :src="mlbTeamLogo(idea.give.proTeam)" alt="" @error="onLogoErr" class="h-3 w-3 object-contain" />{{ idea.give.proTeam }} ·
+                <img :src="teamLogo(idea.give.proTeam)" alt="" @error="onLogoErr" class="h-3 w-3 object-contain" />{{ idea.give.proTeam }} ·
                 {{ round(tradePoints(idea.give.playerKey, idea.give.points)) }} {{ isFootball ? 'pts/wk' : 'pts' }}
               </span>
             </span>

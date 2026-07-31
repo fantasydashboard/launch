@@ -24,6 +24,7 @@ describe('buildSleeperPool', () => {
     const p1 = pool.find((p) => p.playerKey === 'p1')!
     expect(p1).toMatchObject({ playerKey: 'p1', name: 'Josh Allen', position: 'QB', teamKey: '1', proTeam: 'BUF' })
     expect(p1.eligiblePositions).toEqual(['QB'])
+    expect(p1.headshot).toBe('https://sleepercdn.com/content/nfl/players/thumb/p1.jpg')
     const p3 = pool.find((p) => p.playerKey === 'p3')!
     expect(p3.teamKey).toBe('2')
     expect(p3.onIL).toBe(false)

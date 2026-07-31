@@ -32,6 +32,7 @@ export function buildSleeperPool(
         eligiblePositions: p.fantasy_positions?.length ? p.fantasy_positions : (p.position ? [p.position] : []),
         teamKey: String(r.roster_id),
         proTeam: p.team ?? '',
+        headshot: `https://sleepercdn.com/content/nfl/players/thumb/${pid}.jpg`,
         onIL: isOut(p.injury_status),
         status: p.injury_status ?? p.status ?? '',
       })
