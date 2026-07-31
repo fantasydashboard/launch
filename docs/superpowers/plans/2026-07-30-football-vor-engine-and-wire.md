@@ -354,7 +354,9 @@ export function buildFootballVor(input: FootballVorInput): Record<string, Player
     let streamWeeks = 0
     weeklyLevels.forEach((levels, i) => {
       const wkPts = weekly![i][key] ?? 0
-      if (wkPts >= (levels[pos] ?? 0)) streamWeeks++
+      // Strict: strictly ABOVE the weekly replacement (in a small pool the
+      // replacement level can be a player's own score, so `>=` self-counts).
+      if (wkPts > (levels[pos] ?? 0)) streamWeeks++
     })
     out[key] = {
       playerKey: key,
