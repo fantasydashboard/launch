@@ -52,6 +52,34 @@ const STORAGE_KEYS = {
   ACTIVE_SPORT: 'fd_active_sport'
 }
 
+// Minimal shape of a Sleeper league as returned by getUserLeagues, for successor matching.
+export interface SleeperSuccessorCandidate {
+  league_id: string
+  season?: string | number
+  previous_league_id?: string | null
+  total_rosters?: number
+  name?: string
+}
+
+// Pure matching logic for the dynasty rollover: given a saved Sleeper league_id and the user's
+// CURRENT-season leagues, return the current-season league that succeeds it (its
+// `previous_league_id` points back at the saved id), or null when there's nothing to migrate.
+// Defensive against missing/non-string ids so a malformed API payload can't throw.
+export function pickSleeperSuccessor(
+  savedLeagueId: string,
+  currentLeagues: SleeperSuccessorCandidate[] | null | undefined
+): SleeperSuccessorCandidate | null {
+  if (!savedLeagueId || !Array.isArray(currentLeagues) || currentLeagues.length === 0) return null
+  const savedId = String(savedLeagueId)
+  // If the saved league is ALREADY one of the current-season leagues, there's nothing to roll forward.
+  if (currentLeagues.some((lg) => lg && String(lg.league_id) === savedId)) return null
+  const successor = currentLeagues.find(
+    (lg) => lg && lg.previous_league_id != null && String(lg.previous_league_id) === savedId
+  )
+  if (!successor || String(successor.league_id) === savedId) return null
+  return successor
+}
+
 export const useLeagueStore = defineStore('league', () => {
   // State
   const activeLeagueId = ref<string | null>(null)
@@ -250,6 +278,72 @@ export const useLeagueStore = defineStore('league', () => {
   // SUPABASE SYNC FUNCTIONS
   // ============================================
 
+  // Roll saved Sleeper dynasty leagues forward to the current NFL season. Dynasty leagues get a
+  // NEW league_id each season (the new league's `previous_league_id` points to last season's id),
+  // so a saved league from a prior season would otherwise leave the app stuck on last season.
+  // Best-effort + defensive: any failure just leaves the saved leagues exactly as they were.
+  // Returns the migrated active league_id if it already re-pointed + loaded the active league
+  // (so callers can skip a redundant reload), otherwise null.
+  async function migrateSleeperRollovers(): Promise<string | null> {
+    try {
+      const sleeperSaved = savedLeagues.value.filter((l) => l.platform === 'sleeper')
+      if (!sleeperSaved.length) return null
+
+      // Current NFL season (source of truth for which season's leagues to fetch).
+      let season: string
+      try {
+        season = (await sleeperService.getNflState()).season
+      } catch {
+        season = new Date().getFullYear().toString()
+      }
+
+      // Fetch the user's current-season leagues once (resolve Sleeper user_id if we don't have it).
+      let userId = currentUserId.value
+      if (!userId) {
+        const uname = sleeperSaved.find((l) => l.sleeper_username)?.sleeper_username
+        if (!uname) return null
+        try {
+          userId = (await sleeperService.getUser(uname)).user_id
+        } catch {
+          return null
+        }
+      }
+      let currentLeagues: SleeperSuccessorCandidate[]
+      try {
+        currentLeagues = (await sleeperService.getUserLeagues(userId, season)) as SleeperSuccessorCandidate[]
+      } catch {
+        return null
+      }
+      if (!currentLeagues?.length) return null
+
+      let migratedActive: string | null = null
+      let changed = false
+      for (const saved of sleeperSaved) {
+        const successor = pickSleeperSuccessor(saved.league_id, currentLeagues)
+        if (!successor) continue
+        const wasActive = activeLeagueId.value === saved.league_id
+        // Migrate the saved entry in place (keep name/primary/username/sport/type).
+        saved.league_id = String(successor.league_id)
+        saved.season = String(successor.season ?? season)
+        if (successor.total_rosters) saved.num_teams = successor.total_rosters
+        changed = true
+        if (wasActive) migratedActive = String(successor.league_id)
+      }
+
+      if (changed) {
+        saveToLocalStorage()
+        if (migratedActive) {
+          activeLeagueId.value = migratedActive
+          await setActiveLeague(migratedActive)
+        }
+      }
+      return migratedActive
+    } catch (e) {
+      console.error('[League Store] Sleeper rollover migration failed', e)
+      return null
+    }
+  }
+
   async function loadSavedLeagues(userId: string) {
     // First, load from localStorage for instant display
     loadFromLocalStorage()
@@ -281,13 +375,19 @@ export const useLeagueStore = defineStore('league', () => {
         saveToLocalStorage()
       }
       
+      // Roll any saved Sleeper dynasty leagues forward to the current NFL season BEFORE we pick
+      // the active league — otherwise we'd load last season's stale league. This mutates the saved
+      // entries in place (so the primary lookup below sees the migrated id) and, if the previously
+      // active league was migrated, it already re-pointed activeLeagueId and loaded the successor.
+      const migratedActiveId = await migrateSleeperRollovers()
+
       // If there's a primary league and no active league, load it
       const primaryLeague = savedLeagues.value.find(l => l.is_primary)
       if (primaryLeague && !activeLeagueId.value) {
         currentUsername.value = primaryLeague.sleeper_username
         await setActiveLeague(primaryLeague.league_id)
-      } else if (activeLeagueId.value) {
-        // Load the previously active league
+      } else if (activeLeagueId.value && !migratedActiveId) {
+        // Load the previously active league — unless the migration already loaded the successor.
         await setActiveLeague(activeLeagueId.value)
       }
     } catch (e) {
@@ -659,7 +759,10 @@ export const useLeagueStore = defineStore('league', () => {
         } as SleeperLeague)),
         ...newLeagues
       ]
-      
+
+      // On an explicit re-sync, also roll saved dynasty leagues forward to the current season.
+      await migrateSleeperRollovers()
+
       return fetchedLeagues
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to fetch leagues'
