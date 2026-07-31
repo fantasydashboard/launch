@@ -129,8 +129,9 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
         <p class="mt-2 font-mono text-[9px] text-dark-textMuted">you'd make ONE of these · upgrade = add's projected points − the body you cut</p>
       </section>
 
-      <!-- 2. STREAM THIS WEEK — the timely volume edge -->
-      <section v-if="wire.twoStart.length || wire.hotBats.length" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+      <!-- 2. STREAM THIS WEEK — the timely volume edge (baseball two-start/full-slate volume;
+           meaningless for football's weekly schedule, so hidden there) -->
+      <section v-if="!isFootball && (wire.twoStart.length || wire.hotBats.length)" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Stream this week</h2>
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">two-start arms and full-slate bats — the volume native apps don't flag</p>
 

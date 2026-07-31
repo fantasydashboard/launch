@@ -40,6 +40,10 @@ function loadAll() {
 onMounted(loadAll)
 watch(() => leagueStore.activeLeagueId, loadAll)
 
+// Weekly NFL matchup isn't built yet; when there's no matchup for a football league, point users
+// at the surfaces that already work instead of the generic "no matchup found" baseball copy.
+const isFootball = computed(() => leagueStore.activeSport === 'football')
+
 const pool = source.pool
 const fgByKey = source.fgByKey
 const rosterSlots = source.rosterSlots
@@ -164,7 +168,12 @@ const trend = useWinProbTrend({
   <div class="mx-auto max-w-3xl px-4 py-6">
     <div v-if="loading && !matchup" class="py-16 text-center text-dark-textMuted">Loading this week…</div>
     <div v-else-if="!oppSvc.opponent.value" class="py-16 text-center text-dark-textMuted">
-      No matchup found for this week.
+      <template v-if="isFootball">
+        Weekly matchup for football is coming soon — for now, see your roster strength on My Team and Power Rankings.
+      </template>
+      <template v-else>
+        No matchup found for this week.
+      </template>
     </div>
     <div v-else-if="!matchup" class="py-16 text-center text-dark-textMuted">Assembling the week…</div>
 

@@ -8,6 +8,11 @@ import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 const leagueStore = useLeagueStore()
 const { vm, loading, error, load, isPoints, budget } = useToday()
 
+// Today is a daily-optimizer built for baseball's game-by-game slate. Football is weekly, not
+// daily, so the nav hides this tab for football leagues — but a direct nav to /today should still
+// show a graceful, sport-appropriate message instead of the baseball framing.
+const isFootball = computed(() => leagueStore.activeSport === 'football')
+
 onMounted(() => load())
 watch(() => leagueStore.activeLeagueId, () => load())
 
@@ -85,7 +90,8 @@ function budgetTagText(p: ScoredPlay): string | null {
       <h1 class="font-display text-2xl font-bold text-dark-text">Today</h1>
       <p class="font-mono text-xs text-dark-textMuted">{{ today }}</p>
       <p class="mt-1 font-mono text-xs text-dark-textMuted">
-        Stream an arm, plug your holes — win the day.
+        <template v-if="isFootball">Weekly, not daily — football lives on My Team, The Wire, and Matchup.</template>
+        <template v-else>Stream an arm, plug your holes — win the day.</template>
       </p>
     </header>
 
@@ -111,7 +117,10 @@ function budgetTagText(p: ScoredPlay): string | null {
 
     <!-- ── EMPTY — distinguish "no games at all" from "games, but nothing to do" ── -->
     <div v-else-if="showEmpty" class="py-16 text-center text-dark-textMuted">
-      <template v-if="noGames">
+      <template v-if="isFootball">
+        No daily board for football — head to My Team or The Wire.
+      </template>
+      <template v-else-if="noGames">
         No MLB games today — the board lights up when games resume.
       </template>
       <template v-else>
