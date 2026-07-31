@@ -1,5 +1,10 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
-import { sumWeekProjections, fetchSeasonProjectionStats, type WeekProjections } from '../footballProjections'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import {
+  sumWeekProjections,
+  fetchSeasonProjectionStats,
+  fetchWeekProjectionStats,
+  type WeekProjections,
+} from '../footballProjections'
 import { sleeperService } from '../sleeper'
 
 describe('sumWeekProjections', () => {
@@ -51,5 +56,20 @@ describe('fetchSeasonProjectionStats', () => {
     expect(out['100'].rec_yd).toBe(1189)
     expect(out['100'].pass_yd).toBe(4008)
     expect(out['100'].junk).toBeUndefined()
+  })
+})
+
+describe('fetchWeekProjectionStats', () => {
+  beforeEach(() => vi.restoreAllMocks())
+
+  it('filters to scoring keys and drops non-finite values', async () => {
+    vi.spyOn(sleeperService, 'getWeekProjections').mockResolvedValue({
+      p1: { rush_yd: 80, rush_td: 1, foo_bar: 999, rec: NaN },
+    })
+    const out = await fetchWeekProjectionStats('2026', 5)
+    expect(out.p1.rush_yd).toBe(80)
+    expect(out.p1.rush_td).toBe(1)
+    expect(out.p1.foo_bar).toBeUndefined() // not a scoring key
+    expect(out.p1.rec).toBeUndefined()     // NaN dropped
   })
 })

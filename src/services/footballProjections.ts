@@ -50,3 +50,23 @@ export async function fetchSeasonProjectionStats(season: string): Promise<WeekPr
   }
   return out
 }
+
+/**
+ * Fetch a single week's Sleeper NFL projections → per-player raw projected stats,
+ * filtered to scoring-relevant keys. Weekly analog of fetchSeasonProjectionStats,
+ * used for the near-term streaming VOR lens.
+ */
+export async function fetchWeekProjectionStats(season: string, week: number): Promise<WeekProjections> {
+  const raw = await sleeperService.getWeekProjections('football', season, week)
+  const out: WeekProjections = {}
+  for (const [playerId, stats] of Object.entries(raw)) {
+    if (!stats || typeof stats !== 'object') continue
+    const acc: Record<string, number> = {}
+    for (const k of NFL_STAT_KEYS) {
+      const v = (stats as Record<string, number>)[k]
+      if (typeof v === 'number' && Number.isFinite(v)) acc[k] = v
+    }
+    out[playerId] = acc
+  }
+  return out
+}
