@@ -71,6 +71,9 @@ const { wire: fbWire, loading: fbLoading } = useFootballWire({
 const boardOpen = ref(false)
 const boardPositions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 const boardPos = ref('RB') // which position the Full Board shows (one at a time)
+// This-week streamers worth showing: only those above a replacement streamer. Empty in
+// the offseason / a completed season (no live week), which hides the section entirely.
+const streamers = computed(() => (fbWire.value?.thisWeek ?? []).filter((r) => r.vorWeek > 0))
 // Positions that actually have players, in canonical order — drives the picker pills.
 const boardPositionsWithRows = computed(() =>
   fbWire.value ? boardPositions.filter((p) => fbWire.value!.board[p]?.length) : [],
@@ -264,11 +267,11 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
             </template>
           </section>
 
-          <!-- 2. THIS WEEK — next-week VOR + streamability -->
-          <section v-if="fbWire.thisWeek.length" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+          <!-- 2. THIS WEEK — next-week VOR + streamability (hidden in the offseason: no live week) -->
+          <section v-if="streamers.length" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
             <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">This week</h2>
             <p class="mb-3 font-mono text-[10px] text-dark-textMuted">value over a replacement-level streamer this week</p>
-            <template v-for="r in fbWire.thisWeek" :key="'fbtw-' + (r.player.playerKey ?? r.player.name)">
+            <template v-for="r in streamers" :key="'fbtw-' + (r.player.playerKey ?? r.player.name)">
               <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
                 <img :src="teamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-6 w-6 shrink-0 object-contain" />
                 <span class="min-w-0 flex-1">
