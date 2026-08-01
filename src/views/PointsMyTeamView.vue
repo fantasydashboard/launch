@@ -7,8 +7,10 @@ import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { buildPointsTeam } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
+import { useFootballVor } from '@/composables/useFootballVor'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
+import type { AvailablePlayer } from '@/players/types'
 
 const route = useRoute()
 const leagueStore = useLeagueStore()
@@ -36,6 +38,18 @@ const loading = source.loading
 // Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
 const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
 const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
+
+// Football VOR (shared engine) — orders/tiers/values the roster. Rostered-only calibration
+// (empty free agents), ROS only (no weekly fetches). Undefined for baseball.
+const noFreeAgents = computed<AvailablePlayer[]>(() => [])
+const { vorByKey: fbVor } = useFootballVor({
+  pool,
+  freeAgents: noFreeAgents,
+  slots: rosterSlots,
+  season,
+  enabled: isFootball,
+  weeklyHorizon: 0,
+})
 
 // My team key as the POOL labels it (full Yahoo team_key / `espn_{id}`).
 const myTeamKey = source.myTeamKey
@@ -80,7 +94,9 @@ const luckColor = computed(() => {
 // ── The model ────────────────────────────────────────────────────────────────
 const model = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
-  return buildPointsTeam(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value)
+  return buildPointsTeam(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value, {
+    vorByKey: isFootball.value ? fbVor.value : undefined,
+  })
 })
 
 const hitters = computed(() => model.value?.rosterRows.filter((r) => r.side === 'hit') ?? [])
@@ -167,10 +183,14 @@ const auditOutlook = computed(() => {
   }
 })
 
-const roster = computed(() => [
-  { label: 'Hitters', rows: hitters.value },
-  { label: 'Pitchers', rows: pitchers.value },
-])
+const roster = computed(() =>
+  isFootball.value
+    ? [{ label: 'Roster', rows: model.value?.rosterRows ?? [] }]
+    : [
+        { label: 'Hitters', rows: hitters.value },
+        { label: 'Pitchers', rows: pitchers.value },
+      ],
+)
 
 const injuredCount = computed(() =>
   (model.value?.rosterRows ?? []).filter((r) => r.injury === 'il' || r.injury === 'dtd').length,
@@ -299,7 +319,7 @@ const injuredCount = computed(() =>
         <div v-for="group in roster" :key="group.label">
           <div v-if="group.rows.length" class="px-4 pt-4 pb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
             {{ group.label }}
-            <span class="font-mono text-[10px] normal-case tracking-normal text-dark-textMuted/70">· projected fantasy points</span>
+            <span class="font-mono text-[10px] normal-case tracking-normal text-dark-textMuted/70">· {{ isFootball ? 'value over replacement' : 'projected fantasy points' }}</span>
           </div>
           <template v-for="(row, i) in group.rows" :key="row.player.playerKey">
             <!-- Tier divider -->
@@ -346,10 +366,13 @@ const injuredCount = computed(() =>
               <!-- Projected points + per-game (or a "no projection" note for unmatched) -->
               <span v-if="!hasProj(row.player.playerKey)"
                 class="ml-auto shrink-0 font-mono text-[11px] italic text-dark-textMuted/50">no projection</span>
+              <span v-else-if="isFootball" class="ml-auto flex shrink-0 items-baseline gap-1.5">
+                <span class="font-mono text-sm font-semibold" :class="(row.rankVor ?? 0) >= 0 ? 'text-dark-text' : 'text-dark-textMuted'">{{ (row.rankVor ?? 0) >= 0 ? '+' : '' }}{{ round(row.rankVor ?? 0) }}</span>
+                <span class="font-mono text-[10px] text-dark-textMuted">VOR</span>
+              </span>
               <span v-else class="ml-auto flex shrink-0 items-baseline gap-1.5">
-                <span class="font-mono text-sm font-semibold text-dark-text">{{ round(isFootball ? row.perGame : row.points) }}</span>
-                <span v-if="!isFootball" class="font-mono text-[10px] text-dark-textMuted">{{ row.perGame.toFixed(1) }}/g</span>
-                <span v-else class="font-mono text-[10px] text-dark-textMuted">/wk</span>
+                <span class="font-mono text-sm font-semibold text-dark-text">{{ round(row.points) }}</span>
+                <span class="font-mono text-[10px] text-dark-textMuted">{{ row.perGame.toFixed(1) }}/g</span>
               </span>
             </div>
           </template>
@@ -359,9 +382,14 @@ const injuredCount = computed(() =>
           <span v-if="injuredCount" class="text-dark-text">
             {{ injuredCount }} injured — projections discounted (IL ×0.5, DTD ×0.9).
           </span>
-          <span class="text-primary">chips</span> = a specialist edge (SB / SV / HLD / QS) ·
-          right number = projected rest-of-season fantasy points (/g per game) ·
-          tiers rank within hitters / pitchers
+          <template v-if="isFootball">
+            right number = value over replacement (rest-of-season) · tiers rank your roster by VOR
+          </template>
+          <template v-else>
+            <span class="text-primary">chips</span> = a specialist edge (SB / SV / HLD / QS) ·
+            right number = projected rest-of-season fantasy points (/g per game) ·
+            tiers rank within hitters / pitchers
+          </template>
         </p>
       </div>
 
