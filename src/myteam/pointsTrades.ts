@@ -19,6 +19,7 @@ export interface TradeSide {
   proTeam?: string
   headshot?: string
   points: number
+  vor?: number // football: value over replacement (season). undefined for baseball.
 }
 
 export interface TradeIdea {
@@ -55,6 +56,7 @@ export function buildPointsTrades(
   myTeamKey: string,
   slots: Record<string, number>,
   teamNames: Record<string, string> = {},
+  vorByKey: Record<string, { vorRos: number }> = {},
 ): TradeIdea[] {
   if (!myTeamKey || !pool.length || !Object.keys(slots).length) return []
 
@@ -74,7 +76,7 @@ export function buildPointsTrades(
   const myBase = optimal(myDp, slots)
   const sideOf = (key: string): TradeSide => {
     const p = meta.get(key)!
-    return { playerKey: key, name: p.name, position: p.position, proTeam: p.proTeam, headshot: p.headshot, points: ptsByKey.get(key) ?? 0 }
+    return { playerKey: key, name: p.name, position: p.position, proTeam: p.proTeam, headshot: p.headshot, points: ptsByKey.get(key) ?? 0, vor: vorByKey[key]?.vorRos }
   }
   // Surplus = a healthy body with value that ISN'T in the optimal lineup.
   const surplus = (dp: Dp[], base: Set<string>): Dp[] =>

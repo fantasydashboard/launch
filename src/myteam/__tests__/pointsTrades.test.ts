@@ -53,4 +53,19 @@ describe('buildPointsTrades', () => {
     const ideas = buildPointsTrades(solo, buildBaseballValue(fg, weights), 'A', slots, names)
     expect(ideas).toEqual([])
   })
+
+  it('annotates each trade side with VOR when a vorByKey is supplied', () => {
+    // Key VOR on the two surplus bodies the win-win moves: give A_OF2, get B_SP2.
+    const vorByKey = { A_OF2: { vorRos: 25 }, B_SP2: { vorRos: 40 } }
+    const ideas = buildPointsTrades(pool, buildBaseballValue(fg, weights), 'A', slots, names, vorByKey)
+    expect(ideas.length).toBeGreaterThan(0)
+    expect(ideas[0].give.vor).toBe(25) // A_OF2
+    expect(ideas[0].get.vor).toBe(40)  // B_SP2
+  })
+
+  it('leaves VOR undefined when no vorByKey is supplied (baseball default)', () => {
+    const ideas = buildPointsTrades(pool, buildBaseballValue(fg, weights), 'A', slots, names)
+    expect(ideas[0].give.vor).toBeUndefined()
+    expect(ideas[0].get.vor).toBeUndefined()
+  })
 })
