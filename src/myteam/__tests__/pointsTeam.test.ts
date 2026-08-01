@@ -171,3 +171,38 @@ describe('buildPointsTeam', () => {
     expect(m.rosterRows.every((r) => r.chips.length === 0)).toBe(true)
   })
 })
+
+describe('buildPointsTeam — football VOR roster ranking', () => {
+  // 1 team (me), slots QB1/RB2/FLEX1. Raw points make the QB look best (points bias);
+  // VOR flips it — a high-VOR RB should tier above a replacement-level QB.
+  const slots = { QB: 1, RB: 2, FLEX: 1 }
+  const pool: PointsPoolPlayer[] = [
+    { playerKey: 'qb', name: 'Pocket QB', position: 'QB', teamKey: 'me', eligiblePositions: ['QB'] },
+    { playerKey: 'rb1', name: 'Stud RB', position: 'RB', teamKey: 'me', eligiblePositions: ['RB'] },
+    { playerKey: 'rb2', name: 'Flex RB', position: 'RB', teamKey: 'me', eligiblePositions: ['RB'] },
+  ]
+  // Football value (per-week points basis): QB scores the most raw points.
+  const valueByKey = {
+    qb: { total: 300, games: 1, perStat: {}, weeklyCap: 999 },
+    rb1: { total: 220, games: 1, perStat: {}, weeklyCap: 999 },
+    rb2: { total: 120, games: 1, perStat: {}, weeklyCap: 999 },
+  }
+  // VOR: the stud RB is far above replacement; the QB is barely above.
+  const vorByKey = { qb: { vorRos: 10 }, rb1: { vorRos: 95 }, rb2: { vorRos: 5 } }
+
+  it('orders roster rows by VOR (not raw points) and exposes rankVor', () => {
+    const model = buildPointsTeam(pool, valueByKey, 'me', slots, { vorByKey })
+    // Rows ordered by rankVor desc: rb1 (95) > qb (10) > rb2 (5).
+    expect(model.rosterRows.map((r) => r.player.playerKey)).toEqual(['rb1', 'qb', 'rb2'])
+    expect(model.rosterRows.find((r) => r.player.playerKey === 'rb1')!.rankVor).toBe(95)
+    // Top VOR is CORE, bottom is FRINGE.
+    expect(model.rosterRows[0].tier).toBe('CORE')
+    expect(model.rosterRows[model.rosterRows.length - 1].tier).toBe('FRINGE')
+  })
+
+  it('without vorByKey, roster rows are unchanged (ordered by points, rankVor undefined)', () => {
+    const model = buildPointsTeam(pool, valueByKey, 'me', slots)
+    expect(model.rosterRows.map((r) => r.player.playerKey)).toEqual(['qb', 'rb1', 'rb2']) // points order
+    expect(model.rosterRows[0].rankVor).toBeUndefined()
+  })
+})

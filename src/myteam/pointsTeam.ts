@@ -39,6 +39,7 @@ export interface PointsRosterRow {
   perStat: Record<string, number>
   chips: string[] // specialist edges (SB/SV/HLD/QS) where this player is a standout
   injury: InjuryTier // 'healthy' | 'dtd' | 'il' — drives the badge + the points discount
+  rankVor?: number // football: injury-discounted VOR; orders + tiers the row. undefined for baseball.
 }
 
 export interface SlotRankRow {
@@ -106,10 +107,11 @@ export function buildPointsTeam(
   // = schedule-neutral weekly rate, so a late-season two-start week can't inflate a
   // team's strength. Only the optimal-lineup VALUE/standings honour this; the
   // roster-row tiers stay on totals (My Team's basis), which 'perWeek' callers ignore.
-  opts: { basis?: 'total' | 'perWeek'; weeksLeft?: number } = {},
+  opts: { basis?: 'total' | 'perWeek'; weeksLeft?: number; vorByKey?: Record<string, { vorRos: number }> } = {},
 ): PointsTeamModel {
   const basis = opts.basis ?? 'total'
   const weeksLeft = opts.weeksLeft ?? 1
+  const vorByKey = opts.vorByKey
 
   // 1) Precomputed value per rostered player (sport-agnostic PlayerValue).
   const ptsByKey = new Map<string, PlayerValue>()
@@ -178,6 +180,7 @@ export function buildPointsTeam(
     .map((p) => {
       const r = ptsByKey.get(p.playerKey)!
       const disc = discountOf(p.playerKey)
+      const vor = vorByKey?.[p.playerKey]?.vorRos
       return {
         player: p,
         side: sideByKey.get(p.playerKey)!,
@@ -186,12 +189,16 @@ export function buildPointsTeam(
         games: r.games,
         perStat: r.perStat,
         injury: injuryByKey.get(p.playerKey) ?? 'healthy',
+        rankVor: vor != null ? vor * disc : undefined, // football: injury-discounted VOR
       }
     })
 
+  // Football ranks by VOR (rankVor); baseball by discounted points. One sort key drives
+  // per-side ordering, tier percentile, and the final combined sort.
+  const orderVal = (r: { rankVor?: number; points: number }): number => r.rankVor ?? r.points
   const rosterRows: PointsRosterRow[] = []
   for (const side of ['hit', 'pit'] as PointsSide[]) {
-    const sideRows = rawRows.filter((r) => r.side === side).sort((a, b) => b.points - a.points)
+    const sideRows = rawRows.filter((r) => r.side === side).sort((a, b) => orderVal(b) - orderVal(a))
     const n = sideRows.length
     sideRows.forEach((r, i) => {
       const pct = n < 2 ? 50 : Math.round(((n - 1 - i) / (n - 1)) * 100)
@@ -207,10 +214,11 @@ export function buildPointsTeam(
         perStat: r.perStat,
         chips: chipsFor(r.side, r.perStat),
         injury: r.injury,
+        rankVor: r.rankVor,
       })
     })
   }
-  rosterRows.sort((a, b) => b.points - a.points)
+  rosterRows.sort((a, b) => orderVal(b) - orderVal(a))
 
   // 4) Per-team optimal lineup (assignSlots over projected points), for standings
   //    AND the slot-value landscape. bar=0 so even weak rosters field a full lineup.
