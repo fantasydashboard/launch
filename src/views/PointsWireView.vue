@@ -70,6 +70,11 @@ const { wire: fbWire, loading: fbLoading } = useFootballWire({
 })
 const boardOpen = ref(false)
 const boardPositions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+const boardPos = ref('RB') // which position the Full Board shows (one at a time)
+// Positions that actually have players, in canonical order — drives the picker pills.
+const boardPositionsWithRows = computed(() =>
+  fbWire.value ? boardPositions.filter((p) => fbWire.value!.board[p]?.length) : [],
+)
 
 const teamModel = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
@@ -302,18 +307,29 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
               <span>Full board <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">· your roster vs the wire</span></span>
               <span class="font-mono">{{ boardOpen ? '−' : '+' }}</span>
             </button>
-            <div v-if="boardOpen" class="mt-3 space-y-4">
-              <div v-for="pos in boardPositions" :key="pos">
-                <div v-if="fbWire.board[pos] && fbWire.board[pos].length">
-                  <div class="mb-1 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">{{ pos }}</div>
-                  <template v-for="row in fbWire.board[pos]" :key="'fbbd-' + row.playerKey">
-                    <div class="flex items-center justify-between gap-3 border-b border-dark-border/40 py-1.5 text-sm last:border-0" :class="row.owned ? 'text-primary' : 'text-dark-text'">
-                      <span class="min-w-0 truncate">{{ row.owned ? '★ ' : '' }}{{ row.name }}</span>
-                      <span class="shrink-0 font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">{{ row.vorRos >= 0 ? '+' : '' }}{{ round(row.vorRos) }}</span>
-                    </div>
-                  </template>
-                </div>
+            <div v-if="boardOpen" class="mt-3">
+              <!-- position picker -->
+              <div class="mb-3 flex flex-wrap gap-1.5">
+                <button
+                  v-for="pos in boardPositionsWithRows"
+                  :key="pos"
+                  class="rounded px-2.5 py-1 font-mono text-[11px] uppercase tracking-wide transition-colors"
+                  :class="boardPos === pos ? 'bg-primary/20 text-primary' : 'bg-dark-bg text-dark-textMuted hover:text-dark-text'"
+                  @click="boardPos = pos"
+                >
+                  {{ pos }}
+                </button>
               </div>
+              <!-- selected position only, top 25 by VOR -->
+              <template v-for="row in (fbWire.board[boardPos] ?? []).slice(0, 25)" :key="'fbbd-' + row.playerKey">
+                <div class="flex items-center justify-between gap-3 border-b border-dark-border/40 py-1.5 text-sm last:border-0" :class="row.owned ? 'text-primary' : 'text-dark-text'">
+                  <span class="min-w-0 truncate">{{ row.owned ? '★ ' : '' }}{{ row.name }}</span>
+                  <span class="shrink-0 font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">{{ row.vorRos >= 0 ? '+' : '' }}{{ round(row.vorRos) }}</span>
+                </div>
+              </template>
+              <p v-if="(fbWire.board[boardPos]?.length ?? 0) > 25" class="mt-2 font-mono text-[9px] text-dark-textMuted">
+                top 25 of {{ fbWire.board[boardPos].length }} {{ boardPos }} — the rest are deep below replacement
+              </p>
             </div>
           </section>
         </template>
