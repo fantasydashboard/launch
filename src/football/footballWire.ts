@@ -1,3 +1,8 @@
+/**
+ * The football Wire view-model. Assembles the add/stream board from precomputed
+ * VOR: best-available (ROS VOR), upgrades (flex-aware lineup-marginal + the real
+ * drop), this-week (weekly VOR + streamability), and a full per-position board.
+ */
 import type { AvailablePlayer } from '@/players/types'
 import { parseEligible, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { DepthPlayer } from '@/trades/positionalLandscape'
@@ -23,6 +28,7 @@ export interface FootballSwap {
 }
 
 export interface BoardRow {
+  playerKey: string
   name: string
   position: string
   vorRos: number
@@ -46,7 +52,6 @@ export function buildFootballWire(input: {
   pool: PointsPoolPlayer[]
   slots: Record<string, number>
   myTeamKey: string
-  teamNames?: Record<string, string>
 }): FootballWire {
   const { freeAgents, vorByKey, pool, slots, myTeamKey } = input
 
@@ -80,7 +85,10 @@ export function buildFootballWire(input: {
       playerKey: p.playerKey,
       teamKey: p.teamKey,
       eligiblePositions: parseEligible(p),
-      value: vorByKey[p.playerKey]?.pointsRos ?? 0, // lineup math uses raw points, not VOR
+      // lineup math uses raw points, not VOR. An unmatched rostered player (no
+      // projection) intentionally reads as 0 — bench fodder — consistent with the
+      // value engine's ZERO_VALUE convention.
+      value: vorByKey[p.playerKey]?.pointsRos ?? 0,
       status: p.onIL ? 'IL' : '',
     }))
   const upgrades: FootballSwap[] = []
@@ -90,7 +98,7 @@ export function buildFootballWire(input: {
       teamKey: myTeamKey,
       eligiblePositions: add.player.eligiblePositions?.length
         ? add.player.eligiblePositions
-        : [normPos(add.player.position)],
+        : String(add.player.position || '').split(/[,/|]/).map((s) => s.trim().toUpperCase()).filter(Boolean),
       value: add.pointsRos,
     }
     const m = lineupMarginal(myPlayers, candidate, slots)
@@ -106,13 +114,13 @@ export function buildFootballWire(input: {
     const entries: BoardRow[] = []
     for (const p of pool) {
       if (normPos(p.position) !== pos) continue
-      entries.push({ name: p.name, position: pos, vorRos: vorByKey[p.playerKey]?.vorRos ?? 0, owned: p.teamKey === myTeamKey })
+      entries.push({ playerKey: p.playerKey, name: p.name, position: pos, vorRos: vorByKey[p.playerKey]?.vorRos ?? 0, owned: p.teamKey === myTeamKey })
     }
     for (const fa of freeAgents) {
       if (normPos(fa.position) !== pos) continue
       const v = vorByKey[faKey(fa)]
       if (!v) continue
-      entries.push({ name: fa.name, position: pos, vorRos: v.vorRos, owned: false })
+      entries.push({ playerKey: faKey(fa), name: fa.name, position: pos, vorRos: v.vorRos, owned: false })
     }
     if (entries.length) board[pos] = entries.sort((a, b) => b.vorRos - a.vorRos)
   }

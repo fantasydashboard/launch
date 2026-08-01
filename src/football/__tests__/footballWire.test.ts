@@ -27,6 +27,7 @@ const pool: PointsPoolPlayer[] = [
 const freeAgents: AvailablePlayer[] = [
   { playerKey: 'fa_rb', name: 'Stud FA RB', position: 'RB', team: 'LAR', percentOwned: 0, status: '', stats: {} },
   { playerKey: 'fa_qb', name: 'Backup FA QB', position: 'QB', team: 'NYJ', percentOwned: 0, status: '', stats: {} },
+  { playerKey: 'fa_ghost', name: 'Ghost FA', position: 'WR', team: 'CHI', percentOwned: 0, status: '', stats: {} },
 ]
 
 const vorByKey: Record<string, PlayerVor> = {
@@ -37,7 +38,7 @@ const vorByKey: Record<string, PlayerVor> = {
 }
 
 describe('buildFootballWire', () => {
-  const wire = buildFootballWire({ freeAgents, vorByKey, pool, slots, myTeamKey: 'me', teamNames: { opp: 'Rivals' } })
+  const wire = buildFootballWire({ freeAgents, vorByKey, pool, slots, myTeamKey: 'me' })
 
   it('bestAvailable is free agents by ROS VOR desc', () => {
     expect(wire.bestAvailable.map((r) => r.player.name)).toEqual(['Stud FA RB', 'Backup FA QB'])
@@ -65,5 +66,10 @@ describe('buildFootballWire', () => {
     expect(rbRow.map((r) => r.name)).toEqual(['My RB1', 'Stud FA RB', 'My RB2', 'My RB3'])
     expect(rbRow.find((r) => r.name === 'My RB1')!.owned).toBe(true)
     expect(rbRow.find((r) => r.name === 'Stud FA RB')!.owned).toBe(false)
+  })
+
+  it('drops FAs with no VOR entry from best-available and the board', () => {
+    expect(wire.bestAvailable.find((r) => r.player.name === 'Ghost FA')).toBeUndefined()
+    expect((wire.board['WR'] ?? []).find((r) => r.name === 'Ghost FA')).toBeUndefined()
   })
 })
