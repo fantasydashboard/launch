@@ -25,6 +25,7 @@ export function useFootballVor(inputs: {
   slots: Ref<Record<string, number>>
   season: Ref<string>
   enabled: Ref<boolean>
+  weeklyHorizon?: number // weeks of weekly-VOR/streamability to fetch (default 4; 0 = ROS only)
 }): { vorByKey: Ref<Record<string, PlayerVor>>; loading: Ref<boolean>; load: () => void } {
   const vorByKey = ref<Record<string, PlayerVor>>({})
   const loading = ref(false)
@@ -67,7 +68,8 @@ export function useFootballVor(inputs: {
       const points: Record<string, number> = {}
       for (const [k, v] of Object.entries(seasonProj)) points[k] = v.points
 
-      const weeks = Array.from({ length: WEEKLY_HORIZON }, (_, i) => currentWeek + i)
+      const horizon = inputs.weeklyHorizon ?? WEEKLY_HORIZON
+      const weeks = Array.from({ length: horizon }, (_, i) => currentWeek + i)
       const weekly: Record<string, number>[] = []
       for (const wk of weeks) {
         try {

@@ -44,6 +44,7 @@ const { vorByKey: fbVor } = useFootballVor({
   slots: rosterSlots,
   season,
   enabled: isFootball,
+  weeklyHorizon: 0, // Trades uses only rest-of-season VOR — skip weekly/streamability fetches
 })
 const tradeVor = computed(() => (isFootball.value ? fbVor.value : undefined))
 
