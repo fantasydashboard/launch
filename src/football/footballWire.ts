@@ -31,6 +31,8 @@ export interface BoardRow {
   playerKey: string
   name: string
   position: string
+  team?: string // NFL team abbr, for the logo
+  headshot?: string
   vorRos: number
   owned: boolean
 }
@@ -114,13 +116,13 @@ export function buildFootballWire(input: {
     const entries: BoardRow[] = []
     for (const p of pool) {
       if (normPos(p.position) !== pos) continue
-      entries.push({ playerKey: p.playerKey, name: p.name, position: pos, vorRos: vorByKey[p.playerKey]?.vorRos ?? 0, owned: p.teamKey === myTeamKey })
+      entries.push({ playerKey: p.playerKey, name: p.name, position: pos, team: p.proTeam, headshot: p.headshot, vorRos: vorByKey[p.playerKey]?.vorRos ?? 0, owned: p.teamKey === myTeamKey })
     }
     for (const fa of freeAgents) {
       if (normPos(fa.position) !== pos) continue
       const v = vorByKey[faKey(fa)]
       if (!v) continue
-      entries.push({ playerKey: faKey(fa), name: fa.name, position: pos, vorRos: v.vorRos, owned: false })
+      entries.push({ playerKey: faKey(fa), name: fa.name, position: pos, team: fa.team, headshot: fa.headshot, vorRos: v.vorRos, owned: false })
     }
     if (entries.length) board[pos] = entries.sort((a, b) => b.vorRos - a.vorRos)
   }

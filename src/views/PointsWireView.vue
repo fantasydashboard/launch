@@ -291,13 +291,16 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
             </h2>
             <template v-for="r in fbWire.bestAvailable.slice(0, 15)" :key="'fbba-' + (r.player.playerKey ?? r.player.name)">
               <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
-                <img :src="teamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-6 w-6 shrink-0 object-contain" />
+                <img v-if="r.player.headshot" :src="r.player.headshot" :alt="r.player.name" loading="lazy" @error="onLogoErr" class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
+                <span v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[10px] text-dark-textMuted">{{ r.player.position }}</span>
                 <span class="min-w-0 flex-1">
                   <span class="truncate text-sm font-semibold text-dark-text">
                     {{ r.player.name }}
                     <span v-if="r.confidence === 'low'" class="ml-1 font-mono text-[10px] text-amber-400" title="Thin or absent projection">⚠</span>
                   </span>
-                  <span class="text-xs text-dark-textMuted">{{ r.player.position }} · {{ r.player.team }}</span>
+                  <span class="flex items-center gap-1 text-xs text-dark-textMuted">
+                    {{ r.player.position }} · <img :src="teamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-3 w-3 object-contain" />{{ r.player.team }}
+                  </span>
                 </span>
                 <span class="w-12 shrink-0 text-right font-mono text-sm font-semibold" :class="r.vorRos >= 0 ? 'text-dark-text' : 'text-dark-textMuted'">{{ r.vorRos >= 0 ? '+' : '' }}{{ round(r.vorRos) }}</span>
               </div>
@@ -325,9 +328,12 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
               </div>
               <!-- selected position only, top 25 by VOR -->
               <template v-for="row in (fbWire.board[boardPos] ?? []).slice(0, 25)" :key="'fbbd-' + row.playerKey">
-                <div class="flex items-center justify-between gap-3 border-b border-dark-border/40 py-1.5 text-sm last:border-0" :class="row.owned ? 'text-primary' : 'text-dark-text'">
-                  <span class="min-w-0 truncate">{{ row.owned ? '★ ' : '' }}{{ row.name }}</span>
-                  <span class="shrink-0 font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">{{ row.vorRos >= 0 ? '+' : '' }}{{ round(row.vorRos) }}</span>
+                <div class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm last:border-0" :class="row.owned ? 'text-primary' : 'text-dark-text'">
+                  <img v-if="row.headshot" :src="row.headshot" :alt="row.name" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
+                  <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
+                  <span class="min-w-0 flex-1 truncate">{{ row.owned ? '★ ' : '' }}{{ row.name }}</span>
+                  <img v-if="row.team" :src="teamLogo(row.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 shrink-0 object-contain" />
+                  <span class="w-10 shrink-0 text-right font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">{{ row.vorRos >= 0 ? '+' : '' }}{{ round(row.vorRos) }}</span>
                 </div>
               </template>
               <p v-if="(fbWire.board[boardPos]?.length ?? 0) > 25" class="mt-2 font-mono text-[9px] text-dark-textMuted">

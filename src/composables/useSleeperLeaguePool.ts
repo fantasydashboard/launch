@@ -100,6 +100,7 @@ export function buildSleeperFreeAgents(
       position: pos,
       eligiblePositions: p.fantasy_positions?.length ? p.fantasy_positions : [pos],
       team: p.team,
+      headshot: `https://sleepercdn.com/content/nfl/players/thumb/${pid}.jpg`,
       percentOwned: 0,
       status: p.injury_status ?? '',
       stats: {},
