@@ -8,7 +8,7 @@ import type { OutlookTeamMeta } from '@/myteam/seasonOutlook'
 import type { AvailablePlayer } from '@/players/types'
 import type { SleeperRoster, SleeperUser, SleeperPlayer } from '@/types/sleeper'
 
-const SKILL_POSITIONS = new Set(['QB', 'RB', 'WR', 'TE'])
+const FA_POSITIONS = new Set(['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
 const OUT_STATUSES = new Set(['OUT', 'IR', 'PUP', 'SUSP', 'NA', 'DNR'])
 
 function isOut(injury?: string | null): boolean {
@@ -93,7 +93,7 @@ export function buildSleeperFreeAgents(
     if (rostered.has(pid)) continue
     if (!p.team) continue
     const pos = p.position || (p.fantasy_positions?.[0] ?? '')
-    if (!SKILL_POSITIONS.has(pos)) continue
+    if (!FA_POSITIONS.has(pos)) continue
     out.push({
       playerKey: pid,
       name: p.full_name || `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim(),

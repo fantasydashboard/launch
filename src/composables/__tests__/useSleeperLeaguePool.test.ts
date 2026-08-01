@@ -7,6 +7,7 @@ const players = {
   p3: { player_id: 'p3', full_name: 'CeeDee Lamb', position: 'WR', fantasy_positions: ['WR'], team: 'DAL', injury_status: 'Questionable', status: 'Active' },
   fa1: { player_id: 'fa1', full_name: 'Free Agent RB', position: 'RB', fantasy_positions: ['RB'], team: 'NYJ', injury_status: null, status: 'Active' },
   dst: { player_id: 'dst1', full_name: 'D/ST', position: 'DEF', fantasy_positions: ['DEF'], team: 'SF', injury_status: null, status: 'Active' },
+  fak: { player_id: 'fak1', full_name: 'Free Agent K', position: 'K', fantasy_positions: ['K'], team: 'DEN', injury_status: null, status: 'Active' },
 } as any
 const rosters = [
   { roster_id: 1, owner_id: 'u1', players: ['p1', 'p2'], starters: ['p1', 'p2'], settings: { wins: 3, losses: 1, ties: 0, fpts: 420, fpts_decimal: 5 } },
@@ -57,13 +58,18 @@ describe('buildSleeperTeamNames / Meta', () => {
 })
 
 describe('buildSleeperFreeAgents', () => {
-  it('returns unrostered skill-position players with a team, as AvailablePlayer', () => {
+  it('returns unrostered QB/RB/WR/TE/K/DEF players with a team, as AvailablePlayer', () => {
     const fas = buildSleeperFreeAgents(rosters, players)
     const keys = fas.map((f) => f.playerKey)
     expect(keys).toContain('fa1')
+    expect(keys).toContain('dst')
+    expect(keys).toContain('fak')
     expect(keys).not.toContain('p1')
-    expect(keys).not.toContain('dst1')
     const fa = fas.find((f) => f.playerKey === 'fa1')!
     expect(fa).toMatchObject({ playerKey: 'fa1', name: 'Free Agent RB', position: 'RB', team: 'NYJ' })
+    const dst = fas.find((f) => f.playerKey === 'dst')!
+    expect(dst).toMatchObject({ position: 'DEF', team: 'SF' })
+    const k = fas.find((f) => f.playerKey === 'fak')!
+    expect(k).toMatchObject({ position: 'K', team: 'DEN' })
   })
 })
