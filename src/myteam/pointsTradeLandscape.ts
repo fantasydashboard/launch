@@ -38,14 +38,18 @@ export function buildPointsTradeLandscape(
   myTeamKey: string,
   teamNames: Record<string, string> = {},
   sport: string = 'baseball',
+  vorByKey?: Record<string, { vorRos: number }>,
 ): PointsTradeLandscape | null {
   if (!myTeamKey || !pool.length) return null
 
+  // Football ranks positional strength by VOR (replacement-relative, negatives real);
+  // baseball keeps raw projected points (non-positive = no startable body).
+  const useVor = !!vorByKey
   // Group players (with points + eligibility) by team.
   interface P { eligible: string[]; points: number }
   const byTeam = new Map<string, P[]>()
   for (const p of pool) {
-    const points = valueByKey[p.playerKey]?.total ?? 0
+    const points = useVor ? (vorByKey![p.playerKey]?.vorRos ?? 0) : (valueByKey[p.playerKey]?.total ?? 0)
     // Role-based eligibility: a starter counts for SP, a reliever for RP — ESPN
     // lists most pitchers as eligible for BOTH, which made the SP/RP rows identical.
     ;(byTeam.get(p.teamKey) ?? byTeam.set(p.teamKey, []).get(p.teamKey)!).push({ eligible: lineupEligFor(p, fgByKey), points })
@@ -54,22 +58,35 @@ export function buildPointsTradeLandscape(
   if (!teamKeys.includes(myTeamKey)) return null
   const teams = teamKeys.length
 
-  // Best body's points per team per position, then rank teams (desc) at each position.
-  const bestAt = (team: string, pos: string): number => {
-    let best = 0
-    for (const pl of byTeam.get(team) ?? []) if (coversSlot(pl.eligible, pos) && pl.points > best) best = pl.points
+  // Best body's value per team per position (null = no eligible body), then rank teams desc.
+  const bestAt = (team: string, pos: string): number | null => {
+    let best: number | null = null
+    for (const pl of byTeam.get(team) ?? []) {
+      if (!coversSlot(pl.eligible, pos)) continue
+      if (best === null || pl.points > best) best = pl.points
+    }
     return best
   }
-  const positions = positionRowsFor(sport).filter((pos) => teamKeys.some((t) => bestAt(t, pos) > 0))
+  // A position "shows" if some team has a startable body there. Baseball keeps the
+  // >0 gate (non-positive points = no real body); football (VOR) counts any eligible
+  // body, since a below-replacement starter is still a real, rankable body.
+  const present = (t: string, pos: string): boolean => {
+    const v = bestAt(t, pos)
+    return useVor ? v !== null : v !== null && v > 0
+  }
+  const positions = positionRowsFor(sport).filter((pos) => teamKeys.some((t) => present(t, pos)))
   const rank: Record<string, Record<string, number>> = {}
   for (const pos of positions) {
-    const rows = teamKeys.map((t) => ({ t, v: bestAt(t, pos) })).sort((a, b) => b.v - a.v)
+    const rows = teamKeys
+      .map((t) => ({ t, v: bestAt(t, pos) }))
+      .sort((a, b) => (b.v ?? -Infinity) - (a.v ?? -Infinity))
     const r: Record<string, number> = {}
     let prev = Infinity
     let rk = 0
     rows.forEach((row, i) => {
-      if (row.v <= 0) { r[row.t] = 0; return }
-      if (row.v < prev) { rk = i + 1; prev = row.v }
+      const none = row.v === null || (!useVor && row.v <= 0)
+      if (none) { r[row.t] = 0; return }
+      if (row.v! < prev) { rk = i + 1; prev = row.v! }
       r[row.t] = rk
     })
     rank[pos] = r

@@ -68,3 +68,21 @@ describe('buildPointsTradeLandscape', () => {
     expect(z!.theyNeed).toEqual(expect.arrayContaining(['SP', 'OF'])) // they're thin where I'm loaded
   })
 })
+
+describe('buildPointsTradeLandscape — football VOR strength', () => {
+  // 2 teams, RB position. A's RB is above replacement (+20), B's is BELOW (-8).
+  // With a vorByKey, B's negative-VOR RB must still rank as a real body (rank 2), not "none".
+  const fbPool: PointsPoolPlayer[] = [
+    { playerKey: 'A_RB', name: 'A_RB', position: 'RB', teamKey: 'A', eligiblePositions: ['RB'] },
+    { playerKey: 'B_RB', name: 'B_RB', position: 'RB', teamKey: 'B', eligiblePositions: ['RB'] },
+  ]
+  const vorByKey = { A_RB: { vorRos: 20 }, B_RB: { vorRos: -8 } }
+
+  it('ranks by VOR including negatives when a vorByKey is supplied', () => {
+    const ls = buildPointsTradeLandscape(fbPool, {}, {}, 'A', { A: 'Me', B: 'You' }, 'football', vorByKey)!
+    expect(ls.positions).toContain('RB')
+    expect(ls.rank.RB.A).toBe(1) // above replacement — best
+    expect(ls.rank.RB.B).toBe(2) // below replacement, but a real body — ranked, not 0
+    expect(ls.myStrong).toContain('RB') // A is top-third at RB
+  })
+})
