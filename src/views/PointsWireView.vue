@@ -9,6 +9,7 @@ import { usePointsValue } from '@/composables/usePointsValue'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
+import { useFootballWire } from '@/composables/useFootballWire'
 
 const leagueStore = useLeagueStore()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
@@ -58,6 +59,18 @@ const { valueByKey, valueOf, loading: valueLoading } = usePointsValue({
   freeAgents,
 })
 
+// Football Wire runs off the VOR engine (separate from the baseball wire brain above).
+const { wire: fbWire, loading: fbLoading } = useFootballWire({
+  pool,
+  freeAgents,
+  slots: rosterSlots,
+  myTeamKey,
+  season,
+  enabled: isFootball,
+})
+const boardOpen = ref(false)
+const boardPositions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+
 const teamModel = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
   return buildPointsTeam(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value)
@@ -103,6 +116,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
     <div v-else-if="!wire" class="py-16 text-center text-dark-textMuted">No free agents available right now.</div>
 
     <template v-else>
+      <template v-if="!isFootball">
       <!-- 1. BEST UPGRADES — concrete add→drop swaps, the headline move -->
       <section v-if="wire.swaps.length" class="mb-5 rounded-xl border border-primary/40 bg-dark-card p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-primary">★ Best upgrades</h2>
@@ -214,6 +228,96 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
         </template>
         <p class="mt-3 font-mono text-[10px] text-dark-textMuted">your lowest-projecting rostered bodies — cut one of these for an add above</p>
       </section>
+      </template>
+
+      <template v-if="isFootball">
+        <div v-if="fbLoading && !fbWire" class="py-10 text-center text-sm text-dark-textMuted">Loading league values…</div>
+        <div v-else-if="!fbWire" class="py-10 text-center text-dark-textMuted">No free agents available right now.</div>
+
+        <template v-else>
+          <!-- 1. BEST UPGRADES — flex-aware lineup-marginal -->
+          <section v-if="fbWire.upgrades.length" class="mb-5 rounded-xl border border-primary/40 bg-dark-card p-4">
+            <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-primary">★ Best upgrades</h2>
+            <p class="mb-3 font-mono text-[10px] text-dark-textMuted">add a free agent, cut the body it beats — the lineup points you'd gain</p>
+            <template v-for="(s, i) in fbWire.upgrades" :key="'fbup-' + i">
+              <div class="flex items-center gap-3 border-b border-dark-border/40 py-2.5 last:border-0">
+                <img :src="teamLogo(s.add.player.team)" alt="" @error="onLogoErr" class="h-6 w-6 shrink-0 object-contain" />
+                <span class="min-w-0 flex-1">
+                  <span class="text-sm text-dark-text">
+                    <span class="font-mono text-[10px] uppercase text-primary">add</span> <span class="font-semibold">{{ s.add.player.name }}</span>
+                    <span class="text-[11px] text-dark-textMuted"> {{ s.add.player.position }} · {{ s.add.player.team }}</span>
+                  </span>
+                  <span class="block text-xs text-dark-textMuted">
+                    <span class="font-mono text-[10px] uppercase">drop</span> {{ s.dropName }}
+                  </span>
+                </span>
+                <span class="shrink-0 text-right">
+                  <span class="font-mono text-sm font-bold text-primary">+{{ round(s.marginal) }}</span>
+                  <span class="block font-mono text-[9px] uppercase text-dark-textMuted">lineup pts</span>
+                </span>
+              </div>
+            </template>
+          </section>
+
+          <!-- 2. THIS WEEK — next-week VOR + streamability -->
+          <section v-if="fbWire.thisWeek.length" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+            <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">This week</h2>
+            <p class="mb-3 font-mono text-[10px] text-dark-textMuted">value over a replacement-level streamer this week</p>
+            <template v-for="r in fbWire.thisWeek" :key="'fbtw-' + (r.player.playerKey ?? r.player.name)">
+              <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
+                <img :src="teamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-6 w-6 shrink-0 object-contain" />
+                <span class="min-w-0 flex-1">
+                  <span class="truncate text-sm font-semibold text-dark-text">{{ r.player.name }}</span>
+                  <span class="text-xs text-dark-textMuted">{{ r.player.position }} · {{ r.player.team }}</span>
+                </span>
+                <span v-if="r.streamOf > 0" class="shrink-0 rounded bg-dark-border/50 px-1.5 py-0.5 font-mono text-[10px] text-dark-textMuted">startable {{ r.streamWeeks }}/{{ r.streamOf }}</span>
+                <span class="w-12 shrink-0 text-right font-mono text-sm" :class="r.vorWeek >= 0 ? 'text-dark-text' : 'text-dark-textMuted'">{{ r.vorWeek >= 0 ? '+' : '' }}{{ round(r.vorWeek) }}</span>
+              </div>
+            </template>
+          </section>
+
+          <!-- 3. BEST AVAILABLE — ROS VOR -->
+          <section class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+            <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+              Best available <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">· value over replacement (season)</span>
+            </h2>
+            <template v-for="r in fbWire.bestAvailable.slice(0, 15)" :key="'fbba-' + (r.player.playerKey ?? r.player.name)">
+              <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
+                <img :src="teamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-6 w-6 shrink-0 object-contain" />
+                <span class="min-w-0 flex-1">
+                  <span class="truncate text-sm font-semibold text-dark-text">
+                    {{ r.player.name }}
+                    <span v-if="r.confidence === 'low'" class="ml-1 font-mono text-[10px] text-amber-400" title="Thin or absent projection">⚠</span>
+                  </span>
+                  <span class="text-xs text-dark-textMuted">{{ r.player.position }} · {{ r.player.team }}</span>
+                </span>
+                <span class="w-12 shrink-0 text-right font-mono text-sm font-semibold" :class="r.vorRos >= 0 ? 'text-dark-text' : 'text-dark-textMuted'">{{ r.vorRos >= 0 ? '+' : '' }}{{ round(r.vorRos) }}</span>
+              </div>
+            </template>
+          </section>
+
+          <!-- 4. FULL BOARD — every player by position, VOR-ranked, yours highlighted -->
+          <section class="rounded-xl border border-dark-border bg-dark-card p-4">
+            <button class="flex w-full items-center justify-between font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted" @click="boardOpen = !boardOpen">
+              <span>Full board <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">· your roster vs the wire</span></span>
+              <span class="font-mono">{{ boardOpen ? '−' : '+' }}</span>
+            </button>
+            <div v-if="boardOpen" class="mt-3 space-y-4">
+              <div v-for="pos in boardPositions" :key="pos">
+                <div v-if="fbWire.board[pos] && fbWire.board[pos].length">
+                  <div class="mb-1 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">{{ pos }}</div>
+                  <template v-for="row in fbWire.board[pos]" :key="'fbbd-' + row.playerKey">
+                    <div class="flex items-center justify-between gap-3 border-b border-dark-border/40 py-1.5 text-sm last:border-0" :class="row.owned ? 'text-primary' : 'text-dark-text'">
+                      <span class="min-w-0 truncate">{{ row.owned ? '★ ' : '' }}{{ row.name }}</span>
+                      <span class="shrink-0 font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">{{ row.vorRos >= 0 ? '+' : '' }}{{ round(row.vorRos) }}</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </section>
+        </template>
+      </template>
     </template>
   </div>
 </template>
