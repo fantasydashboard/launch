@@ -4,10 +4,12 @@ import { useLeagueStore } from '@/stores/league'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { usePointsValue } from '@/composables/usePointsValue'
+import { useFootballVor } from '@/composables/useFootballVor'
 import { buildPointsTrades } from '@/myteam/pointsTrades'
 import { buildPointsTradeLandscape } from '@/myteam/pointsTradeLandscape'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
+import type { AvailablePlayer } from '@/players/types'
 
 const leagueStore = useLeagueStore()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
@@ -33,14 +35,26 @@ const teamNames = source.teamNames
 const season = computed(() => '')
 const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
 
+// Football VOR (shared engine). Replacement is calibrated on rostered players here
+// (empty free-agent list) — cross-team ranking is unaffected; Trades stays self-contained.
+const noFreeAgents = computed<AvailablePlayer[]>(() => [])
+const { vorByKey: fbVor } = useFootballVor({
+  pool,
+  freeAgents: noFreeAgents,
+  slots: rosterSlots,
+  season,
+  enabled: isFootball,
+})
+const tradeVor = computed(() => (isFootball.value ? fbVor.value : undefined))
+
 const ideas = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return []
-  return buildPointsTrades(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value, teamNames.value)
+  return buildPointsTrades(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value, teamNames.value, tradeVor.value)
 })
 
 const landscape = computed(() => {
   if (!pool.value.length || !myTeamKey.value) return null
-  return buildPointsTradeLandscape(pool.value, valueByKey.value, fgByKey.value, myTeamKey.value, teamNames.value, leagueStore.activeSport)
+  return buildPointsTradeLandscape(pool.value, valueByKey.value, fgByKey.value, myTeamKey.value, teamNames.value, leagueStore.activeSport, tradeVor.value)
 })
 
 // Short column label for the heatmap (initials / first chars of the team name).
@@ -157,7 +171,11 @@ function fairness(myGain: number, theirGain: number): string {
 
         <div class="mt-2 flex items-center justify-between border-t border-dark-border/40 pt-2 font-mono text-[10px] text-dark-textMuted">
           <span>they gain <span class="text-[#e69a4a]">+{{ idea.theirGain }}</span> — {{ fairness(idea.myGain, idea.theirGain) }}</span>
-          <span>both lineups improve</span>
+          <span v-if="idea.get.vor != null && idea.give.vor != null" class="text-dark-textMuted">
+            value <span class="text-primary">{{ idea.get.vor >= 0 ? '+' : '' }}{{ round(idea.get.vor) }}</span>
+            ⇄ <span>{{ idea.give.vor >= 0 ? '+' : '' }}{{ round(idea.give.vor) }}</span>
+          </span>
+          <span v-else>both lineups improve</span>
         </div>
       </div>
 
