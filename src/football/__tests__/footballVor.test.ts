@@ -48,4 +48,13 @@ describe('buildFootballVor', () => {
     expect(vor.a.streamWeeks).toBe(0)
     expect(vor.a.streamOf).toBe(0)
   })
+
+  it('passes through the opportunity tag (empty by default)', () => {
+    const vor = buildFootballVor({
+      points, positionByKey, slots: { RB: 2 }, teams: 1,
+      opportunityByKey: { a: 'backup-elevated' },
+    })
+    expect(vor.a.opportunity).toBe('backup-elevated')
+    expect(vor.b.opportunity).toBe('') // no tag supplied → empty
+  })
 })

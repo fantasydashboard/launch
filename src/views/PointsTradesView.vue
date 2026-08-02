@@ -234,7 +234,7 @@ function fairness(myGain: number, theirGain: number): string {
           </table>
         </div>
         <p class="mt-2 font-mono text-[9px] leading-relaxed text-dark-textMuted">
-          each cell = that team's rank at the position (its best body's projected points) ·
+          each cell = that team's rank at the position (its best body's {{ isFootball ? 'value over replacement' : 'projected points' }}) ·
           <span class="text-primary">green</span> strong · <span class="text-[#FF5C5C]">red</span> weak ·
           a partner green where you're red is your best fit
         </p>

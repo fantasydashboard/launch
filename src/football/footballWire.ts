@@ -18,6 +18,7 @@ export interface WireVorRow {
   streamWeeks: number
   streamOf: number
   confidence: 'high' | 'low'
+  opportunity: import('./footballOpportunity').OpportunityTag // depth-chart/injury signal
 }
 
 export interface FootballSwap {
@@ -35,6 +36,7 @@ export interface BoardRow {
   headshot?: string
   vorRos: number
   owned: boolean
+  unprojected?: boolean // a rostered player with no projection match (VOR is a placeholder 0)
 }
 
 export interface FootballWire {
@@ -70,6 +72,7 @@ export function buildFootballWire(input: {
       streamWeeks: v.streamWeeks,
       streamOf: v.streamOf,
       confidence: v.confidence,
+      opportunity: v.opportunity,
     })
   }
 
@@ -116,7 +119,8 @@ export function buildFootballWire(input: {
     const entries: BoardRow[] = []
     for (const p of pool) {
       if (normPos(p.position) !== pos) continue
-      entries.push({ playerKey: p.playerKey, name: p.name, position: pos, team: p.proTeam, headshot: p.headshot, vorRos: vorByKey[p.playerKey]?.vorRos ?? 0, owned: p.teamKey === myTeamKey })
+      const pv = vorByKey[p.playerKey]
+      entries.push({ playerKey: p.playerKey, name: p.name, position: pos, team: p.proTeam, headshot: p.headshot, vorRos: pv?.vorRos ?? 0, owned: p.teamKey === myTeamKey, unprojected: !pv })
     }
     for (const fa of freeAgents) {
       if (normPos(fa.position) !== pos) continue

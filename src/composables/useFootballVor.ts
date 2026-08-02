@@ -8,6 +8,7 @@ import {
 } from '@/football/buildFootballProjections'
 import { defaultWeights } from '@/myteam/pointsScoring'
 import { buildFootballVor, type PlayerVor } from '@/football/footballVor'
+import { tagOpportunity, type OppPlayer } from '@/football/footballOpportunity'
 import { playingTeams, zeroByeWeek } from '@/football/footballBye'
 import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { AvailablePlayer } from '@/players/types'
@@ -61,9 +62,21 @@ export function useFootballVor(inputs: {
         sleeperService.getPlayers(),
       ])
       const meta: Record<string, SleeperPlayerMeta> = {}
+      const oppPlayers: OppPlayer[] = []
       for (const [id, pl] of Object.entries(playersMap)) {
-        meta[id] = { name: (pl as any)?.full_name || '', position: (pl as any)?.position || '' }
+        const p = pl as any
+        meta[id] = { name: p?.full_name || '', position: p?.position || '' }
+        // Opportunity is tagged against the FULL NFL player universe (so a backup's
+        // injured starter is found even if he isn't rostered/skill-position).
+        oppPlayers.push({
+          playerKey: id,
+          proTeam: (p?.team ?? '').toUpperCase(),
+          position: p?.position || '',
+          depthChartOrder: p?.depth_chart_order ?? null,
+          injuryStatus: p?.injury_status ?? null,
+        })
       }
+      const opportunityByKey = tagOpportunity(oppPlayers)
       const seasonProj = buildFootballProjectionsByKey(projPlayers.value, seasonStats, meta, scoring)
       const points: Record<string, number> = {}
       for (const [k, v] of Object.entries(seasonProj)) points[k] = v.points
@@ -92,6 +105,7 @@ export function useFootballVor(inputs: {
         slots: inputs.slots.value,
         teams: new Set(inputs.pool.value.map((p) => p.teamKey)).size,
         weekly: weekly.length ? weekly : undefined,
+        opportunityByKey,
       })
     } catch (e) {
       console.error('[useFootballVor] load failed', e)

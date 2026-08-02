@@ -1,4 +1,5 @@
 import { computeReplacementLevels, type RepPlayer } from './footballReplacement'
+import type { OpportunityTag } from './footballOpportunity'
 
 export interface PlayerVor {
   playerKey: string
@@ -10,6 +11,7 @@ export interface PlayerVor {
   streamWeeks: number // count of the next N weeks projecting above weekly replacement
   streamOf: number    // N (number of weekly maps supplied)
   confidence: 'high' | 'low'
+  opportunity: OpportunityTag // '' unless a depth-chart/injury signal applies
 }
 
 export interface FootballVorInput {
@@ -18,6 +20,7 @@ export interface FootballVorInput {
   slots: Record<string, number>
   teams: number
   weekly?: Record<string, number>[]        // [nextWeek, +1, …] points by key; byes already zeroed
+  opportunityByKey?: Record<string, OpportunityTag> // depth-chart/injury tag by key
 }
 
 const normPos = (pos: string): string => (pos || '').toUpperCase().split(/[,/|]/)[0].trim()
@@ -33,7 +36,7 @@ function repPlayers(points: Record<string, number>, positionByKey: Record<string
  * weekly replacement (a durable stream vs a one-week plug). Pure.
  */
 export function buildFootballVor(input: FootballVorInput): Record<string, PlayerVor> {
-  const { points, positionByKey, slots, teams, weekly } = input
+  const { points, positionByKey, slots, teams, weekly, opportunityByKey } = input
   const rosLevels = computeReplacementLevels(repPlayers(points, positionByKey), slots, teams)
 
   // Precompute weekly replacement levels once per week.
@@ -59,6 +62,7 @@ export function buildFootballVor(input: FootballVorInput): Record<string, Player
       streamWeeks: weeklyLevels.length ? streamWeeks : 0,
       streamOf: weeklyLevels.length,
       confidence: pointsRos > 0 ? 'high' : 'low',
+      opportunity: opportunityByKey?.[key] ?? '',
     }
   }
   return out

@@ -9,7 +9,7 @@ function vor(key: string, position: string, vorRos: number, extra: Partial<Playe
     playerKey: key, position, pointsRos: vorRos + 100, vorRos,
     pointsNextWeek: 0, vorWeek: extra.vorWeek ?? 0,
     streamWeeks: extra.streamWeeks ?? 0, streamOf: extra.streamOf ?? 0,
-    confidence: 'high', ...extra,
+    confidence: 'high', opportunity: '', ...extra,
   }
 }
 

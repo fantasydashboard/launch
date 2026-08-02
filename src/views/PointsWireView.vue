@@ -275,7 +275,10 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
               <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
                 <img :src="teamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-6 w-6 shrink-0 object-contain" />
                 <span class="min-w-0 flex-1">
-                  <span class="truncate text-sm font-semibold text-dark-text">{{ r.player.name }}</span>
+                  <span class="truncate text-sm font-semibold text-dark-text">
+                    {{ r.player.name }}
+                    <span v-if="r.opportunity === 'backup-elevated'" class="ml-1 rounded bg-amber-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-amber-400" title="Healthy backup — the starter ahead of him is injured">step-up</span>
+                  </span>
                   <span class="text-xs text-dark-textMuted">{{ r.player.position }} · {{ r.player.team }}</span>
                 </span>
                 <span v-if="r.streamOf > 0" class="shrink-0 rounded bg-dark-border/50 px-1.5 py-0.5 font-mono text-[10px] text-dark-textMuted">startable {{ r.streamWeeks }}/{{ r.streamOf }}</span>
@@ -296,6 +299,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                 <span class="min-w-0 flex-1">
                   <span class="truncate text-sm font-semibold text-dark-text">
                     {{ r.player.name }}
+                    <span v-if="r.opportunity === 'backup-elevated'" class="ml-1 rounded bg-amber-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-amber-400" title="Healthy backup — the starter ahead of him is injured">step-up</span>
                     <span v-if="r.confidence === 'low'" class="ml-1 font-mono text-[10px] text-amber-400" title="Thin or absent projection">⚠</span>
                   </span>
                   <span class="flex items-center gap-1 text-xs text-dark-textMuted">
@@ -333,7 +337,8 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                   <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
                   <span class="min-w-0 flex-1 truncate">{{ row.owned ? '★ ' : '' }}{{ row.name }}</span>
                   <img v-if="row.team" :src="teamLogo(row.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 shrink-0 object-contain" />
-                  <span class="w-10 shrink-0 text-right font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">{{ row.vorRos >= 0 ? '+' : '' }}{{ round(row.vorRos) }}</span>
+                  <span v-if="row.unprojected" class="w-10 shrink-0 text-right font-mono text-[10px] italic text-dark-textMuted/50">no proj</span>
+                  <span v-else class="w-10 shrink-0 text-right font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">{{ row.vorRos >= 0 ? '+' : '' }}{{ round(row.vorRos) }}</span>
                 </div>
               </template>
               <p v-if="(fbWire.board[boardPos]?.length ?? 0) > 25" class="mt-2 font-mono text-[9px] text-dark-textMuted">
