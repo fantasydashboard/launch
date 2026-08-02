@@ -23,3 +23,17 @@ export function zeroByeWeek(
   }
   return out
 }
+
+/** Per-team opponent + home/away for a week's schedule (a team absent = bye). */
+export function opponentMap(games: any[]): Record<string, { opp: string; home: boolean }> {
+  const out: Record<string, { opp: string; home: boolean }> = {}
+  for (const g of games ?? []) {
+    const home = String(g?.home ?? g?.home_team ?? g?.metadata?.home_team ?? '').toUpperCase()
+    const away = String(g?.away ?? g?.away_team ?? g?.metadata?.away_team ?? '').toUpperCase()
+    if (home && away) {
+      out[home] = { opp: away, home: true }
+      out[away] = { opp: home, home: false }
+    }
+  }
+  return out
+}

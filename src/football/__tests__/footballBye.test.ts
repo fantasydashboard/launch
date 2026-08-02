@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { playingTeams, zeroByeWeek } from '../footballBye'
+import { playingTeams, zeroByeWeek, opponentMap } from '../footballBye'
 
 describe('playingTeams', () => {
   it('collects home + away team codes from schedule games', () => {
@@ -35,5 +35,22 @@ describe('zeroByeWeek', () => {
     const points = { a: 20 }
     zeroByeWeek(points, { a: 'SF' }, new Set(['BUF']))
     expect(points.a).toBe(20)
+  })
+})
+
+describe('opponentMap', () => {
+  it('maps each team to its opponent + home/away, uppercased', () => {
+    const games = [{ home: 'BUF', away: 'MIA' }, { home_team: 'KC', away_team: 'den' }]
+    const m = opponentMap(games as any)
+    expect(m.BUF).toEqual({ opp: 'MIA', home: true })
+    expect(m.MIA).toEqual({ opp: 'BUF', home: false })
+    expect(m.KC).toEqual({ opp: 'DEN', home: true })
+    expect(m.DEN).toEqual({ opp: 'KC', home: false })
+    expect(m.SF).toBeUndefined() // on bye
+  })
+
+  it('tolerates missing fields', () => {
+    expect(Object.keys(opponentMap([{ metadata: {} }] as any))).toEqual([])
+    expect(Object.keys(opponentMap(null as any))).toEqual([])
   })
 })
