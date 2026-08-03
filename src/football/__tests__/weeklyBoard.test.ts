@@ -107,4 +107,20 @@ describe('buildWeeklyBoard', () => {
     expect(board.streamers[0].weekPoints).toBe(22)
     expect(board.streamers[0].vorWeek).toBe(12)
   })
+
+  it('empty schedule = unknown, not a league-wide bye', () => {
+    // A failed/unavailable schedule fetch yields {} — every team would otherwise
+    // look like it were on bye, which would fabricate bye must-sub moves.
+    const vorByKey: Record<string, PlayerVor> = {
+      qb: pv(300), rb1: pv(200), rb2: pv(150), rb3: pv(120), rb4: pv(80), opp: pv(999),
+    }
+    const board = buildWeeklyBoard({
+      pool, vorByKey, slots, myTeamKey: 'me',
+      currentStarters: ['qb', 'rb1', 'rb2', 'rb3'],
+      freeAgents: [], opponentByTeam: {},
+    })
+    expect(board.starters.every((s) => s.bye)).toBe(false)
+    expect(board.starters.every((s) => s.opponent === '')).toBe(true)
+    expect(board.moves.every((m) => m.kind !== 'bye')).toBe(true)
+  })
 })

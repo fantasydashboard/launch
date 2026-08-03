@@ -78,7 +78,10 @@ export function buildWeeklyBoard(input: {
   const week = (key: string): number => vorByKey[key]?.pointsNextWeek ?? 0
   const meta = new Map(pool.map((p) => [p.playerKey, p]))
   const teamOf = (key: string) => (meta.get(key)?.proTeam ?? '').toUpperCase()
-  const byeOf = (key: string) => !opponentByTeam[teamOf(key)]
+  // An empty map means the schedule is unknown (fetch failed / unsupported week),
+  // NOT that all 32 teams are on bye — never fabricate byes from missing data.
+  const scheduleKnown = Object.keys(opponentByTeam).length > 0
+  const byeOf = (key: string) => scheduleKnown && !opponentByTeam[teamOf(key)]
   const oppOf = (key: string) => opponentByTeam[teamOf(key)]?.opp ?? ''
   const homeOf = (key: string) => opponentByTeam[teamOf(key)]?.home ?? false
   const oppTag = (key: string): OpportunityTag => vorByKey[key]?.opportunity ?? ''

@@ -525,14 +525,18 @@ class SleeperService {
   }
 
   /**
-   * Get NFL schedule for a week (includes game info)
+   * Get NFL schedule for a week (includes game info).
+   * seasonType matches Sleeper's NFL state ('regular' | 'post'); the playoff weeks
+   * live under a different path, so callers on a post week must pass it through.
    */
   async getNflSchedule(
     season: string,
-    week: number
+    week: number,
+    seasonType: string = 'regular'
   ): Promise<any[]> {
     try {
-      const url = `https://api.sleeper.app/schedule/nfl/regular/${season}/${week}`
+      const type = seasonType === 'post' ? 'post' : 'regular'
+      const url = `https://api.sleeper.app/schedule/nfl/${type}/${season}/${week}`
       const response = await fetch(url)
       if (!response.ok) {
         console.warn(`Failed to fetch NFL schedule for week ${week}`)
