@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { yahooMyTeamKey, yahooTeamNames, yahooTeamMeta, espnTeamMeta } from '@/composables/useActivePointsSource'
+import { yahooMyTeamKey, yahooTeamNames, yahooTeamMeta, espnTeamMeta, resolveLeagueSize } from '@/composables/useActivePointsSource'
 
 describe('yahoo identity helpers', () => {
   const teams = [
@@ -15,5 +15,40 @@ describe('espnTeamMeta', () => {
   it('maps ESPN teamRecords → OutlookTeamMeta', () => {
     const recs = { '1': { wins: 4, losses: 1, ties: 0, pointsFor: 500 } }
     expect(espnTeamMeta(recs)).toEqual({ '1': { wins: 4, losses: 1, ties: 0, pointsFor: 500 } })
+  })
+})
+
+describe('resolveLeagueSize', () => {
+  const pool = [{ teamKey: 'a' }, { teamKey: 'b' }, { teamKey: 'c' }]
+
+  it('prefers the team list — correct even when rosters are empty', () => {
+    const names = { '1': 'A', '2': 'B', '3': 'C', '4': 'D' }
+    expect(resolveLeagueSize(names, 12, [])).toEqual({ size: 4, source: 'teams' })
+  })
+
+  it('falls back to league settings when there is no team list', () => {
+    expect(resolveLeagueSize({}, 12, [])).toEqual({ size: 12, source: 'settings' })
+  })
+
+  it('falls back to distinct pool teamKeys when team list and settings are absent', () => {
+    expect(resolveLeagueSize({}, undefined, pool)).toEqual({ size: 3, source: 'pool' })
+  })
+
+  it('defaults to 12 when nothing is known', () => {
+    expect(resolveLeagueSize({}, undefined, [])).toEqual({ size: 12, source: 'default' })
+  })
+
+  it('never returns 1 — a one-entry source falls through to the next rung', () => {
+    expect(resolveLeagueSize({ '1': 'Only' }, 10, [])).toEqual({ size: 10, source: 'settings' })
+    expect(resolveLeagueSize({ '1': 'Only' }, undefined, [{ teamKey: 'a' }])).toEqual({ size: 12, source: 'default' })
+  })
+
+  it('ignores non-finite or absurd settings values', () => {
+    expect(resolveLeagueSize({}, NaN, pool)).toEqual({ size: 3, source: 'pool' })
+    expect(resolveLeagueSize({}, 0, pool)).toEqual({ size: 3, source: 'pool' })
+  })
+
+  it('tolerates null/undefined inputs', () => {
+    expect(resolveLeagueSize(null as any, undefined, null as any)).toEqual({ size: 12, source: 'default' })
   })
 })

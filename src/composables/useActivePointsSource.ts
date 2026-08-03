@@ -34,6 +34,33 @@ export function espnTeamMeta(recs: Record<string, { wins: number; losses: number
   return out
 }
 
+export interface LeagueSizeResolution {
+  size: number
+  source: 'teams' | 'settings' | 'pool' | 'default'
+}
+
+/**
+ * League size for replacement-level math. The team list comes first because every
+ * platform builds it from the league's TEAMS, not from rostered players — so it
+ * stays correct when rosters are empty (pre-draft) or thin, which is exactly when
+ * counting distinct pool teamKeys collapses to 0 and silently yields one-team
+ * replacement levels. Each rung must clear 2 teams to be believed; a
+ * wrong-but-typical 12 produces sane baselines where 1 produces nonsense.
+ */
+export function resolveLeagueSize(
+  teamNames: Record<string, string>,
+  totalRosters: number | undefined,
+  pool: { teamKey: string }[],
+): LeagueSizeResolution {
+  const named = Object.keys(teamNames ?? {}).length
+  if (named > 1) return { size: named, source: 'teams' }
+  const settings = Number(totalRosters)
+  if (Number.isFinite(settings) && settings > 1) return { size: Math.floor(settings), source: 'settings' }
+  const pooled = new Set((pool ?? []).map((p) => p.teamKey)).size
+  if (pooled > 1) return { size: pooled, source: 'pool' }
+  return { size: 12, source: 'default' }
+}
+
 export interface ActivePointsSource {
   pool: ComputedRef<PointsPoolPlayer[]>
   fgByKey: ComputedRef<Record<string, FGProjection | null>>
