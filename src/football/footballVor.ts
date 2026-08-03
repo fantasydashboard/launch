@@ -1,4 +1,4 @@
-import { computeReplacementLevels, type RepPlayer } from './footballReplacement'
+import { computeReplacementDetail, computeReplacementLevels, type RepPlayer } from './footballReplacement'
 import type { OpportunityTag } from './footballOpportunity'
 
 export interface PlayerVor {
@@ -66,4 +66,53 @@ export function buildFootballVor(input: FootballVorInput): Record<string, Player
     }
   }
   return out
+}
+
+export interface VorAuditPosition {
+  position: string
+  startable: number         // players at this position who start league-wide
+  replacement: number       // ROS replacement level (points)
+  replacementWeek1: number  // next-week replacement level; 0 when no weekly maps
+  playersAtPosition: number
+}
+
+export interface VorAudit {
+  teams: number
+  slots: Record<string, number>
+  positions: VorAuditPosition[]
+  playerCount: number
+  weeklyMapCount: number
+}
+
+/**
+ * How the VOR numbers were produced, for `/vor-audit`. Takes the SAME
+ * FootballVorInput object the engine takes and recomputes with the same pure
+ * helpers, so the reported replacement levels are the levels the engine
+ * subtracted — an audit that could disagree with the engine would be worse
+ * than none. Pure and total.
+ */
+export function buildFootballVorAudit(input: FootballVorInput): VorAudit {
+  const { points, positionByKey, slots, teams, weekly } = input
+  const ros = computeReplacementDetail(repPlayers(points, positionByKey), slots, teams)
+  const week1 = weekly?.length
+    ? computeReplacementDetail(repPlayers(weekly[0], positionByKey), slots, teams)
+    : null
+
+  const positions: VorAuditPosition[] = Object.keys(ros.levels)
+    .map((position) => ({
+      position,
+      startable: ros.startable[position] ?? 0,
+      replacement: ros.levels[position] ?? 0,
+      replacementWeek1: week1?.levels[position] ?? 0,
+      playersAtPosition: ros.countByPos[position] ?? 0,
+    }))
+    .sort((a, b) => b.playersAtPosition - a.playersAtPosition || a.position.localeCompare(b.position))
+
+  return {
+    teams,
+    slots,
+    positions,
+    playerCount: Object.keys(points).length,
+    weeklyMapCount: weekly?.length ?? 0,
+  }
 }

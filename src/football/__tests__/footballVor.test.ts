@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildFootballVor } from '../footballVor'
+import { buildFootballVor, buildFootballVorAudit } from '../footballVor'
 
 describe('buildFootballVor', () => {
   // 1 team, RB:2 → replacement RB = 3rd best RB.
@@ -56,5 +56,51 @@ describe('buildFootballVor', () => {
     })
     expect(vor.a.opportunity).toBe('backup-elevated')
     expect(vor.b.opportunity).toBe('') // no tag supplied → empty
+  })
+})
+
+describe('buildFootballVorAudit', () => {
+  const points = { rb1: 300, rb2: 200, rb3: 100, qb1: 400 }
+  const positionByKey = { rb1: 'RB', rb2: 'RB', rb3: 'RB', qb1: 'QB' }
+  const input = { points, positionByKey, slots: { QB: 1, RB: 2 }, teams: 1 }
+
+  it('reports the replacement levels the engine actually subtracted', () => {
+    const vor = buildFootballVor(input)
+    const audit = buildFootballVorAudit(input)
+    const rb = audit.positions.find((p) => p.position === 'RB')!
+    // Reconstructing VOR from the audit must reproduce the engine's number.
+    expect(points.rb1 - rb.replacement).toBe(vor.rb1.vorRos)
+    expect(points.rb2 - rb.replacement).toBe(vor.rb2.vorRos)
+  })
+
+  it('echoes its inputs', () => {
+    const audit = buildFootballVorAudit(input)
+    expect(audit.teams).toBe(1)
+    expect(audit.slots).toEqual({ QB: 1, RB: 2 })
+    expect(audit.playerCount).toBe(4)
+    expect(audit.weeklyMapCount).toBe(0)
+  })
+
+  it('reports startable counts and per-position availability', () => {
+    const rb = buildFootballVorAudit(input).positions.find((p) => p.position === 'RB')!
+    expect(rb.startable).toBe(2)
+    expect(rb.playersAtPosition).toBe(3)
+  })
+
+  it('carries week-1 replacement when weekly maps are supplied', () => {
+    const audit = buildFootballVorAudit({
+      ...input,
+      weekly: [{ rb1: 20, rb2: 15, rb3: 10, qb1: 25 }],
+    })
+    const rb = audit.positions.find((p) => p.position === 'RB')!
+    expect(rb.replacementWeek1).toBe(10)
+    expect(audit.weeklyMapCount).toBe(1)
+  })
+
+  it('is total on empty input', () => {
+    const audit = buildFootballVorAudit({ points: {}, positionByKey: {}, slots: {}, teams: 12 })
+    expect(audit.playerCount).toBe(0)
+    expect(audit.weeklyMapCount).toBe(0)
+    expect(Array.isArray(audit.positions)).toBe(true)
   })
 })
