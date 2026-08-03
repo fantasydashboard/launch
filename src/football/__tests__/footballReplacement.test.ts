@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeReplacementLevels, type RepPlayer } from '../footballReplacement'
+import { computeReplacementLevels, computeReplacementDetail, type RepPlayer } from '../footballReplacement'
 
 // Build N players at a position with descending points from `top` step `step`.
 function pos(position: string, n: number, top: number, step: number): RepPlayer[] {
@@ -57,5 +57,49 @@ describe('computeReplacementLevels', () => {
 
   it('empty pool → 0', () => {
     expect(computeReplacementLevels([], { QB: 1 }, 10).QB).toBe(0)
+  })
+})
+
+describe('computeReplacementDetail', () => {
+  const players = [
+    { playerKey: 'rb1', position: 'RB', points: 300 },
+    { playerKey: 'rb2', position: 'RB', points: 200 },
+    { playerKey: 'rb3', position: 'RB', points: 100 },
+    { playerKey: 'rb4', position: 'RB', points: 50 },
+    { playerKey: 'qb1', position: 'QB', points: 400 },
+    { playerKey: 'qb2', position: 'QB', points: 250 },
+  ]
+
+  it('reports the same levels computeReplacementLevels returns', () => {
+    const slots = { QB: 1, RB: 2 }
+    expect(computeReplacementDetail(players, slots, 1).levels).toEqual(
+      computeReplacementLevels(players, slots, 1),
+    )
+  })
+
+  it('reports startable counts and per-position player counts', () => {
+    const d = computeReplacementDetail(players, { QB: 1, RB: 2 }, 1)
+    expect(d.startable.RB).toBe(2)
+    expect(d.startable.QB).toBe(1)
+    expect(d.countByPos.RB).toBe(4)
+    expect(d.countByPos.QB).toBe(2)
+  })
+
+  it('startable grows with league size', () => {
+    const d = computeReplacementDetail(players, { QB: 1, RB: 2 }, 2)
+    expect(d.startable.RB).toBe(4)
+    expect(d.startable.QB).toBe(2)
+  })
+
+  it('flex openings raise the startable count of the position that fills them', () => {
+    const d = computeReplacementDetail(players, { RB: 2, FLEX: 1 }, 1)
+    expect(d.startable.RB).toBe(3) // 2 dedicated + the FLEX taken by rb3
+    expect(d.levels.RB).toBe(50)   // first RB off the startable list
+  })
+
+  it('is total on empty input', () => {
+    const d = computeReplacementDetail([], { RB: 2 }, 12)
+    expect(d.levels.RB).toBe(0)
+    expect(d.countByPos.RB ?? 0).toBe(0)
   })
 })

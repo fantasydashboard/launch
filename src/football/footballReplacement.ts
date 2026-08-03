@@ -10,6 +10,12 @@ export interface RepPlayer {
 /** position → replacement-level projected points. */
 export type ReplacementLevels = Record<string, number>
 
+export interface ReplacementDetail {
+  levels: ReplacementLevels
+  startable: Record<string, number>   // players at this position who start league-wide
+  countByPos: Record<string, number>  // players available at this position
+}
+
 /** Positions filled by a dedicated (non-flex) slot. */
 const DEDICATED = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 /** Flex slot keys, from the roster-slot parser. */
@@ -26,11 +32,11 @@ const normPos = (pos: string): string => (pos || '').toUpperCase().split(/[,/|]/
  * for QBs). replacement[pos] = the points of the first player OFF that startable
  * list — the true waiver-level alternative. Deterministic and pure.
  */
-export function computeReplacementLevels(
+export function computeReplacementDetail(
   players: RepPlayer[],
   slots: Record<string, number>,
   teams: number,
-): ReplacementLevels {
+): ReplacementDetail {
   const t = Math.max(1, teams)
 
   // Points per position, sorted best-first.
@@ -85,5 +91,20 @@ export function computeReplacementLevels(
     const idx = startable[pos] ?? 0
     levels[pos] = arr[idx] ?? arr[arr.length - 1]
   }
-  return levels
+
+  const countByPos: Record<string, number> = {}
+  for (const [pos, arr] of byPos) countByPos[pos] = arr.length
+  return { levels, startable, countByPos }
+}
+
+/**
+ * Standard value-based-drafting replacement level, calibrated to the league.
+ * Thin wrapper over `computeReplacementDetail` — the levels only.
+ */
+export function computeReplacementLevels(
+  players: RepPlayer[],
+  slots: Record<string, number>,
+  teams: number,
+): ReplacementLevels {
+  return computeReplacementDetail(players, slots, teams).levels
 }
