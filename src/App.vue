@@ -1211,8 +1211,11 @@ const isRotoLeague = computed(() => {
 })
 
 const tabs = computed(() => [
-  // "Today" is a daily-optimizer built for baseball's game-by-game slate; football is weekly, so hide it there.
-  ...(leagueStore.activeSport === 'football' ? [] : [{ name: 'Today', path: '/today' }]),
+  // "Today" is a daily-optimizer built for baseball's game-by-game slate; football is weekly,
+  // so football gets the weekly "This Week" start/sit tab in that slot instead.
+  ...(leagueStore.activeSport === 'football'
+    ? [{ name: 'This Week', path: '/this-week' }]
+    : [{ name: 'Today', path: '/today' }]),
   { name: 'My Team', path: '/my-team' },
   { name: isRotoLeague.value ? 'Roto Race' : 'Matchup', path: '/matchup' },
   { name: 'The Wire', path: '/players' },

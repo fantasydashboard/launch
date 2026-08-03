@@ -133,6 +133,11 @@ const router = createRouter({
       component: () => import('@/views/TodayWrapper.vue')
     },
     {
+      path: '/this-week',
+      name: 'this-week',
+      component: () => import('@/views/WeeklyView.vue')
+    },
+    {
       path: '/history',
       name: 'history',
       component: () => import('@/views/HistoryWrapper.vue')
