@@ -7,7 +7,7 @@ import {
   type SleeperPlayerMeta,
 } from '@/football/buildFootballProjections'
 import { defaultWeights } from '@/myteam/pointsScoring'
-import { buildFootballVor, type PlayerVor } from '@/football/footballVor'
+import { buildFootballVor, buildFootballVorAudit, type PlayerVor, type VorAudit } from '@/football/footballVor'
 import { tagOpportunity, type OppPlayer } from '@/football/footballOpportunity'
 import { playingTeams, zeroByeWeek } from '@/football/footballBye'
 import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
@@ -28,8 +28,9 @@ export function useFootballVor(inputs: {
   season: Ref<string>
   enabled: Ref<boolean>
   weeklyHorizon?: number // weeks of weekly-VOR/streamability to fetch (default 4; 0 = ROS only)
-}): { vorByKey: Ref<Record<string, PlayerVor>>; loading: Ref<boolean>; load: () => void } {
+}): { vorByKey: Ref<Record<string, PlayerVor>>; audit: Ref<VorAudit | null>; loading: Ref<boolean>; load: () => void } {
   const vorByKey = ref<Record<string, PlayerVor>>({})
+  const audit = ref<VorAudit | null>(null)
   const loading = ref(false)
 
   const projPlayers = computed<ProjPlayer[]>(() => [
@@ -50,7 +51,7 @@ export function useFootballVor(inputs: {
   })
 
   async function load() {
-    if (!inputs.enabled.value || projPlayers.value.length === 0) { vorByKey.value = {}; return }
+    if (!inputs.enabled.value || projPlayers.value.length === 0) { vorByKey.value = {}; audit.value = null; return }
     loading.value = true
     try {
       const state = await sleeperService.getNflState()
@@ -100,17 +101,22 @@ export function useFootballVor(inputs: {
         }
       }
 
-      vorByKey.value = buildFootballVor({
+      // One shared input object for both — the audit reports the levels the engine
+      // used because it is handed the very same inputs, so it cannot drift.
+      const vorInput = {
         points,
         positionByKey: positionByKey.value,
         slots: inputs.slots.value,
         teams: inputs.teams.value,
         weekly: weekly.length ? weekly : undefined,
         opportunityByKey,
-      })
+      }
+      vorByKey.value = buildFootballVor(vorInput)
+      audit.value = buildFootballVorAudit(vorInput)
     } catch (e) {
       console.error('[useFootballVor] load failed', e)
       vorByKey.value = {}
+      audit.value = null
     } finally {
       loading.value = false
     }
@@ -118,5 +124,5 @@ export function useFootballVor(inputs: {
 
   watch([inputs.enabled, projPlayers, inputs.season], load, { immediate: true })
 
-  return { vorByKey, loading, load }
+  return { vorByKey, audit, loading, load }
 }
