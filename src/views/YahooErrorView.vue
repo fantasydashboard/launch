@@ -42,10 +42,20 @@ const errorMessage = computed(() => {
     'no_code': 'No authorization code received from Yahoo.',
     'token_exchange_failed': 'Failed to exchange authorization code for tokens.',
     'access_denied': 'You denied access to your Yahoo account.',
+    // Yahoo refuses the fspt-r scope when the client_id's app lacks Fantasy Sports
+    // permission — i.e. the deployed credentials belong to a different Yahoo app.
+    'invalid_scope': 'Yahoo refused the Fantasy Sports permission for this app. The connected Yahoo app may be missing Fantasy Sports access.',
+    'invalid_client': 'Yahoo rejected our app credentials.',
+    'unauthorized_client': 'This app is not authorized for the requested Yahoo permission.',
     'default': 'An unexpected error occurred while connecting to Yahoo.'
   }
-  
-  return errorMessages[error] || errorMessages['default']
+
+  if (errorMessages[error]) return errorMessages[error]
+  // Never swallow an unrecognized code — showing it verbatim is what turns a
+  // mystery screen into a diagnosable one.
+  return error
+    ? `${errorMessages['default']} (${error})`
+    : errorMessages['default']
 })
 
 function tryAgain() {

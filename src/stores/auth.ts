@@ -8,6 +8,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import { readStoredSession } from '@/lib/authSession'
 import type { User, Session } from '@supabase/supabase-js'
 import type { Profile } from '@/types/supabase'
 
@@ -53,10 +54,21 @@ export const useAuthStore = defineStore('auth', () => {
   const isPro = computed(() => ['pro', 'premium'].includes(subscriptionTier.value))
   const isPremium = computed(() => subscriptionTier.value === 'premium')
 
+  // A single in-flight initialization, shared by every caller. The app boot and a
+  // callback view both call initialize(); letting them run concurrently made them
+  // contend for supabase-js's navigator lock, which is how a valid session ended up
+  // losing the race below and reporting the user as signed out.
+  let initPromise: Promise<void> | null = null
+
   // Initialize auth state
-  async function initialize() {
+  function initialize(): Promise<void> {
+    if (!initPromise) initPromise = runInitialize()
+    return initPromise
+  }
+
+  async function runInitialize() {
     console.log('[Auth] Starting initialization...')
-    
+
     if (!supabase) {
       console.error('[Auth] Supabase client is NULL - check env variables')
       loading.value = false
@@ -69,22 +81,45 @@ export const useAuthStore = defineStore('auth', () => {
     initialized.value = true
 
     try {
-      // Try getSession with a short timeout — it reads localStorage so should be instant
+      // getSession() normally reads localStorage, but it serializes behind a navigator
+      // lock and can stall well past a second under contention or a blocked network.
       let currentSession = null
+      let timedOut = false
 
       try {
+        const TIMEOUT_MS = 5000
         const sessionPromise = supabase.auth.getSession()
-        const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000))
+        const timeout = new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), TIMEOUT_MS))
         const result = await Promise.race([sessionPromise, timeout]) as any
-        if (result && result.data) {
+        if (result === 'timeout') {
+          timedOut = true
+          console.warn(`[Auth] getSession did not settle in ${TIMEOUT_MS}ms — falling back to stored session`)
+        } else if (result && result.data) {
           currentSession = result.data.session
         }
       } catch (err) {
         console.error('[Auth] getSession failed:', err)
       }
-      
+
+      // A timeout means "unknown", NOT "signed out". Reporting no session here would
+      // sign the user out of a flow they are correctly authenticated for (this is what
+      // broke the Yahoo connect: a valid, unexpired token sat in localStorage the whole
+      // time). Read it directly — synchronous, lock-free, and expiry-checked.
+      if (!currentSession) {
+        const stored = readStoredSession(
+          import.meta.env.VITE_SUPABASE_URL,
+          typeof localStorage !== 'undefined' ? localStorage : undefined,
+        )
+        if (stored.session) {
+          console.log('[Auth] Recovered session from storage (reason:', stored.reason + ')')
+          currentSession = stored.session as any
+        } else if (timedOut) {
+          console.warn('[Auth] No usable stored session after timeout (reason:', stored.reason + ')')
+        }
+      }
+
       console.log('[Auth] Session result:', currentSession ? `User: ${currentSession.user?.email}` : 'No session')
-      
+
       if (currentSession) {
         session.value = currentSession
         user.value = currentSession.user
