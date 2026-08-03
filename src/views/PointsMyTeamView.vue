@@ -34,6 +34,7 @@ const pool = source.pool
 const fgByKey = source.fgByKey
 const rosterSlots = source.rosterSlots
 const loading = source.loading
+const leagueSize = source.leagueSize
 
 // Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
 const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
@@ -46,6 +47,7 @@ const { vorByKey: fbVor } = useFootballVor({
   pool,
   freeAgents: noFreeAgents,
   slots: rosterSlots,
+  teams: leagueSize,
   season,
   enabled: isFootball,
   weeklyHorizon: 0,

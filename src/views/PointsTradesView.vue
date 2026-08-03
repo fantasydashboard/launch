@@ -31,6 +31,7 @@ const rosterSlots = source.rosterSlots
 const loading = source.loading
 const myTeamKey = source.myTeamKey
 const teamNames = source.teamNames
+const leagueSize = source.leagueSize
 
 const season = computed(() => '')
 const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
@@ -42,6 +43,7 @@ const { vorByKey: fbVor } = useFootballVor({
   pool,
   freeAgents: noFreeAgents,
   slots: rosterSlots,
+  teams: leagueSize,
   season,
   enabled: isFootball,
   weeklyHorizon: 0, // Trades uses only rest-of-season VOR — skip weekly/streamability fetches

@@ -70,6 +70,8 @@ export interface ActivePointsSource {
   myTeamName: ComputedRef<string>
   myTeamLogo: ComputedRef<string>
   myRecord: ComputedRef<string>
+  leagueSize: ComputedRef<number>
+  leagueSizeSource: ComputedRef<LeagueSizeResolution['source']>
   teamNames: ComputedRef<Record<string, string>>
   teamMeta: ComputedRef<Record<string, OutlookTeamMeta>>
   teamLogos: ComputedRef<Record<string, string>>
@@ -124,6 +126,14 @@ export function useActivePointsSource(): ActivePointsSource {
     isEspn.value ? espn.teamLogos.value : isSleeper.value ? sleeper.teamLogos.value : yahooTeamLogos(leagueStore.yahooTeams as any),
   )
 
+  // League size drives replacement level. Sourced from the team list first — it is
+  // built from the league's teams on every platform, so it survives empty rosters.
+  const leagueSizeResolution = computed(() =>
+    resolveLeagueSize(teamNames.value, (leagueStore.currentLeague as any)?.total_rosters, pool.value),
+  )
+  const leagueSize = computed(() => leagueSizeResolution.value.size)
+  const leagueSizeSource = computed(() => leagueSizeResolution.value.source)
+
   const freeAgents = computed<AvailablePlayer[]>(() =>
     isEspn.value ? (espn.freeAgents.value as any) : isSleeper.value ? sleeper.freeAgents.value : avail.players.value,
   )
@@ -141,5 +151,5 @@ export function useActivePointsSource(): ActivePointsSource {
     if (!isEspn.value && !isSleeper.value) avail.load(count)
   }
 
-  return { pool, fgByKey, rosterSlots, loading, myTeamKey, myTeamName, myTeamLogo, myRecord, teamNames, teamMeta, teamLogos, freeAgents, freeAgentsLoading, load, loadFreeAgents }
+  return { pool, fgByKey, rosterSlots, loading, myTeamKey, myTeamName, myTeamLogo, myRecord, leagueSize, leagueSizeSource, teamNames, teamMeta, teamLogos, freeAgents, freeAgentsLoading, load, loadFreeAgents }
 }

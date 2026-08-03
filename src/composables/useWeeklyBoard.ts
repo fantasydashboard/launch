@@ -28,6 +28,7 @@ export function useWeeklyBoard(): {
     pool: src.pool,
     freeAgents: src.freeAgents,
     slots: src.rosterSlots,
+    teams: src.leagueSize,
     season,
     enabled: isFootball,
   })

@@ -40,6 +40,7 @@ const pool = source.pool
 const fgByKey = source.fgByKey
 const rosterSlots = source.rosterSlots
 const myTeamKey = source.myTeamKey
+const leagueSize = source.leagueSize
 
 // Free agents minus anyone already rostered (the platform FA feed leaks rostered players).
 const freeAgents = computed(() => {
@@ -64,6 +65,7 @@ const { wire: fbWire, loading: fbLoading } = useFootballWire({
   pool,
   freeAgents,
   slots: rosterSlots,
+  teams: leagueSize,
   myTeamKey,
   season,
   enabled: isFootball,

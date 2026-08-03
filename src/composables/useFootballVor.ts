@@ -24,6 +24,7 @@ export function useFootballVor(inputs: {
   pool: Ref<PointsPoolPlayer[]>
   freeAgents: Ref<AvailablePlayer[]>
   slots: Ref<Record<string, number>>
+  teams: Ref<number>
   season: Ref<string>
   enabled: Ref<boolean>
   weeklyHorizon?: number // weeks of weekly-VOR/streamability to fetch (default 4; 0 = ROS only)
@@ -103,7 +104,7 @@ export function useFootballVor(inputs: {
         points,
         positionByKey: positionByKey.value,
         slots: inputs.slots.value,
-        teams: new Set(inputs.pool.value.map((p) => p.teamKey)).size,
+        teams: inputs.teams.value,
         weekly: weekly.length ? weekly : undefined,
         opportunityByKey,
       })

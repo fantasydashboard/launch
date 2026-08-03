@@ -13,6 +13,7 @@ export function useFootballWire(inputs: {
   pool: Ref<PointsPoolPlayer[]>
   freeAgents: Ref<AvailablePlayer[]>
   slots: Ref<Record<string, number>>
+  teams: Ref<number>
   myTeamKey: Ref<string>
   season: Ref<string>
   enabled: Ref<boolean>
@@ -21,6 +22,7 @@ export function useFootballWire(inputs: {
     pool: inputs.pool,
     freeAgents: inputs.freeAgents,
     slots: inputs.slots,
+    teams: inputs.teams,
     season: inputs.season,
     enabled: inputs.enabled,
   })
