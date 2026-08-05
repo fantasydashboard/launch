@@ -124,7 +124,7 @@ const players = computed(() => {
 // stat-category display names from Yahoo league settings (same source as
 // UnifiedSeasonView.vue:1338-1340). We prefer the full-season matchups when loaded
 // and fall back to the single-week store state until then.
-const { seasonMatchups, categoryLabels, loaded: seasonLoaded, load: loadSeasonData } =
+const { seasonMatchups, categoryLabels, loaded: seasonLoaded, error: seasonError, load: loadSeasonData } =
   useFullSeasonCategoryData()
 
 // True when the active league is a Yahoo H2H category league (roto is out of scope).
@@ -328,7 +328,9 @@ const emptyStateMessage = computed(() => {
       return "Connect your ESPN account to see your team's edge."
     return 'No category data yet for this league. Check back once weeks have been scored.'
   }
-  // Yahoo branch (unchanged behavior)
+  // Yahoo branch. A failed load must win over the loading message — otherwise a
+  // thrown fetch (Yahoo's Fantasy 403) spins on "Loading…" indefinitely.
+  if (isYahooCategoryLeague.value && seasonError.value) return seasonError.value
   if (isYahooCategoryLeague.value && !seasonLoaded.value) return "Loading your team's edge..."
   const id = leagueStore.activeLeagueId
   if (id && !isYahooCategoryLeague.value) {

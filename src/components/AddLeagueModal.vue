@@ -308,10 +308,10 @@
                 </button>
               </div>
               
-              <!-- No leagues found -->
+              <!-- Nothing to show: an outage and an empty account are different facts -->
               <div v-if="totalYahooLeagues === 0 && !loadingYahooLeagues" class="text-center py-8 text-dark-textMuted">
-                <p>No Yahoo leagues found</p>
-                <p class="text-sm mt-1">Try syncing or check your Yahoo account</p>
+                <p>{{ yahooUnavailableMessage ? 'Yahoo Fantasy is unavailable' : 'No Yahoo leagues found' }}</p>
+                <p class="text-sm mt-1">{{ yahooUnavailableMessage || 'Try syncing or check your Yahoo account' }}</p>
                 <button
                   @click="syncYahooLeagues"
                   class="mt-4 px-4 py-2 rounded-lg bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 transition-colors text-sm"
@@ -1028,6 +1028,7 @@ import { useLeagueStore } from '@/stores/league'
 import { usePlatformsStore } from '@/stores/platforms'
 import { useSportStore } from '@/stores/sport'
 import { yahooService } from '@/services/yahoo'
+import { summarizeYahooLoad } from '@/lib/yahooLoadState'
 import { espnService } from '@/services/espn'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -1106,6 +1107,9 @@ const availableLeagues = ref<SleeperLeague[]>([])
 // Yahoo state
 const loadingYahooLeagues = ref(false)
 const showYahooAccountMenu = ref(false)
+// Set when EVERY Yahoo per-sport fetch failed — distinguishes an outage from an
+// account that genuinely has no leagues. Null means "not an outage".
+const yahooUnavailableMessage = ref<string | null>(null)
 const yahooLeaguesBySport = ref<Record<Sport, any[]>>({
   football: [],
   baseball: [],
@@ -1680,6 +1684,10 @@ async function loadAllYahooLeagues() {
       const results = await Promise.allSettled(
         sports.map(sport => yahooService.getLeagues(sport))
       )
+      // Every sport failing means Yahoo refused us (e.g. the Fantasy API 403), not
+      // that the account has no leagues — say so instead of blaming the user's account.
+      const outcome = summarizeYahooLoad(results)
+      yahooUnavailableMessage.value = outcome.kind === 'unavailable' ? outcome.message : null
       sports.forEach((sport, index) => {
         const result = results[index]
         if (result.status === 'fulfilled' && result.value.length > 0) {

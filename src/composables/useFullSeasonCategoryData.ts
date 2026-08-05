@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { useLeagueStore } from '@/stores/league'
+import { errorMessageOf } from '@/lib/yahooLoadState'
 
 /**
  * Full-season Yahoo category data loader (Task 10 — MyTeamView).
@@ -33,6 +34,10 @@ export function useFullSeasonCategoryData() {
   const categoryLabels = ref<Map<string, CategoryLabel>>(new Map())
   const loading = ref(false)
   const loaded = ref(false)
+  // Why the load failed, if it did. Without this a thrown fetch (e.g. Yahoo's
+  // Fantasy 403) left `loaded` false forever and the view spun on "Loading…"
+  // with no way to tell the user anything.
+  const error = ref<string | null>(null)
 
   /**
    * Load real category names from Yahoo league settings.
@@ -108,6 +113,7 @@ export function useFullSeasonCategoryData() {
     // a newer league's data when it eventually resolves.
     const requestedLeague = leagueKey
     loading.value = true
+    error.value = null
     try {
       const [labels, matchups] = await Promise.all([
         loadCategoryLabels(leagueKey),
@@ -118,6 +124,13 @@ export function useFullSeasonCategoryData() {
       categoryLabels.value = labels
       seasonMatchups.value = matchups
       loaded.value = true
+    } catch (e) {
+      // Record the failure instead of letting it escape — a rethrow here left the
+      // caller stuck on a permanent loading state.
+      if (leagueStore.activeLeagueId === requestedLeague) {
+        error.value = errorMessageOf(e)
+        console.error('[useFullSeasonCategoryData] load failed:', e)
+      }
     } finally {
       // Only clear the loading flag for the most recent (non-stale) request.
       if (leagueStore.activeLeagueId === requestedLeague) {
@@ -126,5 +139,5 @@ export function useFullSeasonCategoryData() {
     }
   }
 
-  return { seasonMatchups, categoryLabels, loading, loaded, load }
+  return { seasonMatchups, categoryLabels, loading, loaded, error, load }
 }
