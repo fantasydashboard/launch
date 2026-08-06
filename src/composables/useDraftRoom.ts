@@ -12,6 +12,7 @@ import { buildBoard, type BoardRow } from '@/draft/room/board'
 import { buildRecommendation, type Recommendation } from '@/draft/room/recommend'
 import { parseDraftId } from '@/draft/room/draftId'
 import { buildDraftGrid, type GridPick } from '@/draft/room/draftGrid'
+import { slotsFromDraftSettings, scoringFromDraftMetadata } from '@/draft/room/draftSettings'
 
 /** How often to re-read picks while a draft is running. */
 const POLL_MS = 5000
@@ -43,18 +44,36 @@ export function useDraftRoom() {
   const enabled = computed(() => isFootball.value && isSleeper.value)
 
   const season = computed(() => '')
+
+  // ── format: the DRAFT's own settings win over the league's ────────────────
+  // A mock is a real draft with its own roster slots and scoring. Scoring a
+  // 2-QB half-PPR mock with your 1-QB PPR league's settings makes replacement
+  // level, the ADP market, and the upside tilt all quietly wrong.
+  const draftMeta = ref<any | null>(null)
+
+  const effectiveSlots = computed<Record<string, number>>(
+    () => slotsFromDraftSettings(draftMeta.value?.settings) ?? src.rosterSlots.value ?? {},
+  )
+  const effectiveScoring = computed<Record<string, number>>(
+    () =>
+      scoringFromDraftMetadata(draftMeta.value?.metadata) ??
+      ((leagueStore.currentLeague as any)?.scoring_settings ?? {}),
+  )
+  const effectiveTeams = computed<number>(
+    () => Number(draftMeta.value?.settings?.teams) || src.leagueSize.value,
+  )
+
   const { vorByKey, loading: vorLoading } = useFootballVor({
     pool: src.pool,
     freeAgents: src.freeAgents,
-    slots: src.rosterSlots,
-    teams: src.leagueSize,
+    slots: effectiveSlots,
+    teams: effectiveTeams,
     season,
     enabled,
     weeklyHorizon: 0, // draft prep is rest-of-season only
   })
 
   // ── draft meta + picks ────────────────────────────────────────────────────
-  const draftMeta = ref<any | null>(null)
   const picks = ref<any[]>([])
   const adp = ref<Record<string, number>>({})
   const loadingDraft = ref(false)
@@ -130,8 +149,8 @@ export function useDraftRoom() {
       picks.value = p
 
       const variant = adpVariantFor(
-        (leagueStore.currentLeague as any)?.scoring_settings ?? {},
-        src.rosterSlots.value ?? {},
+        effectiveScoring.value,
+        effectiveSlots.value,
         (leagueStore.currentLeague as any)?.settings?.type,
       )
       adp.value = await fetchSeasonAdp(String(meta?.season ?? ''), variant)
@@ -189,7 +208,7 @@ export function useDraftRoom() {
     if (type !== 'snake' && type !== 'linear') return null // auction unsupported
     return {
       type,
-      teams: Number(m.settings?.teams) || src.leagueSize.value,
+      teams: effectiveTeams.value,
       rounds: Number(m.settings?.rounds) || 15,
     }
   })
@@ -333,7 +352,7 @@ export function useDraftRoom() {
   )
 
   const starterSlots = computed(() => {
-    const slots = src.rosterSlots.value ?? {}
+    const slots = effectiveSlots.value ?? {}
     return Object.entries(slots)
       .filter(([k]) => k !== 'BN' && k !== 'IR' && k !== 'TAXI')
       .reduce((n, [, v]) => n + (Number(v) || 0), 0)
