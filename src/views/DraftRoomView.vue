@@ -5,7 +5,7 @@ import { nflTeamLogo } from '@/players/nflTeamLogo'
 
 const {
   status, loading, board, recommendation, myPick, myNextPick, isMyTurn,
-  currentOverallPick, hasHistory, myPicks, starterSlots,
+  currentOverallPick, hasHistory, myPicks, starterSlots, slotUnknown,
   markDrafted, syncHealthy, refresh, shape,
   grid, teamNameForSlot, connectDraft, disconnectDraft, overrideDraftId, overrideError,
 } = useDraftRoom()
@@ -44,7 +44,19 @@ const pickLabel = computed(() => {
   return `${r}.${String(inRound).padStart(2, '0')}`
 })
 
-const topBoard = computed(() => board.value.slice(0, 60))
+const POSITIONS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF'] as const
+const posFilter = ref<(typeof POSITIONS)[number]>('ALL')
+
+const visibleBoard = computed(() => {
+  const rows = posFilter.value === 'ALL'
+    ? board.value
+    : board.value.filter((r) => r.position === posFilter.value)
+  // When filtered to one position, sort by tier so the groups read in order.
+  const ordered = posFilter.value === 'ALL'
+    ? rows
+    : [...rows].sort((a, b) => a.tier - b.tier || b.value - a.value)
+  return ordered.slice(0, 60)
+})
 const wontLast = computed(() =>
   board.value.filter((r) => r.survival < 0.7).slice(0, 25),
 )
@@ -146,6 +158,10 @@ const holes = computed(() => {
       <p v-if="!hasHistory" class="mb-3 rounded-lg border border-dark-border bg-dark-card px-3 py-2 font-mono text-[11px] text-dark-textMuted">
         No past drafts loaded for this league — opponent reads use league-average behavior, not your managers'.
       </p>
+      <p v-if="slotUnknown" class="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-mono text-[11px] text-amber-300">
+        Couldn't tell which seat is yours in this draft, so there are no upcoming picks to simulate —
+        every player reads 100% and edge collapses to zero. Rankings and tiers are still valid.
+      </p>
       <p v-if="!syncHealthy" class="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-mono text-[11px] text-amber-300">
         Live sync is failing. Mark players drafted yourself on the Board tab — the recommendation keeps working.
       </p>
@@ -207,12 +223,37 @@ const holes = computed(() => {
 
       <!-- BOARD -->
       <section v-else-if="tab === 'board'" class="rounded-xl border border-dark-border bg-dark-card p-4">
-        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">tap a row to mark drafted · tier breaks shown</p>
-        <template v-for="(r, i) in topBoard" :key="r.playerKey">
+        <!-- Position filter: tiers only group meaningfully within a position -->
+        <div class="mb-3 flex flex-wrap gap-1">
+          <button
+            v-for="p in POSITIONS" :key="p" @click="posFilter = p"
+            class="rounded-full px-2.5 py-1 font-mono text-[10px] uppercase transition-colors"
+            :class="posFilter === p ? 'bg-primary/20 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+          >{{ p === 'ALL' ? 'all' : p }}</button>
+        </div>
+
+        <div class="mb-2 flex items-center gap-3 border-b border-dark-border pb-1 font-mono text-[9px] uppercase text-dark-textMuted">
+          <span class="w-6">#</span>
+          <span class="min-w-0 flex-1">player</span>
+          <span class="w-12 text-right">pts</span>
+          <span class="w-14 text-right" title="Chance he is still available at your next pick">lasts</span>
+          <span class="w-12 text-right" title="Points gained over the best player you'd expect at this position at your next pick">edge</span>
+        </div>
+
+        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">tap a row to mark drafted</p>
+
+        <template v-for="(r, i) in visibleBoard" :key="r.playerKey">
+          <!-- Tier header whenever the tier changes (grouping is real when filtered) -->
           <div
-            v-if="i > 0 && topBoard[i - 1].position === r.position && topBoard[i - 1].tier !== r.tier"
-            class="my-1 border-t border-dashed border-dark-border/70"
-          />
+            v-if="i === 0 || visibleBoard[i - 1].tier !== r.tier || visibleBoard[i - 1].position !== r.position"
+            class="mt-3 flex items-center gap-2 first:mt-0"
+          >
+            <span class="rounded bg-dark-border/60 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-dark-text">
+              {{ r.position }} tier {{ r.tier }}
+            </span>
+            <span class="h-px flex-1 bg-dark-border/60" />
+          </div>
+
           <button
             @click="markDrafted(r.playerKey)"
             class="flex w-full items-center gap-3 border-b border-dark-border/40 py-2 text-left last:border-0 hover:bg-dark-border/20"
@@ -222,14 +263,16 @@ const holes = computed(() => {
               <span class="truncate text-sm font-semibold text-dark-text">
                 {{ r.name }}
                 <span v-if="r.flag === 'value'" class="ml-1 rounded bg-emerald-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-emerald-400">value</span>
-                <span v-else-if="r.flag === 'reach'" class="ml-1 rounded bg-amber-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-amber-400">reach</span>
               </span>
               <span class="block font-mono text-[10px] text-dark-textMuted">
-                {{ r.position }} · tier {{ r.tier }}<template v-if="r.adp !== null"> · adp {{ round(r.adp) }}</template>
+                {{ r.position }}<template v-if="r.proTeam"> · {{ r.proTeam }}</template><template v-if="r.adp !== null"> · adp {{ round(r.adp) }}</template>
               </span>
             </span>
-            <span class="w-14 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ pct(r.survival) }}</span>
-            <span class="w-12 shrink-0 text-right font-mono text-sm font-bold text-dark-text">{{ round(r.score) }}</span>
+            <span class="w-12 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ round(r.value) }}</span>
+            <span class="w-14 shrink-0 text-right font-mono text-xs" :class="r.survival < 0.5 ? 'text-[#FF5C5C]' : 'text-dark-textMuted'">{{ pct(r.survival) }}</span>
+            <span class="w-12 shrink-0 text-right font-mono text-sm font-bold" :class="r.vona > 0 ? 'text-dark-text' : 'text-dark-textMuted'">
+              {{ r.vona > 0 ? '+' : '' }}{{ round(r.vona) }}
+            </span>
           </button>
         </template>
       </section>

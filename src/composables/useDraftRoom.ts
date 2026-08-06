@@ -224,16 +224,33 @@ export function useDraftRoom() {
     return 'pre-draft'
   })
 
-  /** My draft slot, from Sleeper's slot -> roster_id map. */
+  /**
+   * My draft slot. `draft_order` (user_id -> slot) comes first because it is the
+   * only one that works in a mock: a mock's slot_to_roster_id points at roster ids
+   * invented for that draft, which never match the ones in your league. Getting
+   * this wrong silently empties the upcoming-picks list, so every player "survives"
+   * at 100% and every score collapses to zero — which is exactly how it failed.
+   */
   const mySlot = computed<number | null>(() => {
-    const map = draftMeta.value?.slot_to_roster_id as Record<string, number> | undefined
+    const meta = draftMeta.value
+    if (!meta) return null
+
+    const uid = (leagueStore as any).currentUserId
+    const fromOrder = uid ? (meta.draft_order as Record<string, number> | undefined)?.[String(uid)] : undefined
+    if (fromOrder) return Number(fromOrder)
+
+    const map = meta.slot_to_roster_id as Record<string, number> | undefined
     const mine = src.myTeamKey.value
-    if (!map || !mine) return null
-    for (const [slot, rosterId] of Object.entries(map)) {
-      if (String(rosterId) === String(mine)) return Number(slot)
+    if (map && mine) {
+      for (const [slot, rosterId] of Object.entries(map)) {
+        if (String(rosterId) === String(mine)) return Number(slot)
+      }
     }
     return null
   })
+
+  /** True when we could not work out which seat is yours — the board is degraded. */
+  const slotUnknown = computed(() => !!draftMeta.value && mySlot.value === null)
 
   const draftedKeys = computed<Set<string>>(() => {
     const s = new Set<string>()
@@ -348,7 +365,10 @@ export function useDraftRoom() {
 
   /** My picks so far, for roster shape. */
   const myPicks = computed(() =>
-    picks.value.filter((p) => String(p?.roster_id ?? '') === String(src.myTeamKey.value)),
+    picks.value.filter((p) => {
+      if (mySlot.value != null && p?.draft_slot != null) return Number(p.draft_slot) === mySlot.value
+      return String(p?.roster_id ?? '') === String(src.myTeamKey.value)
+    }),
   )
 
   const starterSlots = computed(() => {
@@ -425,6 +445,7 @@ export function useDraftRoom() {
     mySlot,
     shape,
     hasHistory,
+    slotUnknown,
     upcoming,
     myPicks,
     starterSlots,
