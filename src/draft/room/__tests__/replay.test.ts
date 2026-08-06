@@ -1,0 +1,116 @@
+import { describe, it, expect } from 'vitest'
+import { replayDraft, calibration, type ReplayInput, type ReplayPick } from '../replay'
+import { buildTendencies } from '../tendencies'
+import type { DraftShape } from '../pickOrder'
+
+const shape: DraftShape = { type: 'snake', teams: 4, rounds: 3 }
+
+// 12 players so a 4x3 draft can consume them all.
+const players = Array.from({ length: 12 }, (_, i) => ({
+  playerKey: `p${i + 1}`,
+  name: `Player ${i + 1}`,
+  position: i % 2 === 0 ? 'RB' : 'WR',
+  value: 300 - i * 20,
+}))
+
+const adpByKey = Object.fromEntries(players.map((p, i) => [p.playerKey, i + 1]))
+
+/** A completed draft that took players in board order. */
+const picks: ReplayPick[] = players.map((p, i) => ({
+  overallPick: i + 1,
+  playerKey: p.playerKey,
+  slot: ((i % 4) + 1),
+}))
+
+const tendencies = buildTendencies([
+  { teamKey: '1', position: 'RB', round: 1 },
+  { teamKey: '2', position: 'WR', round: 1 },
+  { teamKey: '3', position: 'RB', round: 1 },
+  { teamKey: '4', position: 'WR', round: 1 },
+])
+
+function input(over: Partial<ReplayInput> = {}): ReplayInput {
+  return {
+    shape,
+    picks,
+    mySlot: 1,
+    players,
+    adpByKey,
+    tendencies,
+    rosterIdForSlot: (slot) => String(slot),
+    totalStarterSlots: 3,
+    runs: 50,
+    seed: 5,
+    ...over,
+  }
+}
+
+describe('replayDraft', () => {
+  it('produces a decision at each of my picks and no others', () => {
+    const steps = replayDraft(input())
+    // Slot 1 in a 4-team snake picks at 1, 8, 9.
+    expect(steps.map((s) => s.overallPick)).toEqual([1, 8, 9])
+  })
+
+  it('records what was actually taken alongside what we recommended', () => {
+    const steps = replayDraft(input())
+    expect(steps[0].actualPlayerKey).toBe('p1')
+    expect(steps[0].recommendation).not.toBeNull()
+  })
+
+  it('only considers players still available at that point in the draft', () => {
+    const steps = replayDraft(input())
+    const second = steps[1] // pick 8 — seven players already gone
+    const keys = second.board.map((r) => r.playerKey)
+    expect(keys).not.toContain('p1')
+    expect(keys).not.toContain('p7')
+    expect(keys).toContain('p8')
+  })
+
+  it('never recommends someone already drafted', () => {
+    const steps = replayDraft(input())
+    const drafted = new Set<string>()
+    for (const s of steps) {
+      if (s.recommendation) expect(drafted.has(s.recommendation.pick.playerKey)).toBe(false)
+      const idx = picks.findIndex((p) => p.overallPick === s.overallPick)
+      for (let i = 0; i <= idx; i++) drafted.add(picks[i].playerKey)
+    }
+  })
+
+  it('is deterministic', () => {
+    const a = replayDraft(input())
+    const b = replayDraft(input())
+    expect(a.map((s) => s.recommendation?.pick.playerKey)).toEqual(
+      b.map((s) => s.recommendation?.pick.playerKey),
+    )
+  })
+})
+
+describe('calibration', () => {
+  it('buckets predictions and counts what actually survived', () => {
+    const steps = replayDraft(input())
+    const buckets = calibration(steps, picks)
+    expect(buckets.length).toBeGreaterThan(0)
+    for (const b of buckets) {
+      expect(b.total).toBeGreaterThan(0)
+      expect(b.actualSurvived).toBeLessThanOrEqual(b.total)
+      expect(b.predicted).toBeGreaterThanOrEqual(0)
+      expect(b.predicted).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it('scores a confident correct prediction as well calibrated', () => {
+    // With no recorded picks nobody is actually taken, so everyone in the
+    // high-confidence bucket does survive. (Predicted stays just under 1 because
+    // the simulation still models opponents drafting — that is the point of it.)
+    const steps = replayDraft(input({ picks: [] }))
+    const buckets = calibration(steps, [])
+    const top = buckets.find((b) => b.bucket === 0.9)!
+    expect(top.predicted).toBeGreaterThan(0.9)
+    expect(top.actualSurvived).toBe(top.total)
+  })
+
+  it('returns an empty report when there is nothing to score', () => {
+    expect(calibration([], picks)).toEqual([])
+  })
+})
