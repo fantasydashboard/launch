@@ -10,6 +10,8 @@ import { buildTendencies, defaultRoundBucket, priorFor, type HistoricalPick } fr
 import { simulateSurvival } from '@/draft/room/survival'
 import { buildBoard, type BoardRow } from '@/draft/room/board'
 import { buildRecommendation, type Recommendation } from '@/draft/room/recommend'
+import { parseDraftId } from '@/draft/room/draftId'
+import { buildDraftGrid, type GridPick } from '@/draft/room/draftGrid'
 
 /** How often to re-read picks while a draft is running. */
 const POLL_MS = 5000
@@ -70,17 +72,60 @@ export function useDraftRoom() {
     manualDrafted.value = next
   }
 
+  /**
+   * A draft the user pasted in — a mock, or any Sleeper draft that isn't the one
+   * attached to their league. Persisted so a refresh mid-draft doesn't drop it.
+   */
+  const OVERRIDE_KEY = 'ufd:draftRoom:draftId'
+  const overrideDraftId = ref<string | null>(
+    typeof localStorage !== 'undefined' ? localStorage.getItem(OVERRIDE_KEY) : null,
+  )
+  const overrideError = ref<string | null>(null)
+
+  function connectDraft(input: string): boolean {
+    const id = parseDraftId(input)
+    if (!id) {
+      overrideError.value = "That doesn't look like a Sleeper draft link or ID."
+      return false
+    }
+    overrideError.value = null
+    overrideDraftId.value = id
+    try { localStorage.setItem(OVERRIDE_KEY, id) } catch { /* private mode */ }
+    loadDraft()
+    return true
+  }
+
+  function disconnectDraft() {
+    overrideDraftId.value = null
+    overrideError.value = null
+    try { localStorage.removeItem(OVERRIDE_KEY) } catch { /* private mode */ }
+    loadDraft()
+  }
+
   async function loadDraft() {
-    if (!enabled.value || !leagueStore.activeLeagueId) return
+    if (!enabled.value) return
     loadingDraft.value = true
     try {
-      const drafts = await sleeperService.getLeagueDrafts(String(leagueStore.activeLeagueId))
-      const id = drafts?.[0]?.draft_id
+      // A pasted draft wins over the league's own — that's the point of pasting it.
+      let id: string | null = overrideDraftId.value
+      if (!id) {
+        if (!leagueStore.activeLeagueId) return
+        const drafts = await sleeperService.getLeagueDrafts(String(leagueStore.activeLeagueId))
+        id = drafts?.[0]?.draft_id ?? null
+      }
       if (!id) { draftMeta.value = null; picks.value = []; return }
       const [meta, p] = await Promise.all([
         sleeperService.getDraftById(id),
         sleeperService.getDraftPicks(id),
       ])
+      if (!meta) {
+        overrideError.value = overrideDraftId.value
+          ? "Couldn't load that draft — check the link or ID."
+          : null
+        draftMeta.value = null
+        picks.value = []
+        return
+      }
       draftMeta.value = meta
       picks.value = p
 
@@ -323,7 +368,32 @@ export function useDraftRoom() {
 
   const loading = computed(() => loadingDraft.value || vorLoading.value || src.loading.value)
 
+  /** The board everyone pictures: rounds down, teams across, snake rows reversed. */
+  const grid = computed(() => {
+    if (!shape.value) return []
+    const gp: GridPick[] = picks.value.map((p: any) => ({
+      overallPick: Number(p.pick_no) || 0,
+      playerKey: String(p.player_id ?? ''),
+      playerName: [p?.metadata?.first_name, p?.metadata?.last_name].filter(Boolean).join(' ') || String(p.player_id ?? ''),
+      position: String(p?.metadata?.position ?? ''),
+      slot: Number(p.draft_slot) || 0,
+    }))
+    return buildDraftGrid(shape.value, gp, {
+      mySlot: mySlot.value,
+      currentOverallPick: currentOverallPick.value,
+    })
+  })
+
+  const teamNameForSlot = (slot: number) =>
+    src.teamNames.value?.[rosterIdForSlot(slot)] ?? `Team ${slot}`
+
   return {
+    grid,
+    teamNameForSlot,
+    connectDraft,
+    disconnectDraft,
+    overrideDraftId: computed(() => overrideDraftId.value),
+    overrideError: computed(() => overrideError.value),
     status,
     loading,
     board,

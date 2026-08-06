@@ -5,18 +5,30 @@ import { nflTeamLogo } from '@/players/nflTeamLogo'
 
 const {
   status, loading, board, recommendation, myPick, myNextPick, isMyTurn,
-  currentOverallPick, hasHistory, myPicks, starterSlots, draftedKeys,
-  markDrafted, unmarkDrafted, syncHealthy, refresh, shape,
+  currentOverallPick, hasHistory, myPicks, starterSlots,
+  markDrafted, syncHealthy, refresh, shape,
+  grid, teamNameForSlot, connectDraft, disconnectDraft, overrideDraftId, overrideError,
 } = useDraftRoom()
 
-type Tab = 'pick' | 'board' | 'room' | 'last'
+type Tab = 'pick' | 'board' | 'grid' | 'room' | 'last'
 const tab = ref<Tab>('pick')
 const TABS: { id: Tab; label: string }[] = [
   { id: 'pick', label: 'Pick' },
   { id: 'board', label: 'Board' },
+  { id: 'grid', label: 'Draft Board' },
   { id: 'room', label: 'Room' },
   { id: 'last', label: "Won't Last" },
 ]
+
+// Connect any Sleeper draft by link or ID — mocks included.
+const draftInput = ref('')
+const showConnect = ref(false)
+function submitConnect() {
+  if (connectDraft(draftInput.value)) {
+    draftInput.value = ''
+    showConnect.value = false
+  }
+}
 
 const round = (n: number) => Math.round(n)
 const pct = (n: number) => `${Math.round(n * 100)}%`
@@ -68,14 +80,48 @@ const holes = computed(() => {
           <template v-else>your board, your league, your opponents</template>
         </p>
       </div>
-      <button
-        v-if="status === 'drafting'"
-        @click="refresh"
-        class="shrink-0 rounded-lg border border-dark-border px-3 py-1.5 font-mono text-[11px] text-dark-textMuted hover:text-dark-text"
-      >
-        refresh
-      </button>
+      <div class="flex shrink-0 gap-2">
+        <button
+          @click="showConnect = !showConnect"
+          class="rounded-lg border border-dark-border px-3 py-1.5 font-mono text-[11px] text-dark-textMuted hover:text-dark-text"
+        >
+          {{ overrideDraftId ? 'change draft' : 'connect draft' }}
+        </button>
+        <button
+          v-if="status === 'drafting'"
+          @click="refresh"
+          class="rounded-lg border border-dark-border px-3 py-1.5 font-mono text-[11px] text-dark-textMuted hover:text-dark-text"
+        >
+          refresh
+        </button>
+      </div>
     </header>
+
+    <!-- Connect any Sleeper draft: paste the link from the address bar, or the ID -->
+    <section v-if="showConnect" class="mb-4 rounded-xl border border-dark-border bg-dark-card p-4">
+      <p class="mb-2 font-mono text-[11px] text-dark-textMuted">
+        Paste a Sleeper draft link or ID — works for mock drafts too.
+      </p>
+      <div class="flex gap-2">
+        <input
+          v-model="draftInput"
+          @keyup.enter="submitConnect"
+          placeholder="https://sleeper.com/draft/nfl/992819274558156800"
+          class="min-w-0 flex-1 rounded-lg border border-dark-border bg-dark-bg px-3 py-2 font-mono text-xs text-dark-text placeholder:text-dark-textMuted/60"
+        />
+        <button
+          @click="submitConnect"
+          class="shrink-0 rounded-lg bg-primary/20 px-3 py-2 font-mono text-xs text-primary hover:bg-primary/30"
+        >
+          connect
+        </button>
+      </div>
+      <p v-if="overrideError" class="mt-2 font-mono text-[11px] text-[#FF5C5C]">{{ overrideError }}</p>
+      <p v-if="overrideDraftId" class="mt-2 flex items-center gap-2 font-mono text-[11px] text-dark-textMuted">
+        connected to draft {{ overrideDraftId }}
+        <button @click="disconnectDraft" class="underline hover:text-dark-text">use my league's draft</button>
+      </p>
+    </section>
 
     <!-- Gates -->
     <div v-if="status === 'unsupported-league'" class="rounded-xl border border-dark-border bg-dark-card px-4 py-16 text-center">
@@ -186,6 +232,44 @@ const holes = computed(() => {
             <span class="w-12 shrink-0 text-right font-mono text-sm font-bold text-dark-text">{{ round(r.score) }}</span>
           </button>
         </template>
+      </section>
+
+      <!-- DRAFT BOARD (grid) -->
+      <section v-else-if="tab === 'grid'" class="overflow-x-auto rounded-xl border border-dark-border bg-dark-card p-4">
+        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
+          rounds down · teams across · snake rows read in pick order · your picks highlighted
+        </p>
+        <div v-if="!grid.length" class="py-6 text-center font-mono text-xs text-dark-textMuted">No draft board yet.</div>
+        <table v-else class="w-full min-w-[36rem] border-separate border-spacing-1">
+          <thead>
+            <tr>
+              <th class="w-8"></th>
+              <th
+                v-for="c in grid[0].cells" :key="'h' + c.slot"
+                class="truncate px-1 pb-1 text-left font-mono text-[9px] font-normal uppercase text-dark-textMuted"
+              >{{ teamNameForSlot(c.slot) }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in grid" :key="row.round">
+              <td class="pr-1 text-right font-mono text-[10px] text-dark-textMuted">{{ row.round }}</td>
+              <td
+                v-for="cell in row.cells" :key="cell.overallPick"
+                class="rounded border px-1.5 py-1 align-top"
+                :class="[
+                  cell.isCurrent ? 'border-primary bg-primary/10' : 'border-dark-border/50',
+                  cell.isMine ? 'bg-dark-border/40' : '',
+                ]"
+              >
+                <template v-if="cell.pick">
+                  <span class="block truncate font-mono text-[10px] text-dark-text">{{ cell.pick.playerName }}</span>
+                  <span class="block font-mono text-[9px] text-dark-textMuted">{{ cell.pick.position }}</span>
+                </template>
+                <span v-else class="block font-mono text-[9px] text-dark-textMuted/50">{{ cell.overallPick }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </section>
 
       <!-- ROOM -->
