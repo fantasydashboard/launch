@@ -22,6 +22,16 @@ export type AdpVariant =
 const DYNASTY_LEAGUE_TYPE = 2
 
 /**
+ * Sleeper writes 999 for "this player has no ADP" rather than omitting the field,
+ * and does so for ~9,000 of the ~9,400 players in the payload. Treating that as a
+ * real draft position hands the survival simulation nine thousand phantom
+ * draftees ordered arbitrarily, flags every undrafted player as a reach, and
+ * feeds the upside proxy a meaningless market rank. Anything at or above this is
+ * absence of data, not a late ADP — real values top out around 370.
+ */
+const ADP_SENTINEL = 900
+
+/**
  * Pick the ADP market that matches this league. A SUPER_FLEX slot dominates
  * reception scoring — a two-QB room reorders the entire board far more than PPR
  * does, so the 2qb market is the better predictor of when players actually go.
@@ -62,7 +72,7 @@ export function adpByKey(
   const take = (id: unknown, stats: any) => {
     if (!id) return
     const v = stats?.[field]
-    if (typeof v === 'number' && Number.isFinite(v)) out[String(id)] = v
+    if (typeof v === 'number' && Number.isFinite(v) && v < ADP_SENTINEL) out[String(id)] = v
   }
 
   if (Array.isArray(raw)) {

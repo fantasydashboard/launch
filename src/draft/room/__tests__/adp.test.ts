@@ -83,3 +83,19 @@ describe('adpByKey — cached map shape', () => {
     expect(adpByKey(map, 'dynasty_2qb')).toEqual({})
   })
 })
+
+describe('adpByKey — the 999 sentinel', () => {
+  it('treats 999 as no ADP, not as a very late one', () => {
+    const raw = [
+      { player_id: 'real', stats: { adp_ppr: 42.1 } },
+      { player_id: 'none', stats: { adp_ppr: 999 } },
+      { player_id: 'none2', stats: { adp_ppr: 999.0 } },
+    ]
+    expect(adpByKey(raw, 'ppr')).toEqual({ real: 42.1 })
+  })
+
+  it('keeps genuinely late ADPs — real values run to about 370', () => {
+    const raw = [{ player_id: 'late', stats: { adp_ppr: 369.4 } }]
+    expect(adpByKey(raw, 'ppr')).toEqual({ late: 369.4 })
+  })
+})
