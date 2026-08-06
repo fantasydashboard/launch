@@ -1,5 +1,6 @@
 import { sleeperService } from './sleeper'
 import { getSportConfig } from '@/config/sports'
+import { adpByKey, type AdpVariant } from '@/draft/room/adp'
 
 /** Scoring-relevant NFL stat keys — reuse the football sport-config so summing and
  * scoring stay in sync. */
@@ -69,4 +70,19 @@ export async function fetchWeekProjectionStats(season: string, week: number): Pr
     out[playerId] = acc
   }
   return out
+}
+
+/**
+ * playerId -> ADP for one market, from the SAME cached season-projections response
+ * the VOR engine already fetches. `getSeasonProjections` copies each record's
+ * `stats` wholesale, so the adp_* fields survive into the cache even though
+ * `fetchSeasonProjectionStats` filters them out of its own result. Zero extra
+ * network cost.
+ */
+export async function fetchSeasonAdp(
+  season: string,
+  variant: AdpVariant,
+): Promise<Record<string, number>> {
+  const raw = await sleeperService.getSeasonProjections('football', season)
+  return adpByKey(raw, variant)
 }
