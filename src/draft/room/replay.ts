@@ -45,6 +45,8 @@ export interface ReplayStep {
   recommendation: Recommendation | null
   /** Who was actually taken with this pick. */
   actualPlayerKey: string | null
+  /** That player's name, when we can resolve it. */
+  actualName: string | null
   /** Survival we predicted for each player, at this decision. */
   predictedSurvival: Record<string, number>
   /** My next pick at the time — the horizon the prediction was made against. */
@@ -123,6 +125,7 @@ export function replayDraft(input: ReplayInput): ReplayStep[] {
           nextTierDrop: top && nextTier ? top.value - nextTier.value : undefined,
         }),
         actualPlayerKey: actual?.playerKey ?? null,
+        actualName: actual ? (players.find((pl) => pl.playerKey === actual.playerKey)?.name ?? null) : null,
         predictedSurvival: sim.survival,
         nextPick,
         board,

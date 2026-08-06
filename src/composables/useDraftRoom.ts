@@ -13,6 +13,7 @@ import { buildRecommendation, type Recommendation } from '@/draft/room/recommend
 import { parseDraftId } from '@/draft/room/draftId'
 import { buildDraftGrid, type GridPick } from '@/draft/room/draftGrid'
 import { slotsFromDraftSettings, scoringFromDraftMetadata } from '@/draft/room/draftSettings'
+import { replayDraft, calibration, type ReplayPick } from '@/draft/room/replay'
 import { useCustomRankings } from '@/composables/useCustomRankings'
 
 /** How often to re-read picks while a draft is running. */
@@ -419,6 +420,61 @@ export function useDraftRoom() {
     })
   })
 
+  /**
+   * Replay a COMPLETED draft through the same board and recommendation code the
+   * live path uses. This is how the tool gets verified before draft night — it
+   * otherwise gets one live test a year. Calibration scores whether "90% gone"
+   * actually meant 90%.
+   */
+  const replay = computed(() => {
+    if (!shape.value || !mySlot.value) return null
+    if (draftMeta.value?.status !== 'complete') return null
+
+    const replayPicks: ReplayPick[] = picks.value
+      .map((p: any) => ({
+        overallPick: Number(p.pick_no) || 0,
+        playerKey: String(p.player_id ?? ''),
+        slot: Number(p.draft_slot) || 0,
+      }))
+      .filter((p) => p.overallPick > 0 && p.playerKey)
+    if (!replayPicks.length) return null
+
+    // The universe as it stood before the draft: everyone taken, plus whoever is
+    // still on the board now.
+    const universe = new Map<string, { playerKey: string; name: string; position: string; value: number }>()
+    for (const r of availablePlayers.value) {
+      universe.set(r.playerKey, { playerKey: r.playerKey, name: r.name, position: r.position, value: r.value })
+    }
+    for (const p of picks.value as any[]) {
+      const key = String(p.player_id ?? '')
+      if (!key || universe.has(key)) continue
+      const v = vorByKey.value[key]
+      if (!v || !(v.pointsRos > 0)) continue
+      universe.set(key, {
+        playerKey: key,
+        name: [p?.metadata?.first_name, p?.metadata?.last_name].filter(Boolean).join(' ') || key,
+        position: String(p?.metadata?.position ?? v.position ?? ''),
+        value: v.pointsRos,
+      })
+    }
+    const players = [...universe.values()]
+    if (!players.length) return null
+
+    const steps = replayDraft({
+      shape: shape.value,
+      picks: replayPicks,
+      mySlot: mySlot.value,
+      players,
+      adpByKey: adp.value,
+      tendencies: tendencies.value,
+      rosterIdForSlot,
+      totalStarterSlots: starterSlots.value,
+      runs: 200,
+      seed: 1337,
+    })
+    return { steps, calibration: calibration(steps, replayPicks), universe: players.length }
+  })
+
   const loading = computed(() => loadingDraft.value || vorLoading.value || src.loading.value)
 
   /** The board everyone pictures: rounds down, teams across, snake rows reversed. */
@@ -461,6 +517,7 @@ export function useDraftRoom() {
     hasHistory,
     slotUnknown,
     customRankings,
+    replay,
     upcoming,
     myPicks,
     starterSlots,

@@ -8,7 +8,7 @@ const {
   currentOverallPick, hasHistory, myPicks, starterSlots, slotUnknown,
   markDrafted, syncHealthy, refresh, shape,
   grid, teamNameForSlot, connectDraft, disconnectDraft, overrideDraftId, overrideError,
-  customRankings,
+  customRankings, replay,
 } = useDraftRoom()
 
 // Admin-only analyst override. Invisible to every other account.
@@ -20,7 +20,7 @@ function saveRankings() {
   customRankings.setRankings(rankingsInput.value, analystName.value)
 }
 
-type Tab = 'pick' | 'board' | 'grid' | 'room' | 'last'
+type Tab = 'pick' | 'board' | 'grid' | 'room' | 'last' | 'replay'
 const tab = ref<Tab>('pick')
 const TABS: { id: Tab; label: string }[] = [
   { id: 'pick', label: 'Pick' },
@@ -29,6 +29,10 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'room', label: 'Room' },
   { id: 'last', label: "Won't Last" },
 ]
+/** Replay only means anything once a draft is finished. */
+const visibleTabs = computed(() =>
+  replay.value ? [...TABS, { id: 'replay' as Tab, label: 'Replay' }] : TABS,
+)
 
 // Connect any Sleeper draft by link or ID — mocks included.
 const draftInput = ref('')
@@ -257,7 +261,7 @@ const holes = computed(() => {
       <!-- Tabs -->
       <div class="mb-4 flex gap-1 border-b border-dark-border">
         <button
-          v-for="t in TABS" :key="t.id" @click="tab = t.id"
+          v-for="t in visibleTabs" :key="t.id" @click="tab = t.id"
           class="px-3 py-2 font-mono text-xs transition-colors"
           :class="tab === t.id ? 'border-b-2 border-primary text-primary' : 'text-dark-textMuted hover:text-dark-text'"
         >{{ t.label }}</button>
@@ -410,6 +414,45 @@ const holes = computed(() => {
             <template v-else>—</template>
           </span>
         </div>
+      </section>
+
+      <!-- REPLAY: what we would have said, and were we calibrated -->
+      <section v-else-if="tab === 'replay'" class="rounded-xl border border-dark-border bg-dark-card p-4">
+        <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Replay</h2>
+        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
+          what the engine would have recommended at each of your picks · {{ replay?.universe }} players in the pool
+        </p>
+
+        <div v-if="!replay" class="py-6 text-center font-mono text-xs text-dark-textMuted">Connect a completed draft to replay it.</div>
+        <template v-else>
+          <div v-for="s in replay.steps" :key="s.overallPick" class="border-b border-dark-border/40 py-2 last:border-0">
+            <div class="flex items-baseline gap-2">
+              <span class="w-12 shrink-0 font-mono text-[10px] text-dark-textMuted">pick {{ s.overallPick }}</span>
+              <span class="min-w-0 flex-1">
+                <span class="text-sm text-dark-text">
+                  we'd say <span class="font-semibold">{{ s.recommendation?.pick.name ?? '—' }}</span>
+                </span>
+                <span class="block font-mono text-[10px]"
+                  :class="s.recommendation && s.actualPlayerKey === s.recommendation.pick.playerKey ? 'text-emerald-400' : 'text-dark-textMuted'">
+                  you took {{ s.actualName ?? s.actualPlayerKey ?? '—' }}
+                </span>
+              </span>
+            </div>
+          </div>
+
+          <h3 class="mb-2 mt-4 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Calibration</h3>
+          <p class="mb-2 font-mono text-[10px] text-dark-textMuted">
+            of the players we said had this chance of lasting, how many actually did
+          </p>
+          <div v-for="b in replay.calibration" :key="b.bucket" class="flex items-center gap-3 border-b border-dark-border/40 py-1 font-mono text-[11px] last:border-0">
+            <span class="w-20 text-dark-textMuted">{{ Math.round(b.bucket * 100) }}–{{ Math.round(b.bucket * 100) + 10 }}%</span>
+            <span class="w-24 text-dark-textMuted">said {{ (b.predicted * 100).toFixed(0) }}%</span>
+            <span class="w-24" :class="Math.abs(b.actualSurvived / b.total - b.predicted) > 0.15 ? 'text-[#FF5C5C]' : 'text-emerald-400'">
+              was {{ ((b.actualSurvived / b.total) * 100).toFixed(0) }}%
+            </span>
+            <span class="text-dark-textMuted/70">n={{ b.total }}</span>
+          </div>
+        </template>
       </section>
 
       <!-- WON'T LAST -->
