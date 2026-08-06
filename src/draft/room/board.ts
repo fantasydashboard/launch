@@ -45,6 +45,7 @@ export interface BoardRow {
   score: number
   survival: number
   tier: number
+  overallTier: number
   flag: 'value' | 'reach' | ''
   adp: number | null
 }
@@ -53,35 +54,56 @@ export interface BoardRow {
 const VALUE_PICKS = 12
 /** How far before ADP taking someone counts as a reach. */
 const REACH_PICKS = 12
-/** A gap this many times the position's median gap opens a new tier. */
-const TIER_GAP_MULTIPLE = 1.8
-/** Bonus applied to a healthy backup behind an injured starter. */
+/** Bonus (in points) for a healthy backup behind an injured starter. */
 const OPPORTUNITY_UPSIDE = 8
+/** Ceiling on tiers per group — beyond this, "tier" stops meaning anything. */
+const MAX_TIERS = 8
+/** Roughly how many players belong in a tier. Drives how many tiers we cut. */
+const TARGET_TIER_SIZE = 5
 
 const normPos = (p: string) => (p || '').toUpperCase().split(/[,/|]/)[0].trim()
 
 /**
- * Tier numbers within a position: 1 for the top group, incrementing wherever a
- * consecutive value gap is unusually large for that position.
+ * Tiers = the biggest cliffs, not "every gap above a threshold".
+ *
+ * A threshold-based rule fragments badly on a deep position: with two hundred
+ * receivers the median gap is near zero, so nearly every gap clears the bar and
+ * you get "WR tier 57", which tells the user nothing. Instead, decide how many
+ * tiers a group should have and cut at exactly the largest gaps — which is what
+ * a person means by a tier: the drop-offs everyone can see.
+ *
+ * Deterministic, needs no tuning constant, and cannot fragment.
  */
 function assignTiers(rows: { playerKey: string; value: number }[]): Record<string, number> {
   const out: Record<string, number> = {}
   if (!rows.length) return out
   const sorted = [...rows].sort((a, b) => b.value - a.value)
-  const gaps: number[] = []
-  for (let i = 1; i < sorted.length; i++) gaps.push(sorted[i - 1].value - sorted[i].value)
-  const positive = gaps.filter((g) => g > 0).sort((a, b) => a - b)
-  // Lower median: with only a handful of gaps, the upper median can BE the cliff
-  // we are trying to detect, inflating the threshold until it suppresses itself.
-  const median = positive.length ? positive[Math.floor((positive.length - 1) / 2)] : 0
-  const threshold = median * TIER_GAP_MULTIPLE
+  if (sorted.length === 1) {
+    out[sorted[0].playerKey] = 1
+    return out
+  }
+
+  // Always allow at least one cut: a three-man group with an obvious cliff still
+  // has two tiers, even though it is smaller than one nominal tier.
+  const cuts = Math.min(
+    MAX_TIERS - 1,
+    Math.max(1, Math.ceil(sorted.length / TARGET_TIER_SIZE) - 1),
+  )
+
+  // Gap i sits between sorted[i] and sorted[i+1].
+  const gaps = sorted.slice(0, -1).map((p, i) => ({ i, gap: p.value - sorted[i + 1].value }))
+  const boundaries = new Set(
+    gaps
+      .filter((g) => g.gap > 0)
+      .sort((a, b) => b.gap - a.gap)
+      .slice(0, cuts)
+      .map((g) => g.i),
+  )
 
   let tier = 1
-  out[sorted[0].playerKey] = tier
-  for (let i = 1; i < sorted.length; i++) {
-    const gap = sorted[i - 1].value - sorted[i].value
-    if (threshold > 0 && gap > threshold) tier++
+  for (let i = 0; i < sorted.length; i++) {
     out[sorted[i].playerKey] = tier
+    if (boundaries.has(i)) tier++
   }
   return out
 }
@@ -100,24 +122,37 @@ export function buildBoard(input: BoardInput): BoardRow[] {
   const players = (available ?? []).map((p) => ({ ...p, position: normPos(p.position) }))
   if (!players.length) return []
 
-  // Upside proxy: the market's ranking versus ours. We have no variance from the
-  // projection feed, but we have two independent opinions — when the market drafts
-  // someone materially earlier than our projection justifies, that gap encodes
-  // something the median projection misses. This is market DISAGREEMENT, not a
-  // modeled distribution, and the UI must describe it that way.
+  // Upside proxy, DENOMINATED IN POINTS.
+  //
+  // We have no variance from the projection feed, but we have two independent
+  // opinions. If the market drafts a player like the 20th-best available while we
+  // project him 60th, the market is implicitly valuing him at what our 20th-best
+  // is worth — so the disagreement, in points, is value(20th) − value(him).
+  //
+  // An earlier version used the raw rank difference, which was a units bug: VONA
+  // is points (tens) and rank deltas are positions (hundreds), so blending them
+  // let upside swamp VONA completely and floated zero-projection players to the
+  // top of the board. This is market DISAGREEMENT, not modeled variance.
   const byValueDesc = [...players].sort((a, b) => b.value - a.value)
   const projRank = new Map(byValueDesc.map((p, i) => [p.playerKey, i + 1]))
+  const valueAtRank = (rank: number): number => {
+    const i = Math.max(0, Math.min(byValueDesc.length - 1, rank - 1))
+    return byValueDesc[i]?.value ?? 0
+  }
   const withAdp = players
     .filter((p) => typeof adpByKey?.[p.playerKey] === 'number')
     .sort((a, b) => adpByKey[a.playerKey] - adpByKey[b.playerKey])
   const adpRank = new Map(withAdp.map((p, i) => [p.playerKey, i + 1]))
 
-  // Tiers are computed within position.
+  // Tiers within position, plus an overall tier across the whole board — the
+  // board can be read either way, and "tier 2 overall" is a different and useful
+  // statement from "tier 2 among running backs".
   const tierByKey: Record<string, number> = {}
   const positions = new Set(players.map((p) => p.position))
   for (const pos of positions) {
     Object.assign(tierByKey, assignTiers(players.filter((p) => p.position === pos)))
   }
+  const overallTierByKey = assignTiers(players)
 
   const w =
     totalStarterSlots > 0
@@ -130,7 +165,17 @@ export function buildBoard(input: BoardInput): BoardRow[] {
 
     const pr = projRank.get(p.playerKey)
     const ar = adpRank.get(p.playerKey)
-    let upside = pr !== undefined && ar !== undefined ? pr - ar : 0
+    // Points the market implies he's worth beyond our projection. Only counted
+    // when the market is HIGHER on him than we are; the reverse is just us
+    // agreeing he's worse, which VONA already captures.
+    // A zero projection is missing data, not a considered opinion of worthlessness.
+    // Without this guard the market's enthusiasm for an unprojected player reads as
+    // an enormous disagreement and floats him to the top of the board.
+    const hasProjection = p.value > 0
+    let upside =
+      hasProjection && pr !== undefined && ar !== undefined && ar < pr
+        ? valueAtRank(ar) - p.value
+        : 0
     if (p.opportunity === 'backup-elevated') upside += OPPORTUNITY_UPSIDE
 
     let flag: BoardRow['flag'] = ''
@@ -151,6 +196,7 @@ export function buildBoard(input: BoardInput): BoardRow[] {
       score: (1 - w) * vona + w * upside,
       survival: survival?.[p.playerKey] ?? 1,
       tier: tierByKey[p.playerKey] ?? 1,
+      overallTier: overallTierByKey[p.playerKey] ?? 1,
       flag,
       adp,
     }

@@ -65,11 +65,11 @@ describe('buildBoard — points now, upside late', () => {
 
 describe('buildBoard — upside proxy', () => {
   it('a player the market ranks higher than our projection has positive upside', () => {
-    // rb3: our value rank is 4th, his ADP rank is 4th -> no divergence.
-    // Give him a much better ADP than his projection warrants.
     const r = byKey(build({ adpByKey: { rb1: 1, rb2: 5, rb3: 2, wr1: 30 } }))
     expect(r.rb3.upside).toBeGreaterThan(0)
-    expect(r.wr1.upside).toBeLessThan(0)
+    // Upside is one-sided: the market being LOWER on someone is just agreement
+    // that he is worse, which VONA already prices in.
+    expect(r.wr1.upside).toBe(0)
   })
 
   it('a player with no ADP gets no upside signal rather than a fabricated one', () => {
@@ -112,5 +112,104 @@ describe('buildBoard — tiers and flags', () => {
 
   it('handles an empty pool', () => {
     expect(buildBoard({ ...({} as BoardInput), available: [], survival: {}, expectedBestAtPosition: {}, adpByKey: {}, currentOverallPick: 1, filledStarterSlots: 0, totalStarterSlots: 8 })).toEqual([])
+  })
+})
+
+describe('buildBoard — tiers do not fragment', () => {
+  // 200 players with a smooth decline: a threshold rule fragments this into
+  // dozens of tiers because the median gap is tiny.
+  // Real boards have cliffs; this one drops hard every 20 players.
+  const many = Array.from({ length: 200 }, (_, i) => ({
+    playerKey: `w${i}`, name: `W${i}`, position: 'WR',
+    value: 300 - i - Math.floor(i / 20) * 25,
+  }))
+
+  it('caps tiers at a number a human can use', () => {
+    const rows = buildBoard({
+      available: many,
+      survival: {},
+      expectedBestAtPosition: { WR: 250 },
+      adpByKey: {},
+      currentOverallPick: 1,
+      filledStarterSlots: 0,
+      totalStarterSlots: 8,
+    })
+    const tiers = new Set(rows.map((r) => r.tier))
+    expect(tiers.size).toBeLessThanOrEqual(8)
+    expect(tiers.size).toBeGreaterThan(1)
+  })
+
+  it('assigns an overall tier across positions as well as a positional one', () => {
+    const rows = buildBoard({
+      available: [
+        { playerKey: 'a', name: 'A', position: 'RB', value: 300 },
+        { playerKey: 'b', name: 'B', position: 'WR', value: 100 },
+      ],
+      survival: {},
+      expectedBestAtPosition: {},
+      adpByKey: {},
+      currentOverallPick: 1,
+      filledStarterSlots: 0,
+      totalStarterSlots: 8,
+    })
+    const a = rows.find((r) => r.playerKey === 'a')!
+    const b = rows.find((r) => r.playerKey === 'b')!
+    // Each is the only player at his position, so both are positional tier 1...
+    expect(a.tier).toBe(1)
+    expect(b.tier).toBe(1)
+    // ...but overall they are clearly not the same tier.
+    expect(b.overallTier).toBeGreaterThan(a.overallTier)
+  })
+})
+
+describe('buildBoard — upside is denominated in points', () => {
+  const players = [
+    { playerKey: 'star', name: 'Star', position: 'RB', value: 300 },
+    { playerKey: 'mid', name: 'Mid', position: 'RB', value: 200 },
+    { playerKey: 'noproj', name: 'No Projection', position: 'WR', value: 0 },
+  ]
+
+  it('a zero-projection player never outranks a real one', () => {
+    const rows = buildBoard({
+      available: players,
+      survival: {},
+      expectedBestAtPosition: { RB: 200, WR: 0 },
+      // The market likes the unprojected player — the old rank-delta upside made
+      // this float him to #1.
+      adpByKey: { star: 50, mid: 60, noproj: 1 },
+      currentOverallPick: 1,
+      filledStarterSlots: 4,
+      totalStarterSlots: 8,
+    })
+    expect(rows[0].playerKey).not.toBe('noproj')
+    expect(rows[rows.length - 1].playerKey).toBe('noproj')
+  })
+
+  it('upside stays on the same scale as points, not rank positions', () => {
+    const rows = buildBoard({
+      available: players,
+      survival: {},
+      expectedBestAtPosition: { RB: 200, WR: 0 },
+      adpByKey: { star: 50, mid: 1, noproj: 60 },
+      currentOverallPick: 1,
+      filledStarterSlots: 0,
+      totalStarterSlots: 8,
+    })
+    // 'mid' is our #2 but the market's #1, so upside = value(#1) - value(mid).
+    const mid = rows.find((r) => r.playerKey === 'mid')!
+    expect(mid.upside).toBe(100)
+  })
+
+  it('a player the market rates lower than us gets no upside credit', () => {
+    const rows = buildBoard({
+      available: players,
+      survival: {},
+      expectedBestAtPosition: { RB: 200, WR: 0 },
+      adpByKey: { star: 99, mid: 1, noproj: 2 },
+      currentOverallPick: 1,
+      filledStarterSlots: 0,
+      totalStarterSlots: 8,
+    })
+    expect(rows.find((r) => r.playerKey === 'star')!.upside).toBe(0)
   })
 })

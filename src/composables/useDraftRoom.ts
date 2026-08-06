@@ -339,6 +339,10 @@ export function useDraftRoom() {
       if (!playerKey || drafted.has(playerKey) || seen.has(playerKey)) return
       const v = vorByKey.value[playerKey]
       if (!v) return
+      // No projection means no opinion. These used to reach the board with a
+      // value of 0 and then float to the top via the upside term — a player we
+      // know nothing about is not a recommendation.
+      if (!(v.pointsRos > 0)) return
       seen.add(playerKey)
       rows.push({ playerKey, name, position, proTeam, headshot, value: v.pointsRos, opportunity: v.opportunity })
     }

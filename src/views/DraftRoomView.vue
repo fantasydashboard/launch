@@ -57,6 +57,16 @@ const visibleBoard = computed(() => {
     : [...rows].sort((a, b) => a.tier - b.tier || b.value - a.value)
   return ordered.slice(0, 60)
 })
+/** A header wherever the relevant tier changes — overall when unfiltered. */
+function isTierHeader(i: number): boolean {
+  const rows = visibleBoard.value
+  if (i === 0) return true
+  const prev = rows[i - 1]
+  const cur = rows[i]
+  if (posFilter.value === 'ALL') return prev.overallTier !== cur.overallTier
+  return prev.tier !== cur.tier || prev.position !== cur.position
+}
+
 const wontLast = computed(() =>
   board.value.filter((r) => r.survival < 0.7).slice(0, 25),
 )
@@ -245,11 +255,12 @@ const holes = computed(() => {
         <template v-for="(r, i) in visibleBoard" :key="r.playerKey">
           <!-- Tier header whenever the tier changes (grouping is real when filtered) -->
           <div
-            v-if="i === 0 || visibleBoard[i - 1].tier !== r.tier || visibleBoard[i - 1].position !== r.position"
+            v-if="isTierHeader(i)"
             class="mt-3 flex items-center gap-2 first:mt-0"
           >
             <span class="rounded bg-dark-border/60 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-dark-text">
-              {{ r.position }} tier {{ r.tier }}
+              <template v-if="posFilter === 'ALL'">tier {{ r.overallTier }} overall</template>
+              <template v-else>{{ r.position }} tier {{ r.tier }}</template>
             </span>
             <span class="h-px flex-1 bg-dark-border/60" />
           </div>
