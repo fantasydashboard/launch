@@ -56,6 +56,12 @@ const VALUE_PICKS = 12
 const REACH_PICKS = 12
 /** Bonus (in points) for a healthy backup behind an injured starter. */
 const OPPORTUNITY_UPSIDE = 8
+/**
+ * Ceiling on the upside term, in points. Market-vs-projection disagreement can
+ * run to hundreds of points on a player one side barely rates; uncapped, a single
+ * wild disagreement outweighs every real edge on the board.
+ */
+const MAX_UPSIDE = 40
 /** Ceiling on tiers per group — beyond this, "tier" stops meaning anything. */
 const MAX_TIERS = 8
 /** Roughly how many players belong in a tier. Drives how many tiers we cut. */
@@ -154,10 +160,14 @@ export function buildBoard(input: BoardInput): BoardRow[] {
   }
   const overallTierByKey = assignTiers(players)
 
-  const w =
-    totalStarterSlots > 0
-      ? Math.min(1, Math.max(0, filledStarterSlots / totalStarterSlots))
-      : 0
+  // "Points now, upside late" has to mean LATE. Weighting upside in proportion to
+  // slots filled put it at ~55% by round 6, which is squarely still starter
+  // territory — and it produced boards where a 170-point player outranked a
+  // 206-point one because the market liked him more. Upside now stays at zero
+  // until the starting lineup is nearly complete, then takes over for bench picks,
+  // which is the round range it was always meant for.
+  const remaining = Math.max(0, totalStarterSlots - filledStarterSlots)
+  const w = totalStarterSlots > 0 ? Math.min(1, Math.max(0, 1 - remaining)) : 0
 
   const rows: BoardRow[] = players.map((p) => {
     const adp = typeof adpByKey?.[p.playerKey] === 'number' ? adpByKey[p.playerKey] : null
@@ -177,6 +187,7 @@ export function buildBoard(input: BoardInput): BoardRow[] {
         ? valueAtRank(ar) - p.value
         : 0
     if (p.opportunity === 'backup-elevated') upside += OPPORTUNITY_UPSIDE
+    upside = Math.min(upside, MAX_UPSIDE)
 
     let flag: BoardRow['flag'] = ''
     if (adp !== null) {

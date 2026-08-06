@@ -51,10 +51,18 @@ describe('buildBoard — points now, upside late', () => {
     expect(r.rb1.score).toBeCloseTo(r.rb1.upside)
   })
 
-  it('the blend shifts continuously as slots fill', () => {
+  it('holds at pure VONA through the starter rounds', () => {
+    // Half the starting lineup filled is still starter territory — upside must
+    // not be competing with real value there.
     const half = byKey(build({ filledStarterSlots: 4, totalStarterSlots: 8 }))
-    const row = half.rb1
-    expect(row.score).toBeCloseTo(0.5 * row.vona + 0.5 * row.upside)
+    expect(half.rb1.score).toBeCloseTo(half.rb1.vona)
+  })
+
+  it('engages upside only once the lineup is one slot from full', () => {
+    const nearly = byKey(build({ filledStarterSlots: 7, totalStarterSlots: 8 }))
+    expect(nearly.rb1.score).toBeCloseTo(nearly.rb1.vona)
+    const full = byKey(build({ filledStarterSlots: 8, totalStarterSlots: 8 }))
+    expect(full.rb1.score).toBeCloseTo(full.rb1.upside)
   })
 
   it('treats a zero-slot roster as unfilled rather than dividing by zero', () => {
@@ -195,9 +203,10 @@ describe('buildBoard — upside is denominated in points', () => {
       filledStarterSlots: 0,
       totalStarterSlots: 8,
     })
-    // 'mid' is our #2 but the market's #1, so upside = value(#1) - value(mid).
+    // 'mid' is our #2 but the market's #1, so the raw disagreement is
+    // value(#1) - value(mid) = 100 points, clamped to the 40-point ceiling.
     const mid = rows.find((r) => r.playerKey === 'mid')!
-    expect(mid.upside).toBe(100)
+    expect(mid.upside).toBe(40)
   })
 
   it('a player the market rates lower than us gets no upside credit', () => {
@@ -211,5 +220,44 @@ describe('buildBoard — upside is denominated in points', () => {
       totalStarterSlots: 8,
     })
     expect(rows.find((r) => r.playerKey === 'star')!.upside).toBe(0)
+  })
+})
+
+describe('buildBoard — upside stays out of the starter rounds', () => {
+  const two = [
+    { playerKey: 'better', name: 'Better', position: 'RB', value: 206 },
+    { playerKey: 'hyped', name: 'Hyped', position: 'RB', value: 170 },
+  ]
+  const base = {
+    available: two,
+    survival: {},
+    expectedBestAtPosition: { RB: 170 },
+    // The market is far higher on the weaker player.
+    adpByKey: { hyped: 1, better: 90 },
+    currentOverallPick: 60,
+    totalStarterSlots: 9,
+  }
+
+  it('mid-draft, the genuinely better player still ranks first', () => {
+    // Five of nine starting slots filled — round 6 territory.
+    const rows = buildBoard({ ...base, filledStarterSlots: 5 })
+    expect(rows[0].playerKey).toBe('better')
+  })
+
+  it('upside carries no weight until the lineup is nearly full', () => {
+    const rows = buildBoard({ ...base, filledStarterSlots: 5 })
+    const r = rows.find((x) => x.playerKey === 'hyped')!
+    expect(r.score).toBeCloseTo(r.vona)
+  })
+
+  it('once starters are complete, upside takes over for bench picks', () => {
+    const rows = buildBoard({ ...base, filledStarterSlots: 9 })
+    const r = rows.find((x) => x.playerKey === 'hyped')!
+    expect(r.score).toBeCloseTo(r.upside)
+  })
+
+  it('caps the upside term so one wild disagreement cannot dominate', () => {
+    const rows = buildBoard({ ...base, filledStarterSlots: 9 })
+    for (const r of rows) expect(r.upside).toBeLessThanOrEqual(40)
   })
 })

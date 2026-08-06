@@ -323,7 +323,7 @@ const holes = computed(() => {
           <span class="min-w-0 flex-1">player</span>
           <span class="w-12 text-right">pts</span>
           <span class="w-14 text-right" title="Chance he is still available at your next pick">lasts</span>
-          <span class="w-12 text-right" title="Points gained over the best player you'd expect at this position at your next pick">edge</span>
+          <span class="w-12 text-right" title="What the board sorts by: edge during the starter rounds, ceiling once your lineup is full">score</span>
         </div>
 
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">tap a row to mark drafted</p>
@@ -352,13 +352,13 @@ const holes = computed(() => {
                 <span v-if="r.flag === 'value'" class="ml-1 rounded bg-emerald-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-emerald-400">value</span>
               </span>
               <span class="block font-mono text-[10px] text-dark-textMuted">
-                {{ r.position }}<template v-if="r.proTeam"> · {{ r.proTeam }}</template><template v-if="r.adp !== null"> · adp {{ round(r.adp) }}</template>
+                {{ r.position }}<template v-if="r.proTeam"> · {{ r.proTeam }}</template><template v-if="r.adp !== null"> · adp {{ round(r.adp) }}</template><template v-if="round(r.score) !== round(r.vona)"> · edge {{ round(r.vona) }}</template>
               </span>
             </span>
             <span class="w-12 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ round(r.value) }}</span>
             <span class="w-14 shrink-0 text-right font-mono text-xs" :class="r.survival < 0.5 ? 'text-[#FF5C5C]' : 'text-dark-textMuted'">{{ pct(r.survival) }}</span>
-            <span class="w-12 shrink-0 text-right font-mono text-sm font-bold" :class="r.vona > 0 ? 'text-dark-text' : 'text-dark-textMuted'">
-              {{ r.vona > 0 ? '+' : '' }}{{ round(r.vona) }}
+            <span class="w-12 shrink-0 text-right font-mono text-sm font-bold" :class="r.score > 0 ? 'text-dark-text' : 'text-dark-textMuted'">
+              {{ r.score > 0 ? '+' : '' }}{{ round(r.score) }}
             </span>
           </button>
         </template>
