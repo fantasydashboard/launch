@@ -8,7 +8,17 @@ const {
   currentOverallPick, hasHistory, myPicks, starterSlots, slotUnknown,
   markDrafted, syncHealthy, refresh, shape,
   grid, teamNameForSlot, connectDraft, disconnectDraft, overrideDraftId, overrideError,
+  customRankings,
 } = useDraftRoom()
+
+// Admin-only analyst override. Invisible to every other account.
+const showRankings = ref(false)
+const rankingsInput = ref(customRankings.rawText.value)
+const analystName = ref(customRankings.label.value)
+const comparison = computed(() => customRankings.compare(board.value))
+function saveRankings() {
+  customRankings.setRankings(rankingsInput.value, analystName.value)
+}
 
 type Tab = 'pick' | 'board' | 'grid' | 'room' | 'last'
 const tab = ref<Tab>('pick')
@@ -143,6 +153,68 @@ const holes = computed(() => {
         connected to draft {{ overrideDraftId }}
         <button @click="disconnectDraft" class="underline hover:text-dark-text">use my league's draft</button>
       </p>
+    </section>
+
+    <!-- Admin-only: compare against an analyst, and optionally draft off their order -->
+    <section v-if="customRankings.isAdmin.value" class="mb-4 rounded-xl border border-dark-border bg-dark-card p-4">
+      <div class="flex items-center justify-between gap-3">
+        <button @click="showRankings = !showRankings" class="font-mono text-[11px] text-dark-textMuted hover:text-dark-text">
+          {{ showRankings ? '▾' : '▸' }} analyst rankings <span class="text-dark-textMuted/60">(admin only)</span>
+        </button>
+        <label v-if="customRankings.hasRankings.value" class="flex shrink-0 cursor-pointer items-center gap-2 font-mono text-[11px]">
+          <input
+            type="checkbox"
+            :checked="customRankings.enabledPref.value"
+            @change="customRankings.setEnabled(($event.target as HTMLInputElement).checked)"
+          />
+          <span :class="customRankings.enabled.value ? 'text-primary' : 'text-dark-textMuted'">
+            use {{ customRankings.label.value }}'s order
+          </span>
+        </label>
+      </div>
+
+      <div v-if="showRankings" class="mt-3">
+        <div class="mb-2 flex gap-2">
+          <input
+            v-model="analystName"
+            placeholder="analyst name"
+            class="w-40 shrink-0 rounded-lg border border-dark-border bg-dark-bg px-2 py-1.5 font-mono text-xs text-dark-text"
+          />
+          <button @click="saveRankings" class="rounded-lg bg-primary/20 px-3 py-1.5 font-mono text-xs text-primary hover:bg-primary/30">save</button>
+          <button @click="customRankings.clearRankings()" class="rounded-lg border border-dark-border px-3 py-1.5 font-mono text-xs text-dark-textMuted hover:text-dark-text">clear</button>
+        </div>
+        <textarea
+          v-model="rankingsInput"
+          rows="6"
+          placeholder="1. Ja'Marr Chase, WR, CIN&#10;2. Bijan Robinson, RB, ATL&#10;..."
+          class="w-full rounded-lg border border-dark-border bg-dark-bg px-3 py-2 font-mono text-[11px] text-dark-text placeholder:text-dark-textMuted/50"
+        />
+
+        <div v-if="customRankings.hasRankings.value" class="mt-3 font-mono text-[11px] text-dark-textMuted">
+          <p class="mb-2">
+            {{ customRankings.parsed.value.length }} ranked ·
+            {{ comparison.matched }} matched ·
+            agreement {{ comparison.spearman.toFixed(2) }} ·
+            avg gap {{ comparison.meanAbsDelta.toFixed(1) }} spots
+            <span v-if="comparison.unmatched.length" class="text-amber-400">
+              · {{ comparison.unmatched.length }} unmatched
+            </span>
+          </p>
+          <p class="mb-1 uppercase tracking-wide text-dark-textMuted/70">biggest disagreements</p>
+          <div v-for="d in comparison.diffs.slice(0, 12)" :key="d.playerKey" class="flex items-center gap-2 border-b border-dark-border/40 py-1 last:border-0">
+            <span class="min-w-0 flex-1 truncate text-dark-text">{{ d.name }} <span class="text-dark-textMuted">{{ d.position }}</span></span>
+            <span class="w-16 text-right">us {{ d.ourRank }}</span>
+            <span class="w-16 text-right">them {{ d.theirRank }}</span>
+            <span class="w-14 text-right font-bold" :class="d.delta > 0 ? 'text-emerald-400' : 'text-[#FF5C5C]'">
+              {{ d.delta > 0 ? '+' : '' }}{{ d.delta }}
+            </span>
+            <span class="w-16 text-right text-dark-textMuted/70">adp {{ d.adp === null ? '—' : Math.round(d.adp) }}</span>
+          </div>
+          <p v-if="comparison.unmatched.length" class="mt-2 text-amber-400/80">
+            unmatched: {{ comparison.unmatched.slice(0, 8).map((u) => u.name).join(', ') }}
+          </p>
+        </div>
+      </div>
     </section>
 
     <!-- Gates -->

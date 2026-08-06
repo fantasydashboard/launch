@@ -13,6 +13,7 @@ import { buildRecommendation, type Recommendation } from '@/draft/room/recommend
 import { parseDraftId } from '@/draft/room/draftId'
 import { buildDraftGrid, type GridPick } from '@/draft/room/draftGrid'
 import { slotsFromDraftSettings, scoringFromDraftMetadata } from '@/draft/room/draftSettings'
+import { useCustomRankings } from '@/composables/useCustomRankings'
 
 /** How often to re-read picks while a draft is running. */
 const POLL_MS = 5000
@@ -352,9 +353,18 @@ export function useDraftRoom() {
     return rows
   })
 
+  // Admin-only: an analyst's ordering mapped onto our value curve. Off (and
+  // invisible) for every other account.
+  const customRankings = useCustomRankings()
+  const rankedPlayers = computed(() => {
+    const remap = customRankings.applyTo(availablePlayers.value)
+    if (!Object.keys(remap).length) return availablePlayers.value
+    return availablePlayers.value.map((p) => ({ ...p, value: remap[p.playerKey] ?? p.value }))
+  })
+
   const survivalResult = computed(() =>
     simulateSurvival({
-      available: availablePlayers.value.map((p) => ({
+      available: rankedPlayers.value.map((p) => ({
         playerKey: p.playerKey,
         position: p.position,
         adp: adp.value[p.playerKey] ?? null,
@@ -384,7 +394,7 @@ export function useDraftRoom() {
 
   const board = computed<BoardRow[]>(() =>
     buildBoard({
-      available: availablePlayers.value,
+      available: rankedPlayers.value,
       survival: survivalResult.value.survival,
       expectedBestAtPosition: survivalResult.value.expectedBestAtPosition,
       adpByKey: adp.value,
@@ -450,6 +460,7 @@ export function useDraftRoom() {
     shape,
     hasHistory,
     slotUnknown,
+    customRankings,
     upcoming,
     myPicks,
     starterSlots,
