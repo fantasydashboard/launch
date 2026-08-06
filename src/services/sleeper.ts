@@ -525,6 +525,47 @@ class SleeperService {
   }
 
   /**
+   * Draft endpoints for the Draft Room. Deliberately separate from getDraft(),
+   * which replaces Sleeper's real `draft_order` (user_id -> slot) with picks
+   * grouped by user — useful for the Draft Report, useless for slot arithmetic.
+   */
+  async getLeagueDrafts(leagueId: string): Promise<any[]> {
+    try {
+      const r = await fetch(`${BASE_URL}/league/${leagueId}/drafts`)
+      if (!r.ok) return []
+      const d = await r.json()
+      return Array.isArray(d) ? d : []
+    } catch (e) {
+      console.warn('[sleeper] getLeagueDrafts failed', e)
+      return []
+    }
+  }
+
+  async getDraftById(draftId: string): Promise<any | null> {
+    try {
+      const r = await fetch(`${BASE_URL}/draft/${draftId}`)
+      if (!r.ok) return null
+      return await r.json()
+    } catch (e) {
+      console.warn('[sleeper] getDraftById failed', e)
+      return null
+    }
+  }
+
+  /** Live draft picks. Polled during a draft, so it must never throw. */
+  async getDraftPicks(draftId: string): Promise<any[]> {
+    try {
+      const r = await fetch(`${BASE_URL}/draft/${draftId}/picks`)
+      if (!r.ok) return []
+      const d = await r.json()
+      return Array.isArray(d) ? d : []
+    } catch (e) {
+      console.warn('[sleeper] getDraftPicks failed', e)
+      return []
+    }
+  }
+
+  /**
    * Get NFL schedule for a week (includes game info).
    * seasonType matches Sleeper's NFL state ('regular' | 'post'); the playoff weeks
    * live under a different path, so callers on a post week must pass it through.
