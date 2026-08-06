@@ -143,6 +143,11 @@ const router = createRouter({
       component: () => import('@/views/VorAuditView.vue')
     },
     {
+      path: '/draft-room',
+      name: 'draft-room',
+      component: () => import('@/views/DraftRoomView.vue')
+    },
+    {
       path: '/history',
       name: 'history',
       component: () => import('@/views/HistoryWrapper.vue')

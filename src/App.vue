@@ -1216,6 +1216,10 @@ const tabs = computed(() => [
   ...(leagueStore.activeSport === 'football'
     ? [{ name: 'This Week', path: '/this-week' }]
     : [{ name: 'Today', path: '/today' }]),
+  // Draft Room reads live picks from Sleeper, so it only appears where it works.
+  ...(leagueStore.activeSport === 'football' && leagueStore.activePlatform === 'sleeper'
+    ? [{ name: 'Draft Room', path: '/draft-room' }]
+    : []),
   { name: 'My Team', path: '/my-team' },
   { name: isRotoLeague.value ? 'Roto Race' : 'Matchup', path: '/matchup' },
   { name: 'The Wire', path: '/players' },
