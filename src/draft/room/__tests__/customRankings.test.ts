@@ -230,3 +230,81 @@ describe('parseRankings — how rankings actually arrive', () => {
     expect(r.map((x) => x.name)).toEqual(["Ja'Marr Chase", 'Bijan Robinson'])
   })
 })
+
+describe('applyRankingOrder — partial and positional lists', () => {
+  const pool = Array.from({ length: 200 }, (_, i) => ({ playerKey: `p${i}`, value: 300 - i }))
+
+  it('never collapses unranked players onto one value', () => {
+    // "My top 40 RBs" — ranked players scattered through our curve.
+    const rankByKey: Record<string, number> = {}
+    for (let i = 0; i < 40; i++) rankByKey[`p${20 + i * 4}`] = i + 1
+    const v = applyRankingOrder(pool, rankByKey)
+
+    const unrankedVals = pool
+      .filter((p) => rankByKey[p.playerKey] === undefined)
+      .map((p) => v[p.playerKey])
+    expect(new Set(unrankedVals).size).toBe(unrankedVals.length)
+  })
+
+  it('leaves players the analyst did not rank exactly as we had them', () => {
+    const v = applyRankingOrder(pool, { p5: 1, p9: 2 })
+    expect(v.p0).toBe(300)
+    expect(v.p100).toBe(200)
+    expect(v.p199).toBe(101)
+  })
+
+  it('permutes the ranked group within the slots it already held', () => {
+    // We had p5=295, p9=291. Analyst prefers p9.
+    const v = applyRankingOrder(pool, { p9: 1, p5: 2 })
+    expect(v.p9).toBe(295)
+    expect(v.p5).toBe(291)
+  })
+
+  it('a full overall list still re-maps the whole curve', () => {
+    const three = [
+      { playerKey: 'a', value: 300 },
+      { playerKey: 'b', value: 250 },
+      { playerKey: 'c', value: 200 },
+    ]
+    const v = applyRankingOrder(three, { c: 1, a: 2, b: 3 })
+    expect([v.c, v.a, v.b]).toEqual([300, 250, 200])
+  })
+})
+
+describe('matchRankings — ambiguity is surfaced, not guessed', () => {
+  const players = [
+    { playerKey: 'qb', name: 'Josh Allen', position: 'QB' },
+    { playerKey: 'lb', name: 'Josh Allen', position: 'LB' },
+    { playerKey: 'solo', name: 'Bijan Robinson', position: 'RB' },
+  ]
+
+  it('flags a shared name with no position rather than picking one', () => {
+    const r = matchRankings(parseRankings('1. Josh Allen'), players)
+    expect(r.matched).toBe(0)
+    expect(r.ambiguous).toHaveLength(1)
+    expect(r.ambiguous[0].candidates.map((c) => c.playerKey).sort()).toEqual(['lb', 'qb'])
+  })
+
+  it('resolves when the position narrows it to exactly one', () => {
+    const r = matchRankings(parseRankings('1,Josh Allen,QB'), players)
+    expect(r.rankByKey.qb).toBe(1)
+    expect(r.ambiguous).toHaveLength(0)
+  })
+
+  it('still flags when the position does not narrow it', () => {
+    const dupes = [
+      { playerKey: 'a', name: 'Mike Williams', position: 'WR' },
+      { playerKey: 'b', name: 'Mike Williams', position: 'WR' },
+    ]
+    const r = matchRankings(parseRankings('1,Mike Williams,WR'), dupes)
+    expect(r.matched).toBe(0)
+    expect(r.ambiguous[0].candidates).toHaveLength(2)
+  })
+
+  it('an unambiguous name is unaffected', () => {
+    const r = matchRankings(parseRankings('1. Bijan Robinson'), players)
+    expect(r.rankByKey.solo).toBe(1)
+    expect(r.ambiguous).toHaveLength(0)
+    expect(r.unmatched).toHaveLength(0)
+  })
+})

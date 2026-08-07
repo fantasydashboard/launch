@@ -101,8 +101,8 @@ export function useCustomRankings() {
   function compare(
     board: { playerKey: string; name: string; position: string; value: number; adp: number | null }[],
   ): RankingComparison {
-    const { rankByKey, unmatched } = match(board)
-    return compareRankings(board, rankByKey, unmatched)
+    const { rankByKey, unmatched, ambiguous } = match(board)
+    return compareRankings(board, rankByKey, unmatched, ambiguous)
   }
 
   return {

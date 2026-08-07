@@ -132,11 +132,18 @@ export function parseRankings(text: string): ParsedRanking[] {
     .map((r, i) => ({ ...r, rank: i + 1 }))
 }
 
+export interface AmbiguousMatch {
+  entry: ParsedRanking
+  candidates: { playerKey: string; name: string; position?: string }[]
+}
+
 export interface MatchResult {
   /** playerKey -> analyst rank. */
   rankByKey: Record<string, number>
   /** Analyst entries we could not tie to a player in the pool. */
   unmatched: ParsedRanking[]
+  /** Entries where several players share the name and we will NOT guess. */
+  ambiguous: AmbiguousMatch[]
   matched: number
 }
 
@@ -149,35 +156,44 @@ export function matchRankings(
   parsed: ParsedRanking[],
   players: { playerKey: string; name: string; position?: string }[],
 ): MatchResult {
-  const byName = new Map<string, { playerKey: string; position?: string }[]>()
+  const byName = new Map<string, { playerKey: string; name: string; position?: string }[]>()
   for (const p of players ?? []) {
     const key = normalizeName(p.name)
     if (!key) continue
     const arr = byName.get(key) ?? []
-    arr.push({ playerKey: p.playerKey, position: p.position })
+    arr.push({ playerKey: p.playerKey, name: p.name, position: p.position })
     byName.set(key, arr)
   }
 
   const rankByKey: Record<string, number> = {}
   const unmatched: ParsedRanking[] = []
+  const ambiguous: AmbiguousMatch[] = []
   const used = new Set<string>()
 
   for (const entry of parsed ?? []) {
-    const candidates = byName.get(normalizeName(entry.name)) ?? []
-    let pick = candidates.find((c) => !used.has(c.playerKey))
-    // Same name at different positions — let the analyst's position break the tie.
-    if (entry.position && candidates.length > 1) {
-      const byPos = candidates.find(
-        (c) => !used.has(c.playerKey) && (c.position ?? '').toUpperCase() === entry.position,
-      )
-      if (byPos) pick = byPos
+    const all = byName.get(normalizeName(entry.name)) ?? []
+    const free = all.filter((c) => !used.has(c.playerKey))
+    if (!free.length) { unmatched.push(entry); continue }
+
+    // The analyst's position can settle a shared name — but only if it settles it
+    // to exactly one player.
+    const byPos = entry.position
+      ? free.filter((c) => (c.position ?? '').toUpperCase() === entry.position)
+      : []
+    const resolved = byPos.length === 1 ? byPos[0] : free.length === 1 ? free[0] : null
+
+    if (!resolved) {
+      // Several real players share this name. Silently taking the first looks
+      // confident and is sometimes wrong — surface it and let a human decide.
+      ambiguous.push({ entry, candidates: byPos.length ? byPos : free })
+      continue
     }
-    if (!pick) { unmatched.push(entry); continue }
-    rankByKey[pick.playerKey] = entry.rank
-    used.add(pick.playerKey)
+
+    rankByKey[resolved.playerKey] = entry.rank
+    used.add(resolved.playerKey)
   }
 
-  return { rankByKey, unmatched, matched: Object.keys(rankByKey).length }
+  return { rankByKey, unmatched, ambiguous, matched: Object.keys(rankByKey).length }
 }
 
 /**
@@ -196,21 +212,23 @@ export function applyRankingOrder(
   const list = players ?? []
   if (!list.length) return out
 
-  const ranked = list
-    .filter((p) => typeof rankByKey[p.playerKey] === 'number')
-    .sort((a, b) => rankByKey[a.playerKey] - rankByKey[b.playerKey])
+  // Start from our own values, then permute ONLY within the ranked group.
+  for (const p of list) out[p.playerKey] = p.value
 
-  // The value curve, highest first — the shape we keep.
-  const curve = [...list].map((p) => p.value).sort((a, b) => b - a)
+  const ranked = list.filter((p) => typeof rankByKey[p.playerKey] === 'number')
+  if (!ranked.length) return out
 
-  ranked.forEach((p, i) => { out[p.playerKey] = curve[i] ?? 0 })
-
-  // Unranked players sit below the ranked block, keeping their relative order.
-  const floor = ranked.length ? (out[ranked[ranked.length - 1].playerKey] ?? 0) : Infinity
-  const unranked = list
-    .filter((p) => typeof rankByKey[p.playerKey] !== 'number')
-    .sort((a, b) => b.value - a.value)
-  unranked.forEach((p) => { out[p.playerKey] = Math.min(p.value, floor) })
+  // The value slots the ranked players already occupy, best first. Reassigning
+  // these in the analyst's order adopts their opinion of who is better without
+  // touching anyone they didn't rank.
+  //
+  // The previous version pushed every unranked player below the last ranked one,
+  // which is fine for a full overall list but collapses on a partial or
+  // positional one: upload "my top 40 RBs" and 35 unrelated players flatten onto
+  // a single value, destroying their order entirely.
+  const slots = ranked.map((p) => p.value).sort((a, b) => b - a)
+  const inAnalystOrder = [...ranked].sort((a, b) => rankByKey[a.playerKey] - rankByKey[b.playerKey])
+  inAnalystOrder.forEach((p, i) => { out[p.playerKey] = slots[i] ?? p.value })
 
   return out
 }
@@ -231,6 +249,7 @@ export interface RankingComparison {
   diffs: RankingDiff[]
   matched: number
   unmatched: ParsedRanking[]
+  ambiguous: AmbiguousMatch[]
   /** Mean absolute rank difference over matched players — overall agreement. */
   meanAbsDelta: number
   /** Spearman rank correlation over matched players. 1 = identical ordering. */
@@ -248,6 +267,7 @@ export function compareRankings(
   ourBoard: { playerKey: string; name: string; position: string; value: number; adp: number | null }[],
   rankByKey: Record<string, number>,
   unmatched: ParsedRanking[] = [],
+  ambiguous: AmbiguousMatch[] = [],
 ): RankingComparison {
   const ours = [...(ourBoard ?? [])].sort((a, b) => b.value - a.value)
   const ourRank = new Map(ours.map((p, i) => [p.playerKey, i + 1]))
@@ -292,6 +312,7 @@ export function compareRankings(
     diffs: diffs.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)),
     matched: n,
     unmatched,
+    ambiguous,
     meanAbsDelta,
     spearman,
   }

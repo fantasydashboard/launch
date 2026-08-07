@@ -226,6 +226,9 @@ const holes = computed(() => {
             <span v-if="comparison.unmatched.length" class="text-amber-400">
               · {{ comparison.unmatched.length }} unmatched
             </span>
+            <span v-if="comparison.ambiguous.length" class="text-amber-400">
+              · {{ comparison.ambiguous.length }} ambiguous
+            </span>
           </p>
           <p class="mb-1 uppercase tracking-wide text-dark-textMuted/70">biggest disagreements</p>
           <div v-for="d in comparison.diffs.slice(0, 12)" :key="d.playerKey" class="flex items-center gap-2 border-b border-dark-border/40 py-1 last:border-0">
@@ -239,6 +242,10 @@ const holes = computed(() => {
           </div>
           <p v-if="comparison.unmatched.length" class="mt-2 text-amber-400/80">
             unmatched: {{ comparison.unmatched.slice(0, 8).map((u) => u.name).join(', ') }}
+          </p>
+          <p v-if="comparison.ambiguous.length" class="mt-1 text-amber-400/80">
+            shared names, not guessed:
+            {{ comparison.ambiguous.slice(0, 6).map((a) => `${a.entry.name} (${a.candidates.length})`).join(', ') }}
           </p>
         </div>
       </div>
