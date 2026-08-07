@@ -308,3 +308,27 @@ describe('matchRankings — ambiguity is surfaced, not guessed', () => {
     expect(r.unmatched).toHaveLength(0)
   })
 })
+
+describe('compareRankings — respects the order it is given', () => {
+  // Deliberately NOT in value order: this is the caller's ranking, and a QB with
+  // huge raw points sits low because replacement at QB is high.
+  const ordered = [
+    { playerKey: 'rb', name: 'RB One', position: 'RB', value: 250, adp: 5 },
+    { playerKey: 'wr', name: 'WR One', position: 'WR', value: 240, adp: 8 },
+    { playerKey: 'qb', name: 'QB One', position: 'QB', value: 400, adp: 90 },
+  ]
+
+  it('uses array position as our rank rather than re-sorting by points', () => {
+    const c = compareRankings(ordered, { rb: 1, wr: 2, qb: 3 })
+    const qb = c.diffs.find((d) => d.playerKey === 'qb')!
+    expect(qb.ourRank).toBe(3)
+    expect(qb.delta).toBe(0)
+  })
+
+  it('does not manufacture a disagreement from raw projected points', () => {
+    // Sorting by value would rank the QB 1st and report a two-spot gap.
+    const c = compareRankings(ordered, { rb: 1, wr: 2, qb: 3 })
+    expect(c.meanAbsDelta).toBe(0)
+    expect(c.spearman).toBeCloseTo(1)
+  })
+})

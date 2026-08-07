@@ -9,6 +9,7 @@ import { nextPickFor, slotAtPick, slotsBetween, type DraftShape } from '@/draft/
 import { buildTendencies, defaultRoundBucket, priorFor, type HistoricalPick } from '@/draft/room/tendencies'
 import { simulateSurvival } from '@/draft/room/survival'
 import { buildBoard, type BoardRow } from '@/draft/room/board'
+import { computeReplacementDetail } from '@/football/footballReplacement'
 import { buildRecommendation, type Recommendation } from '@/draft/room/recommend'
 import { parseDraftId } from '@/draft/room/draftId'
 import { buildDraftGrid, type GridPick } from '@/draft/room/draftGrid'
@@ -354,6 +355,46 @@ export function useDraftRoom() {
     return rows
   })
 
+  /**
+   * The whole universe, drafted players included, ordered by value over
+   * replacement — what we would say if nothing had been taken yet.
+   *
+   * The analyst comparison has to run against this, not the live board: mid-draft
+   * the board holds only who is LEFT, so every elite player reads as "unmatched"
+   * purely because someone already took him. And ordering has to be
+   * replacement-adjusted, since ranking by raw points puts every quarterback
+   * ~100 spots too high and drowns the real disagreements.
+   */
+  const comparePool = computed(() => {
+    const seen = new Set<string>()
+    const rows: { playerKey: string; name: string; position: string; value: number; adp: number | null }[] = []
+    const push = (playerKey: string, name: string, position: string) => {
+      if (!playerKey || seen.has(playerKey)) return
+      const v = vorByKey.value[playerKey]
+      if (!v || !(v.pointsRos > 0)) return
+      seen.add(playerKey)
+      rows.push({ playerKey, name, position, value: v.pointsRos, adp: adp.value[playerKey] ?? null })
+    }
+    for (const fa of src.freeAgents.value) push(fa.playerKey, fa.name, fa.position)
+    for (const p of src.pool.value) push(p.playerKey, p.name, p.position)
+    for (const p of picks.value as any[]) {
+      const key = String(p.player_id ?? '')
+      const nm = [p?.metadata?.first_name, p?.metadata?.last_name].filter(Boolean).join(' ')
+      push(key, nm || key, String(p?.metadata?.position ?? ''))
+    }
+    if (!rows.length) return rows
+
+    const detail = computeReplacementDetail(
+      rows.map((r) => ({ playerKey: r.playerKey, position: r.position, points: r.value })),
+      effectiveSlots.value ?? {},
+      effectiveTeams.value,
+    )
+    return [...rows].sort(
+      (a, b) =>
+        b.value - (detail.levels[b.position] ?? 0) - (a.value - (detail.levels[a.position] ?? 0)),
+    )
+  })
+
   // Admin-only: an analyst's ordering mapped onto our value curve. Off (and
   // invisible) for every other account.
   const customRankings = useCustomRankings()
@@ -517,6 +558,7 @@ export function useDraftRoom() {
     hasHistory,
     slotUnknown,
     customRankings,
+    comparePool,
     replay,
     upcoming,
     myPicks,

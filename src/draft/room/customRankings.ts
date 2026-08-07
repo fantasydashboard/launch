@@ -263,13 +263,19 @@ export interface RankingComparison {
  * distrust, a role change we missed, a market the ADP variant got wrong), not to
  * quietly converge on someone else's list.
  */
+/**
+ * `ourBoard` must arrive ALREADY ORDERED the way we would actually rank these
+ * players — array position is taken as our rank. Re-sorting by raw projected
+ * points here reproduced the exact distortion replacement level exists to fix,
+ * and made every quarterback look like a wild disagreement.
+ */
 export function compareRankings(
   ourBoard: { playerKey: string; name: string; position: string; value: number; adp: number | null }[],
   rankByKey: Record<string, number>,
   unmatched: ParsedRanking[] = [],
   ambiguous: AmbiguousMatch[] = [],
 ): RankingComparison {
-  const ours = [...(ourBoard ?? [])].sort((a, b) => b.value - a.value)
+  const ours = ourBoard ?? []
   const ourRank = new Map(ours.map((p, i) => [p.playerKey, i + 1]))
 
   const diffs: RankingDiff[] = []

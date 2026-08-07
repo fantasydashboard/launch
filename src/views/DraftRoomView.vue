@@ -8,14 +8,14 @@ const {
   currentOverallPick, hasHistory, myPicks, starterSlots, slotUnknown,
   markDrafted, syncHealthy, refresh, shape,
   grid, teamNameForSlot, connectDraft, disconnectDraft, overrideDraftId, overrideError,
-  customRankings, replay,
+  customRankings, replay, comparePool,
 } = useDraftRoom()
 
 // Admin-only analyst override. Invisible to every other account.
 const showRankings = ref(false)
 const rankingsInput = ref(customRankings.rawText.value)
 const analystName = ref(customRankings.label.value)
-const comparison = computed(() => customRankings.compare(board.value))
+const comparison = computed(() => customRankings.compare(comparePool.value))
 function saveRankings() {
   customRankings.setRankings(rankingsInput.value, analystName.value)
 }
