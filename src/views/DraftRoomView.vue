@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useDraftRoom } from '@/composables/useDraftRoom'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 
@@ -13,24 +14,7 @@ const {
 
 // Admin-only analyst override. Invisible to every other account.
 const showRankings = ref(false)
-const rankingsInput = ref(customRankings.rawText.value)
-const analystName = ref(customRankings.label.value)
 const comparison = computed(() => customRankings.compare(comparePool.value))
-function saveRankings() {
-  customRankings.setRankings(rankingsInput.value, analystName.value)
-}
-const fileMsg = ref('')
-async function onRankingsFile(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0]
-  if (!file) return
-  try {
-    const n = await customRankings.loadFromFile(file, analystName.value)
-    rankingsInput.value = customRankings.rawText.value
-    fileMsg.value = `loaded ${n} players from ${file.name}`
-  } catch {
-    fileMsg.value = "couldn't read that file"
-  }
-}
 
 type Tab = 'pick' | 'board' | 'grid' | 'room' | 'last' | 'replay'
 const tab = ref<Tab>('pick')
@@ -171,83 +155,55 @@ const holes = computed(() => {
       </p>
     </section>
 
-    <!-- Admin-only: compare against an analyst, and optionally draft off their order -->
-    <section v-if="customRankings.isAdmin.value" class="mb-4 rounded-xl border border-dark-border bg-dark-card p-4">
+    <!-- Admin-only: how the uploaded list compares to our projections.
+         Uploading and toggling live in Settings — this is a standing preference,
+         not draft state. -->
+    <section v-if="customRankings.isAdmin.value && customRankings.hasRankings.value" class="mb-4 rounded-xl border border-dark-border bg-dark-card p-4">
       <div class="flex items-center justify-between gap-3">
         <button @click="showRankings = !showRankings" class="font-mono text-[11px] text-dark-textMuted hover:text-dark-text">
-          {{ showRankings ? '▾' : '▸' }} analyst rankings <span class="text-dark-textMuted/60">(admin only)</span>
+          {{ showRankings ? '▾' : '▸' }} {{ customRankings.label.value }} vs our projections
+          <span v-if="customRankings.enabled.value" class="text-primary">· drafting from their order</span>
         </button>
-        <label v-if="customRankings.hasRankings.value" class="flex shrink-0 cursor-pointer items-center gap-2 font-mono text-[11px]">
-          <input
-            type="checkbox"
-            :checked="customRankings.enabledPref.value"
-            @change="customRankings.setEnabled(($event.target as HTMLInputElement).checked)"
-          />
-          <span :class="customRankings.enabled.value ? 'text-primary' : 'text-dark-textMuted'">
-            use {{ customRankings.label.value }}'s order
-          </span>
-        </label>
+        <RouterLink to="/settings" class="shrink-0 font-mono text-[11px] text-dark-textMuted underline hover:text-dark-text">
+          manage in settings
+        </RouterLink>
       </div>
 
-      <div v-if="showRankings" class="mt-3">
-        <div class="mb-2 flex gap-2">
-          <input
-            v-model="analystName"
-            placeholder="analyst name"
-            class="w-40 shrink-0 rounded-lg border border-dark-border bg-dark-bg px-2 py-1.5 font-mono text-xs text-dark-text"
-          />
-          <label class="cursor-pointer rounded-lg border border-dark-border px-3 py-1.5 font-mono text-xs text-dark-textMuted hover:text-dark-text">
-            upload csv
-            <input type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden" @change="onRankingsFile" />
-          </label>
-          <button @click="saveRankings" class="rounded-lg bg-primary/20 px-3 py-1.5 font-mono text-xs text-primary hover:bg-primary/30">save</button>
-          <button @click="customRankings.clearRankings()" class="rounded-lg border border-dark-border px-3 py-1.5 font-mono text-xs text-dark-textMuted hover:text-dark-text">clear</button>
+      <div v-if="showRankings" class="mt-3 font-mono text-[11px] text-dark-textMuted">
+        <p v-if="customRankings.ageDays.value !== null" class="mb-1"
+           :class="(customRankings.ageDays.value ?? 0) > 7 ? 'text-amber-400' : 'text-dark-textMuted'">
+          updated {{ customRankings.ageDays.value === 0 ? 'today' : customRankings.ageDays.value + 'd ago' }}
+          <template v-if="(customRankings.ageDays.value ?? 0) > 7"> · these may be stale</template>
+        </p>
+        <p class="mb-2">
+          {{ customRankings.parsed.value.length }} ranked ·
+          {{ comparison.matched }} matched ·
+          agreement {{ comparison.spearman.toFixed(2) }} ·
+          avg gap {{ comparison.meanAbsDelta.toFixed(1) }} spots
+          <span v-if="comparison.unmatched.length" class="text-amber-400">
+            · {{ comparison.unmatched.length }} unmatched
+          </span>
+          <span v-if="comparison.ambiguous.length" class="text-amber-400">
+            · {{ comparison.ambiguous.length }} ambiguous
+          </span>
+        </p>
+        <p class="mb-1 uppercase tracking-wide text-dark-textMuted/70">biggest disagreements</p>
+        <div v-for="d in comparison.diffs.slice(0, 12)" :key="d.playerKey" class="flex items-center gap-2 border-b border-dark-border/40 py-1 last:border-0">
+          <span class="min-w-0 flex-1 truncate text-dark-text">{{ d.name }} <span class="text-dark-textMuted">{{ d.position }}</span></span>
+          <span class="w-16 text-right">us {{ d.ourRank }}</span>
+          <span class="w-16 text-right">them {{ d.theirRank }}</span>
+          <span class="w-14 text-right font-bold" :class="d.delta > 0 ? 'text-emerald-400' : 'text-[#FF5C5C]'">
+            {{ d.delta > 0 ? '+' : '' }}{{ d.delta }}
+          </span>
+          <span class="w-16 text-right text-dark-textMuted/70">adp {{ d.adp === null ? '—' : Math.round(d.adp) }}</span>
         </div>
-        <textarea
-          v-model="rankingsInput"
-          rows="6"
-          placeholder="1. Ja'Marr Chase, WR, CIN&#10;2. Bijan Robinson, RB, ATL&#10;..."
-          class="w-full rounded-lg border border-dark-border bg-dark-bg px-3 py-2 font-mono text-[11px] text-dark-text placeholder:text-dark-textMuted/50"
-        />
-
-        <p v-if="fileMsg" class="mt-2 font-mono text-[11px] text-emerald-400">{{ fileMsg }}</p>
-
-        <div v-if="customRankings.hasRankings.value" class="mt-3 font-mono text-[11px] text-dark-textMuted">
-          <p v-if="customRankings.ageDays.value !== null" class="mb-1"
-             :class="(customRankings.ageDays.value ?? 0) > 7 ? 'text-amber-400' : 'text-dark-textMuted'">
-            updated {{ customRankings.ageDays.value === 0 ? 'today' : `${customRankings.ageDays.value}d ago` }}
-            <template v-if="(customRankings.ageDays.value ?? 0) > 7"> · these may be stale</template>
-          </p>
-          <p class="mb-2">
-            {{ customRankings.parsed.value.length }} ranked ·
-            {{ comparison.matched }} matched ·
-            agreement {{ comparison.spearman.toFixed(2) }} ·
-            avg gap {{ comparison.meanAbsDelta.toFixed(1) }} spots
-            <span v-if="comparison.unmatched.length" class="text-amber-400">
-              · {{ comparison.unmatched.length }} unmatched
-            </span>
-            <span v-if="comparison.ambiguous.length" class="text-amber-400">
-              · {{ comparison.ambiguous.length }} ambiguous
-            </span>
-          </p>
-          <p class="mb-1 uppercase tracking-wide text-dark-textMuted/70">biggest disagreements</p>
-          <div v-for="d in comparison.diffs.slice(0, 12)" :key="d.playerKey" class="flex items-center gap-2 border-b border-dark-border/40 py-1 last:border-0">
-            <span class="min-w-0 flex-1 truncate text-dark-text">{{ d.name }} <span class="text-dark-textMuted">{{ d.position }}</span></span>
-            <span class="w-16 text-right">us {{ d.ourRank }}</span>
-            <span class="w-16 text-right">them {{ d.theirRank }}</span>
-            <span class="w-14 text-right font-bold" :class="d.delta > 0 ? 'text-emerald-400' : 'text-[#FF5C5C]'">
-              {{ d.delta > 0 ? '+' : '' }}{{ d.delta }}
-            </span>
-            <span class="w-16 text-right text-dark-textMuted/70">adp {{ d.adp === null ? '—' : Math.round(d.adp) }}</span>
-          </div>
-          <p v-if="comparison.unmatched.length" class="mt-2 text-amber-400/80">
-            unmatched: {{ comparison.unmatched.slice(0, 8).map((u) => u.name).join(', ') }}
-          </p>
-          <p v-if="comparison.ambiguous.length" class="mt-1 text-amber-400/80">
-            shared names, not guessed:
-            {{ comparison.ambiguous.slice(0, 6).map((a) => `${a.entry.name} (${a.candidates.length})`).join(', ') }}
-          </p>
-        </div>
+        <p v-if="comparison.unmatched.length" class="mt-2 text-amber-400/80">
+          unmatched: {{ comparison.unmatched.slice(0, 8).map((u) => u.name).join(', ') }}
+        </p>
+        <p v-if="comparison.ambiguous.length" class="mt-1 text-amber-400/80">
+          shared names, not guessed:
+          {{ comparison.ambiguous.slice(0, 6).map((a) => a.entry.name + ' (' + a.candidates.length + ')').join(', ') }}
+        </p>
       </div>
     </section>
 

@@ -25,6 +25,67 @@
       </div>
     </div>
 
+    <!-- Custom draft rankings (admin only for now) -->
+    <div v-if="customRankings.isAdmin.value" class="card">
+      <div class="card-header">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">📋</span>
+          <h2 class="card-title">Draft Rankings</h2>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="mb-4 text-sm text-dark-textMuted">
+          Upload a ranking list to draft from instead of our projections. It applies to every draft —
+          mocks and the real thing — until you replace it.
+        </p>
+
+        <div class="mb-3 flex flex-wrap items-center gap-2">
+          <input
+            v-model="rankingsName"
+            placeholder="source name"
+            class="w-44 rounded-lg border border-dark-border bg-dark-bg px-3 py-2 font-mono text-xs text-dark-text"
+          />
+          <label class="cursor-pointer rounded-lg border border-dark-border px-3 py-2 font-mono text-xs text-dark-textMuted hover:text-dark-text">
+            {{ customRankings.hasRankings.value ? 'replace csv' : 'upload csv' }}
+            <input type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden" @change="onRankingsFile" />
+          </label>
+          <button
+            v-if="customRankings.hasRankings.value"
+            @click="customRankings.clearRankings()"
+            class="rounded-lg border border-dark-border px-3 py-2 font-mono text-xs text-dark-textMuted hover:text-dark-text"
+          >
+            remove
+          </button>
+        </div>
+
+        <p v-if="rankingsFileMsg" class="mb-3 font-mono text-xs text-emerald-400">{{ rankingsFileMsg }}</p>
+
+        <div v-if="customRankings.hasRankings.value" class="rounded-lg border border-dark-border bg-dark-bg p-3">
+          <label class="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              :checked="customRankings.enabledPref.value"
+              @change="customRankings.setEnabled(($event.target as HTMLInputElement).checked)"
+            />
+            <span class="text-sm" :class="customRankings.enabled.value ? 'text-primary' : 'text-dark-text'">
+              Draft from {{ customRankings.label.value }}'s order
+            </span>
+          </label>
+          <p class="mt-2 font-mono text-[11px] text-dark-textMuted">
+            {{ customRankings.parsed.value.length }} players
+            <template v-if="customRankings.ageDays.value !== null">
+              · <span :class="(customRankings.ageDays.value ?? 0) > 7 ? 'text-amber-400' : ''">
+                updated {{ customRankings.ageDays.value === 0 ? 'today' : customRankings.ageDays.value + 'd ago' }}
+              </span>
+            </template>
+          </p>
+          <p class="mt-1 font-mono text-[11px] text-dark-textMuted/70">
+            The Draft Room shows how this list compares to our projections.
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- Connected Platforms Section -->
     <div class="card">
       <div class="card-header">
@@ -239,8 +300,26 @@ import { useAuthStore } from '@/stores/auth'
 import { supabase } from '@/lib/supabase'
 import { cache } from '@/services/cache'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import { useCustomRankings } from '@/composables/useCustomRankings'
 
 const leagueStore = useLeagueStore()
+
+// Custom draft rankings — an account-level preference, not draft state, so it
+// belongs beside the other standing settings rather than inside a draft tool.
+const customRankings = useCustomRankings()
+const rankingsName = ref(customRankings.label.value)
+const rankingsFileMsg = ref('')
+async function onRankingsFile(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  try {
+    const n = await customRankings.loadFromFile(file, rankingsName.value)
+    rankingsFileMsg.value = `loaded ${n} players from ${file.name}`
+  } catch {
+    rankingsFileMsg.value = "couldn't read that file"
+  }
+  ;(e.target as HTMLInputElement).value = ''
+}
 const platformsStore = usePlatformsStore()
 const authStore = useAuthStore()
 
