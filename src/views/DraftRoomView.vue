@@ -67,13 +67,19 @@ const visibleBoard = computed(() => {
     : [...rows].sort((a, b) => a.tier - b.tier || b.value - a.value)
   return ordered.slice(0, 60)
 })
-/** A header wherever the relevant tier changes — overall when unfiltered. */
+/**
+ * Tier headers only make sense when the list is ordered by tier, which is the
+ * position-filtered view. The unfiltered board is ordered by SCORE, so tier
+ * headers there read 1, 2, 3, 6, 3 going down the page — repeating and going
+ * backwards. There the tier belongs on the row instead.
+ */
+const showTierHeaders = computed(() => posFilter.value !== 'ALL')
 function isTierHeader(i: number): boolean {
+  if (!showTierHeaders.value) return false
   const rows = visibleBoard.value
   if (i === 0) return true
   const prev = rows[i - 1]
   const cur = rows[i]
-  if (posFilter.value === 'ALL') return prev.overallTier !== cur.overallTier
   return prev.tier !== cur.tier || prev.position !== cur.position
 }
 
@@ -110,6 +116,19 @@ const holes = computed(() => {
             pick {{ pickLabel }}<span v-if="isMyTurn" class="text-primary"> · you're on the clock</span>
           </template>
           <template v-else>your board, your league, your opponents</template>
+        </p>
+        <!-- Always say which rankings the board is built from. -->
+        <p v-if="customRankings.isAdmin.value" class="mt-1 flex items-center gap-2 font-mono text-[11px]">
+          <span class="text-dark-textMuted">ranked by</span>
+          <select
+            :value="customRankings.activeId.value"
+            @change="customRankings.setActive(($event.target as HTMLSelectElement).value)"
+            class="rounded border border-dark-border bg-dark-card px-2 py-0.5 text-[11px]"
+            :class="customRankings.enabled.value ? 'text-primary' : 'text-dark-text'"
+          >
+            <option value="">our projections</option>
+            <option v-for="set in customRankings.sets.value" :key="set.id" :value="set.id">{{ set.name }}</option>
+          </select>
         </p>
       </div>
       <div class="flex shrink-0 gap-2">
@@ -161,8 +180,7 @@ const holes = computed(() => {
     <section v-if="customRankings.isAdmin.value && customRankings.hasRankings.value" class="mb-4 rounded-xl border border-dark-border bg-dark-card p-4">
       <div class="flex items-center justify-between gap-3">
         <button @click="showRankings = !showRankings" class="font-mono text-[11px] text-dark-textMuted hover:text-dark-text">
-          {{ showRankings ? '▾' : '▸' }} {{ customRankings.label.value }} vs our projections
-          <span v-if="customRankings.enabled.value" class="text-primary">· drafting from their order</span>
+          {{ showRankings ? '▾' : '▸' }} {{ customRankings.sourceName.value }} vs our projections
         </button>
         <RouterLink to="/settings" class="shrink-0 font-mono text-[11px] text-dark-textMuted underline hover:text-dark-text">
           manage in settings
@@ -338,7 +356,7 @@ const holes = computed(() => {
                 <span v-if="r.flag === 'value'" class="ml-1 rounded bg-emerald-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-emerald-400">value</span>
               </span>
               <span class="block font-mono text-[10px] text-dark-textMuted">
-                {{ r.position }}<template v-if="r.proTeam"> · {{ r.proTeam }}</template><template v-if="r.adp !== null"> · adp {{ round(r.adp) }}</template><template v-if="round(r.score) !== round(r.vona)"> · edge {{ round(r.vona) }}</template>
+                {{ r.position }}<template v-if="!showTierHeaders"> · {{ r.position }}{{ r.tier }}</template><template v-if="r.proTeam"> · {{ r.proTeam }}</template><template v-if="r.adp !== null"> · adp {{ round(r.adp) }}</template><template v-if="round(r.score) !== round(r.vona)"> · edge {{ round(r.vona) }}</template>
               </span>
             </span>
             <span class="w-12 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ round(r.value) }}</span>

@@ -25,7 +25,7 @@
       </div>
     </div>
 
-    <!-- Custom draft rankings (admin only for now) -->
+    <!-- Draft rankings (admin only for now) -->
     <div v-if="customRankings.isAdmin.value" class="card">
       <div class="card-header">
         <div class="flex items-center gap-2">
@@ -35,53 +35,54 @@
       </div>
       <div class="card-body">
         <p class="mb-4 text-sm text-dark-textMuted">
-          Upload a ranking list to draft from instead of our projections. It applies to every draft —
-          mocks and the real thing — until you replace it.
+          Keep as many ranking lists as you like and choose which one the Draft Room drafts from.
+          Whichever is selected applies to every draft — mocks and the real thing.
         </p>
 
-        <div class="mb-3 flex flex-wrap items-center gap-2">
+        <!-- Our projections is always an option -->
+        <label class="mb-2 flex cursor-pointer items-center gap-3 rounded-lg border p-3"
+               :class="customRankings.activeId.value === '' ? 'border-primary bg-primary/5' : 'border-dark-border'">
+          <input type="radio" :checked="customRankings.activeId.value === ''" @change="customRankings.setActive('')" />
+          <span class="text-sm text-dark-text">Our projections</span>
+          <span class="ml-auto font-mono text-[11px] text-dark-textMuted">default</span>
+        </label>
+
+        <label v-for="set in customRankings.sets.value" :key="set.id"
+               class="mb-2 flex cursor-pointer items-center gap-3 rounded-lg border p-3"
+               :class="customRankings.activeId.value === set.id ? 'border-primary bg-primary/5' : 'border-dark-border'">
+          <input type="radio" :checked="customRankings.activeId.value === set.id" @change="customRankings.setActive(set.id)" />
+          <span class="min-w-0 flex-1">
+            <input
+              :value="set.name"
+              @change="customRankings.renameSet(set.id, ($event.target as HTMLInputElement).value)"
+              @click.prevent.stop
+              class="w-full bg-transparent text-sm text-dark-text focus:outline-none"
+            />
+            <span class="block font-mono text-[11px] text-dark-textMuted">
+              {{ countOf(set.text) }} players · updated {{ ageOf(set.updatedAt) }}
+            </span>
+          </span>
+          <label class="shrink-0 cursor-pointer rounded border border-dark-border px-2 py-1 font-mono text-[10px] text-dark-textMuted hover:text-dark-text" @click.stop>
+            replace
+            <input type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden" @change="(e) => onRankingsFile(e, set.id)" />
+          </label>
+          <button @click.prevent.stop="customRankings.deleteSet(set.id)"
+                  class="shrink-0 rounded border border-dark-border px-2 py-1 font-mono text-[10px] text-dark-textMuted hover:text-[#FF5C5C]">
+            delete
+          </button>
+        </label>
+
+        <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-dark-border pt-4">
           <input
             v-model="rankingsName"
-            placeholder="source name"
-            class="w-44 rounded-lg border border-dark-border bg-dark-bg px-3 py-2 font-mono text-xs text-dark-text"
+            placeholder="name for a new list"
+            class="w-52 rounded-lg border border-dark-border bg-dark-bg px-3 py-2 font-mono text-xs text-dark-text"
           />
-          <label class="cursor-pointer rounded-lg border border-dark-border px-3 py-2 font-mono text-xs text-dark-textMuted hover:text-dark-text">
-            {{ customRankings.hasRankings.value ? 'replace csv' : 'upload csv' }}
-            <input type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden" @change="onRankingsFile" />
+          <label class="cursor-pointer rounded-lg bg-primary/20 px-3 py-2 font-mono text-xs text-primary hover:bg-primary/30">
+            upload csv
+            <input type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden" @change="(e) => onRankingsFile(e)" />
           </label>
-          <button
-            v-if="customRankings.hasRankings.value"
-            @click="customRankings.clearRankings()"
-            class="rounded-lg border border-dark-border px-3 py-2 font-mono text-xs text-dark-textMuted hover:text-dark-text"
-          >
-            remove
-          </button>
-        </div>
-
-        <p v-if="rankingsFileMsg" class="mb-3 font-mono text-xs text-emerald-400">{{ rankingsFileMsg }}</p>
-
-        <div v-if="customRankings.hasRankings.value" class="rounded-lg border border-dark-border bg-dark-bg p-3">
-          <label class="flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              :checked="customRankings.enabledPref.value"
-              @change="customRankings.setEnabled(($event.target as HTMLInputElement).checked)"
-            />
-            <span class="text-sm" :class="customRankings.enabled.value ? 'text-primary' : 'text-dark-text'">
-              Draft from {{ customRankings.label.value }}'s order
-            </span>
-          </label>
-          <p class="mt-2 font-mono text-[11px] text-dark-textMuted">
-            {{ customRankings.parsed.value.length }} players
-            <template v-if="customRankings.ageDays.value !== null">
-              · <span :class="(customRankings.ageDays.value ?? 0) > 7 ? 'text-amber-400' : ''">
-                updated {{ customRankings.ageDays.value === 0 ? 'today' : customRankings.ageDays.value + 'd ago' }}
-              </span>
-            </template>
-          </p>
-          <p class="mt-1 font-mono text-[11px] text-dark-textMuted/70">
-            The Draft Room shows how this list compares to our projections.
-          </p>
+          <span v-if="rankingsFileMsg" class="font-mono text-xs text-emerald-400">{{ rankingsFileMsg }}</span>
         </div>
       </div>
     </div>
@@ -301,24 +302,34 @@ import { supabase } from '@/lib/supabase'
 import { cache } from '@/services/cache'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { useCustomRankings } from '@/composables/useCustomRankings'
+import { parseRankings } from '@/draft/room/customRankings'
 
 const leagueStore = useLeagueStore()
 
 // Custom draft rankings — an account-level preference, not draft state, so it
 // belongs beside the other standing settings rather than inside a draft tool.
 const customRankings = useCustomRankings()
-const rankingsName = ref(customRankings.label.value)
+const rankingsName = ref('')
 const rankingsFileMsg = ref('')
-async function onRankingsFile(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0]
+const countOf = (text: string) => parseRankings(text).length
+const ageOf = (iso: string) => {
+  const t = Date.parse(iso)
+  if (Number.isNaN(t)) return 'unknown'
+  const d = Math.floor((Date.now() - t) / 86400000)
+  return d === 0 ? 'today' : `${d}d ago`
+}
+async function onRankingsFile(e: Event, replaceId?: string) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
   if (!file) return
   try {
-    const n = await customRankings.loadFromFile(file, rankingsName.value)
+    const n = await customRankings.loadFromFile(file, replaceId ? undefined : rankingsName.value, replaceId)
     rankingsFileMsg.value = `loaded ${n} players from ${file.name}`
+    rankingsName.value = ''
   } catch {
     rankingsFileMsg.value = "couldn't read that file"
   }
-  ;(e.target as HTMLInputElement).value = ''
+  input.value = ''
 }
 const platformsStore = usePlatformsStore()
 const authStore = useAuthStore()
