@@ -10,6 +10,7 @@ import { buildTendencies, defaultRoundBucket, priorFor, type HistoricalPick } fr
 import { simulateSurvival } from '@/draft/room/survival'
 import { buildBoard, type BoardRow } from '@/draft/room/board'
 import { computeReplacementDetail } from '@/football/footballReplacement'
+import { applyAdpAnchor, DEFAULT_ADP_WEIGHT } from '@/draft/room/valueAdjust'
 import { buildRecommendation, type Recommendation } from '@/draft/room/recommend'
 import { parseDraftId } from '@/draft/room/draftId'
 import { buildDraftGrid, type GridPick } from '@/draft/room/draftGrid'
@@ -336,8 +337,9 @@ export function useDraftRoom() {
   const availablePlayers = computed(() => {
     const drafted = draftedKeys.value
     const seen = new Set<string>()
-    const rows: { playerKey: string; name: string; position: string; proTeam?: string; headshot?: string; value: number; opportunity?: string }[] = []
+    const rows: { playerKey: string; name: string; position: string; proTeam?: string; headshot?: string; value: number; opportunity?: string; depthChartOrder?: number | null }[] = []
 
+    const meta = (leagueStore.players ?? {}) as Record<string, any>
     const push = (playerKey: string, name: string, position: string, proTeam?: string, headshot?: string) => {
       if (!playerKey || drafted.has(playerKey) || seen.has(playerKey)) return
       const v = vorByKey.value[playerKey]
@@ -347,7 +349,12 @@ export function useDraftRoom() {
       // know nothing about is not a recommendation.
       if (!(v.pointsRos > 0)) return
       seen.add(playerKey)
-      rows.push({ playerKey, name, position, proTeam, headshot, value: v.pointsRos, opportunity: v.opportunity })
+      rows.push({
+        playerKey, name, position, proTeam, headshot,
+        value: v.pointsRos,
+        opportunity: v.opportunity,
+        depthChartOrder: meta[playerKey]?.depth_chart_order ?? null,
+      })
     }
 
     for (const fa of src.freeAgents.value) push(fa.playerKey, fa.name, fa.position, fa.team, fa.headshot)
@@ -395,13 +402,31 @@ export function useDraftRoom() {
     )
   })
 
+  /**
+   * A light market anchor, applied before anything ranks. Its job is to catch
+   * outright single-source projection errors without handing the board to
+   * consensus.
+   *
+   * A handcuff-value model was built and measured alongside this and REMOVED: it
+   * made agreement with a trusted analyst worse at every setting tried (0.936
+   * anchor-only vs 0.935 at a 10% share, degrading from there). It overshot on
+   * individual backs while the analyst's real bias was a general RB premium, not
+   * a handcuff one.
+   */
+  const adjustedPlayers = computed(() => {
+    const base = availablePlayers.value
+    if (!base.length) return base
+    const anchored = applyAdpAnchor(base, adp.value, DEFAULT_ADP_WEIGHT)
+    return base.map((p) => ({ ...p, value: anchored[p.playerKey] ?? p.value }))
+  })
+
   // Admin-only: an analyst's ordering mapped onto our value curve. Off (and
-  // invisible) for every other account.
+  // invisible) for every other account. Applied last so it overrides ours.
   const customRankings = useCustomRankings()
   const rankedPlayers = computed(() => {
-    const remap = customRankings.applyTo(availablePlayers.value)
-    if (!Object.keys(remap).length) return availablePlayers.value
-    return availablePlayers.value.map((p) => ({ ...p, value: remap[p.playerKey] ?? p.value }))
+    const remap = customRankings.applyTo(adjustedPlayers.value)
+    if (!Object.keys(remap).length) return adjustedPlayers.value
+    return adjustedPlayers.value.map((p) => ({ ...p, value: remap[p.playerKey] ?? p.value }))
   })
 
   const survivalResult = computed(() =>
