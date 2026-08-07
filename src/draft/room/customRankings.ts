@@ -49,51 +49,74 @@ export function parseRankings(text: string): ParsedRanking[] {
   const out: ParsedRanking[] = []
   if (!text || typeof text !== 'string') return out
 
-  let implicitRank = 0
-  for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.trim()
-    if (!line) continue
-    // Skip an obvious header row.
-    if (/^(rank|rk|#|player|name)\b/i.test(line) && !/\d/.test(line.replace(/^[^\d]*/, ''))) continue
+  const HEADER_WORDS = /\b(overall|rank|rk|player|name|position|pos|tier|adp|bye|team|auction|value)\b/i
+  const isNum = (v: string) => /^\d+(\.\d+)?$/.test(v.replace(/[$,]/g, ''))
 
-    const cells = line.includes(',') || line.includes('\t')
-      ? line.split(/[,\t]/).map((c) => c.trim()).filter(Boolean)
-      : [line]
+  /**
+   * Split a row. Spreadsheet pastes arrive tab-separated, exports arrive
+   * comma-separated, and a copy out of a rendered table arrives column-aligned
+   * with runs of spaces. Single spaces stay inside names.
+   */
+  const splitRow = (line: string): string[] => {
+    if (line.includes('\t')) return line.split('\t').map((c) => c.trim()).filter(Boolean)
+    if (line.includes(',')) return line.split(',').map((c) => c.trim().replace(/^"|"$/g, '')).filter(Boolean)
+    if (/\s{2,}/.test(line)) return line.split(/\s{2,}/).map((c) => c.trim()).filter(Boolean)
+    return [line.trim()]
+  }
+
+  let implicitRank = 0
+  let seenAnyRow = false
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.replace(/\uFEFF/g, '').trimEnd()
+    if (!line.trim()) continue
+
+    const cells = splitRow(line)
+    if (!cells.length) continue
+
+    // A header row is one with no numbers that reads like column labels — and it
+    // can only be the FIRST row. Keying off the first word alone missed
+    // "Overall,Player,Position,..."; testing every row instead dropped players
+    // whose names happen to contain a header word.
+    const startsWithNumber = /^\s*\d/.test(line)
+    if (!seenAnyRow && !startsWithNumber && !cells.some(isNum) && HEADER_WORDS.test(line)) {
+      seenAnyRow = true
+      continue
+    }
+    seenAnyRow = true
 
     let rank: number | null = null
-    let rest: string[] = []
+    let rest: string[]
 
     if (cells.length > 1) {
       const first = cells[0].replace(/[.)]$/, '')
-      if (/^\d+$/.test(first)) { rank = Number(first); rest = cells.slice(1) }
-      else rest = cells
+      if (isNum(first)) { rank = Number(first); rest = cells.slice(1) } else rest = cells
     } else {
       const m = /^(\d+)[.)]?\s+(.*)$/.exec(cells[0])
-      if (m) { rank = Number(m[1]); rest = [m[2]] }
-      else rest = [cells[0]]
+      if (m) { rank = Number(m[1]); rest = [m[2]] } else rest = [cells[0]]
     }
-
     if (!rest.length) continue
 
-    // Pull position/team out of either separate cells or trailing tokens.
     let name = rest[0]
     let position: string | undefined
     let team: string | undefined
 
-    for (const cell of rest.slice(1)) {
-      const up = cell.toUpperCase()
-      if (!position && POSITIONS.has(up)) { position = up === 'D/ST' || up === 'DST' ? 'DEF' : up; continue }
-      if (!team && /^[A-Z]{2,4}$/.test(up)) { team = up; continue }
+    const takeToken = (tok: string): boolean => {
+      const up = tok.toUpperCase()
+      if (!position && POSITIONS.has(up)) {
+        position = up === 'D/ST' || up === 'DST' ? 'DEF' : up
+        return true
+      }
+      if (!team && /^[A-Z]{2,4}$/.test(up) && !POSITIONS.has(up)) { team = up; return true }
+      // Positional rank, tier, auction value — trailing numerics we don't need here.
+      return isNum(tok)
     }
 
+    for (const cell of rest.slice(1)) takeToken(cell)
+
+    // Single-column rows keep everything in the name; strip the trailing metadata.
     if (rest.length === 1) {
       const tokens = name.split(/\s+/)
-      while (tokens.length > 2) {
-        const up = tokens[tokens.length - 1].toUpperCase()
-        if (!position && POSITIONS.has(up)) { position = up === 'D/ST' || up === 'DST' ? 'DEF' : up; tokens.pop(); continue }
-        if (!team && /^[A-Z]{2,4}$/.test(up) && up === tokens[tokens.length - 1]) { team = up; tokens.pop(); continue }
-        break
-      }
+      while (tokens.length > 2 && takeToken(tokens[tokens.length - 1])) tokens.pop()
       name = tokens.join(' ')
     }
 
@@ -104,7 +127,6 @@ export function parseRankings(text: string): ParsedRanking[] {
     out.push({ rank: rank ?? implicitRank, name, position, team })
   }
 
-  // Renumber densely so a list with gaps or no numbers still ranks 1..n.
   return out
     .sort((a, b) => a.rank - b.rank)
     .map((r, i) => ({ ...r, rank: i + 1 }))

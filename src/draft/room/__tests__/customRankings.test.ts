@@ -188,3 +188,45 @@ describe('compareRankings', () => {
     expect(c.spearman).toBe(0)
   })
 })
+
+describe('parseRankings — how rankings actually arrive', () => {
+  const HEADER = 'Overall\tPlayer\tPosition\tPos Rank\tTier'
+
+  it('reads a tab-separated spreadsheet paste', () => {
+    const r = parseRankings(`${HEADER}\n1\tJahmyr Gibbs\tRB\t1\t1\n2\tBijan Robinson\tRB\t2\t1`)
+    expect(r).toHaveLength(2)
+    expect(r[0]).toMatchObject({ rank: 1, name: 'Jahmyr Gibbs', position: 'RB' })
+    expect(r[1]).toMatchObject({ rank: 2, name: 'Bijan Robinson' })
+  })
+
+  it('reads a column-aligned paste where the tabs became spaces', () => {
+    const r = parseRankings(
+      'Overall Player  Position   Pos Rank   Tier\n1   Jahmyr Gibbs   RB  1   1\n2   Bijan Robinson  RB  2   1',
+    )
+    expect(r[0]).toMatchObject({ rank: 1, name: 'Jahmyr Gibbs', position: 'RB' })
+    expect(r[1].name).toBe('Bijan Robinson')
+  })
+
+  it('skips a header that does not start with the word rank', () => {
+    // "Overall,..." used to parse as a player and shift every rank by one.
+    const r = parseRankings(`Overall,Player,Position,Pos Rank,Tier\n1,Jahmyr Gibbs,RB,1,1`)
+    expect(r).toHaveLength(1)
+    expect(r[0].name).toBe('Jahmyr Gibbs')
+    expect(r[0].rank).toBe(1)
+  })
+
+  it('ignores trailing positional rank, tier and auction columns', () => {
+    const r = parseRankings(`1,Jahmyr Gibbs,RB,1,1,$65`)
+    expect(r[0]).toMatchObject({ name: 'Jahmyr Gibbs', position: 'RB' })
+  })
+
+  it('keeps single spaces inside names', () => {
+    const r = parseRankings(`1\tMarvin Harrison Jr.\tWR\t5\t2`)
+    expect(r[0].name).toBe('Marvin Harrison Jr.')
+  })
+
+  it('still handles a plain numbered list', () => {
+    const r = parseRankings(`1. Ja'Marr Chase\n2. Bijan Robinson`)
+    expect(r.map((x) => x.name)).toEqual(["Ja'Marr Chase", 'Bijan Robinson'])
+  })
+})
