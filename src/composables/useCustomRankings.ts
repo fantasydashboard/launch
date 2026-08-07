@@ -12,6 +12,7 @@ import {
 const TEXT_KEY = 'ufd:draftRoom:analystRankings'
 const ON_KEY = 'ufd:draftRoom:analystRankingsOn'
 const LABEL_KEY = 'ufd:draftRoom:analystLabel'
+const UPDATED_KEY = 'ufd:draftRoom:analystUpdated'
 
 /**
  * An analyst's rankings, for the admin only.
@@ -38,6 +39,8 @@ export function useCustomRankings() {
   const rawText = ref<string>(read(TEXT_KEY))
   const label = ref<string>(read(LABEL_KEY, 'Analyst'))
   const enabledPref = ref<boolean>(read(ON_KEY) === '1')
+  /** When the stored list was last replaced — weekly rankings go stale fast. */
+  const updatedAt = ref<string>(read(UPDATED_KEY))
 
   const parsed = computed<ParsedRanking[]>(() => parseRankings(rawText.value))
   const hasRankings = computed(() => parsed.value.length > 0)
@@ -45,11 +48,28 @@ export function useCustomRankings() {
   /** Only ever on for an admin, whatever the stored preference says. */
   const enabled = computed(() => isAdmin.value && enabledPref.value && hasRankings.value)
 
-  function setRankings(text: string, name?: string) {
+  function setRankings(text: string, name?: string, stampIso?: string) {
     rawText.value = text ?? ''
     write(TEXT_KEY, rawText.value)
     if (name !== undefined) { label.value = name || 'Analyst'; write(LABEL_KEY, label.value) }
+    updatedAt.value = stampIso ?? new Date().toISOString()
+    write(UPDATED_KEY, updatedAt.value)
   }
+
+  /** Load rankings straight from a file — the weekly refresh is a download, not a paste. */
+  async function loadFromFile(file: File, name?: string): Promise<number> {
+    const text = await file.text()
+    setRankings(text, name)
+    return parseRankings(text).length
+  }
+
+  /** Days since the stored list was replaced, or null if never. */
+  const ageDays = computed(() => {
+    if (!updatedAt.value) return null
+    const t = Date.parse(updatedAt.value)
+    if (Number.isNaN(t)) return null
+    return Math.floor((Date.now() - t) / 86400000)
+  })
 
   function clearRankings() {
     rawText.value = ''
@@ -94,6 +114,9 @@ export function useCustomRankings() {
     enabled,
     enabledPref,
     setRankings,
+    loadFromFile,
+    updatedAt,
+    ageDays,
     clearRankings,
     setEnabled,
     match,

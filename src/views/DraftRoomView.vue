@@ -19,6 +19,18 @@ const comparison = computed(() => customRankings.compare(board.value))
 function saveRankings() {
   customRankings.setRankings(rankingsInput.value, analystName.value)
 }
+const fileMsg = ref('')
+async function onRankingsFile(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  try {
+    const n = await customRankings.loadFromFile(file, analystName.value)
+    rankingsInput.value = customRankings.rawText.value
+    fileMsg.value = `loaded ${n} players from ${file.name}`
+  } catch {
+    fileMsg.value = "couldn't read that file"
+  }
+}
 
 type Tab = 'pick' | 'board' | 'grid' | 'room' | 'last' | 'replay'
 const tab = ref<Tab>('pick')
@@ -184,6 +196,10 @@ const holes = computed(() => {
             placeholder="analyst name"
             class="w-40 shrink-0 rounded-lg border border-dark-border bg-dark-bg px-2 py-1.5 font-mono text-xs text-dark-text"
           />
+          <label class="cursor-pointer rounded-lg border border-dark-border px-3 py-1.5 font-mono text-xs text-dark-textMuted hover:text-dark-text">
+            upload csv
+            <input type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden" @change="onRankingsFile" />
+          </label>
           <button @click="saveRankings" class="rounded-lg bg-primary/20 px-3 py-1.5 font-mono text-xs text-primary hover:bg-primary/30">save</button>
           <button @click="customRankings.clearRankings()" class="rounded-lg border border-dark-border px-3 py-1.5 font-mono text-xs text-dark-textMuted hover:text-dark-text">clear</button>
         </div>
@@ -194,7 +210,14 @@ const holes = computed(() => {
           class="w-full rounded-lg border border-dark-border bg-dark-bg px-3 py-2 font-mono text-[11px] text-dark-text placeholder:text-dark-textMuted/50"
         />
 
+        <p v-if="fileMsg" class="mt-2 font-mono text-[11px] text-emerald-400">{{ fileMsg }}</p>
+
         <div v-if="customRankings.hasRankings.value" class="mt-3 font-mono text-[11px] text-dark-textMuted">
+          <p v-if="customRankings.ageDays.value !== null" class="mb-1"
+             :class="(customRankings.ageDays.value ?? 0) > 7 ? 'text-amber-400' : 'text-dark-textMuted'">
+            updated {{ customRankings.ageDays.value === 0 ? 'today' : `${customRankings.ageDays.value}d ago` }}
+            <template v-if="(customRankings.ageDays.value ?? 0) > 7"> · these may be stale</template>
+          </p>
           <p class="mb-2">
             {{ customRankings.parsed.value.length }} ranked ·
             {{ comparison.matched }} matched ·
