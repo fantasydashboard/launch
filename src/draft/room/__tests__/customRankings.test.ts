@@ -332,3 +332,33 @@ describe('compareRankings — respects the order it is given', () => {
     expect(c.spearman).toBeCloseTo(1)
   })
 })
+
+describe('compareRankings — deep pool vs a top-N list', () => {
+  // We rank 500 players; the analyst publishes a top 3 that happens to be our
+  // 1st, 2nd and 400th.
+  const ours = Array.from({ length: 500 }, (_, i) => ({
+    playerKey: `p${i}`, name: `P${i}`, position: 'RB', value: 500 - i, adp: null,
+  }))
+
+  it('does not manufacture a huge delta from pool-depth alone', () => {
+    const c = compareRankings(ours, { p0: 1, p1: 2, p399: 3 })
+    const deep = c.diffs.find((d) => d.playerKey === 'p399')!
+    // Raw positions would read us 400 / them 3. Within the shared three, we and
+    // the analyst agree exactly: he is third.
+    expect(deep.ourRank).toBe(3)
+    expect(deep.theirRank).toBe(3)
+    expect(deep.delta).toBe(0)
+  })
+
+  it('reports perfect agreement as perfect', () => {
+    const c = compareRankings(ours, { p0: 1, p1: 2, p399: 3 })
+    expect(c.meanAbsDelta).toBe(0)
+    expect(c.spearman).toBeCloseTo(1)
+  })
+
+  it('still catches a genuine reordering', () => {
+    const c = compareRankings(ours, { p0: 3, p1: 2, p399: 1 })
+    const deep = c.diffs.find((d) => d.playerKey === 'p399')!
+    expect(deep.delta).toBe(2) // we had him 3rd of the three, they had him 1st
+  })
+})

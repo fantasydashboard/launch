@@ -278,39 +278,49 @@ export function compareRankings(
   const ours = ourBoard ?? []
   const ourRank = new Map(ours.map((p, i) => [p.playerKey, i + 1]))
 
-  const diffs: RankingDiff[] = []
+  // Collect the overlap first, then rank BOTH lists densely within it.
+  //
+  // Our pool is the whole player universe (600+) while an analyst publishes a
+  // top-250, so comparing raw positions makes anyone they rank late look like a
+  // 200-spot disagreement purely because our list runs deeper. Dense ranking
+  // within the shared subset is the only apples-to-apples comparison — and it is
+  // what the Spearman figure already used, so the two now agree.
+  const overlap: { playerKey: string; name: string; position: string; value: number; adp: number | null; rawOurs: number; rawTheirs: number }[] = []
   for (const p of ours) {
     const theirs = rankByKey?.[p.playerKey]
     if (typeof theirs !== 'number') continue
-    const mine = ourRank.get(p.playerKey)!
-    diffs.push({
+    overlap.push({ ...p, rawOurs: ourRank.get(p.playerKey)!, rawTheirs: theirs })
+  }
+
+  const denseOurs = new Map(
+    [...overlap].sort((a, b) => a.rawOurs - b.rawOurs).map((d, i) => [d.playerKey, i + 1]),
+  )
+  const denseTheirs = new Map(
+    [...overlap].sort((a, b) => a.rawTheirs - b.rawTheirs).map((d, i) => [d.playerKey, i + 1]),
+  )
+
+  const diffs: RankingDiff[] = overlap.map((p) => {
+    const mine = denseOurs.get(p.playerKey)!
+    const theirs = denseTheirs.get(p.playerKey)!
+    return {
       playerKey: p.playerKey,
       name: p.name,
       position: p.position,
       ourRank: mine,
       theirRank: theirs,
-      delta: mine - theirs, // positive: they rank him higher (smaller number) than we do
+      delta: mine - theirs, // positive: they rank him higher than we do
       ourValue: p.value,
       adp: p.adp,
-    })
-  }
+    }
+  })
 
   const n = diffs.length
   const meanAbsDelta = n ? diffs.reduce((s, d) => s + Math.abs(d.delta), 0) / n : 0
 
-  // Spearman over the matched subset, re-ranked densely within it so the two
-  // orderings are compared on equal footing.
   let spearman = 0
   if (n > 1) {
-    const byOurs = [...diffs].sort((a, b) => a.ourRank - b.ourRank)
-    const denseOurs = new Map(byOurs.map((d, i) => [d.playerKey, i + 1]))
-    const byTheirs = [...diffs].sort((a, b) => a.theirRank - b.theirRank)
-    const denseTheirs = new Map(byTheirs.map((d, i) => [d.playerKey, i + 1]))
     let sumD2 = 0
-    for (const d of diffs) {
-      const diff = (denseOurs.get(d.playerKey) ?? 0) - (denseTheirs.get(d.playerKey) ?? 0)
-      sumD2 += diff * diff
-    }
+    for (const d of diffs) sumD2 += (d.ourRank - d.theirRank) ** 2
     spearman = 1 - (6 * sumD2) / (n * (n * n - 1))
   }
 
