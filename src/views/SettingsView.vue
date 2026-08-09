@@ -25,65 +25,71 @@
       </div>
     </div>
 
-    <!-- Draft rankings (admin only for now) -->
+    <!-- Ranking lists (admin only for now) -->
     <div v-if="customRankings.isAdmin.value" class="card">
       <div class="card-header">
         <div class="flex items-center gap-2">
           <span class="text-2xl">📋</span>
-          <h2 class="card-title">Draft Rankings</h2>
+          <h2 class="card-title">Rankings</h2>
         </div>
       </div>
       <div class="card-body">
-        <p class="mb-4 text-sm text-dark-textMuted">
-          Keep as many ranking lists as you like and choose which one the Draft Room drafts from.
-          Whichever is selected applies to every draft — mocks and the real thing.
+        <p class="mb-5 text-sm text-dark-textMuted">
+          Keep as many lists as you like and choose which one drives each surface. Whichever is
+          selected applies everywhere that kind of ranking is used, until you change it.
         </p>
 
-        <!-- Our projections is always an option -->
-        <label class="mb-2 flex cursor-pointer items-center gap-3 rounded-lg border p-3"
-               :class="customRankings.activeId.value === '' ? 'border-primary bg-primary/5' : 'border-dark-border'">
-          <input type="radio" :checked="customRankings.activeId.value === ''" @change="customRankings.setActive('')" />
-          <span class="text-sm text-dark-text">Our projections</span>
-          <span class="ml-auto font-mono text-[11px] text-dark-textMuted">default</span>
-        </label>
+        <div v-for="k in KINDS" :key="k" class="mb-6 last:mb-0">
+          <h3 class="mb-2 font-mono text-xs uppercase tracking-wide text-dark-textMuted">{{ KIND_LABELS[k] }}</h3>
 
-        <label v-for="set in customRankings.sets.value" :key="set.id"
-               class="mb-2 flex cursor-pointer items-center gap-3 rounded-lg border p-3"
-               :class="customRankings.activeId.value === set.id ? 'border-primary bg-primary/5' : 'border-dark-border'">
-          <input type="radio" :checked="customRankings.activeId.value === set.id" @change="customRankings.setActive(set.id)" />
-          <span class="min-w-0 flex-1">
-            <input
-              :value="set.name"
-              @change="customRankings.renameSet(set.id, ($event.target as HTMLInputElement).value)"
-              @click.prevent.stop
-              class="w-full bg-transparent text-sm text-dark-text focus:outline-none"
-            />
-            <span class="block font-mono text-[11px] text-dark-textMuted">
-              {{ countOf(set.text) }} players · updated {{ ageOf(set.updatedAt) }}
+          <label class="mb-2 flex cursor-pointer items-center gap-3 rounded-lg border p-3"
+                 :class="activeFor(k) === '' ? 'border-primary bg-primary/5' : 'border-dark-border'">
+            <input type="radio" :checked="activeFor(k) === ''" @change="customRankings.setActive('', k)" />
+            <span class="text-sm text-dark-text">{{ UFD_LABEL }}</span>
+            <span class="ml-auto font-mono text-[11px] text-dark-textMuted">our own numbers</span>
+          </label>
+
+          <label v-for="set in setsFor(k)" :key="set.id"
+                 class="mb-2 flex cursor-pointer items-center gap-3 rounded-lg border p-3"
+                 :class="activeFor(k) === set.id ? 'border-primary bg-primary/5' : 'border-dark-border'">
+            <input type="radio" :checked="activeFor(k) === set.id" @change="customRankings.setActive(set.id, k)" />
+            <span class="min-w-0 flex-1">
+              <input
+                :value="set.name"
+                @change="customRankings.renameSet(set.id, ($event.target as HTMLInputElement).value)"
+                @click.prevent.stop
+                class="w-full bg-transparent text-sm text-dark-text focus:outline-none"
+              />
+              <span class="block font-mono text-[11px]"
+                    :class="isStale(set) ? 'text-amber-400' : 'text-dark-textMuted'">
+                {{ countOf(set.text) }} players · updated {{ ageLabel(set.updatedAt) }}
+                <template v-if="isStale(set)"> · may be out of date</template>
+              </span>
             </span>
-          </span>
-          <label class="shrink-0 cursor-pointer rounded border border-dark-border px-2 py-1 font-mono text-[10px] text-dark-textMuted hover:text-dark-text" @click.stop>
-            replace
-            <input type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden" @change="(e) => onRankingsFile(e, set.id)" />
+            <label class="shrink-0 cursor-pointer rounded border border-dark-border px-2 py-1 font-mono text-[10px] text-dark-textMuted hover:text-dark-text" @click.stop>
+              replace
+              <input type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden" @change="(e) => onRankingsFile(e, k, set.id)" />
+            </label>
+            <button @click.prevent.stop="customRankings.deleteSet(set.id)"
+                    class="shrink-0 rounded border border-dark-border px-2 py-1 font-mono text-[10px] text-dark-textMuted hover:text-[#FF5C5C]">
+              delete
+            </button>
           </label>
-          <button @click.prevent.stop="customRankings.deleteSet(set.id)"
-                  class="shrink-0 rounded border border-dark-border px-2 py-1 font-mono text-[10px] text-dark-textMuted hover:text-[#FF5C5C]">
-            delete
-          </button>
-        </label>
 
-        <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-dark-border pt-4">
-          <input
-            v-model="rankingsName"
-            placeholder="name for a new list"
-            class="w-52 rounded-lg border border-dark-border bg-dark-bg px-3 py-2 font-mono text-xs text-dark-text"
-          />
-          <label class="cursor-pointer rounded-lg bg-primary/20 px-3 py-2 font-mono text-xs text-primary hover:bg-primary/30">
-            upload csv
-            <input type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden" @change="(e) => onRankingsFile(e)" />
-          </label>
-          <span v-if="rankingsFileMsg" class="font-mono text-xs text-emerald-400">{{ rankingsFileMsg }}</span>
+          <div class="mt-2 flex flex-wrap items-center gap-2">
+            <input
+              v-model="newName[k]"
+              :placeholder="`name a new ${KIND_LABELS[k].toLowerCase()} list`"
+              class="w-64 rounded-lg border border-dark-border bg-dark-bg px-3 py-1.5 font-mono text-xs text-dark-text"
+            />
+            <label class="cursor-pointer rounded-lg bg-primary/20 px-3 py-1.5 font-mono text-xs text-primary hover:bg-primary/30">
+              upload csv
+              <input type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden" @change="(e) => onRankingsFile(e, k)" />
+            </label>
+          </div>
         </div>
+
+        <p v-if="rankingsFileMsg" class="mt-2 font-mono text-xs text-emerald-400">{{ rankingsFileMsg }}</p>
       </div>
     </div>
 
@@ -301,7 +307,7 @@ import { useAuthStore } from '@/stores/auth'
 import { supabase } from '@/lib/supabase'
 import { cache } from '@/services/cache'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
-import { useCustomRankings } from '@/composables/useCustomRankings'
+import { useCustomRankings, KIND_LABELS, KIND_STALE_DAYS, UFD_LABEL, type RankingKind } from '@/composables/useCustomRankings'
 import { parseRankings } from '@/draft/room/customRankings'
 
 const leagueStore = useLeagueStore()
@@ -309,23 +315,35 @@ const leagueStore = useLeagueStore()
 // Custom draft rankings — an account-level preference, not draft state, so it
 // belongs beside the other standing settings rather than inside a draft tool.
 const customRankings = useCustomRankings()
-const rankingsName = ref('')
+const KINDS: RankingKind[] = ['draft', 'ros', 'week']
+const newName = ref<Record<RankingKind, string>>({ draft: '', ros: '', week: '' })
 const rankingsFileMsg = ref('')
+
+const setsFor = (k: RankingKind) => customRankings.sets.value.filter((s) => s.kind === k)
+const activeFor = (k: RankingKind) => customRankings.activeByKind.value[k] ?? ''
 const countOf = (text: string) => parseRankings(text).length
-const ageOf = (iso: string) => {
-  const t = Date.parse(iso)
-  if (Number.isNaN(t)) return 'unknown'
-  const d = Math.floor((Date.now() - t) / 86400000)
-  return d === 0 ? 'today' : `${d}d ago`
+const ageLabel = (iso: string) => {
+  const d = customRankings.ageDaysOf(iso)
+  return d === null ? 'unknown' : d === 0 ? 'today' : `${d}d ago`
 }
-async function onRankingsFile(e: Event, replaceId?: string) {
+const isStale = (set: { updatedAt: string; kind: RankingKind }) => {
+  const d = customRankings.ageDaysOf(set.updatedAt)
+  return d !== null && d > KIND_STALE_DAYS[set.kind]
+}
+
+async function onRankingsFile(e: Event, kind: RankingKind, replaceId?: string) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
   try {
-    const n = await customRankings.loadFromFile(file, replaceId ? undefined : rankingsName.value, replaceId)
+    const n = await customRankings.loadFromFile(
+      file,
+      replaceId ? undefined : newName.value[kind],
+      replaceId,
+      kind,
+    )
     rankingsFileMsg.value = `loaded ${n} players from ${file.name}`
-    rankingsName.value = ''
+    newName.value = { ...newName.value, [kind]: '' }
   } catch {
     rankingsFileMsg.value = "couldn't read that file"
   }

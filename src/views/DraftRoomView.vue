@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useDraftRoom } from '@/composables/useDraftRoom'
+import { UFD_LABEL } from '@/composables/useCustomRankings'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 
 const {
@@ -126,8 +127,8 @@ const holes = computed(() => {
             class="rounded border border-dark-border bg-dark-card px-2 py-0.5 text-[11px]"
             :class="customRankings.enabled.value ? 'text-primary' : 'text-dark-text'"
           >
-            <option value="">our projections</option>
-            <option v-for="set in customRankings.sets.value" :key="set.id" :value="set.id">{{ set.name }}</option>
+            <option value="">{{ UFD_LABEL }}</option>
+            <option v-for="set in customRankings.setsOfKind.value" :key="set.id" :value="set.id">{{ set.name }}</option>
           </select>
         </p>
       </div>
@@ -180,7 +181,7 @@ const holes = computed(() => {
     <section v-if="customRankings.isAdmin.value && customRankings.hasRankings.value" class="mb-4 rounded-xl border border-dark-border bg-dark-card p-4">
       <div class="flex items-center justify-between gap-3">
         <button @click="showRankings = !showRankings" class="font-mono text-[11px] text-dark-textMuted hover:text-dark-text">
-          {{ showRankings ? '▾' : '▸' }} {{ customRankings.sourceName.value }} vs our projections
+          {{ showRankings ? '▾' : '▸' }} {{ customRankings.sourceName.value }} vs UFD
         </button>
         <RouterLink to="/settings" class="shrink-0 font-mono text-[11px] text-dark-textMuted underline hover:text-dark-text">
           manage in settings

@@ -9,24 +9,49 @@ import {
   type RankingComparison,
 } from '@/draft/room/customRankings'
 
-const SETS_KEY = 'ufd:draftRoom:rankingSets'
-const ACTIVE_KEY = 'ufd:draftRoom:activeRankingId'
+const SETS_KEY = 'ufd:rankingSets'
+const ACTIVE_KEY = 'ufd:activeRankingByKind'
 
-// Legacy single-list keys, migrated on first load so an existing upload survives.
+// Superseded keys, migrated on first load so existing uploads survive.
+const OLD_SETS = 'ufd:draftRoom:rankingSets'
+const OLD_ACTIVE = 'ufd:draftRoom:activeRankingId'
 const LEGACY_TEXT = 'ufd:draftRoom:analystRankings'
 const LEGACY_LABEL = 'ufd:draftRoom:analystLabel'
 const LEGACY_UPDATED = 'ufd:draftRoom:analystUpdated'
 const LEGACY_ON = 'ufd:draftRoom:analystRankingsOn'
+
+/**
+ * What a list is FOR. Draft ranks and Week 6 ranks are different lists that go
+ * stale on completely different clocks, so a set has to declare which it is
+ * rather than being applied wherever it happens to be selected.
+ */
+export type RankingKind = 'draft' | 'ros' | 'week'
+
+export const KIND_LABELS: Record<RankingKind, string> = {
+  draft: 'Draft rankings',
+  ros: 'Rest of season rankings',
+  week: "This week's rankings",
+}
+
+/** How long before a list of this kind is probably out of date. */
+export const KIND_STALE_DAYS: Record<RankingKind, number> = {
+  draft: 14,
+  ros: 10,
+  week: 4,
+}
 
 export interface RankingSet {
   id: string
   name: string
   text: string
   updatedAt: string
+  kind: RankingKind
 }
 
-/** Sentinel for "use our own projections". */
-export const OUR_PROJECTIONS = ''
+/** Sentinel for "use our own numbers". */
+export const UFD = ''
+/** What we call our own rankings wherever a source is named. */
+export const UFD_LABEL = 'UFD'
 
 const read = (k: string, d = '') => {
   try { return localStorage.getItem(k) ?? d } catch { return d }
@@ -38,16 +63,29 @@ const drop = (k: string) => {
   try { localStorage.removeItem(k) } catch { /* private mode */ }
 }
 
-function loadSets(): RankingSet[] {
-  try {
-    const raw = read(SETS_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed)) return parsed.filter((s) => s?.id && typeof s.text === 'string')
-    }
-  } catch { /* corrupt entry — fall through to migration */ }
+const isKind = (v: unknown): v is RankingKind => v === 'draft' || v === 'ros' || v === 'week'
 
-  // Migrate the single legacy list rather than silently losing someone's upload.
+function loadSets(): RankingSet[] {
+  const coerce = (arr: any[]): RankingSet[] =>
+    arr
+      .filter((s) => s?.id && typeof s.text === 'string')
+      // Anything stored before kinds existed was a draft list.
+      .map((s) => ({ ...s, kind: isKind(s.kind) ? s.kind : ('draft' as RankingKind) }))
+
+  for (const key of [SETS_KEY, OLD_SETS]) {
+    try {
+      const raw = read(key)
+      if (!raw) continue
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        const sets = coerce(parsed)
+        if (key !== SETS_KEY) { write(SETS_KEY, JSON.stringify(sets)); drop(OLD_SETS) }
+        return sets
+      }
+    } catch { /* corrupt entry — try the next source */ }
+  }
+
+  // The original single-list format.
   const legacy = read(LEGACY_TEXT)
   if (legacy) {
     const one: RankingSet = {
@@ -55,36 +93,62 @@ function loadSets(): RankingSet[] {
       name: read(LEGACY_LABEL, 'Analyst') || 'Analyst',
       text: legacy,
       updatedAt: read(LEGACY_UPDATED) || new Date().toISOString(),
+      kind: 'draft',
     }
     write(SETS_KEY, JSON.stringify([one]))
-    if (read(LEGACY_ON) === '1') write(ACTIVE_KEY, one.id)
+    if (read(LEGACY_ON) === '1') write(ACTIVE_KEY, JSON.stringify({ draft: one.id }))
     for (const k of [LEGACY_TEXT, LEGACY_LABEL, LEGACY_UPDATED, LEGACY_ON]) drop(k)
     return [one]
   }
   return []
 }
 
+function loadActive(): Record<RankingKind, string> {
+  const base: Record<RankingKind, string> = { draft: UFD, ros: UFD, week: UFD }
+  try {
+    const raw = read(ACTIVE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object') {
+        for (const k of ['draft', 'ros', 'week'] as RankingKind[]) {
+          if (typeof parsed[k] === 'string') base[k] = parsed[k]
+        }
+        return base
+      }
+    }
+  } catch { /* fall through */ }
+  // A single active id from before kinds existed was a draft selection.
+  const old = read(OLD_ACTIVE)
+  if (old) { base.draft = old; drop(OLD_ACTIVE); write(ACTIVE_KEY, JSON.stringify(base)) }
+  return base
+}
+
 /**
- * Named ranking lists, for the admin only.
+ * Named ranking lists, one active per kind.
  *
- * Several lists can be stored and switched between — an analyst's, your own, a
- * dynasty list — with exactly one active at a time, or none, meaning our own
- * projections. Kept client-side: this is a private override, not a product
- * feature, so it can never leak into another account's board.
+ * A user can keep several lists of each kind — two analysts' draft boards, their
+ * own weekly ranks — and pick which one drives each surface, or none, meaning
+ * UFD's own numbers. Kept client-side: a private override, not a product
+ * feature, so it can never reach another account's board.
  *
- * The active list supplies an ORDER, which is mapped onto our value curve rather
- * than replacing our numbers, so VONA, tiers and survival keep working on points.
+ * The active list supplies an ORDER, mapped onto our value curve rather than
+ * replacing our numbers, so VONA, tiers and survival keep working on points.
+ *
+ * Pass the kind the calling surface cares about; Settings manages all of them.
  */
-export function useCustomRankings() {
+export function useCustomRankings(kind: RankingKind = 'draft') {
   const { isAdmin } = useFeatureAccess()
 
   const sets = ref<RankingSet[]>(loadSets())
-  const activeId = ref<string>(read(ACTIVE_KEY, OUR_PROJECTIONS))
+  const activeByKind = ref<Record<RankingKind, string>>(loadActive())
 
-  const persist = () => write(SETS_KEY, JSON.stringify(sets.value))
+  const persistSets = () => write(SETS_KEY, JSON.stringify(sets.value))
+  const persistActive = () => write(ACTIVE_KEY, JSON.stringify(activeByKind.value))
 
+  const setsOfKind = computed(() => sets.value.filter((s) => s.kind === kind))
+  const activeId = computed(() => activeByKind.value[kind] ?? UFD)
   const activeSet = computed<RankingSet | null>(
-    () => sets.value.find((s) => s.id === activeId.value) ?? null,
+    () => sets.value.find((s) => s.id === activeId.value && s.kind === kind) ?? null,
   )
 
   const parsed = computed<ParsedRanking[]>(() =>
@@ -95,63 +159,76 @@ export function useCustomRankings() {
   /** Only ever on for an admin, whatever is stored. */
   const enabled = computed(() => isAdmin.value && !!activeSet.value && hasRankings.value)
 
-  /** What the board should say its order came from. */
-  const sourceName = computed(() => (enabled.value ? activeSet.value!.name : 'our projections'))
+  /** What a surface should say its order came from. */
+  const sourceName = computed(() => (enabled.value ? activeSet.value!.name : UFD_LABEL))
 
-  function setActive(id: string) {
-    activeId.value = sets.value.some((s) => s.id === id) ? id : OUR_PROJECTIONS
-    write(ACTIVE_KEY, activeId.value)
+  function setActive(id: string, forKind: RankingKind = kind) {
+    const ok = sets.value.some((s) => s.id === id && s.kind === forKind)
+    activeByKind.value = { ...activeByKind.value, [forKind]: ok ? id : UFD }
+    persistActive()
   }
 
-  function addSet(name: string, text: string): RankingSet {
+  function addSet(name: string, text: string, forKind: RankingKind = kind): RankingSet {
     const set: RankingSet = {
       id: `r${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`,
-      name: name?.trim() || `List ${sets.value.length + 1}`,
+      name: name?.trim() || `${KIND_LABELS[forKind]} ${sets.value.length + 1}`,
       text: text ?? '',
       updatedAt: new Date().toISOString(),
+      kind: forKind,
     }
     sets.value = [...sets.value, set]
-    persist()
+    persistSets()
     return set
   }
 
+  /** Swap a list's contents while keeping its name, kind and position. */
   function replaceSet(id: string, text: string, name?: string) {
     sets.value = sets.value.map((s) =>
       s.id === id
         ? { ...s, text, name: name?.trim() || s.name, updatedAt: new Date().toISOString() }
         : s,
     )
-    persist()
+    persistSets()
   }
 
   function renameSet(id: string, name: string) {
     sets.value = sets.value.map((s) => (s.id === id ? { ...s, name: name?.trim() || s.name } : s))
-    persist()
+    persistSets()
   }
 
   function deleteSet(id: string) {
+    const gone = sets.value.find((s) => s.id === id)
     sets.value = sets.value.filter((s) => s.id !== id)
-    persist()
-    if (activeId.value === id) setActive(OUR_PROJECTIONS)
+    persistSets()
+    if (gone && activeByKind.value[gone.kind] === id) setActive(UFD, gone.kind)
   }
 
-  /** Upload a file as a new named list, or replace an existing one. */
-  async function loadFromFile(file: File, name?: string, replaceId?: string): Promise<number> {
+  /** Upload a file as a new list of a kind, or replace an existing one. */
+  async function loadFromFile(
+    file: File,
+    name?: string,
+    replaceId?: string,
+    forKind: RankingKind = kind,
+  ): Promise<number> {
     const text = await file.text()
     const label = name?.trim() || file.name.replace(/\.[^.]+$/, '')
     if (replaceId) replaceSet(replaceId, text, label)
     else {
-      const set = addSet(label, text)
-      setActive(set.id)
+      const set = addSet(label, text, forKind)
+      setActive(set.id, forKind)
     }
     return parseRankings(text).length
   }
 
-  /** Days since the active list was last replaced, or null. */
-  const ageDays = computed(() => {
-    const t = activeSet.value ? Date.parse(activeSet.value.updatedAt) : NaN
+  const ageDaysOf = (iso: string): number | null => {
+    const t = Date.parse(iso)
     if (Number.isNaN(t)) return null
     return Math.floor((Date.now() - t) / 86400000)
+  }
+  const ageDays = computed(() => (activeSet.value ? ageDaysOf(activeSet.value.updatedAt) : null))
+  const isStale = computed(() => {
+    const d = ageDays.value
+    return d !== null && d > KIND_STALE_DAYS[kind]
   })
 
   function match(players: { playerKey: string; name: string; position?: string }[]) {
@@ -177,7 +254,10 @@ export function useCustomRankings() {
 
   return {
     isAdmin,
+    kind,
     sets,
+    setsOfKind,
+    activeByKind,
     activeId,
     activeSet,
     parsed,
@@ -185,6 +265,8 @@ export function useCustomRankings() {
     enabled,
     sourceName,
     ageDays,
+    ageDaysOf,
+    isStale,
     setActive,
     addSet,
     replaceSet,
