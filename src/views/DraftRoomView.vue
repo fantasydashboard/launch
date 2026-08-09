@@ -10,7 +10,7 @@ const {
   currentOverallPick, hasHistory, myPicks, starterSlots, slotUnknown,
   markDrafted, syncHealthy, refresh, shape,
   grid, teamNameForSlot, connectDraft, disconnectDraft, overrideDraftId, overrideError,
-  customRankings, replay, comparePool,
+  customRankings, replay, comparePool, boardByRank, listRankByKey,
 } = useDraftRoom()
 
 // Admin-only analyst override. Invisible to every other account.
@@ -58,15 +58,13 @@ const pickLabel = computed(() => {
 const POSITIONS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF'] as const
 const posFilter = ref<(typeof POSITIONS)[number]>('ALL')
 
+// The Board renders the active list in ITS order — the analyst's, or UFD's.
+// Filtering by position keeps that order within the position.
 const visibleBoard = computed(() => {
   const rows = posFilter.value === 'ALL'
-    ? board.value
-    : board.value.filter((r) => r.position === posFilter.value)
-  // When filtered to one position, sort by tier so the groups read in order.
-  const ordered = posFilter.value === 'ALL'
-    ? rows
-    : [...rows].sort((a, b) => a.tier - b.tier || b.value - a.value)
-  return ordered.slice(0, 60)
+    ? boardByRank.value
+    : boardByRank.value.filter((r) => r.position === posFilter.value)
+  return rows.slice(0, 60)
 })
 /**
  * Tier headers only make sense when the list is ordered by tier, which is the
@@ -74,15 +72,10 @@ const visibleBoard = computed(() => {
  * headers there read 1, 2, 3, 6, 3 going down the page — repeating and going
  * backwards. There the tier belongs on the row instead.
  */
-const showTierHeaders = computed(() => posFilter.value !== 'ALL')
-function isTierHeader(i: number): boolean {
-  if (!showTierHeaders.value) return false
-  const rows = visibleBoard.value
-  if (i === 0) return true
-  const prev = rows[i - 1]
-  const cur = rows[i]
-  return prev.tier !== cur.tier || prev.position !== cur.position
-}
+// The board is ordered by list rank now, so tier SECTIONS would cut across it
+// arbitrarily. Tier rides on each row instead.
+const showTierHeaders = computed(() => false)
+function isTierHeader(_i: number): boolean { return false }
 
 const wontLast = computed(() =>
   board.value.filter((r) => r.survival < 0.7).slice(0, 25),
@@ -325,7 +318,7 @@ const holes = computed(() => {
 
         <div class="mb-2 flex items-center gap-3 border-b border-dark-border pb-1 font-mono text-[9px] uppercase text-dark-textMuted">
           <span class="w-6">#</span>
-          <span class="min-w-0 flex-1">player</span>
+          <span class="min-w-0 flex-1">player · in {{ customRankings.sourceName.value }} order</span>
           <span class="w-12 text-right">pts</span>
           <span class="w-14 text-right" title="Chance he is still available at your next pick">lasts</span>
           <span class="w-12 text-right" title="What the board sorts by: edge during the starter rounds, ceiling once your lineup is full">score</span>
@@ -350,7 +343,7 @@ const holes = computed(() => {
             @click="markDrafted(r.playerKey)"
             class="flex w-full items-center gap-3 border-b border-dark-border/40 py-2 text-left last:border-0 hover:bg-dark-border/20"
           >
-            <span class="w-6 shrink-0 font-mono text-[10px] text-dark-textMuted">{{ i + 1 }}</span>
+            <span class="w-6 shrink-0 font-mono text-[10px] text-dark-textMuted">{{ listRankByKey[r.playerKey] ?? i + 1 }}</span>
             <span class="min-w-0 flex-1">
               <span class="truncate text-sm font-semibold text-dark-text">
                 {{ r.name }}

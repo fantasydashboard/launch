@@ -471,6 +471,55 @@ export function useDraftRoom() {
     }),
   )
 
+  /**
+   * Where each player sits on the ACTIVE LIST — the analyst's own order when one
+   * is selected, our value-over-replacement order otherwise.
+   *
+   * The Board renders in this order rather than by edge. A board is a cheat
+   * sheet: re-sorting it out from under the user is what makes a printed sheet
+   * feel more trustworthy than a tool. Edge still shows as a column, and the
+   * Pick tab is where the re-sorting belongs.
+   */
+  const listRankByKey = computed<Record<string, number>>(() => {
+    const out: Record<string, number> = {}
+    if (customRankings.enabled.value) {
+      const { rankByKey } = customRankings.match(rankedPlayers.value)
+      const ranked = Object.keys(rankByKey)
+      for (const k of ranked) out[k] = rankByKey[k]
+      // Anyone the list omits sits after it, in our own order.
+      const offset = ranked.length
+      rankedPlayers.value
+        .filter((p) => out[p.playerKey] === undefined)
+        .sort((a, b) => b.value - a.value)
+        .forEach((p, i) => { out[p.playerKey] = offset + i + 1 })
+      return out
+    }
+    // UFD's own ranking is value over replacement, not raw points — otherwise
+    // every quarterback floats to the top.
+    const rows = rankedPlayers.value
+    if (!rows.length) return out
+    const detail = computeReplacementDetail(
+      rows.map((r) => ({ playerKey: r.playerKey, position: r.position, points: r.value })),
+      effectiveSlots.value ?? {},
+      effectiveTeams.value,
+    )
+    ;[...rows]
+      .sort(
+        (a, b) =>
+          b.value - (detail.levels[b.position] ?? 0) - (a.value - (detail.levels[a.position] ?? 0)),
+      )
+      .forEach((p, i) => { out[p.playerKey] = i + 1 })
+    return out
+  })
+
+  /** The board in list order — what the Board tab renders. */
+  const boardByRank = computed<BoardRow[]>(() => {
+    const rank = listRankByKey.value
+    return [...board.value].sort(
+      (a, b) => (rank[a.playerKey] ?? 1e9) - (rank[b.playerKey] ?? 1e9),
+    )
+  })
+
   const recommendation = computed<Recommendation | null>(() => {
     const rows = board.value
     if (!rows.length) return null
@@ -584,6 +633,8 @@ export function useDraftRoom() {
     slotUnknown,
     customRankings,
     comparePool,
+    boardByRank,
+    listRankByKey,
     replay,
     upcoming,
     myPicks,
