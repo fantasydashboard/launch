@@ -261,3 +261,43 @@ describe('buildBoard — upside stays out of the starter rounds', () => {
     for (const r of rows) expect(r.upside).toBeLessThanOrEqual(40)
   })
 })
+
+describe('buildBoard — projection stays separate from the ranking value', () => {
+  const base = {
+    survival: {},
+    expectedBestAtPosition: { WR: 200 },
+    adpByKey: {},
+    currentOverallPick: 1,
+    filledStarterSlots: 0,
+    totalStarterSlots: 9,
+  }
+
+  it('carries our projection through untouched when a list has re-seated value', () => {
+    // A ranking list has moved this player up: value says 340, we project 250.
+    const rows = buildBoard({
+      ...base,
+      available: [{ playerKey: 'a', name: 'A', position: 'WR', value: 340, projected: 250 }],
+    })
+    expect(rows[0].value).toBe(340)
+    expect(rows[0].projected).toBe(250)
+  })
+
+  it('falls back to value when no separate projection is supplied', () => {
+    const rows = buildBoard({
+      ...base,
+      available: [{ playerKey: 'a', name: 'A', position: 'WR', value: 250 }],
+    })
+    expect(rows[0].projected).toBe(250)
+  })
+
+  it('ranks on value, not on the projection', () => {
+    const rows = buildBoard({
+      ...base,
+      available: [
+        { playerKey: 'low', name: 'Low', position: 'WR', value: 340, projected: 100 },
+        { playerKey: 'high', name: 'High', position: 'WR', value: 210, projected: 900 },
+      ],
+    })
+    expect(rows[0].playerKey).toBe('low')
+  })
+})

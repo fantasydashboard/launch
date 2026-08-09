@@ -424,9 +424,11 @@ export function useDraftRoom() {
   // invisible) for every other account. Applied last so it overrides ours.
   const customRankings = useCustomRankings()
   const rankedPlayers = computed(() => {
-    const remap = customRankings.applyTo(adjustedPlayers.value)
-    if (!Object.keys(remap).length) return adjustedPlayers.value
-    return adjustedPlayers.value.map((p) => ({ ...p, value: remap[p.playerKey] ?? p.value }))
+    const base = adjustedPlayers.value.map((p) => ({ ...p, projected: p.value }))
+    const remap = customRankings.applyTo(base)
+    if (!Object.keys(remap).length) return base
+    // `value` becomes the ranking device; `projected` stays our own number.
+    return base.map((p) => ({ ...p, value: remap[p.playerKey] ?? p.value }))
   })
 
   const survivalResult = computed(() =>
@@ -639,6 +641,7 @@ export function useDraftRoom() {
     upcoming,
     myPicks,
     starterSlots,
+    effectiveSlots,
     draftedKeys,
     markDrafted,
     unmarkDrafted,

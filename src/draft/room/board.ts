@@ -19,6 +19,12 @@ export interface AvailablePlayerRow {
   proTeam?: string
   headshot?: string
   value: number
+  /**
+   * Our own projected points, before any ranking list re-seated `value`. Shown to
+   * the user so the points column stays meaningful when they switch lists — the
+   * remapped `value` is an ordering device, not a projection of this player.
+   */
+  projected?: number
   /** Optional depth-chart/injury signal from the VOR engine. */
   opportunity?: string
 }
@@ -40,6 +46,8 @@ export interface BoardRow {
   proTeam?: string
   headshot?: string
   value: number
+  /** Our projected points, independent of whichever list is ranking. */
+  projected: number
   vona: number
   upside: number
   score: number
@@ -202,6 +210,7 @@ export function buildBoard(input: BoardInput): BoardRow[] {
       proTeam: p.proTeam,
       headshot: p.headshot,
       value: p.value,
+      projected: p.projected ?? p.value,
       vona,
       upside,
       score: (1 - w) * vona + w * upside,

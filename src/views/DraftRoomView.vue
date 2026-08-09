@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useDraftRoom } from '@/composables/useDraftRoom'
 import { UFD_LABEL } from '@/composables/useCustomRankings'
@@ -10,7 +10,7 @@ const {
   currentOverallPick, hasHistory, myPicks, starterSlots, slotUnknown,
   markDrafted, syncHealthy, refresh, shape,
   grid, teamNameForSlot, connectDraft, disconnectDraft, overrideDraftId, overrideError,
-  customRankings, replay, comparePool, boardByRank, listRankByKey,
+  customRankings, replay, comparePool, boardByRank, listRankByKey, effectiveSlots, mySlot,
 } = useDraftRoom()
 
 // Admin-only analyst override. Invisible to every other account.
@@ -40,6 +40,20 @@ function submitConnect() {
     showConnect.value = false
   }
 }
+
+const gridEl = ref<HTMLElement | null>(null)
+const myColEl = ref<HTMLElement | null>(null)
+/** Your own column is the one you look at most; make sure it is on screen. */
+function scrollToMySeat() {
+  nextTick(() => {
+    const col = myColEl.value
+    const box = gridEl.value
+    if (!col || !box) return
+    box.scrollLeft = Math.max(0, col.offsetLeft - box.clientWidth / 2 + col.clientWidth / 2)
+  })
+}
+watch(() => tab.value, (t) => { if (t === 'grid') scrollToMySeat() })
+watch(() => mySlot.value, () => { if (tab.value === 'grid') scrollToMySeat() })
 
 const round = (n: number) => Math.round(n)
 const pct = (n: number) => `${Math.round(n * 100)}%`
@@ -77,26 +91,57 @@ const visibleBoard = computed(() => {
 const showTierHeaders = computed(() => false)
 function isTierHeader(_i: number): boolean { return false }
 
+// Kickers and defenses always last, and saying so buries the players who do not.
+const SKILL = new Set(['QB', 'RB', 'WR', 'TE'])
 const wontLast = computed(() =>
-  board.value.filter((r) => r.survival < 0.7).slice(0, 25),
+  board.value.filter((r) => SKILL.has(r.position) && r.survival < 0.7).slice(0, 25),
 )
 const safeUntilNext = computed(() =>
-  board.value.filter((r) => r.survival >= 0.7).slice(0, 12),
+  board.value.filter((r) => SKILL.has(r.position) && r.survival >= 0.7).slice(0, 12),
 )
 
-/** Roster holes: starting slots not yet filled, with the best available at each. */
+/**
+ * Starting slots from the league's actual roster settings, so FLEX shows up —
+ * it is the slot that decides whether a third back beats a fourth receiver.
+ * Kicker and defense sort last and read as late-round, because listing them as
+ * equal needs in round one is how a board loses credibility.
+ */
+const FLEX_ELIGIBLE: Record<string, string[]> = {
+  FLEX: ['RB', 'WR', 'TE'],
+  SUPER_FLEX: ['QB', 'RB', 'WR', 'TE'],
+  REC_FLEX: ['WR', 'TE'],
+}
+const LATE = new Set(['K', 'DEF'])
+const SLOT_ORDER = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPER_FLEX', 'REC_FLEX', 'K', 'DEF']
+
 const holes = computed(() => {
-  const bySlot: Record<string, number> = {}
+  const filled: Record<string, number> = {}
   for (const p of myPicks.value) {
     const pos = String((p as any)?.metadata?.position ?? '').toUpperCase()
-    if (pos) bySlot[pos] = (bySlot[pos] ?? 0) + 1
+    if (pos) filled[pos] = (filled[pos] ?? 0) + 1
   }
-  const positions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
-  return positions.map((pos) => ({
-    pos,
-    have: bySlot[pos] ?? 0,
-    best: board.value.find((r) => r.position === pos) ?? null,
-  }))
+  const slots = effectiveSlots.value ?? {}
+  const entries = Object.entries(slots).filter(([k, n]) => Number(n) > 0 && k !== 'BN' && k !== 'IR' && k !== 'TAXI')
+  entries.sort((a, b) => {
+    const ai = SLOT_ORDER.indexOf(a[0]); const bi = SLOT_ORDER.indexOf(b[0])
+    return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi)
+  })
+
+  // A pick fills its own position first; whatever spills over covers a flex.
+  const spare: Record<string, number> = { ...filled }
+  const rows = entries.map(([slot, count]) => {
+    const need = Number(count)
+    const eligible = FLEX_ELIGIBLE[slot] ?? [slot]
+    let have = 0
+    for (const pos of eligible) {
+      const take = Math.min(spare[pos] ?? 0, need - have)
+      if (take > 0) { spare[pos] = (spare[pos] ?? 0) - take; have += take }
+      if (have >= need) break
+    }
+    const best = board.value.find((r) => eligible.includes(r.position)) ?? null
+    return { slot, need, have, best, late: LATE.has(slot) }
+  })
+  return rows
 })
 </script>
 
@@ -319,7 +364,7 @@ const holes = computed(() => {
         <div class="mb-2 flex items-center gap-3 border-b border-dark-border pb-1 font-mono text-[9px] uppercase text-dark-textMuted">
           <span class="w-6">#</span>
           <span class="min-w-0 flex-1">player · in {{ customRankings.sourceName.value }} order</span>
-          <span class="w-12 text-right">pts</span>
+          <span class="w-12 text-right" title="Our projected points — unchanged by which list is ranking">pts</span>
           <span class="w-14 text-right" title="Chance he is still available at your next pick">lasts</span>
           <span class="w-12 text-right" title="What the board sorts by: edge during the starter rounds, ceiling once your lineup is full">score</span>
         </div>
@@ -353,7 +398,7 @@ const holes = computed(() => {
                 {{ r.position }}<template v-if="!showTierHeaders"> · {{ r.position }}{{ r.tier }}</template><template v-if="r.proTeam"> · {{ r.proTeam }}</template><template v-if="r.adp !== null"> · adp {{ round(r.adp) }}</template><template v-if="round(r.score) !== round(r.vona)"> · edge {{ round(r.vona) }}</template>
               </span>
             </span>
-            <span class="w-12 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ round(r.value) }}</span>
+            <span class="w-12 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ round(r.projected) }}</span>
             <span class="w-14 shrink-0 text-right font-mono text-xs" :class="r.survival < 0.5 ? 'text-[#FF5C5C]' : 'text-dark-textMuted'">{{ pct(r.survival) }}</span>
             <span class="w-12 shrink-0 text-right font-mono text-sm font-bold" :class="r.score > 0 ? 'text-dark-text' : 'text-dark-textMuted'">
               {{ r.score > 0 ? '+' : '' }}{{ round(r.score) }}
@@ -363,7 +408,7 @@ const holes = computed(() => {
       </section>
 
       <!-- DRAFT BOARD (grid) -->
-      <section v-else-if="tab === 'grid'" class="overflow-x-auto rounded-xl border border-dark-border bg-dark-card p-4">
+      <section v-else-if="tab === 'grid'" ref="gridEl" class="overflow-x-auto rounded-xl border border-dark-border bg-dark-card p-4">
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
           rounds down · teams across · snake rows read in pick order · your picks highlighted
         </p>
@@ -374,8 +419,11 @@ const holes = computed(() => {
               <th class="w-8"></th>
               <th
                 v-for="c in grid[0].cells" :key="'h' + c.slot"
-                class="truncate px-1 pb-1 text-left font-mono text-[9px] font-normal uppercase text-dark-textMuted"
-              >{{ teamNameForSlot(c.slot) }}</th>
+                :ref="(el) => { if (c.isMine) myColEl = el as HTMLElement }"
+                :title="teamNameForSlot(c.slot)"
+                class="max-w-[7rem] truncate px-1 pb-1 text-left font-mono text-[9px] font-normal uppercase"
+                :class="c.isMine ? 'text-primary' : 'text-dark-textMuted'"
+              >{{ c.isMine ? 'YOU' : teamNameForSlot(c.slot) }}</th>
             </tr>
           </thead>
           <tbody>
@@ -393,6 +441,7 @@ const holes = computed(() => {
                   <span class="block truncate font-mono text-[10px] text-dark-text">{{ cell.pick.playerName }}</span>
                   <span class="block font-mono text-[9px] text-dark-textMuted">{{ cell.pick.position }}</span>
                 </template>
+                <span v-else-if="cell.isCurrent" class="block font-mono text-[9px] text-primary">on the clock</span>
                 <span v-else class="block font-mono text-[9px] text-dark-textMuted/50">{{ cell.overallPick }}</span>
               </td>
             </tr>
@@ -404,11 +453,17 @@ const holes = computed(() => {
       <section v-else-if="tab === 'room'" class="rounded-xl border border-dark-border bg-dark-card p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Your roster</h2>
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">{{ myPicks.length }} picked · {{ starterSlots }} starting slots</p>
-        <div v-for="h in holes" :key="h.pos" class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
-          <span class="w-12 shrink-0 font-mono text-[11px] uppercase text-dark-textMuted">{{ h.pos }}</span>
-          <span class="w-8 shrink-0 font-mono text-sm" :class="h.have ? 'text-dark-text' : 'text-[#FF5C5C]'">{{ h.have }}</span>
+        <div v-for="h in holes" :key="h.slot" class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0"
+             :class="h.late ? 'opacity-50' : ''">
+          <span class="w-24 shrink-0 font-mono text-[11px] uppercase text-dark-textMuted">{{ h.slot }}</span>
+          <span class="w-12 shrink-0 font-mono text-sm"
+                :class="h.have >= h.need ? 'text-emerald-400' : h.late ? 'text-dark-textMuted' : 'text-[#FF5C5C]'">
+            {{ h.have }}/{{ h.need }}
+          </span>
           <span class="min-w-0 flex-1 truncate font-mono text-[11px] text-dark-textMuted">
-            <template v-if="h.best">best avail: <span class="text-dark-text">{{ h.best.name }}</span> ({{ round(h.best.score) }})</template>
+            <template v-if="h.have >= h.need">filled</template>
+            <template v-else-if="h.late">fill late</template>
+            <template v-else-if="h.best">best avail: <span class="text-dark-text">{{ h.best.name }}</span> ({{ round(h.best.score) }})</template>
             <template v-else>—</template>
           </span>
         </div>
