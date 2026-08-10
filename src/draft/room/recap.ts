@@ -142,7 +142,9 @@ export function buildRecap(input: {
   const notes: PickNote[] = myPicks
     .filter((p) => typeof p.adp === 'number')
     // Positive means he fell to you: taken LATER than the market had him.
-    .map((p) => ({ pick: p, delta: p.overallPick - (p.adp as number) }))
+    // Rounded: ADP is fractional, and "7.100000000000001 picks past ADP" is a
+    // float artefact shown to a human as if it were a measurement.
+    .map((p) => ({ pick: p, delta: Math.round((p.overallPick - (p.adp as number)) * 10) / 10 }))
 
   const values = notes
     .filter((n) => n.delta >= NOTABLE_PICKS)

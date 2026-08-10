@@ -67,8 +67,10 @@ describe('simulateSurvival', () => {
       upcomingSlots: [1, 2],
       priorForSlot: () => prior({ RB: 1 }),
     })
-    // Two RBs gone, so the expected best remaining RB is the third.
-    expect(r.expectedBestAtPosition.RB).toBeCloseTo(200, 0)
+    // Two RB picks land, so the best remaining is worse than the best now (300)
+    // but better than assuming the top two always go — managers reach past people.
+    expect(r.expectedBestAtPosition.RB).toBeLessThan(300)
+    expect(r.expectedBestAtPosition.RB).toBeGreaterThan(200)
   })
 
   it('is deterministic — same seed and input give identical output', () => {
@@ -138,5 +140,45 @@ describe('simulateSurvival — the expectation in points', () => {
       seed: 1,
     })
     expect(res.expectedBestProjectedAtPosition.RB).toBeCloseTo(180, 5)
+  })
+})
+
+describe('simulateSurvival — modelling how managers actually pick', () => {
+  it('does not always take the very top of the list', () => {
+    // One pick, one position, three candidates. A model that always takes the
+    // best ADP would leave rb1 at 0% and rb2 untouched at 100%.
+    const r = run({ upcomingSlots: [1], priorForSlot: () => prior({ RB: 1 }) })
+    expect(r.survival.rb1).toBeGreaterThan(0)
+    expect(r.survival.rb2).toBeLessThan(1)
+  })
+
+  it('spends a pick even when the prior favours a position nobody has', () => {
+    // A no-history prior spreads over K and DEF too. Draws that found no pool
+    // used to remove nobody at all, which is why everyone looked safe.
+    const r = run({
+      upcomingSlots: [1, 2, 3],
+      priorForSlot: () => prior({ K: 0.5, DEF: 0.3, RB: 0.2 }),
+    })
+    expect(r.survival.rb1).toBeLessThan(1)
+  })
+
+  it('models the market when we have no read on the manager', () => {
+    // sample 0 = no history. The picks should come off the top of the ADP board
+    // regardless of position, not be scattered across positions evenly.
+    const r = run({
+      upcomingSlots: [1, 2],
+      priorForSlot: () => ({ byPosition: { QB: 0.5, TE: 0.5 }, sample: 0, counts: {} }),
+    })
+    // rb1 and wr1 are ADP 1 and 2 — the market takes them, whatever the prior says.
+    expect(r.survival.rb1).toBeLessThan(0.9)
+    expect(r.survival.wr1).toBeLessThan(0.9)
+    // te1 at ADP 20 is nowhere near the top of the board.
+    expect(r.survival.te1).toBe(1)
+  })
+
+  it('stays deterministic with the reach model in play', () => {
+    const a = run({ upcomingSlots: [1, 2, 3] })
+    const b = run({ upcomingSlots: [1, 2, 3] })
+    expect(a.survival).toEqual(b.survival)
   })
 })

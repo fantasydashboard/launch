@@ -61,19 +61,58 @@ function mulberry32(seed: number): () => number {
   }
 }
 
-/** Draw a position from a prior. Returns null if the prior is unusable. */
-function drawPosition(prior: PositionPrior, rand: number): string | null {
-  const entries = Object.entries(prior?.byPosition ?? {})
+/**
+ * Draw a position from a prior, restricted to positions that actually exist in
+ * the pool and renormalised over them.
+ *
+ * Without the restriction, a no-history prior spreads evenly over six positions
+ * including kicker and defense — and in a league that starts neither, those draws
+ * found no pool and removed NOBODY. A third of every simulated pick did nothing,
+ * which is a third of the reason the model kept saying players would last.
+ */
+function drawPosition(prior: PositionPrior, rand: number, allowed: Set<string>): string | null {
+  const entries = Object.entries(prior?.byPosition ?? {}).filter(
+    ([pos, p]) => p > 0 && allowed.has(pos),
+  )
   let total = 0
-  for (const [, p] of entries) total += p > 0 ? p : 0
+  for (const [, p] of entries) total += p
   if (total <= 0) return null
   let r = rand * total
   for (const [pos, p] of entries) {
-    if (p <= 0) continue
     r -= p
     if (r <= 0) return pos
   }
-  return entries.length ? entries[entries.length - 1][0] : null
+  return entries[entries.length - 1][0]
+}
+
+/**
+ * How far down a list a manager might reach. Always taking the very top of the
+ * board is too tidy: it concentrates every simulation on the same handful of
+ * players and leaves everyone behind them looking safe.
+ */
+const REACH_WINDOW = 3
+/** Probability of taking the next man rather than reaching past him. */
+const REACH_DECAY = 0.6
+
+/** The next player off a list, with a little reach. */
+function chooseFrom<T extends { playerKey: string; adp: number | null }>(
+  pool: T[],
+  taken: Set<string>,
+  rand: number,
+): T | null {
+  const free: T[] = []
+  for (const p of pool) {
+    if (taken.has(p.playerKey) || p.adp === null || p.adp === undefined) continue
+    free.push(p)
+    if (free.length >= REACH_WINDOW) break
+  }
+  if (!free.length) return null
+  let acc = 0
+  for (let i = 0; i < free.length; i++) {
+    acc += REACH_DECAY * Math.pow(1 - REACH_DECAY, i)
+    if (rand <= acc) return free[i]
+  }
+  return free[free.length - 1]
 }
 
 const normPos = (p: string) => (p || '').toUpperCase().split(/[,/|]/)[0].trim()
@@ -104,6 +143,12 @@ export function simulateSurvival(input: SurvivalInput): SurvivalResult {
     })
   }
 
+  // The whole board by ADP — how a manager we have no read on actually drafts.
+  const byAdp = players
+    .filter((p) => p.adp !== null && p.adp !== undefined)
+    .sort((a, b) => (a.adp as number) - (b.adp as number))
+  const allowedPositions = new Set(byPosition.keys())
+
   const survivedCount: Record<string, number> = {}
   for (const p of players) survivedCount[p.playerKey] = 0
   const bestSum: Record<string, number> = {}
@@ -116,12 +161,19 @@ export function simulateSurvival(input: SurvivalInput): SurvivalResult {
     const taken = new Set<string>()
 
     for (const slot of slots) {
-      const pos = drawPosition(priorForSlot(slot), rng())
-      if (!pos) continue
-      const pool = byPosition.get(pos)
+      const prior = priorForSlot(slot)
+      /**
+       * With no read on this manager, model the MARKET rather than a position
+       * lottery. A no-history prior is a flat spread across positions, which
+       * scatters the intervening picks evenly instead of concentrating them on
+       * the top of the board — where they actually land. Measured against a
+       * completed draft, that scatter overstated survival by about half again.
+       */
+      const pool = (prior?.sample ?? 0) > 0
+        ? byPosition.get(drawPosition(prior, rng(), allowedPositions) ?? '') ?? null
+        : byAdp
       if (!pool) continue
-      // Best available at that position by ADP, skipping anyone with no ADP.
-      const pick = pool.find((p) => p.adp !== null && p.adp !== undefined && !taken.has(p.playerKey))
+      const pick = chooseFrom(pool, taken, rng())
       if (pick) taken.add(pick.playerKey)
     }
 

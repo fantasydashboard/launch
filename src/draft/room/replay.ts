@@ -140,12 +140,23 @@ export function replayDraft(input: ReplayInput): ReplayStep[] {
 }
 
 /**
+ * How far past your next pick the market has to price a player before the
+ * question "will he last?" stops being interesting.
+ */
+const AT_RISK_MARGIN = 24
+
+/**
  * Did reality match our confidence? Buckets every prediction by the survival we
  * claimed and reports how often those players actually survived to the pick we
  * were predicting for. A bucket whose `actualSurvived / total` sits far from its
  * `predicted` mean is the model lying with a straight face.
  */
-export function calibration(steps: ReplayStep[], picks: ReplayPick[]): CalibrationBucket[] {
+
+export function calibration(
+  steps: ReplayStep[],
+  picks: ReplayPick[],
+  adpByKey: Record<string, number> = {},
+): CalibrationBucket[] {
   const takenAt = new Map<string, number>()
   for (const p of picks) if (!takenAt.has(p.playerKey)) takenAt.set(p.playerKey, p.overallPick)
 
@@ -154,6 +165,15 @@ export function calibration(steps: ReplayStep[], picks: ReplayPick[]): Calibrati
   for (const step of steps) {
     if (!step.nextPick) continue
     for (const [playerKey, predicted] of Object.entries(step.predictedSurvival)) {
+      /**
+       * Only players the question is live for. Scored against the whole pool,
+       * 97% of the rows landed in the 90-100% bucket — a 500-deep board is mostly
+       * players nobody was going to take in the next six picks, and "we said 100%,
+       * 99% lasted" is a real number answering a question no one asked. It also
+       * buried the buckets that matter under a rounding error's worth of weight.
+       */
+      const adp = adpByKey[playerKey]
+      if (typeof adp !== 'number' || adp > step.nextPick + AT_RISK_MARGIN) continue
       const b = Math.min(0.9, Math.floor(predicted * 10) / 10)
       const entry = buckets.get(b) ?? { predSum: 0, survived: 0, total: 0 }
       const takenPick = takenAt.get(playerKey)

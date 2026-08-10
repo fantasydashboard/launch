@@ -749,7 +749,7 @@ export function useDraftRoom() {
       runs: 200,
       seed: 1337,
     })
-    return { steps, calibration: calibration(steps, replayPicks), universe: players.length }
+    return { steps, calibration: calibration(steps, replayPicks, adp.value), universe: players.length }
   })
 
   const loading = computed(() => loadingDraft.value || vorLoading.value || src.loading.value)

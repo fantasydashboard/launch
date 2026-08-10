@@ -89,7 +89,7 @@ describe('replayDraft', () => {
 describe('calibration', () => {
   it('buckets predictions and counts what actually survived', () => {
     const steps = replayDraft(input())
-    const buckets = calibration(steps, picks)
+    const buckets = calibration(steps, picks, adpByKey)
     expect(buckets.length).toBeGreaterThan(0)
     for (const b of buckets) {
       expect(b.total).toBeGreaterThan(0)
@@ -104,13 +104,47 @@ describe('calibration', () => {
     // high-confidence bucket does survive. (Predicted stays just under 1 because
     // the simulation still models opponents drafting — that is the point of it.)
     const steps = replayDraft(input({ picks: [] }))
-    const buckets = calibration(steps, [])
+    const buckets = calibration(steps, [], adpByKey)
     const top = buckets.find((b) => b.bucket === 0.9)!
     expect(top.predicted).toBeGreaterThan(0.9)
     expect(top.actualSurvived).toBe(top.total)
   })
 
   it('returns an empty report when there is nothing to score', () => {
-    expect(calibration([], picks)).toEqual([])
+    expect(calibration([], picks, adpByKey)).toEqual([])
+  })
+})
+
+describe('calibration — scored on the players the question is live for', () => {
+  const step = (nextPick: number, survival: Record<string, number>) => ({
+    overallPick: 1, recommendation: null, actualPlayerKey: null, actualName: null,
+    predictedSurvival: survival, nextPick, board: [],
+  })
+
+  it('leaves out players the market prices far beyond your next pick', () => {
+    // `far` is an ADP-200 player with your next pick at 20: he was never at risk,
+    // and counting him is how 97% of the rows ended up in one bucket.
+    const buckets = calibration(
+      [step(20, { near: 0.5, far: 1 })],
+      [],
+      { near: 22, far: 200 },
+    )
+    expect(buckets.reduce((n, b) => n + b.total, 0)).toBe(1)
+    expect(buckets[0].predicted).toBeCloseTo(0.5, 5)
+  })
+
+  it('leaves out players the market never priced at all', () => {
+    const buckets = calibration([step(20, { unpriced: 1 })], [], {})
+    expect(buckets).toEqual([])
+  })
+
+  it('still counts a player taken before your next pick as gone', () => {
+    const buckets = calibration(
+      [step(20, { a: 0.8 })],
+      [{ overallPick: 15, playerKey: 'a', slot: 3 }],
+      { a: 18 },
+    )
+    expect(buckets[0].total).toBe(1)
+    expect(buckets[0].actualSurvived).toBe(0)
   })
 })
