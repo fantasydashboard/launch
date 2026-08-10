@@ -362,3 +362,44 @@ describe('compareRankings — deep pool vs a top-N list', () => {
     expect(deep.delta).toBe(2) // we had him 3rd of the three, they had him 1st
   })
 })
+
+describe('parseRankings — the source declares its own tiers', () => {
+  const CSV = [
+    '"Overall","Player","Position","Pos Rank","Tier","Auction (Out of $200)"',
+    '"1","Jahmyr Gibbs","RB","1","1","$65"',
+    '"2","Bijan Robinson","RB","2","1","$65"',
+    '"3","Puka Nacua","WR","1","2","$61"',
+    '"4","Ja\'Marr Chase","WR","2","2","$60"',
+  ].join('\n')
+
+  it('reads the tier column by header name', () => {
+    const r = parseRankings(CSV)
+    expect(r.map((x) => x.tier)).toEqual([1, 1, 2, 2])
+  })
+
+  it('does not mistake "Pos Rank" for the tier', () => {
+    const r = parseRankings(CSV)
+    // Puka is Pos Rank 1 but Tier 2 — the header must disambiguate.
+    expect(r[2]).toMatchObject({ name: 'Puka Nacua', tier: 2 })
+  })
+
+  it('still reads rank, name and position from the header', () => {
+    const r = parseRankings(CSV)
+    expect(r[0]).toMatchObject({ rank: 1, name: 'Jahmyr Gibbs', position: 'RB' })
+  })
+
+  it('leaves tier undefined when the file has no such column', () => {
+    const r = parseRankings('1. Jahmyr Gibbs, RB, DET')
+    expect(r[0].tier).toBeUndefined()
+  })
+
+  it('carries tiers through matching', () => {
+    const players = [
+      { playerKey: 'a', name: 'Jahmyr Gibbs', position: 'RB' },
+      { playerKey: 'b', name: 'Puka Nacua', position: 'WR' },
+    ]
+    const m = matchRankings(parseRankings(CSV), players)
+    expect(m.tierByKey.a).toBe(1)
+    expect(m.tierByKey.b).toBe(2)
+  })
+})

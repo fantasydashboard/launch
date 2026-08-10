@@ -10,7 +10,7 @@ const {
   currentOverallPick, hasHistory, myPicks, starterSlots, slotUnknown,
   markDrafted, syncHealthy, refresh, shape,
   grid, teamNameForSlot, connectDraft, disconnectDraft, overrideDraftId, overrideError,
-  customRankings, replay, comparePool, boardByRank, listRankByKey, effectiveSlots, mySlot,
+  customRankings, replay, comparePool, boardByRank, boardTierByKey, listRankByKey, effectiveSlots, mySlot,
 } = useDraftRoom()
 
 // Admin-only analyst override. Invisible to every other account.
@@ -111,8 +111,24 @@ const visibleBoard = computed(() => {
  */
 // The board is ordered by list rank now, so tier SECTIONS would cut across it
 // arbitrarily. Tier rides on each row instead.
-const showTierHeaders = computed(() => false)
-function isTierHeader(_i: number): boolean { return false }
+/**
+ * A band wherever the tier changes going down the list. Only meaningful when the
+ * list is in its own order — the won't-last lens is sorted by urgency, which cuts
+ * across tiers arbitrarily.
+ */
+const tierOf = (key: string) => boardTierByKey.value[key]
+function isTierHeader(i: number): boolean {
+  if (posFilter.value === 'LAST') return false
+  const rows = visibleBoard.value
+  const cur = tierOf(rows[i].playerKey)
+  if (cur === undefined) return false
+  if (i === 0) return true
+  return tierOf(rows[i - 1].playerKey) !== cur
+}
+function tierCount(i: number): number {
+  const t = tierOf(visibleBoard.value[i].playerKey)
+  return visibleBoard.value.filter((r) => tierOf(r.playerKey) === t).length
+}
 
 // Kickers and defenses always last, and saying so buries the players who do not.
 const SKILL = new Set(['QB', 'RB', 'WR', 'TE'])
@@ -401,15 +417,13 @@ const holes = computed(() => {
 
         <template v-for="(r, i) in visibleBoard" :key="r.playerKey">
           <!-- Tier header whenever the tier changes (grouping is real when filtered) -->
-          <div
-            v-if="isTierHeader(i)"
-            class="mt-3 flex items-center gap-2 first:mt-0"
-          >
-            <span class="rounded bg-dark-border/60 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-dark-text">
-              <template v-if="posFilter === 'ALL'">tier {{ r.overallTier }} overall</template>
-              <template v-else>{{ r.position }} tier {{ r.tier }}</template>
+          <div v-if="isTierHeader(i)" class="mt-4 flex items-center gap-2 first:mt-0">
+            <span class="h-px w-4 bg-primary/50" />
+            <span class="whitespace-nowrap rounded bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-primary">
+              tier {{ tierOf(r.playerKey) }}
             </span>
-            <span class="h-px flex-1 bg-dark-border/60" />
+            <span class="font-mono text-[9px] text-dark-textMuted/70">{{ tierCount(i) }} left</span>
+            <span class="h-px flex-1 bg-primary/25" />
           </div>
 
           <button
@@ -426,7 +440,7 @@ const holes = computed(() => {
                 <span v-if="r.flag === 'value'" class="shrink-0 rounded bg-emerald-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-emerald-400">value</span>
               </span>
               <span class="flex items-center gap-1.5 font-mono text-[10px] text-dark-textMuted">
-                <span class="rounded px-1 py-0.5 text-[9px] font-semibold" :class="posClass(r.position)">{{ r.position }}{{ r.tier }}</span>
+                <span class="rounded px-1 py-0.5 text-[9px] font-semibold" :class="posClass(r.position)">{{ r.position }}</span>
                 <template v-if="r.proTeam">
                   <img :src="teamLogo(r.proTeam)" alt="" @error="onImgErr" class="h-3 w-3 object-contain" />{{ r.proTeam }}
                 </template>

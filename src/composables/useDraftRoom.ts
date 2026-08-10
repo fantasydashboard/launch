@@ -514,6 +514,22 @@ export function useDraftRoom() {
     return out
   })
 
+  /**
+   * Tier per player for the horizontal bands on the Board. A ranking file's own
+   * tier column is overall and runs in its order, so it can actually draw a band;
+   * ours are per-position and interleave once the list is someone else's order.
+   */
+  const boardTierByKey = computed<Record<string, number>>(() => {
+    if (customRankings.enabled.value) {
+      const { tierByKey } = customRankings.match(rankedPlayers.value)
+      if (Object.keys(tierByKey).length) return tierByKey
+    }
+    // UFD's board is ordered by value over replacement, so our overall tier bands.
+    const out: Record<string, number> = {}
+    for (const r of board.value) out[r.playerKey] = r.overallTier
+    return out
+  })
+
   /** The board in list order — what the Board tab renders. */
   const boardByRank = computed<BoardRow[]>(() => {
     const rank = listRankByKey.value
@@ -636,6 +652,7 @@ export function useDraftRoom() {
     customRankings,
     comparePool,
     boardByRank,
+    boardTierByKey,
     listRankByKey,
     replay,
     upcoming,

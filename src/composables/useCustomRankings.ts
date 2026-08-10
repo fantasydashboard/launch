@@ -235,6 +235,9 @@ export function useCustomRankings(kind: RankingKind = 'draft') {
     return matchRankings(parsed.value, players)
   }
 
+  /** True when the active list declares its own tiers. */
+  const hasOwnTiers = computed(() => parsed.value.some((p) => typeof p.tier === 'number'))
+
   /** Re-map values onto the active list's order. Identity when none is active. */
   function applyTo(
     players: { playerKey: string; name: string; position?: string; value: number }[],
@@ -262,6 +265,7 @@ export function useCustomRankings(kind: RankingKind = 'draft') {
     activeSet,
     parsed,
     hasRankings,
+    hasOwnTiers,
     enabled,
     sourceName,
     ageDays,

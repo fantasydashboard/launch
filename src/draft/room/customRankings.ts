@@ -15,6 +15,8 @@ export interface ParsedRanking {
   name: string
   position?: string
   team?: string
+  /** The source's own tier, when the file declares one. */
+  tier?: number
 }
 
 const SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'v'])
@@ -51,18 +53,21 @@ export function parseRankings(text: string): ParsedRanking[] {
 
   const HEADER_WORDS = /\b(overall|rank|rk|player|name|position|pos|tier|adp|bye|team|auction|value)\b/i
   const isNum = (v: string) => /^\d+(\.\d+)?$/.test(v.replace(/[$,]/g, ''))
+  const num = (v: string) => Number(v.replace(/[$,]/g, ''))
 
-  /**
-   * Split a row. Spreadsheet pastes arrive tab-separated, exports arrive
-   * comma-separated, and a copy out of a rendered table arrives column-aligned
-   * with runs of spaces. Single spaces stay inside names.
-   */
   const splitRow = (line: string): string[] => {
     if (line.includes('\t')) return line.split('\t').map((c) => c.trim()).filter(Boolean)
     if (line.includes(',')) return line.split(',').map((c) => c.trim().replace(/^"|"$/g, '')).filter(Boolean)
     if (/\s{2,}/.test(line)) return line.split(/\s{2,}/).map((c) => c.trim()).filter(Boolean)
     return [line.trim()]
   }
+
+  /**
+   * Column positions read off a header row. A ranking file's own tier column is
+   * the only overall tiering we get — ours are per-position, which cannot draw a
+   * horizontal band on a list ordered by someone else's overall ranking.
+   */
+  let col: { rank?: number; name?: number; position?: number; tier?: number } | null = null
 
   let implicitRank = 0
   let seenAnyRow = false
@@ -73,23 +78,47 @@ export function parseRankings(text: string): ParsedRanking[] {
     const cells = splitRow(line)
     if (!cells.length) continue
 
-    // A header row is one with no numbers that reads like column labels — and it
-    // can only be the FIRST row. Keying off the first word alone missed
-    // "Overall,Player,Position,..."; testing every row instead dropped players
-    // whose names happen to contain a header word.
     const startsWithNumber = /^\s*\d/.test(line)
     if (!seenAnyRow && !startsWithNumber && !cells.some(isNum) && HEADER_WORDS.test(line)) {
       seenAnyRow = true
+      col = {}
+      cells.forEach((c, i) => {
+        const h = c.toLowerCase()
+        if (col!.rank === undefined && /^(overall|rank|rk|#)$/.test(h)) col!.rank = i
+        else if (col!.name === undefined && /^(player|name)$/.test(h)) col!.name = i
+        else if (col!.position === undefined && /^(position|pos)$/.test(h)) col!.position = i
+        // "Pos Rank" must not be mistaken for the tier column.
+        else if (col!.tier === undefined && /^tier$/.test(h)) col!.tier = i
+      })
+      if (col.name === undefined) col = null
       continue
     }
     seenAnyRow = true
 
+    // Header-driven parse when the file told us its columns.
+    if (col && col.name !== undefined && cells.length > col.name) {
+      const name = (cells[col.name] ?? '').replace(/\s+/g, ' ').trim()
+      if (!name || !/[a-z]/i.test(name)) continue
+      const rawRank = col.rank !== undefined ? cells[col.rank] : undefined
+      const rawTier = col.tier !== undefined ? cells[col.tier] : undefined
+      const rawPos = col.position !== undefined ? cells[col.position] : undefined
+      const up = (rawPos ?? '').toUpperCase()
+      implicitRank++
+      out.push({
+        rank: rawRank && isNum(rawRank) ? num(rawRank) : implicitRank,
+        name,
+        position: POSITIONS.has(up) ? (up === 'D/ST' || up === 'DST' ? 'DEF' : up) : undefined,
+        tier: rawTier && isNum(rawTier) ? num(rawTier) : undefined,
+      })
+      continue
+    }
+
+    // Otherwise fall back to shape-sniffing.
     let rank: number | null = null
     let rest: string[]
-
     if (cells.length > 1) {
       const first = cells[0].replace(/[.)]$/, '')
-      if (isNum(first)) { rank = Number(first); rest = cells.slice(1) } else rest = cells
+      if (isNum(first)) { rank = num(first); rest = cells.slice(1) } else rest = cells
     } else {
       const m = /^(\d+)[.)]?\s+(.*)$/.exec(cells[0])
       if (m) { rank = Number(m[1]); rest = [m[2]] } else rest = [cells[0]]
@@ -107,19 +136,14 @@ export function parseRankings(text: string): ParsedRanking[] {
         return true
       }
       if (!team && /^[A-Z]{2,4}$/.test(up) && !POSITIONS.has(up)) { team = up; return true }
-      // Positional rank, tier, auction value — trailing numerics we don't need here.
       return isNum(tok)
     }
-
     for (const cell of rest.slice(1)) takeToken(cell)
-
-    // Single-column rows keep everything in the name; strip the trailing metadata.
     if (rest.length === 1) {
       const tokens = name.split(/\s+/)
       while (tokens.length > 2 && takeToken(tokens[tokens.length - 1])) tokens.pop()
       name = tokens.join(' ')
     }
-
     name = name.replace(/\s+/g, ' ').trim()
     if (!name || !/[a-z]/i.test(name)) continue
 
@@ -132,14 +156,11 @@ export function parseRankings(text: string): ParsedRanking[] {
     .map((r, i) => ({ ...r, rank: i + 1 }))
 }
 
-export interface AmbiguousMatch {
-  entry: ParsedRanking
-  candidates: { playerKey: string; name: string; position?: string }[]
-}
-
 export interface MatchResult {
   /** playerKey -> analyst rank. */
   rankByKey: Record<string, number>
+  /** playerKey -> the source's own tier, where it declared one. */
+  tierByKey: Record<string, number>
   /** Analyst entries we could not tie to a player in the pool. */
   unmatched: ParsedRanking[]
   /** Entries where several players share the name and we will NOT guess. */
@@ -166,6 +187,7 @@ export function matchRankings(
   }
 
   const rankByKey: Record<string, number> = {}
+  const tierByKey: Record<string, number> = {}
   const unmatched: ParsedRanking[] = []
   const ambiguous: AmbiguousMatch[] = []
   const used = new Set<string>()
@@ -190,10 +212,11 @@ export function matchRankings(
     }
 
     rankByKey[resolved.playerKey] = entry.rank
+    if (typeof entry.tier === 'number') tierByKey[resolved.playerKey] = entry.tier
     used.add(resolved.playerKey)
   }
 
-  return { rankByKey, unmatched, ambiguous, matched: Object.keys(rankByKey).length }
+  return { rankByKey, tierByKey, unmatched, ambiguous, matched: Object.keys(rankByKey).length }
 }
 
 /**
