@@ -1,5 +1,6 @@
 import { computed, ref, watch, type Ref } from 'vue'
 import { sleeperService } from '@/services/sleeper'
+import { useLeagueStore } from '@/stores/league'
 import { fetchSeasonProjectionStats, fetchWeekProjectionStats } from '@/services/footballProjections'
 import {
   buildFootballProjectionsByKey,
@@ -29,14 +30,32 @@ export function useFootballVor(inputs: {
   enabled: Ref<boolean>
   weeklyHorizon?: number // weeks of weekly-VOR/streamability to fetch (default 4; 0 = ROS only)
 }): { vorByKey: Ref<Record<string, PlayerVor>>; audit: Ref<VorAudit | null>; loading: Ref<boolean>; load: () => void } {
+  const leagueStore = useLeagueStore()
+  /**
+   * On Sleeper the playerKey IS the Sleeper id, so projections can be matched
+   * exactly instead of by name. That is not just tidier: team defenses have no
+   * name at all in Sleeper's data, so name matching silently dropped every
+   * defense from the board.
+   */
+  const keysAreSleeperIds = computed(() => leagueStore.activePlatform === 'sleeper')
+
   const vorByKey = ref<Record<string, PlayerVor>>({})
   const audit = ref<VorAudit | null>(null)
   const loading = ref(false)
 
-  const projPlayers = computed<ProjPlayer[]>(() => [
-    ...inputs.pool.value.map((p) => ({ key: p.playerKey, name: p.name, position: p.position })),
-    ...inputs.freeAgents.value.map((fa) => ({ key: fa.playerKey ?? `fa:${fa.name}`, name: fa.name, position: fa.position })),
-  ])
+  const projPlayers = computed<ProjPlayer[]>(() => {
+    const sid = keysAreSleeperIds.value
+    return [
+      ...inputs.pool.value.map((p) => ({
+        key: p.playerKey, name: p.name, position: p.position,
+        ...(sid ? { sleeperId: p.playerKey } : {}),
+      })),
+      ...inputs.freeAgents.value.map((fa) => {
+        const key = fa.playerKey ?? `fa:${fa.name}`
+        return { key, name: fa.name, position: fa.position, ...(sid ? { sleeperId: key } : {}) }
+      }),
+    ]
+  })
   const positionByKey = computed<Record<string, string>>(() => {
     const out: Record<string, string> = {}
     for (const p of inputs.pool.value) out[p.playerKey] = p.position

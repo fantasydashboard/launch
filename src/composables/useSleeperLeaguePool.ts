@@ -96,7 +96,9 @@ export function buildSleeperFreeAgents(
     if (!FA_POSITIONS.has(pos)) continue
     out.push({
       playerKey: pid,
-      name: p.full_name || `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim(),
+      // Sleeper stores team defenses with no name at all — the player_id IS the
+      // team — so they arrive nameless and render as blank rows.
+      name: p.full_name || `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() || (pos === 'DEF' ? `${p.team} Defense` : pid),
       position: pos,
       eligiblePositions: p.fantasy_positions?.length ? p.fantasy_positions : [pos],
       team: p.team,

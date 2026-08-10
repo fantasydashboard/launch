@@ -467,7 +467,7 @@ const holes = computed(() => {
       <!-- DRAFT BOARD (grid) -->
       <section v-else-if="tab === 'grid'" ref="gridEl" class="overflow-x-auto rounded-xl border border-dark-border bg-dark-card p-4">
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
-          rounds down · teams across · snake rows read in pick order · your picks highlighted
+          rounds down · teams across · snake rounds fill right-to-left · your picks highlighted
         </p>
         <div v-if="!grid.length" class="py-6 text-center font-mono text-xs text-dark-textMuted">No draft board yet.</div>
         <table v-else class="w-full min-w-[36rem] border-separate border-spacing-1">

@@ -16,37 +16,48 @@ describe('buildDraftGrid', () => {
     for (const row of grid) expect(row.cells).toHaveLength(4)
   })
 
-  it('numbers picks consecutively across the whole board', () => {
+  it('keeps every column on the same team all the way down', () => {
     const grid = buildDraftGrid(shape, picks)
+    for (const row of grid) expect(row.cells.map((c) => c.slot)).toEqual([1, 2, 3, 4])
+  })
+
+  it('fills snake rounds right-to-left within those fixed columns', () => {
+    const grid = buildDraftGrid(shape, picks)
+    // Round 1 runs left to right; round 2 turns around, so the rightmost seat
+    // picks first — but each seat stays in its own column.
     expect(grid[0].cells.map((c) => c.overallPick)).toEqual([1, 2, 3, 4])
-    expect(grid[1].cells.map((c) => c.overallPick)).toEqual([5, 6, 7, 8])
+    expect(grid[1].cells.map((c) => c.overallPick)).toEqual([8, 7, 6, 5])
+    expect(grid[2].cells.map((c) => c.overallPick)).toEqual([9, 10, 11, 12])
   })
 
-  it('reverses slots on even rounds so a row reads in pick order', () => {
+  it('places a made pick under the team that actually made it', () => {
     const grid = buildDraftGrid(shape, picks)
-    expect(grid[0].cells.map((c) => c.slot)).toEqual([1, 2, 3, 4])
-    expect(grid[1].cells.map((c) => c.slot)).toEqual([4, 3, 2, 1])
-    expect(grid[2].cells.map((c) => c.slot)).toEqual([1, 2, 3, 4])
-  })
-
-  it('places made picks in their cells and leaves the rest empty', () => {
-    const grid = buildDraftGrid(shape, picks)
-    expect(grid[0].cells[0].pick?.playerName).toBe('A')
+    expect(grid[0].cells[0].pick?.playerName).toBe('A') // pick 1, slot 1
     expect(grid[0].cells[1].pick).toBeNull()
-    expect(grid[1].cells[0].pick?.playerName).toBe('E') // pick 5, slot 4
+    // Pick 5 belongs to slot 4 and must appear in slot 4's column, not the first.
+    expect(grid[1].cells[3].pick?.playerName).toBe('E')
+    expect(grid[1].cells[0].pick).toBeNull()
   })
 
-  it('marks my cells and the pick on the clock', () => {
+  it('marks my seat in the same column every round', () => {
     const grid = buildDraftGrid(shape, picks, { mySlot: 4, currentOverallPick: 6 })
-    expect(grid[0].cells[3].isMine).toBe(true)
-    expect(grid[1].cells[0].isMine).toBe(true) // reversed row — slot 4 leads
+    for (const row of grid) {
+      expect(row.cells.findIndex((c) => c.isMine)).toBe(3)
+    }
     expect(grid[0].cells[0].isMine).toBe(false)
-    expect(grid[1].cells[1].isCurrent).toBe(true)
+  })
+
+  it('marks the pick on the clock under the right team', () => {
+    // Pick 6 in a 4-team snake is round 2, and round 2 reverses, so it is slot 3.
+    const grid = buildDraftGrid(shape, picks, { mySlot: 4, currentOverallPick: 6 })
+    const current = grid[1].cells.find((c) => c.isCurrent)!
+    expect(current.slot).toBe(3)
   })
 
   it('linear drafts never reverse', () => {
     const grid = buildDraftGrid({ type: 'linear', teams: 4, rounds: 2 }, [])
     expect(grid[1].cells.map((c) => c.slot)).toEqual([1, 2, 3, 4])
+    expect(grid[1].cells.map((c) => c.overallPick)).toEqual([5, 6, 7, 8])
   })
 
   it('handles an empty draft', () => {
