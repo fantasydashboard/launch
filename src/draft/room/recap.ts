@@ -25,6 +25,8 @@ export interface RecapPick {
   projected: number
   /** Where the market had him, when the market had an opinion. */
   adp: number | null
+  proTeam?: string
+  headshot?: string | null
 }
 
 export interface TeamRecap {
@@ -38,6 +40,8 @@ export interface TeamRecap {
   holes: number
   rank: number
   isMine: boolean
+  /** Slot in the draft, so the UI can find this team's avatar. */
+  slot: number
 }
 
 export interface PickNote {
@@ -130,6 +134,7 @@ export function buildRecap(input: {
       holes: rows.filter((r) => !r.player).length,
       rank: 0,
       isMine: !!input.myTeamKey && teamKey === input.myTeamKey,
+      slot: Number(teamKey) || 0,
     }
   })
 

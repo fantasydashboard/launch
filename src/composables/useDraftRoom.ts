@@ -17,7 +17,7 @@ import { buildRecommendation, type Recommendation } from '@/draft/room/recommend
 import { parseDraftId } from '@/draft/room/draftId'
 import { buildDraftGrid, type GridPick } from '@/draft/room/draftGrid'
 import { slotsFromDraftSettings, scoringFromDraftMetadata } from '@/draft/room/draftSettings'
-import { replayDraft, calibration, type ReplayPick } from '@/draft/room/replay'
+import { replayDraft, followRecommendations, calibration, type ReplayPick } from '@/draft/room/replay'
 import { buildRecap, type RecapPick } from '@/draft/room/recap'
 import { useCustomRankings } from '@/composables/useCustomRankings'
 
@@ -323,27 +323,39 @@ export function useDraftRoom() {
    * they are.
    */
   const draftUserNames = ref<Record<number, string>>({})
+  const draftUserAvatars = ref<Record<number, string>>({})
   watch(
     () => draftMeta.value?.draft_order,
     async (order) => {
       const entries = Object.entries((order ?? {}) as Record<string, number>)
-      if (!entries.length) { draftUserNames.value = {}; return }
+      if (!entries.length) { draftUserNames.value = {}; draftUserAvatars.value = {}; return }
       const resolved = await Promise.all(
         entries.map(async ([userId, slot]) => {
           try {
             const u = await sleeperService.getUser(String(userId))
-            return [Number(slot), u?.display_name || u?.username || ''] as const
+            return [Number(slot), u?.display_name || u?.username || '', u?.avatar ?? ''] as const
           } catch {
-            return [Number(slot), ''] as const
+            return [Number(slot), '', ''] as const
           }
         }),
       )
-      const out: Record<number, string> = {}
-      for (const [slot, name] of resolved) if (name) out[slot] = name
-      draftUserNames.value = out
+      const names: Record<number, string> = {}
+      const avatars: Record<number, string> = {}
+      for (const [slot, name, avatar] of resolved) {
+        if (name) names[slot] = name
+        if (avatar) avatars[slot] = `https://sleepercdn.com/avatars/thumbs/${avatar}`
+      }
+      draftUserNames.value = names
+      draftUserAvatars.value = avatars
     },
     { immediate: true },
   )
+
+  /** Avatar for a slot: the human's if there is one, nothing for a bot. */
+  const teamAvatarForSlot = (slot: number): string | null =>
+    (draftIsThisLeague.value ? src.teamLogos.value?.[rosterIdForSlot(slot)] : null) ??
+    draftUserAvatars.value[slot] ??
+    null
 
   // ── tendencies from league history ────────────────────────────────────────
   const historicalPicks = computed<HistoricalPick[]>(() => {
@@ -712,6 +724,8 @@ export function useDraftRoom() {
         teamKey: String(p?.draft_slot ?? p?.roster_id ?? ''),
         projected: vorByKey.value[key]?.pointsRos ?? 0,
         adp: adp.value[key] ?? null,
+        proTeam: String(p?.metadata?.team ?? '').toUpperCase(),
+        headshot: headshotByKey.value[key] ?? null,
       }
     })
     if (!rows.length) return null
@@ -746,9 +760,12 @@ export function useDraftRoom() {
 
     // The universe as it stood before the draft: everyone taken, plus whoever is
     // still on the board now.
-    const universe = new Map<string, { playerKey: string; name: string; position: string; value: number }>()
+    const universe = new Map<string, { playerKey: string; name: string; position: string; value: number; proTeam?: string; headshot?: string }>()
     for (const r of availablePlayers.value) {
-      universe.set(r.playerKey, { playerKey: r.playerKey, name: r.name, position: r.position, value: r.value })
+      universe.set(r.playerKey, {
+        playerKey: r.playerKey, name: r.name, position: r.position, value: r.value,
+        proTeam: r.proTeam, headshot: r.headshot,
+      })
     }
     for (const p of picks.value as any[]) {
       const key = String(p.player_id ?? '')
@@ -760,12 +777,14 @@ export function useDraftRoom() {
         name: [p?.metadata?.first_name, p?.metadata?.last_name].filter(Boolean).join(' ') || key,
         position: String(p?.metadata?.position ?? v.position ?? ''),
         value: v.pointsRos,
+        proTeam: String(p?.metadata?.team ?? '').toUpperCase(),
+        headshot: headshotByKey.value[key],
       })
     }
     const players = [...universe.values()]
     if (!players.length) return null
 
-    const steps = replayDraft({
+    const args = {
       shape: shape.value,
       picks: replayPicks,
       mySlot: mySlot.value,
@@ -773,11 +792,50 @@ export function useDraftRoom() {
       adpByKey: adp.value,
       tendencies: tendencies.value,
       rosterIdForSlot,
+      slots: effectiveSlots.value ?? {},
       totalStarterSlots: starterSlots.value,
       runs: 200,
       seed: 1337,
-    })
-    return { steps, calibration: calibration(steps, replayPicks, adp.value), universe: players.length }
+    }
+    const steps = replayDraft(args)
+
+    /**
+     * What listening would have been worth. Both rosters are scored the same way
+     * the recap scores every team — best legal lineup by projected points — so
+     * the comparison is like for like. One assumption, and it is a real one: the
+     * other nine managers are held to the picks they actually made.
+     */
+    const meta = new Map(players.map((p) => [p.playerKey, p]))
+    const lineupPoints = (keys: string[]): number => {
+      const { rows } = buildLineup({
+        slots: effectiveSlots.value ?? {},
+        players: [...keys]
+          .map((k) => meta.get(k))
+          .filter(Boolean)
+          .sort((a, b) => (b!.value ?? 0) - (a!.value ?? 0))
+          .map((p, i) => ({
+            playerKey: p!.playerKey, name: p!.name, position: p!.position, overallPick: i,
+          })),
+      })
+      return rows.reduce((n, r) => n + (r.player ? vorByKey.value[r.player.playerKey]?.pointsRos ?? 0 : 0), 0)
+    }
+
+    const myKeys = replayPicks
+      .filter((p) => slotAtPick(shape.value!, p.overallPick) === mySlot.value)
+      .map((p) => p.playerKey)
+    const ourKeys = followRecommendations(args)
+
+    return {
+      steps,
+      calibration: calibration(steps, replayPicks, adp.value),
+      universe: players.length,
+      metaByKey: Object.fromEntries(meta),
+      outcome: {
+        yours: Math.round(lineupPoints(myKeys)),
+        ours: Math.round(lineupPoints(ourKeys)),
+        ourPicks: ourKeys.map((k) => meta.get(k)).filter(Boolean),
+      },
+    }
   })
 
   const loading = computed(() => loadingDraft.value || vorLoading.value || src.loading.value)
@@ -841,6 +899,7 @@ export function useDraftRoom() {
     myPicks,
     myLineup,
     recap,
+    teamAvatarForSlot,
     starterSlots,
     effectiveSlots,
     draftedKeys,

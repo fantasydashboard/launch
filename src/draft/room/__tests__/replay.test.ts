@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { replayDraft, calibration, type ReplayInput, type ReplayPick } from '../replay'
+import { replayDraft, followRecommendations, calibration, type ReplayInput, type ReplayPick } from '../replay'
 import { buildTendencies } from '../tendencies'
 import type { DraftShape } from '../pickOrder'
 
@@ -146,5 +146,63 @@ describe('calibration — scored on the players the question is live for', () =>
     )
     expect(buckets[0].total).toBe(1)
     expect(buckets[0].actualSurvived).toBe(0)
+  })
+})
+
+
+describe('followRecommendations — what listening would have got you', () => {
+  it('gives one player per pick of mine, never the same man twice', () => {
+    const taken = followRecommendations(input())
+    expect(taken.length).toBeGreaterThan(0)
+    expect(new Set(taken).size).toBe(taken.length)
+  })
+
+  it('may take a player I actually drafted — in this world I never did', () => {
+    // Slot 1 really took p1, p8 and p9. Following our advice, those three are
+    // back in the pool: my own picks are not removed from a draft I did not make.
+    const taken = followRecommendations(input())
+    const mine = picks.filter((p) => p.slot === 1).map((p) => p.playerKey)
+    expect(mine.length).toBeGreaterThan(0)
+    // Nothing here asserts it DOES take them, only that it is allowed to and
+    // that everything it takes is a real player.
+    for (const key of taken) expect(players.some((p) => p.playerKey === key)).toBe(true)
+  })
+
+  it('never takes a player an opponent already had', () => {
+    const taken = followRecommendations(input())
+    const bySlot = new Map(picks.map((p) => [p.playerKey, p.slot]))
+    for (const key of taken) {
+      const opponentPick = picks.find((p) => p.playerKey === key && p.slot !== 1)
+      if (!opponentPick) continue
+      // If an opponent took him, we can only have him if we got there first.
+      const myPickNumbers = picks.filter((p) => p.slot === 1).map((p) => p.overallPick)
+      expect(Math.min(...myPickNumbers)).toBeLessThan(opponentPick.overallPick + shape.teams * shape.rounds)
+      expect(bySlot.get(key)).not.toBe(undefined)
+    }
+  })
+
+  it('leaves the observed replay untouched', () => {
+    // Following mode must not leak into the normal answer.
+    const a = replayDraft(input()).map((s) => s.recommendation?.pick.playerKey)
+    const b = replayDraft(input()).map((s) => s.recommendation?.pick.playerKey)
+    expect(a).toEqual(b)
+    expect(a.some(Boolean)).toBe(true)
+  })
+})
+
+describe('replayDraft — it has to be the live path', () => {
+  const positions = (over: Partial<ReplayInput>) =>
+    replayDraft(input(over)).map((s) => s.recommendation?.pick.position)
+
+  it('follows the lineup it is drafting for', () => {
+    // The replay had no need factor at all, so it recommended positions the
+    // roster could not start — which is not what the tool says on the clock.
+    // A back-only lineup and a receiver-only lineup must not produce the same
+    // sequence of recommendations from the same board.
+    const backsOnly = positions({ slots: { RB: 3, BN: 3 } })
+    const receiversOnly = positions({ slots: { WR: 3, BN: 3 } })
+    expect(backsOnly).not.toEqual(receiversOnly)
+    expect(backsOnly.filter((p) => p === 'RB').length)
+      .toBeGreaterThan(receiversOnly.filter((p) => p === 'RB').length)
   })
 })

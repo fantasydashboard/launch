@@ -17,6 +17,7 @@ import { buildRecommendation, type Recommendation } from './recommend'
 import { simulateSurvival } from './survival'
 import { nextPickFor, slotAtPick, slotsBetween, type DraftShape } from './pickOrder'
 import { priorFor, type Tendencies } from './tendencies'
+import { needFactorByPosition } from './rosterNeed'
 
 export interface ReplayPick {
   overallPick: number
@@ -35,9 +36,17 @@ export interface ReplayInput {
   tendencies: Tendencies
   rosterIdForSlot: (slot: number) => string
   roundBucket?: (round: number) => string
+  /** Starting slots, so the replay discounts positions you can no longer start. */
+  slots?: Record<string, number>
   totalStarterSlots: number
   runs?: number
   seed?: number
+  /**
+   * `observed` answers "given the draft that happened, what would we have said?"
+   * `following` answers "and what if you had listened?" — at your picks the
+   * engine takes its own recommendation, so availability diverges from there on.
+   */
+  mode?: 'observed' | 'following'
 }
 
 export interface ReplayStep {
@@ -70,9 +79,12 @@ export function replayDraft(input: ReplayInput): ReplayStep[] {
   } = input
   const roundBucket = input.roundBucket ?? ((r: number) => (r <= 3 ? 'early' : r <= 8 ? 'mid' : 'late'))
 
+  const following = input.mode === 'following'
   const byOverall = new Map(picks.map((p) => [p.overallPick, p]))
   const steps: ReplayStep[] = []
   const drafted = new Set<string>()
+  const myRoster: string[] = []
+  const positionByKey = new Map(players.map((p) => [p.playerKey, p.position]))
   let myTaken = 0
 
   const totalPicks = shape.teams * shape.rounds
@@ -99,10 +111,21 @@ export function replayDraft(input: ReplayInput): ReplayStep[] {
         seed: input.seed ?? 1337,
       })
 
+      // The replay has to be the live path or it verifies nothing. Without the
+      // need factor it kept recommending a position already spoken for — which
+      // is not what the tool would have said on the clock.
+      const filledByPosition: Record<string, number> = {}
+      for (const key of myRoster) {
+        const pos = (positionByKey.get(key) ?? '').toUpperCase()
+        if (pos) filledByPosition[pos] = (filledByPosition[pos] ?? 0) + 1
+      }
+
       const board = buildBoard({
         available,
+        needFactor: input.slots ? needFactorByPosition({ slots: input.slots, filledByPosition }) : undefined,
         survival: sim.survival,
         expectedBestAtPosition: sim.expectedBestAtPosition,
+        expectedBestProjectedAtPosition: sim.expectedBestProjectedAtPosition,
         adpByKey,
         currentOverallPick: pick,
         filledStarterSlots: Math.min(myTaken, totalStarterSlots),
@@ -131,12 +154,31 @@ export function replayDraft(input: ReplayInput): ReplayStep[] {
         board,
       })
       myTaken++
+
+      // Whose roster is being built from here: yours, or the one we advised.
+      const mine = following ? board[0]?.playerKey : actual?.playerKey
+      if (mine) {
+        myRoster.push(mine)
+        if (following) drafted.add(mine)
+      }
     }
 
-    if (actual?.playerKey) drafted.add(actual.playerKey)
+    // In `following` mode your real picks are never removed — you didn't make
+    // them. An opponent who later took someone we had already claimed simply
+    // finds him gone; what he would have done instead is unknowable, so his pick
+    // is skipped rather than invented.
+    if (actual?.playerKey && !(following && slotAtPick(shape, pick) === mySlot)) {
+      drafted.add(actual.playerKey)
+    }
   }
 
   return steps
+}
+
+/** The roster you would have ended with by taking our top pick every time. */
+export function followRecommendations(input: ReplayInput): string[] {
+  const steps = replayDraft({ ...input, mode: 'following' })
+  return steps.map((s) => s.board[0]?.playerKey).filter((k): k is string => !!k)
 }
 
 /**

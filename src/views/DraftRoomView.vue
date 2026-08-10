@@ -12,7 +12,7 @@ const {
   currentOverallPick, hasHistory, myPicks, myLineup, starterSlots, slotUnknown,
   markDrafted, syncHealthy, refresh, shape,
   grid, teamNameForSlot, connectDraft, disconnectDraft, overrideDraftId, overrideError,
-  customRankings, replay, recap, comparePool, boardByRank, boardTierByKey, listRankByKey, effectiveSlots, mySlot,
+  customRankings, replay, recap, teamAvatarForSlot, comparePool, boardByRank, boardTierByKey, listRankByKey, effectiveSlots, mySlot,
 } = useDraftRoom()
 
 // Admin-only analyst override. Invisible to every other account.
@@ -608,26 +608,49 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
 
         <template v-if="recap.values.length">
           <h3 class="mb-2 mt-4 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Fell to you</h3>
-          <div v-for="n in recap.values" :key="n.pick.playerKey" class="flex items-center gap-3 border-b border-dark-border/40 py-1.5 last:border-0">
-            <span class="min-w-0 flex-1 truncate text-sm text-dark-text">{{ n.pick.name }}</span>
+          <div v-for="n in recap.values" :key="n.pick.playerKey" class="flex items-center gap-2 border-b border-dark-border/40 py-2 last:border-0">
+            <img v-if="n.pick.headshot" :src="n.pick.headshot" alt="" loading="lazy" @error="onImgErr"
+                 class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm text-dark-text">{{ n.pick.name }}</span>
+              <span class="mt-0.5 flex items-center gap-1">
+                <span class="rounded px-1 font-mono text-[9px] font-semibold" :class="posClass(n.pick.position)">{{ n.pick.position }}</span>
+                <img v-if="teamLogo(n.pick.proTeam)" :src="teamLogo(n.pick.proTeam)" alt="" loading="lazy" @error="onImgErr" class="h-3 w-3 object-contain" />
+                <span class="font-mono text-[9px] text-dark-textMuted">{{ n.pick.proTeam }}</span>
+              </span>
+            </span>
             <span class="shrink-0 font-mono text-[11px] text-emerald-400">{{ n.delta }} picks past ADP</span>
           </div>
         </template>
 
         <template v-if="recap.reaches.length">
           <h3 class="mb-2 mt-4 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">You went early on</h3>
-          <div v-for="n in recap.reaches" :key="n.pick.playerKey" class="flex items-center gap-3 border-b border-dark-border/40 py-1.5 last:border-0">
-            <span class="min-w-0 flex-1 truncate text-sm text-dark-text">{{ n.pick.name }}</span>
+          <div v-for="n in recap.reaches" :key="n.pick.playerKey" class="flex items-center gap-2 border-b border-dark-border/40 py-2 last:border-0">
+            <img v-if="n.pick.headshot" :src="n.pick.headshot" alt="" loading="lazy" @error="onImgErr"
+                 class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm text-dark-text">{{ n.pick.name }}</span>
+              <span class="mt-0.5 flex items-center gap-1">
+                <span class="rounded px-1 font-mono text-[9px] font-semibold" :class="posClass(n.pick.position)">{{ n.pick.position }}</span>
+                <img v-if="teamLogo(n.pick.proTeam)" :src="teamLogo(n.pick.proTeam)" alt="" loading="lazy" @error="onImgErr" class="h-3 w-3 object-contain" />
+                <span class="font-mono text-[9px] text-dark-textMuted">{{ n.pick.proTeam }}</span>
+              </span>
+            </span>
             <span class="shrink-0 font-mono text-[11px] text-dark-textMuted">{{ -n.delta }} picks ahead of ADP</span>
           </div>
         </template>
 
         <h3 class="mb-2 mt-4 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">The room</h3>
-        <div v-for="t in recap.teams" :key="t.teamKey" class="flex items-center gap-3 border-b border-dark-border/40 py-1.5 last:border-0"
+        <div v-for="t in recap.teams" :key="t.teamKey" class="flex items-center gap-2.5 border-b border-dark-border/40 py-2 last:border-0"
              :class="t.isMine ? 'text-dark-text' : 'text-dark-textMuted'">
-          <span class="w-6 shrink-0 font-mono text-[11px]">{{ t.rank }}</span>
+          <span class="w-5 shrink-0 font-mono text-[11px] tabular-nums">{{ t.rank }}</span>
+          <img v-if="teamAvatarForSlot(t.slot)" :src="teamAvatarForSlot(t.slot)!" alt="" loading="lazy" @error="onImgErr"
+               class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" />
+          <span v-else class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-dark-border/60 font-mono text-[10px] text-dark-textMuted">
+            {{ t.slot }}
+          </span>
           <span class="min-w-0 flex-1 truncate text-sm" :class="t.isMine ? 'font-semibold text-primary' : ''">{{ t.teamName }}</span>
-          <span class="shrink-0 font-mono text-[11px]">{{ Math.round(t.startingPoints) }}</span>
+          <span class="shrink-0 font-mono text-[11px] tabular-nums">{{ Math.round(t.startingPoints) }}</span>
         </div>
       </section>
 
@@ -640,19 +663,75 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
 
         <div v-if="!replay" class="py-6 text-center font-mono text-xs text-dark-textMuted">Connect a completed draft to replay it.</div>
         <template v-else>
-          <div v-for="s in replay.steps" :key="s.overallPick" class="border-b border-dark-border/40 py-2 last:border-0">
-            <div class="flex items-baseline gap-2">
-              <span class="w-12 shrink-0 font-mono text-[10px] text-dark-textMuted">pick {{ s.overallPick }}</span>
-              <span class="min-w-0 flex-1">
-                <span class="text-sm text-dark-text">
-                  we'd say <span class="font-semibold">{{ s.recommendation?.pick.name ?? '—' }}</span>
-                </span>
-                <span class="block font-mono text-[10px]"
-                  :class="s.recommendation && s.actualPlayerKey === s.recommendation.pick.playerKey ? 'text-emerald-400' : 'text-dark-textMuted'">
-                  you took {{ s.actualName ?? s.actualPlayerKey ?? '—' }}
-                </span>
+          <!-- What listening would have been worth. -->
+          <div class="mb-4 flex items-stretch gap-2">
+            <div class="flex-1 rounded-lg border border-dark-border bg-dark-bg/40 p-3">
+              <span class="block font-mono text-[10px] uppercase tracking-wide text-dark-textMuted">you drafted</span>
+              <span class="font-display text-2xl font-bold text-dark-text">{{ replay.outcome.yours }}</span>
+              <span class="ml-1 font-mono text-[10px] text-dark-textMuted">pts</span>
+            </div>
+            <div class="flex-1 rounded-lg border p-3"
+                 :class="replay.outcome.ours > replay.outcome.yours ? 'border-primary/50 bg-primary/5' : 'border-dark-border bg-dark-bg/40'">
+              <span class="block font-mono text-[10px] uppercase tracking-wide text-dark-textMuted">following us</span>
+              <span class="font-display text-2xl font-bold"
+                    :class="replay.outcome.ours > replay.outcome.yours ? 'text-primary' : 'text-dark-text'">
+                {{ replay.outcome.ours }}
+              </span>
+              <span class="ml-1 font-mono text-[10px] text-dark-textMuted">pts</span>
+              <span class="ml-2 font-mono text-[11px]"
+                    :class="replay.outcome.ours >= replay.outcome.yours ? 'text-emerald-400' : 'text-[#FF5C5C]'">
+                {{ replay.outcome.ours >= replay.outcome.yours ? '+' : '' }}{{ replay.outcome.ours - replay.outcome.yours }}
               </span>
             </div>
+          </div>
+          <p class="mb-4 font-mono text-[10px] leading-relaxed text-dark-textMuted">
+            both lineups scored the way the recap scores every team — best legal lineup, our
+            rest-of-season projections. one assumption, and it is a real one: the other managers
+            are held to the picks they actually made.
+          </p>
+
+          <div v-for="s in replay.steps" :key="s.overallPick" class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
+            <span class="w-9 shrink-0 font-mono text-[10px] text-dark-textMuted">{{ s.overallPick }}</span>
+
+            <span class="flex min-w-0 flex-1 items-center gap-2">
+              <img v-if="s.recommendation?.pick.headshot" :src="s.recommendation.pick.headshot" alt="" loading="lazy" @error="onImgErr"
+                   class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
+              <span class="min-w-0">
+                <span class="block font-mono text-[9px] uppercase tracking-wide text-dark-textMuted">we'd say</span>
+                <span class="block truncate text-sm font-semibold text-dark-text">{{ s.recommendation?.pick.name ?? '—' }}</span>
+                <span v-if="s.recommendation" class="mt-0.5 flex items-center gap-1">
+                  <span class="rounded px-1 font-mono text-[9px] font-semibold" :class="posClass(s.recommendation.pick.position)">
+                    {{ s.recommendation.pick.position }}
+                  </span>
+                  <img v-if="teamLogo(s.recommendation.pick.proTeam)" :src="teamLogo(s.recommendation.pick.proTeam)" alt=""
+                       loading="lazy" @error="onImgErr" class="h-3 w-3 object-contain" />
+                  <span class="font-mono text-[9px] text-dark-textMuted">{{ s.recommendation.pick.proTeam }}</span>
+                </span>
+              </span>
+            </span>
+
+            <span class="flex min-w-0 flex-1 items-center gap-2"
+                  :class="s.recommendation && s.actualPlayerKey === s.recommendation.pick.playerKey ? 'opacity-100' : 'opacity-80'">
+              <img v-if="replay.metaByKey[s.actualPlayerKey ?? '']?.headshot"
+                   :src="replay.metaByKey[s.actualPlayerKey ?? ''].headshot" alt="" loading="lazy" @error="onImgErr"
+                   class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
+              <span class="min-w-0">
+                <span class="block font-mono text-[9px] uppercase tracking-wide"
+                      :class="s.recommendation && s.actualPlayerKey === s.recommendation.pick.playerKey ? 'text-emerald-400' : 'text-dark-textMuted'">
+                  you took
+                </span>
+                <span class="block truncate text-sm text-dark-text">{{ s.actualName ?? '—' }}</span>
+                <span v-if="replay.metaByKey[s.actualPlayerKey ?? '']" class="mt-0.5 flex items-center gap-1">
+                  <span class="rounded px-1 font-mono text-[9px] font-semibold" :class="posClass(replay.metaByKey[s.actualPlayerKey ?? ''].position)">
+                    {{ replay.metaByKey[s.actualPlayerKey ?? ''].position }}
+                  </span>
+                  <img v-if="teamLogo(replay.metaByKey[s.actualPlayerKey ?? ''].proTeam)"
+                       :src="teamLogo(replay.metaByKey[s.actualPlayerKey ?? ''].proTeam)" alt=""
+                       loading="lazy" @error="onImgErr" class="h-3 w-3 object-contain" />
+                  <span class="font-mono text-[9px] text-dark-textMuted">{{ replay.metaByKey[s.actualPlayerKey ?? ''].proTeam }}</span>
+                </span>
+              </span>
+            </span>
           </div>
 
           <h3 class="mb-2 mt-4 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Calibration</h3>
