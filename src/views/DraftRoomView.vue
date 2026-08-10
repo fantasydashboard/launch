@@ -321,7 +321,7 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
     <template v-else>
       <!-- Say plainly when the model is working with less than it wants -->
       <p v-if="!hasHistory" class="mb-3 rounded-lg border border-dark-border bg-dark-card px-3 py-2 font-mono text-[11px] text-dark-textMuted">
-        No past drafts loaded for this league — opponent reads use league-average behavior, not your managers'.
+        No past drafts loaded for this league — opponents are modelled on the market (best available by ADP), not on how your managers actually draft.
       </p>
       <p v-if="slotUnknown" class="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-mono text-[11px] text-amber-300">
         Couldn't tell which seat is yours in this draft, so there are no upcoming picks to simulate —
