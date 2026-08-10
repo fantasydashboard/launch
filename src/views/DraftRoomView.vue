@@ -17,14 +17,13 @@ const {
 const showRankings = ref(false)
 const comparison = computed(() => customRankings.compare(comparePool.value))
 
-type Tab = 'pick' | 'board' | 'grid' | 'room' | 'last' | 'replay'
+type Tab = 'pick' | 'board' | 'grid' | 'roster' | 'replay'
 const tab = ref<Tab>('pick')
 const TABS: { id: Tab; label: string }[] = [
   { id: 'pick', label: 'Pick' },
   { id: 'board', label: 'Board' },
   { id: 'grid', label: 'Draft Board' },
-  { id: 'room', label: 'Room' },
-  { id: 'last', label: "Won't Last" },
+  { id: 'roster', label: 'Roster' },
 ]
 /** Replay only means anything once a draft is finished. */
 const visibleTabs = computed(() =>
@@ -69,12 +68,36 @@ const pickLabel = computed(() => {
   return `${r}.${String(inRound).padStart(2, '0')}`
 })
 
-const POSITIONS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF'] as const
+const POSITIONS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'LAST'] as const
 const posFilter = ref<(typeof POSITIONS)[number]>('ALL')
+const filterLabel = (p: string) => (p === 'ALL' ? 'all' : p === 'LAST' ? "won't last" : p)
+
+/**
+ * Position colours deliberately avoid red, amber and green — those already mean
+ * gone, stale and good on this screen, and a red RB badge beside a red 7% blurs
+ * both. Colour never carries the meaning alone: the badge still reads the
+ * position, so it survives a dim screen or colour blindness.
+ */
+const POS_CLASS: Record<string, string> = {
+  QB: 'bg-violet-500/20 text-violet-300',
+  RB: 'bg-cyan-500/20 text-cyan-300',
+  WR: 'bg-blue-500/20 text-blue-300',
+  TE: 'bg-fuchsia-500/20 text-fuchsia-300',
+  K: 'bg-dark-border/60 text-dark-textMuted',
+  DEF: 'bg-dark-border/60 text-dark-textMuted',
+}
+const posClass = (p: string) => POS_CLASS[(p || '').toUpperCase()] ?? 'bg-dark-border/60 text-dark-textMuted'
 
 // The Board renders the active list in ITS order — the analyst's, or UFD's.
 // Filtering by position keeps that order within the position.
 const visibleBoard = computed(() => {
+  if (posFilter.value === 'LAST') {
+    // Urgency is the one ordering the list's own order cannot express.
+    return board.value
+      .filter((r) => SKILL.has(r.position) && r.survival < 0.7)
+      .sort((a, b) => a.survival - b.survival)
+      .slice(0, 25)
+  }
   const rows = posFilter.value === 'ALL'
     ? boardByRank.value
     : boardByRank.value.filter((r) => r.position === posFilter.value)
@@ -93,9 +116,6 @@ function isTierHeader(_i: number): boolean { return false }
 
 // Kickers and defenses always last, and saying so buries the players who do not.
 const SKILL = new Set(['QB', 'RB', 'WR', 'TE'])
-const wontLast = computed(() =>
-  board.value.filter((r) => SKILL.has(r.position) && r.survival < 0.7).slice(0, 25),
-)
 const safeUntilNext = computed(() =>
   board.value.filter((r) => SKILL.has(r.position) && r.survival >= 0.7).slice(0, 12),
 )
@@ -320,8 +340,8 @@ const holes = computed(() => {
               <img v-if="recommendation.pick.headshot" :src="recommendation.pick.headshot" :alt="recommendation.pick.name" @error="onImgErr" class="h-12 w-12 shrink-0 rounded-full bg-dark-border object-cover" />
               <div class="min-w-0">
                 <p class="truncate font-display text-xl font-bold text-dark-text">{{ recommendation.pick.name }}</p>
-                <p class="flex items-center gap-1 font-mono text-xs text-dark-textMuted">
-                  {{ recommendation.pick.position }}
+                <p class="flex items-center gap-1.5 font-mono text-xs text-dark-textMuted">
+                  <span class="rounded px-1.5 py-0.5 text-[10px] font-semibold" :class="posClass(recommendation.pick.position)">{{ recommendation.pick.position }}</span>
                   <template v-if="recommendation.pick.proTeam">
                     · <img :src="teamLogo(recommendation.pick.proTeam)" alt="" @error="onImgErr" class="h-3 w-3 object-contain" />{{ recommendation.pick.proTeam }}
                   </template>
@@ -340,9 +360,17 @@ const holes = computed(() => {
           <section v-if="recommendation.alternates.length" class="rounded-xl border border-dark-border bg-dark-card p-4">
             <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Alternates</h2>
             <div v-for="a in recommendation.alternates" :key="a.row.playerKey" class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
+              <img v-if="a.row.headshot" :src="a.row.headshot" :alt="a.row.name" loading="lazy" @error="onImgErr"
+                   class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
               <span class="min-w-0 flex-1">
                 <span class="truncate text-sm font-semibold text-dark-text">{{ a.row.name }}</span>
-                <span class="block font-mono text-[10px] text-dark-textMuted">{{ a.row.position }} · {{ a.note }}</span>
+                <span class="flex items-center gap-1.5 font-mono text-[10px] text-dark-textMuted">
+                  <span class="rounded px-1 py-0.5 text-[9px] font-semibold" :class="posClass(a.row.position)">{{ a.row.position }}</span>
+                  <template v-if="a.row.proTeam">
+                    <img :src="teamLogo(a.row.proTeam)" alt="" @error="onImgErr" class="h-3 w-3 object-contain" />{{ a.row.proTeam }}
+                  </template>
+                  · {{ a.note }}
+                </span>
               </span>
               <span class="shrink-0 text-right font-mono text-sm text-dark-text">{{ round(a.row.score) > 0 ? '+' : '' }}{{ round(a.row.score) }}</span>
             </div>
@@ -357,8 +385,8 @@ const holes = computed(() => {
           <button
             v-for="p in POSITIONS" :key="p" @click="posFilter = p"
             class="rounded-full px-2.5 py-1 font-mono text-[10px] uppercase transition-colors"
-            :class="posFilter === p ? 'bg-primary/20 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
-          >{{ p === 'ALL' ? 'all' : p }}</button>
+            :class="posFilter === p ? (p === 'LAST' ? 'bg-[#FF5C5C]/20 text-[#FF5C5C]' : 'bg-primary/20 text-primary') : 'text-dark-textMuted hover:text-dark-text'"
+          >{{ filterLabel(p) }}</button>
         </div>
 
         <div class="mb-2 flex items-center gap-3 border-b border-dark-border pb-1 font-mono text-[9px] uppercase text-dark-textMuted">
@@ -389,13 +417,20 @@ const holes = computed(() => {
             class="flex w-full items-center gap-3 border-b border-dark-border/40 py-2 text-left last:border-0 hover:bg-dark-border/20"
           >
             <span class="w-6 shrink-0 font-mono text-[10px] text-dark-textMuted">{{ listRankByKey[r.playerKey] ?? i + 1 }}</span>
+            <img v-if="r.headshot" :src="r.headshot" :alt="r.name" loading="lazy" @error="onImgErr"
+                 class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" />
+            <span v-else class="h-7 w-7 shrink-0 rounded-full bg-dark-border" />
             <span class="min-w-0 flex-1">
-              <span class="truncate text-sm font-semibold text-dark-text">
-                {{ r.name }}
-                <span v-if="r.flag === 'value'" class="ml-1 rounded bg-emerald-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-emerald-400">value</span>
+              <span class="flex items-center gap-1.5">
+                <span class="truncate text-sm font-semibold text-dark-text">{{ r.name }}</span>
+                <span v-if="r.flag === 'value'" class="shrink-0 rounded bg-emerald-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-emerald-400">value</span>
               </span>
-              <span class="block font-mono text-[10px] text-dark-textMuted">
-                {{ r.position }}<template v-if="!showTierHeaders"> · {{ r.position }}{{ r.tier }}</template><template v-if="r.proTeam"> · {{ r.proTeam }}</template><template v-if="r.adp !== null"> · adp {{ round(r.adp) }}</template><template v-if="round(r.score) !== round(r.vona)"> · edge {{ round(r.vona) }}</template>
+              <span class="flex items-center gap-1.5 font-mono text-[10px] text-dark-textMuted">
+                <span class="rounded px-1 py-0.5 text-[9px] font-semibold" :class="posClass(r.position)">{{ r.position }}{{ r.tier }}</span>
+                <template v-if="r.proTeam">
+                  <img :src="teamLogo(r.proTeam)" alt="" @error="onImgErr" class="h-3 w-3 object-contain" />{{ r.proTeam }}
+                </template>
+                <template v-if="r.adp !== null"> · adp {{ round(r.adp) }}</template>
               </span>
             </span>
             <span class="w-12 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ round(r.projected) }}</span>
@@ -405,6 +440,14 @@ const holes = computed(() => {
             </span>
           </button>
         </template>
+
+        <p v-if="posFilter === 'LAST' && safeUntilNext.length" class="mt-4 border-t border-dark-border pt-3 font-mono text-[11px] text-dark-textMuted">
+          <span class="uppercase tracking-wide text-dark-textMuted/70">should still be there</span><br />
+          {{ safeUntilNext.map((r) => r.name).join(' · ') }}
+        </p>
+        <p v-else-if="posFilter === 'LAST'" class="mt-4 font-mono text-[11px] text-dark-textMuted">
+          Everyone worth taking should still be there at {{ myNextPick }}.
+        </p>
       </section>
 
       <!-- DRAFT BOARD (grid) -->
@@ -439,7 +482,7 @@ const holes = computed(() => {
               >
                 <template v-if="cell.pick">
                   <span class="block truncate font-mono text-[10px] text-dark-text">{{ cell.pick.playerName }}</span>
-                  <span class="block font-mono text-[9px] text-dark-textMuted">{{ cell.pick.position }}</span>
+                  <span class="mt-0.5 inline-block rounded px-1 font-mono text-[9px] font-semibold" :class="posClass(cell.pick.position)">{{ cell.pick.position }}</span>
                 </template>
                 <span v-else-if="cell.isCurrent" class="block font-mono text-[9px] text-primary">on the clock</span>
                 <span v-else class="block font-mono text-[9px] text-dark-textMuted/50">{{ cell.overallPick }}</span>
@@ -450,12 +493,12 @@ const holes = computed(() => {
       </section>
 
       <!-- ROOM -->
-      <section v-else-if="tab === 'room'" class="rounded-xl border border-dark-border bg-dark-card p-4">
+      <section v-else-if="tab === 'roster'" class="rounded-xl border border-dark-border bg-dark-card p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Your roster</h2>
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">{{ myPicks.length }} picked · {{ starterSlots }} starting slots</p>
         <div v-for="h in holes" :key="h.slot" class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0"
              :class="h.late ? 'opacity-50' : ''">
-          <span class="w-24 shrink-0 font-mono text-[11px] uppercase text-dark-textMuted">{{ h.slot }}</span>
+          <span class="w-24 shrink-0"><span class="rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold" :class="posClass(h.slot)">{{ h.slot }}</span></span>
           <span class="w-12 shrink-0 font-mono text-sm"
                 :class="h.have >= h.need ? 'text-emerald-400' : h.late ? 'text-dark-textMuted' : 'text-[#FF5C5C]'">
             {{ h.have }}/{{ h.need }}
@@ -463,7 +506,12 @@ const holes = computed(() => {
           <span class="min-w-0 flex-1 truncate font-mono text-[11px] text-dark-textMuted">
             <template v-if="h.have >= h.need">filled</template>
             <template v-else-if="h.late">fill late</template>
-            <template v-else-if="h.best">best avail: <span class="text-dark-text">{{ h.best.name }}</span> ({{ round(h.best.score) }})</template>
+            <template v-else-if="h.best">
+              best avail:
+              <img v-if="h.best.headshot" :src="h.best.headshot" alt="" loading="lazy" @error="onImgErr"
+                   class="mx-1 inline-block h-5 w-5 rounded-full bg-dark-border object-cover align-middle" />
+              <span class="text-dark-text">{{ h.best.name }}</span> ({{ round(h.best.score) }})
+            </template>
             <template v-else>—</template>
           </span>
         </div>
@@ -508,26 +556,6 @@ const holes = computed(() => {
         </template>
       </section>
 
-      <!-- WON'T LAST -->
-      <section v-else class="rounded-xl border border-dark-border bg-dark-card p-4">
-        <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
-          Won't last<template v-if="myNextPick"> to {{ myNextPick }}</template>
-        </h2>
-        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">simulated from how your league actually drafts</p>
-        <div v-if="!wontLast.length" class="py-6 text-center font-mono text-xs text-dark-textMuted">Everyone worth taking should still be there.</div>
-        <div v-for="r in wontLast" :key="r.playerKey" class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
-          <span class="min-w-0 flex-1">
-            <span class="truncate text-sm font-semibold text-dark-text">{{ r.name }}</span>
-            <span class="block font-mono text-[10px] text-dark-textMuted">{{ r.position }} · tier {{ r.tier }}</span>
-          </span>
-          <span class="shrink-0 font-mono text-sm font-bold text-[#FF5C5C]">{{ pct(1 - r.survival) }}</span>
-        </div>
-
-        <template v-if="safeUntilNext.length">
-          <h3 class="mb-2 mt-4 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Should still be there</h3>
-          <p class="font-mono text-[11px] text-dark-textMuted">{{ safeUntilNext.map((r) => r.name).join(' · ') }}</p>
-        </template>
-      </section>
     </template>
   </div>
 </template>
