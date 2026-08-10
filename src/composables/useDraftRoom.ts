@@ -20,6 +20,8 @@ import { slotsFromDraftSettings, scoringFromDraftMetadata } from '@/draft/room/d
 import { replayDraft, followRecommendations, calibration, type ReplayPick } from '@/draft/room/replay'
 import { buildRecap, type RecapPick } from '@/draft/room/recap'
 import { useCustomRankings } from '@/composables/useCustomRankings'
+import { useDraftHistory } from '@/composables/useDraftHistory'
+import type { DraftRecord } from '@/draft/room/draftHistory'
 
 /** How often to re-read picks while a draft is running. */
 const POLL_MS = 5000
@@ -838,6 +840,45 @@ export function useDraftRoom() {
     }
   })
 
+  /**
+   * Finished drafts are archived automatically. Asking someone to press save at
+   * the end of a draft is asking them to forget: the moment the last pick lands
+   * they are talking to the room, not looking at this screen.
+   */
+  const history = useDraftHistory()
+  watch(
+    () => [recap.value, replay.value] as const,
+    ([rc, rp]) => {
+      const id = String(draftMeta.value?.draft_id ?? '')
+      if (!id || !rc?.me) return
+      const record: DraftRecord = {
+        draftId: id,
+        savedAt: new Date().toISOString(),
+        season: String(draftMeta.value?.season ?? ''),
+        kind: draftIsThisLeague.value ? 'league' : 'mock',
+        teams: effectiveTeams.value,
+        rounds: Number(draftMeta.value?.settings?.rounds) || 0,
+        mySlot: mySlot.value,
+        grade: rc.grade,
+        rank: rc.me.rank,
+        of: rc.teams.length,
+        startingPoints: Math.round(rc.me.startingPoints),
+        behindLeader: rc.behindLeader,
+        positionEdge: rc.positionEdge,
+        picks: myPicks.value.map((p: any) => ({
+          overallPick: Number(p?.pick_no) || 0,
+          playerKey: String(p?.player_id ?? ''),
+          name: [p?.metadata?.first_name, p?.metadata?.last_name].filter(Boolean).join(' '),
+          position: String(p?.metadata?.position ?? ''),
+        })),
+        outcome: rp?.outcome ? { yours: rp.outcome.yours, ours: rp.outcome.ours } : null,
+        calibration: rp?.calibration ?? undefined,
+      }
+      history.save(record)
+    },
+    { deep: false },
+  )
+
   const loading = computed(() => loadingDraft.value || vorLoading.value || src.loading.value)
 
   /** The board everyone pictures: rounds down, teams across, snake rows reversed. */
@@ -899,6 +940,7 @@ export function useDraftRoom() {
     myPicks,
     myLineup,
     recap,
+    history,
     teamAvatarForSlot,
     starterSlots,
     effectiveSlots,

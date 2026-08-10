@@ -74,9 +74,8 @@ const NOTABLE_PICKS = 6
  * Grade from rank alone. Stated plainly so it can be argued with: the top of the
  * room gets an A, the bottom gets a D, and everything between is spread evenly.
  */
-export function gradeForRank(rank: number, of: number): string {
-  if (of <= 1) return 'A'
-  const pct = (rank - 1) / (of - 1) // 0 = best lineup in the room
+export function gradeForPercentile(pct: number): string {
+  if (!Number.isFinite(pct)) return 'A'
   if (pct <= 0.1) return 'A+'
   if (pct <= 0.25) return 'A'
   if (pct <= 0.4) return 'B+'
@@ -84,6 +83,11 @@ export function gradeForRank(rank: number, of: number): string {
   if (pct <= 0.75) return 'C+'
   if (pct <= 0.9) return 'C'
   return 'D'
+}
+
+export function gradeForRank(rank: number, of: number): string {
+  if (of <= 1) return 'A'
+  return gradeForPercentile((rank - 1) / (of - 1)) // 0 = best lineup in the room
 }
 
 function lineupFor(slots: Record<string, number>, picks: RecapPick[]) {

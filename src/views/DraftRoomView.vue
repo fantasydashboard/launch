@@ -12,14 +12,14 @@ const {
   currentOverallPick, hasHistory, myPicks, myLineup, starterSlots, slotUnknown,
   markDrafted, syncHealthy, refresh, shape,
   grid, teamNameForSlot, connectDraft, disconnectDraft, overrideDraftId, overrideError,
-  customRankings, replay, recap, teamAvatarForSlot, comparePool, boardByRank, boardTierByKey, listRankByKey, effectiveSlots, mySlot,
+  customRankings, replay, recap, history, teamAvatarForSlot, comparePool, boardByRank, boardTierByKey, listRankByKey, effectiveSlots, mySlot,
 } = useDraftRoom()
 
 // Admin-only analyst override. Invisible to every other account.
 const showRankings = ref(false)
 const comparison = computed(() => customRankings.compare(comparePool.value))
 
-type Tab = 'pick' | 'board' | 'grid' | 'roster' | 'recap' | 'replay'
+type Tab = 'pick' | 'board' | 'grid' | 'roster' | 'recap' | 'replay' | 'history'
 const tab = ref<Tab>('pick')
 const TABS: { id: Tab; label: string }[] = [
   { id: 'pick', label: 'Pick' },
@@ -32,7 +32,24 @@ const visibleTabs = computed(() => [
   ...TABS,
   ...(recap.value ? [{ id: 'recap' as Tab, label: 'Recap' }] : []),
   ...(replay.value ? [{ id: 'replay' as Tab, label: 'Replay' }] : []),
+  ...(history.records.value.length ? [{ id: 'history' as Tab, label: 'History' }] : []),
 ])
+
+/** Mocks and league nights are different rooms; the summary never mixes them. */
+const historyKind = ref<'all' | 'league' | 'mock'>('all')
+const historyRecords = computed(() =>
+  historyKind.value === 'all' ? history.records.value : history.records.value.filter((r) => r.kind === historyKind.value),
+)
+const historySummary = computed(() =>
+  history.summaryFor(historyKind.value === 'all' ? undefined : historyKind.value),
+)
+const historyCalibration = computed(() =>
+  history.calibrationFor(historyKind.value === 'all' ? undefined : historyKind.value),
+)
+const shortDate = (iso: string) => {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
 // The draft ending is the one moment worth moving the user for.
 watch(() => !!recap.value, (done) => { if (done) tab.value = 'recap' })
 
@@ -652,6 +669,90 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
           <span class="min-w-0 flex-1 truncate text-sm" :class="t.isMine ? 'font-semibold text-primary' : ''">{{ t.teamName }}</span>
           <span class="shrink-0 font-mono text-[11px] tabular-nums">{{ Math.round(t.startingPoints) }}</span>
         </div>
+      </section>
+
+      <!-- HISTORY: every draft you've finished -->
+      <section v-else-if="tab === 'history'" class="rounded-xl border border-dark-border bg-dark-card p-4">
+        <div class="mb-3 flex items-center justify-between gap-3">
+          <h2 class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Your drafts</h2>
+          <div class="flex gap-1">
+            <button v-for="k in (['all', 'league', 'mock'] as const)" :key="k" @click="historyKind = k"
+                    class="rounded-full border px-2 py-0.5 font-mono text-[10px] transition-colors"
+                    :class="historyKind === k ? 'border-primary text-primary' : 'border-dark-border text-dark-textMuted hover:text-dark-text'">
+              {{ k }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="!historyRecords.length" class="py-6 text-center font-mono text-xs text-dark-textMuted">
+          No {{ historyKind === 'all' ? '' : historyKind + ' ' }}drafts saved yet.
+        </div>
+
+        <template v-else>
+          <div class="mb-4 grid grid-cols-3 gap-2">
+            <div class="rounded-lg border border-dark-border bg-dark-bg/40 p-3">
+              <span class="block font-mono text-[10px] uppercase tracking-wide text-dark-textMuted">all {{ historySummary.count }}</span>
+              <span class="font-display text-2xl font-bold text-dark-text">{{ historySummary.averageGrade }}</span>
+            </div>
+            <div class="rounded-lg border border-dark-border bg-dark-bg/40 p-3">
+              <span class="block font-mono text-[10px] uppercase tracking-wide text-dark-textMuted">last {{ historySummary.recentCount }}</span>
+              <span class="font-display text-2xl font-bold"
+                    :class="historySummary.recentPercentile < historySummary.averagePercentile ? 'text-emerald-400' : 'text-dark-text'">
+                {{ historySummary.recentGrade }}
+              </span>
+            </div>
+            <div class="rounded-lg border border-dark-border bg-dark-bg/40 p-3">
+              <span class="block font-mono text-[10px] uppercase tracking-wide text-dark-textMuted">best</span>
+              <span class="font-display text-2xl font-bold text-dark-text">
+                {{ historySummary.bestFinish ? historySummary.bestFinish.rank : '—' }}
+                <span v-if="historySummary.bestFinish" class="font-mono text-xs text-dark-textMuted">of {{ historySummary.bestFinish.of }}</span>
+              </span>
+            </div>
+          </div>
+          <p class="mb-4 font-mono text-[10px] leading-relaxed text-dark-textMuted">
+            grades average the finishing position, not the letters — a run of high Bs and a run of
+            low As are different seasons.<template v-if="historySummary.advicePreferred">
+            our advice would have outscored you in {{ historySummary.advicePreferred.better }} of
+            {{ historySummary.advicePreferred.of }} drafts we could replay.</template>
+          </p>
+
+          <div v-for="r in historyRecords" :key="r.draftId"
+               class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
+            <span class="w-8 shrink-0 font-display text-lg font-bold"
+                  :class="r.rank <= Math.ceil(r.of / 3) ? 'text-primary' : 'text-dark-text'">{{ r.grade }}</span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm text-dark-text">
+                {{ r.rank }} of {{ r.of }} · {{ r.startingPoints }} pts
+              </span>
+              <span class="block font-mono text-[10px] text-dark-textMuted">
+                {{ shortDate(r.savedAt) }} · {{ r.kind }} · {{ r.teams }}-team, {{ r.rounds }} rounds<template v-if="r.outcome">
+                · ours {{ r.outcome.ours >= r.outcome.yours ? '+' : '' }}{{ r.outcome.ours - r.outcome.yours }}</template>
+              </span>
+            </span>
+            <button @click="history.forget(r.draftId)"
+                    class="shrink-0 font-mono text-[10px] text-dark-textMuted transition-colors hover:text-[#FF5C5C]">
+              remove
+            </button>
+          </div>
+
+          <template v-if="historyCalibration.length">
+            <h3 class="mb-1 mt-5 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+              Calibration, all drafts pooled
+            </h3>
+            <p class="mb-2 font-mono text-[10px] text-dark-textMuted">
+              one draft can't settle whether a band is biased or unlucky — this is the number that can
+            </p>
+            <div v-for="b in historyCalibration" :key="b.bucket"
+                 class="flex items-center gap-3 border-b border-dark-border/40 py-1 font-mono text-[11px] last:border-0">
+              <span class="w-20 text-dark-textMuted">{{ Math.round(b.bucket * 100) }}–{{ Math.round(b.bucket * 100) + 10 }}%</span>
+              <span class="w-24 text-dark-textMuted">said {{ (b.predicted * 100).toFixed(0) }}%</span>
+              <span class="w-24" :class="Math.abs(b.predicted - (b.total ? b.actualSurvived / b.total : 0)) <= 0.1 ? 'text-emerald-400' : 'text-[#FF5C5C]'">
+                was {{ b.total ? ((b.actualSurvived / b.total) * 100).toFixed(0) : 0 }}%
+              </span>
+              <span class="text-dark-textMuted/60">n={{ b.total }}</span>
+            </div>
+          </template>
+        </template>
       </section>
 
       <!-- REPLAY: what we would have said, and were we calibrated -->
