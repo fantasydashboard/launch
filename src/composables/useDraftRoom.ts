@@ -316,6 +316,13 @@ export function useDraftRoom() {
     return String(map?.[String(slot)] ?? '')
   }
 
+  /** Human label for the round range a tendency was measured over. */
+  const BUCKET_RANGE: Record<string, string> = {
+    early: 'rounds 1-3',
+    mid: 'rounds 4-8',
+    late: 'rounds 9+',
+  }
+
   const bucketForMyPick = computed(() => {
     if (!shape.value || !myPick.value) return 'early'
     return defaultRoundBucket(Math.ceil(myPick.value / Math.max(1, shape.value.teams)))
@@ -548,6 +555,7 @@ export function useDraftRoom() {
     return buildRecommendation(rows, {
       nextPick: myNextPick.value,
       upcoming: upcoming.value,
+      roundRange: BUCKET_RANGE[bucketForMyPick.value],
       tierRemaining: Math.max(0, sameTier.length - 1),
       nextTierDrop: nextTier ? top.value - nextTier.value : undefined,
     })

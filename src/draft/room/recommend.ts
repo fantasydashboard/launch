@@ -31,6 +31,8 @@ export interface RecommendContext {
   nextPick: number | null
   /** Managers picking before my next turn, with their priors — drives the tendency reason. */
   upcoming?: { teamKey: string; teamName: string; prior: PositionPrior }[]
+  /** Human label for the round range the tendency was measured over. */
+  roundRange?: string
   /** How many players remain in the pick's tier at his position, after taking him. */
   tierRemaining?: number
   /** Value drop to the next tier at the pick's position. */
@@ -48,18 +50,21 @@ const pts = (n: number) => `${n >= 0 ? '+' : ''}${Math.round(n * 10) / 10}`
  */
 function tendencyReason(pos: string, ctx: RecommendContext): Reason | null {
   const candidates = (ctx.upcoming ?? [])
-    .filter((u) => u.prior.sample > 0 && (u.prior.byPosition[pos] ?? 0) > 0)
+    .filter((u) => u.prior.sample > 0 && (u.prior.counts?.[pos] ?? 0) > 0)
     .sort((a, b) => (b.prior.byPosition[pos] ?? 0) - (a.prior.byPosition[pos] ?? 0))
   const top = candidates[0]
   if (!top) return null
   const share = top.prior.byPosition[pos] ?? 0
   // Below a coin flip this isn't a tendency worth citing.
   if (share < 0.4) return null
+
+  // The COUNT is what the manager actually did; the share is a shrunk estimate
+  // used for prediction. Reporting share x sample would invent an observation.
+  const hits = top.prior.counts?.[pos] ?? 0
+  const range = ctx.roundRange ? ` in ${ctx.roundRange}` : ''
   return {
     kind: 'tendency',
-    text: `${top.teamName} picks before you and has taken ${pos} here in ${Math.round(
-      share * top.prior.sample,
-    )} of ${top.prior.sample} drafts`,
+    text: `${top.teamName} picks before you and has taken ${pos} with ${hits} of his last ${top.prior.sample} picks${range}`,
   }
 }
 

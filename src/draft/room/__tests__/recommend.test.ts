@@ -41,17 +41,19 @@ describe('buildRecommendation', () => {
   it('cites an opponent tendency WITH its sample count', () => {
     const rec = buildRecommendation(
       [row({ position: 'RB' })],
-      ctx({ upcoming: [{ teamKey: 't1', teamName: 'Mike', prior: { byPosition: { RB: 0.8 }, sample: 5 } }] }),
+      ctx({ upcoming: [{ teamKey: 't1', teamName: 'Mike', prior: { byPosition: { RB: 0.8 }, sample: 5, counts: { RB: 4, WR: 1 } } }] }),
     )
     const r = rec!.reasons.find((x) => x.kind === 'tendency')!
     expect(r.text).toContain('Mike')
-    expect(r.text).toContain('of 5 drafts')
+    // The count must be what he actually did (4 of 5), never share x sample.
+    expect(r.text).toContain('4 of his last 5 picks')
+    expect(r.text).not.toContain('drafts')
   })
 
   it('never cites a tendency for a manager with no history', () => {
     const rec = buildRecommendation(
       [row()],
-      ctx({ upcoming: [{ teamKey: 't1', teamName: 'Newbie', prior: { byPosition: { RB: 1 }, sample: 0 } }] }),
+      ctx({ upcoming: [{ teamKey: 't1', teamName: 'Newbie', prior: { byPosition: { RB: 1 }, sample: 0, counts: {} } }] }),
     )
     expect(rec!.reasons.find((x) => x.kind === 'tendency')).toBeUndefined()
   })
@@ -59,7 +61,7 @@ describe('buildRecommendation', () => {
   it('ignores a weak tendency rather than dressing it up', () => {
     const rec = buildRecommendation(
       [row()],
-      ctx({ upcoming: [{ teamKey: 't1', teamName: 'Mike', prior: { byPosition: { RB: 0.2 }, sample: 5 } }] }),
+      ctx({ upcoming: [{ teamKey: 't1', teamName: 'Mike', prior: { byPosition: { RB: 0.2 }, sample: 5, counts: { RB: 1, WR: 4 } } }] }),
     )
     expect(rec!.reasons.find((x) => x.kind === 'tendency')).toBeUndefined()
   })
@@ -88,7 +90,7 @@ describe('buildRecommendation', () => {
     const rec = buildRecommendation(
       [row({ vona: 18.4, survival: 0.2, tier: 2 })],
       ctx({
-        upcoming: [{ teamKey: 't1', teamName: 'Mike', prior: { byPosition: { RB: 0.8 }, sample: 5 } }],
+        upcoming: [{ teamKey: 't1', teamName: 'Mike', prior: { byPosition: { RB: 0.8 }, sample: 5, counts: { RB: 4, WR: 1 } } }],
         tierRemaining: 1,
         nextTierDrop: 22,
       }),
@@ -105,5 +107,40 @@ describe('buildRecommendation', () => {
     expect(rec!.alternates).toHaveLength(2)
     expect(rec!.alternates[0].note).toContain('likely there at 33')
     expect(rec!.alternates[1].note).toContain('80%')
+  })
+})
+
+describe('buildRecommendation — tendency counts are observed, not derived', () => {
+  it('reports the raw count even when the shrunk share disagrees with it', () => {
+    // Shrinkage pulls the share to 0.55, but he actually took RB 9 times in 10.
+    const rec = buildRecommendation(
+      [row({ position: 'RB' })],
+      ctx({
+        upcoming: [{ teamKey: 't1', teamName: 'Mike', prior: { byPosition: { RB: 0.55 }, sample: 10, counts: { RB: 9, WR: 1 } } }],
+      }),
+    )
+    const r = rec!.reasons.find((x) => x.kind === 'tendency')!
+    expect(r.text).toContain('9 of his last 10 picks')
+    // 0.55 x 10 would have printed 6 — a number nobody observed.
+    expect(r.text).not.toContain('6 of')
+  })
+
+  it('names the round range when given one', () => {
+    const rec = buildRecommendation(
+      [row({ position: 'RB' })],
+      ctx({
+        roundRange: 'rounds 1-3',
+        upcoming: [{ teamKey: 't1', teamName: 'Mike', prior: { byPosition: { RB: 0.8 }, sample: 5, counts: { RB: 4 } } }],
+      }),
+    )
+    expect(rec!.reasons.find((x) => x.kind === 'tendency')!.text).toContain('in rounds 1-3')
+  })
+
+  it('says nothing when the manager has no picks at that position', () => {
+    const rec = buildRecommendation(
+      [row({ position: 'RB' })],
+      ctx({ upcoming: [{ teamKey: 't1', teamName: 'Mike', prior: { byPosition: { RB: 0.9 }, sample: 5, counts: { WR: 5 } } }] }),
+    )
+    expect(rec!.reasons.find((x) => x.kind === 'tendency')).toBeUndefined()
   })
 })

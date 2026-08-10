@@ -24,6 +24,13 @@ export interface PositionPrior {
   byPosition: Record<string, number>
   /** How many observations this prior is built from. 0 = pure league fallback. */
   sample: number
+  /**
+   * The manager's RAW observed picks by position — never shrunk, never blended.
+   * Anything shown to a user as a count has to come from here: multiplying a
+   * shrunk probability by a sample size produces a number that looks observed
+   * and is not.
+   */
+  counts: Record<string, number>
 }
 
 export interface Tendencies {
@@ -52,10 +59,10 @@ function toPrior(counts: Record<string, number>): PositionPrior {
   if (sample === 0) {
     // No evidence at all — spread evenly rather than returning something unusable.
     for (const p of POSITIONS) byPosition[p] = 1 / POSITIONS.length
-    return { byPosition, sample: 0 }
+    return { byPosition, sample: 0, counts: {} }
   }
   for (const [pos, n] of Object.entries(counts)) byPosition[pos] = n / sample
-  return { byPosition, sample }
+  return { byPosition, sample, counts: { ...counts } }
 }
 
 export function buildTendencies(
@@ -100,7 +107,9 @@ export function buildTendencies(
 export function priorFor(t: Tendencies, teamKey: string, bucket: string): PositionPrior {
   const leaguePrior = t.league[bucket] ?? toPrior({})
   const own = t.byManager[teamKey]?.[bucket]
-  if (!own || own.sample === 0) return { byPosition: { ...leaguePrior.byPosition }, sample: 0 }
+  if (!own || own.sample === 0) {
+    return { byPosition: { ...leaguePrior.byPosition }, sample: 0, counts: {} }
+  }
 
   const w = own.sample / (own.sample + SHRINK_K)
   const byPosition: Record<string, number> = {}
@@ -111,5 +120,6 @@ export function priorFor(t: Tendencies, teamKey: string, bucket: string): Positi
   for (const pos of positions) {
     byPosition[pos] = w * (own.byPosition[pos] ?? 0) + (1 - w) * (leaguePrior.byPosition[pos] ?? 0)
   }
-  return { byPosition, sample: own.sample }
+  // Counts stay the manager's own: the blend is for prediction, not for display.
+  return { byPosition, sample: own.sample, counts: { ...own.counts } }
 }
