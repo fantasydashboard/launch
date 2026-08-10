@@ -11,6 +11,7 @@ import { simulateSurvival } from '@/draft/room/survival'
 import { buildBoard, type BoardRow } from '@/draft/room/board'
 import { computeReplacementDetail } from '@/football/footballReplacement'
 import { applyAdpAnchor, DEFAULT_ADP_WEIGHT } from '@/draft/room/valueAdjust'
+import { needFactorByPosition } from '@/draft/room/rosterNeed'
 import { buildRecommendation, type Recommendation } from '@/draft/room/recommend'
 import { parseDraftId } from '@/draft/room/draftId'
 import { buildDraftGrid, type GridPick } from '@/draft/room/draftGrid'
@@ -468,9 +469,23 @@ export function useDraftRoom() {
       .reduce((n, [, v]) => n + (Number(v) || 0), 0)
   })
 
+  /** How many players I already hold at each position. */
+  const filledByPosition = computed<Record<string, number>>(() => {
+    const out: Record<string, number> = {}
+    for (const p of myPicks.value) {
+      const pos = String((p as any)?.metadata?.position ?? '').toUpperCase()
+      if (pos) out[pos] = (out[pos] ?? 0) + 1
+    }
+    return out
+  })
+
   const board = computed<BoardRow[]>(() =>
     buildBoard({
       available: rankedPlayers.value,
+      needFactor: needFactorByPosition({
+        slots: effectiveSlots.value ?? {},
+        filledByPosition: filledByPosition.value,
+      }),
       survival: survivalResult.value.survival,
       expectedBestAtPosition: survivalResult.value.expectedBestAtPosition,
       adpByKey: adp.value,
@@ -549,13 +564,20 @@ export function useDraftRoom() {
     const rows = board.value
     if (!rows.length) return null
     const top = rows[0]
+    // The Board draws its bands from boardTierByKey; the reason has to speak the
+    // same language or the same player reads as tier 1 here and tier 8 there.
+    const tierOf = (key: string) => boardTierByKey.value[key]
+    const myTier = tierOf(top.playerKey)
     const samePos = rows.filter((r) => r.position === top.position)
-    const sameTier = samePos.filter((r) => r.tier === top.tier)
-    const nextTier = samePos.find((r) => r.tier > top.tier)
+    const sameTier = samePos.filter((r) => tierOf(r.playerKey) === myTier)
+    const nextTier = samePos.find(
+      (r) => myTier !== undefined && (tierOf(r.playerKey) ?? Infinity) > myTier,
+    )
     return buildRecommendation(rows, {
       nextPick: myNextPick.value,
       upcoming: upcoming.value,
       roundRange: BUCKET_RANGE[bucketForMyPick.value],
+      displayTier: myTier,
       tierRemaining: Math.max(0, sameTier.length - 1),
       nextTierDrop: nextTier ? top.value - nextTier.value : undefined,
     })

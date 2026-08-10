@@ -33,6 +33,8 @@ export interface RecommendContext {
   upcoming?: { teamKey: string; teamName: string; prior: PositionPrior }[]
   /** Human label for the round range the tendency was measured over. */
   roundRange?: string
+  /** The tier the BOARD shows for this player — the reason must not disagree. */
+  displayTier?: number
   /** How many players remain in the pick's tier at his position, after taking him. */
   tierRemaining?: number
   /** Value drop to the next tier at the pick's position. */
@@ -97,8 +99,8 @@ export function buildRecommendation(
       kind: 'tier',
       text:
         ctx.tierRemaining === 0
-          ? `Last ${pick.position} in tier ${pick.tier} — next tier drops ${Math.round(ctx.nextTierDrop)} pts`
-          : `${ctx.tierRemaining} left in tier ${pick.tier} — next tier drops ${Math.round(ctx.nextTierDrop)} pts`,
+          ? `Last ${pick.position} in tier ${ctx.displayTier ?? pick.tier} — next tier drops ${Math.round(ctx.nextTierDrop)} pts`
+          : `${ctx.tierRemaining} more ${pick.position} in tier ${ctx.displayTier ?? pick.tier} — next tier drops ${Math.round(ctx.nextTierDrop)} pts`,
     })
   }
 

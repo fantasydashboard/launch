@@ -301,3 +301,42 @@ describe('buildBoard — projection stays separate from the ranking value', () =
     expect(rows[0].playerKey).toBe('low')
   })
 })
+
+describe('buildBoard — a player you cannot start is worth less to you', () => {
+  const two = [
+    { playerKey: 'rb', name: 'Back', position: 'RB', value: 300 },
+    { playerKey: 'wr', name: 'Wideout', position: 'WR', value: 290 },
+  ]
+  const base = {
+    available: two,
+    survival: {},
+    expectedBestAtPosition: { RB: 200, WR: 200 },
+    adpByKey: {},
+    currentOverallPick: 40,
+    filledStarterSlots: 0,
+    totalStarterSlots: 9,
+  }
+
+  it('leaves scores alone when nothing is saturated', () => {
+    const rows = buildBoard({ ...base, needFactor: { RB: 1, WR: 1 } })
+    expect(rows.find((r) => r.playerKey === 'rb')!.score).toBeCloseTo(100)
+    expect(rows[0].playerKey).toBe('rb')
+  })
+
+  it('discounts a position that can no longer start, flipping the order', () => {
+    // The back is better in isolation but has nowhere to play.
+    const rows = buildBoard({ ...base, needFactor: { RB: 0.35, WR: 1 } })
+    expect(rows[0].playerKey).toBe('wr')
+    expect(rows.find((r) => r.playerKey === 'rb')!.score).toBeCloseTo(35)
+  })
+
+  it('records the factor on the row so the reason can explain itself', () => {
+    const rows = buildBoard({ ...base, needFactor: { RB: 0.35, WR: 1 } })
+    expect(rows.find((r) => r.playerKey === 'rb')!.needFactor).toBe(0.35)
+  })
+
+  it('defaults to no discount when the caller supplies nothing', () => {
+    const rows = buildBoard(base)
+    for (const r of rows) expect(r.needFactor).toBe(1)
+  })
+})

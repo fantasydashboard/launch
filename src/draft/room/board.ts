@@ -31,6 +31,11 @@ export interface AvailablePlayerRow {
 
 export interface BoardInput {
   available: AvailablePlayerRow[]
+  /**
+   * Multiplier per position for whether another player there could still start.
+   * Absent means no discount — the board behaves exactly as before.
+   */
+  needFactor?: Record<string, number>
   survival: Record<string, number>
   expectedBestAtPosition: Record<string, number>
   adpByKey: Record<string, number>
@@ -48,6 +53,8 @@ export interface BoardRow {
   value: number
   /** Our projected points, independent of whichever list is ranking. */
   projected: number
+  /** 1 while this position can still start for you, lower once it cannot. */
+  needFactor: number
   vona: number
   upside: number
   score: number
@@ -131,6 +138,7 @@ export function buildBoard(input: BoardInput): BoardRow[] {
     currentOverallPick,
     filledStarterSlots,
     totalStarterSlots,
+    needFactor,
   } = input
 
   const players = (available ?? []).map((p) => ({ ...p, position: normPos(p.position) }))
@@ -197,6 +205,8 @@ export function buildBoard(input: BoardInput): BoardRow[] {
     if (p.opportunity === 'backup-elevated') upside += OPPORTUNITY_UPSIDE
     upside = Math.min(upside, MAX_UPSIDE)
 
+    const need = needFactor?.[p.position] ?? 1
+
     let flag: BoardRow['flag'] = ''
     if (adp !== null) {
       if (currentOverallPick > adp + VALUE_PICKS) flag = 'value'
@@ -213,7 +223,10 @@ export function buildBoard(input: BoardInput): BoardRow[] {
       projected: p.projected ?? p.value,
       vona,
       upside,
-      score: (1 - w) * vona + w * upside,
+      needFactor: need,
+      // A player you cannot start is worth what a bench player is worth, however
+      // well he compares to the next man at his position.
+      score: ((1 - w) * vona + w * upside) * need,
       survival: survival?.[p.playerKey] ?? 1,
       tier: tierByKey[p.playerKey] ?? 1,
       overallTier: overallTierByKey[p.playerKey] ?? 1,
