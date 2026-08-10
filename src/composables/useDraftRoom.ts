@@ -447,6 +447,7 @@ export function useDraftRoom() {
         position: p.position,
         adp: adp.value[p.playerKey] ?? null,
         value: p.value,
+        projected: p.projected ?? p.value,
       })),
       upcomingSlots: upcomingSlots.value,
       priorForSlot: (slot) => priorFor(tendencies.value, rosterIdForSlot(slot), bucketForMyPick.value),
@@ -515,6 +516,7 @@ export function useDraftRoom() {
       }),
       survival: survivalResult.value.survival,
       expectedBestAtPosition: survivalResult.value.expectedBestAtPosition,
+      expectedBestProjectedAtPosition: survivalResult.value.expectedBestProjectedAtPosition,
       adpByKey: adp.value,
       currentOverallPick: myPick.value ?? currentOverallPick.value,
       filledStarterSlots: Math.min(myPicks.value.length, starterSlots.value),
@@ -606,7 +608,10 @@ export function useDraftRoom() {
       roundRange: BUCKET_RANGE[bucketForMyPick.value],
       displayTier: myTier,
       tierRemaining: Math.max(0, sameTier.length - 1),
-      nextTierDrop: nextTier ? top.value - nextTier.value : undefined,
+      // In POINTS, like every other number on that card — `value` is the analyst's
+      // ordering scale, and a drop measured there cannot be checked against the
+      // points column sitting right below it.
+      nextTierDrop: nextTier ? top.projected - nextTier.projected : undefined,
     })
   })
 

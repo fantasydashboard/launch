@@ -144,3 +144,22 @@ describe('buildRecommendation — tendency counts are observed, not derived', ()
     expect(rec!.reasons.find((x) => x.kind === 'tendency')).toBeUndefined()
   })
 })
+
+describe('buildRecommendation — the edge is quoted in points', () => {
+  const withPoints = (over: Partial<BoardRow>): BoardRow => row({ vona: 21.2, vonaPoints: 15.4, ...over })
+
+  it('quotes the points figure, not the ranking-scale one', () => {
+    const rec = buildRecommendation([withPoints({})], ctx({ nextPick: 54 }))
+    const r = rec!.reasons.find((x) => x.kind === 'vona')!
+    expect(r.text).toContain('15.4')
+    expect(r.text).not.toContain('21.2')
+  })
+
+  it('makes no points claim our own projections do not support', () => {
+    // The analyst ranks him well ahead; our points say otherwise. Ordering can
+    // follow the analyst, but a "+X pts" line has to be ours to stand behind.
+    const rec = buildRecommendation([withPoints({ vonaPoints: -3 })], ctx())
+    expect(rec!.reasons.find((x) => x.kind === 'vona')).toBeUndefined()
+    expect(rec!.pick.playerKey).toBe('p1')
+  })
+})

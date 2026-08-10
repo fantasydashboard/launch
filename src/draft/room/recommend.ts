@@ -80,12 +80,19 @@ export function buildRecommendation(
   const reasons: Reason[] = []
 
   // 1. VONA — the core of the decision.
-  if (pick.vona > 0) {
+  //
+  // Printed in PROJECTED POINTS, not in the ranking scale. When an analyst list
+  // is driving the order, `vona` is denominated in re-seated values: a real
+  // quantity, but not one the reader can check against the points column, which
+  // is the only way they can check it at all. If our own points don't support the
+  // claim, the claim isn't made — the tier and survival lines still stand.
+  const edge = pick.vonaPoints ?? pick.vona
+  if (edge > 0) {
     reasons.push({
       kind: 'vona',
       text: ctx.nextPick
-        ? `${pts(pick.vona)} pts over your next-best ${pick.position} at ${ctx.nextPick}`
-        : `${pts(pick.vona)} pts over the next-best ${pick.position} available`,
+        ? `${pts(edge)} pts over your next-best ${pick.position} at ${ctx.nextPick}`
+        : `${pts(edge)} pts over the next-best ${pick.position} available`,
     })
   }
 

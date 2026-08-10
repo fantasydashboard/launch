@@ -38,6 +38,13 @@ export interface BoardInput {
   needFactor?: Record<string, number>
   survival: Record<string, number>
   expectedBestAtPosition: Record<string, number>
+  /**
+   * The same expectation in projected points. Ranking runs on `value`, but any
+   * number shown to the user with "pts" beside it has to be checkable against the
+   * points column — and once a ranking list re-seats `value`, those two scales
+   * are different. Absent, the points figure falls back to the value figure.
+   */
+  expectedBestProjectedAtPosition?: Record<string, number>
   adpByKey: Record<string, number>
   currentOverallPick: number
   filledStarterSlots: number
@@ -56,6 +63,8 @@ export interface BoardRow {
   /** 1 while this position can still start for you, lower once it cannot. */
   needFactor: number
   vona: number
+  /** VONA in projected points — the version fit to print. */
+  vonaPoints: number
   upside: number
   score: number
   survival: number
@@ -139,6 +148,7 @@ export function buildBoard(input: BoardInput): BoardRow[] {
     filledStarterSlots,
     totalStarterSlots,
     needFactor,
+    expectedBestProjectedAtPosition,
   } = input
 
   const players = (available ?? []).map((p) => ({ ...p, position: normPos(p.position) }))
@@ -188,6 +198,11 @@ export function buildBoard(input: BoardInput): BoardRow[] {
   const rows: BoardRow[] = players.map((p) => {
     const adp = typeof adpByKey?.[p.playerKey] === 'number' ? adpByKey[p.playerKey] : null
     const vona = p.value - (expectedBestAtPosition?.[p.position] ?? 0)
+    const projected = p.projected ?? p.value
+    const vonaPoints =
+      expectedBestProjectedAtPosition && p.position in expectedBestProjectedAtPosition
+        ? projected - expectedBestProjectedAtPosition[p.position]
+        : vona
 
     const pr = projRank.get(p.playerKey)
     const ar = adpRank.get(p.playerKey)
@@ -220,8 +235,9 @@ export function buildBoard(input: BoardInput): BoardRow[] {
       proTeam: p.proTeam,
       headshot: p.headshot,
       value: p.value,
-      projected: p.projected ?? p.value,
+      projected,
       vona,
+      vonaPoints,
       upside,
       needFactor: need,
       // A player you cannot start is worth what a bench player is worth, however

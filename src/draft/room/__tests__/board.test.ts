@@ -340,3 +340,42 @@ describe('buildBoard — a player you cannot start is worth less to you', () => 
     for (const r of rows) expect(r.needFactor).toBe(1)
   })
 })
+
+describe('buildBoard — printable numbers stay in points', () => {
+  // An analyst list re-seats `value` to its own order, so a gap measured in
+  // `value` is a real quantity in the wrong currency: the user checks it against
+  // the PTS column and the arithmetic does not work.
+  const input = {
+    available: [
+      { playerKey: 'love', name: 'Loveland', position: 'TE', value: 268, projected: 242 },
+      { playerKey: 'warr', name: 'Warren', position: 'TE', value: 242, projected: 227 },
+    ],
+    survival: { love: 0.44, warr: 0.82 },
+    expectedBestAtPosition: { TE: 246.8 },
+    expectedBestProjectedAtPosition: { TE: 220.4 },
+    adpByKey: { love: 42, warr: 51 },
+    currentOverallPick: 47,
+    filledStarterSlots: 4,
+    totalStarterSlots: 9,
+  }
+
+  it('measures the printable edge against the points column', () => {
+    const love = buildBoard(input).find((r) => r.playerKey === 'love')!
+    expect(love.vonaPoints).toBeCloseTo(242 - 220.4, 5)
+    // The ranking-scale figure is still there — it is what ordering uses.
+    expect(love.vona).toBeCloseTo(268 - 246.8, 5)
+    expect(love.vonaPoints).not.toBeCloseTo(love.vona, 1)
+  })
+
+  it('still ranks on the ranking scale, not the printed one', () => {
+    const rows = buildBoard(input)
+    expect(rows[0].playerKey).toBe('love')
+    expect(rows[0].score).toBeCloseTo(rows[0].vona, 5)
+  })
+
+  it('falls back to the value figure when no points expectation is supplied', () => {
+    const { expectedBestProjectedAtPosition, ...noPoints } = input
+    const love = buildBoard(noPoints).find((r) => r.playerKey === 'love')!
+    expect(love.vonaPoints).toBeCloseTo(love.vona, 5)
+  })
+})

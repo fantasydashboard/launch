@@ -21,8 +21,15 @@ export interface SurvivalPlayer {
   position: string
   /** Null when the market has no ADP for him — he is never auto-drafted below. */
   adp: number | null
-  /** Projected value, used for expectedBestAtPosition. */
+  /** Ranking value — decides WHO the best available is. */
   value: number
+  /**
+   * Our own projected points for that same player. Carried alongside so the
+   * expectation can be reported in points as well: when a ranking list re-seats
+   * `value`, a gap measured in `value` is not a number the user can check
+   * against the points column.
+   */
+  projected?: number
 }
 
 export interface SurvivalInput {
@@ -39,6 +46,8 @@ export interface SurvivalResult {
   survival: Record<string, number>
   /** position -> expected value of the best available there at my next pick. */
   expectedBestAtPosition: Record<string, number>
+  /** The same expectation in projected points — what that player actually scores. */
+  expectedBestProjectedAtPosition: Record<string, number>
 }
 
 /** Small deterministic PRNG — no dependency, and reproducible across runs. */
@@ -75,7 +84,9 @@ export function simulateSurvival(input: SurvivalInput): SurvivalResult {
   const rng = mulberry32(input.seed ?? 1)
 
   const players = (available ?? []).map((p) => ({ ...p, position: normPos(p.position) }))
-  if (!players.length) return { survival: {}, expectedBestAtPosition: {} }
+  if (!players.length) {
+    return { survival: {}, expectedBestAtPosition: {}, expectedBestProjectedAtPosition: {} }
+  }
 
   // Draft candidates per position, best-ADP-first. A null ADP means the market has
   // no opinion, so nobody reaches for him — he is never auto-drafted.
@@ -96,6 +107,7 @@ export function simulateSurvival(input: SurvivalInput): SurvivalResult {
   const survivedCount: Record<string, number> = {}
   for (const p of players) survivedCount[p.playerKey] = 0
   const bestSum: Record<string, number> = {}
+  const bestProjSum: Record<string, number> = {}
   const positions = [...byPosition.keys()]
 
   const slots = upcomingSlots ?? []
@@ -119,8 +131,18 @@ export function simulateSurvival(input: SurvivalInput): SurvivalResult {
     for (const pos of positions) {
       const pool = byPosition.get(pos)!
       let best = Number.NEGATIVE_INFINITY
-      for (const p of pool) if (!taken.has(p.playerKey) && p.value > best) best = p.value
-      if (best > Number.NEGATIVE_INFINITY) bestSum[pos] = (bestSum[pos] ?? 0) + best
+      let bestProj = 0
+      for (const p of pool) {
+        if (taken.has(p.playerKey) || p.value <= best) continue
+        best = p.value
+        // The SAME player's points — not the highest-projecting one left, which
+        // would be a different man than the one you'd actually be choosing.
+        bestProj = p.projected ?? p.value
+      }
+      if (best > Number.NEGATIVE_INFINITY) {
+        bestSum[pos] = (bestSum[pos] ?? 0) + best
+        bestProjSum[pos] = (bestProjSum[pos] ?? 0) + bestProj
+      }
     }
   }
 
@@ -129,6 +151,8 @@ export function simulateSurvival(input: SurvivalInput): SurvivalResult {
 
   const expectedBestAtPosition: Record<string, number> = {}
   for (const [pos, sum] of Object.entries(bestSum)) expectedBestAtPosition[pos] = sum / runs
+  const expectedBestProjectedAtPosition: Record<string, number> = {}
+  for (const [pos, sum] of Object.entries(bestProjSum)) expectedBestProjectedAtPosition[pos] = sum / runs
 
-  return { survival, expectedBestAtPosition }
+  return { survival, expectedBestAtPosition, expectedBestProjectedAtPosition }
 }

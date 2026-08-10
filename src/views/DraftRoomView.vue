@@ -88,15 +88,22 @@ const POS_CLASS: Record<string, string> = {
 }
 const posClass = (p: string) => POS_CLASS[(p || '').toUpperCase()] ?? 'bg-dark-border/60 text-dark-textMuted'
 
+/** How deep the "players you'd realistically take here" cut runs. */
+const CONTENDERS = 24
+
 // The Board renders the active list in ITS order — the analyst's, or UFD's.
 // Filtering by position keeps that order within the position.
 const visibleBoard = computed(() => {
   if (posFilter.value === 'LAST') {
     // Urgency is the one ordering the list's own order cannot express.
+    //
+    // Drawn only from players actually in contention for this pick. Ranked by
+    // edge, everyone below that cut is someone you would not take at any price,
+    // so warning that he is about to go is noise dressed as urgency.
     return board.value
+      .slice(0, CONTENDERS)
       .filter((r) => SKILL.has(r.position) && r.survival < 0.7)
       .sort((a, b) => a.survival - b.survival)
-      .slice(0, 25)
   }
   const rows = posFilter.value === 'ALL'
     ? boardByRank.value
@@ -133,7 +140,7 @@ function tierCount(i: number): number {
 // Kickers and defenses always last, and saying so buries the players who do not.
 const SKILL = new Set(['QB', 'RB', 'WR', 'TE'])
 const safeUntilNext = computed(() =>
-  board.value.filter((r) => SKILL.has(r.position) && r.survival >= 0.7).slice(0, 12),
+  board.value.slice(0, CONTENDERS).filter((r) => SKILL.has(r.position) && r.survival >= 0.7),
 )
 
 /**

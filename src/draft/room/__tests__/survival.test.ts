@@ -110,3 +110,33 @@ describe('simulateSurvival', () => {
     expect(r.expectedBestAtPosition).toEqual({})
   })
 })
+
+describe('simulateSurvival — the expectation in points', () => {
+  it('reports the points of the player you would actually get, not the highest projector', () => {
+    // Ranking puts `a` ahead, so he is who you would take — even though `b`
+    // projects more points. Averaging b would describe a choice nobody makes.
+    const res = simulateSurvival({
+      available: [
+        { playerKey: 'a', position: 'TE', adp: 60, value: 300, projected: 210 },
+        { playerKey: 'b', position: 'TE', adp: 61, value: 250, projected: 260 },
+      ],
+      upcomingSlots: [],
+      priorForSlot: () => ({ byPosition: {}, sample: 0, counts: {} }),
+      runs: 10,
+      seed: 7,
+    })
+    expect(res.expectedBestAtPosition.TE).toBeCloseTo(300, 5)
+    expect(res.expectedBestProjectedAtPosition.TE).toBeCloseTo(210, 5)
+  })
+
+  it('falls back to value when a player carries no separate projection', () => {
+    const res = simulateSurvival({
+      available: [{ playerKey: 'a', position: 'RB', adp: 30, value: 180 }],
+      upcomingSlots: [],
+      priorForSlot: () => ({ byPosition: {}, sample: 0, counts: {} }),
+      runs: 5,
+      seed: 1,
+    })
+    expect(res.expectedBestProjectedAtPosition.RB).toBeCloseTo(180, 5)
+  })
+})
