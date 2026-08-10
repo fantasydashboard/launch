@@ -42,7 +42,15 @@ export interface RecommendContext {
   maxAlternates?: number
 }
 
-const pct = (p: number) => `${Math.round(p * 100)}%`
+/**
+ * Never 0% and never 100%.
+ *
+ * The simulation runs a few hundred times; nobody taken in any of them reads as
+ * 0/300, which is not the same as impossible. Measurement agrees — players shown
+ * at ~1% to last did last a tenth of the time. Printing a certainty the model
+ * cannot support is the one number a reader has no way to discount.
+ */
+const pct = (p: number) => `${Math.min(99, Math.max(1, Math.round(p * 100)))}%`
 const pts = (n: number) => `${n >= 0 ? '+' : ''}${Math.round(n * 10) / 10}`
 
 /**

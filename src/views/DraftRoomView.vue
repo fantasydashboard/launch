@@ -66,7 +66,9 @@ watch(() => tab.value, (t) => { if (t === 'grid') scrollToMySeat() })
 watch(() => mySlot.value, () => { if (tab.value === 'grid') scrollToMySeat() })
 
 const round = (n: number) => Math.round(n)
-const pct = (n: number) => `${Math.round(n * 100)}%`
+// Clamped: a simulation that ran 600 times cannot honestly report 0% or 100%,
+// and measurement showed players displayed at 0% lasting a tenth of the time.
+const pct = (n: number) => `${Math.min(99, Math.max(1, Math.round(n * 100)))}%`
 const teamLogo = (abbr?: string) => nflTeamLogo(abbr)
 const onImgErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none')
 

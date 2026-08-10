@@ -163,3 +163,19 @@ describe('buildRecommendation — the edge is quoted in points', () => {
     expect(rec!.pick.playerKey).toBe('p1')
   })
 })
+
+describe('buildRecommendation — no certainty the model cannot back', () => {
+  it('never prints 100% gone', () => {
+    const rec = buildRecommendation([row({ survival: 0 })], ctx())
+    expect(rec!.reasons.find((x) => x.kind === 'survival')!.text).toContain('99%')
+  })
+
+  it('never prints 0% on an alternate', () => {
+    const rec = buildRecommendation(
+      [row({ playerKey: 'a', score: 20 }), row({ playerKey: 'b', score: 5, survival: 1 })],
+      ctx({ nextPick: 33 }),
+    )
+    // A survival of 1 reads as "likely there", not as a guarantee.
+    expect(rec!.alternates[0].note).not.toContain('100%')
+  })
+})

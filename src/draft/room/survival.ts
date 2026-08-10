@@ -89,10 +89,17 @@ function drawPosition(prior: PositionPrior, rand: number, allowed: Set<string>):
  * How far down a list a manager might reach. Always taking the very top of the
  * board is too tidy: it concentrates every simulation on the same handful of
  * players and leaves everyone behind them looking safe.
+ *
+ * Both numbers come off a calibration run, not intuition. A three-deep window
+ * taking the next man 60% of the time left the top of the board surviving six
+ * picks only 0.4% of the time, where measurement said 10% — and it barely
+ * touched the middle, which stayed overstated by 12-22 points. Solving
+ * (1 - p)^6 = 0.10 gives a per-pick take probability near a third, and a wider
+ * window spreads the rest of the mass down the board where the misses were.
  */
-const REACH_WINDOW = 3
+const REACH_WINDOW = 6
 /** Probability of taking the next man rather than reaching past him. */
-const REACH_DECAY = 0.6
+const REACH_DECAY = 0.34
 
 /** The next player off a list, with a little reach. */
 function chooseFrom<T extends { playerKey: string; adp: number | null }>(

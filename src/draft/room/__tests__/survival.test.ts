@@ -172,13 +172,40 @@ describe('simulateSurvival — modelling how managers actually pick', () => {
     // rb1 and wr1 are ADP 1 and 2 — the market takes them, whatever the prior says.
     expect(r.survival.rb1).toBeLessThan(0.9)
     expect(r.survival.wr1).toBeLessThan(0.9)
-    // te1 at ADP 20 is nowhere near the top of the board.
-    expect(r.survival.te1).toBe(1)
+    // te1 at ADP 20 is last on the board and much safer than the top of it.
+    // (Only relative here: this fixture is six players deep, so the reach window
+    // spans the whole board — on a real board it stops long before ADP 20.)
+    expect(r.survival.te1).toBeGreaterThan(r.survival.rb1)
   })
 
   it('stays deterministic with the reach model in play', () => {
     const a = run({ upcomingSlots: [1, 2, 3] })
     const b = run({ upcomingSlots: [1, 2, 3] })
     expect(a.survival).toEqual(b.survival)
+  })
+})
+
+describe('simulateSurvival — how confident the model is allowed to be', () => {
+  it('leaves the top of the board a real chance of lasting', () => {
+    // Measured: players the old model called ~1% to last actually lasted 10% of
+    // the time. A model that takes the same man in nearly every run cannot say so.
+    const r = run({
+      upcomingSlots: [1, 2, 3, 4, 5, 6],
+      priorForSlot: () => prior({ RB: 0.5, WR: 0.5 }),
+      runs: 400,
+    })
+    expect(r.survival.rb1).toBeGreaterThan(0.02)
+    expect(r.survival.rb1).toBeLessThan(0.35)
+  })
+
+  it('reaches deep enough to threaten the middle of the board', () => {
+    // The other half of the miss: mid-board players read as far safer than they
+    // were, because nobody ever reached past the top two.
+    const r = run({
+      upcomingSlots: [1, 2, 3, 4],
+      priorForSlot: () => prior({ RB: 1 }),
+      runs: 400,
+    })
+    expect(r.survival.rb3).toBeLessThan(0.9)
   })
 })
