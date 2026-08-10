@@ -68,6 +68,39 @@ export function startableRemaining(input: RosterNeedInput): Record<string, numbe
 }
 
 /**
+ * Positions this league actually starts.
+ *
+ * A league with no kicker or defense slot cannot use either, so recommending one
+ * is not a weak suggestion — it is a wrong one. They were reaching the board
+ * because an unstartable position was merely DISCOUNTED to bench value, and in
+ * the late rounds, when every real player is discounted too, a defense can win
+ * that comparison outright.
+ *
+ * An empty settings object means we don't know the lineup yet; everything counts
+ * rather than nothing.
+ */
+export function startablePositions(slots: Record<string, number>): Set<string> {
+  const entries = Object.entries(slots ?? {}).filter(
+    ([k, n]) => Number(n) > 0 && !['BN', 'IR', 'TAXI'].includes(k.toUpperCase()),
+  )
+  if (!entries.length) return new Set(DEDICATED)
+
+  const out = new Set<string>()
+  for (const [slot] of entries) {
+    const key = slot.toUpperCase()
+    const flex = FLEX_ELIGIBILITY[key]
+    if (flex) for (const p of flex) out.add(p)
+    else if (DEDICATED.includes(key)) out.add(key)
+  }
+  return out
+}
+
+/** Whether a player at this position could ever start in this league. */
+export function isStartablePosition(position: string, slots: Record<string, number>): boolean {
+  return startablePositions(slots).has(normPos(position))
+}
+
+/**
  * Multiplier applied to a player's score. 1 while he could still start for you,
  * BENCH_FACTOR once his position is spoken for.
  */

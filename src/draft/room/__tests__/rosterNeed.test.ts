@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { startableRemaining, needFactorByPosition, needFactorFor, BENCH_FACTOR } from '../rosterNeed'
+import {
+  startableRemaining, needFactorByPosition, needFactorFor, BENCH_FACTOR,
+  startablePositions, isStartablePosition,
+} from '../rosterNeed'
 
 const SLOTS = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 3 }
 
@@ -67,5 +70,42 @@ describe('needFactorByPosition', () => {
 
   it('tolerates empty input', () => {
     expect(needFactorFor('RB', { slots: {}, filledByPosition: {} })).toBe(BENCH_FACTOR)
+  })
+})
+
+describe('startablePositions', () => {
+  // The mock the tool was tested against: nine starters, no kicker, no defense.
+  const noKickerNoDef = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 3, BN: 6 }
+
+  it('leaves out positions the league never starts', () => {
+    const pos = startablePositions(noKickerNoDef)
+    expect(pos.has('K')).toBe(false)
+    expect(pos.has('DEF')).toBe(false)
+    expect([...pos].sort()).toEqual(['QB', 'RB', 'TE', 'WR'])
+  })
+
+  it('counts a position that only a flex could start', () => {
+    expect(startablePositions({ QB: 1, FLEX: 1 }).has('TE')).toBe(true)
+  })
+
+  it('includes kicker and defense when the league starts them', () => {
+    const pos = startablePositions({ QB: 1, RB: 2, K: 1, DEF: 1 })
+    expect(pos.has('K')).toBe(true)
+    expect(pos.has('DEF')).toBe(true)
+  })
+
+  it('ignores bench, IR and taxi', () => {
+    expect(startablePositions({ QB: 1, BN: 8, IR: 2, TAXI: 1 })).toEqual(new Set(['QB']))
+  })
+
+  it('assumes nothing when the lineup is unknown', () => {
+    // Empty settings means we have not loaded them, not that nobody can play.
+    const pos = startablePositions({})
+    for (const p of ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']) expect(pos.has(p)).toBe(true)
+  })
+
+  it('answers for a single player, multi-position listings included', () => {
+    expect(isStartablePosition('DEF', noKickerNoDef)).toBe(false)
+    expect(isStartablePosition('RB/WR', noKickerNoDef)).toBe(true)
   })
 })

@@ -11,13 +11,14 @@ import { simulateSurvival } from '@/draft/room/survival'
 import { buildBoard, type BoardRow } from '@/draft/room/board'
 import { computeReplacementDetail } from '@/football/footballReplacement'
 import { applyAdpAnchor, DEFAULT_ADP_WEIGHT } from '@/draft/room/valueAdjust'
-import { needFactorByPosition } from '@/draft/room/rosterNeed'
+import { needFactorByPosition, startablePositions } from '@/draft/room/rosterNeed'
 import { buildLineup } from '@/draft/room/lineup'
 import { buildRecommendation, type Recommendation } from '@/draft/room/recommend'
 import { parseDraftId } from '@/draft/room/draftId'
 import { buildDraftGrid, type GridPick } from '@/draft/room/draftGrid'
 import { slotsFromDraftSettings, scoringFromDraftMetadata } from '@/draft/room/draftSettings'
 import { replayDraft, calibration, type ReplayPick } from '@/draft/room/replay'
+import { buildRecap, type RecapPick } from '@/draft/room/recap'
 import { useCustomRankings } from '@/composables/useCustomRankings'
 
 /** How often to re-read picks while a draft is running. */
@@ -173,6 +174,17 @@ export function useDraftRoom() {
     try {
       const p = await sleeperService.getDraftPicks(id)
       if (Array.isArray(p)) { picks.value = p; pollFailures.value = 0 }
+
+      // The poll only ever read PICKS, so `status` kept saying "drafting" long
+      // after the last pick was in — which is why the end of a draft passed with
+      // nothing happening on screen. Once the board is full, re-read the meta so
+      // the room can tell you the draft is over.
+      const teams = Number(draftMeta.value?.settings?.teams) || 0
+      const rounds = Number(draftMeta.value?.settings?.rounds) || 0
+      if (teams > 0 && rounds > 0 && picks.value.length >= teams * rounds && draftMeta.value?.status !== 'complete') {
+        const meta = await sleeperService.getDraftById(id)
+        if (meta) draftMeta.value = meta
+      }
     } catch {
       pollFailures.value++
     }
@@ -290,9 +302,25 @@ export function useDraftRoom() {
     return slotsBetween(shape.value, myPick.value, to)
   })
 
+  /**
+   * Whether the connected draft is THIS league's draft.
+   *
+   * History and team names belong to a league, not to a draft id. A mock's
+   * slot_to_roster_id hands out roster ids 1..N — the same numbers a real league
+   * uses — so without this check every bot inherits one of your league mates'
+   * names and years of his tendencies. That is how a manager who last played
+   * three seasons ago ends up "picking before you".
+   */
+  const draftIsThisLeague = computed(() => {
+    const draftLeague = String(draftMeta.value?.league_id ?? '')
+    const active = String(leagueStore.activeLeagueId ?? '')
+    return !!draftLeague && draftLeague === active
+  })
+
   // ── tendencies from league history ────────────────────────────────────────
   const historicalPicks = computed<HistoricalPick[]>(() => {
     const out: HistoricalPick[] = []
+    if (!draftIsThisLeague.value) return out
     const drafts = leagueStore.historicalDrafts as Map<string, any> | undefined
     if (!drafts) return out
     for (const draft of drafts.values()) {
@@ -336,7 +364,7 @@ export function useDraftRoom() {
       const teamKey = rosterIdForSlot(slot)
       return {
         teamKey,
-        teamName: src.teamNames.value?.[teamKey] ?? `Team ${slot}`,
+        teamName: (draftIsThisLeague.value ? src.teamNames.value?.[teamKey] : null) ?? `Team ${slot}`,
         prior: priorFor(tendencies.value, teamKey, bucketForMyPick.value),
       }
     }),
@@ -349,8 +377,13 @@ export function useDraftRoom() {
     const rows: { playerKey: string; name: string; position: string; proTeam?: string; headshot?: string; value: number; opportunity?: string; depthChartOrder?: number | null }[] = []
 
     const meta = (leagueStore.players ?? {}) as Record<string, any>
+    // A position this league never starts is not a weak pick, it is an invalid
+    // one. Discounting instead of excluding let defenses win late-round
+    // comparisons in a league with no defense slot.
+    const startable = startablePositions(effectiveSlots.value ?? {})
     const push = (playerKey: string, name: string, position: string, proTeam?: string, headshot?: string) => {
       if (!playerKey || drafted.has(playerKey) || seen.has(playerKey)) return
+      if (!startable.has(String(position || '').toUpperCase().split(/[,/|]/)[0].trim())) return
       const v = vorByKey.value[playerKey]
       if (!v) return
       // No projection means no opinion. These used to reach the board with a
@@ -540,7 +573,13 @@ export function useDraftRoom() {
       const ranked = Object.keys(rankByKey)
       for (const k of ranked) out[k] = rankByKey[k]
       // Anyone the list omits sits after it, in our own order.
-      const offset = ranked.length
+      //
+      // The offset is the list's HIGHEST rank, not how many of its entries we
+      // could tie to a player. A 250-deep list that matches 140 players still
+      // hands out the number 200 — counting matches instead put unranked players
+      // at 141, 142, 143, which are numbers the analyst already used, and two
+      // different players showed the same rank on screen.
+      const offset = ranked.reduce((m, k) => Math.max(m, rankByKey[k]), 0)
       rankedPlayers.value
         .filter((p) => out[p.playerKey] === undefined)
         .sort((a, b) => b.value - a.value)
@@ -602,16 +641,59 @@ export function useDraftRoom() {
     const nextTier = samePos.find(
       (r) => myTier !== undefined && (tierOf(r.playerKey) ?? Infinity) > myTier,
     )
+    /**
+     * "Last RB in tier 17" is only an argument when tier 17 is the BEST tier of
+     * back still on the board. With a tier-14 and a tier-16 back sitting there
+     * too, it reads as scarcity while describing the opposite — the bottom of a
+     * group you had better options above.
+     */
+    const bestTierAtPos = samePos.reduce((best, r) => {
+      const t = tierOf(r.playerKey)
+      return t !== undefined && t < best ? t : best
+    }, Infinity)
+    const leadsHisPosition = myTier !== undefined && myTier <= bestTierAtPos
+
     return buildRecommendation(rows, {
       nextPick: myNextPick.value,
       upcoming: upcoming.value,
       roundRange: BUCKET_RANGE[bucketForMyPick.value],
       displayTier: myTier,
-      tierRemaining: Math.max(0, sameTier.length - 1),
+      tierRemaining: leadsHisPosition ? Math.max(0, sameTier.length - 1) : undefined,
       // In POINTS, like every other number on that card — `value` is the analyst's
       // ordering scale, and a drop measured there cannot be checked against the
       // points column sitting right below it.
-      nextTierDrop: nextTier ? top.projected - nextTier.projected : undefined,
+      nextTierDrop: leadsHisPosition && nextTier ? top.projected - nextTier.projected : undefined,
+    })
+  })
+
+  /**
+   * The post-draft report. A draft that simply stops is one you cannot learn
+   * from, so once the last pick is in, every roster gets scored the same way and
+   * yours is placed among them.
+   */
+  const recap = computed(() => {
+    if (draftMeta.value?.status !== 'complete') return null
+    const rows: RecapPick[] = (picks.value as any[]).map((p) => {
+      const key = String(p?.player_id ?? '')
+      const name = [p?.metadata?.first_name, p?.metadata?.last_name].filter(Boolean).join(' ')
+      return {
+        playerKey: key,
+        name: name || key,
+        position: String(p?.metadata?.position ?? ''),
+        overallPick: Number(p?.pick_no) || 0,
+        teamKey: String(p?.draft_slot ?? p?.roster_id ?? ''),
+        projected: vorByKey.value[key]?.pointsRos ?? 0,
+        adp: adp.value[key] ?? null,
+      }
+    })
+    if (!rows.length) return null
+    return buildRecap({
+      picks: rows,
+      slots: effectiveSlots.value ?? {},
+      myTeamKey: mySlot.value != null ? String(mySlot.value) : null,
+      teamNames: Object.fromEntries(
+        Array.from({ length: effectiveTeams.value || 0 }, (_, i) => [String(i + 1), teamNameForSlot(i + 1)]),
+      ),
     })
   })
 
@@ -688,8 +770,13 @@ export function useDraftRoom() {
     })
   })
 
+  /**
+   * Only this league's drafts get this league's names. In a mock the opponents
+   * are bots, and labelling them with your league mates' team names invents a
+   * room that isn't there.
+   */
   const teamNameForSlot = (slot: number) =>
-    src.teamNames.value?.[rosterIdForSlot(slot)] ?? `Team ${slot}`
+    (draftIsThisLeague.value ? src.teamNames.value?.[rosterIdForSlot(slot)] : null) ?? `Team ${slot}`
 
   return {
     grid,
@@ -720,6 +807,7 @@ export function useDraftRoom() {
     upcoming,
     myPicks,
     myLineup,
+    recap,
     starterSlots,
     effectiveSlots,
     draftedKeys,

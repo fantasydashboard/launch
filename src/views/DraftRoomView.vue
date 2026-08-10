@@ -4,20 +4,21 @@ import { RouterLink } from 'vue-router'
 import { useDraftRoom } from '@/composables/useDraftRoom'
 import { UFD_LABEL } from '@/composables/useCustomRankings'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
+import { startablePositions } from '@/draft/room/rosterNeed'
 
 const {
   status, loading, board, recommendation, myPick, myNextPick, isMyTurn,
   currentOverallPick, hasHistory, myPicks, myLineup, starterSlots, slotUnknown,
   markDrafted, syncHealthy, refresh, shape,
   grid, teamNameForSlot, connectDraft, disconnectDraft, overrideDraftId, overrideError,
-  customRankings, replay, comparePool, boardByRank, boardTierByKey, listRankByKey, effectiveSlots, mySlot,
+  customRankings, replay, recap, comparePool, boardByRank, boardTierByKey, listRankByKey, effectiveSlots, mySlot,
 } = useDraftRoom()
 
 // Admin-only analyst override. Invisible to every other account.
 const showRankings = ref(false)
 const comparison = computed(() => customRankings.compare(comparePool.value))
 
-type Tab = 'pick' | 'board' | 'grid' | 'roster' | 'replay'
+type Tab = 'pick' | 'board' | 'grid' | 'roster' | 'recap' | 'replay'
 const tab = ref<Tab>('pick')
 const TABS: { id: Tab; label: string }[] = [
   { id: 'pick', label: 'Pick' },
@@ -25,9 +26,19 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'grid', label: 'Draft Board' },
   { id: 'roster', label: 'Roster' },
 ]
-/** Replay only means anything once a draft is finished. */
-const visibleTabs = computed(() =>
-  replay.value ? [...TABS, { id: 'replay' as Tab, label: 'Replay' }] : TABS,
+/** Recap and Replay only mean anything once a draft is finished. */
+const visibleTabs = computed(() => [
+  ...TABS,
+  ...(recap.value ? [{ id: 'recap' as Tab, label: 'Recap' }] : []),
+  ...(replay.value ? [{ id: 'replay' as Tab, label: 'Replay' }] : []),
+])
+// The draft ending is the one moment worth moving the user for.
+watch(() => !!recap.value, (done) => { if (done) tab.value = 'recap' })
+
+const edgeRows = computed(() =>
+  Object.entries(recap.value?.positionEdge ?? {})
+    .sort((a, b) => b[1] - a[1])
+    .filter(([, v]) => Math.abs(v) >= 1),
 )
 
 // Connect any Sleeper draft by link or ID — mocks included.
@@ -70,6 +81,14 @@ const pickLabel = computed(() => {
 
 const POSITIONS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'LAST'] as const
 const posFilter = ref<(typeof POSITIONS)[number]>('ALL')
+/**
+ * Only positions this league actually starts. A tab full of kickers in a league
+ * with no kicker slot is a page of players you cannot use.
+ */
+const visiblePositions = computed(() => {
+  const startable = startablePositions(effectiveSlots.value ?? {})
+  return POSITIONS.filter((p) => p === 'ALL' || p === 'LAST' || startable.has(p))
+})
 const filterLabel = (p: string) => (p === 'ALL' ? 'all' : p === 'LAST' ? "won't last" : p)
 
 /**
@@ -380,7 +399,7 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
         <!-- Position filter: tiers only group meaningfully within a position -->
         <div class="mb-3 flex flex-wrap gap-1">
           <button
-            v-for="p in POSITIONS" :key="p" @click="posFilter = p"
+            v-for="p in visiblePositions" :key="p" @click="posFilter = p"
             class="rounded-full px-2.5 py-1 font-mono text-[10px] uppercase transition-colors"
             :class="posFilter === p ? (p === 'LAST' ? 'bg-[#FF5C5C]/20 text-[#FF5C5C]' : 'bg-primary/20 text-primary') : 'text-dark-textMuted hover:text-dark-text'"
           >{{ filterLabel(p) }}</button>
@@ -541,6 +560,62 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
             </span>
           </div>
         </template>
+      </section>
+
+      <!-- RECAP: what you ended up with -->
+      <section v-else-if="tab === 'recap' && recap" class="rounded-xl border border-dark-border bg-dark-card p-4">
+        <div class="mb-4 flex items-baseline gap-4">
+          <span class="font-display text-4xl font-bold text-primary">{{ recap.grade }}</span>
+          <span class="min-w-0 font-mono text-xs text-dark-textMuted">
+            <template v-if="recap.me">
+              <span class="text-dark-text">{{ recap.me.rank }} of {{ recap.teams.length }}</span>
+              by projected starting points<br />
+              {{ Math.round(recap.me.startingPoints) }} pts<template v-if="recap.behindLeader > 0">
+              · {{ recap.behindLeader }} behind the best lineup in the room</template>
+            </template>
+          </span>
+        </div>
+        <p class="mb-4 font-mono text-[10px] leading-relaxed text-dark-textMuted">
+          every roster scored the same way — its best legal lineup, by our rest-of-season
+          projections. not graded against ADP: beating the market measures how far you drifted
+          from it, not whether the team is good.
+        </p>
+
+        <template v-if="edgeRows.length">
+          <h3 class="mb-2 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Against the room</h3>
+          <div v-for="[pos, v] in edgeRows" :key="pos" class="flex items-center gap-3 border-b border-dark-border/40 py-1.5 last:border-0">
+            <span class="w-14 shrink-0">
+              <span class="rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold" :class="posClass(pos)">{{ pos }}</span>
+            </span>
+            <span class="min-w-0 flex-1 font-mono text-[11px]" :class="v >= 0 ? 'text-emerald-400' : 'text-[#FF5C5C]'">
+              {{ v >= 0 ? '+' : '' }}{{ v }} pts vs the average team here
+            </span>
+          </div>
+        </template>
+
+        <template v-if="recap.values.length">
+          <h3 class="mb-2 mt-4 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Fell to you</h3>
+          <div v-for="n in recap.values" :key="n.pick.playerKey" class="flex items-center gap-3 border-b border-dark-border/40 py-1.5 last:border-0">
+            <span class="min-w-0 flex-1 truncate text-sm text-dark-text">{{ n.pick.name }}</span>
+            <span class="shrink-0 font-mono text-[11px] text-emerald-400">{{ n.delta }} picks past ADP</span>
+          </div>
+        </template>
+
+        <template v-if="recap.reaches.length">
+          <h3 class="mb-2 mt-4 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">You went early on</h3>
+          <div v-for="n in recap.reaches" :key="n.pick.playerKey" class="flex items-center gap-3 border-b border-dark-border/40 py-1.5 last:border-0">
+            <span class="min-w-0 flex-1 truncate text-sm text-dark-text">{{ n.pick.name }}</span>
+            <span class="shrink-0 font-mono text-[11px] text-dark-textMuted">{{ -n.delta }} picks ahead of ADP</span>
+          </div>
+        </template>
+
+        <h3 class="mb-2 mt-4 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">The room</h3>
+        <div v-for="t in recap.teams" :key="t.teamKey" class="flex items-center gap-3 border-b border-dark-border/40 py-1.5 last:border-0"
+             :class="t.isMine ? 'text-dark-text' : 'text-dark-textMuted'">
+          <span class="w-6 shrink-0 font-mono text-[11px]">{{ t.rank }}</span>
+          <span class="min-w-0 flex-1 truncate text-sm" :class="t.isMine ? 'font-semibold text-primary' : ''">{{ t.teamName }}</span>
+          <span class="shrink-0 font-mono text-[11px]">{{ Math.round(t.startingPoints) }}</span>
+        </div>
       </section>
 
       <!-- REPLAY: what we would have said, and were we calibrated -->
