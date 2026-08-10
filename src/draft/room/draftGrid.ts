@@ -16,6 +16,8 @@ export interface GridPick {
   playerName: string
   position: string
   slot: number
+  /** NFL team, for the second line of a board cell. */
+  proTeam?: string
 }
 
 export interface GridCell {

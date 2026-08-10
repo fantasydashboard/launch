@@ -317,6 +317,34 @@ export function useDraftRoom() {
     return !!draftLeague && draftLeague === active
   })
 
+  /**
+   * Display names for the humans in THIS draft, from its own `draft_order`
+   * (user_id -> slot). Bots have no user id and stay anonymous, which is what
+   * they are.
+   */
+  const draftUserNames = ref<Record<number, string>>({})
+  watch(
+    () => draftMeta.value?.draft_order,
+    async (order) => {
+      const entries = Object.entries((order ?? {}) as Record<string, number>)
+      if (!entries.length) { draftUserNames.value = {}; return }
+      const resolved = await Promise.all(
+        entries.map(async ([userId, slot]) => {
+          try {
+            const u = await sleeperService.getUser(String(userId))
+            return [Number(slot), u?.display_name || u?.username || ''] as const
+          } catch {
+            return [Number(slot), ''] as const
+          }
+        }),
+      )
+      const out: Record<number, string> = {}
+      for (const [slot, name] of resolved) if (name) out[slot] = name
+      draftUserNames.value = out
+    },
+    { immediate: true },
+  )
+
   // ── tendencies from league history ────────────────────────────────────────
   const historicalPicks = computed<HistoricalPick[]>(() => {
     const out: HistoricalPick[] = []
@@ -763,6 +791,7 @@ export function useDraftRoom() {
       playerName: [p?.metadata?.first_name, p?.metadata?.last_name].filter(Boolean).join(' ') || String(p.player_id ?? ''),
       position: String(p?.metadata?.position ?? ''),
       slot: Number(p.draft_slot) || 0,
+      proTeam: String(p?.metadata?.team ?? '').toUpperCase(),
     }))
     return buildDraftGrid(shape.value, gp, {
       mySlot: mySlot.value,
@@ -773,10 +802,14 @@ export function useDraftRoom() {
   /**
    * Only this league's drafts get this league's names. In a mock the opponents
    * are bots, and labelling them with your league mates' team names invents a
-   * room that isn't there.
+   * room that isn't there — but the humans in the room have names, and yours is
+   * one of them. Sleeper shows exactly this: real display names where there are
+   * real people, `Team N` for the bots.
    */
   const teamNameForSlot = (slot: number) =>
-    (draftIsThisLeague.value ? src.teamNames.value?.[rosterIdForSlot(slot)] : null) ?? `Team ${slot}`
+    (draftIsThisLeague.value ? src.teamNames.value?.[rosterIdForSlot(slot)] : null) ??
+    draftUserNames.value[slot] ??
+    `Team ${slot}`
 
   return {
     grid,

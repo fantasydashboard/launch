@@ -5,6 +5,7 @@ import { useDraftRoom } from '@/composables/useDraftRoom'
 import { UFD_LABEL } from '@/composables/useCustomRankings'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { startablePositions } from '@/draft/room/rosterNeed'
+import { positionBadge, positionCell } from '@/players/positionColors'
 
 const {
   status, loading, board, recommendation, myPick, myNextPick, isMyTurn,
@@ -93,21 +94,8 @@ const visiblePositions = computed(() => {
 })
 const filterLabel = (p: string) => (p === 'ALL' ? 'all' : p === 'LAST' ? "won't last" : p)
 
-/**
- * Position colours deliberately avoid red, amber and green — those already mean
- * gone, stale and good on this screen, and a red RB badge beside a red 7% blurs
- * both. Colour never carries the meaning alone: the badge still reads the
- * position, so it survives a dim screen or colour blindness.
- */
-const POS_CLASS: Record<string, string> = {
-  QB: 'bg-violet-500/20 text-violet-300',
-  RB: 'bg-cyan-500/20 text-cyan-300',
-  WR: 'bg-blue-500/20 text-blue-300',
-  TE: 'bg-fuchsia-500/20 text-fuchsia-300',
-  K: 'bg-dark-border/60 text-dark-textMuted',
-  DEF: 'bg-dark-border/60 text-dark-textMuted',
-}
-const posClass = (p: string) => POS_CLASS[(p || '').toUpperCase()] ?? 'bg-dark-border/60 text-dark-textMuted'
+const posClass = positionBadge
+const cellClass = positionCell
 
 /** How deep the "players you'd realistically take here" cut runs. */
 const CONTENDERS = 24
@@ -469,39 +457,62 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
       <!-- DRAFT BOARD (grid) -->
       <section v-else-if="tab === 'grid'" ref="gridEl" class="overflow-x-auto rounded-xl border border-dark-border bg-dark-card p-4">
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
-          rounds down · teams across · snake rounds fill right-to-left · your picks highlighted
+          rounds down · teams across · snake rounds fill right-to-left · colour is position
         </p>
         <div v-if="!grid.length" class="py-6 text-center font-mono text-xs text-dark-textMuted">No draft board yet.</div>
-        <table v-else class="w-full min-w-[36rem] border-separate border-spacing-1">
+        <table v-else class="w-full min-w-[52rem] border-separate border-spacing-1">
           <thead>
             <tr>
-              <th class="w-8"></th>
+              <th class="sticky left-0 z-10 w-7 bg-dark-card"></th>
               <th
                 v-for="c in grid[0].cells" :key="'h' + c.slot"
                 :ref="(el) => { if (c.isMine) myColEl = el as HTMLElement }"
                 :title="teamNameForSlot(c.slot)"
-                class="max-w-[7rem] truncate px-1 pb-1 text-left font-mono text-[9px] font-normal uppercase"
-                :class="c.isMine ? 'text-primary' : 'text-dark-textMuted'"
-              >{{ c.isMine ? 'YOU' : teamNameForSlot(c.slot) }}</th>
+                class="w-[8.5rem] px-1 pb-1.5 text-left align-bottom font-normal"
+              >
+                <span class="block truncate font-display text-[11px] font-semibold"
+                      :class="c.isMine ? 'text-primary' : 'text-dark-text'">
+                  {{ c.isMine ? 'YOU' : teamNameForSlot(c.slot) }}
+                </span>
+                <span class="block h-0.5 rounded-full" :class="c.isMine ? 'bg-primary' : 'bg-dark-border'"></span>
+              </th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="row in grid" :key="row.round">
-              <td class="pr-1 text-right font-mono text-[10px] text-dark-textMuted">{{ row.round }}</td>
+              <td class="sticky left-0 z-10 bg-dark-card pr-1 text-right align-middle font-mono text-[10px] text-dark-textMuted">
+                {{ row.round }}
+              </td>
               <td
                 v-for="cell in row.cells" :key="cell.overallPick"
-                class="rounded border px-1.5 py-1 align-top"
+                class="relative h-[3.25rem] overflow-hidden rounded-md border px-2 py-1 align-top transition-colors"
                 :class="[
-                  cell.isCurrent ? 'border-primary bg-primary/10' : 'border-dark-border/50',
-                  cell.isMine ? 'bg-dark-border/40' : '',
+                  cell.pick ? cellClass(cell.pick.position) : 'border-dark-border/40 bg-dark-bg/40',
+                  cell.isCurrent ? 'ring-2 ring-primary' : '',
+                  cell.isMine && !cell.pick ? 'bg-dark-border/30' : '',
                 ]"
               >
+                <span class="absolute right-1.5 top-1 font-mono text-[9px] tabular-nums"
+                      :class="cell.pick ? 'text-dark-text/45' : 'text-dark-textMuted/40'">
+                  {{ row.round }}.{{ String(((cell.overallPick - 1) % (shape?.teams ?? 12)) + 1).padStart(2, '0') }}
+                </span>
                 <template v-if="cell.pick">
-                  <span class="block truncate font-mono text-[10px] text-dark-text">{{ cell.pick.playerName }}</span>
-                  <span class="mt-0.5 inline-block rounded px-1 font-mono text-[9px] font-semibold" :class="posClass(cell.pick.position)">{{ cell.pick.position }}</span>
+                  <span class="block truncate pr-7 text-[12px] font-semibold leading-tight text-dark-text">
+                    {{ cell.pick.playerName }}
+                  </span>
+                  <span class="mt-1 flex items-center gap-1">
+                    <span class="rounded px-1 font-mono text-[9px] font-semibold" :class="posClass(cell.pick.position)">
+                      {{ cell.pick.position }}
+                    </span>
+                    <img v-if="teamLogo(cell.pick.proTeam)" :src="teamLogo(cell.pick.proTeam)" alt="" loading="lazy"
+                         @error="onImgErr" class="h-3.5 w-3.5 object-contain" />
+                    <span class="truncate font-mono text-[9px] text-dark-textMuted">{{ cell.pick.proTeam }}</span>
+                  </span>
                 </template>
-                <span v-else-if="cell.isCurrent" class="block font-mono text-[9px] text-primary">on the clock</span>
-                <span v-else class="block font-mono text-[9px] text-dark-textMuted/50">{{ cell.overallPick }}</span>
+                <span v-else-if="cell.isCurrent"
+                      class="mt-2 block font-mono text-[10px] font-semibold uppercase tracking-wide text-primary">
+                  on the clock
+                </span>
               </td>
             </tr>
           </tbody>
