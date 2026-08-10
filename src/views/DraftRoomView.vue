@@ -7,7 +7,7 @@ import { nflTeamLogo } from '@/players/nflTeamLogo'
 
 const {
   status, loading, board, recommendation, myPick, myNextPick, isMyTurn,
-  currentOverallPick, hasHistory, myPicks, starterSlots, slotUnknown,
+  currentOverallPick, hasHistory, myPicks, myLineup, starterSlots, slotUnknown,
   markDrafted, syncHealthy, refresh, shape,
   grid, teamNameForSlot, connectDraft, disconnectDraft, overrideDraftId, overrideError,
   customRankings, replay, comparePool, boardByRank, boardTierByKey, listRankByKey, effectiveSlots, mySlot,
@@ -137,48 +137,22 @@ const safeUntilNext = computed(() =>
 )
 
 /**
- * Starting slots from the league's actual roster settings, so FLEX shows up —
- * it is the slot that decides whether a third back beats a fourth receiver.
- * Kicker and defense sort last and read as late-round, because listing them as
- * equal needs in round one is how a board loses credibility.
+ * One row per starting slot, each naming the player in it — a lineup, not a
+ * tally. Empty slots get the best player still available who could fill them,
+ * and no player is offered twice: if two back slots are open, they show the two
+ * best backs rather than the same name written down twice.
  */
-const FLEX_ELIGIBLE: Record<string, string[]> = {
-  FLEX: ['RB', 'WR', 'TE'],
-  SUPER_FLEX: ['QB', 'RB', 'WR', 'TE'],
-  REC_FLEX: ['WR', 'TE'],
-}
-const LATE = new Set(['K', 'DEF'])
-const SLOT_ORDER = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPER_FLEX', 'REC_FLEX', 'K', 'DEF']
-
-const holes = computed(() => {
-  const filled: Record<string, number> = {}
-  for (const p of myPicks.value) {
-    const pos = String((p as any)?.metadata?.position ?? '').toUpperCase()
-    if (pos) filled[pos] = (filled[pos] ?? 0) + 1
-  }
-  const slots = effectiveSlots.value ?? {}
-  const entries = Object.entries(slots).filter(([k, n]) => Number(n) > 0 && k !== 'BN' && k !== 'IR' && k !== 'TAXI')
-  entries.sort((a, b) => {
-    const ai = SLOT_ORDER.indexOf(a[0]); const bi = SLOT_ORDER.indexOf(b[0])
-    return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi)
+const lineup = computed(() => {
+  const offered = new Set<string>()
+  return myLineup.value.rows.map((r) => {
+    if (r.player) return { ...r, best: null }
+    const best = board.value.find((b) => r.eligible.includes(b.position) && !offered.has(b.playerKey)) ?? null
+    if (best) offered.add(best.playerKey)
+    return { ...r, best }
   })
-
-  // A pick fills its own position first; whatever spills over covers a flex.
-  const spare: Record<string, number> = { ...filled }
-  const rows = entries.map(([slot, count]) => {
-    const need = Number(count)
-    const eligible = FLEX_ELIGIBLE[slot] ?? [slot]
-    let have = 0
-    for (const pos of eligible) {
-      const take = Math.min(spare[pos] ?? 0, need - have)
-      if (take > 0) { spare[pos] = (spare[pos] ?? 0) - take; have += take }
-      if (have >= need) break
-    }
-    const best = board.value.find((r) => eligible.includes(r.position)) ?? null
-    return { slot, need, have, best, late: LATE.has(slot) }
-  })
-  return rows
 })
+const bench = computed(() => myLineup.value.bench)
+const startersFilled = computed(() => lineup.value.filter((r) => r.player).length)
 </script>
 
 <template>
@@ -509,26 +483,57 @@ const holes = computed(() => {
       <!-- ROOM -->
       <section v-else-if="tab === 'roster'" class="rounded-xl border border-dark-border bg-dark-card p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Your roster</h2>
-        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">{{ myPicks.length }} picked · {{ starterSlots }} starting slots</p>
-        <div v-for="h in holes" :key="h.slot" class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0"
-             :class="h.late ? 'opacity-50' : ''">
-          <span class="w-24 shrink-0"><span class="rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold" :class="posClass(h.slot)">{{ h.slot }}</span></span>
-          <span class="w-12 shrink-0 font-mono text-sm"
-                :class="h.have >= h.need ? 'text-emerald-400' : h.late ? 'text-dark-textMuted' : 'text-[#FF5C5C]'">
-            {{ h.have }}/{{ h.need }}
+        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
+          {{ startersFilled }}/{{ starterSlots }} starters · {{ myPicks.length }} picked
+        </p>
+        <div v-for="(r, i) in lineup" :key="`${r.label}-${i}`"
+             class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0"
+             :class="!r.player && r.late ? 'opacity-50' : ''">
+          <span class="w-20 shrink-0">
+            <span class="rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold" :class="posClass(r.slot)">{{ r.label }}</span>
           </span>
-          <span class="min-w-0 flex-1 truncate font-mono text-[11px] text-dark-textMuted">
-            <template v-if="h.have >= h.need">filled</template>
-            <template v-else-if="h.late">fill late</template>
-            <template v-else-if="h.best">
-              best avail:
-              <img v-if="h.best.headshot" :src="h.best.headshot" alt="" loading="lazy" @error="onImgErr"
-                   class="mx-1 inline-block h-5 w-5 rounded-full bg-dark-border object-cover align-middle" />
-              <span class="text-dark-text">{{ h.best.name }}</span> ({{ round(h.best.score) }})
+          <span class="min-w-0 flex-1 truncate">
+            <template v-if="r.player">
+              <img v-if="r.player.headshot" :src="r.player.headshot" alt="" loading="lazy" @error="onImgErr"
+                   class="mr-2 inline-block h-6 w-6 rounded-full bg-dark-border object-cover align-middle" />
+              <span class="text-sm text-dark-text">{{ r.player.name }}</span>
+              <span class="ml-2 font-mono text-[10px] text-dark-textMuted">{{ r.player.position }}</span>
             </template>
-            <template v-else>—</template>
+            <template v-else>
+              <span class="font-mono text-[11px] text-dark-textMuted">
+                <template v-if="r.late">fill late</template>
+                <template v-else-if="r.best">
+                  best avail:
+                  <img v-if="r.best.headshot" :src="r.best.headshot" alt="" loading="lazy" @error="onImgErr"
+                       class="mx-1 inline-block h-5 w-5 rounded-full bg-dark-border object-cover align-middle" />
+                  <span class="text-dark-text">{{ r.best.name }}</span> ({{ round(r.best.score) }})
+                </template>
+                <template v-else>—</template>
+              </span>
+            </template>
+          </span>
+          <span class="w-12 shrink-0 text-right font-mono text-[10px]"
+                :class="r.player ? 'text-emerald-400' : r.late ? 'text-dark-textMuted' : 'text-[#FF5C5C]'">
+            {{ r.player ? (r.player.overallPick ? `#${r.player.overallPick}` : '✓') : 'open' }}
           </span>
         </div>
+
+        <template v-if="bench.length">
+          <h3 class="mb-1 mt-4 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Bench</h3>
+          <div v-for="b in bench" :key="b.playerKey" class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
+            <span class="w-20 shrink-0">
+              <span class="rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold" :class="posClass(b.position)">{{ b.position }}</span>
+            </span>
+            <span class="min-w-0 flex-1 truncate">
+              <img v-if="b.headshot" :src="b.headshot" alt="" loading="lazy" @error="onImgErr"
+                   class="mr-2 inline-block h-6 w-6 rounded-full bg-dark-border object-cover align-middle" />
+              <span class="text-sm text-dark-text">{{ b.name }}</span>
+            </span>
+            <span class="w-12 shrink-0 text-right font-mono text-[10px] text-dark-textMuted">
+              {{ b.overallPick ? `#${b.overallPick}` : '' }}
+            </span>
+          </div>
+        </template>
       </section>
 
       <!-- REPLAY: what we would have said, and were we calibrated -->

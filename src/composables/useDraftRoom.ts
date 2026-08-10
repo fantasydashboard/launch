@@ -12,6 +12,7 @@ import { buildBoard, type BoardRow } from '@/draft/room/board'
 import { computeReplacementDetail } from '@/football/footballReplacement'
 import { applyAdpAnchor, DEFAULT_ADP_WEIGHT } from '@/draft/room/valueAdjust'
 import { needFactorByPosition } from '@/draft/room/rosterNeed'
+import { buildLineup } from '@/draft/room/lineup'
 import { buildRecommendation, type Recommendation } from '@/draft/room/recommend'
 import { parseDraftId } from '@/draft/room/draftId'
 import { buildDraftGrid, type GridPick } from '@/draft/room/draftGrid'
@@ -462,6 +463,32 @@ export function useDraftRoom() {
     }),
   )
 
+  /** Headshots for players already off the board — the lineup still shows them. */
+  const headshotByKey = computed<Record<string, string>>(() => {
+    const out: Record<string, string> = {}
+    for (const fa of src.freeAgents.value) if (fa.playerKey && fa.headshot) out[fa.playerKey] = fa.headshot
+    for (const p of src.pool.value) if (p.playerKey && p.headshot) out[p.playerKey] = p.headshot
+    return out
+  })
+
+  /** My starting lineup, one row per slot, with whoever is sitting in it. */
+  const myLineup = computed(() =>
+    buildLineup({
+      slots: effectiveSlots.value ?? {},
+      players: myPicks.value.map((p: any) => {
+        const key = String(p?.player_id ?? '')
+        const name = [p?.metadata?.first_name, p?.metadata?.last_name].filter(Boolean).join(' ')
+        return {
+          playerKey: key,
+          name: name || key,
+          position: String(p?.metadata?.position ?? ''),
+          overallPick: Number(p?.pick_no) || null,
+          headshot: headshotByKey.value[key] ?? null,
+        }
+      }),
+    }),
+  )
+
   const starterSlots = computed(() => {
     const slots = effectiveSlots.value ?? {}
     return Object.entries(slots)
@@ -687,6 +714,7 @@ export function useDraftRoom() {
     replay,
     upcoming,
     myPicks,
+    myLineup,
     starterSlots,
     effectiveSlots,
     draftedKeys,
