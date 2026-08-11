@@ -484,3 +484,48 @@ describe('buildBoard — value is capped by what your lineup can use', () => {
     expect(rows[0].marginal).toBeCloseTo(rows[0].vona, 5)
   })
 })
+
+describe('buildBoard — the card cannot contradict itself', () => {
+  it('never ranks a smaller printed edge above a larger one', () => {
+    // Pick 4.02: a receiver was recommended at +12.9 while two backs sat beneath
+    // him at +25 and +23, because ordering used the analyst scale and the
+    // numbers were in points.
+    const rows = buildBoard({
+      available: [
+        { playerKey: 'wr', name: 'Receiver', position: 'WR', value: 400, projected: 248 },
+        { playerKey: 'rb', name: 'Back', position: 'RB', value: 300, projected: 238 },
+      ],
+      // The analyst is far higher on the receiver than our points are.
+      expectedBestAtPosition: { WR: 380, RB: 250 },
+      expectedBestProjectedAtPosition: { WR: 235.1, RB: 213 },
+      marginalByKey: { wr: 248, rb: 238 },
+      survival: { wr: 0.02, rb: 0.01 },
+      adpByKey: {},
+      currentOverallPick: 38,
+      filledStarterSlots: 3,
+      totalStarterSlots: 9,
+    })
+    // Printed edges: WR +12.9, RB +25. The bigger one has to come first.
+    expect(rows[0].playerKey).toBe('rb')
+    expect(rows[0].vonaPoints).toBeGreaterThan(rows[1].vonaPoints)
+  })
+
+  it('orders by exactly the number it displays', () => {
+    const rows = buildBoard({
+      available: [
+        { playerKey: 'a', name: 'A', position: 'WR', value: 500, projected: 200 },
+        { playerKey: 'b', name: 'B', position: 'RB', value: 100, projected: 260 },
+      ],
+      expectedBestAtPosition: { WR: 100, RB: 90 },
+      expectedBestProjectedAtPosition: { WR: 190, RB: 200 },
+      marginalByKey: { a: 200, b: 260 },
+      survival: {},
+      adpByKey: {},
+      currentOverallPick: 20,
+      filledStarterSlots: 2,
+      totalStarterSlots: 9,
+    })
+    const printed = rows.map((r) => r.vonaPoints)
+    expect(printed).toEqual([...printed].sort((x, y) => y - x))
+  })
+})

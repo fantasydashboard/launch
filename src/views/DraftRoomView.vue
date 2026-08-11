@@ -5,6 +5,7 @@ import { useDraftRoom } from '@/composables/useDraftRoom'
 import { UFD_LABEL } from '@/composables/useCustomRankings'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { startablePositions } from '@/draft/room/rosterNeed'
+import { rankTone } from '@/draft/room/slotRanks'
 import { positionBadge, positionCell } from '@/players/positionColors'
 
 const {
@@ -201,15 +202,35 @@ const lineup = computed(() => {
   const offered = new Set<string>()
   const rankFor = (label: string) => slotRanks.value.find((sr) => sr.label === label) ?? null
   return myLineup.value.rows.map((r) => {
+    const teams = shape.value?.teams ?? 12
     const standing = rankFor(r.label)
-    if (r.player) return { ...r, best: null, standing, wouldBe: null }
+    if (r.player) {
+      return {
+        ...r, best: null, wouldBe: null, wouldBeTone: 'hidden' as const,
+        standing, tone: rankTone(standing?.rank ?? null, standing?.of ?? 0, teams),
+      }
+    }
     const best = board.value.find((b) => r.eligible.includes(b.position) && !offered.has(b.playerKey)) ?? null
     if (best) offered.add(best.playerKey)
     // What taking him would actually buy you at this slot, in league terms.
     const wouldBe = best ? rankIfDrafted(r.label, best.projected) : null
-    return { ...r, best, standing, wouldBe }
+    return {
+      ...r, best, standing, tone: 'hidden' as const, wouldBe,
+      wouldBeTone: rankTone(wouldBe?.rank ?? null, wouldBe?.of ?? 0, teams),
+    }
   })
 })
+
+/**
+ * Strong and weak get a colour; the middle third does not. Lighting every row
+ * says the same thing as lighting none.
+ */
+const TONE_CLASS: Record<string, string> = {
+  good: 'text-emerald-400',
+  bad: 'text-[#FF5C5C]',
+  neutral: 'text-dark-text',
+  hidden: 'text-dark-textMuted',
+}
 const ordinal = (n: number) => {
   const s = ['th', 'st', 'nd', 'rd']
   const v = n % 100
@@ -623,15 +644,15 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
           </span>
           <span class="w-24 shrink-0 text-right font-mono text-[10px]">
             <template v-if="r.player">
-              <span v-if="r.standing?.rank" class="block font-semibold"
-                    :class="r.standing.rank <= Math.ceil(r.standing.of / 3) ? 'text-emerald-400' : 'text-dark-text'">
+              <span v-if="r.tone !== 'hidden' && r.standing?.rank" class="block font-semibold"
+                    :class="TONE_CLASS[r.tone]">
                 {{ ordinal(r.standing.rank) }} of {{ r.standing.of }}
               </span>
               <span class="block text-dark-textMuted/70">pick {{ r.player.overallPick }}</span>
             </template>
             <template v-else>
               <span class="block" :class="r.late ? 'text-dark-textMuted' : 'text-[#FF5C5C]'">open</span>
-              <span v-if="r.wouldBe" class="block text-dark-textMuted/70">
+              <span v-if="r.wouldBeTone !== 'hidden' && r.wouldBe" class="block" :class="TONE_CLASS[r.wouldBeTone]">
                 he'd be {{ ordinal(r.wouldBe.rank) }} of {{ r.wouldBe.of }}
               </span>
             </template>

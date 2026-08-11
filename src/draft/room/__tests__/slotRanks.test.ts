@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildSlotRanks, rankIfAdded, type SlotRankTeam } from '../slotRanks'
+import { buildSlotRanks, rankIfAdded, rankTone, type SlotRankTeam } from '../slotRanks'
 
 const slots = { QB: 1, RB: 2, WR: 2, BN: 2 }
 
@@ -80,5 +80,43 @@ describe('rankIfAdded', () => {
   it('returns null for a slot that does not exist', () => {
     const ranks = buildSlotRanks({ slots, teams, myTeamKey: 'me' })
     expect(rankIfAdded(ranks, 'TE9', 100, teams, slots, 'me')).toBeNull()
+  })
+})
+
+describe('rankTone', () => {
+  it('says nothing until enough of the league is comparable', () => {
+    // Pick 3.09 of a 10-team draft: "2nd of 2" is Justin Jefferson against the
+    // one other team that has a WR2 yet. Red would be a lie told confidently.
+    expect(rankTone(2, 2, 10)).toBe('hidden')
+    expect(rankTone(1, 1, 10)).toBe('hidden')
+    expect(rankTone(3, 3, 10)).toBe('hidden')
+  })
+
+  it('colours once half the league has somebody in that slot', () => {
+    expect(rankTone(1, 8, 10)).toBe('good')
+    expect(rankTone(8, 8, 10)).toBe('bad')
+    expect(rankTone(4, 8, 10)).toBe('neutral')
+  })
+
+  it('splits into thirds, leaving the middle uncoloured', () => {
+    const tones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((r) => rankTone(r, 10, 10))
+    expect(tones.filter((t) => t === 'good')).toHaveLength(3)
+    expect(tones.filter((t) => t === 'bad')).toHaveLength(3)
+    expect(tones.filter((t) => t === 'neutral')).toHaveLength(4)
+    // Whatever the size of the room, the two ends stay the same width.
+    for (const of of [4, 5, 7, 8, 12]) {
+      const t = Array.from({ length: of }, (_, i) => rankTone(i + 1, of, of))
+      expect(t.filter((x) => x === 'good').length).toBe(t.filter((x) => x === 'bad').length)
+    }
+  })
+
+  it('scales the gate to a small league', () => {
+    // A 4-team draft only needs 3 comparable teams, not 5.
+    expect(rankTone(1, 3, 4)).toBe('good')
+    expect(rankTone(1, 2, 4)).toBe('hidden')
+  })
+
+  it('hides an empty slot', () => {
+    expect(rankTone(null, 9, 10)).toBe('hidden')
   })
 })

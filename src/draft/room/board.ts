@@ -258,7 +258,23 @@ export function buildBoard(input: BoardInput): BoardRow[] {
      * insurance and trade value, which is what BENCH_FACTOR always meant.
      */
     const marginal = marginalByKey?.[p.playerKey]
-    const contribution = marginal === undefined ? vona * need : Math.min(vona, marginal)
+    /**
+     * Both terms in PROJECTED POINTS.
+     *
+     * `vona` is denominated in whatever scale the active ranking list re-seated
+     * `value` into; `marginal` is real points off the lineup. Taking the minimum
+     * of the two was comparing currencies — and it showed: a card could
+     * recommend a player at +12.9 while listing two alternates at +25 and +23
+     * beneath him, because the order came from one scale and the numbers from
+     * the other.
+     *
+     * The cost of fixing it honestly: the analyst list no longer moves this
+     * recommendation. It still orders the Board, which is the cheat sheet, and
+     * still draws the tiers. The Pick tab is our answer, in our units, and every
+     * number on it can be checked against the points column.
+     */
+    const contribution =
+      marginal === undefined ? vonaPoints * need : Math.min(vonaPoints, marginal)
 
     let flag: BoardRow['flag'] = ''
     if (adp !== null) {
@@ -290,7 +306,7 @@ export function buildBoard(input: BoardInput): BoardRow[] {
       score:
         marginal === undefined
           ? (1 - w) * vona * need + w * upside * need
-          : Math.max(contribution, w * Math.max(BENCH_FLOOR * vona, upside * need)),
+          : Math.max(contribution, w * Math.max(BENCH_FLOOR * vonaPoints, upside * need)),
       usable: contribution,
       survival: survival?.[p.playerKey] ?? 1,
       tier: tierByKey[p.playerKey] ?? 1,

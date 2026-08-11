@@ -126,3 +126,32 @@ export function rankIfAdded(
   const better = others.filter((p) => p > candidatePoints).length
   return { rank: better + 1, of: others.length + 1 }
 }
+
+/**
+ * How a slot standing should read: strong, weak, or not worth colouring.
+ *
+ * Colour only once enough of the league has somebody in that slot. Early on the
+ * denominators are tiny — "2nd of 2" at pick 3.09 is an elite receiver against
+ * the one other team that has drafted a WR2 yet, and painting him red would be a
+ * confident statement built on a sample of two. Below the gate the rank is not
+ * dimmed, it is hidden: a number nobody should act on is worse than no number.
+ *
+ * The middle third stays uncoloured on purpose. A traffic light where every row
+ * is lit says the same thing as one where none are — colour earns its attention
+ * by being rare.
+ */
+export type RankTone = 'hidden' | 'good' | 'neutral' | 'bad'
+
+/** At least this many teams, and at least half the league, must be comparable. */
+const MIN_COMPARABLE = 3
+
+export function rankTone(rank: number | null, of: number, teams: number): RankTone {
+  if (!rank || of < Math.max(MIN_COMPARABLE, Math.ceil(teams / 2))) return 'hidden'
+  if (of === 1) return 'hidden'
+  // Symmetric by construction: the same count at each end, whatever `of` is.
+  // Dividing by three and rounding independently quietly made "bad" one wider.
+  const edge = Math.max(1, Math.floor(of / 3))
+  if (rank <= edge) return 'good'
+  if (rank > of - edge) return 'bad'
+  return 'neutral'
+}
