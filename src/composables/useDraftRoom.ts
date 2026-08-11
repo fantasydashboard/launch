@@ -506,23 +506,32 @@ export function useDraftRoom() {
    * individual backs while the analyst's real bias was a general RB premium, not
    * a handcuff one.
    */
-  const adjustedPlayers = computed(() => {
-    const base = availablePlayers.value
-    if (!base.length) return base
-    const anchored = applyAdpAnchor(base, adp.value, DEFAULT_ADP_WEIGHT)
-    return base.map((p) => ({ ...p, value: anchored[p.playerKey] ?? p.value }))
-  })
 
   // Admin-only: an analyst's ordering mapped onto our value curve. Off (and
   // invisible) for every other account. Applied last so it overrides ours.
   const customRankings = useCustomRankings()
-  const rankedPlayers = computed(() => {
-    const base = adjustedPlayers.value.map((p) => ({ ...p, projected: p.value }))
+  const rankedPlayers = computed(() => applyValuePipeline(availablePlayers.value))
+
+  /**
+   * The single value pipeline: market anchor, then whichever ranking list is
+   * active. Both the live board and the replay run through this.
+   *
+   * They used not to. The replay built its universe from raw VOR points — no ADP
+   * anchor, no analyst list — so it was replaying a DIFFERENT ENGINE from the one
+   * on screen, and every conclusion drawn from "following us" was about a tool
+   * nobody used. If these two ever diverge again the replay verifies nothing.
+   */
+  function applyValuePipeline<T extends { playerKey: string; position: string; value: number }>(
+    rows: T[],
+  ): (T & { projected: number })[] {
+    if (!rows.length) return []
+    const anchored = applyAdpAnchor(rows, adp.value, DEFAULT_ADP_WEIGHT)
+    const withAnchor = rows.map((p) => ({ ...p, value: anchored[p.playerKey] ?? p.value }))
+    const base = withAnchor.map((p) => ({ ...p, projected: p.value }))
     const remap = customRankings.applyTo(base)
     if (!Object.keys(remap).length) return base
-    // `value` becomes the ranking device; `projected` stays our own number.
     return base.map((p) => ({ ...p, value: remap[p.playerKey] ?? p.value }))
-  })
+  }
 
   const survivalResult = computed(() =>
     simulateSurvival({
@@ -886,7 +895,9 @@ export function useDraftRoom() {
         headshot: headshotByKey.value[key],
       })
     }
-    const players = [...universe.values()]
+    // Through the SAME pipeline the live board uses, so the replay is replaying
+    // the tool you actually had on screen.
+    const players = applyValuePipeline([...universe.values()])
     if (!players.length) return null
 
     const args = {
@@ -917,7 +928,11 @@ export function useDraftRoom() {
         players: [...keys]
           .map((k) => meta.get(k))
           .filter(Boolean)
-          .sort((a, b) => (b!.value ?? 0) - (a!.value ?? 0))
+          // By POINTS, not by the ranking list. A lineup is set by who scores
+          // most, and `value` now carries whichever analyst order is active.
+          .sort((a, b) =>
+            (vorByKey.value[b!.playerKey]?.pointsRos ?? 0) - (vorByKey.value[a!.playerKey]?.pointsRos ?? 0),
+          )
           .map((p, i) => ({
             playerKey: p!.playerKey, name: p!.name, position: p!.position, overallPick: i,
           })),
