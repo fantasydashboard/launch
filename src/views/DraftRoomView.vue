@@ -12,7 +12,8 @@ const {
   currentOverallPick, hasHistory, myPicks, myLineup, starterSlots, slotUnknown,
   markDrafted, syncHealthy, refresh, shape,
   grid, teamNameForSlot, connectDraft, disconnectDraft, overrideDraftId, overrideError,
-  customRankings, replay, recap, history, teamAvatarForSlot, comparePool, boardByRank, boardTierByKey, listRankByKey, effectiveSlots, mySlot,
+  customRankings, replay, recap, history, teamAvatarForSlot, slotRanks, rankIfDrafted, comparePool,
+  draftedKeys, draftedRows, boardByRank, boardTierByKey, listRankByKey, effectiveSlots, mySlot,
 } = useDraftRoom()
 
 // Admin-only analyst override. Invisible to every other account.
@@ -119,6 +120,12 @@ const CONTENDERS = 24
 
 // The Board renders the active list in ITS order — the analyst's, or UFD's.
 // Filtering by position keeps that order within the position.
+/**
+ * Drafted players are hidden by default — the board answers "who can I take".
+ * Showing them is for the other question: where a run happened and what it cost
+ * you, which you can only see with the gaps filled back in.
+ */
+const showDrafted = ref(false)
 const visibleBoard = computed(() => {
   if (posFilter.value === 'LAST') {
     // Urgency is the one ordering the list's own order cannot express.
@@ -134,7 +141,22 @@ const visibleBoard = computed(() => {
   const rows = posFilter.value === 'ALL'
     ? boardByRank.value
     : boardByRank.value.filter((r) => r.position === posFilter.value)
-  return rows.slice(0, 60)
+  if (!showDrafted.value) return rows.slice(0, 60)
+
+  // Drafted players are slotted back in at their list rank, so the board reads
+  // as it did before the run went through — that is the whole point of showing
+  // them. They carry a `takenAt` so a row can render as spent.
+  const taken = Object.values(draftedRows.value)
+    .filter((d) => posFilter.value === 'ALL' || d.position === posFilter.value)
+    .map((d) => ({
+      ...d, value: d.projected, vona: 0, vonaPoints: 0, upside: 0, score: 0,
+      needFactor: 1, survival: 0, tier: 0, overallTier: 0, flag: '' as const, adp: null,
+      takenAt: d.overallPick,
+    }))
+  const rank = (key: string) => listRankByKey.value[key] ?? Number.MAX_SAFE_INTEGER
+  return [...rows, ...taken]
+    .sort((a, b) => rank(a.playerKey) - rank(b.playerKey))
+    .slice(0, 90)
 })
 /**
  * Tier headers only make sense when the list is ordered by tier, which is the
@@ -177,13 +199,22 @@ const safeUntilNext = computed(() =>
  */
 const lineup = computed(() => {
   const offered = new Set<string>()
+  const rankFor = (label: string) => slotRanks.value.find((sr) => sr.label === label) ?? null
   return myLineup.value.rows.map((r) => {
-    if (r.player) return { ...r, best: null }
+    const standing = rankFor(r.label)
+    if (r.player) return { ...r, best: null, standing, wouldBe: null }
     const best = board.value.find((b) => r.eligible.includes(b.position) && !offered.has(b.playerKey)) ?? null
     if (best) offered.add(best.playerKey)
-    return { ...r, best }
+    // What taking him would actually buy you at this slot, in league terms.
+    const wouldBe = best ? rankIfDrafted(r.label, best.projected) : null
+    return { ...r, best, standing, wouldBe }
   })
 })
+const ordinal = (n: number) => {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return `${n}${s[(v - 20) % 10] ?? s[v] ?? s[0]}`
+}
 const bench = computed(() => myLineup.value.bench)
 const startersFilled = computed(() => lineup.value.filter((r) => r.player).length)
 </script>
@@ -221,7 +252,7 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
           {{ overrideDraftId ? 'change draft' : 'connect draft' }}
         </button>
         <button
-          v-if="status === 'drafting'"
+          v-if="status === 'drafting' || status === 'pre-draft'"
           @click="refresh"
           class="rounded-lg border border-dark-border px-3 py-1.5 font-mono text-[11px] text-dark-textMuted hover:text-dark-text"
         >
@@ -395,7 +426,19 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
                   · {{ a.note }}
                 </span>
               </span>
-              <span class="shrink-0 text-right font-mono text-sm text-dark-text">{{ round(a.row.score) > 0 ? '+' : '' }}{{ round(a.row.score) }}</span>
+              <!--
+                The points edge, not the internal score. `score` blends VONA,
+                upside and a bench discount, and it pins at its cap in the late
+                rounds — so three different players read "+14" and the number
+                explains nothing. This one is the same quantity the headline
+                cites, and it can be checked against the PTS column.
+              -->
+              <span class="shrink-0 text-right font-mono text-sm"
+                    :class="a.row.vonaPoints > 0 ? 'text-dark-text' : 'text-dark-textMuted'">
+                <template v-if="a.row.vonaPoints > 0">+{{ round(a.row.vonaPoints) }}</template>
+                <template v-else>—</template>
+                <span class="block font-mono text-[9px] text-dark-textMuted">pts vs next {{ a.row.position }}</span>
+              </span>
             </div>
           </section>
         </template>
@@ -417,7 +460,7 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
           <span class="min-w-0 flex-1">player · in {{ customRankings.sourceName.value }} order</span>
           <span class="w-12 text-right" title="Our projected points — unchanged by which list is ranking">pts</span>
           <span class="w-14 text-right" title="Chance he is still available at your next pick">lasts</span>
-          <span class="w-12 text-right" title="What the board sorts by: edge during the starter rounds, ceiling once your lineup is full">score</span>
+          <span class="w-12 text-right" title="Points over the next-best player at his position by your next pick — the same number the Pick card cites">edge</span>
         </div>
 
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">tap a row to mark drafted</p>
@@ -434,8 +477,9 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
           </div>
 
           <button
-            @click="markDrafted(r.playerKey)"
-            class="flex w-full items-center gap-3 border-b border-dark-border/40 py-2 text-left last:border-0 hover:bg-dark-border/20"
+            @click="!(r as any).takenAt && markDrafted(r.playerKey)"
+            class="flex w-full items-center gap-3 border-b border-dark-border/40 py-2 text-left last:border-0"
+            :class="(r as any).takenAt ? 'opacity-40' : 'hover:bg-dark-border/20'"
           >
             <span class="w-6 shrink-0 font-mono text-[10px] text-dark-textMuted">{{ listRankByKey[r.playerKey] ?? i + 1 }}</span>
             <img v-if="r.headshot" :src="r.headshot" :alt="r.name" loading="lazy" @error="onImgErr"
@@ -443,8 +487,9 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
             <span v-else class="h-7 w-7 shrink-0 rounded-full bg-dark-border" />
             <span class="min-w-0 flex-1">
               <span class="flex items-center gap-1.5">
-                <span class="truncate text-sm font-semibold text-dark-text">{{ r.name }}</span>
-                <span v-if="r.flag === 'value'" class="shrink-0 rounded bg-emerald-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-emerald-400">value</span>
+                <span class="truncate text-sm font-semibold" :class="(r as any).takenAt ? 'text-dark-textMuted line-through' : 'text-dark-text'">{{ r.name }}</span>
+                <span v-if="(r as any).takenAt" class="shrink-0 font-mono text-[9px] text-dark-textMuted">gone {{ (r as any).takenAt }}</span>
+                <span v-else-if="r.flag === 'value'" class="shrink-0 rounded bg-emerald-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-emerald-400">value</span>
               </span>
               <span class="flex items-center gap-1.5 font-mono text-[10px] text-dark-textMuted">
                 <span class="rounded px-1 py-0.5 text-[9px] font-semibold" :class="posClass(r.position)">{{ r.position }}</span>
@@ -456,11 +501,17 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
             </span>
             <span class="w-12 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ round(r.projected) }}</span>
             <span class="w-14 shrink-0 text-right font-mono text-xs" :class="r.survival < 0.5 ? 'text-[#FF5C5C]' : 'text-dark-textMuted'">{{ pct(r.survival) }}</span>
-            <span class="w-12 shrink-0 text-right font-mono text-sm font-bold" :class="r.score > 0 ? 'text-dark-text' : 'text-dark-textMuted'">
-              {{ r.score > 0 ? '+' : '' }}{{ round(r.score) }}
+            <span class="w-12 shrink-0 text-right font-mono text-sm font-bold" :class="r.vonaPoints > 0 ? 'text-dark-text' : 'text-dark-textMuted'">
+              <template v-if="r.vonaPoints > 0">+{{ round(r.vonaPoints) }}</template>
+              <template v-else>—</template>
             </span>
           </button>
         </template>
+
+        <label class="mt-2 flex cursor-pointer items-center gap-2 font-mono text-[10px] text-dark-textMuted">
+          <input type="checkbox" v-model="showDrafted" class="h-3 w-3 accent-primary" />
+          show drafted players
+        </label>
 
         <p v-if="posFilter === 'LAST' && safeUntilNext.length" class="mt-4 border-t border-dark-border pt-3 font-mono text-[11px] text-dark-textMuted">
           <span class="uppercase tracking-wide text-dark-textMuted/70">should still be there</span><br />
@@ -540,7 +591,8 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
       <section v-else-if="tab === 'roster'" class="rounded-xl border border-dark-border bg-dark-card p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Your roster</h2>
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
-          {{ startersFilled }}/{{ starterSlots }} starters · {{ myPicks.length }} picked
+          {{ startersFilled }}/{{ starterSlots }} starters · {{ myPicks.length }} picked ·
+          rank is your player at that slot against every other team's
         </p>
         <div v-for="(r, i) in lineup" :key="`${r.label}-${i}`"
              class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0"
@@ -562,15 +614,27 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
                   best avail:
                   <img v-if="r.best.headshot" :src="r.best.headshot" alt="" loading="lazy" @error="onImgErr"
                        class="mx-1 inline-block h-5 w-5 rounded-full bg-dark-border object-cover align-middle" />
-                  <span class="text-dark-text">{{ r.best.name }}</span> ({{ round(r.best.score) }})
+                  <span class="text-dark-text">{{ r.best.name }}</span>
+                  <span class="text-dark-textMuted">· {{ round(r.best.projected) }} pts</span>
                 </template>
                 <template v-else>—</template>
               </span>
             </template>
           </span>
-          <span class="w-12 shrink-0 text-right font-mono text-[10px]"
-                :class="r.player ? 'text-emerald-400' : r.late ? 'text-dark-textMuted' : 'text-[#FF5C5C]'">
-            {{ r.player ? (r.player.overallPick ? `#${r.player.overallPick}` : '✓') : 'open' }}
+          <span class="w-24 shrink-0 text-right font-mono text-[10px]">
+            <template v-if="r.player">
+              <span v-if="r.standing?.rank" class="block font-semibold"
+                    :class="r.standing.rank <= Math.ceil(r.standing.of / 3) ? 'text-emerald-400' : 'text-dark-text'">
+                {{ ordinal(r.standing.rank) }} of {{ r.standing.of }}
+              </span>
+              <span class="block text-dark-textMuted/70">pick {{ r.player.overallPick }}</span>
+            </template>
+            <template v-else>
+              <span class="block" :class="r.late ? 'text-dark-textMuted' : 'text-[#FF5C5C]'">open</span>
+              <span v-if="r.wouldBe" class="block text-dark-textMuted/70">
+                he'd be {{ ordinal(r.wouldBe.rank) }} of {{ r.wouldBe.of }}
+              </span>
+            </template>
           </span>
         </div>
 

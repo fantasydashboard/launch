@@ -13,6 +13,7 @@ import { computeReplacementDetail } from '@/football/footballReplacement'
 import { applyAdpAnchor, DEFAULT_ADP_WEIGHT } from '@/draft/room/valueAdjust'
 import { needFactorByPosition, startablePositions } from '@/draft/room/rosterNeed'
 import { buildLineup } from '@/draft/room/lineup'
+import { buildSlotRanks, rankIfAdded, type SlotRankTeam } from '@/draft/room/slotRanks'
 import { buildRecommendation, type Recommendation } from '@/draft/room/recommend'
 import { parseDraftId } from '@/draft/room/draftId'
 import { buildDraftGrid, type GridPick } from '@/draft/room/draftGrid'
@@ -177,13 +178,15 @@ export function useDraftRoom() {
       const p = await sleeperService.getDraftPicks(id)
       if (Array.isArray(p)) { picks.value = p; pollFailures.value = 0 }
 
-      // The poll only ever read PICKS, so `status` kept saying "drafting" long
-      // after the last pick was in — which is why the end of a draft passed with
-      // nothing happening on screen. Once the board is full, re-read the meta so
-      // the room can tell you the draft is over.
+      // The poll only ever read PICKS, so `status` was whatever it had been at
+      // load forever after. That stranded the room at both ends: a draft you
+      // connected before it started never noticed it had begun, and a finished
+      // one never noticed it was over. Both needed a hard refresh.
       const teams = Number(draftMeta.value?.settings?.teams) || 0
       const rounds = Number(draftMeta.value?.settings?.rounds) || 0
-      if (teams > 0 && rounds > 0 && picks.value.length >= teams * rounds && draftMeta.value?.status !== 'complete') {
+      const full = teams > 0 && rounds > 0 && picks.value.length >= teams * rounds
+      const status = String(draftMeta.value?.status ?? '')
+      if (status !== 'complete' && (full || status === 'pre_draft' || picks.value.length > 0)) {
         const meta = await sleeperService.getDraftById(id)
         if (meta) draftMeta.value = meta
       }
@@ -212,13 +215,18 @@ export function useDraftRoom() {
     src.load()
     src.loadFreeAgents(400)
     loadDraft().then(() => {
-      if (draftMeta.value?.status === 'drafting') startPolling()
+      const s = draftMeta.value?.status
+      if (s === 'drafting' || s === 'pre_draft') startPolling()
     })
   }
   onMounted(init)
   onUnmounted(stopPolling)
   watch(() => leagueStore.activeLeagueId, init)
-  watch(() => draftMeta.value?.status, (s) => (s === 'drafting' ? startPolling() : stopPolling()))
+  // Polling covers the wait as well as the draft: a room you open early has to
+  // notice the first pick by itself.
+  watch(() => draftMeta.value?.status, (s) =>
+    s === 'drafting' || s === 'pre_draft' ? startPolling() : stopPolling(),
+  )
 
   // ── derived draft state ───────────────────────────────────────────────────
   const shape = computed<DraftShape | null>(() => {
@@ -565,6 +573,48 @@ export function useDraftRoom() {
     }),
   )
 
+  /** Every team's roster so far, for slot-by-slot comparison. */
+  const allTeamRosters = computed<SlotRankTeam[]>(() => {
+    const byTeam = new Map<string, SlotRankTeam>()
+    for (const p of picks.value as any[]) {
+      const key = String(p?.draft_slot ?? p?.roster_id ?? '')
+      const playerKey = String(p?.player_id ?? '')
+      if (!key || !playerKey) continue
+      const entry = byTeam.get(key) ?? { teamKey: key, players: [] }
+      entry.players.push({
+        playerKey,
+        name: [p?.metadata?.first_name, p?.metadata?.last_name].filter(Boolean).join(' ') || playerKey,
+        position: String(p?.metadata?.position ?? ''),
+        points: vorByKey.value[playerKey]?.pointsRos ?? 0,
+      })
+      byTeam.set(key, entry)
+    }
+    return [...byTeam.values()]
+  })
+
+  /**
+   * Where each of my starters stands against the same slot on every other roster.
+   * A roster is only strong or weak relative to the teams you play.
+   */
+  const slotRanks = computed(() =>
+    buildSlotRanks({
+      slots: effectiveSlots.value ?? {},
+      teams: allTeamRosters.value,
+      myTeamKey: mySlot.value != null ? String(mySlot.value) : null,
+    }),
+  )
+
+  /** Where a player you're considering would put you at a given slot. */
+  const rankIfDrafted = (label: string, points: number) =>
+    rankIfAdded(
+      slotRanks.value,
+      label,
+      points,
+      allTeamRosters.value,
+      effectiveSlots.value ?? {},
+      mySlot.value != null ? String(mySlot.value) : null,
+    )
+
   const starterSlots = computed(() => {
     const slots = effectiveSlots.value ?? {}
     return Object.entries(slots)
@@ -578,6 +628,28 @@ export function useDraftRoom() {
     for (const p of myPicks.value) {
       const pos = String((p as any)?.metadata?.position ?? '').toUpperCase()
       if (pos) out[pos] = (out[pos] ?? 0) + 1
+    }
+    return out
+  })
+
+  /**
+   * Everyone taken so far, with the value they had — so the board can show the
+   * gaps back in and you can see where a run went through.
+   */
+  const draftedRows = computed(() => {
+    const out: Record<string, { playerKey: string; name: string; position: string; proTeam?: string; headshot?: string; projected: number; overallPick: number }> = {}
+    for (const p of picks.value as any[]) {
+      const key = String(p?.player_id ?? '')
+      if (!key) continue
+      out[key] = {
+        playerKey: key,
+        name: [p?.metadata?.first_name, p?.metadata?.last_name].filter(Boolean).join(' ') || key,
+        position: String(p?.metadata?.position ?? ''),
+        proTeam: String(p?.metadata?.team ?? '').toUpperCase(),
+        headshot: headshotByKey.value[key],
+        projected: vorByKey.value[key]?.pointsRos ?? 0,
+        overallPick: Number(p?.pick_no) || 0,
+      }
     }
     return out
   })
@@ -934,11 +1006,14 @@ export function useDraftRoom() {
     comparePool,
     boardByRank,
     boardTierByKey,
+    draftedRows,
     listRankByKey,
     replay,
     upcoming,
     myPicks,
     myLineup,
+    slotRanks,
+    rankIfDrafted,
     recap,
     history,
     teamAvatarForSlot,
