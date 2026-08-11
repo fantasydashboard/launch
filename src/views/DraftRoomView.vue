@@ -455,10 +455,12 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
                 cites, and it can be checked against the PTS column.
               -->
               <span class="shrink-0 text-right font-mono text-sm"
-                    :class="a.row.vonaPoints > 0 ? 'text-dark-text' : 'text-dark-textMuted'">
-                <template v-if="a.row.vonaPoints > 0">+{{ round(a.row.vonaPoints) }}</template>
+                    :class="a.row.usable > 0 ? 'text-dark-text' : 'text-dark-textMuted'">
+                <template v-if="a.row.usable > 0">+{{ round(a.row.usable) }}</template>
                 <template v-else>—</template>
-                <span class="block font-mono text-[9px] text-dark-textMuted">pts vs next {{ a.row.position }}</span>
+                <span class="block font-mono text-[9px] text-dark-textMuted">
+                  {{ a.row.usable > 0 ? 'pts to your lineup' : 'no slot for him' }}
+                </span>
               </span>
             </div>
           </section>
@@ -481,7 +483,7 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
           <span class="min-w-0 flex-1">player · in {{ customRankings.sourceName.value }} order</span>
           <span class="w-12 text-right" title="Our projected points — unchanged by which list is ranking">pts</span>
           <span class="w-14 text-right" title="Chance he is still available at your next pick">lasts</span>
-          <span class="w-12 text-right" title="Points over the next-best player at his position by your next pick — the same number the Pick card cites">edge</span>
+          <span class="w-12 text-right" title="Points he would add to your starting lineup, capped by what you would give up by waiting — a dash means he cannot crack your lineup today">edge</span>
         </div>
 
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">tap a row to mark drafted</p>
@@ -522,8 +524,14 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
             </span>
             <span class="w-12 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ round(r.projected) }}</span>
             <span class="w-14 shrink-0 text-right font-mono text-xs" :class="r.survival < 0.5 ? 'text-[#FF5C5C]' : 'text-dark-textMuted'">{{ pct(r.survival) }}</span>
-            <span class="w-12 shrink-0 text-right font-mono text-sm font-bold" :class="r.vonaPoints > 0 ? 'text-dark-text' : 'text-dark-textMuted'">
-              <template v-if="r.vonaPoints > 0">+{{ round(r.vonaPoints) }}</template>
+            <!--
+              What he is worth TO YOU, not what he is worth in the abstract. The
+              raw positional edge showed a backup quarterback at +39 on a roster
+              that already had one — a true number about a player the board
+              itself scored at zero.
+            -->
+            <span class="w-12 shrink-0 text-right font-mono text-sm font-bold" :class="r.usable > 0 ? 'text-dark-text' : 'text-dark-textMuted'">
+              <template v-if="r.usable > 0">+{{ round(r.usable) }}</template>
               <template v-else>—</template>
             </span>
           </button>
@@ -799,6 +807,8 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
             low As are different seasons.<template v-if="historySummary.advicePreferred">
             our advice would have outscored you in {{ historySummary.advicePreferred.better }} of
             {{ historySummary.advicePreferred.of }} drafts we could replay.</template>
+            the "ours" figure is recomputed by today's model each time a draft is opened, so every
+            row is comparable — it is not a record of what the tool said on the day.
           </p>
 
           <div v-for="r in historyRecords" :key="r.draftId"

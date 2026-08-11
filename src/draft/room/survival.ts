@@ -90,16 +90,24 @@ function drawPosition(prior: PositionPrior, rand: number, allowed: Set<string>):
  * board is too tidy: it concentrates every simulation on the same handful of
  * players and leaves everyone behind them looking safe.
  *
- * Both numbers come off a calibration run, not intuition. A three-deep window
- * taking the next man 60% of the time left the top of the board surviving six
- * picks only 0.4% of the time, where measurement said 10% — and it barely
- * touched the middle, which stayed overstated by 12-22 points. Solving
- * (1 - p)^6 = 0.10 gives a per-pick take probability near a third, and a wider
- * window spreads the rest of the mass down the board where the misses were.
+ * Both numbers come off calibration runs, not intuition, and they have moved
+ * twice as the sample grew.
+ *
+ * Pooled over three drafts (n=1371) the error is a DISTRIBUTION problem, not a
+ * volume one — the same number of players leaves the board either way. The model
+ * took the obvious names too often (the 20-30% band survived 38% of the time
+ * against 26% predicted) and reached deep too rarely (60-90% survived 66%
+ * against 78%, a 12.6-point gap on n=163, about three and a half standard
+ * errors). A six-deep window cannot express a reach past the seventh-best player
+ * available, and real drafts are full of them.
+ *
+ * So the window widens and the head flattens: the top of the board is taken 25%
+ * of the time per pick rather than 34%, and 18% of the mass now lands beyond the
+ * sixth name, where it was previously zero.
  */
-const REACH_WINDOW = 6
+const REACH_WINDOW = 12
 /** Probability of taking the next man rather than reaching past him. */
-const REACH_DECAY = 0.34
+const REACH_DECAY = 0.25
 
 /** The next player off a list, with a little reach. */
 function chooseFrom<T extends { playerKey: string; adp: number | null }>(

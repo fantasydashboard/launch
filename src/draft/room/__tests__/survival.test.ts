@@ -163,19 +163,28 @@ describe('simulateSurvival — modelling how managers actually pick', () => {
   })
 
   it('models the market when we have no read on the manager', () => {
-    // sample 0 = no history. The picks should come off the top of the ADP board
+    // A board deep enough that the reach window does not span it — with six
+    // players every model looks the same, because everyone is within reach.
+    const deep = Array.from({ length: 40 }, (_, i) => ({
+      playerKey: `d${i + 1}`,
+      position: i % 2 === 0 ? 'RB' : 'WR',
+      adp: i + 1,
+      value: 300 - i * 5,
+    }))
+    // sample 0 = no history. Picks should come off the top of the ADP board
     // regardless of position, not be scattered across positions evenly.
-    const r = run({
+    const r = simulateSurvival({
+      available: deep,
       upcomingSlots: [1, 2],
       priorForSlot: () => ({ byPosition: { QB: 0.5, TE: 0.5 }, sample: 0, counts: {} }),
+      runs: 400,
+      seed: 42,
     })
-    // rb1 and wr1 are ADP 1 and 2 — the market takes them, whatever the prior says.
-    expect(r.survival.rb1).toBeLessThan(0.9)
-    expect(r.survival.wr1).toBeLessThan(0.9)
-    // te1 at ADP 20 is last on the board and much safer than the top of it.
-    // (Only relative here: this fixture is six players deep, so the reach window
-    // spans the whole board — on a real board it stops long before ADP 20.)
-    expect(r.survival.te1).toBeGreaterThan(r.survival.rb1)
+    // The top of the board is at risk whatever the prior says about position.
+    expect(r.survival.d1).toBeLessThan(0.95)
+    // Someone thirty names down is not.
+    expect(r.survival.d35).toBe(1)
+    expect(r.survival.d35).toBeGreaterThan(r.survival.d1)
   })
 
   it('stays deterministic with the reach model in play', () => {
