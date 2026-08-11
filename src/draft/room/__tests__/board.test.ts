@@ -405,16 +405,46 @@ describe('buildBoard — value is capped by what your lineup can use', () => {
     expect(rows.find((r) => r.playerKey === 'blocked')!.marginal).toBe(0)
   })
 
-  it('does not erase a blocked player — he is still depth', () => {
+  it('a blocked player is worth nothing while a starting slot is still open', () => {
+    // With a hole in the lineup, someone who cannot fill it is not competing for
+    // this pick at all.
     const rows = buildBoard({
       ...base,
       available: [{ playerKey: 'blocked', name: 'Blocked TE', position: 'TE', value: 205 }],
       marginalByKey: { blocked: 0 },
     })
-    const blocked = rows[0]
-    expect(blocked.usable).toBeGreaterThan(0)
-    // A little over a third of his timing edge — depth, not a starter.
-    expect(blocked.usable).toBeCloseTo(0.35 * blocked.vona, 5)
+    expect(rows[0].usable).toBe(0)
+    expect(rows[0].score).toBe(0)
+  })
+
+  it('keeps bench value once the lineup is full', () => {
+    const rows = buildBoard({
+      ...base,
+      filledStarterSlots: 9,
+      totalStarterSlots: 9,
+      available: [{ playerKey: 'blocked', name: 'Blocked TE', position: 'TE', value: 205 }],
+      marginalByKey: { blocked: 0 },
+    })
+    // Now there is nothing left to start, so depth is what he is.
+    expect(rows[0].score).toBeGreaterThan(0)
+  })
+
+  it('still prefers a real upgrade to a bench flier once the lineup is full', () => {
+    // The 211-point mistake: with nine starters in, the board switched to pure
+    // market disagreement and stopped noticing that a receiver would displace a
+    // much weaker starter.
+    const rows = buildBoard({
+      ...base,
+      filledStarterSlots: 9,
+      totalStarterSlots: 9,
+      expectedBestAtPosition: { WR: 150, TE: 150 },
+      available: [
+        { playerKey: 'upgrade', name: 'Upgrades WR2', position: 'WR', value: 191 },
+        { playerKey: 'flier', name: 'Bench TE', position: 'TE', value: 205 },
+      ],
+      marginalByKey: { upgrade: 41, flier: 0 },
+    })
+    expect(rows[0].playerKey).toBe('upgrade')
   })
 
   it('never lets a lineup cap inflate a player above his own VONA', () => {
@@ -424,6 +454,23 @@ describe('buildBoard — value is capped by what your lineup can use', () => {
       marginalByKey: { useful: 999 },
     })
     expect(rows[0].usable).toBeCloseTo(rows[0].vona, 5)
+  })
+
+  it('agrees with the manager through the starter rounds', () => {
+    // Rounds 1-8 were 7-of-8 identical and must stay that way: while slots are
+    // open, nearly everyone has full marginal value and VONA governs as before.
+    const rows = buildBoard({
+      ...base,
+      filledStarterSlots: 3,
+      totalStarterSlots: 9,
+      available: [
+        { playerKey: 'a', name: 'A', position: 'WR', value: 220 },
+        { playerKey: 'b', name: 'B', position: 'TE', value: 210 },
+      ],
+      marginalByKey: { a: 220, b: 210 },
+    })
+    expect(rows[0].playerKey).toBe('a')
+    expect(rows[0].score).toBeCloseTo(rows[0].vona, 5)
   })
 
   it('behaves exactly as before when no lineup information is supplied', () => {

@@ -6,10 +6,18 @@
  * actually making. A back who is barely better than the one you could get a round
  * later is not worth this pick, however good his projection looks.
  *
- * The blend shifts toward upside as your starting slots fill, which is also what
- * keeps the board discriminating in rounds 10+: once marginal starter value has
- * collapsed to roughly zero for everyone, ceiling is the only thing left worth
- * sorting on.
+ * A pick is worth the LARGER of two things, never a blend of them: what he adds
+ * to your starting lineup today, and what he is worth sitting on your bench.
+ *
+ * That used to be a blend that swung fully to bench value the moment your ninth
+ * starter was in, on the assumption that "marginal starter value has collapsed to
+ * roughly zero for everyone" by then. Measured against a completed draft, the
+ * assumption is false and expensive: through eight rounds the engine matched the
+ * manager on seven of eight picks, then lost 211 points across the last six by
+ * taking backups while a 191-point receiver who would have upgraded a weak WR2
+ * sat there. Marginal value is computed per player now, so the collapse can be
+ * observed rather than assumed — and for the players who matter it has not
+ * happened.
  */
 
 export interface AvailablePlayerRow {
@@ -250,10 +258,7 @@ export function buildBoard(input: BoardInput): BoardRow[] {
      * insurance and trade value, which is what BENCH_FACTOR always meant.
      */
     const marginal = marginalByKey?.[p.playerKey]
-    const usable =
-      marginal === undefined
-        ? vona * need
-        : Math.max(Math.min(vona, marginal), BENCH_FLOOR * vona)
+    const contribution = marginal === undefined ? vona * need : Math.min(vona, marginal)
 
     let flag: BoardRow['flag'] = ''
     if (adp !== null) {
@@ -272,12 +277,21 @@ export function buildBoard(input: BoardInput): BoardRow[] {
       vona,
       vonaPoints,
       marginal: marginal ?? vona,
-      usable,
       upside,
       needFactor: need,
       // A player you cannot start is worth what a bench player is worth, however
       // well he compares to the next man at his position.
-      score: (1 - w) * usable + w * upside * need,
+      // The larger of what he adds to your lineup and what he is worth on your
+      // bench — never a blend, because they are answers to different questions.
+      //
+      // Without lineup information there is no way to tell an upgrade from a
+      // backup, so that caller keeps the old blend rather than silently getting
+      // a different model.
+      score:
+        marginal === undefined
+          ? (1 - w) * vona * need + w * upside * need
+          : Math.max(contribution, w * Math.max(BENCH_FLOOR * vona, upside * need)),
+      usable: contribution,
       survival: survival?.[p.playerKey] ?? 1,
       tier: tierByKey[p.playerKey] ?? 1,
       overallTier: overallTierByKey[p.playerKey] ?? 1,
