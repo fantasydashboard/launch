@@ -14,6 +14,7 @@ import { applyAdpAnchor, DEFAULT_ADP_WEIGHT } from '@/draft/room/valueAdjust'
 import { needFactorByPosition, startablePositions } from '@/draft/room/rosterNeed'
 import { buildLineup } from '@/draft/room/lineup'
 import { buildSlotRanks, rankIfAdded, type SlotRankTeam } from '@/draft/room/slotRanks'
+import { marginalValueByKey } from '@/draft/room/marginalValue'
 import { buildRecommendation, type Recommendation } from '@/draft/room/recommend'
 import { parseDraftId } from '@/draft/room/draftId'
 import { buildDraftGrid, type GridPick } from '@/draft/room/draftGrid'
@@ -654,6 +655,35 @@ export function useDraftRoom() {
     return out
   })
 
+  /**
+   * What each available player would add to MY starting lineup as it stands.
+   * This is the number that stops the board offering a tight end into a flex
+   * already full of better backs.
+   */
+  const marginalByKey = computed<Record<string, number>>(() => {
+    const slots = effectiveSlots.value ?? {}
+    if (!Object.keys(slots).length) return {}
+    const roster = myPicks.value.map((p: any) => {
+      const key = String(p?.player_id ?? '')
+      return {
+        playerKey: key,
+        name: key,
+        position: String(p?.metadata?.position ?? ''),
+        points: vorByKey.value[key]?.pointsRos ?? 0,
+      }
+    })
+    return marginalValueByKey({
+      slots,
+      roster,
+      candidates: rankedPlayers.value.map((p) => ({
+        playerKey: p.playerKey,
+        name: p.name,
+        position: p.position,
+        points: p.projected ?? p.value,
+      })),
+    })
+  })
+
   const board = computed<BoardRow[]>(() =>
     buildBoard({
       available: rankedPlayers.value,
@@ -661,6 +691,7 @@ export function useDraftRoom() {
         slots: effectiveSlots.value ?? {},
         filledByPosition: filledByPosition.value,
       }),
+      marginalByKey: marginalByKey.value,
       survival: survivalResult.value.survival,
       expectedBestAtPosition: survivalResult.value.expectedBestAtPosition,
       expectedBestProjectedAtPosition: survivalResult.value.expectedBestProjectedAtPosition,

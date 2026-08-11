@@ -36,6 +36,11 @@ export interface BoardInput {
    * Absent means no discount — the board behaves exactly as before.
    */
   needFactor?: Record<string, number>
+  /**
+   * Points each candidate would add to your CURRENT starting lineup. Absent, the
+   * board falls back to the blunt need factor and behaves as it did before.
+   */
+  marginalByKey?: Record<string, number>
   survival: Record<string, number>
   expectedBestAtPosition: Record<string, number>
   /**
@@ -65,6 +70,10 @@ export interface BoardRow {
   vona: number
   /** VONA in projected points — the version fit to print. */
   vonaPoints: number
+  /** Points he would add to your starting lineup today. */
+  marginal: number
+  /** What the board actually ranks on during the starter rounds. */
+  usable: number
   upside: number
   score: number
   survival: number
@@ -86,6 +95,12 @@ const OPPORTUNITY_UPSIDE = 8
  * wild disagreement outweighs every real edge on the board.
  */
 const MAX_UPSIDE = 40
+/**
+ * What a player who cannot crack your lineup still keeps. He is depth, injury
+ * insurance and a trade piece; he is not a starter, and the gap between those
+ * two things is most of what this board exists to express.
+ */
+const BENCH_FLOOR = 0.35
 /** Ceiling on tiers per group — beyond this, "tier" stops meaning anything. */
 const MAX_TIERS = 8
 /** Roughly how many players belong in a tier. Drives how many tiers we cut. */
@@ -149,6 +164,7 @@ export function buildBoard(input: BoardInput): BoardRow[] {
     totalStarterSlots,
     needFactor,
     expectedBestProjectedAtPosition,
+    marginalByKey,
   } = input
 
   const players = (available ?? []).map((p) => ({ ...p, position: normPos(p.position) }))
@@ -222,6 +238,23 @@ export function buildBoard(input: BoardInput): BoardRow[] {
 
     const need = needFactor?.[p.position] ?? 1
 
+    /**
+     * Value capped by what your lineup can actually use.
+     *
+     * VONA is a claim about the pool; `marginal` is a claim about you. A player
+     * is worth the smaller of the two: an elite tight end behind a full flex has
+     * a big VONA and adds nothing on Sunday, and ranking him on VONA is what
+     * built a roster 248 points long at running back and 228 short at receiver.
+     *
+     * The floor keeps him from vanishing — a blocked starter is still depth,
+     * insurance and trade value, which is what BENCH_FACTOR always meant.
+     */
+    const marginal = marginalByKey?.[p.playerKey]
+    const usable =
+      marginal === undefined
+        ? vona * need
+        : Math.max(Math.min(vona, marginal), BENCH_FLOOR * vona)
+
     let flag: BoardRow['flag'] = ''
     if (adp !== null) {
       if (currentOverallPick > adp + VALUE_PICKS) flag = 'value'
@@ -238,11 +271,13 @@ export function buildBoard(input: BoardInput): BoardRow[] {
       projected,
       vona,
       vonaPoints,
+      marginal: marginal ?? vona,
+      usable,
       upside,
       needFactor: need,
       // A player you cannot start is worth what a bench player is worth, however
       // well he compares to the next man at his position.
-      score: ((1 - w) * vona + w * upside) * need,
+      score: (1 - w) * usable + w * upside * need,
       survival: survival?.[p.playerKey] ?? 1,
       tier: tierByKey[p.playerKey] ?? 1,
       overallTier: overallTierByKey[p.playerKey] ?? 1,

@@ -379,3 +379,61 @@ describe('buildBoard — printable numbers stay in points', () => {
     expect(love.vonaPoints).toBeCloseTo(love.vona, 5)
   })
 })
+
+describe('buildBoard — value is capped by what your lineup can use', () => {
+  const base = {
+    survival: { blocked: 0.5, useful: 0.5 },
+    expectedBestAtPosition: { TE: 150, WR: 150 },
+    adpByKey: {},
+    currentOverallPick: 70,
+    filledStarterSlots: 6,
+    totalStarterSlots: 9,
+  }
+
+  it('ranks a player who cannot start behind one who can', () => {
+    // The tight end has the bigger VONA and adds nothing: every slot he could
+    // fill is held by somebody better. This is the 157-point mistake.
+    const rows = buildBoard({
+      ...base,
+      available: [
+        { playerKey: 'blocked', name: 'Blocked TE', position: 'TE', value: 205 },
+        { playerKey: 'useful', name: 'Useful WR', position: 'WR', value: 190 },
+      ],
+      marginalByKey: { blocked: 0, useful: 35 },
+    })
+    expect(rows[0].playerKey).toBe('useful')
+    expect(rows.find((r) => r.playerKey === 'blocked')!.marginal).toBe(0)
+  })
+
+  it('does not erase a blocked player — he is still depth', () => {
+    const rows = buildBoard({
+      ...base,
+      available: [{ playerKey: 'blocked', name: 'Blocked TE', position: 'TE', value: 205 }],
+      marginalByKey: { blocked: 0 },
+    })
+    const blocked = rows[0]
+    expect(blocked.usable).toBeGreaterThan(0)
+    // A little over a third of his timing edge — depth, not a starter.
+    expect(blocked.usable).toBeCloseTo(0.35 * blocked.vona, 5)
+  })
+
+  it('never lets a lineup cap inflate a player above his own VONA', () => {
+    const rows = buildBoard({
+      ...base,
+      available: [{ playerKey: 'useful', name: 'WR', position: 'WR', value: 190 }],
+      marginalByKey: { useful: 999 },
+    })
+    expect(rows[0].usable).toBeCloseTo(rows[0].vona, 5)
+  })
+
+  it('behaves exactly as before when no lineup information is supplied', () => {
+    const args = {
+      ...base,
+      available: [{ playerKey: 'useful', name: 'WR', position: 'WR', value: 190 }],
+      needFactor: { WR: 1 },
+    }
+    const rows = buildBoard(args)
+    expect(rows[0].usable).toBeCloseTo(rows[0].vona, 5)
+    expect(rows[0].marginal).toBeCloseTo(rows[0].vona, 5)
+  })
+})

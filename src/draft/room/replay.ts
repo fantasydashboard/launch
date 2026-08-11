@@ -18,6 +18,7 @@ import { simulateSurvival } from './survival'
 import { nextPickFor, slotAtPick, slotsBetween, type DraftShape } from './pickOrder'
 import { priorFor, type Tendencies } from './tendencies'
 import { needFactorByPosition } from './rosterNeed'
+import { marginalValueByKey } from './marginalValue'
 
 export interface ReplayPick {
   overallPick: number
@@ -85,6 +86,7 @@ export function replayDraft(input: ReplayInput): ReplayStep[] {
   const drafted = new Set<string>()
   const myRoster: string[] = []
   const positionByKey = new Map(players.map((p) => [p.playerKey, p.position]))
+  const pointsByKey = new Map(players.map((p) => [p.playerKey, p.projected ?? p.value]))
   let myTaken = 0
 
   const totalPicks = shape.teams * shape.rounds
@@ -120,9 +122,31 @@ export function replayDraft(input: ReplayInput): ReplayStep[] {
         if (pos) filledByPosition[pos] = (filledByPosition[pos] ?? 0) + 1
       }
 
+      // Same lineup-aware value the live board uses. If the replay skipped it the
+      // replay would be verifying a different tool.
+      const rosterPlayers = myRoster.map((key) => ({
+        playerKey: key,
+        name: key,
+        position: positionByKey.get(key) ?? '',
+        points: pointsByKey.get(key) ?? 0,
+      }))
+      const marginal = input.slots
+        ? marginalValueByKey({
+            slots: input.slots,
+            roster: rosterPlayers,
+            candidates: available.map((p) => ({
+              playerKey: p.playerKey,
+              name: p.name,
+              position: p.position,
+              points: p.projected ?? p.value,
+            })),
+          })
+        : undefined
+
       const board = buildBoard({
         available,
         needFactor: input.slots ? needFactorByPosition({ slots: input.slots, filledByPosition }) : undefined,
+        marginalByKey: marginal,
         survival: sim.survival,
         expectedBestAtPosition: sim.expectedBestAtPosition,
         expectedBestProjectedAtPosition: sim.expectedBestProjectedAtPosition,
