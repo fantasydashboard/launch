@@ -49,6 +49,15 @@ export interface BoardInput {
    * board falls back to the blunt need factor and behaves as it did before.
    */
   marginalByKey?: Record<string, number>
+  /**
+   * Points of the player this candidate would actually be replacing. For anyone
+   * headed to a flex slot that is the best flex-eligible player left, not the
+   * best at his own position — a tight end in a FLEX competes with every
+   * receiver and back, and his position's scarcity says nothing about it.
+   */
+  replacementPointsByKey?: Record<string, number>
+  /** Which of those candidates land in a flex, so the reason can say so. */
+  viaFlexByKey?: Record<string, boolean>
   survival: Record<string, number>
   expectedBestAtPosition: Record<string, number>
   /**
@@ -80,6 +89,8 @@ export interface BoardRow {
   vonaPoints: number
   /** Points he would add to your starting lineup today. */
   marginal: number
+  /** True when the slot he would fill is a flex rather than his own position. */
+  viaFlex: boolean
   /** What the board actually ranks on during the starter rounds. */
   usable: number
   upside: number
@@ -173,6 +184,8 @@ export function buildBoard(input: BoardInput): BoardRow[] {
     needFactor,
     expectedBestProjectedAtPosition,
     marginalByKey,
+    replacementPointsByKey,
+    viaFlexByKey,
   } = input
 
   const players = (available ?? []).map((p) => ({ ...p, position: normPos(p.position) }))
@@ -223,10 +236,14 @@ export function buildBoard(input: BoardInput): BoardRow[] {
     const adp = typeof adpByKey?.[p.playerKey] === 'number' ? adpByKey[p.playerKey] : null
     const vona = p.value - (expectedBestAtPosition?.[p.position] ?? 0)
     const projected = p.projected ?? p.value
-    const vonaPoints =
-      expectedBestProjectedAtPosition && p.position in expectedBestProjectedAtPosition
-        ? projected - expectedBestProjectedAtPosition[p.position]
-        : vona
+    // Measured against whoever he would actually displace. Falling back to his
+    // own position is right only when that is the slot he would fill.
+    const replacement =
+      replacementPointsByKey?.[p.playerKey] ??
+      (expectedBestProjectedAtPosition && p.position in expectedBestProjectedAtPosition
+        ? expectedBestProjectedAtPosition[p.position]
+        : undefined)
+    const vonaPoints = replacement === undefined ? vona : projected - replacement
 
     const pr = projRank.get(p.playerKey)
     const ar = adpRank.get(p.playerKey)
@@ -293,6 +310,7 @@ export function buildBoard(input: BoardInput): BoardRow[] {
       vona,
       vonaPoints,
       marginal: marginal ?? vona,
+      viaFlex: viaFlexByKey?.[p.playerKey] ?? false,
       upside,
       needFactor: need,
       // A player you cannot start is worth what a bench player is worth, however

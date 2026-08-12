@@ -18,7 +18,8 @@ import { simulateSurvival } from './survival'
 import { nextPickFor, slotAtPick, slotsBetween, type DraftShape } from './pickOrder'
 import { priorFor, type Tendencies } from './tendencies'
 import { needFactorByPosition } from './rosterNeed'
-import { marginalValueByKey } from './marginalValue'
+import { marginalDetailByKey } from './marginalValue'
+import { FLEX_ELIGIBILITY } from './lineup'
 
 export interface ReplayPick {
   overallPick: number
@@ -130,8 +131,8 @@ export function replayDraft(input: ReplayInput): ReplayStep[] {
         position: positionByKey.get(key) ?? '',
         points: pointsByKey.get(key) ?? 0,
       }))
-      const marginal = input.slots
-        ? marginalValueByKey({
+      const detail = input.slots
+        ? marginalDetailByKey({
             slots: input.slots,
             roster: rosterPlayers,
             candidates: available.map((p) => ({
@@ -143,10 +144,38 @@ export function replayDraft(input: ReplayInput): ReplayStep[] {
           })
         : undefined
 
+      let marginal: Record<string, number> | undefined
+      let replacementPoints: Record<string, number> | undefined
+      let viaFlex: Record<string, boolean> | undefined
+      if (detail && input.slots) {
+        // The best flex-eligible replacement, for anyone headed to a flex slot.
+        let flexReplacement = 0
+        for (const [slot, n] of Object.entries(input.slots)) {
+          const eligible = FLEX_ELIGIBILITY[slot.toUpperCase()]
+          if (!eligible || !(Number(n) > 0)) continue
+          for (const pos of eligible) {
+            flexReplacement = Math.max(flexReplacement, sim.expectedBestProjectedAtPosition[pos] ?? 0)
+          }
+        }
+        marginal = {}
+        replacementPoints = {}
+        viaFlex = {}
+        for (const p of available) {
+          const d = detail[p.playerKey]
+          marginal[p.playerKey] = d?.points ?? 0
+          viaFlex[p.playerKey] = d?.viaFlex ?? false
+          replacementPoints[p.playerKey] = d?.viaFlex
+            ? flexReplacement
+            : sim.expectedBestProjectedAtPosition[p.position] ?? 0
+        }
+      }
+
       const board = buildBoard({
         available,
         needFactor: input.slots ? needFactorByPosition({ slots: input.slots, filledByPosition }) : undefined,
         marginalByKey: marginal,
+        replacementPointsByKey: replacementPoints,
+        viaFlexByKey: viaFlex,
         survival: sim.survival,
         expectedBestAtPosition: sim.expectedBestAtPosition,
         expectedBestProjectedAtPosition: sim.expectedBestProjectedAtPosition,

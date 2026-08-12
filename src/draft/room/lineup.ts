@@ -12,7 +12,7 @@
  */
 
 /** Which positions each flex slot will accept. */
-const FLEX_ELIGIBILITY: Record<string, string[]> = {
+export const FLEX_ELIGIBILITY: Record<string, string[]> = {
   FLEX: ['RB', 'WR', 'TE'],
   SUPER_FLEX: ['QB', 'RB', 'WR', 'TE'],
   REC_FLEX: ['WR', 'TE'],

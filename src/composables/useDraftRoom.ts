@@ -12,9 +12,9 @@ import { buildBoard, type BoardRow } from '@/draft/room/board'
 import { computeReplacementDetail } from '@/football/footballReplacement'
 import { applyAdpAnchor, DEFAULT_ADP_WEIGHT } from '@/draft/room/valueAdjust'
 import { needFactorByPosition, startablePositions } from '@/draft/room/rosterNeed'
-import { buildLineup } from '@/draft/room/lineup'
+import { buildLineup, FLEX_ELIGIBILITY } from '@/draft/room/lineup'
 import { buildSlotRanks, rankIfAdded, type SlotRankTeam } from '@/draft/room/slotRanks'
-import { marginalValueByKey } from '@/draft/room/marginalValue'
+import { marginalDetailByKey } from '@/draft/room/marginalValue'
 import { buildRecommendation, type Recommendation } from '@/draft/room/recommend'
 import { parseDraftId } from '@/draft/room/draftId'
 import { buildDraftGrid, type GridPick } from '@/draft/room/draftGrid'
@@ -669,7 +669,7 @@ export function useDraftRoom() {
    * This is the number that stops the board offering a tight end into a flex
    * already full of better backs.
    */
-  const marginalByKey = computed<Record<string, number>>(() => {
+  const marginalDetail = computed(() => {
     const slots = effectiveSlots.value ?? {}
     if (!Object.keys(slots).length) return {}
     const roster = myPicks.value.map((p: any) => {
@@ -681,7 +681,7 @@ export function useDraftRoom() {
         points: vorByKey.value[key]?.pointsRos ?? 0,
       }
     })
-    return marginalValueByKey({
+    return marginalDetailByKey({
       slots,
       roster,
       candidates: rankedPlayers.value.map((p) => ({
@@ -692,6 +692,43 @@ export function useDraftRoom() {
       })),
     })
   })
+  const marginalByKey = computed<Record<string, number>>(() => {
+    const out: Record<string, number> = {}
+    for (const [k, d] of Object.entries(marginalDetail.value)) out[k] = d.points
+    return out
+  })
+
+  /**
+   * Who each candidate would actually be replacing. For a flex slot that is the
+   * best flex-eligible player expected at your next pick, not the best at his own
+   * position — the reason a tight end kept beating a better receiver was that his
+   * edge was measured against a tight end he would never have started.
+   */
+  const replacementPointsByKey = computed<Record<string, number>>(() => {
+    const byPos = survivalResult.value.expectedBestProjectedAtPosition ?? {}
+    const detail = marginalDetail.value
+    const slots = effectiveSlots.value ?? {}
+
+    // The best flex-eligible replacement across every flex this league starts.
+    let flexReplacement = 0
+    for (const [slot, n] of Object.entries(slots)) {
+      const eligible = FLEX_ELIGIBILITY[slot.toUpperCase()]
+      if (!eligible || !(Number(n) > 0)) continue
+      for (const pos of eligible) flexReplacement = Math.max(flexReplacement, byPos[pos] ?? 0)
+    }
+
+    const out: Record<string, number> = {}
+    for (const p of rankedPlayers.value) {
+      const d = detail[p.playerKey]
+      out[p.playerKey] = d?.viaFlex ? flexReplacement : byPos[p.position] ?? 0
+    }
+    return out
+  })
+  const viaFlexByKey = computed<Record<string, boolean>>(() => {
+    const out: Record<string, boolean> = {}
+    for (const [k, d] of Object.entries(marginalDetail.value)) out[k] = d.viaFlex
+    return out
+  })
 
   const board = computed<BoardRow[]>(() =>
     buildBoard({
@@ -701,6 +738,8 @@ export function useDraftRoom() {
         filledByPosition: filledByPosition.value,
       }),
       marginalByKey: marginalByKey.value,
+      replacementPointsByKey: replacementPointsByKey.value,
+      viaFlexByKey: viaFlexByKey.value,
       survival: survivalResult.value.survival,
       expectedBestAtPosition: survivalResult.value.expectedBestAtPosition,
       expectedBestProjectedAtPosition: survivalResult.value.expectedBestProjectedAtPosition,

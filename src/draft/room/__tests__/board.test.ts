@@ -529,3 +529,46 @@ describe('buildBoard — the card cannot contradict itself', () => {
     expect(printed).toEqual([...printed].sort((x, y) => y - x))
   })
 })
+
+describe('buildBoard — a flex player is judged against the flex', () => {
+  it('stops tight-end scarcity arguing for a flex slot', () => {
+    // Pick 5.03: your TE slot is filled, so a tight end here is a flex player.
+    // Against "the next-best TE" he wins by 35; against what he would actually
+    // displace he loses to a receiver worth 27 more points.
+    const rows = buildBoard({
+      available: [
+        { playerKey: 'warren', name: 'Warren', position: 'TE', value: 225, projected: 225 },
+        { playerKey: 'smith', name: 'Smith', position: 'WR', value: 252, projected: 252 },
+      ],
+      expectedBestAtPosition: { TE: 190, WR: 230 },
+      expectedBestProjectedAtPosition: { TE: 190, WR: 230 },
+      // Warren lands in a flex; the receiver takes WR2 outright.
+      replacementPointsByKey: { warren: 230, smith: 230 },
+      viaFlexByKey: { warren: true, smith: false },
+      marginalByKey: { warren: 225, smith: 252 },
+      survival: { warren: 0.15, smith: 0.02 },
+      adpByKey: {},
+      currentOverallPick: 43,
+      filledStarterSlots: 4,
+      totalStarterSlots: 9,
+    })
+    expect(rows[0].playerKey).toBe('smith')
+    expect(rows.find((r) => r.playerKey === 'warren')!.viaFlex).toBe(true)
+  })
+
+  it('still uses his own position when that is the slot he would fill', () => {
+    const rows = buildBoard({
+      available: [{ playerKey: 'te', name: 'TE', position: 'TE', value: 225, projected: 225 }],
+      expectedBestAtPosition: { TE: 190 },
+      expectedBestProjectedAtPosition: { TE: 190 },
+      viaFlexByKey: { te: false },
+      marginalByKey: { te: 225 },
+      survival: {},
+      adpByKey: {},
+      currentOverallPick: 43,
+      filledStarterSlots: 4,
+      totalStarterSlots: 9,
+    })
+    expect(rows[0].vonaPoints).toBeCloseTo(35, 5)
+  })
+})

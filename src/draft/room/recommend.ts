@@ -96,11 +96,17 @@ export function buildRecommendation(
   // claim, the claim isn't made — the tier and survival lines still stand.
   const edge = pick.vonaPoints ?? pick.vona
   if (edge > 0) {
+    // Name the comparison he is actually in. Someone headed for a flex is not
+    // being measured against his own position, and saying he is turns a correct
+    // number into a wrong argument: "+35 over your next-best TE" reads as tight
+    // end scarcity when the TE slot is already filled and he is competing with
+    // every receiver and back on the board.
+    const against = pick.viaFlex ? 'flex option' : pick.position
     reasons.push({
       kind: 'vona',
       text: ctx.nextPick
-        ? `${pts(edge)} pts over your next-best ${pick.position} at ${ctx.nextPick}`
-        : `${pts(edge)} pts over the next-best ${pick.position} available`,
+        ? `${pts(edge)} pts over your next-best ${against} at ${ctx.nextPick}`
+        : `${pts(edge)} pts over the next-best ${against} available`,
     })
   }
 

@@ -179,3 +179,23 @@ describe('buildRecommendation — no certainty the model cannot back', () => {
     expect(rec!.alternates[0].note).not.toContain('100%')
   })
 })
+
+describe('buildRecommendation — the comparison it names', () => {
+  it('says flex when the slot he would fill is a flex', () => {
+    const rec = buildRecommendation(
+      [row({ position: 'TE', vona: 35, vonaPoints: 35, viaFlex: true } as any)],
+      ctx({ nextPick: 58 }),
+    )
+    const r = rec!.reasons.find((x) => x.kind === 'vona')!
+    expect(r.text).toContain('next-best flex option at 58')
+    expect(r.text).not.toContain('next-best TE')
+  })
+
+  it('names the position when that is the slot he would fill', () => {
+    const rec = buildRecommendation(
+      [row({ position: 'TE', vona: 35, vonaPoints: 35, viaFlex: false } as any)],
+      ctx({ nextPick: 58 }),
+    )
+    expect(rec!.reasons.find((x) => x.kind === 'vona')!.text).toContain('next-best TE at 58')
+  })
+})

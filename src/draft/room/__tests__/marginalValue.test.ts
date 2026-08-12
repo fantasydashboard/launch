@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { lineupPoints, marginalValueByKey, type MarginalPlayer } from '../marginalValue'
+import { lineupPoints, marginalValueByKey, marginalDetailByKey, type MarginalPlayer } from '../marginalValue'
 
 const slots = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 3, BN: 5 }
 
@@ -84,5 +84,49 @@ describe('marginalValueByKey', () => {
 
   it('handles an empty candidate list', () => {
     expect(marginalValueByKey({ slots, roster: [], candidates: [] })).toEqual({})
+  })
+})
+
+describe('marginalDetailByKey — which slot he would actually fill', () => {
+  it('sends a tight end to the flex once the TE slot is taken', () => {
+    // Pick 5.03: Loveland at TE, flex slots open. Warren is a flex player here,
+    // and tight end scarcity has nothing to do with a flex slot.
+    const roster = [
+      p('chase', 'WR', 300), p('pickens', 'WR', 240),
+      p('brown', 'RB', 250), p('loveland', 'TE', 236),
+    ]
+    const out = marginalDetailByKey({
+      slots: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 3, BN: 5 },
+      roster,
+      candidates: [p('warren', 'TE', 225), p('smith', 'WR', 252)],
+    })
+    expect(out.warren.viaFlex).toBe(true)
+    expect(out.warren.slot).toBe('FLEX1')
+    // The receiver does not go to a flex at all — he takes WR2 outright and
+    // pushes Pickens into the flex, which is worth more than Warren filling it.
+    expect(out.smith.viaFlex).toBe(false)
+    expect(out.smith.slot).toBe('WR2')
+    expect(out.smith.points).toBeGreaterThan(out.warren.points)
+  })
+
+  it('uses the dedicated slot when it is still open', () => {
+    const out = marginalDetailByKey({
+      slots: { TE: 1, FLEX: 1 },
+      roster: [],
+      candidates: [p('te', 'TE', 200)],
+    })
+    expect(out.te.slot).toBe('TE')
+    expect(out.te.viaFlex).toBe(false)
+  })
+
+  it('reports no slot for a player who cannot start', () => {
+    const out = marginalDetailByKey({
+      slots: { TE: 1 },
+      roster: [p('have', 'TE', 250)],
+      candidates: [p('worse', 'TE', 100)],
+    })
+    expect(out.worse.slot).toBeNull()
+    expect(out.worse.points).toBe(0)
+    expect(out.worse.viaFlex).toBe(false)
   })
 })
