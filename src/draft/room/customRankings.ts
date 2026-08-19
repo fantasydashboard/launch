@@ -356,3 +356,34 @@ export function compareRankings(
     spearman,
   }
 }
+
+/**
+ * Sort rows into a list's order, changing nothing else.
+ *
+ * The draft board takes a different route — it re-seats our VALUES onto the
+ * list's order, because VONA, tiers and survival all have to keep working in
+ * points. That remap is why a card could once claim "+26 pts" beside a column
+ * reading 15: two scales, one screen.
+ *
+ * In-season surfaces need none of that. They are sorted lists, so the list can
+ * supply the order directly and every number on the row stays our own. Anyone
+ * the list does not cover keeps his existing relative order, below those it does
+ * — an omission is not a verdict, and dropping him would hide a player who is
+ * simply newer than the list.
+ */
+export function orderByRanking<T>(
+  rows: T[],
+  rankByKey: Record<string, number>,
+  keyOf: (row: T) => string,
+): T[] {
+  if (!rows?.length || !Object.keys(rankByKey ?? {}).length) return [...(rows ?? [])]
+  const ranked: { row: T; rank: number }[] = []
+  const rest: T[] = []
+  for (const row of rows) {
+    const rank = rankByKey[keyOf(row)]
+    if (typeof rank === 'number') ranked.push({ row, rank })
+    else rest.push(row)
+  }
+  ranked.sort((a, b) => a.rank - b.rank)
+  return [...ranked.map((r) => r.row), ...rest]
+}

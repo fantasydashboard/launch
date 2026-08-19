@@ -10,6 +10,7 @@ import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { useFootballWire } from '@/composables/useFootballWire'
+import RankingPicker from '@/components/RankingPicker.vue'
 
 const leagueStore = useLeagueStore()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
@@ -61,7 +62,7 @@ const { valueByKey, valueOf, loading: valueLoading } = usePointsValue({
 })
 
 // Football Wire runs off the VOR engine (separate from the baseball wire brain above).
-const { wire: fbWire, loading: fbLoading } = useFootballWire({
+const { wire: fbWire, loading: fbLoading, rosSource, weekSource } = useFootballWire({
   pool,
   freeAgents,
   slots: rosterSlots,
@@ -271,8 +272,14 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
 
           <!-- 2. THIS WEEK — next-week VOR + streamability (hidden in the offseason: no live week) -->
           <section v-if="streamers.length" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
-            <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">This week</h2>
-            <p class="mb-3 font-mono text-[10px] text-dark-textMuted">value over a replacement-level streamer this week</p>
+            <div class="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">This week</h2>
+              <RankingPicker kind="week" />
+            </div>
+            <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
+              value over a replacement-level streamer this week<template v-if="weekSource !== 'UFD'">
+              · ordered by {{ weekSource }}</template>
+            </p>
             <template v-for="r in streamers" :key="'fbtw-' + (r.player.playerKey ?? r.player.name)">
               <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
                 <img :src="teamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-6 w-6 shrink-0 object-contain" />
@@ -291,9 +298,16 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
 
           <!-- 3. BEST AVAILABLE — ROS VOR -->
           <section class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
-            <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
-              Best available <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">· value over replacement (season)</span>
-            </h2>
+            <div class="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+                Best available
+              </h2>
+              <RankingPicker kind="ros" />
+            </div>
+            <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
+              <template v-if="rosSource !== 'UFD'">ordered by {{ rosSource }} · numbers are ours</template>
+              <template v-else>value over replacement (season)</template>
+            </p>
             <template v-for="r in fbWire.bestAvailable.slice(0, 15)" :key="'fbba-' + (r.player.playerKey ?? r.player.name)">
               <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
                 <img v-if="r.player.headshot" :src="r.player.headshot" :alt="r.player.name" loading="lazy" @error="onLogoErr" class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
