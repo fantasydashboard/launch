@@ -181,8 +181,10 @@ export function replayDraft(input: ReplayInput): ReplayStep[] {
         expectedBestProjectedAtPosition: sim.expectedBestProjectedAtPosition,
         adpByKey,
         currentOverallPick: pick,
+        // The replay must be the live path or it verifies nothing.
         filledStarterSlots: Math.min(myTaken, totalStarterSlots),
         totalStarterSlots,
+        teams: shape.teams,
       })
 
       const top = board[0]

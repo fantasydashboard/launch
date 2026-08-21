@@ -425,7 +425,7 @@ export function useDraftRoom() {
   const availablePlayers = computed(() => {
     const drafted = draftedKeys.value
     const seen = new Set<string>()
-    const rows: { playerKey: string; name: string; position: string; proTeam?: string; headshot?: string; value: number; opportunity?: string; depthChartOrder?: number | null }[] = []
+    const rows: { playerKey: string; name: string; position: string; proTeam?: string; headshot?: string; value: number; opportunity?: string; depthChartOrder?: number | null; injuryStatus: string | null }[] = []
 
     const meta = (leagueStore.players ?? {}) as Record<string, any>
     // A position this league never starts is not a weak pick, it is an invalid
@@ -447,6 +447,7 @@ export function useDraftRoom() {
         value: v.pointsRos,
         opportunity: v.opportunity,
         depthChartOrder: meta[playerKey]?.depth_chart_order ?? null,
+        injuryStatus: meta[playerKey]?.injury_status ?? null,
       })
     }
 
@@ -747,6 +748,7 @@ export function useDraftRoom() {
       currentOverallPick: myPick.value ?? currentOverallPick.value,
       filledStarterSlots: Math.min(myPicks.value.length, starterSlots.value),
       totalStarterSlots: starterSlots.value,
+      teams: effectiveTeams.value,
     }),
   )
 
