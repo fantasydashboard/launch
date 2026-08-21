@@ -526,7 +526,13 @@ Add to the returned row object, beside `flag`:
 - [ ] **Step 4: Run the whole suite**
 
 Run: `npx vitest run`
-Expected: PASS. If `src/views/DraftRoomView.vue` fails to typecheck it is expected — Task 5 fixes the two `flag === 'value'` / `'reach'` render sites. Tests do not typecheck the view, so the suite should be green here.
+Expected: PASS, whole suite.
+
+Note: `src/views/DraftRoomView.vue` still compares `flag` against `'value'` and
+`'reach'`, which the narrowed type no longer permits. This does NOT break the
+build — `npm run build` is plain `vite build` with no typecheck step — so those
+two badges simply stop rendering until Task 5 replaces them. That transient state
+is expected and lasts two tasks.
 
 - [ ] **Step 5: Commit**
 
@@ -596,7 +602,8 @@ Add a comment above it:
 - [ ] **Step 4: Verify the build and the suite**
 
 Run: `npm run build 2>&1 | grep -E "error|built"`
-Expected: `✓ built`. TypeScript will flag `DraftRoomView.vue` if the old flag comparisons remain — Task 5 removes them; if the build fails on those two lines, proceed to Task 5 and re-run there.
+Expected: `✓ built`. The stale `flag === 'value'` comparisons still in the view do
+not fail the build (no typecheck step); Task 5 replaces them.
 
 Run: `npx vitest run`
 Expected: PASS, no new failures.
