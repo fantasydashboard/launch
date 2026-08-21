@@ -65,8 +65,14 @@ VALUE_PICKS`. That means *he slid past his ADP to where you are sitting* — a
 different statement from market disagreement, and only meaningful mid-draft.
 
 Both signals are kept. The pick-relative one is renamed **FELL** so that two
-different meanings never share the word "value" on the same row. The existing
-`reach` flag is dropped: it is the mirror of FADE, measured worse.
+different meanings never share the word "value" on the same row.
+
+The existing `reach` flag is dropped: it is the mirror of FADE, measured worse.
+It is currently rendered on the recommendation card
+(`DraftRoomView.vue`, the `recommendation.pick.flag === 'reach'` badge), and that
+badge is removed rather than left pointing at a value the type no longer permits.
+The unrelated `'reach'` in `components/trades/OpportunityCard.vue` describes a
+trade partner and is untouched.
 
 ### 3. Injury status
 
