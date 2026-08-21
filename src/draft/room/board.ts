@@ -227,6 +227,19 @@ export function buildBoard(input: BoardInput): BoardRow[] {
     .sort((a, b) => adpByKey[a.playerKey] - adpByKey[b.playerKey])
   const adpRank = new Map(withAdp.map((p, i) => [p.playerKey, i + 1]))
 
+  // The market comparison needs a projection rank drawn from the SAME
+  // population as adpRank — only players the market has actually priced.
+  // `projRank` above ranks across every available player, which is right for
+  // the upside term but wrong here: Sleeper omits ADP for most of the player
+  // pool, so every unpriced player sitting above someone in `projRank` inflates
+  // his rank without ever touching his (unaffected) `adpRank`. A player at
+  // pr:200/ar:150 in a big enough pool would read as -4+ rounds and pick up a
+  // FADE badge he never earned — pure population-size bookkeeping, not a real
+  // market opinion. Re-ranking over `withAdp` compares like with like.
+  const marketProjRank = new Map(
+    [...withAdp].sort((a, b) => b.value - a.value).map((p, i) => [p.playerKey, i + 1]),
+  )
+
   // Tiers within position, plus an overall tier across the whole board — the
   // board can be read either way, and "tier 2 overall" is a different and useful
   // statement from "tier 2 among running backs".
@@ -310,9 +323,13 @@ export function buildBoard(input: BoardInput): BoardRow[] {
     let flag: BoardRow['flag'] = ''
     if (adp !== null && currentOverallPick > adp + VALUE_PICKS) flag = 'fell'
 
-    // `pr` and `ar` are already computed above for the upside term; the market
-    // read reuses them rather than deriving a second ranking of the same board.
-    const market = marketDisagreement({ projRank: pr, adpRank: ar, teams: teams ?? 0 })
+    // `ar` is the same ADP rank the upside term already computed above, reused
+    // as-is. The projection rank cannot be reused the same way: `pr` ranks
+    // across the whole pool, but the market has only priced `withAdp`, and
+    // `marketProjRank` re-ranks over exactly that population so the two ranks
+    // being differenced mean the same thing (see the comment where it's built).
+    const mpr = marketProjRank.get(p.playerKey)
+    const market = marketDisagreement({ projRank: mpr, adpRank: ar, teams: teams ?? 0 })
 
     return {
       playerKey: p.playerKey,

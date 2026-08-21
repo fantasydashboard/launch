@@ -638,18 +638,31 @@ describe('buildBoard — market signals', () => {
 
   it('lets a player hold FELL and FADE at once without contradiction', () => {
     // He slid past his ADP AND we still rate him below the market. Both true.
-    // pr/ar are ordinal ranks within `available` (two players here), so with
-    // the base's 12-team default the max reachable disagreement is 1/12 of a
-    // round — never enough to trip the market flag. teams: 1 makes the same
-    // two-player, wildly-mismatched-ADP scenario cross the one-round threshold.
+    // A real, 12-team-scale disagreement needs a real gap between the ranks,
+    // not a shrunk league size: pad the pool with enough ADP'd fillers that
+    // `a`'s ordinal ADP rank genuinely lands a full round behind his
+    // projection rank, at the base's actual `teams: 12`.
+    const fillers = Array.from({ length: 12 }, (_, i) => ({
+      playerKey: `f${i}`,
+      name: `Filler ${i}`,
+      position: 'RB',
+      value: 50,
+      projected: 50,
+    }))
     const rows = buildBoard({
       ...base,
-      teams: 1,
       available: [
         { playerKey: 'a', name: 'A', position: 'RB', value: 300, projected: 300 },
         { playerKey: 'b', name: 'B', position: 'RB', value: 100, projected: 100 },
+        ...fillers,
       ],
-      adpByKey: { a: 200, b: 1 },
+      adpByKey: {
+        a: 200,
+        b: 1,
+        // Twelve fillers priced ahead of `a`, so his ADP rank is 14th while
+        // his projection rank stays 1st (he is still the best-value player).
+        ...Object.fromEntries(fillers.map((f, i) => [f.playerKey, i + 2])),
+      },
       currentOverallPick: 240,
     })
     const a = rows.find((r) => r.playerKey === 'a')!
@@ -657,9 +670,48 @@ describe('buildBoard — market signals', () => {
     expect(a.marketFlag).toBe('value')
   })
 
+  it('flags a player the market prices well ahead of our projection as FADE', () => {
+    // The mirror image of VALUE: `chalk` sits at the bottom of a realistically
+    // sized, fully-ADP'd pool by our projection, but the market has him going
+    // first overall. A wide, genuine gap on a real-sized pool, not a
+    // threshold-chasing two-player fixture.
+    const fillers = Array.from({ length: 13 }, (_, i) => ({
+      playerKey: `f${i}`,
+      name: `Filler ${i}`,
+      position: 'RB',
+      value: 200 - i,
+      projected: 200 - i,
+    }))
+    const rows = buildBoard({
+      ...base,
+      available: [
+        { playerKey: 'chalk', name: 'Market Chalk', position: 'RB', value: 50, projected: 50 },
+        ...fillers,
+      ],
+      adpByKey: {
+        chalk: 1,
+        ...Object.fromEntries(fillers.map((f, i) => [f.playerKey, i + 2])),
+      },
+    })
+    const chalk = rows.find((r) => r.playerKey === 'chalk')!
+    expect(chalk.marketFlag).toBe('fade')
+  })
+
   it('does not let any market signal reach the score', () => {
-    const withTeams = buildBoard({ ...base, available })
-    const without = buildBoard({ ...base, teams: undefined, available })
+    // early/late alone always have equal proj-rank and adp-rank (two players,
+    // two ranks, same order both ways) so disagreementRounds was trivially 0
+    // in both arms — proving nothing about score isolation. Pricing a third
+    // player between them (same fixture as the VALUE test above) creates a
+    // genuinely non-zero disagreement, which is the case that actually needs
+    // to stay out of score.
+    const withFiller = [
+      ...available,
+      { playerKey: 'filler', name: 'Filler', position: 'RB', value: 100, projected: 100 },
+    ]
+    const adpByKey = { early: 5, filler: 20, late: 60 }
+    const withTeams = buildBoard({ ...base, available: withFiller, adpByKey })
+    const without = buildBoard({ ...base, teams: undefined, available: withFiller, adpByKey })
+    expect(withTeams.some((r) => r.disagreementRounds !== 0)).toBe(true)
     expect(withTeams.map((r) => r.score)).toEqual(without.map((r) => r.score))
   })
 })
