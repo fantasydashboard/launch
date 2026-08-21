@@ -915,11 +915,18 @@ export function useDraftRoom() {
 
     // The universe as it stood before the draft: everyone taken, plus whoever is
     // still on the board now.
-    const universe = new Map<string, { playerKey: string; name: string; position: string; value: number; proTeam?: string; headshot?: string }>()
+    //
+    // Carries injuryStatus through both branches below. A field the live board
+    // has and the replay does not is how the replay quietly stops being the live
+    // path — every replay row would read "healthy" regardless of the player's
+    // real status, silently diverging from what buildBoard actually produces on
+    // screen.
+    const playerMeta = (leagueStore.players ?? {}) as Record<string, any>
+    const universe = new Map<string, { playerKey: string; name: string; position: string; value: number; proTeam?: string; headshot?: string; injuryStatus?: string | null }>()
     for (const r of availablePlayers.value) {
       universe.set(r.playerKey, {
         playerKey: r.playerKey, name: r.name, position: r.position, value: r.value,
-        proTeam: r.proTeam, headshot: r.headshot,
+        proTeam: r.proTeam, headshot: r.headshot, injuryStatus: r.injuryStatus,
       })
     }
     for (const p of picks.value as any[]) {
@@ -934,6 +941,10 @@ export function useDraftRoom() {
         value: v.pointsRos,
         proTeam: String(p?.metadata?.team ?? '').toUpperCase(),
         headshot: headshotByKey.value[key],
+        // Same Sleeper metadata the live path reads in `availablePlayers` — a
+        // drafted player must not read as healthier than an available one just
+        // because he came from the picks list instead of the pool.
+        injuryStatus: playerMeta[key]?.injury_status ?? null,
       })
     }
     // Through the SAME pipeline the live board uses, so the replay is replaying
