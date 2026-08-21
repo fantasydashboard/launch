@@ -20,6 +20,8 @@
  * happened.
  */
 
+import { marketDisagreement } from './marketDisagreement'
+
 export interface AvailablePlayerRow {
   playerKey: string
   name: string
@@ -35,6 +37,8 @@ export interface AvailablePlayerRow {
   projected?: number
   /** Optional depth-chart/injury signal from the VOR engine. */
   opportunity?: string
+  /** Sleeper's own word: Questionable, Doubtful, Out, IR, Sus. */
+  injuryStatus?: string | null
 }
 
 export interface BoardInput {
@@ -71,6 +75,11 @@ export interface BoardInput {
   currentOverallPick: number
   filledStarterSlots: number
   totalStarterSlots: number
+  /**
+   * League size, which is what a "round" of rank disagreement means. Absent, the
+   * market read is suppressed rather than measured against a nonsense threshold.
+   */
+  teams?: number
 }
 
 export interface BoardRow {
@@ -98,14 +107,18 @@ export interface BoardRow {
   survival: number
   tier: number
   overallTier: number
-  flag: 'value' | 'reach' | ''
+  /** He slid past his ADP to the pick you are on. Only meaningful mid-draft. */
+  flag: 'fell' | ''
+  /** We and the market disagree by at least a round. A standing property. */
+  marketFlag: 'value' | 'fade' | ''
+  /** Rounds of that disagreement. Positive: we rank him higher than the market. */
+  disagreementRounds: number
+  injuryStatus: string | null
   adp: number | null
 }
 
 /** How far past ADP a player must still be available to count as a value. */
 const VALUE_PICKS = 12
-/** How far before ADP taking someone counts as a reach. */
-const REACH_PICKS = 12
 /** Bonus (in points) for a healthy backup behind an injured starter. */
 const OPPORTUNITY_UPSIDE = 8
 /**
@@ -186,6 +199,7 @@ export function buildBoard(input: BoardInput): BoardRow[] {
     marginalByKey,
     replacementPointsByKey,
     viaFlexByKey,
+    teams,
   } = input
 
   const players = (available ?? []).map((p) => ({ ...p, position: normPos(p.position) }))
@@ -294,10 +308,11 @@ export function buildBoard(input: BoardInput): BoardRow[] {
       marginal === undefined ? vonaPoints * need : Math.min(vonaPoints, marginal)
 
     let flag: BoardRow['flag'] = ''
-    if (adp !== null) {
-      if (currentOverallPick > adp + VALUE_PICKS) flag = 'value'
-      else if (currentOverallPick < adp - REACH_PICKS) flag = 'reach'
-    }
+    if (adp !== null && currentOverallPick > adp + VALUE_PICKS) flag = 'fell'
+
+    // `pr` and `ar` are already computed above for the upside term; the market
+    // read reuses them rather than deriving a second ranking of the same board.
+    const market = marketDisagreement({ projRank: pr, adpRank: ar, teams: teams ?? 0 })
 
     return {
       playerKey: p.playerKey,
@@ -330,6 +345,9 @@ export function buildBoard(input: BoardInput): BoardRow[] {
       tier: tierByKey[p.playerKey] ?? 1,
       overallTier: overallTierByKey[p.playerKey] ?? 1,
       flag,
+      marketFlag: market.flag,
+      disagreementRounds: market.rounds,
+      injuryStatus: p.injuryStatus ?? null,
       adp,
     }
   })

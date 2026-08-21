@@ -94,16 +94,17 @@ describe('buildBoard — tiers and flags', () => {
     expect(r.rb3.tier).toBeGreaterThan(r.rb2.tier)
   })
 
-  it('flags a player still available well past his ADP as value', () => {
-    // rb3 has ADP 30 and we are at pick 10 -> not a value yet.
-    // Move the pick well past his ADP.
+  it('flags a player still available well past his ADP as fell', () => {
+    // rb3 has ADP 30 and VALUE_PICKS is 12 -> needs a pick past 42 to trigger.
     const r = byKey(build({ currentOverallPick: 45 }))
-    expect(r.rb3.flag).toBe('value')
+    expect(r.rb3.flag).toBe('fell')
   })
 
-  it('flags taking a player well before his ADP as a reach', () => {
-    const r = byKey(build({ currentOverallPick: 1, adpByKey: { rb1: 60, rb2: 5, rb3: 30, wr1: 2 } }))
-    expect(r.rb1.flag).toBe('reach')
+  it('no longer calls taking a player early a reach', () => {
+    // Superseded by FADE, which measures the same disagreement better because it
+    // does not depend on where you happen to be sitting.
+    const r = byKey(build({ currentOverallPick: 1 }))
+    expect(r.rb1.flag).toBe('')
   })
 
   it('players without ADP carry no flag', () => {
@@ -570,5 +571,95 @@ describe('buildBoard — a flex player is judged against the flex', () => {
       totalStarterSlots: 9,
     })
     expect(rows[0].vonaPoints).toBeCloseTo(35, 5)
+  })
+})
+
+describe('buildBoard — market signals', () => {
+  const base = {
+    survival: {},
+    expectedBestAtPosition: { RB: 200 },
+    adpByKey: { early: 5, late: 60 },
+    currentOverallPick: 40,
+    filledStarterSlots: 2,
+    totalStarterSlots: 9,
+    teams: 12,
+  }
+  // `early` projects far better than `late` but the market prices him first.
+  const available = [
+    { playerKey: 'early', name: 'Market Darling', position: 'RB', value: 300, projected: 300 },
+    { playerKey: 'late', name: 'Our Guy', position: 'RB', value: 290, projected: 290 },
+  ]
+
+  it('flags the player we rank a round above the market as VALUE', () => {
+    // We have `late` 2nd; the market has him 2nd too — no gap. Widen it by
+    // pricing a third player between them.
+    const rows = buildBoard({
+      ...base,
+      available: [
+        ...available,
+        { playerKey: 'filler', name: 'Filler', position: 'RB', value: 100, projected: 100 },
+      ],
+      adpByKey: { early: 5, filler: 20, late: 60 },
+    })
+    const late = rows.find((r) => r.playerKey === 'late')!
+    // proj rank 2, adp rank 3 in a 12-team league: a twelfth of a round.
+    expect(late.marketFlag).toBe('')
+    expect(late.disagreementRounds).toBeCloseTo(1 / 12, 5)
+  })
+
+  it('renames the pick-relative flag to FELL and never says value', () => {
+    const rows = buildBoard({ ...base, available })
+    // `early` has an ADP of 5 and we are at pick 40: he slid a long way.
+    expect(rows.find((r) => r.playerKey === 'early')!.flag).toBe('fell')
+    for (const r of rows) expect(r.flag).not.toBe('value')
+  })
+
+  it('has no reach flag at all', () => {
+    const rows = buildBoard({ ...base, currentOverallPick: 1, available })
+    for (const r of rows) expect(r.flag).toBe('')
+  })
+
+  it('suppresses the market read when league size is unknown', () => {
+    const rows = buildBoard({ ...base, teams: undefined, available })
+    for (const r of rows) {
+      expect(r.marketFlag).toBe('')
+      expect(r.disagreementRounds).toBe(0)
+    }
+  })
+
+  it('carries injury status through untouched', () => {
+    const rows = buildBoard({
+      ...base,
+      available: [{ ...available[0], injuryStatus: 'Questionable' }, available[1]],
+    })
+    expect(rows.find((r) => r.playerKey === 'early')!.injuryStatus).toBe('Questionable')
+    expect(rows.find((r) => r.playerKey === 'late')!.injuryStatus).toBeNull()
+  })
+
+  it('lets a player hold FELL and FADE at once without contradiction', () => {
+    // He slid past his ADP AND we still rate him below the market. Both true.
+    // pr/ar are ordinal ranks within `available` (two players here), so with
+    // the base's 12-team default the max reachable disagreement is 1/12 of a
+    // round — never enough to trip the market flag. teams: 1 makes the same
+    // two-player, wildly-mismatched-ADP scenario cross the one-round threshold.
+    const rows = buildBoard({
+      ...base,
+      teams: 1,
+      available: [
+        { playerKey: 'a', name: 'A', position: 'RB', value: 300, projected: 300 },
+        { playerKey: 'b', name: 'B', position: 'RB', value: 100, projected: 100 },
+      ],
+      adpByKey: { a: 200, b: 1 },
+      currentOverallPick: 240,
+    })
+    const a = rows.find((r) => r.playerKey === 'a')!
+    expect(a.flag).toBe('fell')
+    expect(a.marketFlag).toBe('value')
+  })
+
+  it('does not let any market signal reach the score', () => {
+    const withTeams = buildBoard({ ...base, available })
+    const without = buildBoard({ ...base, teams: undefined, available })
+    expect(withTeams.map((r) => r.score)).toEqual(without.map((r) => r.score))
   })
 })
