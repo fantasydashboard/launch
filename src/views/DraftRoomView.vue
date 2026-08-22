@@ -6,6 +6,7 @@ import { UFD_LABEL } from '@/composables/useCustomRankings'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { startablePositions } from '@/draft/room/rosterNeed'
 import { rankTone } from '@/draft/room/slotRanks'
+import { tierCliffs } from '@/draft/room/tierCliffs'
 import { positionBadge, positionCell } from '@/players/positionColors'
 
 const {
@@ -185,6 +186,24 @@ function tierCount(i: number): number {
   const t = tierOf(visibleBoard.value[i].playerKey)
   return visibleBoard.value.filter((r) => tierOf(r.playerKey) === t).length
 }
+
+/**
+ * Where the visible list breaks between tiers, and by how much. Computed over
+ * the rows on screen, so it follows the position filter exactly as the tier
+ * headers already do.
+ */
+const cliffByIndex = computed(() => {
+  const rows = visibleBoard.value
+  const list = tierCliffs(
+    rows,
+    (r) => tierOf(r.playerKey),
+    (r) => ({ name: r.name, projected: r.projected }),
+  )
+  const out: Record<number, (typeof list)[number]> = {}
+  // Keyed by the row the cliff sits ABOVE, which is where it renders.
+  for (const c of list) out[c.afterIndex + 1] = c
+  return out
+})
 
 // Kickers and defenses always last, and saying so buries the players who do not.
 const SKILL = new Set(['QB', 'RB', 'WR', 'TE'])
@@ -420,8 +439,10 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
                   <template v-if="recommendation.pick.proTeam">
                     · <img :src="teamLogo(recommendation.pick.proTeam)" alt="" @error="onImgErr" class="h-3 w-3 object-contain" />{{ recommendation.pick.proTeam }}
                   </template>
-                  <span v-if="recommendation.pick.flag === 'value'" class="ml-1 rounded bg-emerald-500/15 px-1 py-0.5 text-[9px] uppercase text-emerald-400">value</span>
-                  <span v-else-if="recommendation.pick.flag === 'reach'" class="ml-1 rounded bg-amber-500/15 px-1 py-0.5 text-[9px] uppercase text-amber-400">reach</span>
+                  <span v-if="recommendation.pick.marketFlag === 'value'" class="ml-1 rounded bg-emerald-500/15 px-1 py-0.5 text-[9px] uppercase text-emerald-400">value</span>
+                  <span v-else-if="recommendation.pick.marketFlag === 'fade'" class="ml-1 rounded bg-[#FF5C5C]/15 px-1 py-0.5 text-[9px] uppercase text-[#FF5C5C]">fade</span>
+                  <span v-if="recommendation.pick.flag === 'fell'" class="ml-1 rounded bg-emerald-500/15 px-1 py-0.5 text-[9px] uppercase text-emerald-400">fell</span>
+                  <span v-if="recommendation.pick.injuryStatus" class="ml-1 rounded border border-dark-border px-1 py-0.5 text-[9px] uppercase text-dark-textMuted">{{ recommendation.pick.injuryStatus }}</span>
                 </p>
               </div>
             </div>
@@ -489,8 +510,22 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">tap a row to mark drafted</p>
 
         <template v-for="(r, i) in visibleBoard" :key="r.playerKey">
+          <!--
+            The most useful line in a hand-made draft guide is where the board
+            breaks and by how much. We already compute it and have never said so.
+          -->
+          <div v-if="cliffByIndex[i]" class="mt-4 rounded-md border-l-2 border-[#FF5C5C]/60 bg-[#FF5C5C]/5 px-3 py-1.5">
+            <span class="font-mono text-[10px] font-semibold uppercase tracking-wide text-[#FF5C5C]">
+              cliff · after {{ cliffByIndex[i].aboveName }}
+            </span>
+            <span class="ml-2 font-mono text-[10px] text-dark-textMuted">
+              {{ round(cliffByIndex[i].abovePoints) }} then {{ round(cliffByIndex[i].belowPoints) }}
+              — {{ round(cliffByIndex[i].drop) }} pt drop
+            </span>
+          </div>
+
           <!-- Tier header whenever the tier changes (grouping is real when filtered) -->
-          <div v-if="isTierHeader(i)" class="mt-4 flex items-center gap-2 first:mt-0">
+          <div v-if="isTierHeader(i)" class="mt-2 flex items-center gap-2 first:mt-0">
             <span class="h-px w-4 bg-primary/50" />
             <span class="whitespace-nowrap rounded bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-primary">
               tier {{ tierOf(r.playerKey) }}
@@ -512,7 +547,14 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
               <span class="flex items-center gap-1.5">
                 <span class="truncate text-sm font-semibold" :class="(r as any).takenAt ? 'text-dark-textMuted line-through' : 'text-dark-text'">{{ r.name }}</span>
                 <span v-if="(r as any).takenAt" class="shrink-0 font-mono text-[9px] text-dark-textMuted">gone {{ (r as any).takenAt }}</span>
-                <span v-else-if="r.flag === 'value'" class="shrink-0 rounded bg-emerald-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-emerald-400">value</span>
+                <span v-else-if="r.marketFlag === 'value'" class="shrink-0 rounded bg-emerald-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-emerald-400"
+                      :title="`We rank him ${Math.abs(r.disagreementRounds).toFixed(1)} rounds earlier than the market does`">value</span>
+                <span v-else-if="r.marketFlag === 'fade'" class="shrink-0 rounded bg-[#FF5C5C]/15 px-1 py-0.5 font-mono text-[9px] uppercase text-[#FF5C5C]"
+                      :title="`The market ranks him ${Math.abs(r.disagreementRounds).toFixed(1)} rounds earlier than we do`">fade</span>
+                <span v-if="r.flag === 'fell'" class="shrink-0 rounded bg-emerald-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-emerald-400"
+                      title="He has slid past his ADP to the pick you are on">fell</span>
+                <span v-if="r.injuryStatus" class="shrink-0 rounded border border-dark-border px-1 py-0.5 font-mono text-[9px] uppercase text-dark-textMuted"
+                      title="Sleeper's reported status">{{ r.injuryStatus }}</span>
               </span>
               <span class="flex items-center gap-1.5 font-mono text-[10px] text-dark-textMuted">
                 <span class="rounded px-1 py-0.5 text-[9px] font-semibold" :class="posClass(r.position)">{{ r.position }}</span>
