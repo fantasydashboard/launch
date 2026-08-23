@@ -824,4 +824,68 @@ describe('buildBoard — market signals', () => {
     expect(withTeams.some((r) => r.disagreementRounds !== 0)).toBe(true)
     expect(withTeams.map((r) => r.score)).toEqual(without.map((r) => r.score))
   })
+
+  /**
+   * DEF (and K) ADP encodes "drafted last by convention," not a valuation of
+   * the player. Differencing our order against it measures the convention,
+   * not an opinion — so the badge must not fire there at all, however wide
+   * the rank gap.
+   */
+  it('gives a defense no badge, however wide the rank gap', () => {
+    // Same fixture shape as the FELL+VALUE test above (a full-round gap on a
+    // real 12-team pool), just at a gated position.
+    const fillers = Array.from({ length: 12 }, (_, i) => ({
+      playerKey: `f${i}`,
+      name: `Filler ${i}`,
+      position: 'DEF',
+      value: 50,
+      projected: 50,
+    }))
+    const rows = buildBoard({
+      ...base,
+      available: [
+        { playerKey: 'def', name: 'Rams DEF', position: 'DEF', value: 300, projected: 300 },
+        { playerKey: 'other', name: 'Other DEF', position: 'DEF', value: 100, projected: 100 },
+        ...fillers,
+      ],
+      adpByKey: {
+        def: 200,
+        other: 1,
+        ...Object.fromEntries(fillers.map((f, i) => [f.playerKey, i + 2])),
+      },
+      currentOverallPick: 240,
+    })
+    const def = rows.find((r) => r.playerKey === 'def')!
+    expect(def.marketFlag).toBe('')
+    expect(def.disagreementRounds).toBe(0)
+  })
+
+  it('still badges the same gap on a skill position — the gate is positional, not a blanket suppression', () => {
+    // Identical shape to the DEF case above, only the position differs, to
+    // prove the badge is suppressed by position and not by something else
+    // about the fixture.
+    const fillers = Array.from({ length: 12 }, (_, i) => ({
+      playerKey: `f${i}`,
+      name: `Filler ${i}`,
+      position: 'RB',
+      value: 50,
+      projected: 50,
+    }))
+    const rows = buildBoard({
+      ...base,
+      available: [
+        { playerKey: 'rb', name: 'Skill Guy', position: 'RB', value: 300, projected: 300 },
+        { playerKey: 'other', name: 'Other RB', position: 'RB', value: 100, projected: 100 },
+        ...fillers,
+      ],
+      adpByKey: {
+        rb: 200,
+        other: 1,
+        ...Object.fromEntries(fillers.map((f, i) => [f.playerKey, i + 2])),
+      },
+      currentOverallPick: 240,
+    })
+    const rb = rows.find((r) => r.playerKey === 'rb')!
+    expect(rb.marketFlag).toBe('value')
+  })
 })

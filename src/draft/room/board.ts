@@ -158,6 +158,19 @@ const TARGET_TIER_SIZE = 5
 const normPos = (p: string) => (p || '').toUpperCase().split(/[,/|]/)[0].trim()
 
 /**
+ * Positions the market badge is allowed to fire on.
+ *
+ * K and DEF ADP encodes draft convention ("taken last") rather than a
+ * valuation of the player, so differencing our order against it measures the
+ * convention, not an opinion. Left ungated, this produced a VALUE badge on
+ * essentially every kicker and defense (39 K / 31 DEF of 290 badged players
+ * on the live feed) including multi-round badges inside the top 60 rows —
+ * signal that looked like an edge but was actually just "ADP puts kickers
+ * last."
+ */
+const MARKET_BADGE_POSITIONS = new Set(['QB', 'RB', 'WR', 'TE'])
+
+/**
  * Tiers = the biggest cliffs, not "every gap above a threshold".
  *
  * A threshold-based rule fragments badly on a deep position: with two hundred
@@ -357,7 +370,12 @@ export function buildBoard(input: BoardInput): BoardRow[] {
     // the caller's replacement-adjusted order over exactly that population, so
     // the two ranks being differenced mean the same thing (see where it's built).
     const mpr = marketProjRank.get(p.playerKey)
-    const market = marketDisagreement({ projRank: mpr, adpRank: ar, teams: teams ?? 0 })
+    // Gated to skill positions: see MARKET_BADGE_POSITIONS. p.position is
+    // already normalised here, so DST / D/ST variants resolve correctly and
+    // fall out of the set the same as 'DEF'.
+    const market = MARKET_BADGE_POSITIONS.has(p.position)
+      ? marketDisagreement({ projRank: mpr, adpRank: ar, teams: teams ?? 0 })
+      : ({ rounds: 0, flag: '' } as const)
 
     return {
       playerKey: p.playerKey,
