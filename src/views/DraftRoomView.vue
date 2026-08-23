@@ -7,6 +7,7 @@ import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { startablePositions } from '@/draft/room/rosterNeed'
 import { rankTone } from '@/draft/room/slotRanks'
 import { tierCliffs } from '@/draft/room/tierCliffs'
+import { draftBoardInjuryStatus } from '@/draft/room/injuryStatus'
 import { positionBadge, positionCell } from '@/players/positionColors'
 
 const {
@@ -253,6 +254,9 @@ const cliffDisplayByIndex = computed(() => {
  */
 const roundsLabel = (rounds: number) => `${Math.abs(rounds).toFixed(1)}r`
 
+/** The reported status, or nothing — see `injuryStatus.ts` for what survives. */
+const injuryBadge = draftBoardInjuryStatus
+
 // Kickers and defenses always last, and saying so buries the players who do not.
 const SKILL = new Set(['QB', 'RB', 'WR', 'TE'])
 const safeUntilNext = computed(() =>
@@ -493,7 +497,8 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
                   <span v-else-if="recommendation.pick.marketFlag === 'fade'" class="ml-1 whitespace-nowrap rounded bg-[#FF5C5C]/15 px-1 py-0.5 text-[9px] uppercase text-[#FF5C5C]"
                         :title="`The market ranks him ${Math.abs(recommendation.pick.disagreementRounds).toFixed(1)} rounds earlier than we do`">fade {{ roundsLabel(recommendation.pick.disagreementRounds) }}</span>
                   <span v-if="recommendation.pick.flag === 'fell'" class="ml-1 rounded bg-emerald-500/15 px-1 py-0.5 text-[9px] uppercase text-emerald-400">fell</span>
-                  <span v-if="recommendation.pick.injuryStatus" class="ml-1 rounded border border-dark-border px-1 py-0.5 text-[9px] uppercase text-dark-textMuted">{{ recommendation.pick.injuryStatus }}</span>
+                  <span v-if="injuryBadge(recommendation.pick.injuryStatus)" class="ml-1 rounded border border-dark-border px-1 py-0.5 text-[9px] uppercase text-dark-textMuted"
+                        :title="injuryBadge(recommendation.pick.injuryStatus)!.detail">{{ injuryBadge(recommendation.pick.injuryStatus)!.label }}</span>
                 </p>
               </div>
             </div>
@@ -616,8 +621,13 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
                       :title="`The market ranks him ${Math.abs(r.disagreementRounds).toFixed(1)} rounds earlier than we do`">fade {{ roundsLabel(r.disagreementRounds) }}</span>
                 <span v-if="r.flag === 'fell'" class="shrink-0 rounded bg-emerald-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-emerald-400"
                       title="He has slid past his ADP to the pick you are on">fell</span>
-                <span v-if="r.injuryStatus" class="shrink-0 rounded border border-dark-border px-1 py-0.5 font-mono text-[9px] uppercase text-dark-textMuted"
-                      title="Sleeper's reported status">{{ r.injuryStatus }}</span>
+                <!--
+                  Only the statuses that mean he may not play. `Questionable` in
+                  August is a camp tag sitting on round-one players, and a code
+                  nobody can decode is worse than silence.
+                -->
+                <span v-if="injuryBadge(r.injuryStatus)" class="shrink-0 rounded border border-dark-border px-1 py-0.5 font-mono text-[9px] uppercase text-dark-textMuted"
+                      :title="injuryBadge(r.injuryStatus)!.detail">{{ injuryBadge(r.injuryStatus)!.label }}</span>
               </span>
               <span class="flex items-center gap-1.5 font-mono text-[10px] text-dark-textMuted">
                 <span class="rounded px-1 py-0.5 text-[9px] font-semibold" :class="posClass(r.position)">{{ r.position }}</span>
