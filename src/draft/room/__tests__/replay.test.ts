@@ -206,3 +206,67 @@ describe('replayDraft — it has to be the live path', () => {
       .toBeGreaterThan(receiversOnly.filter((p) => p === 'RB').length)
   })
 })
+
+/**
+ * The badge on a replayed board has to be the badge on the live board.
+ *
+ * The live path compares ADP against a REPLACEMENT-ADJUSTED ordering, because
+ * ADP already prices positional scarcity and differencing it against a
+ * raw-points order badges players for their position rather than for anything
+ * anyone believes about them. If the replay does not pass the same ordering it
+ * silently verifies a different tool.
+ */
+describe('replayDraft — the market read is the live one', () => {
+  // Six quarterbacks and eleven backs. `qb0` is the highest raw projection in
+  // the pool and only the 7th-best player once replacement is taken out — which
+  // is exactly where the market prices him.
+  const qbs = Array.from({ length: 6 }, (_, i) => ({
+    playerKey: `qb${i}`,
+    name: `QB ${i}`,
+    position: 'QB',
+    value: 400 - i * 2,
+  }))
+  const rbs = Array.from({ length: 11 }, (_, i) => ({
+    playerKey: `rb${i}`,
+    name: `RB ${i}`,
+    position: 'RB',
+    value: 300 - i * 3,
+  }))
+  const pool = [...qbs, ...rbs]
+  // ADP order: six backs, then qb0 7th, then the rest. qb0's ADP rank is 7.
+  const adpOrder = [
+    ...rbs.slice(0, 6),
+    qbs[0],
+    ...rbs.slice(6),
+    ...qbs.slice(1),
+  ]
+  const poolAdp = Object.fromEntries(adpOrder.map((p, i) => [p.playerKey, i + 1]))
+  const poolPicks: ReplayPick[] = pool.slice(0, 12).map((p, i) => ({
+    overallPick: i + 1,
+    playerKey: p.playerKey,
+    slot: (i % 4) + 1,
+  }))
+  const scarcityInput = (over: Partial<ReplayInput> = {}): ReplayInput =>
+    input({ players: pool, adpByKey: poolAdp, picks: poolPicks, ...over })
+
+  const qbRead = (over: Partial<ReplayInput> = {}) => {
+    const first = replayDraft(scarcityInput(over))[0]
+    return first.board.find((r) => r.playerKey === 'qb0')!
+  }
+
+  it('does not badge a quarterback the market simply drafts at his real value', () => {
+    // 7th by value over replacement, 7th by ADP: agreement, and no badge.
+    const qb = qbRead({ slots: { QB: 1, RB: 2, BN: 3 } })
+    expect(qb.disagreementRounds).toBe(0)
+    expect(qb.marketFlag).toBe('')
+  })
+
+  it('would badge him on raw points alone, which is the failure being prevented', () => {
+    // No slots means no replacement level to compute, so `buildBoard` falls back
+    // to its raw-value ranking — 1st by points against 7th by ADP, one and a
+    // half rounds of "disagreement" manufactured out of his position.
+    const qb = qbRead()
+    expect(qb.disagreementRounds).toBeCloseTo(6 / 4, 5)
+    expect(qb.marketFlag).toBe('value')
+  })
+})

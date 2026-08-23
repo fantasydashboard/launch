@@ -20,6 +20,7 @@ import { priorFor, type Tendencies } from './tendencies'
 import { needFactorByPosition } from './rosterNeed'
 import { marginalDetailByKey } from './marginalValue'
 import { FLEX_ELIGIBILITY } from './lineup'
+import { computeReplacementDetail } from '@/football/footballReplacement'
 
 export interface ReplayPick {
   overallPick: number
@@ -170,6 +171,42 @@ export function replayDraft(input: ReplayInput): ReplayStep[] {
         }
       }
 
+      /**
+       * The same replacement-adjusted market ordering the live board passes in.
+       *
+       * The replay exists to re-run a draft through the identical code path, so
+       * a divergence here means it silently verifies nothing: `buildBoard` would
+       * fall back to its raw-value ranking and the replay's VALUE/FADE badges
+       * would be the positional artifact the live board no longer shows.
+       *
+       * From `projected`, never `value` — `value` carries whichever ranking list
+       * the pipeline applied, and the badge must mean the same thing for every
+       * user. Ranked over exactly the priced players, which is the population
+       * `buildBoard` draws its ADP rank from.
+       */
+      let marketRank: Record<string, number> | undefined
+      if (input.slots) {
+        const priced = available.filter((p) => typeof adpByKey[p.playerKey] === 'number')
+        if (priced.length) {
+          const points = (p: AvailablePlayerRow) => p.projected ?? p.value
+          // Same normalisation `buildBoard` applies, so a "RB,WR" row looks up a
+          // replacement level that exists instead of silently reading 0.
+          const pos = (p: AvailablePlayerRow) =>
+            String(p.position || '').toUpperCase().split(/[,/|]/)[0].trim()
+          const rep = computeReplacementDetail(
+            priced.map((p) => ({ playerKey: p.playerKey, position: pos(p), points: points(p) })),
+            input.slots,
+            shape.teams,
+          )
+          const overReplacement = (p: AvailablePlayerRow) =>
+            points(p) - (rep.levels[pos(p)] ?? 0)
+          marketRank = {}
+          ;[...priced]
+            .sort((a, b) => overReplacement(b) - overReplacement(a))
+            .forEach((p, i) => { marketRank![p.playerKey] = i + 1 })
+        }
+      }
+
       const board = buildBoard({
         available,
         needFactor: input.slots ? needFactorByPosition({ slots: input.slots, filledByPosition }) : undefined,
@@ -185,6 +222,7 @@ export function replayDraft(input: ReplayInput): ReplayStep[] {
         filledStarterSlots: Math.min(myTaken, totalStarterSlots),
         totalStarterSlots,
         teams: shape.teams,
+        marketRankByKey: marketRank,
       })
 
       const top = board[0]

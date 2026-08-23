@@ -80,6 +80,23 @@ export interface BoardInput {
    * market read is suppressed rather than measured against a nonsense threshold.
    */
   teams?: number
+  /**
+   * Where WE rank each priced player, for the market comparison only — a
+   * replacement-adjusted order, supplied by the caller.
+   *
+   * ADP is a draft ORDERING: it already prices positional scarcity. Ranking our
+   * side on raw points and differencing the two therefore measures a positional
+   * artifact, not disagreement about a player. Measured on a live feed with the
+   * internal raw-points ranking, 280 of 386 priced players were badged and the
+   * split was FADE 66 RB / 40 WR / 29 TE / 2 QB against VALUE 38 QB / 22 TE /
+   * 14 K / 10 DEF / 2 RB — the badge was reporting position, not opinion.
+   *
+   * Must be ranked over the SAME population as `adpByKey` restricted to this
+   * board's players, or the two ranks being differenced mean different things.
+   * Absent, the internal raw-value ranking below is used unchanged, so callers
+   * that do not supply it behave exactly as they did.
+   */
+  marketRankByKey?: Record<string, number>
 }
 
 export interface BoardRow {
@@ -200,6 +217,7 @@ export function buildBoard(input: BoardInput): BoardRow[] {
     replacementPointsByKey,
     viaFlexByKey,
     teams,
+    marketRankByKey,
   } = input
 
   const players = (available ?? []).map((p) => ({ ...p, position: normPos(p.position) }))
@@ -236,9 +254,18 @@ export function buildBoard(input: BoardInput): BoardRow[] {
   // pr:200/ar:150 in a big enough pool would read as -4+ rounds and pick up a
   // FADE badge he never earned — pure population-size bookkeeping, not a real
   // market opinion. Re-ranking over `withAdp` compares like with like.
-  const marketProjRank = new Map(
-    [...withAdp].sort((a, b) => b.value - a.value).map((p, i) => [p.playerKey, i + 1]),
-  )
+  //
+  // Population is only half of it. The ORDER matters too, and ordering by raw
+  // `value` is the second half of the same bug: ADP already prices positional
+  // scarcity, so differencing it against a raw-points order badges every
+  // quarterback VALUE and every back FADE. Callers who can compute a
+  // replacement-adjusted order pass it in as `marketRankByKey`; the raw-value
+  // fallback below is kept only so callers that supply nothing are unaffected.
+  const marketProjRank = marketRankByKey
+    ? new Map<string, number>(Object.entries(marketRankByKey))
+    : new Map<string, number>(
+        [...withAdp].sort((a, b) => b.value - a.value).map((p, i) => [p.playerKey, i + 1]),
+      )
 
   // Tiers within position, plus an overall tier across the whole board — the
   // board can be read either way, and "tier 2 overall" is a different and useful
@@ -324,10 +351,11 @@ export function buildBoard(input: BoardInput): BoardRow[] {
     if (adp !== null && currentOverallPick > adp + VALUE_PICKS) flag = 'fell'
 
     // `ar` is the same ADP rank the upside term already computed above, reused
-    // as-is. The projection rank cannot be reused the same way: `pr` ranks
-    // across the whole pool, but the market has only priced `withAdp`, and
-    // `marketProjRank` re-ranks over exactly that population so the two ranks
-    // being differenced mean the same thing (see the comment where it's built).
+    // as-is. The projection rank cannot be reused the same way: `pr` ranks the
+    // whole pool by raw value, but the market has only priced `withAdp` and it
+    // prices positional scarcity while raw points do not. `marketProjRank` is
+    // the caller's replacement-adjusted order over exactly that population, so
+    // the two ranks being differenced mean the same thing (see where it's built).
     const mpr = marketProjRank.get(p.playerKey)
     const market = marketDisagreement({ projRank: mpr, adpRank: ar, teams: teams ?? 0 })
 

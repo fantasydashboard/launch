@@ -731,6 +731,53 @@ export function useDraftRoom() {
     return out
   })
 
+  /**
+   * Where OUR board ranks each PRICED player — the only ordering the VALUE/FADE
+   * badge is allowed to compare ADP against.
+   *
+   * Two rules, both of which the badge got wrong before.
+   *
+   * 1. Replacement-adjusted, not raw points. ADP is a draft ordering and already
+   *    prices positional scarcity; ranking by raw points puts every quarterback
+   *    ~100 spots too high and drowns the real disagreements — the same trap
+   *    `comparePool` and `listRankByKey` already document. Differencing a raw
+   *    order against ADP badged 280 of 386 priced players and split FADE
+   *    66 RB / 40 WR / 29 TE / 2 QB against VALUE 38 QB / 22 TE / 14 K / 10 DEF:
+   *    the badge was naming the position, not an opinion about the player.
+   *
+   * 2. Built from `projected`, NEVER from `value`. When an admin selects an
+   *    analyst list, `value` carries that list's ordering, so a badge built on
+   *    it silently changes meaning to "this analyst disagrees with the market"
+   *    while the tooltip still says "we rank him". The badge has to mean the
+   *    same thing for every user regardless of which list is loaded, so it is
+   *    computed from our own projected points and nothing else.
+   *
+   * Ranked over exactly the players with an ADP, because that is the population
+   * `buildBoard` draws its ADP rank from — two ranks over different populations
+   * difference into bookkeeping, not disagreement.
+   */
+  const marketRankByKey = computed<Record<string, number>>(() => {
+    const out: Record<string, number> = {}
+    const priced = rankedPlayers.value.filter(
+      (p) => typeof adp.value[p.playerKey] === 'number',
+    )
+    if (!priced.length) return out
+    const pos = (p: { position: string }) =>
+      String(p.position || '').toUpperCase().split(/[,/|]/)[0].trim()
+    const points = (p: { projected?: number; value: number }) => p.projected ?? p.value
+    const detail = computeReplacementDetail(
+      priced.map((r) => ({ playerKey: r.playerKey, position: pos(r), points: points(r) })),
+      effectiveSlots.value ?? {},
+      effectiveTeams.value,
+    )
+    const overReplacement = (p: (typeof priced)[number]) =>
+      points(p) - (detail.levels[pos(p)] ?? 0)
+    ;[...priced]
+      .sort((a, b) => overReplacement(b) - overReplacement(a))
+      .forEach((p, i) => { out[p.playerKey] = i + 1 })
+    return out
+  })
+
   const board = computed<BoardRow[]>(() =>
     buildBoard({
       available: rankedPlayers.value,
@@ -749,6 +796,7 @@ export function useDraftRoom() {
       filledStarterSlots: Math.min(myPicks.value.length, starterSlots.value),
       totalStarterSlots: starterSlots.value,
       teams: effectiveTeams.value,
+      marketRankByKey: marketRankByKey.value,
     }),
   )
 

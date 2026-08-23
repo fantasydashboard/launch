@@ -699,6 +699,114 @@ describe('buildBoard — market signals', () => {
     expect(chalk.marketFlag).toBe('fade')
   })
 
+  /**
+   * The badge compares OUR order against the market's. Which order counts as
+   * "ours" is the whole question: ADP is a draft ordering and already prices
+   * positional scarcity, so differencing it against a raw-points order measures
+   * position, not opinion.
+   */
+  describe('the ranking the market is compared against', () => {
+    // One quarterback who outscores every back on raw points, and a market that
+    // — correctly — drafts him after all of them.
+    const qbAndBacks = [
+      { playerKey: 'qb', name: 'Big Arm', position: 'QB', value: 400, projected: 400 },
+      ...Array.from({ length: 12 }, (_, i) => ({
+        playerKey: `rb${i}`,
+        name: `RB ${i}`,
+        position: 'RB',
+        value: 200 - i,
+        projected: 200 - i,
+      })),
+    ]
+    const qbLastAdp = {
+      qb: 13,
+      ...Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`rb${i}`, i + 1])),
+    }
+
+    it('badges the quarterback on raw points alone when no ranking is supplied', () => {
+      // The bug, pinned: raw points rank him 1st, the market prices him 13th,
+      // and a full round of "disagreement" appears out of his position.
+      const rows = buildBoard({ ...base, available: qbAndBacks, adpByKey: qbLastAdp })
+      const qb = rows.find((r) => r.playerKey === 'qb')!
+      expect(qb.marketFlag).toBe('value')
+      expect(qb.disagreementRounds).toBeCloseTo(12 / 12, 5)
+    })
+
+    it('takes the supplied ranking instead, so scarcity-aware agreement reads as agreement', () => {
+      // The replacement-adjusted order the live caller passes: a quarterback
+      // barely clears his own replacement level, so he sits behind the backs —
+      // exactly where the market has him. No disagreement, no badge.
+      const rows = buildBoard({
+        ...base,
+        available: qbAndBacks,
+        adpByKey: qbLastAdp,
+        marketRankByKey: {
+          qb: 13,
+          ...Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`rb${i}`, i + 1])),
+        },
+      })
+      const qb = rows.find((r) => r.playerKey === 'qb')!
+      expect(qb.marketFlag).toBe('')
+      expect(qb.disagreementRounds).toBe(0)
+    })
+
+    it('lets the supplied ranking create a badge the internal one would not', () => {
+      // Precedence runs both ways: the supplied map is used as given, not
+      // merged with or sanity-checked against the internal ordering. Internally
+      // `rb0` is our 2nd-best by raw value and the market's 1st — a twelfth of a
+      // round, no badge. Told we rank him 13th, the same row reads FADE.
+      const internal = buildBoard({ ...base, available: qbAndBacks, adpByKey: qbLastAdp })
+      expect(internal.find((r) => r.playerKey === 'rb0')!.marketFlag).toBe('')
+
+      const rows = buildBoard({
+        ...base,
+        available: qbAndBacks,
+        adpByKey: qbLastAdp,
+        marketRankByKey: {
+          rb0: 13,
+          qb: 1,
+          ...Object.fromEntries(Array.from({ length: 11 }, (_, i) => [`rb${i + 1}`, i + 2])),
+        },
+      })
+      const chalk = rows.find((r) => r.playerKey === 'rb0')!
+      expect(chalk.marketFlag).toBe('fade')
+      expect(chalk.disagreementRounds).toBeCloseTo(-12 / 12, 5) // adp rank 1, ours 13
+    })
+
+    it('omitting it leaves every existing caller exactly where it was', () => {
+      const omitted = buildBoard({ ...base, available: qbAndBacks, adpByKey: qbLastAdp })
+      const undefinedMap = buildBoard({
+        ...base,
+        available: qbAndBacks,
+        adpByKey: qbLastAdp,
+        marketRankByKey: undefined,
+      })
+      expect(undefinedMap.map((r) => [r.playerKey, r.marketFlag, r.disagreementRounds])).toEqual(
+        omitted.map((r) => [r.playerKey, r.marketFlag, r.disagreementRounds]),
+      )
+    })
+
+    it('a player the supplied ranking omits gets no badge rather than a fabricated one', () => {
+      const rows = buildBoard({
+        ...base,
+        available: qbAndBacks,
+        adpByKey: qbLastAdp,
+        marketRankByKey: { rb0: 1 },
+      })
+      const qb = rows.find((r) => r.playerKey === 'qb')!
+      expect(qb.marketFlag).toBe('')
+      expect(qb.disagreementRounds).toBe(0)
+    })
+
+    it('changes no score, however far it moves the badge', () => {
+      const scores = (marketRankByKey?: Record<string, number>) =>
+        buildBoard({ ...base, available: qbAndBacks, adpByKey: qbLastAdp, marketRankByKey })
+          .map((r) => [r.playerKey, r.score])
+      const flipped = { qb: 13, ...Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`rb${i}`, i + 1])) }
+      expect(scores(flipped)).toEqual(scores())
+    })
+  })
+
   it('does not let any market signal reach the score', () => {
     // early/late alone always have equal proj-rank and adp-rank (two players,
     // two ranks, same order both ways) so disagreementRounds was trivially 0
