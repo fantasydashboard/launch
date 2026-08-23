@@ -243,6 +243,16 @@ const cliffDisplayByIndex = computed(() => {
   return out
 })
 
+/**
+ * The size of the disagreement, rendered ON the badge.
+ *
+ * It used to live only in a `title`, which never fires on touch — and draft
+ * night is a phone. "VALUE" with no magnitude is a claim the user cannot weigh
+ * or check; "VALUE 1.4r" is the same claim with its evidence attached. The
+ * tooltip stays as the long-form sentence.
+ */
+const roundsLabel = (rounds: number) => `${Math.abs(rounds).toFixed(1)}r`
+
 // Kickers and defenses always last, and saying so buries the players who do not.
 const SKILL = new Set(['QB', 'RB', 'WR', 'TE'])
 const safeUntilNext = computed(() =>
@@ -477,8 +487,11 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
                   <template v-if="recommendation.pick.proTeam">
                     · <img :src="teamLogo(recommendation.pick.proTeam)" alt="" @error="onImgErr" class="h-3 w-3 object-contain" />{{ recommendation.pick.proTeam }}
                   </template>
-                  <span v-if="recommendation.pick.marketFlag === 'value'" class="ml-1 rounded bg-emerald-500/15 px-1 py-0.5 text-[9px] uppercase text-emerald-400">value</span>
-                  <span v-else-if="recommendation.pick.marketFlag === 'fade'" class="ml-1 rounded bg-[#FF5C5C]/15 px-1 py-0.5 text-[9px] uppercase text-[#FF5C5C]">fade</span>
+                  <!-- Magnitude inline, for the same reason as on the Board row. -->
+                  <span v-if="recommendation.pick.marketFlag === 'value'" class="ml-1 whitespace-nowrap rounded bg-emerald-500/15 px-1 py-0.5 text-[9px] uppercase text-emerald-400"
+                        :title="`We rank him ${Math.abs(recommendation.pick.disagreementRounds).toFixed(1)} rounds earlier than the market does`">value {{ roundsLabel(recommendation.pick.disagreementRounds) }}</span>
+                  <span v-else-if="recommendation.pick.marketFlag === 'fade'" class="ml-1 whitespace-nowrap rounded bg-[#FF5C5C]/15 px-1 py-0.5 text-[9px] uppercase text-[#FF5C5C]"
+                        :title="`The market ranks him ${Math.abs(recommendation.pick.disagreementRounds).toFixed(1)} rounds earlier than we do`">fade {{ roundsLabel(recommendation.pick.disagreementRounds) }}</span>
                   <span v-if="recommendation.pick.flag === 'fell'" class="ml-1 rounded bg-emerald-500/15 px-1 py-0.5 text-[9px] uppercase text-emerald-400">fell</span>
                   <span v-if="recommendation.pick.injuryStatus" class="ml-1 rounded border border-dark-border px-1 py-0.5 text-[9px] uppercase text-dark-textMuted">{{ recommendation.pick.injuryStatus }}</span>
                 </p>
@@ -592,10 +605,15 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
               <span class="flex items-center gap-1.5">
                 <span class="truncate text-sm font-semibold" :class="(r as any).takenAt ? 'text-dark-textMuted line-through' : 'text-dark-text'">{{ r.name }}</span>
                 <span v-if="(r as any).takenAt" class="shrink-0 font-mono text-[9px] text-dark-textMuted">gone {{ (r as any).takenAt }}</span>
-                <span v-else-if="r.marketFlag === 'value'" class="shrink-0 rounded bg-emerald-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-emerald-400"
-                      :title="`We rank him ${Math.abs(r.disagreementRounds).toFixed(1)} rounds earlier than the market does`">value</span>
-                <span v-else-if="r.marketFlag === 'fade'" class="shrink-0 rounded bg-[#FF5C5C]/15 px-1 py-0.5 font-mono text-[9px] uppercase text-[#FF5C5C]"
-                      :title="`The market ranks him ${Math.abs(r.disagreementRounds).toFixed(1)} rounds earlier than we do`">fade</span>
+                <!--
+                  The magnitude rides ON the badge, not in the title. `title`
+                  never fires on touch and draft night is a phone, so hover-only
+                  evidence is no evidence at all.
+                -->
+                <span v-else-if="r.marketFlag === 'value'" class="shrink-0 whitespace-nowrap rounded bg-emerald-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-emerald-400"
+                      :title="`We rank him ${Math.abs(r.disagreementRounds).toFixed(1)} rounds earlier than the market does`">value {{ roundsLabel(r.disagreementRounds) }}</span>
+                <span v-else-if="r.marketFlag === 'fade'" class="shrink-0 whitespace-nowrap rounded bg-[#FF5C5C]/15 px-1 py-0.5 font-mono text-[9px] uppercase text-[#FF5C5C]"
+                      :title="`The market ranks him ${Math.abs(r.disagreementRounds).toFixed(1)} rounds earlier than we do`">fade {{ roundsLabel(r.disagreementRounds) }}</span>
                 <span v-if="r.flag === 'fell'" class="shrink-0 rounded bg-emerald-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-emerald-400"
                       title="He has slid past his ADP to the pick you are on">fell</span>
                 <span v-if="r.injuryStatus" class="shrink-0 rounded border border-dark-border px-1 py-0.5 font-mono text-[9px] uppercase text-dark-textMuted"
