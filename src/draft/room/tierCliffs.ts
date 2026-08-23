@@ -12,8 +12,16 @@
  */
 
 export interface Cliff {
-  /** Index of the LAST row above the break. Render the cliff before the next row. */
+  /** Index of the LAST row above the break, whether or not it is adjacent to the break. Names the player above. */
   afterIndex: number
+  /**
+   * Index of the FIRST row of the tier below the break. This, not `afterIndex + 1`,
+   * is where the view must render the cliff: rows a ranking list omits (or a
+   * "show drafted" splice reinserts) sit untiered between `afterIndex` and here,
+   * and `afterIndex + 1` would land the banner on one of THEM — detached from the
+   * tier header, which fires at the first tiered row exactly like this one does.
+   */
+  beforeIndex: number
   aboveName: string
   abovePoints: number
   belowPoints: number
@@ -41,6 +49,7 @@ export function tierCliffs<T>(
       const below = read(rows[i])
       out.push({
         afterIndex: lastIndex,
+        beforeIndex: i,
         aboveName: above.name,
         abovePoints: above.projected,
         belowPoints: below.projected,

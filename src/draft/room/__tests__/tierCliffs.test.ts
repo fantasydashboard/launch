@@ -60,6 +60,25 @@ describe('tierCliffs', () => {
     expect(cliffs[0].drop).toBeCloseTo(100, 5)
   })
 
+  it('points beforeIndex at the first tiered row below a multi-row gap, not the gap itself', () => {
+    // "show drafted" can splice several untiered rows back between two tiers.
+    // The view keys off beforeIndex to place the cliff banner, and it must land
+    // on the first row of the tier below — the same row the tier header fires
+    // on — not on any of the untiered rows sitting in between.
+    const withWideGap: Row[] = [
+      row('a', 300, 1),
+      { name: 'gone-1', projected: 280, value: 280, tier: undefined as unknown as number },
+      { name: 'gone-2', projected: 270, value: 270, tier: undefined as unknown as number },
+      { name: 'gone-3', projected: 260, value: 260, tier: undefined as unknown as number },
+      row('c', 200, 2),
+    ]
+    const cliffs = tierCliffs(withWideGap, tierOf, read)
+    expect(cliffs).toHaveLength(1)
+    expect(cliffs[0].afterIndex).toBe(0)
+    expect(cliffs[0].beforeIndex).toBe(4)
+    expect(withWideGap[cliffs[0].beforeIndex].name).toBe('c')
+  })
+
   it('reports a rise as a zero drop rather than a negative one', () => {
     // The list is ordered by someone else's opinion, so the next tier can
     // out-project the one above it. "Drops -8 pts" is not a sentence.

@@ -193,6 +193,11 @@ function tierCount(i: number): number {
  * headers already do.
  */
 const cliffByIndex = computed(() => {
+  // The won't-last lens sorts by survival, not by tier — every row still has a
+  // tier, so an ungated cliff would fire at nearly every row of a list where
+  // tier order (and the points direction it implies) means nothing. Tier
+  // headers are suppressed there for the same reason; match it.
+  if (posFilter.value === 'LAST') return {}
   const rows = visibleBoard.value
   const list = tierCliffs(
     rows,
@@ -200,8 +205,29 @@ const cliffByIndex = computed(() => {
     (r) => ({ name: r.name, projected: r.projected }),
   )
   const out: Record<number, (typeof list)[number]> = {}
-  // Keyed by the row the cliff sits ABOVE, which is where it renders.
-  for (const c of list) out[c.afterIndex + 1] = c
+  // Keyed by the FIRST tiered row of the tier below — the same row the tier
+  // header fires on. Rows the active list omits (or "show drafted" splices
+  // back in) sit untiered between the break and afterIndex + 1; keying there
+  // would detach the banner from its header and land it on one of them.
+  for (const c of list) out[c.beforeIndex] = c
+  return out
+})
+
+/**
+ * Rounded, self-consistent view of each cliff: the drop equals the difference
+ * of the two numbers actually rendered, so "338 then 334" can never sit beside
+ * a "3 pt drop" computed from the unrounded inputs — and a boundary that
+ * rounds away to no drop (the active list disagreeing with our points) is
+ * dropped rather than rendered as "0 pt drop".
+ */
+const cliffDisplayByIndex = computed(() => {
+  const out: Record<number, { aboveName: string; above: number; below: number; drop: number }> = {}
+  for (const [i, c] of Object.entries(cliffByIndex.value)) {
+    const above = round(c.abovePoints)
+    const below = round(c.belowPoints)
+    const drop = above - below
+    if (drop > 0) out[Number(i)] = { aboveName: c.aboveName, above, below, drop }
+  }
   return out
 })
 
@@ -514,13 +540,13 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
             The most useful line in a hand-made draft guide is where the board
             breaks and by how much. We already compute it and have never said so.
           -->
-          <div v-if="cliffByIndex[i]" class="mt-4 rounded-md border-l-2 border-[#FF5C5C]/60 bg-[#FF5C5C]/5 px-3 py-1.5">
+          <div v-if="cliffDisplayByIndex[i]" class="mt-4 rounded-md border-l-2 border-[#FF5C5C]/60 bg-[#FF5C5C]/5 px-3 py-1.5">
             <span class="font-mono text-[10px] font-semibold uppercase tracking-wide text-[#FF5C5C]">
-              cliff · after {{ cliffByIndex[i].aboveName }}
+              cliff · after {{ cliffDisplayByIndex[i].aboveName }}
             </span>
             <span class="ml-2 font-mono text-[10px] text-dark-textMuted">
-              {{ round(cliffByIndex[i].abovePoints) }} then {{ round(cliffByIndex[i].belowPoints) }}
-              — {{ round(cliffByIndex[i].drop) }} pt drop
+              {{ cliffDisplayByIndex[i].above }} then {{ cliffDisplayByIndex[i].below }}
+              — {{ cliffDisplayByIndex[i].drop }} pt drop
             </span>
           </div>
 
