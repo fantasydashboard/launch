@@ -590,9 +590,10 @@ describe('buildBoard — market signals', () => {
     { playerKey: 'late', name: 'Our Guy', position: 'RB', value: 290, projected: 290 },
   ]
 
-  it('flags the player we rank a round above the market as VALUE', () => {
-    // We have `late` 2nd; the market has him 2nd too — no gap. Widen it by
-    // pricing a third player between them.
+  it('stays silent on a disagreement smaller than a round, and still reports its size', () => {
+    // We have `late` 2nd; the market has him 3rd once a third player is priced
+    // between them — one rank apart in a 12-team league, a twelfth of a round.
+    // Under the threshold, so no badge, but the magnitude is still measured.
     const rows = buildBoard({
       ...base,
       available: [
@@ -636,8 +637,9 @@ describe('buildBoard — market signals', () => {
     expect(rows.find((r) => r.playerKey === 'late')!.injuryStatus).toBeNull()
   })
 
-  it('lets a player hold FELL and FADE at once without contradiction', () => {
-    // He slid past his ADP AND we still rate him below the market. Both true.
+  it('lets a player hold FELL and VALUE at once without contradiction', () => {
+    // He slid past his ADP AND we rate him above the market. Both true: the
+    // market pricing him at 200 is exactly why he was still there at 240.
     // A real, 12-team-scale disagreement needs a real gap between the ranks,
     // not a shrunk league size: pad the pool with enough ADP'd fillers that
     // `a`'s ordinal ADP rank genuinely lands a full round behind his
