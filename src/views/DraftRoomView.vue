@@ -198,6 +198,18 @@ const cliffByIndex = computed(() => {
   // tier order (and the points direction it implies) means nothing. Tier
   // headers are suppressed there for the same reason; match it.
   if (posFilter.value === 'LAST') return {}
+  /**
+   * A cliff is a WITHIN-POSITION idea, so it only belongs on a position tab.
+   *
+   * On the ALL tab the tier is an overall tier assigned across every position
+   * while the list is ordered by value over replacement, so quarterbacks land
+   * mid-list still carrying tier 1 and produce tier CHANGES that are not tier
+   * BREAKS. It shipped reading "cliff · after Josh Allen — 362 then 227, 135 pt
+   * drop" and "after Lamar Jackson — 326 then 196", each setting a
+   * quarterback's points against a receiver's and a tight end's. The numbers
+   * are checkable and the comparison is meaningless.
+   */
+  if (posFilter.value === 'ALL') return {}
   const rows = visibleBoard.value
   const list = tierCliffs(
     rows,
@@ -533,7 +545,14 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
           <span class="w-12 text-right" title="Points he would add to your starting lineup, capped by what you would give up by waiting — a dash means he cannot crack your lineup today">edge</span>
         </div>
 
-        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">tap a row to mark drafted</p>
+        <!--
+          The cliff rows only fire on a position tab, because a cliff is a
+          within-position idea. Saying where they are beats leaving the user to
+          notice they stopped appearing.
+        -->
+        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
+          tap a row to mark drafted<span v-if="posFilter === 'ALL'"> · tier cliffs show on a position tab</span>
+        </p>
 
         <template v-for="(r, i) in visibleBoard" :key="r.playerKey">
           <!--
