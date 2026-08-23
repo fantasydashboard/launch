@@ -607,7 +607,17 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
                  class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" />
             <span v-else class="h-7 w-7 shrink-0 rounded-full bg-dark-border" />
             <span class="min-w-0 flex-1">
-              <span class="flex items-center gap-1.5">
+              <!--
+                The badges (value/fade, fell, injury) are all whitespace-nowrap
+                shrink-0 — none of them can give up width. On a 390px phone,
+                name + fade 1.4r + fell + DOUBTFUL runs past this column's
+                ~74px and, with nothing here to clip it, overprints the PTS
+                number instead of stopping at the column edge. min-w-0 lets
+                this flex row actually shrink inside its flex-1 parent instead
+                of pushing the row wider; overflow-hidden makes it the thing
+                that clips the cluster once the name truncates.
+              -->
+              <span class="flex min-w-0 items-center gap-1.5 overflow-hidden">
                 <span class="truncate text-sm font-semibold" :class="(r as any).takenAt ? 'text-dark-textMuted line-through' : 'text-dark-text'">{{ r.name }}</span>
                 <span v-if="(r as any).takenAt" class="shrink-0 font-mono text-[9px] text-dark-textMuted">gone {{ (r as any).takenAt }}</span>
                 <!--
