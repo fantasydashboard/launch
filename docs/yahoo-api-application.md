@@ -1,90 +1,113 @@
 # Yahoo Fantasy Sports API — access application
 
-Submit at https://sports.yahoo.com/developer/access/
+Form: https://sports.yahoo.com/developer/access/
 
-**Client ID field:** paste the Client ID of the EXISTING YDN app — the one whose
-secret is already in Supabase. Leaving it blank makes Yahoo provision a new one
-on approval, which would mean re-doing the credential swap that caused the
-`invalid_scope` failure in August.
-
-**Expected Users:** Small (< 1,000 users) — change if that is wrong.
-
-**Access Level:** Read-only is correct. We never write to Yahoo.
+Field-by-field. Two fields I cannot supply are marked `>> YOU <<`.
 
 ---
 
-## Product
+**Name ***
+```
+Josh Daniel
+```
 
-Ultimate Fantasy Dashboard (ultimatefantasydashboard.com) is a companion
-dashboard for people who already play fantasy sports on Yahoo, ESPN and Sleeper.
-It does not host leagues, run drafts, or process transactions. Users connect the
-leagues they already play in, and the product gives them analysis across all of
-them in one place: projected standings, matchup breakdowns, waiver-wire value,
-trade evaluation, and start/sit decisions. It supports football, baseball,
-basketball and hockey, and both points and head-to-head category scoring.
+**Business Title ***
+```
+Founder
+```
 
-The product is a companion to the platforms it reads, not a replacement for
-them. Every action a user decides on — setting a lineup, claiming a player,
-proposing a trade — is taken on Yahoo, in Yahoo's own app. We have no ability to
-act on a user's behalf and are not requesting one; read-only access is what the
-product needs.
+**Email Address ***
+```
+josh@getinthelimelight.com
+```
 
-## Yahoo Fantasy Sports data required
+**Phone Number ***
+```
+>> YOU <<
+```
 
-Only the authenticated user's own leagues, and only what the analysis needs:
+**Business Name & Address ***
+```
+>> YOU <<  (Limelight, plus the address you use for the business)
+```
 
-- `users;use_login=1/games` — to list the leagues the user plays in
-- `league/{league_key}/settings` — scoring rules, roster slots, league size
-- `league/{league_key}/standings` — records and points for/against
-- `league/{league_key}/teams` — team names and managers within the user's leagues
-- `league/{league_key}/scoreboard` — weekly matchups
-- `team/{team_key}/roster` — the user's own roster and lineup slots
-- `league/{league_key}/players` — player pool, ownership status, projected and
-  actual points
+**Consumer-Facing Product or App Name ***
+```
+Ultimate Fantasy Dashboard
+```
 
-We do not request other users' private data, we do not crawl leagues the
-authenticated user does not belong to, and we do not aggregate Yahoo data across
-users into any public or shared dataset.
+**Brief Company Description ***
+```
+Limelight is a small independent software studio. Its fantasy sports product,
+Ultimate Fantasy Dashboard, is a read-only analytics companion for people who
+already play fantasy sports on Yahoo, ESPN and Sleeper.
+```
 
-## Intended user base
+**Website URL or App Store Details ***
+```
+https://www.ultimatefantasydashboard.com
+```
 
-Individual fantasy managers who play in multiple leagues, often across more than
-one platform. Expected under 1,000 users in the first three to six months.
-Access is per-user and OAuth-authorized: a user sees only the leagues their own
-Yahoo account belongs to.
+**Describe Your Intended Use Case ***
+```
+Ultimate Fantasy Dashboard is a companion dashboard for managers who already
+play fantasy sports on Yahoo. It does not host leagues, run drafts, or process
+transactions. A user connects the leagues they already play in, and the product
+provides analysis across all of them in one place: projected standings, matchup
+breakdowns, waiver-wire value, trade evaluation, and start/sit decisions. It
+covers football, baseball, basketball and hockey, and both points and
+head-to-head category scoring.
 
-## Commercial use — requesting express written permission
+Data required, limited to the authenticated user's own leagues:
+users;use_login=1/games to list their leagues; league/{key}/settings for scoring
+rules and roster slots; league/{key}/standings; league/{key}/teams;
+league/{key}/scoreboard for weekly matchups; team/{key}/roster for the user's own
+lineup; and league/{key}/players for player pool, ownership and projected points.
 
-Disclosing this directly, because the Yahoo Developer API Terms require prior
-express written permission to derive income from use of the APIs.
+We do not request other users' private data, do not crawl leagues the
+authenticated user does not belong to, and do not aggregate Yahoo data across
+users into any shared or public dataset. Read-only access is sufficient — every
+action a user decides on is taken in Yahoo's own app, which is where we send
+them. Intended users are individual managers who play in several leagues, often
+across more than one platform; access is per-user and OAuth-authorized, so a user
+sees only leagues their own Yahoo account belongs to.
+```
 
-Ultimate Fantasy Dashboard has paid subscription tiers. Users pay for the
-analysis product as a whole — the projections, the draft tooling, the
-cross-platform views — not for access to Yahoo data, which is neither resold,
-redistributed, nor exposed through any API of our own. Yahoo data is displayed
-only to the authenticated Yahoo user it belongs to.
+**Expected Users ***
+```
+Small (< 1,000 users)
+```
 
-We are asking Yahoo's permission for this use. If commercial use cannot be
-approved, we would rather be told so than operate outside the agreement, and we
-would make the Yahoo integration available at no charge to affected users.
+**Client ID**
+```
+>> the Client ID of the EXISTING YDN app — the one whose secret is already in
+   Supabase. Do not leave this blank. <<
+```
 
-## Data handling
+**Additional Notes**
+```
+Disclosing two things directly rather than leaving them to be discovered.
 
-We will comply with the 24-hour retention limit in the Developer API Terms:
-Yahoo-derived data is used to render the user's session and is not retained in
-our database beyond that window unless Yahoo confirms in writing that specific
-data is storable indefinitely.
+1) Commercial use. Ultimate Fantasy Dashboard has paid subscription tiers, and
+the Yahoo Developer API Terms require prior express written permission to derive
+income from use of the APIs. We are requesting that permission. Users pay for the
+analysis product as a whole — projections, draft tooling, cross-platform views —
+not for access to Yahoo data, which is never resold, redistributed, or exposed
+through any API of our own, and is displayed only to the authenticated Yahoo user
+it belongs to. If commercial use cannot be approved, we would rather be told than
+operate outside the agreement, and would make the Yahoo integration free to
+affected users.
 
-We would welcome guidance here. Some features — season-long history and
-week-over-week trends — read better with longer retention of the user's own
-league results. We will operate within the 24-hour rule by default and only
-extend it for data Yahoo explicitly identifies as storable.
-
-## Attribution
+2) Data retention. We will comply with the 24-hour retention limit: Yahoo-derived
+data renders the user's session and is not retained beyond that window unless
+Yahoo confirms in writing that specific data is storable indefinitely. Guidance
+would be welcome, as season-long history and week-over-week trend features read
+better with longer retention of a user's own league results. We will operate
+within the 24-hour rule by default.
 
 We will follow the Yahoo Developer Network Attribution Policy and label Yahoo
-data as sourced from Yahoo Fantasy Sports wherever it appears.
-
-## Contact
-
-josh@getinthelimelight.com — sole developer and operator.
+data as sourced from Yahoo Fantasy Sports wherever it appears. We are not
+requesting write access. The Client ID above belongs to an existing YDN app
+already deployed in production, so approval on that ID requires no credential
+change on our side.
+```
