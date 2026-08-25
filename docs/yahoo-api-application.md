@@ -37,10 +37,28 @@ Ultimate Fantasy Dashboard
 ```
 
 **Brief Company Description ***
+
+Must match whatever you put in Business Name & Address. Lead with the fantasy
+product either way — this field is scanned for relevance, and a generic studio
+description is the weakest possible opener on a form that closes vague
+submissions.
+
+If Business Name is "Limelight":
 ```
-Limelight is a small independent software studio. Its fantasy sports product,
-Ultimate Fantasy Dashboard, is a read-only analytics companion for people who
-already play fantasy sports on Yahoo, ESPN and Sleeper.
+Limelight is a one-person software studio. Its product Ultimate Fantasy
+Dashboard is a read-only analytics companion for fantasy managers — it connects
+to the leagues a user already plays in on Yahoo, ESPN and Sleeper and gives them
+projections, matchup analysis, waiver and trade evaluation across all of them in
+one place. Fantasy sports is the studio's only product line.
+```
+
+If Business Name is "Ultimate Fantasy Dashboard":
+```
+Ultimate Fantasy Dashboard is a read-only analytics companion for fantasy
+managers, operated by a single independent developer. It connects to the leagues
+a user already plays in on Yahoo, ESPN and Sleeper and gives them projections,
+matchup analysis, waiver and trade evaluation across all of them in one place.
+It does not host leagues or run drafts.
 ```
 
 **Website URL or App Store Details ***
