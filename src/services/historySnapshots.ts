@@ -5,6 +5,7 @@
  * fire-and-forget writes, errors logged never thrown.
  */
 import { supabase } from '@/lib/supabase'
+import { mayPersist, retentionReason } from '@/lib/yahooRetention'
 import { useAuthStore } from '@/stores/auth'
 import { isSeasonFinal } from '@/history/mergeSeasons'
 import type { HistorySeason } from '@/history/types'
@@ -106,6 +107,12 @@ export async function snapshotSeasons(params: {
 }): Promise<void> {
   const { key, platform, sport, activeSeason, seasons } = params
   if (!supabase || !key || !seasons.length) return
+  // Yahoo's API data is never persisted — see yahooRetention. Hand-entered
+  // seasons still are; they go through saveManualSeason, which is untouched.
+  if (!mayPersist(platform, 'auto')) {
+    console.info('[historySnapshots]', retentionReason(platform, 'auto'))
+    return
+  }
   const uid = useAuthStore().user?.id
   if (!uid) return
 

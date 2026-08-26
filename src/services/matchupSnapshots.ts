@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/lib/supabase'
+import { mayPersist, retentionReason } from '@/lib/yahooRetention'
 
 export interface MatchupSnapshot {
   id?: string
@@ -127,6 +128,15 @@ class MatchupSnapshotsService {
   async takeSnapshot(input: MatchupSnapshotInput): Promise<MatchupSnapshot | null> {
     if (!supabase) {
       console.warn('Supabase not available, cannot take snapshot')
+      return null
+    }
+
+    // Every snapshot here is API-derived, so none of it may be stored for Yahoo.
+    // Gated at this one method rather than at each caller: takeWeekSnapshots
+    // routes through it, so one guard covers the whole surface and a future
+    // caller cannot forget it.
+    if (!mayPersist(input.platform, 'auto')) {
+      console.info('[matchupSnapshots]', retentionReason(input.platform, 'auto'))
       return null
     }
     
