@@ -24,6 +24,7 @@ import { buildRecap, type RecapPick } from '@/draft/room/recap'
 import { useCustomRankings } from '@/composables/useCustomRankings'
 import { useDraftHistory } from '@/composables/useDraftHistory'
 import type { DraftRecord } from '@/draft/room/draftHistory'
+import { buildSeatMap, shuffledSeating } from '@/draft/room/practiceSeating'
 
 /** How often to re-read picks while a draft is running. */
 const POLL_MS = 5000
@@ -483,6 +484,67 @@ export function useDraftRoom() {
     return String(map?.[String(slot)] ?? '')
   }
 
+  /**
+   * Seat shuffle seed, persisted per league. A practice room that re-seats
+   * itself on refresh is not one you can practise in.
+   */
+  const SEAT_SEED_KEY = 'ufd:draftRoom:seatSeed'
+  const seatSeed = ref<number>(
+    Number((typeof localStorage !== 'undefined' && localStorage.getItem(SEAT_SEED_KEY)) || 1) || 1,
+  )
+  function reshuffleSeats() {
+    seatSeed.value = (seatSeed.value % 100000) + 1
+    try { localStorage.setItem(SEAT_SEED_KEY, String(seatSeed.value)) } catch { /* private mode */ }
+  }
+
+  /** Every roster id in the active league, ascending — the fallback seating. */
+  const leagueRosterIds = computed<string[]>(() =>
+    Object.keys(src.teamNames.value ?? {}).sort((a, b) => Number(a) - Number(b)),
+  )
+
+  /** Mock slot -> league roster id. Null when practice seating is impossible. */
+  const seatMap = computed<Record<number, string> | null>(() => {
+    if (!practiceMode.value) return null
+    const teams = effectiveTeams.value
+    if (leagueOrderKnown.value) {
+      return buildSeatMap({
+        mockTeams: teams,
+        leagueTeams: Object.keys(realSlotToRosterId.value).length,
+        mySlotInMock: mySlot.value ?? 0,
+        mySlotInLeague: mySlotInLeague.value,
+        realSlotToRosterId: realSlotToRosterId.value,
+      })
+    }
+    // No published order: a stable arbitrary seating the user can re-roll.
+    const ids = leagueRosterIds.value
+    if (ids.length !== teams || teams <= 0) return null
+    return shuffledSeating(ids, seatSeed.value)
+  })
+
+  const practiceAvailable = computed(
+    () => !draftIsThisLeague.value && hasHistory.value && leagueRosterIds.value.length > 0,
+  )
+  const practiceUnavailableReason = computed(() => {
+    if (!practiceMode.value) return ''
+    if (seatMap.value) return ''
+    if ((mySlot.value ?? 0) < 1) return "Couldn't tell which seat is yours in this mock."
+    if (leagueRosterIds.value.length !== effectiveTeams.value) {
+      return `This mock has ${effectiveTeams.value} teams and your league has ${leagueRosterIds.value.length}. Practice seating needs them to match.`
+    }
+    return 'Your league’s draft order is unavailable.'
+  })
+
+  /**
+   * Whose history models this seat. In a practice room that is a real league
+   * mate; otherwise it is the seat's own roster in the connected draft. Both
+   * the survival simulation and the on-screen "picking before you" reason
+   * must call this same function — they diverged once before, when a
+   * roster-id lookup skipped the seat map and the sentence named a manager
+   * who hadn't played in three seasons while the sim modeled someone else.
+   */
+  const teamKeyForSlot = (slot: number): string =>
+    seatMap.value?.[slot] ?? rosterIdForSlot(slot)
+
   /** Human label for the round range a tendency was measured over. */
   const BUCKET_RANGE: Record<string, string> = {
     early: 'rounds 1-3',
@@ -498,10 +560,12 @@ export function useDraftRoom() {
   /** Managers picking before my next turn, with priors — drives the tendency reason. */
   const upcoming = computed(() =>
     upcomingSlots.value.map((slot) => {
-      const teamKey = rosterIdForSlot(slot)
+      const teamKey = teamKeyForSlot(slot)
       return {
         teamKey,
-        teamName: (opponentIdentity.value === 'real' ? src.teamNames.value?.[teamKey] : null) ?? `Team ${slot}`,
+        teamName:
+          (opponentIdentity.value === 'real' ? src.teamNames.value?.[teamKey] : null) ??
+          `Team ${slot}`,
         prior: priorFor(tendencies.value, teamKey, bucketForMyPick.value),
       }
     }),
@@ -630,7 +694,7 @@ export function useDraftRoom() {
         projected: p.projected ?? p.value,
       })),
       upcomingSlots: upcomingSlots.value,
-      priorForSlot: (slot) => priorFor(tendencies.value, rosterIdForSlot(slot), bucketForMyPick.value),
+      priorForSlot: (slot) => priorFor(tendencies.value, teamKeyForSlot(slot), bucketForMyPick.value),
       runs: 600,
       seed: 1337,
     }),
@@ -1262,5 +1326,9 @@ export function useDraftRoom() {
     syncHealthy: computed(() => pollFailures.value < BACKOFF_AFTER),
     refresh: pollPicks,
     leagueOrderKnown,
+    seatMap,
+    practiceAvailable,
+    practiceUnavailableReason,
+    reshuffleSeats,
   }
 }
