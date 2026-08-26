@@ -342,11 +342,27 @@ export function useDraftRoom() {
    * league model) while a plain mock keeps neither.
    */
   const practiceMode = ref(false)
+  /**
+   * Gated on `practiceEngaged` (defined below, after `seatMap`), NOT on
+   * `practiceMode` directly. `practiceMode` is just the user's request; it
+   * can be on while `seatMap` is null (size mismatch, unpublished order, no
+   * anchor). If identity/model followed the request instead of the outcome,
+   * `teamKeyForSlot` would fall back to `rosterIdForSlot(slot)` — the MOCK's
+   * roster id — while still labelled 'real'/'league', and a real league
+   * mate's name and draft history would render against whichever seat
+   * happens to share that small sequential integer. That is the exact bug
+   * this feature exists to prevent, and the amber "modelled on the market"
+   * banner would be lying about it. `practiceEngaged` is declared later in
+   * this file (it needs `seatMap`), but referencing it here is safe: this is
+   * a computed's body, evaluated lazily, and by the time anything reads
+   * `.value` the whole setup function — including `practiceEngaged` — has
+   * already run.
+   */
   const opponentIdentity = computed<'real' | 'anonymous'>(() =>
-    draftIsThisLeague.value || practiceMode.value ? 'real' : 'anonymous',
+    draftIsThisLeague.value || practiceEngaged.value ? 'real' : 'anonymous',
   )
   const opponentModel = computed<'league' | 'market'>(() =>
-    draftIsThisLeague.value || practiceMode.value ? 'league' : 'market',
+    draftIsThisLeague.value || practiceEngaged.value ? 'league' : 'market',
   )
 
   /**
@@ -603,6 +619,14 @@ export function useDraftRoom() {
     return map
   })
 
+  /**
+   * The user asked for practice mode AND seating actually built. This, not
+   * `practiceMode` alone, is what `opponentIdentity`/`opponentModel` gate on
+   * — see the comment there for why treating the request as the outcome is
+   * the bug.
+   */
+  const practiceEngaged = computed(() => practiceMode.value && seatMap.value !== null)
+
   const practiceAvailable = computed(
     () => !draftIsThisLeague.value && leagueHasDraftHistory.value && leagueRosterIds.value.length > 0,
   )
@@ -617,6 +641,25 @@ export function useDraftRoom() {
       return "Your seat in the league's draft order doesn't line up with this mock's ring."
     }
     return 'Your league’s draft order is unavailable.'
+  })
+
+  /**
+   * Practice mode does not turn itself off otherwise. Two hazards follow if
+   * it doesn't reset here: (a) the connected draft becomes the real league
+   * draft mid-session (`draftIsThisLeague` flips true) and the banner keeps
+   * announcing "practice mode — seated on a mock" over a genuine live draft,
+   * which is its own hazard; (b) seating stops being available (league
+   * unloads, history drops, draft switches) and the toggle disappears from
+   * the view with no way left to turn the mode off for the rest of the
+   * session. Watching `practiceAvailable` alone would cover (a) too, since
+   * `practiceAvailable` is itself defined as `!draftIsThisLeague.value &&
+   * ...` — but watching both explicitly keeps this correct even if that
+   * dependency is ever refactored away.
+   */
+  watch([draftIsThisLeague, practiceAvailable], ([isLeagueDraft, available]) => {
+    if (practiceMode.value && (isLeagueDraft || !available)) {
+      practiceMode.value = false
+    }
   })
 
   /**
