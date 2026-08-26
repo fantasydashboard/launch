@@ -382,6 +382,65 @@ export function useDraftRoom() {
     { immediate: true },
   )
 
+  /**
+   * The active league's OWN draft, which is a different object from the one the
+   * room is connected to. Sleeper returns it before the draft starts, including
+   * `draft_order` once the commissioner has set the seats — which is what
+   * practice mode aligns against.
+   */
+  const leagueDraftMeta = ref<any | null>(null)
+  watch(
+    () => leagueStore.activeLeagueId,
+    async (id) => {
+      leagueDraftMeta.value = null
+      if (!id) return
+      try {
+        const drafts = await sleeperService.getLeagueDrafts(String(id))
+        leagueDraftMeta.value = drafts?.[0] ?? null
+      } catch (e) {
+        // A missing league draft is not an error worth surfacing — it only means
+        // practice mode cannot offer real seating.
+        console.info('[useDraftRoom] league draft unavailable for practice seating', e)
+      }
+    },
+    { immediate: true },
+  )
+
+  /** The league's published seating: slot -> roster id. Empty when unset. */
+  const realSlotToRosterId = computed<Record<number, string>>(() => {
+    const map = leagueDraftMeta.value?.slot_to_roster_id as Record<string, number> | undefined
+    if (!map) return {}
+    const out: Record<number, string> = {}
+    for (const [slot, rosterId] of Object.entries(map)) {
+      const n = Number(slot)
+      if (n > 0 && rosterId != null) out[n] = String(rosterId)
+    }
+    return out
+  })
+
+  /** My seat in the LEAGUE's draft — the anchor the mock ring rotates to. */
+  const mySlotInLeague = computed<number>(() => {
+    const meta = leagueDraftMeta.value
+    if (!meta) return 0
+    const uid = (leagueStore as any).currentUserId
+    const fromOrder = uid
+      ? (meta.draft_order as Record<string, number> | undefined)?.[String(uid)]
+      : undefined
+    if (fromOrder) return Number(fromOrder)
+    const mine = src.myTeamKey.value
+    const map = meta.slot_to_roster_id as Record<string, number> | undefined
+    if (map && mine) {
+      for (const [slot, rosterId] of Object.entries(map)) {
+        if (String(rosterId) === String(mine)) return Number(slot)
+      }
+    }
+    return 0
+  })
+
+  const leagueOrderKnown = computed(
+    () => mySlotInLeague.value > 0 && Object.keys(realSlotToRosterId.value).length > 0,
+  )
+
   /** Avatar for a slot: the human's if there is one, nothing for a bot. */
   const teamAvatarForSlot = (slot: number): string | null =>
     (opponentIdentity.value === 'real' ? src.teamLogos.value?.[rosterIdForSlot(slot)] : null) ??
@@ -1195,5 +1254,6 @@ export function useDraftRoom() {
     unmarkDrafted,
     syncHealthy: computed(() => pollFailures.value < BACKOFF_AFTER),
     refresh: pollPicks,
+    leagueOrderKnown,
   }
 }
