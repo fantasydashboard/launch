@@ -37,7 +37,22 @@ export interface ReplayInput {
   players: AvailablePlayerRow[]
   adpByKey: Record<string, number>
   tendencies: Tendencies
-  rosterIdForSlot: (slot: number) => string
+  /**
+   * The key `tendencies` is keyed by for this seat — i.e. WHOSE draft history
+   * models the manager sitting there, not which roster holds the seat in the
+   * draft being replayed.
+   *
+   * Named for the lookup, not for the caller's usual value, because the two
+   * diverge exactly where it hurts. In a practice-mode mock the tendencies are
+   * built from the LEAGUE's history and keyed by league roster ids, while the
+   * mock's own `slot_to_roster_id` returns the MOCK's roster ids. Both are
+   * small sequential integers, so they collide silently rather than throwing:
+   * the replay would attribute a real league mate's draft history to a seat
+   * that is not his, and — because `calibration` is written into the saved
+   * `DraftRecord` and pooled across every record — that scrambled evidence
+   * would outlive the session.
+   */
+  teamKeyForSlot: (slot: number) => string
   roundBucket?: (round: number) => string
   /** Starting slots, so the replay discounts positions you can no longer start. */
   slots?: Record<string, number>
@@ -78,7 +93,7 @@ export interface CalibrationBucket {
 export function replayDraft(input: ReplayInput): ReplayStep[] {
   const {
     shape, picks, mySlot, players, adpByKey, tendencies,
-    rosterIdForSlot, totalStarterSlots,
+    teamKeyForSlot, totalStarterSlots,
   } = input
   const roundBucket = input.roundBucket ?? ((r: number) => (r <= 3 ? 'early' : r <= 8 ? 'mid' : 'late'))
 
@@ -110,7 +125,7 @@ export function replayDraft(input: ReplayInput): ReplayStep[] {
           value: p.value,
         })),
         upcomingSlots,
-        priorForSlot: (slot) => priorFor(tendencies, rosterIdForSlot(slot), bucket),
+        priorForSlot: (slot) => priorFor(tendencies, teamKeyForSlot(slot), bucket),
         runs: input.runs ?? 300,
         seed: input.seed ?? 1337,
       })
@@ -234,7 +249,7 @@ export function replayDraft(input: ReplayInput): ReplayStep[] {
         recommendation: buildRecommendation(board, {
           nextPick,
           upcoming: upcomingSlots.map((slot) => {
-            const teamKey = rosterIdForSlot(slot)
+            const teamKey = teamKeyForSlot(slot)
             return { teamKey, teamName: teamKey, prior: priorFor(tendencies, teamKey, bucket) }
           }),
           tierRemaining: top ? Math.max(0, samePos.filter((r) => r.tier === top.tier).length - 1) : undefined,

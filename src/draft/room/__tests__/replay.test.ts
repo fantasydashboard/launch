@@ -37,7 +37,7 @@ function input(over: Partial<ReplayInput> = {}): ReplayInput {
     players,
     adpByKey,
     tendencies,
-    rosterIdForSlot: (slot) => String(slot),
+    teamKeyForSlot: (slot) => String(slot),
     totalStarterSlots: 3,
     runs: 50,
     seed: 5,

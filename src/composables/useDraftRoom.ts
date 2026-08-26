@@ -1285,7 +1285,26 @@ export function useDraftRoom() {
       players,
       adpByKey: adp.value,
       tendencies: tendencies.value,
-      rosterIdForSlot,
+      /**
+       * `teamKeyForSlot`, NOT `rosterIdForSlot`. `tendencies` is built from
+       * `historicalPicks`, which is keyed by LEAGUE roster id — so the replay
+       * has to ask "which league mate is sitting in this seat", not "which
+       * roster of this draft holds it". In a practice-mode mock those are two
+       * different numbering schemes that happen to overlap: both are small
+       * sequential integers, so passing the mock's roster id silently looks up
+       * a real but unrelated manager's draft history instead of erroring.
+       *
+       * The damage is not confined to the screen. The replay's survival numbers
+       * and reason text would come from a scrambled seat->manager map while the
+       * grid and recap label the same seat with the right person's name, and
+       * `replay.calibration` is persisted into the saved `DraftRecord` and
+       * merged by `pooledCalibration` across every record. Practice mocks file
+       * as `kind: 'mock'`, indistinguishable from plain mocks, so the bad
+       * evidence would permanently contaminate the pool the model is judged
+       * against. With practice mode off `seatMap` is null and this falls
+       * through to `rosterIdForSlot`, so nothing else changes.
+       */
+      teamKeyForSlot,
       slots: effectiveSlots.value ?? {},
       totalStarterSlots: starterSlots.value,
       runs: 200,
