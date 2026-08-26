@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildSeatMap, shuffledSeating } from '../practiceSeating'
+import { buildSeatMap, isCompleteSeatMap, shuffledSeating } from '../practiceSeating'
 
 /** A 10-team league: slot 1 -> roster 'r1', slot 2 -> 'r2', and so on. */
 const realOrder: Record<number, string> = Object.fromEntries(
@@ -111,5 +111,46 @@ describe('shuffledSeating', () => {
 
   it('handles an empty list', () => {
     expect(shuffledSeating([], 1)).toEqual({})
+  })
+})
+
+describe('isCompleteSeatMap', () => {
+  const full: Record<number, string> = { 1: 'r1', 2: 'r2', 3: 'r3', 4: 'r4' }
+
+  it('accepts a map that seats every slot in the ring', () => {
+    expect(isCompleteSeatMap(full, 4)).toBe(true)
+  })
+
+  it('rejects a key whose value is undefined', () => {
+    // The failure this exists for: `Object.keys(map).length` counts this map as
+    // 4 seats, so a key-count guard passes it through. Slot 3 then reads back
+    // `undefined` and the consumer falls through to whatever it has — in a
+    // practice room, the MOCK's roster id, which collides with an unrelated
+    // LEAGUE roster id and puts a real person's history on someone else's seat.
+    const holed = { ...full, 3: undefined } as unknown as Record<number, string>
+    expect(Object.keys(holed)).toHaveLength(4)
+    expect(isCompleteSeatMap(holed, 4)).toBe(false)
+  })
+
+  it('rejects an empty-string seat', () => {
+    expect(isCompleteSeatMap({ ...full, 2: '' }, 4)).toBe(false)
+  })
+
+  it('rejects a map missing a slot', () => {
+    const { 4: _dropped, ...short } = full
+    expect(isCompleteSeatMap(short, 4)).toBe(false)
+  })
+
+  it('rejects a map that is 1-indexed off the ring', () => {
+    // Right count, wrong slots: seat 4 is empty and seat 0 is nobody's turn.
+    expect(isCompleteSeatMap({ 0: 'r1', 1: 'r2', 2: 'r3', 3: 'r4' }, 4)).toBe(false)
+  })
+
+  it('rejects a null or empty map, and a ring of no teams', () => {
+    expect(isCompleteSeatMap(null, 4)).toBe(false)
+    expect(isCompleteSeatMap({}, 4)).toBe(false)
+    // {} is truthy, so "seats nobody" must never pass as "seats everybody".
+    expect(isCompleteSeatMap({}, 0)).toBe(false)
+    expect(isCompleteSeatMap(full, 0)).toBe(false)
   })
 })

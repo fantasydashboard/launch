@@ -24,7 +24,7 @@ import { buildRecap, type RecapPick } from '@/draft/room/recap'
 import { useCustomRankings } from '@/composables/useCustomRankings'
 import { useDraftHistory } from '@/composables/useDraftHistory'
 import type { DraftRecord } from '@/draft/room/draftHistory'
-import { buildSeatMap, shuffledSeating } from '@/draft/room/practiceSeating'
+import { buildSeatMap, isCompleteSeatMap, shuffledSeating } from '@/draft/room/practiceSeating'
 
 /** How often to re-read picks while a draft is running. */
 const POLL_MS = 5000
@@ -642,7 +642,11 @@ export function useDraftRoom() {
 
     // shuffledSeating returns {} for an empty roster list, and {} is truthy —
     // guard explicitly so a seat map that seats nobody never passes as real.
-    if (!map || Object.keys(map).length !== teams) return null
+    // `isCompleteSeatMap` checks VALUES, not just key count: a key whose value
+    // is `undefined` still counts toward `Object.keys().length`, so a map that
+    // seats only some of the ring would otherwise pass as complete and hand
+    // `teamKeyForSlot` an empty seat.
+    if (!isCompleteSeatMap(map, teams)) return null
     return map
   })
 
