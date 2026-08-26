@@ -449,9 +449,16 @@ export function useDraftRoom() {
     () => mySlotInLeague.value > 0 && Object.keys(realSlotToRosterId.value).length > 0,
   )
 
-  /** Avatar for a slot: the human's if there is one, nothing for a bot. */
+  /**
+   * Avatar for a slot: the human's if there is one, nothing for a bot. Reads
+   * through `teamKeyForSlot` (defined below) rather than `rosterIdForSlot`
+   * directly: in a practice room `rosterIdForSlot` returns the MOCK's roster
+   * id, which collides numerically with an unrelated LEAGUE roster id, so the
+   * avatar would show a different manager than the one the sentence and the
+   * simulation name for the same seat.
+   */
   const teamAvatarForSlot = (slot: number): string | null =>
-    (opponentIdentity.value === 'real' ? src.teamLogos.value?.[rosterIdForSlot(slot)] : null) ??
+    (opponentIdentity.value === 'real' ? src.teamLogos.value?.[teamKeyForSlot(slot)] : null) ??
     draftUserAvatars.value[slot] ??
     null
 
@@ -479,22 +486,55 @@ export function useDraftRoom() {
   const tendencies = computed(() => buildTendencies(historicalPicks.value))
   const hasHistory = computed(() => historicalPicks.value.length > 0)
 
+  /**
+   * Whether the league has ANY draft history, independent of whether an
+   * opponent model is currently active. `hasHistory` runs through
+   * `historicalPicks`, which returns `[]` unless `opponentModel === 'league'`
+   * — and `opponentModel` itself requires `draftIsThisLeague || practiceMode`.
+   * Reading `hasHistory` here would make the practice-mode gate circular:
+   * with a mock connected and practice mode OFF (exactly the state in which
+   * the toggle must be offered), `opponentModel` is 'market', so
+   * `historicalPicks` is always empty and the toggle could never appear.
+   */
+  const leagueHasDraftHistory = computed(() => {
+    const drafts = leagueStore.historicalDrafts as Map<string, any> | undefined
+    return !!drafts && drafts.size > 0
+  })
+
   const rosterIdForSlot = (slot: number): string => {
     const map = draftMeta.value?.slot_to_roster_id as Record<string, number> | undefined
     return String(map?.[String(slot)] ?? '')
   }
 
   /**
-   * Seat shuffle seed, persisted per league. A practice room that re-seats
-   * itself on refresh is not one you can practise in.
+   * Seat shuffle seed, persisted per league. Keyed by the active league id —
+   * an unkeyed seed would carry League A's shuffle into League B's practice
+   * room the moment the user re-rolls or switches leagues. Reading
+   * `localStorage` can throw outright in Safari with blocked storage; letting
+   * that escape would break composable setup for everyone, not just practice
+   * mode, so both the read and the write are guarded.
    */
-  const SEAT_SEED_KEY = 'ufd:draftRoom:seatSeed'
-  const seatSeed = ref<number>(
-    Number((typeof localStorage !== 'undefined' && localStorage.getItem(SEAT_SEED_KEY)) || 1) || 1,
+  function seatSeedKey(leagueId: unknown): string {
+    return `ufd:draftRoom:seatSeed:${String(leagueId ?? 'none')}`
+  }
+  function readSeatSeed(leagueId: unknown): number {
+    try {
+      if (typeof localStorage === 'undefined') return 1
+      return Number(localStorage.getItem(seatSeedKey(leagueId))) || 1
+    } catch {
+      return 1
+    }
+  }
+  const seatSeed = ref<number>(readSeatSeed(leagueStore.activeLeagueId))
+  watch(
+    () => leagueStore.activeLeagueId,
+    (id) => { seatSeed.value = readSeatSeed(id) },
   )
   function reshuffleSeats() {
     seatSeed.value = (seatSeed.value % 100000) + 1
-    try { localStorage.setItem(SEAT_SEED_KEY, String(seatSeed.value)) } catch { /* private mode */ }
+    try {
+      localStorage.setItem(seatSeedKey(leagueStore.activeLeagueId), String(seatSeed.value))
+    } catch { /* private mode */ }
   }
 
   /** Every roster id in the active league, ascending — the fallback seating. */
@@ -502,27 +542,69 @@ export function useDraftRoom() {
     Object.keys(src.teamNames.value ?? {}).sort((a, b) => Number(a) - Number(b)),
   )
 
-  /** Mock slot -> league roster id. Null when practice seating is impossible. */
+  /**
+   * Mock slot -> league roster id. Null when practice seating is impossible.
+   * Never seats approximately: a wrong seat states a specific, confident,
+   * wrong thing about a real person, which is worse than saying nothing.
+   */
   const seatMap = computed<Record<number, string> | null>(() => {
     if (!practiceMode.value) return null
     const teams = effectiveTeams.value
+    if (teams <= 0) return null
+
+    let map: Record<number, string> | null = null
     if (leagueOrderKnown.value) {
-      return buildSeatMap({
+      // Compare mock size against the LEAGUE's actual roster count, not the
+      // published order's key count. A 12-team league whose slot_to_roster_id
+      // arrived with holes (say, only 10 of 12 slots) would otherwise look
+      // like a complete 10-team order to buildSeatMap, which would happily
+      // seat 10 of the 12 real managers and silently drop the other two.
+      map = buildSeatMap({
         mockTeams: teams,
-        leagueTeams: Object.keys(realSlotToRosterId.value).length,
+        leagueTeams: leagueRosterIds.value.length,
         mySlotInMock: mySlot.value ?? 0,
         mySlotInLeague: mySlotInLeague.value,
         realSlotToRosterId: realSlotToRosterId.value,
       })
+    } else {
+      // No published order: a stable arbitrary seating the user can re-roll.
+      // shuffledSeating has no notion of "you", so it must never see the
+      // user's own roster id in its input — otherwise it can deal the user
+      // into an opponent's chair (modelling them as picking before
+      // themselves) while dropping a real league mate from the room
+      // entirely. Fix the user's own seat first, then shuffle only the
+      // remaining N-1 managers into the remaining N-1 slots.
+      const ids = leagueRosterIds.value
+      const mine = src.myTeamKey.value
+      const mySlotValue = mySlot.value ?? 0
+      if (
+        ids.length === teams &&
+        mySlotValue >= 1 &&
+        mySlotValue <= teams &&
+        mine &&
+        ids.includes(mine)
+      ) {
+        const others = ids.filter((id) => id !== mine)
+        const shuffledOthers = shuffledSeating(others, seatSeed.value)
+        const out: Record<number, string> = { [mySlotValue]: mine }
+        let i = 0
+        for (let slot = 1; slot <= teams; slot++) {
+          if (slot === mySlotValue) continue
+          i += 1
+          out[slot] = shuffledOthers[i]
+        }
+        map = out
+      }
     }
-    // No published order: a stable arbitrary seating the user can re-roll.
-    const ids = leagueRosterIds.value
-    if (ids.length !== teams || teams <= 0) return null
-    return shuffledSeating(ids, seatSeed.value)
+
+    // shuffledSeating returns {} for an empty roster list, and {} is truthy —
+    // guard explicitly so a seat map that seats nobody never passes as real.
+    if (!map || Object.keys(map).length !== teams) return null
+    return map
   })
 
   const practiceAvailable = computed(
-    () => !draftIsThisLeague.value && hasHistory.value && leagueRosterIds.value.length > 0,
+    () => !draftIsThisLeague.value && leagueHasDraftHistory.value && leagueRosterIds.value.length > 0,
   )
   const practiceUnavailableReason = computed(() => {
     if (!practiceMode.value) return ''
@@ -530,6 +612,9 @@ export function useDraftRoom() {
     if ((mySlot.value ?? 0) < 1) return "Couldn't tell which seat is yours in this mock."
     if (leagueRosterIds.value.length !== effectiveTeams.value) {
       return `This mock has ${effectiveTeams.value} teams and your league has ${leagueRosterIds.value.length}. Practice seating needs them to match.`
+    }
+    if (leagueOrderKnown.value && (mySlotInLeague.value < 1 || mySlotInLeague.value > effectiveTeams.value)) {
+      return "Your seat in the league's draft order doesn't line up with this mock's ring."
     }
     return 'Your league’s draft order is unavailable.'
   })
@@ -1274,9 +1359,16 @@ export function useDraftRoom() {
    * room that isn't there — but the humans in the room have names, and yours is
    * one of them. Sleeper shows exactly this: real display names where there are
    * real people, `Team N` for the bots.
+   *
+   * Reads through `teamKeyForSlot`, not `rosterIdForSlot` directly: in a
+   * practice room `rosterIdForSlot` returns the MOCK's roster id, which
+   * collides numerically with an unrelated LEAGUE roster id. Without this,
+   * the grid would label a seat with whichever league mate happens to hold
+   * that same numeric id, while the tendency sentence and the simulation
+   * (both routed through `teamKeyForSlot`) name someone else for that seat.
    */
   const teamNameForSlot = (slot: number) =>
-    (opponentIdentity.value === 'real' ? src.teamNames.value?.[rosterIdForSlot(slot)] : null) ??
+    (opponentIdentity.value === 'real' ? src.teamNames.value?.[teamKeyForSlot(slot)] : null) ??
     draftUserNames.value[slot] ??
     `Team ${slot}`
 
@@ -1330,5 +1422,6 @@ export function useDraftRoom() {
     practiceAvailable,
     practiceUnavailableReason,
     reshuffleSeats,
+    teamKeyForSlot,
   }
 }
