@@ -389,13 +389,20 @@ export function useDraftRoom() {
    * practice mode aligns against.
    */
   const leagueDraftMeta = ref<any | null>(null)
+  // Request token: a late response from a league you've since navigated away
+  // from must not win. Without this, switching A -> B while A's fetch is still
+  // in flight can have A's response land AFTER B's and overwrite it — silently
+  // seating league A's real, named managers into league B's practice draft.
+  let leagueDraftRequestId = 0
   watch(
     () => leagueStore.activeLeagueId,
     async (id) => {
+      const requestId = ++leagueDraftRequestId
       leagueDraftMeta.value = null
       if (!id) return
       try {
         const drafts = await sleeperService.getLeagueDrafts(String(id))
+        if (requestId !== leagueDraftRequestId) return // superseded by a newer league switch
         leagueDraftMeta.value = drafts?.[0] ?? null
       } catch (e) {
         // A missing league draft is not an error worth surfacing — it only means
