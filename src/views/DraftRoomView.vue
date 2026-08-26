@@ -17,7 +17,7 @@ const {
   grid, teamNameForSlot, connectDraft, disconnectDraft, overrideDraftId, overrideError,
   customRankings, replay, recap, history, teamAvatarForSlot, slotRanks, rankIfDrafted, comparePool,
   draftedKeys, draftedRows, boardByRank, boardTierByKey, listRankByKey, effectiveSlots, mySlot,
-  practiceMode, practiceAvailable, practiceUnavailableReason, leagueOrderKnown, reshuffleSeats,
+  practiceMode, practiceAvailable, practiceOfferReason, practiceUnavailableReason, leagueOrderKnown, reshuffleSeats,
 } = useDraftRoom()
 
 // Admin-only analyst override. Invisible to every other account.
@@ -460,6 +460,14 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
         <input type="checkbox" v-model="practiceMode" class="h-3 w-3 accent-primary" />
         practice against my league
       </label>
+
+      <!--
+        A toggle that is simply absent explains nothing: a league still fetching its past
+        drafts looks exactly like a league that has none. Say which.
+      -->
+      <p v-else-if="practiceOfferReason" class="mb-3 rounded-lg border border-dark-border bg-dark-card px-3 py-2 font-mono text-[11px] text-dark-textMuted">
+        {{ practiceOfferReason }}
+      </p>
 
       <template v-if="practiceMode">
         <p v-if="practiceUnavailableReason" class="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-mono text-[11px] text-amber-300">

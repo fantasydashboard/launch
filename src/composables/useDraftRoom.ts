@@ -661,6 +661,26 @@ export function useDraftRoom() {
   const practiceAvailable = computed(
     () => !draftIsThisLeague.value && leagueHasDraftHistory.value && leagueRosterIds.value.length > 0,
   )
+  /**
+   * Why the practice toggle is not on screen.
+   *
+   * A control that is simply absent explains nothing: a league still fetching
+   * its past drafts looks identical to a league that has none, and to a user
+   * wondering whether the feature shipped at all. Empty when the toggle IS
+   * showing, and empty on the league's own draft, where practice mode is not
+   * a thing that applies and a message would be noise.
+   */
+  const practiceOfferReason = computed(() => {
+    if (practiceAvailable.value || draftIsThisLeague.value) return ''
+    if (!leagueRosterIds.value.length) {
+      return 'Practice mode needs your league loaded — still fetching its teams.'
+    }
+    if (!leagueHasDraftHistory.value) {
+      return "Practice mode needs your league's past drafts. They are still loading, or this league has no earlier seasons on Sleeper to read."
+    }
+    return ''
+  })
+
   const practiceUnavailableReason = computed(() => {
     if (!practiceMode.value) return ''
     if (seatMap.value) return ''
@@ -1542,6 +1562,7 @@ export function useDraftRoom() {
     // `practiceMode` (the user's request) and get identity/model wrong.
     practiceEngaged,
     practiceAvailable,
+    practiceOfferReason,
     practiceUnavailableReason,
     reshuffleSeats,
     teamKeyForSlot,
