@@ -565,6 +565,33 @@ export function useDraftRoom() {
    */
   const seatMap = computed<Record<number, string> | null>(() => {
     if (!practiceMode.value) return null
+
+    /**
+     * The store's roster data must actually belong to the league we are seating.
+     *
+     * `setActiveLeague` sets `activeLeagueId` on its first line and only
+     * replaces `rosters` / `users` / `historicalDrafts` after a slow
+     * multi-megabyte fetch resolves. The league picker does not navigate, so
+     * `DraftRoomView` stays mounted and `practiceMode` survives the switch,
+     * while the `leagueDraftMeta` watcher fires on the same tick and resolves
+     * in one small request — so it normally wins the race. For the length of
+     * that window `realSlotToRosterId` and `mySlotInLeague` are league B's but
+     * `src.teamNames` / `teamLogos` / `historicalDrafts` are still league A's,
+     * and every seat renders league A's manager who happens to hold B's roster
+     * id, carrying A's draft history — wrong name AND wrong tendency, under a
+     * banner that reads "real tendencies from your league".
+     *
+     * `currentLeague` is assigned in the same statement block as `rosters` in
+     * every Sleeper load path (localStorage cache, memory cache,
+     * `loadFreshLeagueData`, `refreshLeagueData`), so comparing it against
+     * `activeLeagueId` closes both halves with one check. Declining is the
+     * right outcome: practice mode must say "unavailable", never guess a
+     * seating.
+     */
+    if (String(leagueStore.currentLeague?.league_id ?? '') !== String(leagueStore.activeLeagueId ?? '')) {
+      return null
+    }
+
     const teams = effectiveTeams.value
     if (teams <= 0) return null
 
