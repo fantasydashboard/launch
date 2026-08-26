@@ -17,6 +17,7 @@ const {
   grid, teamNameForSlot, connectDraft, disconnectDraft, overrideDraftId, overrideError,
   customRankings, replay, recap, history, teamAvatarForSlot, slotRanks, rankIfDrafted, comparePool,
   draftedKeys, draftedRows, boardByRank, boardTierByKey, listRankByKey, effectiveSlots, mySlot,
+  practiceMode, practiceAvailable, practiceUnavailableReason, leagueOrderKnown, reshuffleSeats,
 } = useDraftRoom()
 
 // Admin-only analyst override. Invisible to every other account.
@@ -449,8 +450,37 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
     <div v-else-if="loading && !board.length" class="py-16 text-center text-dark-textMuted">Building your board…</div>
 
     <template v-else>
+      <!--
+        Practice mode puts real league mates' names on a mock. That is the exact
+        shape of a bug this room already had once — bots wearing league mates'
+        names, with nothing on screen saying so. The banner is the fix, so it is
+        not dismissible while the mode is on.
+      -->
+      <label v-if="practiceAvailable" class="mb-3 flex cursor-pointer items-center gap-2 font-mono text-[11px] text-dark-textMuted">
+        <input type="checkbox" v-model="practiceMode" class="h-3 w-3 accent-primary" />
+        practice against my league
+      </label>
+
+      <template v-if="practiceMode">
+        <p v-if="practiceUnavailableReason" class="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-mono text-[11px] text-amber-300">
+          Practice seating unavailable — {{ practiceUnavailableReason }} Opponents are modelled on the market instead.
+        </p>
+        <p v-else class="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 font-mono text-[11px] text-primary">
+          <span class="font-semibold uppercase tracking-wide">Practice mode</span>
+          <span class="text-dark-textMuted">
+            real tendencies from your league, seated on a mock.
+            <template v-if="leagueOrderKnown">Seats match your real draft order.</template>
+            <template v-else>Seats are <strong class="text-amber-300">not</strong> your real draft order.</template>
+          </span>
+          <button v-if="!leagueOrderKnown" @click="reshuffleSeats"
+                  class="rounded border border-dark-border px-2 py-0.5 text-dark-textMuted transition-colors hover:text-dark-text">
+            shuffle seats
+          </button>
+        </p>
+      </template>
+
       <!-- Say plainly when the model is working with less than it wants -->
-      <p v-if="!hasHistory" class="mb-3 rounded-lg border border-dark-border bg-dark-card px-3 py-2 font-mono text-[11px] text-dark-textMuted">
+      <p v-if="!hasHistory && !practiceMode" class="mb-3 rounded-lg border border-dark-border bg-dark-card px-3 py-2 font-mono text-[11px] text-dark-textMuted">
         No past drafts loaded for this league — opponents are modelled on the market (best available by ADP), not on how your managers actually draft.
       </p>
       <p v-if="slotUnknown" class="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-mono text-[11px] text-amber-300">
