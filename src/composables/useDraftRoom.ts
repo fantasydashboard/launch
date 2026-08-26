@@ -701,8 +701,32 @@ export function useDraftRoom() {
    * roster-id lookup skipped the seat map and the sentence named a manager
    * who hadn't played in three seasons while the sim modeled someone else.
    */
-  const teamKeyForSlot = (slot: number): string =>
-    seatMap.value?.[slot] ?? rosterIdForSlot(slot)
+  const teamKeyForSlot = (slot: number): string => {
+    /**
+     * When practice is engaged there is no falling back to the mock.
+     *
+     * The `?? rosterIdForSlot(slot)` tail below is correct for a normal room
+     * and catastrophic for a practice one: `opponentIdentity` is 'real' and
+     * `opponentModel` is 'league' whenever `practiceEngaged` is true, so a
+     * missing seat entry would hand the MOCK's roster id to lookups keyed by
+     * LEAGUE roster ids. Both are small sequential integers, so the lookup
+     * succeeds against the wrong manager instead of failing — a real person's
+     * name, avatar and draft history land on a seat that is not theirs. That
+     * is the exact bug closed earlier at the map level; guarding only on
+     * `seatMap !== null` left it reachable a second way, through an
+     * `undefined` entry inside a non-null map.
+     *
+     * `seatMap`'s `isCompleteSeatMap` guard means this cannot fire today. The
+     * point is that it stops depending on that invariant holding. An empty key
+     * degrades safely on every path it feeds: `priorFor` finds no manager and
+     * returns the league-wide prior with `sample: 0` (no personal claim),
+     * `src.teamNames`/`teamLogos` miss and the seat renders as "Team N" with no
+     * avatar. The room says nothing about that seat instead of saying something
+     * confident about the wrong person.
+     */
+    if (practiceEngaged.value) return seatMap.value?.[slot] ?? ''
+    return seatMap.value?.[slot] ?? rosterIdForSlot(slot)
+  }
 
   /** Human label for the round range a tendency was measured over. */
   const BUCKET_RANGE: Record<string, string> = {
@@ -1512,6 +1536,11 @@ export function useDraftRoom() {
     refresh: pollPicks,
     leagueOrderKnown,
     seatMap,
+    // The one true "practice seating is actually in effect" signal. The view
+    // currently derives an equivalent condition by hand; exporting it makes the
+    // correct value the reachable one, so a future consumer cannot gate on
+    // `practiceMode` (the user's request) and get identity/model wrong.
+    practiceEngaged,
     practiceAvailable,
     practiceUnavailableReason,
     reshuffleSeats,
