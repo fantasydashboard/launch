@@ -329,6 +329,26 @@ export function useDraftRoom() {
   })
 
   /**
+   * Identity and intelligence were one boolean, and they are not the same
+   * question.
+   *
+   * The single gate existed because connecting a mock while a league was active
+   * made bots inherit league mates' names AND years of their tendencies — a
+   * manager who had not played in three seasons appeared to be "picking before
+   * you". Suppressing both fixed it, and took the opponent model with it.
+   *
+   * Split, so a practice room can borrow the league's managers (real identity,
+   * league model) while a plain mock keeps neither.
+   */
+  const practiceMode = ref(false)
+  const opponentIdentity = computed<'real' | 'anonymous'>(() =>
+    draftIsThisLeague.value || practiceMode.value ? 'real' : 'anonymous',
+  )
+  const opponentModel = computed<'league' | 'market'>(() =>
+    draftIsThisLeague.value || practiceMode.value ? 'league' : 'market',
+  )
+
+  /**
    * Display names for the humans in THIS draft, from its own `draft_order`
    * (user_id -> slot). Bots have no user id and stay anonymous, which is what
    * they are.
@@ -364,14 +384,14 @@ export function useDraftRoom() {
 
   /** Avatar for a slot: the human's if there is one, nothing for a bot. */
   const teamAvatarForSlot = (slot: number): string | null =>
-    (draftIsThisLeague.value ? src.teamLogos.value?.[rosterIdForSlot(slot)] : null) ??
+    (opponentIdentity.value === 'real' ? src.teamLogos.value?.[rosterIdForSlot(slot)] : null) ??
     draftUserAvatars.value[slot] ??
     null
 
   // ── tendencies from league history ────────────────────────────────────────
   const historicalPicks = computed<HistoricalPick[]>(() => {
     const out: HistoricalPick[] = []
-    if (!draftIsThisLeague.value) return out
+    if (opponentModel.value !== 'league') return out
     const drafts = leagueStore.historicalDrafts as Map<string, any> | undefined
     if (!drafts) return out
     for (const draft of drafts.values()) {
@@ -415,7 +435,7 @@ export function useDraftRoom() {
       const teamKey = rosterIdForSlot(slot)
       return {
         teamKey,
-        teamName: (draftIsThisLeague.value ? src.teamNames.value?.[teamKey] : null) ?? `Team ${slot}`,
+        teamName: (opponentIdentity.value === 'real' ? src.teamNames.value?.[teamKey] : null) ?? `Team ${slot}`,
         prior: priorFor(tendencies.value, teamKey, bucketForMyPick.value),
       }
     }),
@@ -1073,6 +1093,8 @@ export function useDraftRoom() {
         draftId: id,
         savedAt: new Date().toISOString(),
         season: String(draftMeta.value?.season ?? ''),
+        // Deliberately NOT opponentModel: a practice room is a mock, and filing
+        // it as a league draft would mix two populations in the History averages.
         kind: draftIsThisLeague.value ? 'league' : 'mock',
         teams: effectiveTeams.value,
         rounds: Number(draftMeta.value?.settings?.rounds) || 0,
@@ -1124,7 +1146,7 @@ export function useDraftRoom() {
    * real people, `Team N` for the bots.
    */
   const teamNameForSlot = (slot: number) =>
-    (draftIsThisLeague.value ? src.teamNames.value?.[rosterIdForSlot(slot)] : null) ??
+    (opponentIdentity.value === 'real' ? src.teamNames.value?.[rosterIdForSlot(slot)] : null) ??
     draftUserNames.value[slot] ??
     `Team ${slot}`
 
@@ -1147,6 +1169,9 @@ export function useDraftRoom() {
     mySlot,
     shape,
     hasHistory,
+    practiceMode,
+    opponentIdentity,
+    opponentModel,
     slotUnknown,
     customRankings,
     comparePool,
