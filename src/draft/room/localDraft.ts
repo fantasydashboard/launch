@@ -41,11 +41,17 @@ export interface LocalDraft {
    * apart twice; see the comment on `localMySlot` in DraftRoomView).
    *
    * Kept anyway, deliberately, along with its bounds check in
-   * `useLocalDraft.read`. Dropping the field means dropping the validation,
-   * and dropping the validation means every local draft written by the
-   * deployed build carries a field this module no longer describes while the
-   * test that pins the check has to be deleted to make it pass. A dead field
-   * that round-trips is cheaper than a stored draft that stops loading.
+   * `useLocalDraft.read` — leaving a validation guarding a field nothing reads
+   * is the one thing not to do, so the pair moves together or not at all.
+   *
+   * NOT because dropping it would break stored drafts: it would not, since
+   * `JSON.parse` ignores a key the interface no longer declares. That reason
+   * was checked and is wrong; do not re-derive it. The actual reasons are
+   * smaller. Every local draft written by the deployed build really does carry
+   * `mySlot`, so an interface that declares it describes what is on disk rather
+   * than what we wish were on disk; the bounds check is real validation of real
+   * data reaching `slotAtPick`; and dropping the pair means deleting a passing
+   * test to let the change through. One dead field, zero risk — worth it.
    */
   mySlot: number
   picks: LocalPick[]
