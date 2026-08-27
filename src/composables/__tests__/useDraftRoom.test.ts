@@ -226,7 +226,106 @@ describe('useDraftRoom — the season actually reaches the ADP fetch', () => {
   })
 })
 
-describe('useDraftRoom — a finished local draft reopens at all', () => {
+describe('useDraftRoom — History is not collateral damage', () => {
+  const HISTORY_KEY = 'ufd:draftRoom:history'
+
+  const graded = (draftId: string) => ({
+    draftId,
+    savedAt: '2025-09-01T00:00:00.000Z',
+    season: '2025',
+    kind: 'league',
+    teams: 4,
+    rounds: 2,
+    mySlot: 2,
+    grade: 'B+',
+    rank: 3,
+    of: 4,
+    startingPoints: 1234,
+    behindLeader: 40,
+    positionEdge: { RB: 12 },
+    picks: [{ overallPick: 2, playerKey: 'p1', name: 'A B', position: 'RB' }],
+    outcome: { yours: 1200, ours: 1250 },
+  })
+
+  const COMPLETE_META = {
+    draft_id: 'D1',
+    league_id: 'L1',
+    season: '2025',
+    status: 'complete',
+    type: 'snake',
+    settings: { teams: 4, rounds: 2 },
+    slot_to_roster_id: { 1: 'r1', 2: 'r2', 3: 'r3', 4: 'r4' },
+    draft_order: {},
+    metadata: {},
+  }
+
+  /** A full 4x2 snake, in Sleeper's own pick shape. */
+  const COMPLETE_PICKS = Array.from({ length: 8 }, (_, i) => {
+    const n = i + 1
+    const round = Math.ceil(n / 4)
+    const inRound = n - (round - 1) * 4
+    const slot = round % 2 === 1 ? inRound : 5 - inRound
+    return {
+      pick_no: n,
+      player_id: `p${n}`,
+      draft_slot: slot,
+      roster_id: `r${slot}`,
+      metadata: { first_name: 'P', last_name: String(n), position: 'RB', team: 'ATL' },
+    }
+  })
+
+  function seedCompleteSleeperDraft() {
+    hoisted.getLeagueDrafts.mockResolvedValue([{ draft_id: 'D1' }])
+    hoisted.getDraftById.mockResolvedValue(COMPLETE_META)
+    hoisted.getDraftPicks.mockResolvedValue(COMPLETE_PICKS)
+  }
+
+  it('keeps a completed Sleeper draft record when a Refresh hits a transient 429', async () => {
+    // The data-loss route, end to end. `sleeperService.getDraftPicks` swallows a
+    // non-ok response and returns `[]` rather than throwing, and `pollPicks`
+    // assigns it unconditionally (`if (Array.isArray(p))`). So one tap on the
+    // room's Refresh button, on a league draft that finished weeks ago, empties
+    // `picks`; `recap` returns null at `!rows.length` with a REAL draft id and a
+    // non-null `draftMeta`, so the `if (!id)` guard does not catch it. Ungated,
+    // the undo-cleanup branch then deleted the graded record — calibration data
+    // included — and polling never restarts, because the status is `complete`.
+    localStorage.setItem(HISTORY_KEY, JSON.stringify([graded('D1')]))
+    seedCompleteSleeperDraft()
+
+    const room = mountRoom()
+    await flushPromises()
+    expect(room.localMode.value).toBe(false)
+    expect(room.recap.value).not.toBeNull()
+    expect(room.history.has('D1')).toBe(true)
+
+    hoisted.getDraftPicks.mockResolvedValue([]) // the 429
+    await room.refresh()
+    await flushPromises()
+
+    expect(room.recap.value).toBeNull()
+    expect(room.history.has('D1')).toBe(true)
+    expect(JSON.parse(localStorage.getItem(HISTORY_KEY)!).map((r: any) => r.draftId)).toContain('D1')
+  })
+
+  it('keeps a completed Sleeper draft record when the seat is unknown', async () => {
+    // The second route to the same line, and the one that needs no network
+    // failure at all: `buildRecap` returns `me: null` whenever no team matches
+    // `myTeamKey`, i.e. whenever `mySlot` is null — the exact degraded state the
+    // `slotUnknown` banner exists for. `recap` is non-null here, so the branch is
+    // reached with a fully-loaded real draft.
+    localStorage.setItem(HISTORY_KEY, JSON.stringify([graded('D1')]))
+    hoisted.myTeamKey = 'r99' // in no seat: mySlot cannot resolve
+    seedCompleteSleeperDraft()
+
+    const room = mountRoom()
+    await flushPromises()
+
+    expect(room.slotUnknown.value).toBe(true)
+    expect(room.recap.value!.me).toBeNull()
+    expect(room.history.has('D1')).toBe(true)
+    expect(JSON.parse(localStorage.getItem(HISTORY_KEY)!).map((r: any) => r.draftId)).toContain('D1')
+  })
+
   it('still forgets a stale record when a LOCAL draft is undone back out of complete', async () => {
     // The behaviour Fix 2 must not lose: History showing a graded, finished
     // draft that is actually one pick short.

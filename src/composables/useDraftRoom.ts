@@ -1559,10 +1559,24 @@ export function useDraftRoom() {
         // longer full, and without this the History record saved for the
         // now-stale "complete" state never leaves: History would keep
         // showing a graded, finished draft that is actually one pick short.
-        // Safe to forget unconditionally — `history.forget` on an id that
-        // was never saved is a no-op, and re-completing the draft calls
-        // `history.save` again below and puts the record right back.
-        if (history.has(id)) history.forget(id)
+        //
+        // GATED ON LOCAL MODE, and it must stay that way. "Safe to forget
+        // unconditionally" was wrong: undoing back out of `complete` only
+        // exists in local mode, but `recap` also goes null on the SLEEPER path
+        // for reasons that have nothing to do with undo, and this line then
+        // permanently deletes a real league draft's graded record —
+        // calibration data included — from localStorage.
+        //   • `sleeperService.getDraftPicks` returns `[]` on any non-ok
+        //     response (a transient 429) and never throws, so reopening the
+        //     room weeks after a finished draft yields status `complete` with
+        //     zero picks; `recap` returns null at `!rows.length` with a REAL
+        //     draft id and a non-null `draftMeta`, so `if (!id)` above does not
+        //     catch it. Polling never restarts, because the status is
+        //     `complete`. The record does not come back.
+        //   • `buildRecap` returns `me: null` whenever no team matches
+        //     `myTeamKey` — i.e. whenever `mySlot` is null, the exact state the
+        //     `slotUnknown` banner exists for.
+        if (localMode.value && history.has(id)) history.forget(id)
         return
       }
       const record: DraftRecord = {
