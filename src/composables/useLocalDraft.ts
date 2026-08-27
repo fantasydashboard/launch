@@ -32,12 +32,17 @@ function read(leagueId: string | null): LocalDraft | null {
        A pick with null or missing required fields will crash localSleeperPicks;
        garbage teams/rounds/type/slotToRosterId causes silent computation failures
        where picks get attributed to the wrong managers. Partially valid drafts are
-       not salvageable — reject them unconditionally. */
-    if (typeof parsed.teams !== 'number' || parsed.teams < 1) return null
-    if (typeof parsed.rounds !== 'number' || parsed.rounds < 1) return null
+       not salvageable — reject them unconditionally.
+
+       Number.isFinite() is essential: JSON.parse('1e400') yields Infinity, which
+       passes typeof checks but silently corrupts slot assignment. Large finite
+       rounds (e.g. 1e15) cause hangs in loops like `for (p = ...; p <= teams * rounds; p++)`.
+       A real draft has at most ~20 teams and ~20 rounds; 1000 of either is corrupt. */
+    if (!Number.isFinite(parsed.teams) || parsed.teams < 1 || parsed.teams > 1000) return null
+    if (!Number.isFinite(parsed.rounds) || parsed.rounds < 1 || parsed.rounds > 1000) return null
     if (parsed.type !== 'snake' && parsed.type !== 'linear') return null
     if (!parsed.slotToRosterId || typeof parsed.slotToRosterId !== 'object') return null
-    if (typeof parsed.mySlot !== 'number') return null
+    if (!Number.isFinite(parsed.mySlot)) return null
 
     /* Validate every pick: must be an object with numeric overall and string playerKey */
     for (const pick of parsed.picks) {
@@ -65,7 +70,7 @@ function write(leagueId: string | null, d: LocalDraft | null) {
 export function useLocalDraft(leagueId: Ref<string | null> | ComputedRef<string | null>) {
   const current = ref<LocalDraft | null>(read(leagueId.value))
 
-  watch(leagueId, (id) => { current.value = read(id) }, { flush: 'sync' })
+  watch(leagueId, (id) => { current.value = read(id) })
 
   const commit = (d: LocalDraft | null) => {
     /* Honor the same-reference contract from addLocalPick and undoLocalPick: they
