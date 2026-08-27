@@ -1712,7 +1712,6 @@ export function useDraftRoom() {
     refresh: pollPicks,
     leagueOrderKnown,
     realSlotToRosterId,
-    mySlotInLeague,
     // The league's own team names, keyed by roster id — the setup panel labels
     // seats with these directly rather than through `teamKeyForSlot`, which
     // resolves a DRAFT seat (mock or local) to a roster. Before a local draft

@@ -33,6 +33,20 @@ export interface LocalDraft {
   type: 'snake' | 'linear'
   /** slot (1-based) -> league roster id: the seating the user confirmed. */
   slotToRosterId: Record<number, string>
+  /**
+   * The seat the user confirmed at setup. NOTHING READS IT — every consumer,
+   * the local strip's `localOnClock` included, goes through
+   * `useDraftRoom.mySlot`, which scans `slot_to_roster_id` for `myTeamKey` so
+   * there is exactly one route to "which seat is mine" (two routes drifted
+   * apart twice; see the comment on `localMySlot` in DraftRoomView).
+   *
+   * Kept anyway, deliberately, along with its bounds check in
+   * `useLocalDraft.read`. Dropping the field means dropping the validation,
+   * and dropping the validation means every local draft written by the
+   * deployed build carries a field this module no longer describes while the
+   * test that pins the check has to be deleted to make it pass. A dead field
+   * that round-trips is cheaper than a stored draft that stops loading.
+   */
   mySlot: number
   picks: LocalPick[]
   startedAt: string
@@ -132,8 +146,10 @@ export function localDraftMeta(d: LocalDraft): any {
     type: d.type,
     settings: { teams: d.teams, rounds: d.rounds },
     slot_to_roster_id: slotToRoster,
-    /* No user ids exist in a local draft; the seat is known directly from mySlot,
-       and useDraftRoom falls back to slot_to_roster_id when draft_order misses. */
+    /* No user ids exist in a local draft, so draft_order has nothing to key on.
+       Deliberately empty: useDraftRoom.mySlot falls through to
+       slot_to_roster_id, which is the seating above and the ONE route to the
+       user's seat. Not `d.mySlot` — see the comment on that field. */
     draft_order: {},
     metadata: {},
   }
