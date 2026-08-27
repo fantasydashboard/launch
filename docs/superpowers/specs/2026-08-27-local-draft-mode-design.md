@@ -19,9 +19,13 @@ created, sized correctly and started first.
 Everything in the room derives from **two refs**:
 
 - `picks: ref<any[]>` — Sleeper pick objects
-- `draftMeta: ref<any>` — of which exactly eleven fields are ever read:
-  `status`, `settings.teams`, `settings.rounds`, `settings`, `draft_id`,
+- `draftMeta: ref<any>` — of which exactly twelve fields are ever read:
+  `status`, `type`, `settings`, `settings.teams`, `settings.rounds`, `draft_id`,
   `slot_to_roster_id`, `draft_order`, `season`, `metadata`, `league_id`
+
+  `type` is read through a local alias (`const m = draftMeta.value; m.type` in the
+  `shape` computed), so a grep for `draftMeta.value?.` misses it. It drives
+  snake-vs-linear and an omitted `type` would silently make every draft a snake.
 
 Nothing else touches the network. So local mode does not need a parallel room: it
 supplies those two refs from a locally-owned pick log, and the rest of the code
@@ -73,7 +77,7 @@ No Vue, no I/O, fully unit-testable. This is where the correctness lives.
 - `addLocalPick(d, player): LocalDraft` — appends; refuses past `teams * rounds`
 - `undoLocalPick(d): LocalDraft` — pops; no-op when empty
 - `localDraftMeta(d): any` — the synthetic `draftMeta`, supplying all eleven
-  fields. `status` is derived: `'pre_draft'` with no picks, `'complete'` when
+  fields, `type` included. `status` is derived: `'pre_draft'` with no picks, `'complete'` when
   `picks.length >= teams * rounds`, otherwise `'drafting'`.
 - `localSleeperPicks(d): any[]` — the pick log rendered in Sleeper's own shape:
   `{ pick_no, player_id, draft_slot, roster_id, metadata: { first_name, last_name, position, team } }`
@@ -177,7 +181,8 @@ number is silent and confident:
 - `status` transitions pre_draft → drafting → complete at the right boundaries
 - `addLocalPick` refuses past `teams * rounds`; `undoLocalPick` is a no-op on empty
 - Round-trip: append N picks, undo N, and the draft equals the blank one
-- `localDraftMeta` supplies every one of the eleven fields the room reads
+- `localDraftMeta` supplies every one of the twelve fields the room reads,
+  `type` among them, and a linear draft stays linear rather than defaulting to snake
 
 `useLocalDraft` gets tests for persistence, corrupt-payload tolerance, and
 per-league keying.
