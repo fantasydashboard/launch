@@ -288,6 +288,20 @@ export function useDraftRoom() {
     s === 'drafting' || s === 'pre_draft' ? startPolling() : stopPolling(),
   )
 
+  /**
+   * Starting a local draft mid-session does not remount this composable, so the
+   * one-time `loadDraft()` call inside `init()` already ran (or found nothing to
+   * load) long before `localMode` ever flips true. Without this watcher, the
+   * very first local draft of a session would run for its entire length on
+   * `adp` still at `{}` — applyAdpAnchor becomes a no-op, marketRankByKey stays
+   * empty so the value/fade badge never renders, and survival sees `adp: null`
+   * for every player, with nothing about the board's numbers looking wrong on
+   * screen. `loadDraft` itself already branches on `localMode` (see the comment
+   * inside it) to fetch the season ADP instead of a Sleeper draft, so calling it
+   * again here on the false->true transition is the whole fix.
+   */
+  watch(localMode, (isLocal) => { if (isLocal) loadDraft() })
+
   // ── derived draft state ───────────────────────────────────────────────────
   const shape = computed<DraftShape | null>(() => {
     const m = draftMeta.value
@@ -1615,6 +1629,13 @@ export function useDraftRoom() {
     syncHealthy: computed(() => pollFailures.value < BACKOFF_AFTER),
     refresh: pollPicks,
     leagueOrderKnown,
+    realSlotToRosterId,
+    mySlotInLeague,
+    // The league's own team names, keyed by roster id — the setup panel labels
+    // seats with these directly rather than through `teamKeyForSlot`, which
+    // resolves a DRAFT seat (mock or local) to a roster. Before a local draft
+    // exists there is no draft seat to resolve from yet.
+    leagueTeamNames: src.teamNames,
     seatMap,
     // The one true "practice seating is actually in effect" signal. The view
     // currently derives an equivalent condition by hand; exporting it makes the

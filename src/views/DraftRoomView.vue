@@ -18,6 +18,7 @@ const {
   customRankings, replay, recap, history, teamAvatarForSlot, slotRanks, rankIfDrafted, comparePool,
   draftedKeys, draftedRows, boardByRank, boardTierByKey, listRankByKey, effectiveSlots, mySlot,
   practiceMode, practiceAvailable, practiceOfferReason, practiceUnavailableReason, leagueOrderKnown, reshuffleSeats,
+  localDraft, localMode, realSlotToRosterId, mySlotInLeague, leagueTeamNames,
 } = useDraftRoom()
 
 // Admin-only analyst override. Invisible to every other account.
@@ -72,6 +73,88 @@ function submitConnect() {
     draftInput.value = ''
     showConnect.value = false
   }
+}
+
+/**
+ * Starting a local draft. The seats are prefilled from the league's published
+ * order when there is one — that is the arrangement the user is actually
+ * rehearsing — and from roster order otherwise, with the user free to rearrange.
+ */
+const showLocalSetup = ref(false)
+const localTeams = ref(10)
+const localRounds = ref(15)
+const localType = ref<'snake' | 'linear'>('snake')
+const localSeats = ref<string[]>([])          /* index 0 = slot 1 */
+const localMySlot = ref(1)
+
+const leagueTeamName = (rosterId: string) => leagueTeamNames.value?.[rosterId] ?? `Team ${rosterId}`
+
+function openLocalSetup() {
+  const ids = Object.keys(leagueTeamNames.value ?? {}).sort((a, b) => Number(a) - Number(b))
+  const published = realSlotToRosterId.value
+  const havePublished = Object.keys(published).length === ids.length && ids.length > 0
+
+  // `String(published[i + 1])` on a missing key reads back as the literal string
+  // "undefined" — truthy, and not caught by localSetupError's `!s` hole check
+  // below. A published order that has a genuine gap (a slot Sleeper never
+  // assigned a roster to) would otherwise seat that slot with a value that
+  // looks occupied but isn't, and the ring and the pick log would go out of
+  // step exactly like the duplicate/hole case this validation exists to catch.
+  localSeats.value = havePublished
+    ? Array.from({ length: ids.length }, (_, i) => (published[i + 1] ? String(published[i + 1]) : ''))
+    : ids
+  localTeams.value = localSeats.value.length || 10
+  localRounds.value = Number(shape.value?.rounds) || 15
+  localType.value = (shape.value?.type as 'snake' | 'linear') || 'snake'
+  localMySlot.value = havePublished && mySlotInLeague.value > 0 ? mySlotInLeague.value : 1
+  showLocalSetup.value = true
+}
+
+function moveSeat(i: number, dir: -1 | 1) {
+  const j = i + dir
+  if (j < 0 || j >= localSeats.value.length) return
+  const next = [...localSeats.value]
+  ;[next[i], next[j]] = [next[j], next[i]]
+  localSeats.value = next
+}
+
+/**
+ * Every seat must hold exactly one roster, or the ring and the log go out of
+ * step — the resulting draft looks completely normal while attributing every
+ * pick to the wrong manager.
+ *
+ * `Number.isInteger`, not `localRounds.value < 1` alone: the rounds field is a
+ * free-typed number input, and `Number("1e400")` — reachable by typing, same as
+ * `JSON.parse('1e400')` — is `Infinity`, which is NOT `< 1`. An `Infinity`
+ * rounds count survives this check if it only guards the lower bound, then
+ * makes `totalLocalPicks` (teams * rounds) and every `Math.max` built on it
+ * downstream behave nonsensically instead of throwing.  `Number.isInteger`
+ * rejects `Infinity`, `NaN`, and fractional rounds all at once.
+ */
+const localSetupError = computed(() => {
+  const seats = localSeats.value
+  if (!seats.length) return 'This league has no teams loaded yet.'
+  if (!Number.isInteger(localRounds.value) || localRounds.value < 1) return 'A draft needs at least one round.'
+  if (new Set(seats).size !== seats.length) return 'Two seats hold the same team.'
+  if (seats.some((s) => !s)) return 'Every seat needs a team.'
+  if (localMySlot.value < 1 || localMySlot.value > seats.length) return 'Pick which seat is yours.'
+  return ''
+})
+
+function startLocalDraft() {
+  if (localSetupError.value) return
+  const slotToRosterId: Record<number, string> = {}
+  localSeats.value.forEach((rosterId, i) => { slotToRosterId[i + 1] = rosterId })
+  localDraft.start({
+    leagueId: '',                 /* filled in by the composable from the active league */
+    season: String(new Date().getFullYear()),
+    teams: localSeats.value.length,
+    rounds: localRounds.value,
+    type: localType.value,
+    slotToRosterId,
+    mySlot: localMySlot.value,
+  })
+  showLocalSetup.value = false
 }
 
 const gridEl = ref<HTMLElement | null>(null)
@@ -486,6 +569,64 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
           </button>
         </p>
       </template>
+
+      <!-- Run a draft yourself, with no Sleeper draft behind it. -->
+      <button v-if="!localMode && !showLocalSetup" @click="openLocalSetup"
+              class="mb-3 rounded-lg border border-dark-border px-3 py-1.5 font-mono text-[11px] text-dark-textMuted transition-colors hover:text-dark-text">
+        start a local draft
+      </button>
+
+      <section v-if="showLocalSetup" class="mb-3 rounded-xl border border-dark-border bg-dark-card p-4">
+        <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Start a local draft</h2>
+        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
+          you enter every pick, including your opponents' · seats are prefilled from your league's
+          published order when there is one
+        </p>
+
+        <div class="mb-3 flex flex-wrap items-center gap-3 font-mono text-[11px] text-dark-textMuted">
+          <label class="flex items-center gap-1.5">rounds
+            <input type="number" v-model.number="localRounds" min="1" max="30"
+                   class="w-14 rounded border border-dark-border bg-dark-bg px-1.5 py-0.5 text-dark-text" />
+          </label>
+          <label class="flex items-center gap-1.5">order
+            <select v-model="localType" class="rounded border border-dark-border bg-dark-bg px-1.5 py-0.5 text-dark-text">
+              <option value="snake">snake</option>
+              <option value="linear">linear</option>
+            </select>
+          </label>
+        </div>
+
+        <div v-for="(rosterId, i) in localSeats" :key="rosterId"
+             class="flex items-center gap-2 border-b border-dark-border/40 py-1.5 last:border-0">
+          <span class="w-6 shrink-0 font-mono text-[10px] text-dark-textMuted">{{ i + 1 }}</span>
+          <span class="min-w-0 flex-1 truncate text-sm"
+                :class="localMySlot === i + 1 ? 'font-semibold text-primary' : 'text-dark-text'">
+            {{ leagueTeamName(rosterId) }}
+          </span>
+          <button @click="localMySlot = i + 1"
+                  class="shrink-0 rounded border px-1.5 py-0.5 font-mono text-[9px] transition-colors"
+                  :class="localMySlot === i + 1 ? 'border-primary text-primary' : 'border-dark-border text-dark-textMuted hover:text-dark-text'">
+            {{ localMySlot === i + 1 ? 'you' : 'this is me' }}
+          </button>
+          <button @click="moveSeat(i, -1)" :disabled="i === 0"
+                  class="shrink-0 px-1 font-mono text-[11px] text-dark-textMuted disabled:opacity-30">↑</button>
+          <button @click="moveSeat(i, 1)" :disabled="i === localSeats.length - 1"
+                  class="shrink-0 px-1 font-mono text-[11px] text-dark-textMuted disabled:opacity-30">↓</button>
+        </div>
+
+        <p v-if="localSetupError" class="mt-3 font-mono text-[11px] text-[#FF5C5C]">{{ localSetupError }}</p>
+
+        <div class="mt-3 flex gap-2">
+          <button @click="startLocalDraft" :disabled="!!localSetupError"
+                  class="rounded-lg border border-primary/50 bg-primary/10 px-3 py-1.5 font-mono text-[11px] text-primary disabled:opacity-40">
+            start drafting
+          </button>
+          <button @click="showLocalSetup = false"
+                  class="rounded-lg border border-dark-border px-3 py-1.5 font-mono text-[11px] text-dark-textMuted hover:text-dark-text">
+            cancel
+          </button>
+        </div>
+      </section>
 
       <!-- Say plainly when the model is working with less than it wants -->
       <p v-if="!hasHistory && !practiceMode" class="mb-3 rounded-lg border border-dark-border bg-dark-card px-3 py-2 font-mono text-[11px] text-dark-textMuted">
