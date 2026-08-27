@@ -302,6 +302,20 @@ export function useDraftRoom() {
    */
   watch(localMode, (isLocal) => { if (isLocal) loadDraft() })
 
+  /**
+   * `manualDrafted` is the fallback for a Sleeper draft whose sync died — the
+   * user marks players gone by hand, and `draftedKeys` unions that set with
+   * whatever synced. It has no reason to survive INTO a local draft, and
+   * before this it did: mark a few players drafted on the pre-draft board,
+   * then start a local draft in the same session, and those players stayed
+   * permanently missing from the local board — uncounted in the pick log,
+   * not reachable by the local strip's Undo (which only pops `localDraft`'s
+   * own picks), with no UI in this view to unmark them by hand either. A
+   * refresh clears it (it is memory-only), but nothing inside the session
+   * did.
+   */
+  watch(localMode, (isLocal) => { if (isLocal) manualDrafted.value = new Set() })
+
   // ── derived draft state ───────────────────────────────────────────────────
   const shape = computed<DraftShape | null>(() => {
     const m = draftMeta.value
@@ -1525,7 +1539,21 @@ export function useDraftRoom() {
     () => [recap.value, replay.value] as const,
     ([rc, rp]) => {
       const id = String(draftMeta.value?.draft_id ?? '')
-      if (!id || !rc?.me) return
+      if (!id) return
+      if (!rc?.me) {
+        // Undo can take a FINISHED draft back to incomplete — the local draft
+        // strip's Undo button is the first UI that reaches this, but the
+        // underlying `undoLocalPick` predates it and nothing here ever
+        // guarded against it. `recap` goes null the moment the draft is no
+        // longer full, and without this the History record saved for the
+        // now-stale "complete" state never leaves: History would keep
+        // showing a graded, finished draft that is actually one pick short.
+        // Safe to forget unconditionally — `history.forget` on an id that
+        // was never saved is a no-op, and re-completing the draft calls
+        // `history.save` again below and puts the record right back.
+        if (history.has(id)) history.forget(id)
+        return
+      }
       const record: DraftRecord = {
         draftId: id,
         savedAt: new Date().toISOString(),

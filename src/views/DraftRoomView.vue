@@ -188,33 +188,62 @@ function startLocalDraft() {
  */
 const localOnClock = computed(() => {
   if (!localMode.value || !shape.value) return null
-  const d = localDraft.draft.value!
-  const overall = d.picks.length + 1
-  if (overall > d.teams * d.rounds) return null
+  // `currentOverallPick` and `shape.value.{teams,rounds}` — not
+  // `localDraft.draft.value.{picks.length,teams,rounds}` — for the same reason
+  // `isMine` reads `mySlot` instead of the draft's own stored `mySlot` field
+  // above: they agree today only because `effectiveTeams`/`shape` are BUILT
+  // from the local draft's settings. `effectiveTeams` also has an
+  // `|| src.leagueSize.value` fallback (see `useDraftRoom.ts`); if that ever
+  // fires, a second route here would compute the slot against one team count
+  // while the round/pick-count math used another — right seat, wrong pick
+  // number, and nothing on screen would say so.
+  const { teams, rounds } = shape.value
+  const overall = currentOverallPick.value
+  if (overall > teams * rounds) return null
   const slot = slotAtPick(shape.value, overall)
   return {
     overall,
     slot,
-    round: Math.ceil(overall / d.teams),
-    inRound: ((overall - 1) % d.teams) + 1,
+    round: Math.ceil(overall / teams),
+    inRound: ((overall - 1) % teams) + 1,
     name: teamNameForSlot(slot),
     isMine: slot === mySlot.value,
   }
 })
 
 /**
+ * The default board (`showDrafted === false`) filters `boardByRank` by
+ * `draftedKeys`, so the instant a pick lands the tapped row is removed and
+ * every row below it shifts up one. Vue's DOM patch runs in a microtask,
+ * which drains BETWEEN two discrete click events — so on a fast double-tap
+ * the second click lands on a `<button>` that has already re-rendered with a
+ * DIFFERENT row's data, and `takePlayer` would record whoever moved into that
+ * spot. Passing `row` instead of an index (below) only protects the FIRST
+ * click of the pair from a re-sort that happens after it fires; it does
+ * nothing for the second click, which is a brand-new event bound to whatever
+ * is on screen at the moment it lands. `PICK_DEBOUNCE_MS` is the actual
+ * guard: a second tap inside the window is dropped instead of recorded. The
+ * pick log stays internally consistent either way, and nothing else on
+ * screen would have flagged the wrong player going — Undo was the only
+ * remedy, and it needs the user to notice first.
+ */
+const PICK_DEBOUNCE_MS = 350
+let lastLocalPickAt = 0
+
+/**
  * A tap on the board is a pick in local mode. Outside local mode it keeps its
  * old meaning — flag the player gone — because that is the manual fallback for
  * when Sleeper sync dies mid-draft, and it must not change.
  *
- * Takes the row itself, not an index into `visibleBoard`: the board re-sorts
- * the instant a pick lands (need factor, survival and VONA all move), so a
- * position in that list can point at a different player by the time a second,
- * fast tap resolves. `row.playerKey` was read from the DOM at tap time and
- * stays correct no matter what the list does afterward.
+ * Takes the row itself, not an index into `visibleBoard`, and is debounced —
+ * see the comment above for what each of those actually protects against.
  */
 function takePlayer(row: { playerKey: string; name: string; position: string; proTeam?: string }) {
   if (!localMode.value) { markDrafted(row.playerKey); return }
+  if (!localOnClock.value) return // every pick is already in; nothing left to record
+  const now = Date.now()
+  if (now - lastLocalPickAt < PICK_DEBOUNCE_MS) return
+  lastLocalPickAt = now
   localDraft.pick({
     playerKey: row.playerKey,
     name: row.name,
@@ -868,7 +897,15 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
           notice they stopped appearing.
         -->
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
-          {{ localMode ? 'tap a row to make the pick' : 'tap a row to mark drafted' }}<span v-if="posFilter === 'ALL'"> · tier cliffs show on a position tab</span>
+          <!--
+            Once a local draft is full, `takePlayer` already no-ops on every tap
+            (see `localOnClock` gate above) — the write is safe either way. What
+            wasn't safe was the SILENCE: rows still looked live and a tap did
+            nothing with no explanation on this line, while "every pick is in"
+            only showed in the strip above, which is easy to miss. This mirrors
+            that string here so a dead tap explains itself where the tap happened.
+          -->
+          {{ localMode && !localOnClock ? 'every pick is in' : localMode ? 'tap a row to make the pick' : 'tap a row to mark drafted' }}<span v-if="posFilter === 'ALL'"> · tier cliffs show on a position tab</span>
         </p>
 
         <template v-for="(r, i) in visibleBoard" :key="r.playerKey">
