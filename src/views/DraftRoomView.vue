@@ -11,6 +11,7 @@ import { draftBoardInjuryStatus } from '@/draft/room/injuryStatus'
 import { positionBadge, positionCell } from '@/players/positionColors'
 import { seatsFromPublished, seatIndexOf, localSetupError as computeLocalSetupError } from '@/draft/room/localDraftSetup'
 import { slotAtPick } from '@/draft/room/pickOrder'
+import { acceptPickTap, type PickTap } from '@/draft/room/pickTap'
 
 const {
   status, loading, board, recommendation, myPick, myNextPick, isMyTurn,
@@ -223,34 +224,51 @@ const localOnClock = computed(() => {
  * nothing for the second click, which is a brand-new event bound to whatever
  * is on screen at the moment it lands.
  *
- * The debounce is KEYED ON THE ROW, not on time alone. A flat time window
- * dropped ANY second tap inside 350ms, which caps pick entry at roughly three
- * a second and gives no feedback when it swallows one — somebody transcribing
- * a known pick list loses taps and never finds out, which is a worse failure
- * than the one being guarded against. Keying on `playerKey` drops only the
- * case that is unambiguously not what the user meant: the same player twice
- * in a blink, which is what a double-tap on a board that keeps drafted rows
- * visible produces. A tap on a genuinely different player goes through.
+ * The rule that decides is `acceptPickTap`, and it lives in
+ * `@/draft/room/pickTap` with its own tests rather than inline here — the
+ * whole reason two earlier versions of this guard were wrong is that neither
+ * was ever driven directly. Read that module for why position is the right
+ * discriminator and why both a flat time window and a `playerKey` check are
+ * not; the short version is that the row is GONE by the second click, so the
+ * key always differs and only the screen position stays put.
  */
-const PICK_DEBOUNCE_MS = 350
-let lastLocalPickAt = 0
-let lastLocalPickKey = ''
+let lastAcceptedTap: PickTap | null = null
+
+/**
+ * Where a click landed, or nulls when it did not come from a pointer.
+ *
+ * `detail` is the click count: a real pointer click reports >= 1, while a
+ * keyboard activation of the focused button (Enter/Space) and a programmatic
+ * `.click()` both report 0 AND coordinates of 0,0. Without this check two
+ * keyboard picks in a row look like one double-tap in the same spot and the
+ * second is dropped, which would make the board unusable without a mouse.
+ * Nulls mean "unknown", and `acceptPickTap` treats unknown as acceptable.
+ */
+function tapPoint(ev?: MouseEvent): PickTap {
+  const t = Date.now()
+  const fromPointer =
+    !!ev && ev.detail > 0 && typeof ev.clientX === 'number' && typeof ev.clientY === 'number'
+  return fromPointer ? { x: ev!.clientX, y: ev!.clientY, t } : { x: null, y: null, t }
+}
 
 /**
  * A tap on the board is a pick in local mode. Outside local mode it keeps its
  * old meaning — flag the player gone — because that is the manual fallback for
- * when Sleeper sync dies mid-draft, and it must not change.
+ * when Sleeper sync dies mid-draft, and it must not change. The guard below is
+ * deliberately inside the local-mode branch for that reason.
  *
- * Takes the row itself, not an index into `visibleBoard`, and is debounced —
- * see the comment above for what each of those actually protects against.
+ * Takes the row itself, not an index into `visibleBoard` — see the comment
+ * above for what that protects against and what it does not.
  */
-function takePlayer(row: { playerKey: string; name: string; position: string; proTeam?: string }) {
+function takePlayer(
+  row: { playerKey: string; name: string; position: string; proTeam?: string },
+  ev?: MouseEvent,
+) {
   if (!localMode.value) { markDrafted(row.playerKey); return }
   if (!localOnClock.value) return // every pick is already in; nothing left to record
-  const now = Date.now()
-  if (row.playerKey === lastLocalPickKey && now - lastLocalPickAt < PICK_DEBOUNCE_MS) return
-  lastLocalPickAt = now
-  lastLocalPickKey = row.playerKey
+  const tap = tapPoint(ev)
+  if (!acceptPickTap(lastAcceptedTap, tap)) return
+  lastAcceptedTap = tap
   localDraft.pick({
     playerKey: row.playerKey,
     name: row.name,
@@ -260,15 +278,16 @@ function takePlayer(row: { playerKey: string; name: string; position: string; pr
 }
 
 /**
- * Undo clears the debounce key as well as popping the pick. Without this,
- * pick → undo → repick THE SAME PLAYER inside the 350ms window is silently
- * dropped: the user taps the right player, watches nothing happen, and has no
- * way to tell the tap from a miss. Correcting a mistap is exactly the moment
- * someone is moving fast, so it is the likeliest time to hit the window.
+ * Undo forgets the last accepted tap as well as popping the pick. Without this,
+ * pick → undo → repick IN THE SAME SPOT inside the window is silently dropped:
+ * the user taps the right player, watches nothing happen, and has no way to
+ * tell the drop from a miss. Correcting a mistap is exactly the moment someone
+ * is moving fast, and the corrected pick is very often the row that just slid
+ * into the spot they were already pointing at — so this is the likeliest
+ * position collision in the whole flow, not an edge case.
  */
 function undoLocalPick() {
-  lastLocalPickAt = 0
-  lastLocalPickKey = ''
+  lastAcceptedTap = null
   localDraft.undo()
 }
 
@@ -954,7 +973,7 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
           </div>
 
           <button
-            @click="!(r as any).takenAt && takePlayer(r)"
+            @click="!(r as any).takenAt && takePlayer(r, $event)"
             class="flex w-full items-center gap-3 border-b border-dark-border/40 py-2 text-left last:border-0"
             :class="(r as any).takenAt ? 'opacity-40' : 'hover:bg-dark-border/20'"
           >
