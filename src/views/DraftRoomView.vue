@@ -221,14 +221,20 @@ const localOnClock = computed(() => {
  * spot. Passing `row` instead of an index (below) only protects the FIRST
  * click of the pair from a re-sort that happens after it fires; it does
  * nothing for the second click, which is a brand-new event bound to whatever
- * is on screen at the moment it lands. `PICK_DEBOUNCE_MS` is the actual
- * guard: a second tap inside the window is dropped instead of recorded. The
- * pick log stays internally consistent either way, and nothing else on
- * screen would have flagged the wrong player going — Undo was the only
- * remedy, and it needs the user to notice first.
+ * is on screen at the moment it lands.
+ *
+ * The debounce is KEYED ON THE ROW, not on time alone. A flat time window
+ * dropped ANY second tap inside 350ms, which caps pick entry at roughly three
+ * a second and gives no feedback when it swallows one — somebody transcribing
+ * a known pick list loses taps and never finds out, which is a worse failure
+ * than the one being guarded against. Keying on `playerKey` drops only the
+ * case that is unambiguously not what the user meant: the same player twice
+ * in a blink, which is what a double-tap on a board that keeps drafted rows
+ * visible produces. A tap on a genuinely different player goes through.
  */
 const PICK_DEBOUNCE_MS = 350
 let lastLocalPickAt = 0
+let lastLocalPickKey = ''
 
 /**
  * A tap on the board is a pick in local mode. Outside local mode it keeps its
@@ -242,14 +248,28 @@ function takePlayer(row: { playerKey: string; name: string; position: string; pr
   if (!localMode.value) { markDrafted(row.playerKey); return }
   if (!localOnClock.value) return // every pick is already in; nothing left to record
   const now = Date.now()
-  if (now - lastLocalPickAt < PICK_DEBOUNCE_MS) return
+  if (row.playerKey === lastLocalPickKey && now - lastLocalPickAt < PICK_DEBOUNCE_MS) return
   lastLocalPickAt = now
+  lastLocalPickKey = row.playerKey
   localDraft.pick({
     playerKey: row.playerKey,
     name: row.name,
     position: row.position,
     proTeam: row.proTeam ?? '',
   })
+}
+
+/**
+ * Undo clears the debounce key as well as popping the pick. Without this,
+ * pick → undo → repick THE SAME PLAYER inside the 350ms window is silently
+ * dropped: the user taps the right player, watches nothing happen, and has no
+ * way to tell the tap from a miss. Correcting a mistap is exactly the moment
+ * someone is moving fast, so it is the likeliest time to hit the window.
+ */
+function undoLocalPick() {
+  lastLocalPickAt = 0
+  lastLocalPickKey = ''
+  localDraft.undo()
 }
 
 /** Discarding throws away every pick, so it asks first. */
@@ -784,7 +804,7 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
             </b>
           </span>
           <span v-else class="text-dark-textMuted">every pick is in</span>
-          <button @click="localDraft.undo()" :disabled="!localDraft.draft.value?.picks.length"
+          <button @click="undoLocalPick()" :disabled="!localDraft.draft.value?.picks.length"
                   class="ml-auto rounded border border-dark-border px-2 py-0.5 text-dark-textMuted transition-colors hover:text-dark-text disabled:opacity-30">
             undo
           </button>
