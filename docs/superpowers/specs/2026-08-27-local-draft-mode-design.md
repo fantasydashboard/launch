@@ -76,7 +76,7 @@ No Vue, no I/O, fully unit-testable. This is where the correctness lives.
 - `blankLocalDraft(input): LocalDraft`
 - `addLocalPick(d, player): LocalDraft` — appends; refuses past `teams * rounds`
 - `undoLocalPick(d): LocalDraft` — pops; no-op when empty
-- `localDraftMeta(d): any` — the synthetic `draftMeta`, supplying all eleven
+- `localDraftMeta(d): any` — the synthetic `draftMeta`, supplying all twelve
   fields, `type` included. `status` is derived: `'pre_draft'` with no picks, `'complete'` when
   `picks.length >= teams * rounds`, otherwise `'drafting'`.
 - `localSleeperPicks(d): any[]` — the pick log rendered in Sleeper's own shape:
