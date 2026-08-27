@@ -225,3 +225,33 @@ describe('useDraftRoom — the season actually reaches the ADP fetch', () => {
     expect(season).toBe('2024')
   })
 })
+
+describe('useDraftRoom — a finished local draft reopens at all', () => {
+  it('still forgets a stale record when a LOCAL draft is undone back out of complete', async () => {
+    // The behaviour Fix 2 must not lose: History showing a graded, finished
+    // draft that is actually one pick short.
+    seedLocalDraft({
+      season: '2025',
+      teams: 2,
+      rounds: 1,
+      slotToRosterId: { 1: 'r1', 2: 'r2' },
+      picks: [
+        { overall: 1, playerKey: 'p1', name: 'A B', position: 'RB', proTeam: 'ATL' },
+        { overall: 2, playerKey: 'p2', name: 'C D', position: 'WR', proTeam: 'SF' },
+      ],
+    })
+    const room = mountRoom()
+    await flushPromises()
+
+    // A full draft archives itself: that is the record undo must clear.
+    const id = 'local:L1:2025-08-01T00:00:00.000Z'
+    expect(room.recap.value).not.toBeNull()
+    expect(room.history.has(id)).toBe(true)
+
+    room.localDraft.undo()
+    await flushPromises()
+
+    expect(room.recap.value).toBeNull()
+    expect(room.history.has(id)).toBe(false)
+  })
+})

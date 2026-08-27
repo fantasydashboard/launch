@@ -1627,11 +1627,27 @@ export function useDraftRoom() {
    * the grid would label a seat with whichever league mate happens to hold
    * that same numeric id, while the tendency sentence and the simulation
    * (both routed through `teamKeyForSlot`) name someone else for that seat.
+   *
+   * A `function`, NOT a `const` arrow, and that is load-bearing. `recap` (far
+   * above) calls this, and the History watcher above `recap` evaluates its own
+   * source getter once at registration to collect dependencies — which reads
+   * `recap.value` while this line has not run yet. A `const` is in its temporal
+   * dead zone there, so `useDraftRoom()` threw
+   * `ReferenceError: Cannot access 'teamNameForSlot' before initialization` and
+   * took the whole Draft Room down. Only local mode reached it, because only
+   * local mode has a `draftMeta` with status `complete` synchronously at setup
+   * (it is read straight out of localStorage) — reopening the page on a
+   * FINISHED local draft was an unconditional white screen. A function
+   * declaration hoists; every value it reads is initialised long before the
+   * watcher registers.
    */
-  const teamNameForSlot = (slot: number) =>
-    (opponentIdentity.value === 'real' ? src.teamNames.value?.[teamKeyForSlot(slot)] : null) ??
-    draftUserNames.value[slot] ??
-    `Team ${slot}`
+  function teamNameForSlot(slot: number): string {
+    return (
+      (opponentIdentity.value === 'real' ? src.teamNames.value?.[teamKeyForSlot(slot)] : null) ??
+      draftUserNames.value[slot] ??
+      `Team ${slot}`
+    )
+  }
 
   return {
     grid,
