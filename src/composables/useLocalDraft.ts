@@ -42,7 +42,12 @@ function read(leagueId: string | null): LocalDraft | null {
     if (!Number.isFinite(parsed.rounds) || parsed.rounds < 1 || parsed.rounds > 1000) return null
     if (parsed.type !== 'snake' && parsed.type !== 'linear') return null
     if (!parsed.slotToRosterId || typeof parsed.slotToRosterId !== 'object') return null
-    if (!Number.isFinite(parsed.mySlot)) return null
+    /* mySlot must be an integer in [1, teams]. A fractional seat is not a seat;
+       a seat outside the ring is nonsense by definition. If mySlot doesn't match
+       slotAtPick (which is confined to [1, teams]), nextPickFor never fires and
+       that user's "my next pick" detection silently breaks forever — exactly the
+       quiet permanent failure mode this room has been burned by. */
+    if (!Number.isInteger(parsed.mySlot) || parsed.mySlot < 1 || parsed.mySlot > parsed.teams) return null
 
     /* Validate every pick: must be an object with numeric overall and string playerKey */
     for (const pick of parsed.picks) {

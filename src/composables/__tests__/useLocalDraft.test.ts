@@ -126,4 +126,15 @@ describe('useLocalDraft', () => {
     const d = useLocalDraft(ref('L1'))
     expect(d.draft.value).toBeNull()
   })
+
+  it('rejects a payload with mySlot outside the ring [1, teams]', () => {
+    /* mySlot is compared with slotAtPick, which is confined to [1, teams].
+       A seat outside the ring is nonsense by definition. If mySlot doesn't match,
+       nextPickFor never fires and that user's "my next pick" detection silently
+       breaks forever — exactly the quiet permanent failure this room has been
+       burned by. */
+    localStorage.setItem(localDraftKey('L1'), JSON.stringify({ ...config, mySlot: 5, picks: [], startedAt: 'x', updatedAt: 'x' }))
+    const d = useLocalDraft(ref('L1'))
+    expect(d.draft.value).toBeNull()
+  })
 })
