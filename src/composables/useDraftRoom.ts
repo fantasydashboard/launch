@@ -108,7 +108,7 @@ export function useDraftRoom() {
     weeklyHorizon: 0, // draft prep is rest-of-season only
   })
 
-  // ── draft meta + picks ────────────────────────────────────────────────────
+  // ── ADP anchor + sync bookkeeping ───────────────────────────────────────────
   const adp = ref<Record<string, number>>({})
   const loadingDraft = ref(false)
   const pollFailures = ref(0)
@@ -157,9 +157,28 @@ export function useDraftRoom() {
 
   async function loadDraft() {
     if (!enabled.value) return
-    if (localMode.value) return   /* a local draft is the source; do not fetch one */
     loadingDraft.value = true
     try {
+      if (localMode.value) {
+        // There is no Sleeper draft to fetch, but the board still needs an ADP
+        // anchor. Nothing else in this file ever writes `adp`, so returning here
+        // unconditionally (as the first cut of local mode did) left `adp` at
+        // `{}` for the whole draft: applyAdpAnchor became a no-op, marketRankByKey
+        // returned `{}` so the value/fade badge silently never rendered, survival
+        // saw `adp: null` for every player, and calibration had nothing to
+        // calibrate against — the board quietly stopped being the one the user
+        // rehearses with, while every number on screen still looked plausible.
+        // `draftMeta.value?.season` (the computed, via localDraftMeta) is used
+        // instead of a Sleeper `meta` local, because there is no Sleeper `meta`
+        // on this path.
+        const variant = adpVariantFor(
+          effectiveScoring.value,
+          effectiveSlots.value,
+          (leagueStore.currentLeague as any)?.settings?.type,
+        )
+        adp.value = await fetchSeasonAdp(String(draftMeta.value?.season ?? ''), variant)
+        return
+      }
       // A pasted draft wins over the league's own — that's the point of pasting it.
       let id: string | null = overrideDraftId.value
       if (!id) {
@@ -197,6 +216,14 @@ export function useDraftRoom() {
   }
 
   async function pollPicks() {
+    // This is exported as `refresh` behind the room's user-facing Refresh
+    // button, so it is reachable in local mode even with the polling timer
+    // itself gated off (see `startPolling`). Without this guard, each click
+    // reads `draftMeta.value?.draft_id` — the synthetic `local:<leagueId>:
+    // <startedAt>` id — and fires a real Sleeper request that can never
+    // succeed, climbing `pollFailures` until `syncHealthy` flips and the room
+    // shows a "sync unhealthy" banner for a mode that has no sync at all.
+    if (localMode.value) return
     const id = draftMeta.value?.draft_id
     if (!id) return
     try {
@@ -221,8 +248,15 @@ export function useDraftRoom() {
   }
 
   function startPolling() {
-    if (localMode.value) return   /* nothing to poll: the picks are ours */
+    // stopPolling() FIRST, guard second. This is the only place outside unmount
+    // and the "complete" branch that ever tears down an existing timer, so
+    // guarding above it (as the first cut did) meant a Sleeper timer already
+    // running when the user started a local draft was never cleared: the status
+    // watcher below still calls startPolling() on the new (local, pre_draft)
+    // status, returns immediately at the local-mode check, and the old interval
+    // keeps firing pollPicks() every POLL_MS against the synthetic draft id.
     stopPolling()
+    if (localMode.value) return   /* nothing to poll: the picks are ours */
     timer = setInterval(() => {
       // Back off rather than hammering a failing endpoint mid-draft.
       if (pollFailures.value >= BACKOFF_AFTER && pollFailures.value % 3 !== 0) {
