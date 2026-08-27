@@ -636,7 +636,20 @@ export function useDraftRoom() {
    * wrong thing about a real person, which is worse than saying nothing.
    */
   const seatMap = computed<Record<number, string> | null>(() => {
-    if (!practiceMode.value) return null
+    // A local draft has its own confirmed seating (`slotToRosterId`, read
+    // through `rosterIdForSlot`) and practice mode's job — standing in real
+    // league mates for a MOCK's roster ids — does not apply to it: local
+    // draft roster ids already ARE league roster ids. Without this,
+    // `localDraftMeta` stamping `league_id` to match the active league (so
+    // `draftIsThisLeague` reads true, per Task 4) makes practice mode's own
+    // cleanup watcher race the click that starts the draft, and until it
+    // resolves `seatMap` would build the PRACTICE rotation — league order
+    // rotated to the user's league seat — and `teamKeyForSlot` would use it
+    // INSTEAD OF the seating the user just confirmed in this panel. A user
+    // who deliberately rearranged seats to rehearse a different order would
+    // have every name, avatar and tendency on screen come from the league's
+    // published order while picks attribute to the seat they actually built.
+    if (!practiceMode.value || localMode.value) return null
 
     /**
      * The store's roster data must actually belong to the league we are seating.
@@ -1636,6 +1649,27 @@ export function useDraftRoom() {
     // resolves a DRAFT seat (mock or local) to a roster. Before a local draft
     // exists there is no draft seat to resolve from yet.
     leagueTeamNames: src.teamNames,
+    // The user's own roster id in the active league. The setup panel derives
+    // which seat is "mine" from this directly, rather than trusting a
+    // separately-clickable marker that can drift from it — see the comment on
+    // `seatMap` for the class of bug that drift caused.
+    myTeamKey: src.myTeamKey,
+    // The league's real season, e.g. for a local draft's ADP fetch and its
+    // history record. NOT `new Date().getFullYear()`: in the offseason the two
+    // disagree, and fetching next year's ADP when the league is still last
+    // year's silently reinstates an empty-ADP board — the exact failure the
+    // `localMode` watcher above exists to close, arriving from the season side
+    // instead of the load-timing side.
+    leagueSeason: leagueStore.currentSeason,
+    // Whether `src.teamNames` (slow: only replaced after a full league fetch)
+    // and `realSlotToRosterId` (fast: a small per-league request) actually
+    // belong to the SAME league right now. `seatMap`, above, guards this
+    // identical race for practice mode; the local-draft setup panel mixes the
+    // same two sources and needs the same guard, or a league switch mid-fetch
+    // can seat league A's roster ids under league B's storage key.
+    leagueDataCurrent: computed(
+      () => String(leagueStore.currentLeague?.league_id ?? '') === String(leagueStore.activeLeagueId ?? ''),
+    ),
     seatMap,
     // The one true "practice seating is actually in effect" signal. The view
     // currently derives an equivalent condition by hand; exporting it makes the
