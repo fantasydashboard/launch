@@ -176,7 +176,18 @@ export function useDraftRoom() {
           effectiveSlots.value,
           (leagueStore.currentLeague as any)?.settings?.type,
         )
-        adp.value = await fetchSeasonAdp(String(draftMeta.value?.season ?? ''), variant)
+        // `|| leagueStore.currentSeason`, not `?? ''`: drafts already sitting in
+        // users' localStorage from the deployed build were written with
+        // `season: undefined` (see `leagueSeason` in the return object below)
+        // and so have NO season key at all. Fixing the export alone would leave
+        // every rehearsal already in progress permanently on an empty ADP map,
+        // because a stored draft is never rewritten with a season. `||` rather
+        // than `??` because the broken value round-trips through JSON as a
+        // MISSING key, and a hand-edited `season: ''` is just as unusable.
+        adp.value = await fetchSeasonAdp(
+          String(draftMeta.value?.season || leagueStore.currentSeason || ''),
+          variant,
+        )
         return
       }
       // A pasted draft wins over the league's own — that's the point of pasting it.
@@ -1688,7 +1699,18 @@ export function useDraftRoom() {
     // year's silently reinstates an empty-ADP board — the exact failure the
     // `localMode` watcher above exists to close, arriving from the season side
     // instead of the load-timing side.
-    leagueSeason: leagueStore.currentSeason,
+    // MUST be wrapped in `computed`. `currentSeason` is a `computed` inside a
+    // Pinia SETUP store, so reading it off the store proxy UNWRAPS it: the bare
+    // `leagueStore.currentSeason` this shipped as was a plain string, and the
+    // view's `leagueSeason.value` was therefore `undefined` on every start.
+    // That put `season: undefined` into the stored LocalDraft (JSON.stringify
+    // drops the key), `localDraftMeta().season` came back undefined, loadDraft
+    // asked Sleeper for `/projections/nfl/` with no season, that 404s, and `adp`
+    // stayed `{}` for the entire rehearsal — survival took nobody so every
+    // player "lasts" 99%, every VONA edge collapsed to "—", and the board
+    // silently re-sorted to raw projected points. Wrapping it is also what makes
+    // it REACTIVE: unwrapped, the season would never update on a league switch.
+    leagueSeason: computed(() => leagueStore.currentSeason),
     // Whether `src.teamNames` (slow: only replaced after a full league fetch)
     // and `realSlotToRosterId` (fast: a small per-league request) actually
     // belong to the SAME league right now. `seatMap`, above, guards this
