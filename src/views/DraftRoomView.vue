@@ -10,6 +10,7 @@ import { tierCliffs } from '@/draft/room/tierCliffs'
 import { draftBoardInjuryStatus } from '@/draft/room/injuryStatus'
 import { positionBadge, positionCell } from '@/players/positionColors'
 import { seatsFromPublished, seatIndexOf, localSetupError as computeLocalSetupError } from '@/draft/room/localDraftSetup'
+import { slotAtPick } from '@/draft/room/pickOrder'
 
 const {
   status, loading, board, recommendation, myPick, myNextPick, isMyTurn,
@@ -171,6 +172,62 @@ function startLocalDraft() {
   // now, so this is belt-and-suspenders on the UI side, not the correctness fix.
   practiceMode.value = false
   showLocalSetup.value = false
+}
+
+/**
+ * Whose turn it is in a local draft, for the strip above the board.
+ *
+ * "Is this my pick" reads `mySlot` from `useDraftRoom` — the exact value
+ * `isMyTurn`, `myPick` and the grid already turn on, derived by scanning the
+ * draft's own `slot_to_roster_id` for `myTeamKey`. `LocalDraft.mySlot` (the
+ * field stamped into the draft at `startLocalDraft`, from this same
+ * `localMySlot` computed) is a SECOND route to the same fact — the class of
+ * bug documented on `localMySlot` above. Reading `mySlot` here instead of
+ * `d.mySlot` means there is only ever one route, so this strip cannot
+ * announce "your pick" on a turn the recommendation engine isn't solving for.
+ */
+const localOnClock = computed(() => {
+  if (!localMode.value || !shape.value) return null
+  const d = localDraft.draft.value!
+  const overall = d.picks.length + 1
+  if (overall > d.teams * d.rounds) return null
+  const slot = slotAtPick(shape.value, overall)
+  return {
+    overall,
+    slot,
+    round: Math.ceil(overall / d.teams),
+    inRound: ((overall - 1) % d.teams) + 1,
+    name: teamNameForSlot(slot),
+    isMine: slot === mySlot.value,
+  }
+})
+
+/**
+ * A tap on the board is a pick in local mode. Outside local mode it keeps its
+ * old meaning — flag the player gone — because that is the manual fallback for
+ * when Sleeper sync dies mid-draft, and it must not change.
+ *
+ * Takes the row itself, not an index into `visibleBoard`: the board re-sorts
+ * the instant a pick lands (need factor, survival and VONA all move), so a
+ * position in that list can point at a different player by the time a second,
+ * fast tap resolves. `row.playerKey` was read from the DOM at tap time and
+ * stays correct no matter what the list does afterward.
+ */
+function takePlayer(row: { playerKey: string; name: string; position: string; proTeam?: string }) {
+  if (!localMode.value) { markDrafted(row.playerKey); return }
+  localDraft.pick({
+    playerKey: row.playerKey,
+    name: row.name,
+    position: row.position,
+    proTeam: row.proTeam ?? '',
+  })
+}
+
+/** Discarding throws away every pick, so it asks first. */
+function confirmDiscardLocal() {
+  const n = localDraft.draft.value?.picks.length ?? 0
+  if (n && !window.confirm(`Discard this local draft? ${n} pick${n === 1 ? '' : 's'} will be lost.`)) return
+  localDraft.discard()
 }
 
 const gridEl = ref<HTMLElement | null>(null)
@@ -682,6 +739,33 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
         This draft is complete.
       </p>
 
+      <!--
+        Local mode puts real league names on a draft nobody else can see. The
+        banner is not decoration: a room that looks like a live draft and is not
+        one has to say so, for the same reason practice mode does.
+      -->
+      <template v-if="localMode">
+        <div class="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 font-mono text-[11px]">
+          <span class="font-semibold uppercase tracking-wide text-primary">Local draft</span>
+          <span v-if="localOnClock" class="text-dark-textMuted">
+            <b class="text-dark-text">{{ localOnClock.round }}.{{ String(localOnClock.inRound).padStart(2, '0') }}</b>
+            ·
+            <b :class="localOnClock.isMine ? 'text-primary' : 'text-dark-text'">
+              {{ localOnClock.isMine ? 'your pick' : localOnClock.name }}
+            </b>
+          </span>
+          <span v-else class="text-dark-textMuted">every pick is in</span>
+          <button @click="localDraft.undo()" :disabled="!localDraft.draft.value?.picks.length"
+                  class="ml-auto rounded border border-dark-border px-2 py-0.5 text-dark-textMuted transition-colors hover:text-dark-text disabled:opacity-30">
+            undo
+          </button>
+          <button @click="confirmDiscardLocal"
+                  class="rounded border border-dark-border px-2 py-0.5 text-dark-textMuted transition-colors hover:text-[#FF5C5C]">
+            discard
+          </button>
+        </div>
+      </template>
+
       <!-- Tabs -->
       <div class="mb-4 flex gap-1 border-b border-dark-border">
         <button
@@ -784,7 +868,7 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
           notice they stopped appearing.
         -->
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
-          tap a row to mark drafted<span v-if="posFilter === 'ALL'"> · tier cliffs show on a position tab</span>
+          {{ localMode ? 'tap a row to make the pick' : 'tap a row to mark drafted' }}<span v-if="posFilter === 'ALL'"> · tier cliffs show on a position tab</span>
         </p>
 
         <template v-for="(r, i) in visibleBoard" :key="r.playerKey">
@@ -813,7 +897,7 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
           </div>
 
           <button
-            @click="!(r as any).takenAt && markDrafted(r.playerKey)"
+            @click="!(r as any).takenAt && takePlayer(r)"
             class="flex w-full items-center gap-3 border-b border-dark-border/40 py-2 text-left last:border-0"
             :class="(r as any).takenAt ? 'opacity-40' : 'hover:bg-dark-border/20'"
           >
