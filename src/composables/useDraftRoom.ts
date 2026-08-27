@@ -25,6 +25,8 @@ import { useCustomRankings } from '@/composables/useCustomRankings'
 import { useDraftHistory } from '@/composables/useDraftHistory'
 import type { DraftRecord } from '@/draft/room/draftHistory'
 import { buildSeatMap, isCompleteSeatMap, shuffledSeating } from '@/draft/room/practiceSeating'
+import { useLocalDraft } from '@/composables/useLocalDraft'
+import { localDraftMeta, localSleeperPicks } from '@/draft/room/localDraft'
 
 /** How often to re-read picks while a draft is running. */
 const POLL_MS = 5000
@@ -61,7 +63,28 @@ export function useDraftRoom() {
   // A mock is a real draft with its own roster slots and scoring. Scoring a
   // 2-QB half-PPR mock with your 1-QB PPR league's settings makes replacement
   // level, the ADP market, and the upside tilt all quietly wrong.
-  const draftMeta = ref<any | null>(null)
+  const sleeperMeta = ref<any | null>(null)
+  const sleeperPicks = ref<any[]>([])
+
+  /**
+   * A draft you are running yourself, with no Sleeper draft behind it.
+   *
+   * The whole feature lives in these two computeds. Every surface in this room —
+   * board, survival, tendencies, grid, roster, recap, replay — reads `draftMeta`
+   * and `picks` and nothing else, so rendering a local pick log into those two
+   * shapes is the entire integration. If a consumer ever needs to know which
+   * source it is reading, the synthetic shape is wrong and the shape is what
+   * should be fixed.
+   */
+  const localDraft = useLocalDraft(computed(() => leagueStore.activeLeagueId))
+  const localMode = computed(() => localDraft.draft.value !== null)
+
+  const draftMeta = computed<any | null>(() =>
+    localMode.value ? localDraftMeta(localDraft.draft.value!) : sleeperMeta.value,
+  )
+  const picks = computed<any[]>(() =>
+    localMode.value ? localSleeperPicks(localDraft.draft.value!) : sleeperPicks.value,
+  )
 
   const effectiveSlots = computed<Record<string, number>>(
     () => slotsFromDraftSettings(draftMeta.value?.settings) ?? src.rosterSlots.value ?? {},
@@ -86,7 +109,6 @@ export function useDraftRoom() {
   })
 
   // ── draft meta + picks ────────────────────────────────────────────────────
-  const picks = ref<any[]>([])
   const adp = ref<Record<string, number>>({})
   const loadingDraft = ref(false)
   const pollFailures = ref(0)
@@ -135,6 +157,7 @@ export function useDraftRoom() {
 
   async function loadDraft() {
     if (!enabled.value) return
+    if (localMode.value) return   /* a local draft is the source; do not fetch one */
     loadingDraft.value = true
     try {
       // A pasted draft wins over the league's own — that's the point of pasting it.
@@ -144,7 +167,7 @@ export function useDraftRoom() {
         const drafts = await sleeperService.getLeagueDrafts(String(leagueStore.activeLeagueId))
         id = drafts?.[0]?.draft_id ?? null
       }
-      if (!id) { draftMeta.value = null; picks.value = []; return }
+      if (!id) { sleeperMeta.value = null; sleeperPicks.value = []; return }
       const [meta, p] = await Promise.all([
         sleeperService.getDraftById(id),
         sleeperService.getDraftPicks(id),
@@ -153,12 +176,12 @@ export function useDraftRoom() {
         overrideError.value = overrideDraftId.value
           ? "Couldn't load that draft — check the link or ID."
           : null
-        draftMeta.value = null
-        picks.value = []
+        sleeperMeta.value = null
+        sleeperPicks.value = []
         return
       }
-      draftMeta.value = meta
-      picks.value = p
+      sleeperMeta.value = meta
+      sleeperPicks.value = p
 
       const variant = adpVariantFor(
         effectiveScoring.value,
@@ -178,7 +201,7 @@ export function useDraftRoom() {
     if (!id) return
     try {
       const p = await sleeperService.getDraftPicks(id)
-      if (Array.isArray(p)) { picks.value = p; pollFailures.value = 0 }
+      if (Array.isArray(p)) { sleeperPicks.value = p; pollFailures.value = 0 }
 
       // The poll only ever read PICKS, so `status` was whatever it had been at
       // load forever after. That stranded the room at both ends: a draft you
@@ -190,7 +213,7 @@ export function useDraftRoom() {
       const status = String(draftMeta.value?.status ?? '')
       if (status !== 'complete' && (full || status === 'pre_draft' || picks.value.length > 0)) {
         const meta = await sleeperService.getDraftById(id)
-        if (meta) draftMeta.value = meta
+        if (meta) sleeperMeta.value = meta
       }
     } catch {
       pollFailures.value++
@@ -198,6 +221,7 @@ export function useDraftRoom() {
   }
 
   function startPolling() {
+    if (localMode.value) return   /* nothing to poll: the picks are ours */
     stopPolling()
     timer = setInterval(() => {
       // Back off rather than hammering a failing endpoint mid-draft.
@@ -359,10 +383,10 @@ export function useDraftRoom() {
    * already run.
    */
   const opponentIdentity = computed<'real' | 'anonymous'>(() =>
-    draftIsThisLeague.value || practiceEngaged.value ? 'real' : 'anonymous',
+    draftIsThisLeague.value || localMode.value || practiceEngaged.value ? 'real' : 'anonymous',
   )
   const opponentModel = computed<'league' | 'market'>(() =>
-    draftIsThisLeague.value || practiceEngaged.value ? 'league' : 'market',
+    draftIsThisLeague.value || localMode.value || practiceEngaged.value ? 'league' : 'market',
   )
 
   /**
@@ -1528,6 +1552,8 @@ export function useDraftRoom() {
     mySlot,
     shape,
     hasHistory,
+    localDraft,
+    localMode,
     practiceMode,
     opponentIdentity,
     opponentModel,
