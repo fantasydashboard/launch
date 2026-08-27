@@ -71,4 +71,39 @@ describe('useLocalDraft', () => {
     d.start(config)
     expect(d.draft.value).toBeNull()
   })
+
+  it('rejects a payload with a null pick to prevent downstream crashes', () => {
+    localStorage.setItem(localDraftKey('L1'), JSON.stringify({ ...config, picks: [null], startedAt: 'x', updatedAt: 'x' }))
+    const d = useLocalDraft(ref('L1'))
+    expect(d.draft.value).toBeNull()
+  })
+
+  it('rejects a payload with a missing teams field', () => {
+    const badPayload = { ...config, picks: [], startedAt: 'x', updatedAt: 'x' }
+    delete (badPayload as any).teams
+    localStorage.setItem(localDraftKey('L1'), JSON.stringify(badPayload))
+    const d = useLocalDraft(ref('L1'))
+    expect(d.draft.value).toBeNull()
+  })
+
+  it('rejects a payload with invalid type', () => {
+    localStorage.setItem(localDraftKey('L1'), JSON.stringify({ ...config, type: 'invalid', picks: [], startedAt: 'x', updatedAt: 'x' }))
+    const d = useLocalDraft(ref('L1'))
+    expect(d.draft.value).toBeNull()
+  })
+
+  it('switches leagues when leagueId ref changes on a single instance', () => {
+    const leagueId = ref('L1')
+    const d = useLocalDraft(leagueId)
+    d.start(config)
+    d.pick(player)
+    expect(d.draft.value).not.toBeNull()
+
+    leagueId.value = 'L2'
+    expect(d.draft.value).toBeNull()
+
+    leagueId.value = 'L1'
+    expect(d.draft.value).not.toBeNull()
+    expect(d.draft.value!.picks[0].name).toBe('Bijan Robinson')
+  })
 })

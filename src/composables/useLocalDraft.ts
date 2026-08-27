@@ -27,6 +27,25 @@ function read(leagueId: string | null): LocalDraft | null {
        league's draft is exactly the confident-wrong-person failure this room
        has been burned by; refuse it instead. */
     if (String(parsed.leagueId) !== String(leagueId)) return null
+
+    /* Validate draft shape fields to prevent downstream crashes.
+       A pick with null or missing required fields will crash localSleeperPicks;
+       garbage teams/rounds/type/slotToRosterId causes silent computation failures
+       where picks get attributed to the wrong managers. Partially valid drafts are
+       not salvageable — reject them unconditionally. */
+    if (typeof parsed.teams !== 'number' || parsed.teams < 1) return null
+    if (typeof parsed.rounds !== 'number' || parsed.rounds < 1) return null
+    if (parsed.type !== 'snake' && parsed.type !== 'linear') return null
+    if (!parsed.slotToRosterId || typeof parsed.slotToRosterId !== 'object') return null
+    if (typeof parsed.mySlot !== 'number') return null
+
+    /* Validate every pick: must be an object with numeric overall and string playerKey */
+    for (const pick of parsed.picks) {
+      if (!pick || typeof pick !== 'object' || typeof pick.overall !== 'number' || typeof pick.playerKey !== 'string') {
+        return null
+      }
+    }
+
     return parsed
   } catch {
     return null   /* corrupt storage must never take the draft room down */
@@ -46,9 +65,13 @@ function write(leagueId: string | null, d: LocalDraft | null) {
 export function useLocalDraft(leagueId: Ref<string | null> | ComputedRef<string | null>) {
   const current = ref<LocalDraft | null>(read(leagueId.value))
 
-  watch(leagueId, (id) => { current.value = read(id) })
+  watch(leagueId, (id) => { current.value = read(id) }, { flush: 'sync' })
 
   const commit = (d: LocalDraft | null) => {
+    /* Honor the same-reference contract from addLocalPick and undoLocalPick: they
+       return the same reference when nothing happened (draft full or empty), so a
+       caller that persists on change does not write no-ops. */
+    if (d === current.value) return
     current.value = d
     write(leagueId.value, d)
   }
