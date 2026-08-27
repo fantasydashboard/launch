@@ -29,8 +29,12 @@ export interface DraftRecord {
   /** ISO timestamp of when the record was written. */
   savedAt: string
   season: string
-  /** A mock is not the same population as your league's draft night. */
-  kind: 'league' | 'mock'
+  /**
+   * Three different populations, deliberately kept apart. A mock against bots is
+   * not your league's draft night, and a local rehearsal you entered by hand is
+   * neither — averaging across them produces a grade that describes none of them.
+   */
+  kind: 'league' | 'mock' | 'local'
   teams: number
   rounds: number
   mySlot: number | null

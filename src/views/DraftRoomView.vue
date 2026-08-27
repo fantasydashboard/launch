@@ -40,8 +40,8 @@ const visibleTabs = computed(() => [
   ...(history.records.value.length ? [{ id: 'history' as Tab, label: 'History' }] : []),
 ])
 
-/** Mocks and league nights are different rooms; the summary never mixes them. */
-const historyKind = ref<'all' | 'league' | 'mock'>('all')
+/** Mocks, league nights, and local rehearsals are different rooms; the summary never mixes them. */
+const historyKind = ref<'all' | 'league' | 'mock' | 'local'>('all')
 const historyRecords = computed(() =>
   historyKind.value === 'all' ? history.records.value : history.records.value.filter((r) => r.kind === historyKind.value),
 )
@@ -932,7 +932,7 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
         <div class="mb-3 flex items-center justify-between gap-3">
           <h2 class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Your drafts</h2>
           <div class="flex gap-1">
-            <button v-for="k in (['all', 'league', 'mock'] as const)" :key="k" @click="historyKind = k"
+            <button v-for="k in (['all', 'league', 'mock', 'local'] as const)" :key="k" @click="historyKind = k"
                     class="rounded-full border px-2 py-0.5 font-mono text-[10px] transition-colors"
                     :class="historyKind === k ? 'border-primary text-primary' : 'border-dark-border text-dark-textMuted hover:text-dark-text'">
               {{ k }}

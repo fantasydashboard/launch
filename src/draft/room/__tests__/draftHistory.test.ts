@@ -146,3 +146,27 @@ describe('upsertRecord', () => {
     expect(() => sortByDate([rec({ savedAt: undefined as any })])).not.toThrow()
   })
 })
+
+describe('summarizeHistory — local drafts are their own population', () => {
+  it('keeps a local rehearsal out of the mock averages', () => {
+    // A solo rehearsal is not a draft against nine live opponents. Mixing them
+    // would make the grade average describe neither.
+    const rows = [
+      rec({ draftId: 'a', kind: 'mock', rank: 1, of: 10 }),
+      rec({ draftId: 'b', kind: 'local', rank: 10, of: 10 }),
+    ]
+    const mocks = summarizeHistory(rows.filter((r) => r.kind === 'mock'))
+    const locals = summarizeHistory(rows.filter((r) => r.kind === 'local'))
+    expect(mocks.count).toBe(1)
+    expect(locals.count).toBe(1)
+    expect(mocks.averageGrade).not.toBe(locals.averageGrade)
+  })
+
+  it('still summarises them all together when nothing is filtered', () => {
+    const s = summarizeHistory([
+      rec({ draftId: 'a', kind: 'mock', rank: 1, of: 10 }),
+      rec({ draftId: 'b', kind: 'local', rank: 10, of: 10 }),
+    ])
+    expect(s.count).toBe(2)
+  })
+})

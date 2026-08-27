@@ -1505,7 +1505,7 @@ export function useDraftRoom() {
         season: String(draftMeta.value?.season ?? ''),
         // Deliberately NOT opponentModel: a practice room is a mock, and filing
         // it as a league draft would mix two populations in the History averages.
-        kind: draftIsThisLeague.value ? 'league' : 'mock',
+        kind: localMode.value ? 'local' : draftIsThisLeague.value ? 'league' : 'mock',
         teams: effectiveTeams.value,
         rounds: Number(draftMeta.value?.settings?.rounds) || 0,
         mySlot: mySlot.value,
