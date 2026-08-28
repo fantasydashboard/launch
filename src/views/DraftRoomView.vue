@@ -534,10 +534,18 @@ const ordinal = (n: number) => {
 }
 const bench = computed(() => myLineup.value.bench)
 const startersFilled = computed(() => lineup.value.filter((r) => r.player).length)
+
+/* The whole room was pinned to a 768px reading column, which the Draft Board cannot live
+   in: it is ten teams wide by fourteen rounds deep, so it scrolled sideways even on a
+   monitor with room to spare, and you could not see your own column next to your rivals'.
+   Give that tab the width it needs and leave the others at a comfortable measure - the
+   recap and roster are prose and lists, and stretching those to 1700px would make them
+   harder to read, not easier. */
+const shellWidth = computed(() => (tab.value === 'grid' ? 'max-w-[1700px]' : 'max-w-5xl'))
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl px-4 py-6">
+  <div class="mx-auto px-4 py-6" :class="shellWidth">
     <header class="mb-4 flex items-end justify-between gap-3">
       <div>
         <h1 class="font-display text-2xl font-bold text-dark-text">Draft Room</h1>
