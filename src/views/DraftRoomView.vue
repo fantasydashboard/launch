@@ -3,6 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useDraftRoom } from '@/composables/useDraftRoom'
 import { UFD_LABEL } from '@/composables/useCustomRankings'
+import { useDraftGuide } from '@/composables/useDraftGuide'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { startablePositions } from '@/draft/room/rosterNeed'
 import { rankTone } from '@/draft/room/slotRanks'
@@ -542,6 +543,38 @@ const startersFilled = computed(() => lineup.value.filter((r) => r.player).lengt
    recap and roster are prose and lists, and stretching those to 1700px would make them
    harder to read, not easier. */
 const shellWidth = computed(() => (tab.value === 'grid' ? 'max-w-[1700px]' : 'max-w-5xl'))
+
+/* A privately-owned draft guide, shown beside our own numbers rather than folded into them.
+   It deliberately does NOT touch scoring, ranking or the recommendation: the board's order
+   is calibrated, the guide is one analyst's opinion, and quietly averaging the two would
+   leave a number on screen that neither of them actually believes. Where they disagree,
+   that disagreement is the useful thing - so it is shown, not resolved.
+
+   Renders nothing unless a guide has been loaded into this browser. */
+const guide = useDraftGuide()
+const guideOn = computed(() => guide.loaded.value)
+
+function guideFor(playerKey: string | undefined | null) {
+  return guideOn.value ? guide.entryFor(playerKey) : null
+}
+
+const GUIDE_STYLE: Record<string, { label: string; cls: string }> = {
+  target: { label: 'target', cls: 'bg-emerald-500/15 text-emerald-400' },
+  avoid: { label: 'avoid', cls: 'bg-[#FF5C5C]/15 text-[#FF5C5C]' },
+  dart: { label: 'dart', cls: 'bg-violet-500/15 text-violet-300' },
+}
+
+/* How many of the guide's calls are still on the board, so the value of the overlay is
+   legible at a glance instead of only when you happen to scroll past a badge. */
+const guideAvailable = computed(() => {
+  if (!guideOn.value) return null
+  const counts = { target: 0, avoid: 0, dart: 0 }
+  for (const r of board.value) {
+    const e = guide.entryFor(r.playerKey)
+    if (e) counts[e.kind]++
+  }
+  return counts
+})
 </script>
 
 <template>
@@ -877,6 +910,28 @@ const shellWidth = computed(() => (tab.value === 'grid' ? 'max-w-[1700px]' : 'ma
                 </p>
               </div>
             </div>
+            <!--
+              The guide on the player we are actually recommending. This is the one place
+              the overlay earns its keep: a loud disagreement is worth reading BEFORE the
+              pick, and burying it in a hover badge on the Board tab means it arrives after.
+              The recommendation itself is unchanged — we are not letting the guide vote.
+            -->
+            <div v-if="guideFor(recommendation.pick.playerKey)" class="mb-3 rounded-lg px-3 py-2"
+                 :class="guideFor(recommendation.pick.playerKey)!.kind === 'avoid'
+                   ? 'border border-[#FF5C5C]/40 bg-[#FF5C5C]/10' : 'border border-dark-border bg-dark-bg/40'">
+              <p class="mb-1 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wide">
+                <span class="rounded px-1 py-0.5" :class="GUIDE_STYLE[guideFor(recommendation.pick.playerKey)!.kind].cls">
+                  guide: {{ GUIDE_STYLE[guideFor(recommendation.pick.playerKey)!.kind].label }}
+                </span>
+                <span class="text-dark-textMuted">
+                  confidence {{ guideFor(recommendation.pick.playerKey)!.confidence ?? '—' }}/10 ·
+                  p{{ guideFor(recommendation.pick.playerKey)!.page }}
+                </span>
+              </p>
+              <p class="font-mono text-[11px] leading-relaxed text-dark-textMuted">
+                {{ guideFor(recommendation.pick.playerKey)!.note.slice(0, 460) }}<span v-if="guideFor(recommendation.pick.playerKey)!.note.length > 460">…</span>
+              </p>
+            </div>
             <ul class="space-y-1.5">
               <li v-for="(r, i) in recommendation.reasons" :key="i" class="flex gap-2 font-mono text-[11px] text-dark-textMuted">
                 <span class="text-primary">·</span><span>{{ r.text }}</span>
@@ -955,6 +1010,14 @@ const shellWidth = computed(() => (tab.value === 'grid' ? 'max-w-[1700px]' : 'ma
           {{ localMode && !localOnClock ? 'every pick is in' : localMode ? 'tap a row to make the pick' : 'tap a row to mark drafted' }}<span v-if="posFilter === 'ALL'"> · tier cliffs show on a position tab</span>
         </p>
 
+        <!-- What the guide still has on the board, so its value is legible without scrolling. -->
+        <p v-if="guideAvailable" class="mb-3 flex flex-wrap items-center gap-2 font-mono text-[10px]">
+          <span class="text-dark-textMuted">guide still available:</span>
+          <span class="rounded px-1.5 py-0.5" :class="GUIDE_STYLE.target.cls">{{ guideAvailable.target }} target</span>
+          <span class="rounded px-1.5 py-0.5" :class="GUIDE_STYLE.dart.cls">{{ guideAvailable.dart }} dart</span>
+          <span class="rounded px-1.5 py-0.5" :class="GUIDE_STYLE.avoid.cls">{{ guideAvailable.avoid }} avoid</span>
+        </p>
+
         <template v-for="(r, i) in visibleBoard" :key="r.playerKey">
           <!--
             The most useful line in a hand-made draft guide is where the board
@@ -1014,6 +1077,17 @@ const shellWidth = computed(() => (tab.value === 'grid' ? 'max-w-[1700px]' : 'ma
                       :title="`The market ranks him ${Math.abs(r.disagreementRounds).toFixed(1)} rounds earlier than we do`">fade {{ roundsLabel(r.disagreementRounds) }}</span>
                 <span v-if="r.flag === 'fell'" class="shrink-0 rounded bg-emerald-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-emerald-400"
                       title="He has slid past his ADP to the pick you are on">fell</span>
+                <!--
+                  The guide's own verdict, carrying its author's confidence with it. Placed
+                  last so it never competes for width with our own numbers: if the row runs
+                  out of room this is the first badge to be clipped, which is the right
+                  priority — an outside opinion should not push our evidence off screen.
+                -->
+                <span v-if="!(r as any).takenAt && guideFor(r.playerKey)" :key="`g-${r.playerKey}`"
+                      class="shrink-0 whitespace-nowrap rounded px-1 py-0.5 font-mono text-[9px] uppercase"
+                      :class="GUIDE_STYLE[guideFor(r.playerKey)!.kind].cls"
+                      :title="`Guide p${guideFor(r.playerKey)!.page} · confidence ${guideFor(r.playerKey)!.confidence ?? '—'}/10 — ${guideFor(r.playerKey)!.note.slice(0, 320)}`"
+                >{{ GUIDE_STYLE[guideFor(r.playerKey)!.kind].label }}<span v-if="guideFor(r.playerKey)!.confidence" class="opacity-60"> {{ guideFor(r.playerKey)!.confidence }}</span></span>
                 <!--
                   Only the statuses that mean he may not play. `Questionable` in
                   August is a camp tag sitting on round-one players, and a code
