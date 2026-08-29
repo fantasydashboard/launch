@@ -91,6 +91,21 @@ export function buildPowerRankings(teams: PowerTeamInput[]): PowerRankings {
   // Record rank: win% first, then points-for as the tiebreaker.
   const recordRank = rankBy(teams, (t) => winPct(t) * 1000 + (t.pointsFor ?? 0) / 1e6)
 
+  /* Luck is a comparison between the standings and the roster, so it needs standings that
+     mean something. Before kickoff every team is 0-0 with 0 points-for, so they all tie and
+     rankBy hands every one of them 1st. luckDelta then collapses to `strengthRank - 1`,
+     which brands everybody outside the top few as a lucky fraud "due to regress" on the
+     evidence of no football whatsoever — in a 10-team league that was 7 of 10 teams, and
+     the numbers marched 3,4,5,6,7,8,9 straight down the page because that is just their
+     talent rank minus one.
+
+     Two completed weeks is still thin, but it is the point at which the standings carry any
+     information at all. Below it there is no luck verdict, no arrows and no callout: the
+     roster ranking stands on its own, which is the honest thing for a preseason page to do. */
+  const MIN_WEEKS_FOR_LUCK = 3
+  const gamesPlayed = Math.max(...teams.map((t) => t.wins + t.losses + (t.ties ?? 0)), 0)
+  const luckIsReadable = gamesPlayed >= MIN_WEEKS_FOR_LUCK
+
   // Gap that counts as luck. Scales with league size so a 2-spot wobble in a
   // 12-team league isn't flagged as fate (~a quarter of the field must separate).
   const tol = Math.max(2, Math.round(n / 4))
@@ -109,7 +124,8 @@ export function buildPowerRankings(teams: PowerTeamInput[]): PowerRankings {
     const managerless = !!t.managerless
 
     // Abandoned teams never get a luck verdict — the talent won't be managed.
-    const luck: LuckStatus = managerless
+    // Neither does anyone, until the standings have had time to say something.
+    const luck: LuckStatus = managerless || !luckIsReadable
       ? 'legit'
       : luckDelta >= tol ? 'pretender' : luckDelta <= -tol ? 'sleeper' : 'legit'
     // A bottom-tier roster can't be a real "buy-low / they'll climb" — soften it to
@@ -146,6 +162,30 @@ export function buildPowerRankings(teams: PowerTeamInput[]): PowerRankings {
         `Underwater at ${ord(rr)} despite ${ord(sr)}-best talent. Unlucky, and primed to rise.`,
         `Standings say ${ord(rr)}, the roster says ${ord(sr)} — expect them to climb.`,
       ]
+    } else if (!luckIsReadable) {
+      /* No games worth reading yet, so every sentence has to be about the roster alone.
+         The tier copy below all leans on the standings — "the record backs it", "they're
+         stacking wins", "the standings aren't lying" — which at 0-0 asserts wins that do
+         not exist. Describe the roster; say nothing about a season that hasn't happened. */
+      variants = tier === 'Contender'
+        ? sr === 1
+          ? [
+              `The best roster in the league on paper. Nothing played yet — but this is the one to beat.`,
+              `Top roster in the league heading in. The season still has to agree with it.`,
+            ]
+          : [
+              `${ord(sr)}-best roster heading into the season — squarely in the contender group.`,
+              `Built to contend: ${ord(sr)} in talent before a snap is played.`,
+            ]
+        : tier === 'Rebuilder'
+          ? [
+              `Thin on paper — ${ord(sr)} in talent heading in. Needs the waiver wire to break right.`,
+              `${ord(sr)}-best roster to start. There's work to do here.`,
+            ]
+          : [
+              `Middle of the pack on paper — ${ord(sr)} in talent heading into the season.`,
+              `${ord(sr)} in talent to start: in the mix, not yet in the top group.`,
+            ]
     } else if (tier === 'Contender') {
       // "Class of the league" is reserved for the actual #1; everyone else is a
       // "real contender" so the superlative never lands on a #2/#3.

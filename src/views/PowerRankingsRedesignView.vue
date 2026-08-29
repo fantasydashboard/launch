@@ -189,9 +189,21 @@ const forecastArrow = (r: { luck: string; managerless: boolean }) => {
 // Strength display. Points: round to the nearest 10 (the raw figure carries false precision).
 // Category (ECW): a small ~0–N figure, so show one decimal — rounding to 10 would zero it out.
 const fmtStrength = (n: number) => (isCategory.value ? n.toFixed(1) : String(Math.round(n / 10) * 10))
+/* The GAP gets its own formatter. Rounding a gap to the nearest 10 — the treatment that
+   suits a ~150 absolute — turns a 4-point deficit into "−0", which tells the reader the
+   second-best roster is level with the first, and buckets six genuinely different teams
+   into an identical "−10". That is the same manufactured tie the absolute figure was
+   switched away from, reintroduced one line below the comment explaining why. A gap is a
+   small number and wants small-number precision. */
+const fmtGap = (n: number) => {
+  if (isCategory.value) return n.toFixed(1)
+  const v = Math.max(0, n)
+  return v < 10 ? v.toFixed(1) : String(Math.round(v))
+}
 const perWeekBasis = computed(() => isCategory.value || trajectory.weeksLeft.value > 0)
 // Category strength is intrinsically per-week (ECW); points strength is per-week only once
 // weeks-left resolves. Leader unit + gap unit follow suit.
+const hasAbandoned = computed(() => (rankings.value?.rows ?? []).some((r) => r.managerless))
 const leaderUnit = computed(() =>
   isCategory.value
     ? catCount.value ? `of ${catCount.value} cats/wk` : 'cats/wk'
@@ -280,8 +292,12 @@ const showHow = ref(false)
         <p>Your win-loss record isn't part of the rank. It's used only to spot luck: when a team's talent rank and its standings rank disagree, that gap forecasts movement — a record running ahead of the roster is <span class="text-[#e69a4a]">due to fall</span>, a roster the standings haven't caught up to is <span class="text-primary">due to rise</span>.</p>
       </div>
       <div>
-        <p class="mb-1 text-[10px] uppercase tracking-widest text-dark-textSecondary">Tiers &amp; abandoned teams</p>
-        <p>Contender / Bubble / Rebuilder come from where a roster's talent lands — top third, middle, bottom third. A team with no manager is flagged <span class="text-dark-text">abandoned</span> and held out of the due-to-rise list: the talent's there, but nobody's setting the lineup, so it won't be realized.</p>
+        <p class="mb-1 text-[10px] uppercase tracking-widest text-dark-textSecondary">Tiers</p>
+        <p>Contender / Bubble / Rebuilder come from where a roster's talent lands — top third, middle, bottom third.<!--
+          The abandoned rule only earns its space in a league that actually has one. Explaining
+          a rule that fires for nobody is clutter, and it was the first thing on the page a
+          reader had to work out was irrelevant to them.
+        --><template v-if="hasAbandoned"> A team with no manager is flagged <span class="text-dark-text">abandoned</span> and held out of the due-to-rise list: the talent's there, but nobody's setting the lineup, so it won't be realized.</template></p>
       </div>
       <div>
         <p class="mb-1 text-[10px] uppercase tracking-widest text-[#e69a4a]">What it doesn't account for yet</p>
@@ -352,7 +368,7 @@ const showHow = ref(false)
               </div>
               <div class="mt-0.5 text-right font-mono text-[9px] text-dark-textMuted" :title="`${fmtStrength(r.strength)} ${leaderUnit}`">
                 <template v-if="r.strengthRank === 1">{{ fmtStrength(r.strength) }} {{ leaderUnit }}</template>
-                <template v-else>−{{ fmtStrength(leaderStrength - r.strength) }}{{ gapSuffix }}</template>
+                <template v-else>−{{ fmtGap(leaderStrength - r.strength) }}{{ gapSuffix }}</template>
               </div>
             </div>
           </div>

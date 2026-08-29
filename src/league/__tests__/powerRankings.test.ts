@@ -109,3 +109,64 @@ describe('buildPowerRankings', () => {
     }
   })
 })
+
+describe('buildPowerRankings — before the season has said anything', () => {
+  // The exact shape that shipped: ten teams, all 0-0, no points scored.
+  const preseason: PowerTeamInput[] = Array.from({ length: 10 }, (_, i) => ({
+    teamKey: `t${i + 1}`,
+    teamName: `Team ${i + 1}`,
+    strength: 150 - i * 5,   // distinct talent, descending
+    wins: 0,
+    losses: 0,
+    pointsFor: 0,
+  }))
+
+  it('brands nobody lucky or unlucky at 0-0', () => {
+    const pr = buildPowerRankings(preseason)
+    expect(pr.rows.every((r) => r.luck === 'legit')).toBe(true)
+    expect(pr.pretenders).toEqual([])
+    expect(pr.sleepers).toEqual([])
+  })
+
+  it('never claims a record backs anything when no games have been played', () => {
+    const pr = buildPowerRankings(preseason)
+    const all = pr.rows.map((r) => r.blurb).join(' ')
+    for (const lie of [
+      'the record backs it',
+      'stacking wins',
+      'the wins are following',
+      'the standings agree',
+      "the standings aren't lying",
+      'the record knows it',
+      'due to regress',
+      'riding luck',
+      'Overachieving',
+      'flatter them',
+    ]) {
+      expect(all).not.toContain(lie)
+    }
+  })
+
+  it('still ranks by roster talent — the preseason read is the useful one', () => {
+    const pr = buildPowerRankings(preseason)
+    expect(pr.rows.map((r) => r.teamKey)).toEqual(preseason.map((t) => t.teamKey))
+    expect(pr.rows[0].strengthRank).toBe(1)
+  })
+
+  it('turns the luck read back on once the standings mean something', () => {
+    // Same talent order, but now a full slate: the weakest roster is 3-0.
+    const played = preseason.map((t, i) =>
+      i === 9 ? { ...t, wins: 3, losses: 0 } : { ...t, wins: 0, losses: 3 },
+    )
+    const pr = buildPowerRankings(played)
+    expect(pr.pretenders.length).toBeGreaterThan(0)
+    expect(pr.pretenders[0].teamKey).toBe('t10')
+  })
+
+  it('does not flip on at one or two games, where the standings are still noise', () => {
+    const oneWeek = preseason.map((t, i) => (i === 9 ? { ...t, wins: 1 } : { ...t, losses: 1 }))
+    expect(buildPowerRankings(oneWeek).pretenders).toEqual([])
+    const twoWeeks = preseason.map((t, i) => (i === 9 ? { ...t, wins: 2 } : { ...t, losses: 2 }))
+    expect(buildPowerRankings(twoWeeks).pretenders).toEqual([])
+  })
+})
