@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildAllPlay, formatAllPlay } from '../allPlay'
+import { buildAllPlay, buildAllPlayForm, formatAllPlay } from '../allPlay'
 import type { WeekOutcomes } from '../powerTrajectory'
 
 const wk = (week: number, points: Record<string, number>): WeekOutcomes =>
@@ -89,5 +89,41 @@ describe('buildAllPlay', () => {
   it('formats for display beside the real record', () => {
     expect(formatAllPlay({ wins: 26, losses: 10, ties: 0 })).toBe('26-10')
     expect(formatAllPlay({ wins: 26, losses: 9, ties: 1 })).toBe('26-9-1')
+  })
+})
+
+describe('buildAllPlayForm', () => {
+  const week = (n: number, pts: Record<string, number>) => wk(n, pts)
+
+  it('says nothing until the window is a real subset of the season', () => {
+    // exactly 3 weeks played, window of 3 → window IS the season, every delta would be 0
+    const three = [week(1, { a: 120, b: 90, c: 100, d: 80 }), week(2, { a: 120, b: 90, c: 100, d: 80 }), week(3, { a: 120, b: 90, c: 100, d: 80 })]
+    expect(buildAllPlayForm(three, KEYS, 3).readable).toBe(false)
+    const four = [...three, week(4, { a: 120, b: 90, c: 100, d: 80 })]
+    expect(buildAllPlayForm(four, KEYS, 3).readable).toBe(true)
+  })
+
+  it('flags a team playing above its season level', () => {
+    // 'd' is worst for 3 weeks, then best for the last 3
+    const weeks = [
+      week(1, { a: 120, b: 110, c: 100, d: 80 }), week(2, { a: 120, b: 110, c: 100, d: 80 }), week(3, { a: 120, b: 110, c: 100, d: 80 }),
+      week(4, { a: 80, b: 90, c: 100, d: 130 }), week(5, { a: 80, b: 90, c: 100, d: 130 }), week(6, { a: 80, b: 90, c: 100, d: 130 }),
+    ]
+    const f = buildAllPlayForm(weeks, KEYS, 3)
+    expect(f.readable).toBe(true)
+    expect(f.byTeam.get('d')!.recentPct).toBe(1)          // beat everyone lately
+    expect(f.byTeam.get('d')!.delta).toBeGreaterThan(0)   // well above their season
+    expect(f.byTeam.get('a')!.delta).toBeLessThan(0)      // cooled off
+  })
+
+  it('a team steady all year has a delta of about zero, not a false trend', () => {
+    const weeks = Array.from({ length: 6 }, (_, i) => week(i + 1, { a: 120, b: 110, c: 100, d: 90 }))
+    const f = buildAllPlayForm(weeks, KEYS, 3)
+    for (const k of KEYS) expect(Math.abs(f.byTeam.get(k)!.delta)).toBeLessThan(1e-9)
+  })
+
+  it('never throws on empty or junk', () => {
+    expect(buildAllPlayForm([], KEYS, 3).readable).toBe(false)
+    expect(buildAllPlayForm(null as never, KEYS, 3).readable).toBe(false)
   })
 })

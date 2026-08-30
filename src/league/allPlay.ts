@@ -106,3 +106,64 @@ export function buildAllPlay(outcomes: WeekOutcomes[], teamKeys: string[]): AllP
 export function formatAllPlay(r: Pick<AllPlayRow, 'wins' | 'losses' | 'ties'>): string {
   return r.ties ? `${r.wins}-${r.losses}-${r.ties}` : `${r.wins}-${r.losses}`
 }
+
+export interface AllPlayForm {
+  teamKey: string
+  recentPct: number // all-play win rate over the window
+  seasonPct: number // all-play win rate over everything counted
+  delta: number // recent − season. + = playing above their season level
+  windowWeeks: number
+}
+
+export interface AllPlayFormResult {
+  byTeam: Map<string, AllPlayForm>
+  windowWeeks: number
+  seasonWeeks: number
+  /** false when there is nothing honest to say yet — the caller renders no form read */
+  readable: boolean
+}
+
+/**
+ * Form: the same all-play question asked over the last few weeks, then compared with the
+ * season.
+ *
+ * Measured this way on purpose. Raw points over a window is the noisy version — a team can
+ * post its best three weeks of the year and still have been beaten by most of the league,
+ * because scoring environments move together. And "actual vs projected" would need the
+ * projections that were live in past weeks, which only exist where a snapshot happened to
+ * be captured; a form read that silently vanishes for most leagues is worse than none.
+ *
+ * All-play needs nothing that isn't already loaded, and because the window and the season
+ * are measured in the identical unit, the difference between them is a real number rather
+ * than two scales being eyeballed against each other.
+ */
+export function buildAllPlayForm(
+  outcomes: WeekOutcomes[],
+  teamKeys: string[],
+  lastN = 3,
+): AllPlayFormResult {
+  const season = buildAllPlay(outcomes, teamKeys)
+  const scored = (Array.isArray(outcomes) ? outcomes : [])
+    .filter((w) => w?.points && teamKeys.some((k) => Number.isFinite(w.points![k] as number)))
+    .sort((a, b) => a.week - b.week)
+  const window = buildAllPlay(scored.slice(-lastN), teamKeys)
+
+  /* The window has to be a SUBSET of the season, or "recent vs season" compares a thing
+     with itself and every delta is exactly zero — a column of 0.0 that looks like a
+     finding. One week of separation is the minimum that can say anything. */
+  const readable = window.weeksCounted >= lastN && season.weeksCounted > window.weeksCounted
+
+  const byTeam = new Map<string, AllPlayForm>()
+  for (const k of teamKeys) {
+    const r = window.byTeam.get(k)
+    const s = season.byTeam.get(k)
+    byTeam.set(k, {
+      teamKey: k,
+      recentPct: r?.pct ?? 0,
+      seasonPct: s?.pct ?? 0,
+      delta: (r?.pct ?? 0) - (s?.pct ?? 0),
+      windowWeeks: window.weeksCounted,
+    })
+  }
+  return { byTeam, windowWeeks: window.weeksCounted, seasonWeeks: season.weeksCounted, readable }
+}

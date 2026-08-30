@@ -4,6 +4,7 @@ import { useLeagueStore } from '@/stores/league'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { usePowerTrajectory } from '@/composables/usePowerTrajectory'
+import { buildAllPlay, buildAllPlayForm, formatAllPlay } from '@/league/allPlay'
 import { useCategoryStrength } from '@/composables/useCategoryStrength'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
@@ -204,6 +205,38 @@ const perWeekBasis = computed(() => isCategory.value || trajectory.weeksLeft.val
 // Category strength is intrinsically per-week (ECW); points strength is per-week only once
 // weeks-left resolves. Leader unit + gap unit follow suit.
 const hasAbandoned = computed(() => (rankings.value?.rows ?? []).some((r) => r.managerless))
+
+/* All-play: how many teams you would have beaten each week, not just the one the schedule
+   handed you. Points-for answers "how much did they score", which is only half the
+   question — a big week is worth nothing if the league went big with you. This answers the
+   same question the standings ask, with the schedule luck taken out, so a 3-6 team sitting
+   at 30-24 in all-play reads as what it is: a good team that keeps drawing the high scorer.
+   Costs nothing to compute — the per-week points are already loaded for the chart. */
+const allPlay = computed(() =>
+  buildAllPlay(trajectory.outcomes.value, (rankings.value?.rows ?? []).map((r) => r.teamKey)),
+)
+const allPlayFor = (teamKey: string) => (allPlay.value.weeksCounted > 0 ? allPlay.value.byTeam.get(teamKey) ?? null : null)
+
+/* Form = the same all-play question over the last three weeks, against their own season.
+   Only shown once the window is a genuine subset of the season, otherwise every team reads
+   exactly 0.0 — a whole column of nothing that looks like a finding. A move of less than a
+   tenth is inside the noise of a three-week sample and is not worth a badge. */
+const FORM_WINDOW = 3
+const FORM_MIN_DELTA = 0.10
+const allPlayForm = computed(() =>
+  buildAllPlayForm(trajectory.outcomes.value, (rankings.value?.rows ?? []).map((r) => r.teamKey), FORM_WINDOW),
+)
+const formFor = (teamKey: string) => {
+  if (!allPlayForm.value.readable) return null
+  const f = allPlayForm.value.byTeam.get(teamKey)
+  if (!f || Math.abs(f.delta) < FORM_MIN_DELTA) return null
+  return {
+    hot: f.delta > 0,
+    pts: Math.round(Math.abs(f.delta) * 100),
+    recent: Math.round(f.recentPct * 100),
+    season: Math.round(f.seasonPct * 100),
+  }
+}
 const leaderUnit = computed(() =>
   isCategory.value
     ? catCount.value ? `of ${catCount.value} cats/wk` : 'cats/wk'
@@ -353,6 +386,20 @@ const showHow = ref(false)
               </span>
               <span class="flex items-center gap-2 font-mono text-[11px] text-dark-textMuted">
                 {{ recordStr(r) }}
+                <!--
+                  All-play sits right beside the real record on purpose: the two disagreeing
+                  IS the read. Hidden until a week has actually been scored, so it can never
+                  print 0-0 next to a verdict, which is the failure this page just had.
+                -->
+                <span v-if="allPlayFor(r.teamKey)" class="text-dark-textSecondary"
+                      :title="`Scored against every team every week: ${formatAllPlay(allPlayFor(r.teamKey)!)} over ${allPlay.weeksCounted} week${allPlay.weeksCounted === 1 ? '' : 's'}. Schedule luck removed.`">
+                  · {{ formatAllPlay(allPlayFor(r.teamKey)!) }} all-play
+                </span>
+                <!-- Form rides beside all-play because it is the same measure, windowed. -->
+                <span v-if="formFor(r.teamKey)" :class="formFor(r.teamKey)!.hot ? 'text-primary' : 'text-[#e69a4a]'"
+                      :title="`Last ${FORM_WINDOW} weeks they have beaten ${formFor(r.teamKey)!.recent}% of the league, against ${formFor(r.teamKey)!.season}% across the season.`">
+                  · {{ formFor(r.teamKey)!.hot ? 'heating up' : 'cooling off' }} {{ formFor(r.teamKey)!.hot ? '+' : '−' }}{{ formFor(r.teamKey)!.pts }}
+                </span>
                 <span v-if="r.managerless" class="text-dark-textMuted">· no manager — talent stranded</span>
                 <span v-else-if="r.luck === 'pretender'" class="text-[#e69a4a]">· lucky (record {{ Math.abs(r.luckDelta) }} ahead of talent)</span>
                 <span v-else-if="r.luck === 'sleeper'" class="text-primary">· unlucky (talent {{ Math.abs(r.luckDelta) }} ahead of record)</span>
