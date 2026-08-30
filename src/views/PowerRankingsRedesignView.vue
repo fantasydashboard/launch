@@ -5,6 +5,8 @@ import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { usePowerTrajectory } from '@/composables/usePowerTrajectory'
 import { buildAllPlay, buildAllPlayForm, formatAllPlay } from '@/league/allPlay'
+import { buildStrengthOfSchedule } from '@/league/strengthOfSchedule'
+import { buildSituations, type SituationInput } from '@/league/situations'
 import { useCategoryStrength } from '@/composables/useCategoryStrength'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
@@ -221,6 +223,49 @@ const allPlayFor = (teamKey: string) => (allPlay.value.weeksCounted > 0 ? allPla
    Only shown once the window is a genuine subset of the season, otherwise every team reads
    exactly 0.0 — a whole column of nothing that looks like a finding. A move of less than a
    tenth is inside the noise of a three-week sample and is not worth a badge. */
+/* Remaining opponent difficulty, from the module LeagueView already uses. Reusing it keeps
+   one definition of "hard schedule" across the app instead of two that drift apart. */
+const sos = computed(() => {
+  const rows = rankings.value?.rows ?? []
+  const sched = trajectory.remainingSchedule.value ?? []
+  if (!rows.length || !sched.length) return new Map<string, number>()
+  const built = buildStrengthOfSchedule(
+    rows.map((r) => ({ teamKey: r.teamKey, teamName: r.teamName, strength: r.strength, standingRank: r.recordRank })),
+    sched.map((w) => ({ matchups: w.matchups })),
+  )
+  return new Map(built.map((r) => [r.teamKey, r.sosRank]))
+})
+
+/* The cheat code: not a blended score, but the places two honest signals disagree. Each
+   input is passed only when it is READABLE — an absent signal contributes nothing rather
+   than a zero, which is the whole lesson of the 0-0 bug. */
+const situations = computed(() => {
+  const rows = rankings.value?.rows ?? []
+  if (!rows.length) return []
+  const apReadable = allPlay.value.weeksCounted > 0
+  const sosMap = sos.value
+  const inputs: SituationInput[] = rows.map((r) => ({
+    teamKey: r.teamKey,
+    n: rows.length,
+    talentRank: r.strengthRank,
+    recordRank: r.recordRank,
+    allPlayRank: apReadable ? allPlay.value.byTeam.get(r.teamKey)?.rank : undefined,
+    formDelta: allPlayForm.value.readable ? allPlayForm.value.byTeam.get(r.teamKey)?.delta : undefined,
+    sosRank: sosMap.get(r.teamKey),
+    managerless: r.managerless,
+  }))
+  return buildSituations(inputs)
+})
+const situationFor = (teamKey: string) => situations.value.find((s) => s.teamKey === teamKey) ?? null
+const SITUATION_CLASS: Record<string, string> = {
+  'sell-high': 'text-[#e69a4a]',
+  'buy-low': 'text-primary',
+  'schedule-turns': 'text-primary',
+  gauntlet: 'text-[#e69a4a]',
+  'real-deal': 'text-dark-textSecondary',
+  stranded: 'text-dark-textMuted',
+}
+
 const FORM_WINDOW = 3
 const FORM_MIN_DELTA = 0.10
 const allPlayForm = computed(() =>
@@ -383,6 +428,14 @@ const showHow = ref(false)
                 <span v-if="r.managerless" class="shrink-0 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">abandoned</span>
                 <span v-else class="shrink-0 font-mono text-[9px] uppercase tracking-wider" :class="tierClass(r.tier)">{{ r.tier }}</span>
                 <span v-if="rowStakes.get(r.teamKey)" class="shrink-0 font-mono text-[9px] uppercase tracking-wider" :class="rowStakes.get(r.teamKey)?.cls">· {{ rowStakes.get(r.teamKey)?.label }}</span>
+                <!--
+                  One verdict per row, and only where two signals genuinely disagree. The
+                  detail names both of them, so the claim is checkable against this same row
+                  rather than being something the page merely asserts.
+                -->
+                <span v-if="situationFor(r.teamKey)" class="shrink-0 font-mono text-[9px] uppercase tracking-wider"
+                      :class="SITUATION_CLASS[situationFor(r.teamKey)!.kind]"
+                      :title="situationFor(r.teamKey)!.detail">· {{ situationFor(r.teamKey)!.label }}</span>
               </span>
               <span class="flex items-center gap-2 font-mono text-[11px] text-dark-textMuted">
                 {{ recordStr(r) }}
