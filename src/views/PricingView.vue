@@ -88,7 +88,7 @@ Free forever. Upgrade to win.
             <span class="text-5xl font-black" style="color: #22c55e;">$39</span>
             <span class="text-sm ml-1" style="color: #6b7280;">/ season</span>
           </div>
-          <p class="text-xs mb-6" style="color: #6b7280;">365 days · every league you're in · cancel anytime</p>
+          <p class="text-xs mb-6" style="color: #6b7280;">Renews annually · every league you're in · cancel anytime</p>
 
           <ul class="space-y-3 mb-8">
             <li v-for="f in paidFeatures" :key="f" class="flex items-start gap-3">
@@ -110,7 +110,7 @@ Free forever. Upgrade to win.
             <span v-else>Get Started Free</span>
           </button>
           <p class="text-center text-xs mt-3" style="color: #4b5563;">
-            <span v-if="isLoggedIn">$39 for 365 days · cancel anytime</span>
+            <span v-if="isLoggedIn">$39/year · renews annually · cancel anytime</span>
             <span v-else>Start free — no credit card</span>
           </p>
         </div>
@@ -283,7 +283,7 @@ const comparisonRows = [
   { feature: 'The Wire — waiver targets',              free: false,       individual: true },
   { feature: 'Trade analysis',                         free: false,       individual: true },
   { feature: 'Shareable graphics & downloads',         free: false,       individual: true },
-  { feature: 'Time limit',                             free: 'None',      individual: '365 days' },
+  { feature: 'Billing',                                free: 'Free',      individual: '$39/yr, renews' },
 ]
 
 const faqs = [
@@ -309,7 +309,7 @@ const faqs = [
   },
   {
     question: 'Can I cancel?',
-    answer: 'Yes — cancel anytime from your Stripe billing portal. You keep access through the end of the season you paid for.'
+    answer: 'Yes — Settings → Subscription → Manage subscription, which opens the Stripe billing portal. Cancel, change your card or download invoices there. Cancelling keeps your access until the season you have paid for runs out.'
   },
 ]
 

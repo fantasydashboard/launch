@@ -93,6 +93,44 @@
       </div>
     </div>
 
+    <!-- Subscription -->
+    <div class="card">
+      <div class="card-header">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">💳</span>
+          <h2 class="card-title">Subscription</h2>
+        </div>
+      </div>
+      <div class="p-4">
+        <template v-if="isPaid">
+          <p class="mb-1 text-sm text-dark-text">Season Pass — active</p>
+          <p class="mb-4 font-mono text-xs text-dark-textMuted">
+            $39 a year, renewing annually, covering every league you're in. Change your card,
+            download invoices or cancel below — cancelling keeps your access until the season
+            you've paid for runs out.
+          </p>
+        </template>
+        <template v-else>
+          <p class="mb-1 text-sm text-dark-text">You're on the free plan</p>
+          <p class="mb-4 font-mono text-xs text-dark-textMuted">
+            Power rankings, standings and history are yours for every league, with no time
+            limit. The Season Pass adds the Draft Room pick, the wire and trades.
+          </p>
+        </template>
+        <div class="flex flex-wrap items-center gap-3">
+          <button v-if="isPaid" @click="openBillingPortal" :disabled="portalLoading"
+            class="rounded-lg border border-dark-border px-4 py-2 font-mono text-xs text-dark-text disabled:opacity-60">
+            {{ portalLoading ? 'Opening…' : 'Manage subscription' }}
+          </button>
+          <RouterLink v-else to="/pricing"
+            class="rounded-lg bg-primary px-4 py-2 font-mono text-xs font-semibold text-dark-bg">
+            See the Season Pass
+          </RouterLink>
+        </div>
+        <p v-if="portalError" class="mt-2 font-mono text-xs text-red-400">{{ portalError }}</p>
+      </div>
+    </div>
+
     <!-- Connected Platforms Section -->
     <div class="card">
       <div class="card-header">
@@ -301,6 +339,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { usePlatformsStore } from '@/stores/platforms'
 import { useAuthStore } from '@/stores/auth'
@@ -309,8 +348,41 @@ import { cache } from '@/services/cache'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { useCustomRankings, KIND_LABELS, KIND_STALE_DAYS, UFD_LABEL, type RankingKind } from '@/composables/useCustomRankings'
 import { parseRankings } from '@/draft/room/customRankings'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const leagueStore = useLeagueStore()
+
+/* Subscription management. Stripe hosts the portal — cancelling, changing a card and
+   downloading invoices all live there — so this only mints the link. A subscriber who
+   cannot find the way out disputes the charge instead, which costs more than the
+   cancellation ever would. */
+const { isPaid } = useFeatureAccess()
+const portalLoading = ref(false)
+const portalError = ref('')
+async function openBillingPortal() {
+  portalError.value = ''
+  portalLoading.value = true
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { portalError.value = 'Please sign in first.'; return }
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-portal-session`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+    })
+    const data = await res.json()
+    if (!res.ok) { portalError.value = data.error || 'Could not open the billing portal.'; return }
+    if (data.url) window.location.href = data.url
+    else portalError.value = 'No portal link came back. Please try again.'
+  } catch {
+    portalError.value = 'Network error. Please check your connection.'
+  } finally {
+    portalLoading.value = false
+  }
+}
 
 // Custom draft rankings — an account-level preference, not draft state, so it
 // belongs beside the other standing settings rather than inside a draft tool.

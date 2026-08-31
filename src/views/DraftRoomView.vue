@@ -900,7 +900,7 @@ const guideAvailable = computed(() => {
         <p class="mx-auto mb-6 max-w-md font-mono text-xs leading-relaxed text-dark-textMuted">
           The board, the tiers and the run risk on the other tabs stay free. This tab is the pick
           itself — what it costs you to wait, who survives to your next turn, and the case for the
-          player. $39 for the season, every league you're in.
+          player. $39 a year, renewing annually, every league you're in.
         </p>
         <RouterLink to="/pricing"
           class="inline-block rounded-lg bg-primary px-6 py-3 font-mono text-xs font-semibold uppercase tracking-wide text-dark-bg">
