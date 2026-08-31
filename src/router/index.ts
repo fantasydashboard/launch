@@ -39,12 +39,16 @@ const router = createRouter({
       component: () => import('@/views/SportLandingView.vue'),
       props: { sport: 'hockey' }
     },
-    // Pricing page (requires auth)
+    /* Pricing is PUBLIC. It was behind requiresAuth, which bounced every signed-out
+       visitor to the home page — so nobody could find out what the product cost without
+       first creating an account. People decide on price before they sign up, not after,
+       and a link to /pricing from anywhere off-site landed on a marketing page with no
+       prices on it. The view already renders a signed-out state. */
     {
       path: '/pricing',
       name: 'pricing',
       component: () => import('@/views/PricingView.vue'),
-      meta: { requiresAuth: true }
+      meta: { public: true }
     },
     // Upgrade routes (redirects to pricing with context)
     {

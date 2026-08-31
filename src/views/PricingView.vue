@@ -60,10 +60,11 @@ Free forever. Upgrade to win.
           </ul>
 
           <div class="text-center">
-            <button @click="goToDashboard"
+            <!-- Signed out, this is an invitation; signed in, it is a statement of fact. -->
+            <button @click="isLoggedIn ? goToDashboard() : startTrial()"
               class="w-full py-3 rounded-xl text-sm font-bold transition-colors"
               style="background: #11131a; color: #6b7280; border: 1px solid #1e2130;">
-              Your current plan
+              {{ isLoggedIn ? 'Your current plan' : 'Start free — connect a league' }}
             </button>
           </div>
         </div>
@@ -107,11 +108,11 @@ Free forever. Upgrade to win.
             style="background: linear-gradient(135deg, #22c55e, #16a34a); color: #0a0c14; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 4px 20px rgba(34,197,94,0.3);">
             <span v-if="checkingOut && checkoutTarget === 'individual'">Redirecting…</span>
             <span v-else-if="isLoggedIn">Get the Season Pass — $39</span>
-            <span v-else>Get Started Free</span>
+            <span v-else>Create an account to subscribe</span>
           </button>
           <p class="text-center text-xs mt-3" style="color: #4b5563;">
             <span v-if="isLoggedIn">$39/year · renews annually · cancel anytime</span>
-            <span v-else>Start free — no credit card</span>
+            <span v-else>Free account first · card only when you subscribe</span>
           </p>
         </div>
       </div>
