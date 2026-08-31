@@ -2,16 +2,18 @@
 // Handles subscription tier checking and feature gating.
 //
 // Access model (updated):
-//   Free trial    — 7 days from first login; full access during trial.
-//                   Stored in profiles.trial_started_at / trial_expires_at.
+//   Free tier     — the whole descriptive half of the product, every league, no expiry.
+//                   Power rankings, all-play, situations, standings, scores, history.
+//   Free trial    — RETIRED. The timestamp is still written for signup analytics, but it
+//                   grants no access: the free tier is the demonstration now.
 //   League Pass   — NO LONGER SOLD as of the 2026 season. It sold one edge to twelve
 //                   people at once, which cancels the edge it was selling: a cheat code
 //                   everyone in your league has is not a cheat code. The read path below
 //                   stays, because passes already bought must keep working until their 365
 //                   days run out, and because The League Beat — where everyone having it is
 //                   the whole point — wants exactly this mechanic.
-//   Individual    — per-user subscription ($7.99/mo or $49/yr); unlocks all features
-//                   for the purchasing user across all their leagues.
+//   Season Pass   — per-user subscription ($39/yr) covering ALL of that user's leagues.
+//                   Unlocks the Draft Room pick, the wire, trades and the matchup deep dive.
 //                   Stored in `individual_subscriptions` + profiles.subscription_tier.
 //   Admin         — full access; set via profiles.subscription_tier = 'admin'.
 
@@ -21,17 +23,16 @@ import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 
 // ── Pricing constants (updated) ───────────────────────────────────────────────
+/* One price. The retired entries are deleted rather than commented out, because a stale
+   number here is worse than none: `leaguePass` read $29 while Stripe was actually charging
+   $19 with a $5 launch price, and nothing in the code would ever have caught that drift.
+   The single source of truth for what someone is charged is the Stripe price the
+   STRIPE_INDIVIDUAL_ANNUAL_PRICE_ID env var points at — this constant exists only for
+   display and analytics, and has to be kept in step with it by hand. */
 export const PRICING = {
-  leaguePass: {
-    price: 2900,      // $29 one-time per league
+  seasonPass: {
+    annual: 3900,     // $39/year — founding-season price
   },
-  individual: {
-    monthly: 799,     // $7.99/month
-    annual:  4900,    // $49/year
-  },
-  trial: {
-    days: 7,
-  }
 }
 
 export type SubscriptionTier = 'free' | 'trial' | 'individual' | 'league' | 'admin'
@@ -355,10 +356,6 @@ export function useFeatureAccess() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-export function calculateLeaguePrice(): number {
-  return PRICING.leaguePass.price
-}
 
 export function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`

@@ -85,7 +85,7 @@ Free forever. Upgrade to win.
           </div>
 
           <div class="mb-2">
-            <span class="text-5xl font-black" style="color: #22c55e;">$49</span>
+            <span class="text-5xl font-black" style="color: #22c55e;">$39</span>
             <span class="text-sm ml-1" style="color: #6b7280;">/ season</span>
           </div>
           <p class="text-xs mb-6" style="color: #6b7280;">365 days · every league you're in · cancel anytime</p>
@@ -106,11 +106,11 @@ Free forever. Upgrade to win.
             class="w-full py-4 rounded-xl font-black text-base transition-all transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
             style="background: linear-gradient(135deg, #22c55e, #16a34a); color: #0a0c14; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 4px 20px rgba(34,197,94,0.3);">
             <span v-if="checkingOut && checkoutTarget === 'individual'">Redirecting…</span>
-            <span v-else-if="isLoggedIn">Get the Season Pass — $49</span>
+            <span v-else-if="isLoggedIn">Get the Season Pass — $39</span>
             <span v-else>Get Started Free</span>
           </button>
           <p class="text-center text-xs mt-3" style="color: #4b5563;">
-            <span v-if="isLoggedIn">$49 for 365 days · cancel anytime</span>
+            <span v-if="isLoggedIn">$39 for 365 days · cancel anytime</span>
             <span v-else>Start free — no credit card</span>
           </p>
         </div>
@@ -235,7 +235,7 @@ onMounted(() => {
     // Meta Pixel
     setTimeout(() => {
       if (typeof window !== 'undefined' && (window as any).fbq) {
-        const value = 49
+        const value = 39
         ;(window as any).fbq('track', 'Purchase', { value, currency: 'USD' })
       }
     }, 1500)

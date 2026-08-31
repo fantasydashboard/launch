@@ -1482,7 +1482,7 @@ const TRIAL_ENDING_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><met
 <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:16px;">
 <div style="font-size:12px;font-weight:800;color:#22c55e;letter-spacing:0.04em;margin-bottom:6px;">INDIVIDUAL</div>
 <div style="font-size:28px;font-weight:900;color:#fff;">$4<span style="font-size:14px;font-weight:600;color:#9ca3af;">/mo</span></div>
-<div style="font-size:11px;color:#6b7280;margin-top:4px;">billed annually at $49/yr</div>
+<div style="font-size:11px;color:#6b7280;margin-top:4px;">billed annually at $39/yr</div>
 <div style="font-size:11px;color:#9ca3af;margin-top:8px;line-height:1.5;">All your leagues. All sports. Just you.</div>
 </div>
 </td>
@@ -1577,7 +1577,7 @@ const TRIAL_EXPIRED_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><me
 <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:16px;">
 <div style="font-size:12px;font-weight:800;color:#22c55e;letter-spacing:0.04em;margin-bottom:6px;">INDIVIDUAL</div>
 <div style="font-size:28px;font-weight:900;color:#fff;">$4<span style="font-size:14px;font-weight:600;color:#9ca3af;">/mo</span></div>
-<div style="font-size:11px;color:#6b7280;margin-top:4px;">billed annually at $49/yr</div>
+<div style="font-size:11px;color:#6b7280;margin-top:4px;">billed annually at $39/yr</div>
 <div style="font-size:11px;color:#9ca3af;margin-top:8px;line-height:1.5;">All your leagues. All sports. Just you.</div>
 </div>
 </td>

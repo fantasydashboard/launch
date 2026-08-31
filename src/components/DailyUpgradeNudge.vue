@@ -49,7 +49,7 @@
                     <div class="nudge-plan-desc">You only · all leagues · all sports</div>
                   </div>
                   <div class="nudge-plan-price">
-                    <span class="nudge-plan-amount">$49</span>
+                    <span class="nudge-plan-amount">$39</span>
                     <span class="nudge-plan-period">/yr</span>
                   </div>
                 </div>

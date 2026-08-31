@@ -555,7 +555,7 @@ const shellWidth = computed(() => (tab.value === 'grid' ? 'max-w-[1700px]' : 'ma
 /* The Draft Room is the Season Pass. But a locked door makes it look like a demo nobody got
    to try, so the board, the tiers and the players all stay visible — you can see the work is
    real — and the wall lands on the Pick tab, which is the recommendation itself. That is the
-   moment the $49 is actually worth something. */
+   moment the $39 is actually worth something. */
 const { hasFullAccess } = useFeatureAccess()
 const pickLocked = computed(() => !hasFullAccess.value)
 
@@ -900,11 +900,11 @@ const guideAvailable = computed(() => {
         <p class="mx-auto mb-6 max-w-md font-mono text-xs leading-relaxed text-dark-textMuted">
           The board, the tiers and the run risk on the other tabs stay free. This tab is the pick
           itself — what it costs you to wait, who survives to your next turn, and the case for the
-          player. $49 for the season, every league you're in.
+          player. $39 for the season, every league you're in.
         </p>
         <RouterLink to="/pricing"
           class="inline-block rounded-lg bg-primary px-6 py-3 font-mono text-xs font-semibold uppercase tracking-wide text-dark-bg">
-          Unlock the pick — $49
+          Unlock the pick — $39
         </RouterLink>
       </section>
 
