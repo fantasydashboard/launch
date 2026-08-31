@@ -228,14 +228,23 @@ export function useFeatureAccess() {
     isAdmin.value || hasRealLeagueAccess.value || hasRealIndividualAccess.value
   )
 
-  // Full access = paid OR on active trial
-  const hasFullAccess = computed(() => isPaid.value || isOnActiveTrial.value)
+  /* The 7-day trial no longer grants access, and is kept only as a signup timestamp.
+     It existed to demonstrate value back when the free tier was "the first 3 rows of any
+     expandable list" — a crippled demo needs a trial to show what it is hiding. Free is now
+     the whole descriptive half of the product, for every league, with no expiry: power
+     rankings, all-play, situations, standings and history. That IS the demonstration.
+     Leaving the trial on top of it gave away the one thing being sold — a new account could
+     run its entire draft on the Draft Room for nothing during the single week of the year
+     the Draft Room is worth the most. */
+  const hasFullAccess = computed(() => isPaid.value)
 
   const effectiveTier = computed((): SubscriptionTier => {
     if (isAdmin.value) return 'admin'
     if (hasRealIndividualAccess.value) return 'individual'
     if (hasRealLeagueAccess.value) return 'league'
-    if (isOnActiveTrial.value) return 'trial'
+    /* 'trial' is deliberately NOT returned any more. The trial grants no access, so
+       reporting it as a tier would label someone as entitled while they are gated —
+       the same class of confidently-wrong status this codebase keeps having to unpick. */
     return 'free'
   })
 
@@ -275,7 +284,7 @@ export function useFeatureAccess() {
     if (isAdmin.value && devTierOverride.value) return `Dev: ${devTierOverride.value}`
     switch (effectiveTier.value) {
       case 'admin':      return 'Admin'
-      case 'individual': return 'Individual'
+      case 'individual': return 'Season Pass'
       case 'league':     return 'League Pass'
       case 'trial':      return `Free Trial (${trialDaysRemaining.value}d left)`
       default:           return 'Free'

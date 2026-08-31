@@ -97,32 +97,6 @@
       <!-- Trial / Expiry banner — hidden for active individual subscribers -->
       <Teleport to="body">
         <!-- Active trial (not paid yet) -->
-        <div v-if="isOnActiveTrial && !isActivePaidUser"
-          style="position:fixed;top:0;left:0;right:0;z-index:9999;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:6px 16px;background:linear-gradient(90deg,#0f2d1a,#0a1f12);border-bottom:1px solid rgba(34,197,94,0.25);">
-          <span style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:10px;height:10px;flex-shrink:0;">
-            <span style="position:absolute;width:10px;height:10px;border-radius:50%;background:#22c55e;opacity:0.4;animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></span>
-            <span style="position:relative;width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;"></span>
-          </span>
-          <span style="font-size:12px;color:#22c55e;font-weight:800;">Full access unlocked · {{ trialDaysRemaining }} day{{ trialDaysRemaining === 1 ? '' : 's' }} remaining</span>
-          <span class="trial-banner-hide-mobile" style="font-size:12px;color:#6b7280;">—</span>
-          <span class="trial-banner-hide-mobile" style="font-size:12px;color:#9ca3af;">Download graphics, expand everything, no limits.</span>
-          <button @click="$router.push('/pricing')"
-            style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;padding:4px 12px;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;background:#eab308;color:#0a0c14;">
-            Upgrade now →
-          </button>
-        </div>
-
-        <!-- Subscription lapsed (had a plan, now expired — not on trial either) -->
-        <div v-else-if="isTrialExpired && !isActivePaidUser && !isOnActiveTrial"
-          style="position:fixed;top:0;left:0;right:0;z-index:9999;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:6px 16px;background:linear-gradient(90deg,#2d0f0f,#1f0a0a);border-bottom:1px solid rgba(239,68,68,0.25);">
-          <span style="font-size:12px;color:#ef4444;font-weight:800;">⚠️ Your access has ended</span>
-          <span class="trial-banner-hide-mobile" style="font-size:12px;color:#6b7280;">—</span>
-          <span class="trial-banner-hide-mobile" style="font-size:12px;color:#9ca3af;">Subscribe to restore full access.</span>
-          <button @click="$router.push('/pricing')"
-            style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;padding:4px 12px;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;background:#ef4444;color:#fff;">
-            See plans →
-          </button>
-        </div>
       </Teleport>
 
       <!-- Push content down when banner is visible (not for active paid users) -->

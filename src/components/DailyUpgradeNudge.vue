@@ -17,8 +17,8 @@
             <div class="nudge-header-left">
               <span class="nudge-emoji">⚡</span>
               <div>
-                <div class="nudge-title">Your free trial has ended</div>
-                <div class="nudge-sub">Unlock everything again — starting at less than a cup of coffee.</div>
+                <div class="nudge-title">Unlock the Draft Room</div>
+                <div class="nudge-sub">Power rankings and history stay free. The Season Pass adds the pick, the wire and the trades.</div>
               </div>
             </div>
             <div class="nudge-header-right">

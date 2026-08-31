@@ -185,7 +185,7 @@ Free forever. Upgrade to win.
         </div>
         <div class="flex items-center gap-2" style="color: #6b7280;">
           <span>🗓️</span>
-          <span class="text-sm">7-day free trial · no card required</span>
+          <span class="text-sm">Free tier never expires · no card required</span>
         </div>
         <div class="flex items-center gap-2" style="color: #6b7280;">
           <span>⚾</span>
@@ -250,7 +250,7 @@ const perPersonCost = computed(() => (29 / Math.max(1, teamCount.value)).toFixed
 const freeFeatures = [
   { text: 'Every league you\'re in — ESPN, Yahoo & Sleeper', included: true },
   { text: 'Power rankings, all-play & luck reads', included: true },
-  { text: 'Standings, matchups & league history', included: true },
+  { text: 'Standings, scores & full league history', included: true },
   { text: 'All four sports', included: true },
   { text: 'No time limit', included: true },
   { text: 'Draft Room recommendations', included: false },
@@ -275,7 +275,8 @@ const comparisonRows = [
   { feature: 'Connect leagues (ESPN, Yahoo, Sleeper)', free: true,        individual: true },
   { feature: 'Leagues covered',                        free: 'All yours', individual: 'All yours' },
   { feature: 'Power rankings, all-play & situations',  free: true,        individual: true },
-  { feature: 'Standings, matchups & history',          free: true,        individual: true },
+  { feature: 'Standings, scores & history',            free: true,        individual: true },
+  { feature: 'Matchup deep dive & battle plan',        free: false,       individual: true },
   { feature: 'All four sports',                        free: true,        individual: true },
   { feature: 'Draft Room recommendations',             free: false,       individual: true },
   { feature: 'Custom rankings',                        free: false,       individual: true },
