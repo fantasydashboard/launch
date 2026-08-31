@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import { useDraftRoom } from '@/composables/useDraftRoom'
 import { UFD_LABEL } from '@/composables/useCustomRankings'
 import { useDraftGuide } from '@/composables/useDraftGuide'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { startablePositions } from '@/draft/room/rosterNeed'
 import { rankTone } from '@/draft/room/slotRanks'
@@ -551,6 +552,13 @@ const shellWidth = computed(() => (tab.value === 'grid' ? 'max-w-[1700px]' : 'ma
    that disagreement is the useful thing - so it is shown, not resolved.
 
    Renders nothing unless a guide has been loaded into this browser. */
+/* The Draft Room is the Season Pass. But a locked door makes it look like a demo nobody got
+   to try, so the board, the tiers and the players all stay visible — you can see the work is
+   real — and the wall lands on the Pick tab, which is the recommendation itself. That is the
+   moment the $49 is actually worth something. */
+const { hasFullAccess } = useFeatureAccess()
+const pickLocked = computed(() => !hasFullAccess.value)
+
 const guide = useDraftGuide()
 const guideOn = computed(() => guide.loaded.value)
 
@@ -885,7 +893,22 @@ const guideAvailable = computed(() => {
       </div>
 
       <!-- PICK -->
-      <section v-if="tab === 'pick'">
+      <!-- Pick tab: the recommendation, and the one thing behind the Season Pass. -->
+      <section v-if="tab === 'pick' && pickLocked" class="rounded-xl border border-primary/40 bg-dark-card p-8 text-center">
+        <p class="mb-2 font-mono text-[10px] uppercase tracking-widest text-primary">Season Pass</p>
+        <h2 class="mb-2 font-display text-2xl font-bold text-dark-text">Who to take, and why</h2>
+        <p class="mx-auto mb-6 max-w-md font-mono text-xs leading-relaxed text-dark-textMuted">
+          The board, the tiers and the run risk on the other tabs stay free. This tab is the pick
+          itself — what it costs you to wait, who survives to your next turn, and the case for the
+          player. $49 for the season, every league you're in.
+        </p>
+        <RouterLink to="/pricing"
+          class="inline-block rounded-lg bg-primary px-6 py-3 font-mono text-xs font-semibold uppercase tracking-wide text-dark-bg">
+          Unlock the pick — $49
+        </RouterLink>
+      </section>
+
+      <section v-else-if="tab === 'pick'">
         <div v-if="!recommendation" class="py-12 text-center font-mono text-xs text-dark-textMuted">No players left to recommend.</div>
         <template v-else>
           <div class="mb-4 rounded-xl border border-primary/40 bg-dark-card p-4">

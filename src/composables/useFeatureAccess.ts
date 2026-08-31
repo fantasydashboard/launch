@@ -4,8 +4,12 @@
 // Access model (updated):
 //   Free trial    — 7 days from first login; full access during trial.
 //                   Stored in profiles.trial_started_at / trial_expires_at.
-//   League Pass   — purchased once per league ($29); unlocks league-wide features
-//                   for ANY user who loads that league. Stored in `league_passes`.
+//   League Pass   — NO LONGER SOLD as of the 2026 season. It sold one edge to twelve
+//                   people at once, which cancels the edge it was selling: a cheat code
+//                   everyone in your league has is not a cheat code. The read path below
+//                   stays, because passes already bought must keep working until their 365
+//                   days run out, and because The League Beat — where everyone having it is
+//                   the whole point — wants exactly this mechanic.
 //   Individual    — per-user subscription ($7.99/mo or $49/yr); unlocks all features
 //                   for the purchasing user across all their leagues.
 //                   Stored in `individual_subscriptions` + profiles.subscription_tier.

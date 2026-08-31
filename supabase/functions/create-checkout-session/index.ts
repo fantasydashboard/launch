@@ -43,11 +43,18 @@ Deno.serve(async (req) => {
       })
     }
 
-    // league_pass requires league context; individual plans do not
-    if (plan === 'league_pass' && (!league_id || !platform)) {
-      return new Response(JSON.stringify({ error: 'League Pass requires league_id and platform' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+    /* League Pass and monthly billing were retired for the 2026 season.
+       League Pass sold one edge to twelve people at once, which cancels the edge it was
+       selling — a cheat code everyone in your league has is not a cheat code. That mechanic
+       now belongs to The League Beat, where everyone having it is the point.
+       Monthly was a discount in disguise: a four-month season means a monthly subscriber
+       paid roughly $32 and churned in January, less than the annual price.
+       Refused here rather than silently falling through to an unknown-plan error, so an old
+       cached page or a bookmarked link says something a human can act on. */
+    if (plan === 'league_pass' || plan === 'individual_monthly') {
+      return new Response(JSON.stringify({
+        error: 'That plan is no longer offered. UFD is now a single Season Pass — please reload the pricing page.'
+      }), { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     // ── Stripe setup ──────────────────────────────────────────────────────────
@@ -76,61 +83,15 @@ Deno.serve(async (req) => {
     // ── Build checkout session based on plan ──────────────────────────────────
     let sessionParams: Stripe.Checkout.SessionCreateParams
 
-    if (plan === 'league_pass') {
-      // Check for duplicate league pass
-      const { data: existingPass } = await supabase
-        .from('league_passes')
-        .select('id')
-        .eq('league_id', league_id)
-        .eq('active', true)
-        .gte('expires_at', new Date().toISOString())
-        .single()
-
-      if (existingPass) {
-        return new Response(JSON.stringify({ error: 'This league already has an active League Pass!' }), {
-          status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
-      }
-
-      const priceId = Deno.env.get('STRIPE_LEAGUE_PASS_PRICE_ID')!
-      sessionParams = {
-        customer: customerId,
-        mode: 'payment',
-        line_items: [{ price: priceId, quantity: 1 }],
-        success_url: `${appUrl}/pricing?success=1&plan=league_pass&league=${league_id}&platform=${platform}`,
-        cancel_url: `${appUrl}/pricing?cancelled=1`,
-        metadata: {
-          plan: 'league_pass',
-          user_id: user.id,
-          league_id,
-          platform,
-          sport: sport || '',
-          league_name: league_name || league_id,
-        }
-      }
-    } else if (plan === 'individual_monthly') {
-      const priceId = Deno.env.get('STRIPE_INDIVIDUAL_MONTHLY_PRICE_ID')!
-      sessionParams = {
-        customer: customerId,
-        mode: 'subscription',
-        line_items: [{ price: priceId, quantity: 1 }],
-        success_url: `${appUrl}/pricing?success=1&plan=individual_monthly`,
-        cancel_url: `${appUrl}/pricing?cancelled=1`,
-        metadata: {
-          plan: 'individual_monthly',
-          user_id: user.id,
-        }
-      }
-    } else if (plan === 'individual_annual') {
+    if (plan === 'individual_annual') {
       const priceId = Deno.env.get('STRIPE_INDIVIDUAL_ANNUAL_PRICE_ID')!
       sessionParams = {
         customer: customerId,
         mode: 'subscription',
         line_items: [{ price: priceId, quantity: 1 }],
-        // Surfaces the "Add promotion code" link in Stripe Checkout so
-        // returning users can paste at-risk-drip codes (e.g. COMEBACK10).
-        // Only enabled on annual — keeps the monthly/league-pass checkouts
-        // clean and prevents discounts from being misapplied.
+        // Surfaces the "Add promotion code" link in Stripe Checkout so returning users can
+        // paste at-risk-drip codes (e.g. COMEBACK10). This is now the only checkout, so the
+        // old "annual only" caveat no longer applies.
         allow_promotion_codes: true,
         success_url: `${appUrl}/pricing?success=1&plan=individual_annual`,
         cancel_url: `${appUrl}/pricing?cancelled=1`,

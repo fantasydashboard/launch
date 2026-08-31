@@ -35,8 +35,13 @@ serve(async (req) => {
       return await handleIndividualCheckout(supabase, session, plan)
     }
 
-    // ── League Pass ──
+    /* League Pass is no longer sold (see create-checkout-session for why), but this handler
+       stays. Stripe can replay a webhook days late, and a checkout that began before the
+       change must still be honoured — refusing it here would take money and grant nothing.
+       Existing passes keep working until their 365 days expire; the table, the handler and
+       the auto-detection all remain, because The League Beat wants exactly this mechanic. */
     if (plan === 'league_pass') {
+      console.log('[webhook] honouring a League Pass purchase made before the plan was retired')
       return await handleLeaguePassCheckout(supabase, session, meta)
     }
 
