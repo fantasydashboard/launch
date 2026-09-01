@@ -27,15 +27,19 @@
 Free forever. Upgrade to win.
         </h1>
         <p class="text-lg max-w-xl mx-auto" style="color: #9ca3af;">
-          Power rankings, all-play and history are free for every league, with no time limit.
-          The Season Pass adds the draft, the wire and the trades.
+          Power rankings, standings and full league history are free — for every league you're
+          in, with no time limit. The Season Pass adds the draft, the wire and the trades.
+        </p>
+        <p class="mt-3 text-sm" style="color: #6b7280;">
+          Every plan covers <span class="text-white">every league you're in</span>, across ESPN,
+          Yahoo and Sleeper, in all four sports.
         </p>
       </div>
 
-      <div class="grid gap-6 mb-16 sm:grid-cols-2 max-w-4xl mx-auto">
+      <div class="grid gap-6 mb-16 sm:grid-cols-2 max-w-4xl mx-auto items-stretch">
 
         <!-- FREE -->
-        <div class="rounded-2xl p-8" style="background: #0d0f18; border: 1px solid #1e2130;">
+        <div class="rounded-2xl p-8 flex flex-col" style="background: #0d0f18; border: 1px solid #1e2130;">
           <div class="mb-6">
             <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4"
               style="background: rgba(255,255,255,0.05); border: 1px solid #1e2130;">
@@ -50,12 +54,13 @@ Free forever. Upgrade to win.
             <span class="text-sm ml-1" style="color: #6b7280;">forever</span>
           </div>
 
-          <ul class="space-y-3 mb-8">
-            <li v-for="f in freeFeatures" :key="f.text" class="flex items-start gap-3">
-              <span class="mt-0.5 flex-shrink-0 text-sm" :style="{ color: f.included ? '#22c55e' : '#374151' }">
-                {{ f.included ? '✓' : '✗' }}
-              </span>
-              <span class="text-sm" :style="{ color: f.included ? '#d1d5db' : '#4b5563' }">{{ f.text }}</span>
+          <ul class="space-y-3 mb-8 flex-1">
+            <li v-for="f in freeFeatures" :key="f" class="flex items-start gap-3">
+              <!-- A tick reads by its position in the list; it does not need the accent
+                   colour, and taking it back leaves the CTA as the only saturated green
+                   on the page. -->
+              <span class="mt-0.5 flex-shrink-0 text-sm" style="color: #4b5563;">✓</span>
+              <span class="text-sm" style="color: #d1d5db;">{{ f }}</span>
             </li>
           </ul>
 
@@ -70,10 +75,10 @@ Free forever. Upgrade to win.
         </div>
 
         <!-- UFD SEASON PASS -->
-        <div class="rounded-2xl p-8 relative" style="background: linear-gradient(135deg, rgba(34,197,94,0.07) 0%, rgba(6,182,212,0.04) 100%); border: 2px solid #22c55e;">
+        <div class="rounded-2xl p-8 relative flex flex-col" style="background: linear-gradient(135deg, rgba(34,197,94,0.07) 0%, rgba(6,182,212,0.04) 100%); border: 2px solid #22c55e;">
           <div class="absolute -top-4 left-1/2 -translate-x-1/2">
             <span class="px-4 py-1 rounded-full text-xs font-black"
-              style="background: #22c55e; color: #0a0c14; letter-spacing: 0.06em; text-transform: uppercase;">Most Popular</span>
+              style="background: #22c55e; color: #0a0c14; letter-spacing: 0.06em; text-transform: uppercase;">Founding price</span>
           </div>
 
           <div class="mb-6">
@@ -87,13 +92,13 @@ Free forever. Upgrade to win.
 
           <div class="mb-2">
             <span class="text-5xl font-black" style="color: #22c55e;">$39</span>
-            <span class="text-sm ml-1" style="color: #6b7280;">/ season</span>
+            <span class="text-sm ml-1" style="color: #6b7280;">/ year</span>
           </div>
-          <p class="text-xs mb-6" style="color: #6b7280;">Renews annually · every league you're in · cancel anytime</p>
+          <p class="text-xs mb-6" style="color: #6b7280;">One season, 365 days · renews each year · cancel anytime</p>
 
-          <ul class="space-y-3 mb-8">
+          <ul class="space-y-3 mb-8 flex-1">
             <li v-for="f in paidFeatures" :key="f" class="flex items-start gap-3">
-              <span class="mt-0.5 flex-shrink-0 text-sm" style="color: #22c55e;">✓</span>
+              <span class="mt-0.5 flex-shrink-0 text-sm" style="color: #4b5563;">✓</span>
               <span class="text-sm text-white">{{ f }}</span>
             </li>
           </ul>
@@ -111,11 +116,24 @@ Free forever. Upgrade to win.
             <span v-else>Create an account to subscribe</span>
           </button>
           <p class="text-center text-xs mt-3" style="color: #4b5563;">
-            <span v-if="isLoggedIn">$39/year · renews annually · cancel anytime</span>
+            <span v-if="isLoggedIn">Renews each year · cancel anytime</span>
             <span v-else>Free account first · card only when you subscribe</span>
           </p>
         </div>
       </div>
+
+      <!--
+        At zero customers there is no social proof to show, and inventing some is the one
+        thing that would undercut the product's actual claim. What IS true is unusual enough
+        to say plainly, and it is the same discipline the app is built on: no number appears
+        until it can be checked.
+      -->
+      <p class="mx-auto mb-16 max-w-2xl text-center text-sm leading-relaxed" style="color: #6b7280;">
+        Built by one person, with a rule: nothing goes on screen until it can be checked.
+        That's why the luck read stays hidden until three weeks are played, why all-play
+        waits for a scored week, and why the draft board tells you when it doesn't know.
+        <span class="text-white">Plenty of tools sound confident. This one tries to be right.</span>
+      </p>
 
       <!-- ── Feature comparison table ── -->
       <div class="mb-16 rounded-2xl overflow-hidden" style="border: 1px solid #1e2130;">
@@ -174,24 +192,16 @@ Free forever. Upgrade to win.
       </div>
 
       <!-- ── Footer trust bar ── -->
-      <div class="flex flex-wrap items-center justify-center gap-8 py-6"
-        style="border-top: 1px solid #1e2130;">
-        <div class="flex items-center gap-2" style="color: #6b7280;">
-          <span style="color: #22c55e;">🔒</span>
-          <span class="text-sm">Secure checkout with Stripe</span>
-        </div>
-        <div class="flex items-center gap-2" style="color: #6b7280;">
-          <span>⚡</span>
-          <span class="text-sm">ESPN, Yahoo &amp; Sleeper supported</span>
-        </div>
-        <div class="flex items-center gap-2" style="color: #6b7280;">
-          <span>🗓️</span>
-          <span class="text-sm">Free tier never expires · no card required</span>
-        </div>
-        <div class="flex items-center gap-2" style="color: #6b7280;">
-          <span>⚾</span>
-          <span class="text-sm">Football, baseball, basketball, hockey</span>
-        </div>
+      <!--
+        The emoji went. A row of 🔒⚡🗓️⚾ reads as decoration rather than assurance, and the
+        baseball beside a list of four sports was arbitrary. The facts carry themselves.
+      -->
+      <div class="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 py-6 text-sm"
+        style="border-top: 1px solid #1e2130; color: #6b7280;">
+        <span>Secure checkout with Stripe</span>
+        <span>ESPN, Yahoo &amp; Sleeper</span>
+        <span>Football, baseball, basketball, hockey</span>
+        <span>Free tier never expires &middot; no card required</span>
       </div>
 
     </div>
@@ -248,19 +258,21 @@ onMounted(() => {
 const perPersonCost = computed(() => (29 / Math.max(1, teamCount.value)).toFixed(2))
 
 // ── Content ───────────────────────────────────────────────────────────────────
+/* Deliberately all-positive. The free tier is the marketing — it is what proves the
+   product is right before anyone pays — so listing its gaps on its own card made a
+   generous offer read as a deficient one. The comparison table below still shows exactly
+   what the Season Pass adds, which is where someone goes when they want the difference. */
 const freeFeatures = [
-  { text: 'Every league you\'re in — ESPN, Yahoo & Sleeper', included: true },
-  { text: 'Power rankings, all-play & luck reads', included: true },
-  { text: 'Standings, scores & full league history', included: true },
-  { text: 'All four sports', included: true },
-  { text: 'No time limit', included: true },
-  { text: 'Draft Room recommendations', included: false },
-  { text: 'Waiver targets & trade analysis', included: false },
+  'Every league you\'re in — ESPN, Yahoo & Sleeper',
+  'Power rankings, all-play & luck reads',
+  'Standings, scores & full league history',
+  'All four sports',
+  'Never expires, no card',
 ]
 
 const paidFeatures = [
   'Draft Room — live pick-by-pick recommendations',
-  'Custom rankings, built into the board',
+  'Your own rankings, used by the draft recommendations',
   'The Wire — waiver targets before your league sees them',
   'Trade analysis',
   'Shareable graphics & downloads',
@@ -274,7 +286,6 @@ const paidFeatures = [
    the draft, the wire, the trade. */
 const comparisonRows = [
   { feature: 'Connect leagues (ESPN, Yahoo, Sleeper)', free: true,        individual: true },
-  { feature: 'Leagues covered',                        free: 'All yours', individual: 'All yours' },
   { feature: 'Power rankings, all-play & situations',  free: true,        individual: true },
   { feature: 'Standings, scores & history',            free: true,        individual: true },
   { feature: 'Matchup deep dive & battle plan',        free: false,       individual: true },
@@ -284,7 +295,7 @@ const comparisonRows = [
   { feature: 'The Wire — waiver targets',              free: false,       individual: true },
   { feature: 'Trade analysis',                         free: false,       individual: true },
   { feature: 'Shareable graphics & downloads',         free: false,       individual: true },
-  { feature: 'Billing',                                free: 'Free',      individual: '$39/yr, renews' },
+  { feature: 'Billing',                                free: 'Free',      individual: '$39/year, renews' },
 ]
 
 const faqs = [
@@ -307,6 +318,10 @@ const faqs = [
   {
     question: 'What platforms and sports are supported?',
     answer: 'ESPN, Yahoo, and Sleeper. Football, baseball, basketball, and hockey. Connect as many leagues as you have across all platforms.'
+  },
+  {
+    question: 'What happens when my Season Pass ends — do I lose my league history?',
+    answer: 'No. History, standings, power rankings and all-play are part of the free tier and stay yours whether you renew or not. Ending a Season Pass only closes the Draft Room, the wire, trade analysis and the matchup deep dive.'
   },
   {
     question: 'Can I cancel?',
