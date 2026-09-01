@@ -10,18 +10,18 @@
           <img src="/brand/ufd-primary-dark.png" alt="Ultimate Fantasy Dashboard" class="hero-logo" />
         </div>
 
-        <div class="hero-eyebrow"><span class="eyebrow-dot eyebrow-dot-primary"></span>Four sports. Three platforms. Every league you're in.</div>
+        <div class="hero-eyebrow"><span class="eyebrow-dot eyebrow-dot-primary"></span>The draft. The wire. The trade.</div>
 
         <h1 class="hero-headline">
-          Your league sees
-          <span class="headline-line">the standings.</span>
-          <span class="headline-final">You see what's coming.</span>
+          Your platform tells you
+          <span class="headline-line">what happened.</span>
+          <span class="headline-final">This tells you what to do.</span>
         </h1>
 
         <p class="hero-sub">
-          Draft-day recommendations, waiver targets, and the reads your league mates don't have —
-          for Sleeper, ESPN and Yahoo, across football, baseball, basketball and hockey.
-          Free forever for the whole picture; $39 a year for the decisions.
+          A cheat code for the three decisions that actually decide your season — who to
+          draft, who to claim, and whether that trade is any good. Use our projections or
+          upload your own. Free forever for the full picture; $39 a year for the decisions.
         </p>
 
         <div class="hero-ctas">
@@ -132,6 +132,67 @@
             </div>
             <span>The reads your league mates never see.</span>
           </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ══════════════════════════════════════════════
+         THE THREE DECISIONS
+    ══════════════════════════════════════════════ -->
+    <section class="tools-section" aria-label="The three decisions UFD makes for you">
+      <div class="section-inner">
+        <div class="section-eyebrow eyebrow-secondary">Where seasons are won</div>
+        <h2 class="section-headline">Three decisions.<br/><span class="accent-secondary">Everything else is scoreboard.</span></h2>
+        <p class="section-sub tools-sub">
+          Standings tell you what already happened — every platform gives you those, and so do we,
+          free. These are the calls that change what happens next.
+        </p>
+
+        <div class="tools-grid">
+          <article class="tool-card">
+            <div class="tool-num">01</div>
+            <h3 class="tool-name">The Draft Room</h3>
+            <p class="tool-body">
+              Live, pick by pick. It tells you what it costs to wait on a position, who is likely
+              to still be there at your next pick, and where the board is about to fall off a
+              cliff. It learns how your league mates actually draft from their own past drafts —
+              so it knows the guy who always reaches for a quarterback.
+            </p>
+            <p class="tool-scope">Live Sleeper football drafts &middot; basketball and hockey before their seasons</p>
+          </article>
+
+          <article class="tool-card">
+            <div class="tool-num">02</div>
+            <h3 class="tool-name">The Wire</h3>
+            <p class="tool-body">
+              Waiver targets ranked by what they would actually add to <em>your</em> starting
+              lineup, not by who scored most last week. Names your real upgrades, and the ones
+              worth a claim before the rest of your league notices them.
+            </p>
+            <p class="tool-scope">Every league, all four sports &middot; points and category</p>
+          </article>
+
+          <article class="tool-card">
+            <div class="tool-num">03</div>
+            <h3 class="tool-name">Trades</h3>
+            <p class="tool-body">
+              Whether a deal helps you, who in your league is the natural partner for it, and what
+              to actually send them. Scored against your roster's holes and theirs — not against a
+              generic trade-value chart that has never seen your lineup.
+            </p>
+            <p class="tool-scope">Every league, all four sports &middot; points and category</p>
+          </article>
+        </div>
+
+        <div class="tools-rankings">
+          <div class="tools-rankings-label">Our numbers, or yours</div>
+          <p class="tools-rankings-body">
+            Every recommendation runs on projections we build for your league's exact scoring.
+            Trust someone else more? Paste or upload their list — draft, rest-of-season or
+            weekly — and the Draft Room and the Wire will use it instead of ours. Your guy,
+            our maths.
+          </p>
         </div>
       </div>
     </section>
@@ -654,7 +715,7 @@ const faqs = [
   },
   {
     q: 'What does the Draft Room actually do?',
-    a: "It watches your draft live and tells you who to take next — what it costs you to wait on a position, who is likely to survive until your next pick, and where the board is about to break. You can load your own rankings and it will use those instead of ours.",
+    a: "It watches your draft live and tells you who to take next — what it costs to wait on a position, who is likely to survive until your next pick, and where the board is about to break. It also learns how your league mates draft from their past drafts. Today it covers live Sleeper football drafts; basketball and hockey arrive before those seasons. The Wire and Trades already work in every league and all four sports.",
   },
   {
     q: 'Do my league mates need to sign up?',
@@ -1652,6 +1713,78 @@ function scrollTo(id: string) {
 .grade-f { background: oklch(0.62 0.22 25 / 0.22);  color: oklch(0.75 0.22 25); }
 
 /* Small breathing room between successive outgoing attachment bubbles */
+/* ── The three decisions ───────────────────────────────────────────────── */
+.tools-section { padding: clamp(64px, 9vw, 120px) 0; }
+.tools-sub { max-width: 62ch; margin-bottom: clamp(32px, 5vw, 52px); }
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+  gap: 18px;
+  margin-bottom: 28px;
+}
+.tool-card {
+  display: flex;
+  flex-direction: column;
+  padding: 26px 24px 22px;
+  border-radius: 16px;
+  background: oklch(0.155 0.012 265);
+  border: 1px solid oklch(0.26 0.012 265);
+}
+.tool-num {
+  font-family: var(--font-display, inherit);
+  font-size: 0.78rem;
+  letter-spacing: 0.2em;
+  color: oklch(0.66 0.17 350);
+  margin-bottom: 14px;
+}
+.tool-name {
+  font-family: var(--font-display, inherit);
+  font-size: clamp(1.35rem, 2.4vw, 1.7rem);
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 12px;
+  line-height: 1.05;
+}
+.tool-body {
+  font-size: 0.95rem;
+  line-height: 1.62;
+  color: oklch(0.74 0.01 265);
+  margin: 0 0 16px;
+  flex: 1;
+}
+.tool-body em { font-style: normal; color: #fff; }
+/* The scope line is deliberately not hidden in a tooltip: the Draft Room does not work
+   everywhere yet, and finding that out after paying is the one thing this page must
+   never do. */
+.tool-scope {
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: oklch(0.56 0.012 265);
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid oklch(0.24 0.012 265);
+}
+.tools-rankings {
+  border-radius: 16px;
+  padding: 24px 26px;
+  background: oklch(0.14 0.02 265);
+  border: 1px solid oklch(0.3 0.05 265);
+}
+.tools-rankings-label {
+  font-size: 0.74rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: oklch(0.78 0.14 200);
+  margin-bottom: 10px;
+}
+.tools-rankings-body {
+  font-size: 0.98rem;
+  line-height: 1.65;
+  color: oklch(0.76 0.01 265);
+  margin: 0;
+  max-width: 74ch;
+}
+
 /* ── Proof stack: the verdict withheld, then the verdict earned ─────────── */
 .proof-stack {
   display: flex;

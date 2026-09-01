@@ -263,7 +263,7 @@ const freeFeatures = [
 ]
 
 const paidFeatures = [
-  'Draft Room — live pick-by-pick recommendations',
+  'Draft Room — live pick-by-pick recommendations (Sleeper football today)',
   'Your own rankings, used by the draft recommendations',
   'The Wire — waiver targets before your league sees them',
   'Trade analysis',
@@ -282,7 +282,7 @@ const comparisonRows = [
   { feature: 'Standings, scores & history',            free: true,        individual: true },
   { feature: 'Matchup deep dive & battle plan',        free: false,       individual: true },
   { feature: 'All four sports',                        free: true,        individual: true },
-  { feature: 'Draft Room recommendations',             free: false,       individual: true },
+  { feature: 'Draft Room (Sleeper football today)',    free: false,       individual: true },
   { feature: 'Custom rankings',                        free: false,       individual: true },
   { feature: 'The Wire — waiver targets',              free: false,       individual: true },
   { feature: 'Trade analysis',                         free: false,       individual: true },
@@ -297,7 +297,7 @@ const faqs = [
   },
   {
     question: 'So what am I paying for?',
-    answer: 'The decisions. The Draft Room and its pick-by-pick recommendations, custom rankings, waiver targets on The Wire, and trade analysis. Free tells you what is true; the Season Pass tells you what to do about it.'
+    answer: 'The decisions. The Draft Room, waiver targets on The Wire, trade analysis, the matchup deep dive, and the ability to run all of it on your own rankings instead of ours. Free tells you what is true; the Season Pass tells you what to do about it. Note that the live Draft Room currently covers Sleeper football drafts, with basketball and hockey landing before those seasons — The Wire and Trades work in every league and all four sports today.'
   },
   {
     question: 'Does the Season Pass cover all my leagues?',
