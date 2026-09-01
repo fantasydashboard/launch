@@ -1,8 +1,17 @@
 <template>
   <div class="min-h-screen transition-colors overflow-x-hidden" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
 
+    <!--
+      Signed-out routing is a hand-maintained allowlist of paths, duplicated across the
+      branches below: anything not named here renders the marketing page instead of the
+      route, with the URL unchanged so it looks like a redirect that never happened.
+      That is how /pricing spent its life invisible to everyone who had not signed up —
+      the route was reachable, the router was fine, and this list simply did not mention
+      it. Adding a public page means editing BOTH lists. Worth replacing with a check on
+      route meta, which would make a new public page work by declaring itself.
+    -->
     <!-- Show Landing Page for non-authenticated users -->
-    <template v-if="!authStore.isAuthenticated && !$route.path.startsWith('/resources') && !$route.path.startsWith('/powerrankings') && !$route.path.startsWith('/matchups-info') && !$route.path.startsWith('/draft-info') && !$route.path.startsWith('/history-info') && !$route.path.startsWith('/signup') && !$route.path.startsWith('/auth/') && !$route.path.startsWith('/privacy') && !$route.path.startsWith('/free-tools') && !$route.path.startsWith('/draftlottery') && !$route.path.startsWith('/draftorder') && !$route.path.startsWith('/schedulegenerator') && !$route.path.startsWith('/demo')">
+    <template v-if="!authStore.isAuthenticated && !$route.path.startsWith('/resources') && !$route.path.startsWith('/powerrankings') && !$route.path.startsWith('/matchups-info') && !$route.path.startsWith('/draft-info') && !$route.path.startsWith('/history-info') && !$route.path.startsWith('/signup') && !$route.path.startsWith('/auth/') && !$route.path.startsWith('/privacy') && !$route.path.startsWith('/pricing') && !$route.path.startsWith('/free-tools') && !$route.path.startsWith('/draftlottery') && !$route.path.startsWith('/draftorder') && !$route.path.startsWith('/schedulegenerator') && !$route.path.startsWith('/demo')">
       <!-- Simple Header for Landing Page -->
       <header class="fixed top-0 left-0 right-0 z-50 border-b border-dark-border/50" style="background: rgba(10, 12, 20, 0.95); backdrop-filter: blur(10px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -39,7 +48,7 @@
     </template>
 
     <!-- Clean layout for public resource pages (unauthenticated only) -->
-    <template v-else-if="!authStore.isAuthenticated && ($route.path.startsWith('/resources') || $route.path.startsWith('/powerrankings') || $route.path.startsWith('/matchups-info') || $route.path.startsWith('/draft-info') || $route.path.startsWith('/history-info') || $route.path.startsWith('/signup') || $route.path.startsWith('/auth/') || $route.path.startsWith('/socialtemplates'))">
+    <template v-else-if="!authStore.isAuthenticated && ($route.path.startsWith('/resources') || $route.path.startsWith('/powerrankings') || $route.path.startsWith('/matchups-info') || $route.path.startsWith('/draft-info') || $route.path.startsWith('/history-info') || $route.path.startsWith('/signup') || $route.path.startsWith('/auth/') || $route.path.startsWith('/socialtemplates') || $route.path.startsWith('/pricing'))">
       <router-view />
     </template>
 
