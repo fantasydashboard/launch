@@ -5,7 +5,12 @@
 // - POST with user JWT + welcome_only = instant welcome email for that user only
 
 import { createClient } from '@supabase/supabase-js'
-import { TRIAL_EMAILS, TRIAL_SEQUENCE } from './trial-email-templates.js'
+/* Lives in api/_lib, not api/admin. Vercel turns every file under api/ into a serverless
+   function, and this one only exports email copy — no handler. As the 13th "function" it
+   broke every deploy on a 12-function plan, with the build failing after the push had
+   already succeeded. Directories prefixed with an underscore are not deployed as
+   functions, which is exactly what a shared module wants. */
+import { TRIAL_EMAILS, TRIAL_SEQUENCE } from '../_lib/trial-email-templates.js'
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
