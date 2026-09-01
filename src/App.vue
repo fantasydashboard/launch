@@ -18,7 +18,7 @@
           <div class="flex items-center justify-between h-16">
             <!-- Logo -->
             <div class="flex items-center gap-2 sm:gap-3">
-              <img src="/UFD_V8.png" alt="Ultimate Fantasy Dashboard" class="h-10 sm:h-12 object-contain" />
+              <img src="/brand/ufd-primary-dark.png" alt="Ultimate Fantasy Dashboard" class="h-10 sm:h-12 object-contain" />
             </div>
 
             <!-- Auth Buttons -->
@@ -63,7 +63,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex items-center justify-between h-16">
             <router-link to="/" class="flex items-center gap-2 sm:gap-3">
-              <img src="/UFD_V8.png" alt="Ultimate Fantasy Dashboard" class="h-10 sm:h-12 object-contain" />
+              <img src="/brand/ufd-primary-dark.png" alt="Ultimate Fantasy Dashboard" class="h-10 sm:h-12 object-contain" />
             </router-link>
             <div class="flex items-center gap-2 sm:gap-3">
               <button @click="showAuthModal = true; authMode = 'login'"
@@ -90,7 +90,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex items-center justify-between h-16">
             <router-link to="/" class="flex items-center gap-2 sm:gap-3">
-              <img src="/UFD_V8.png" alt="Ultimate Fantasy Dashboard" class="h-10 sm:h-12 object-contain" />
+              <img src="/brand/ufd-primary-dark.png" alt="Ultimate Fantasy Dashboard" class="h-10 sm:h-12 object-contain" />
             </router-link>
             <div class="flex items-center gap-2 sm:gap-3">
               <button

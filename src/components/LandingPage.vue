@@ -7,28 +7,30 @@
     <section class="hero-section" aria-label="Ultimate Fantasy Dashboard">
       <div class="hero-inner">
         <div class="hero-logo-wrap">
-          <img src="/UFD_V8.png" alt="Ultimate Fantasy Dashboard" class="hero-logo" />
+          <img src="/brand/ufd-primary-dark.png" alt="Ultimate Fantasy Dashboard" class="hero-logo" />
         </div>
 
-        <div class="hero-eyebrow"><span class="eyebrow-dot eyebrow-dot-primary"></span>Built for commissioners and league nerds</div>
+        <div class="hero-eyebrow"><span class="eyebrow-dot eyebrow-dot-primary"></span>Four sports. Three platforms. Every league you're in.</div>
 
         <h1 class="hero-headline">
-          Keep your league
-          <span class="headline-line"><span class="headline-strike">arguing</span> talking.</span>
-          <span class="headline-final">All season.</span>
+          Your league sees
+          <span class="headline-line">the standings.</span>
+          <span class="headline-final">You see what's coming.</span>
         </h1>
 
         <p class="hero-sub">
-          Power rankings, win probability, draft grades, and league history. For your Sleeper, ESPN, or Yahoo league. Shareable to your group chat in one click.
+          Draft-day recommendations, waiver targets, and the reads your league mates don't have —
+          for Sleeper, ESPN and Yahoo, across football, baseball, basketball and hockey.
+          Free forever for the whole picture; $39 a year for the decisions.
         </p>
 
         <div class="hero-ctas">
           <button class="cta-primary" @click="$emit('open-signup')" aria-label="Connect your league for free">
-            Connect your league. Free.
+            Connect a league. Free.
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
-          <a href="#picker" class="cta-ghost" @click.prevent="scrollTo('picker')" aria-label="See how it works">
-            See how it works
+          <a href="#picker" class="cta-ghost" @click.prevent="scrollTo('picker')" aria-label="See what you would get">
+            See what you'd get
           </a>
         </div>
 
@@ -128,7 +130,7 @@
                 <path d="M6 8c8 0 18 6 22 16M32 18l-2 8 8-2"/>
               </svg>
             </div>
-            <span>One screenshot. Whole league loses it.</span>
+            <span>The reads your league mates never see.</span>
           </div>
         </div>
       </div>
@@ -260,11 +262,16 @@
     <section class="moment-section" aria-label="What Sunday night looks like with UFD">
       <div class="section-inner moment-inner">
         <div class="moment-copy">
-          <div class="section-eyebrow eyebrow-tertiary">Sunday, 9:47pm</div>
-          <h2 class="section-headline">Watch what happens<br/><span class="accent-tertiary">when you post it.</span></h2>
-          <p class="section-sub">You hit share. The card lands in the chat. The league does the rest.</p>
-          <button class="cta-primary moment-cta" @click="$emit('open-signup')" aria-label="Start posting these cards in your league">
-            Start posting these.
+          <div class="section-eyebrow eyebrow-tertiary">The part nobody else does</div>
+          <h2 class="section-headline">It tells you<br/><span class="accent-tertiary">when it doesn't know.</span></h2>
+          <p class="section-sub">
+            Three weeks in, most tools will happily tell you who's lucky. There isn't enough
+            football played yet to know that, so this one says so and stays quiet. Every number
+            here waits until it can be checked — which is the only reason to trust the ones that
+            do show up.
+          </p>
+          <button class="cta-primary moment-cta" @click="$emit('open-signup')" aria-label="Connect a league for free">
+            Connect a league. Free.
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
         </div>
@@ -362,49 +369,36 @@
             </div>
           </div>
 
-          <div class="imessage-thread" role="img" aria-label="Group chat reactions to UFD cards being shared throughout the season">
-            <div class="imsg-bubble imsg-out">
-              <div class="imsg-attachment" aria-hidden="true">
-                <span>Standings.png</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+          <!--
+            The group chat that used to sit here sold the other product. This shows the
+            claim the section actually makes: the same team, two weeks apart, where the
+            verdict is withheld until there is enough football to support it.
+          -->
+          <div class="proof-stack" role="img" aria-label="The same team in week two with the verdict withheld, and in week five with the verdict shown">
+            <div class="proof-card proof-card-early">
+              <div class="proof-week">Week 2</div>
+              <div class="proof-team">
+                <span class="proof-dot proof-dot-mm"></span>
+                <span class="proof-name">Mahomes Magic</span>
+                <span class="proof-rec">2-0</span>
               </div>
-            </div>
-            <div class="imsg-row">
-              <div class="imsg-bubble imsg-in">
-                <div class="imsg-name">Mike</div>
-                <div class="imsg-text">bro why am i in 5th</div>
+              <div class="proof-verdict proof-verdict-held">
+                Not enough games played to call this luck
               </div>
-            </div>
-
-            <div class="imsg-bubble imsg-out imsg-out-spaced">
-              <div class="imsg-attachment" aria-hidden="true">
-                <span>Matchup.png</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
-              </div>
-            </div>
-            <div class="imsg-row">
-              <div class="imsg-bubble imsg-in">
-                <div class="imsg-name">Jess</div>
-                <div class="imsg-text">it's so over for him</div>
-              </div>
+              <div class="proof-note">No arrow. No “due to regress”. Nothing to say yet.</div>
             </div>
 
-            <div class="imsg-bubble imsg-out imsg-out-spaced">
-              <div class="imsg-attachment" aria-hidden="true">
-                <span>DraftGrades.png</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+            <div class="proof-card proof-card-late">
+              <div class="proof-week">Week 5</div>
+              <div class="proof-team">
+                <span class="proof-dot proof-dot-mm"></span>
+                <span class="proof-name">Mahomes Magic</span>
+                <span class="proof-rec">4-1</span>
               </div>
-            </div>
-            <div class="imsg-row">
-              <div class="imsg-bubble imsg-in">
-                <div class="imsg-name">Darnell</div>
-                <div class="imsg-text">an F-? that's rude</div>
-                <div class="imsg-reactions" aria-hidden="true"><span>😂 4</span></div>
+              <div class="proof-verdict proof-verdict-shown">
+                <span class="proof-arrow">▼</span> 1st by record, 8th in all-play
               </div>
-            </div>
-
-            <div class="imsg-typing" aria-hidden="true">
-              <span></span><span></span><span></span>
+              <div class="proof-note">Now there is evidence, and it is worth acting on.</div>
             </div>
           </div>
         </div>
@@ -418,14 +412,14 @@
       <div class="section-inner final-inner">
         <div class="section-eyebrow eyebrow-primary">Ready</div>
         <h2 class="final-headline">
-          Your league is already<br/>talking about it.<br/>
-          <span class="final-accent">Be the one who started it.</span>
+          Everyone in your league<br/>has the same standings.<br/>
+          <span class="final-accent">Not everyone has this.</span>
         </h2>
         <button class="cta-primary cta-xl" @click="$emit('open-signup')" aria-label="Connect your league for free">
           Connect your league. Free.
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
-        <div class="final-trust">No credit card. Sleeper, Yahoo, ESPN. Setup in 3 minutes.</div>
+        <div class="final-trust">No credit card. Sleeper, Yahoo, ESPN. Four sports. Setup in 3 minutes.</div>
         <!--
           Pricing was only linked from the legal bar, beside Privacy and Contact — the place
           people look for terms, not for what something costs. Someone who has read this far
@@ -652,31 +646,35 @@ const openFaq = ref<number | null>(null)
 const faqs = [
   {
     q: 'Does it work with my existing Sleeper / Yahoo / ESPN league?',
-    a: "Yes. Just paste your league link or connect your account. We support all three platforms across football, baseball, basketball, and hockey. No setup required on your league end.",
+    a: "Yes. Paste your league link or connect your account. All three platforms, across football, baseball, basketball and hockey. Nothing to change on your league's end.",
   },
   {
-    q: 'Do all my league mates need to sign up?',
-    a: 'Nope. Only the person connecting the league needs an account. You can share cards and recaps with your whole league without them needing to log in.',
+    q: 'What do I actually get for free?',
+    a: "Power rankings, all-play, standings, scores and your full league history — for every league you're in, with no time limit and no card. It isn't a trial. The Season Pass adds the decisions: the Draft Room, waiver targets, trade analysis and the matchup deep dive.",
   },
   {
-    q: 'How do I share the cards?',
-    a: "Every card has a Share button. Hit it, and the card gets copied to your clipboard as an image. Paste it straight into your league group chat. That's it.",
+    q: 'What does the Draft Room actually do?',
+    a: "It watches your draft live and tells you who to take next — what it costs you to wait on a position, who is likely to survive until your next pick, and where the board is about to break. You can load your own rankings and it will use those instead of ours.",
   },
   {
-    q: 'Will it ruin the trash talk?',
-    a: "No. It feeds it. When Mahomes Magic drops a power rankings card showing they've been number one for six straight weeks, the group chat writes itself.",
+    q: 'Do my league mates need to sign up?',
+    a: "No, and most of the time you would rather they didn't. This is your edge, not a league-wide tool. Only you need an account.",
   },
   {
-    q: 'Is this just for commissioners?',
-    a: "Not even close. It's built by fantasy managers, for fantasy managers. If you care about knowing your league better, clowning on your friends with data, or just seeing your stats go back years, this is for you.",
+    q: 'Is this just for football?',
+    a: "No. Football, baseball, basketball and hockey, in points and category formats, all in one account. If you play more than one sport, they all sit in the same place.",
+  },
+  {
+    q: "Why does it sometimes refuse to tell me something?",
+    a: "Because three weeks of results cannot tell you who is lucky, and a draft with no picks in it cannot tell you who is falling. When there isn't enough evidence yet, it says so rather than inventing a confident answer. That restraint is the whole point.",
   },
   {
     q: 'How current is the data?',
-    a: 'Standings, matchup scores, and rosters update throughout the week. Power rankings and weekly recaps generate automatically after each week locks.',
+    a: 'Standings, scores and rosters update through the week. Projections refresh daily, and the draft board updates pick by pick while you are drafting.',
   },
   {
     q: 'Can I connect multiple leagues?',
-    a: 'Yes. You can connect leagues across different platforms and sports in the same dashboard. Manage your dynasty, redraft, and keeper all in one place.',
+    a: 'Yes, and one Season Pass covers all of them — different platforms, different sports, dynasty, redraft and keeper, in one dashboard.',
   },
 ]
 
@@ -1654,6 +1652,56 @@ function scrollTo(id: string) {
 .grade-f { background: oklch(0.62 0.22 25 / 0.22);  color: oklch(0.75 0.22 25); }
 
 /* Small breathing room between successive outgoing attachment bubbles */
+/* ── Proof stack: the verdict withheld, then the verdict earned ─────────── */
+.proof-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 380px;
+}
+.proof-card {
+  border-radius: 14px;
+  padding: 16px 18px;
+  background: oklch(0.16 0.012 265);
+  border: 1px solid oklch(0.28 0.012 265);
+}
+.proof-card-late { border-color: oklch(0.42 0.09 95); }
+.proof-week {
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: oklch(0.62 0.01 265);
+  margin-bottom: 10px;
+}
+.proof-team { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
+.proof-dot { width: 22px; height: 22px; border-radius: 50%; flex: 0 0 auto; }
+.proof-dot-mm { background: linear-gradient(135deg, oklch(0.78 0.16 85), oklch(0.62 0.16 60)); }
+.proof-name { font-weight: 700; color: #fff; font-size: 0.95rem; }
+.proof-rec { margin-left: auto; font-variant-numeric: tabular-nums; color: oklch(0.72 0.01 265); font-size: 0.9rem; }
+.proof-verdict {
+  font-size: 0.86rem;
+  line-height: 1.45;
+  padding: 9px 11px;
+  border-radius: 9px;
+  margin-bottom: 9px;
+}
+.proof-verdict-held {
+  color: oklch(0.66 0.01 265);
+  background: oklch(0.21 0.008 265);
+  font-style: italic;
+}
+.proof-verdict-shown {
+  color: oklch(0.84 0.13 85);
+  background: oklch(0.26 0.05 85);
+  font-weight: 600;
+}
+.proof-arrow { margin-right: 4px; }
+.proof-note { font-size: 0.76rem; color: oklch(0.56 0.01 265); line-height: 1.5; }
+@media (max-width: 900px) {
+  .proof-stack { justify-self: stretch; max-width: 380px; margin: 0 auto; }
+}
+
 .imsg-out-spaced { margin-top: 8px; }
 
 @media (max-width: 960px) {
