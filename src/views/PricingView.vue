@@ -41,10 +41,6 @@ Free forever. Upgrade to win.
         <!-- FREE -->
         <div class="rounded-2xl p-8 flex flex-col" style="background: #0d0f18; border: 1px solid #1e2130;">
           <div class="mb-6">
-            <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4"
-              style="background: rgba(255,255,255,0.05); border: 1px solid #1e2130;">
-              <span class="text-xl">👤</span>
-            </div>
             <h2 class="text-2xl font-black text-white mb-1">Free</h2>
             <p class="text-sm" style="color: #6b7280;">See the data. Decide when you're ready.</p>
           </div>
@@ -82,10 +78,6 @@ Free forever. Upgrade to win.
           </div>
 
           <div class="mb-6">
-            <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4"
-              style="background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3);">
-              <span class="text-xl">⚡</span>
-            </div>
             <h2 class="text-2xl font-black text-white mb-1">Season Pass</h2>
             <p class="text-sm" style="color: #9ca3af;">All your leagues · all sports · one season</p>
           </div>

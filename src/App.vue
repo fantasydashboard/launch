@@ -48,8 +48,40 @@
     </template>
 
     <!-- Clean layout for public resource pages (unauthenticated only) -->
-    <template v-else-if="!authStore.isAuthenticated && ($route.path.startsWith('/resources') || $route.path.startsWith('/powerrankings') || $route.path.startsWith('/matchups-info') || $route.path.startsWith('/draft-info') || $route.path.startsWith('/history-info') || $route.path.startsWith('/signup') || $route.path.startsWith('/auth/') || $route.path.startsWith('/socialtemplates') || $route.path.startsWith('/pricing'))">
+    <template v-else-if="!authStore.isAuthenticated && ($route.path.startsWith('/resources') || $route.path.startsWith('/powerrankings') || $route.path.startsWith('/matchups-info') || $route.path.startsWith('/draft-info') || $route.path.startsWith('/history-info') || $route.path.startsWith('/signup') || $route.path.startsWith('/auth/') || $route.path.startsWith('/socialtemplates'))">
       <router-view />
+    </template>
+
+    <!--
+      Pricing gets the SAME header as the landing page, not the bare router-view the public
+      resource pages use. A pricing page with no logo, no nav and no sign-in is a dead end:
+      whoever lands on it cannot get back to the product, cannot sign in, and has no brand
+      to trust while being asked for $39.
+    -->
+    <template v-else-if="!authStore.isAuthenticated && $route.path.startsWith('/pricing')">
+      <header class="fixed top-0 left-0 right-0 z-50 border-b border-dark-border/50" style="background: rgba(10, 12, 20, 0.95); backdrop-filter: blur(10px);">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex items-center justify-between h-16">
+            <router-link to="/" class="flex items-center gap-2 sm:gap-3">
+              <img src="/UFD_V8.png" alt="Ultimate Fantasy Dashboard" class="h-10 sm:h-12 object-contain" />
+            </router-link>
+            <div class="flex items-center gap-2 sm:gap-3">
+              <button @click="showAuthModal = true; authMode = 'login'"
+                class="px-3 sm:px-4 py-2 rounded-lg text-gray-300 hover:text-white font-medium transition-colors text-sm sm:text-base">
+                Sign In
+              </button>
+              <button @click="showAuthModal = true; authMode = 'signup'"
+                class="px-3 sm:px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors text-sm sm:text-base">
+                <span class="hidden sm:inline">Get Started</span>
+                <span class="sm:hidden">Start</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div class="pt-16">
+        <router-view />
+      </div>
     </template>
 
     <!-- Public free tools layout (unauthenticated): minimal header + tool -->

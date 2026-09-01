@@ -426,6 +426,14 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
         <div class="final-trust">No credit card. Sleeper, Yahoo, ESPN. Setup in 3 minutes.</div>
+        <!--
+          Pricing was only linked from the legal bar, beside Privacy and Contact — the place
+          people look for terms, not for what something costs. Someone who has read this far
+          is deciding, and "what does it cost" is the next question they have.
+        -->
+        <router-link to="/pricing" class="final-pricing-link">
+          Free forever, or $39 a year for the draft tools &rarr;
+        </router-link>
       </div>
     </section>
 
@@ -465,7 +473,6 @@
     <!-- Minimal legal bar for landing page -->
     <div class="legal-bar">
       <span class="legal-text">© {{ new Date().getFullYear() }} Ultimate Fantasy Dashboard</span>
-      <router-link to="/pricing" class="legal-link">Pricing</router-link>
       <router-link to="/free-tools" class="legal-link">Free tools</router-link>
       <router-link to="/resources" class="legal-link">Resources</router-link>
       <router-link to="/privacy" class="legal-link">Privacy</router-link>
@@ -1772,6 +1779,21 @@ function scrollTo(id: string) {
   max-width: 18ch;
 }
 .final-accent { color: var(--accent-primary); }
+.final-pricing-link {
+  display: inline-block;
+  margin-top: 1.1rem;
+  font-size: 0.95rem;
+  color: #9ca3af;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(156, 163, 175, 0.35);
+  padding-bottom: 2px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.final-pricing-link:hover,
+.final-pricing-link:focus-visible {
+  color: #fff;
+  border-color: #fff;
+}
 .final-trust {
   margin-top: 18px;
   font-size: 0.85rem;
