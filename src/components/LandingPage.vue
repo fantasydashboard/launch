@@ -39,14 +39,25 @@
         </div>
 
         <!--
-          A top-five list was the wrong thing to show. The top of any board is the one place
-          our rankings and the market agree, so it is the worst possible place to demonstrate a
-          disagreement — and it forced an indefensible claim (a TE at 2 overall) to manufacture
-          one. The middle rounds are where the edge actually lives.
+          A top-five list was the wrong thing to show: the top of any board is where our rankings
+          and the market agree, so proving a disagreement there required inventing one. The middle
+          rounds are where the edge lives.
 
-          The numbers here are internally consistent with the real rule in
-          src/draft/room/marketDisagreement.ts: the flag fires at one full round of
-          disagreement, and the gap shown is (adp - ours) / teams at 12 teams.
+          EVERY NUMBER BELOW IS REAL, not illustrative. Provenance, so the next person can redo it:
+
+            ADP     — Sleeper's own `adp_half_ppr`, pulled 2026-09-02 from
+                      https://api.sleeper.app/projections/nfl/2026?season_type=regular
+                      (the same payload src/draft/room/adp.ts reads), converted to
+                      round.pick at 12 teams.
+            Ours    — Sleeper's season projection scored for THIS league, i.e.
+                      pts_half_ppr + 0.5 x bonus_rec_te (the TE-premium hook), then
+                      ranked by value over replacement with a 12-team 1QB/2RB/3WR/1TE/1FLEX
+                      lineup (replacement at QB12 / RB30 / WR42 / TE12).
+            Flag    — the rule in src/draft/room/marketDisagreement.ts: fires at one full
+                      round, rounds = (adpRank - ourRank) / teams.
+
+          Because ADP moves, this table is a snapshot and goes stale. Refresh it each preseason
+          or wire the section to the live endpoint.
         -->
         <div class="hero-stage board-stage" aria-hidden="true">
           <div class="board-card">
@@ -61,35 +72,35 @@
               <span class="bd-flag">Read</span>
             </div>
 
-            <div class="board-row row-value">
-              <span class="bd-nm"><b>Chase Brown</b><span class="cmp-pos pos-rb">RB</span></span>
-              <span class="bd-num">5.02</span>
-              <span class="bd-num bd-ours">3.10</span>
-              <span class="bd-flag"><span class="flag flag-value">Value</span><span class="bd-gap">+1.3 rds</span></span>
+            <div class="board-row row-fade">
+              <span class="bd-nm"><b>Jeremiyah Love</b><span class="cmp-pos pos-rb">RB</span></span>
+              <span class="bd-num">3.03</span>
+              <span class="bd-num bd-ours">4.09</span>
+              <span class="bd-flag"><span class="flag flag-fade">Fade</span><span class="bd-gap bd-gap-neg">&minus;1.5 rds</span></span>
             </div>
             <div class="board-row row-value">
-              <span class="bd-nm"><b>Trey McBride</b><span class="cmp-pos pos-te">TE</span></span>
-              <span class="bd-num">4.08</span>
-              <span class="bd-num bd-ours">3.03</span>
-              <span class="bd-flag"><span class="flag flag-value">Value</span><span class="bd-gap">+1.4 rds</span></span>
+              <span class="bd-nm"><b>Colston Loveland</b><span class="cmp-pos pos-te">TE</span></span>
+              <span class="bd-num">4.07</span>
+              <span class="bd-num bd-ours">3.04</span>
+              <span class="bd-flag"><span class="flag flag-value">Value</span><span class="bd-gap">+1.2 rds</span></span>
             </div>
             <div class="board-row">
-              <span class="bd-nm"><b>Jaxon Smith-Njigba</b><span class="cmp-pos pos-wr">WR</span></span>
-              <span class="bd-num">3.05</span>
-              <span class="bd-num bd-ours">3.09</span>
+              <span class="bd-nm"><b>Tyler Warren</b><span class="cmp-pos pos-te">TE</span></span>
+              <span class="bd-num">5.02</span>
+              <span class="bd-num bd-ours">5.02</span>
               <span class="bd-flag"><span class="bd-inline">in line</span></span>
             </div>
-            <div class="board-row row-fade">
-              <span class="bd-nm"><b>Tony Pollard</b><span class="cmp-pos pos-rb">RB</span></span>
-              <span class="bd-num">4.11</span>
-              <span class="bd-num bd-ours">6.03</span>
-              <span class="bd-flag"><span class="flag flag-fade">Fade</span><span class="bd-gap bd-gap-neg">&minus;1.3 rds</span></span>
+            <div class="board-row row-value">
+              <span class="bd-nm"><b>Christian Watson</b><span class="cmp-pos pos-wr">WR</span></span>
+              <span class="bd-num">6.05</span>
+              <span class="bd-num bd-ours">5.01</span>
+              <span class="bd-flag"><span class="flag flag-value">Value</span><span class="bd-gap">+1.3 rds</span></span>
             </div>
           </div>
           <p class="board-caption">
-            The flag only fires when your rankings and the room disagree by a <b>full round</b> —
-            rare on purpose, so it means something when it shows up. Your board is built from your
-            league's scoring, not a generic list.
+            Live Sleeper half-PPR ADP against your board. TE premium moves Loveland up a round and
+            a bit — and leaves Warren exactly where the room has him, because the flag only fires on
+            a <b>full round</b> of disagreement. Rare on purpose, so it means something.
           </p>
         </div>
       </div>
@@ -142,12 +153,15 @@
             <div class="tool-num">02 &middot; Waiver</div>
             <h3 class="tool-name">The Wire</h3>
             <div class="tool-vis" aria-hidden="true">
+              <!-- Hockenson: half-PPR ADP 183.5, i.e. past pick 180, so genuinely undrafted in a
+                   12-team 15-round league. 122.0 projected points = 7.2/wk, against a ~4.5/wk
+                   replacement TE. The old row put a 6th-round RB at "3% rostered". -->
               <div class="tv-row">
-                <span class="tv-name">Jaylen Warren</span>
-                <span class="tv-pos pos-rb">RB</span>
-                <span class="tv-gain">+11.2 / wk</span>
+                <span class="tv-name">T.J. Hockenson</span>
+                <span class="tv-pos pos-te">TE</span>
+                <span class="tv-gain">+2.7 / wk</span>
               </div>
-              <div class="tv-sub">replaces your RB2 &middot; 3% rostered</div>
+              <div class="tv-sub">upgrades your TE &middot; free in most 12-team leagues</div>
             </div>
             <p class="tool-body">
               Ranked by what a player adds to <em>your</em> starting lineup, not by who scored most
@@ -160,8 +174,11 @@
             <div class="tool-num">03 &middot; Start/sit</div>
             <h3 class="tool-name">Suggested Lineup</h3>
             <div class="tool-vis" aria-hidden="true">
-              <div class="tv-row tv-start"><span class="tv-flag">Start</span><span class="tv-name">Tank Dell</span><span class="tv-proj">14.8</span></div>
-              <div class="tv-row tv-sit"><span class="tv-flag">Sit</span><span class="tv-name">Chris Godwin</span><span class="tv-proj">11.1</span></div>
+              <!-- Two healthy WRs drafted six picks apart (ADP 46.6 and 52.2) whose projections
+                   are two points a week apart — the exact shape of a close call that isn't close.
+                   The old row started Tank Dell, who is listed Inactive and projects 43 points. -->
+              <div class="tv-row tv-start"><span class="tv-flag">Start</span><span class="tv-name">Jaylen Waddle</span><span class="tv-proj">10.7</span></div>
+              <div class="tv-row tv-sit"><span class="tv-flag">Sit</span><span class="tv-name">DJ Moore</span><span class="tv-proj">8.7</span></div>
             </div>
             <p class="tool-body">
               Your optimal lineup for this week, in your scoring, with the reason attached. The
