@@ -39,44 +39,57 @@
         </div>
 
         <!--
-          The old hero was a power-rankings card — built when this was a sharing tool, and
-          showing the free tier. This shows the actual product: the same players, ordered by
-          the projections everyone in the league already has, and ordered by rankings built
-          for this league's scoring. The gap between the columns IS the pitch.
+          A top-five list was the wrong thing to show. The top of any board is the one place
+          our rankings and the market agree, so it is the worst possible place to demonstrate a
+          disagreement — and it forced an indefensible claim (a TE at 2 overall) to manufacture
+          one. The middle rounds are where the edge actually lives.
+
+          The numbers here are internally consistent with the real rule in
+          src/draft/room/marketDisagreement.ts: the flag fires at one full round of
+          disagreement, and the gap shown is (adp - ours) / teams at 12 teams.
         -->
-        <div class="hero-stage compare-stage" aria-hidden="true">
-          <div class="compare-grid">
-            <div class="compare-col compare-col-them">
-              <div class="compare-head">
-                <span class="compare-label">Your league's default list</span>
-                <span class="compare-tag compare-tag-them">Everyone has this</span>
-              </div>
-              <ol class="compare-list">
-                <li><span class="cmp-rk">1</span><span class="cmp-nm">Bijan Robinson</span><span class="cmp-pos pos-rb">RB</span></li>
-                <li><span class="cmp-rk">2</span><span class="cmp-nm">CeeDee Lamb</span><span class="cmp-pos pos-wr">WR</span></li>
-                <li><span class="cmp-rk">3</span><span class="cmp-nm">Breece Hall</span><span class="cmp-pos pos-rb">RB</span></li>
-                <li><span class="cmp-rk">4</span><span class="cmp-nm">Puka Nacua</span><span class="cmp-pos pos-wr">WR</span></li>
-                <li><span class="cmp-rk">5</span><span class="cmp-nm">Sam LaPorta</span><span class="cmp-pos pos-te">TE</span></li>
-              </ol>
+        <div class="hero-stage board-stage" aria-hidden="true">
+          <div class="board-card">
+            <div class="board-head">
+              <span class="board-title">Your board &middot; rounds 3&ndash;6</span>
+              <span class="board-tag">12-team &middot; Half-PPR &middot; TE premium</span>
+            </div>
+            <div class="board-thead">
+              <span class="bd-nm">Player</span>
+              <span class="bd-num">Sleeper ADP</span>
+              <span class="bd-num">Your rank</span>
+              <span class="bd-flag">Read</span>
             </div>
 
-            <div class="compare-col compare-col-you">
-              <div class="compare-head">
-                <span class="compare-label compare-label-you">Your rankings</span>
-                <span class="compare-tag compare-tag-you">Half-PPR &middot; TE premium</span>
-              </div>
-              <ol class="compare-list">
-                <li><span class="cmp-rk">1</span><span class="cmp-nm">Bijan Robinson</span><span class="cmp-pos pos-rb">RB</span><span class="cmp-move cmp-hold">&mdash;</span></li>
-                <li><span class="cmp-rk">2</span><span class="cmp-nm">Sam LaPorta</span><span class="cmp-pos pos-te">TE</span><span class="cmp-move cmp-up">&#9650;3</span></li>
-                <li><span class="cmp-rk">3</span><span class="cmp-nm">CeeDee Lamb</span><span class="cmp-pos pos-wr">WR</span><span class="cmp-move cmp-down">&#9660;1</span></li>
-                <li><span class="cmp-rk">4</span><span class="cmp-nm">Puka Nacua</span><span class="cmp-pos pos-wr">WR</span><span class="cmp-hold">&mdash;</span></li>
-                <li><span class="cmp-rk">5</span><span class="cmp-nm">Breece Hall</span><span class="cmp-pos pos-rb">RB</span><span class="cmp-move cmp-down">&#9660;2</span></li>
-              </ol>
+            <div class="board-row row-value">
+              <span class="bd-nm"><b>Chase Brown</b><span class="cmp-pos pos-rb">RB</span></span>
+              <span class="bd-num">5.02</span>
+              <span class="bd-num bd-ours">3.10</span>
+              <span class="bd-flag"><span class="flag flag-value">Value</span><span class="bd-gap">+1.3 rds</span></span>
+            </div>
+            <div class="board-row row-value">
+              <span class="bd-nm"><b>Trey McBride</b><span class="cmp-pos pos-te">TE</span></span>
+              <span class="bd-num">4.08</span>
+              <span class="bd-num bd-ours">3.03</span>
+              <span class="bd-flag"><span class="flag flag-value">Value</span><span class="bd-gap">+1.4 rds</span></span>
+            </div>
+            <div class="board-row">
+              <span class="bd-nm"><b>Jaxon Smith-Njigba</b><span class="cmp-pos pos-wr">WR</span></span>
+              <span class="bd-num">3.05</span>
+              <span class="bd-num bd-ours">3.09</span>
+              <span class="bd-flag"><span class="bd-inline">in line</span></span>
+            </div>
+            <div class="board-row row-fade">
+              <span class="bd-nm"><b>Tony Pollard</b><span class="cmp-pos pos-rb">RB</span></span>
+              <span class="bd-num">4.11</span>
+              <span class="bd-num bd-ours">6.03</span>
+              <span class="bd-flag"><span class="flag flag-fade">Fade</span><span class="bd-gap bd-gap-neg">&minus;1.3 rds</span></span>
             </div>
           </div>
-          <p class="compare-caption">
-            Same players. Your league's TE premium is worth three spots on LaPorta — and nobody
-            else in the league is looking at that.
+          <p class="board-caption">
+            The flag only fires when your rankings and the room disagree by a <b>full round</b> —
+            rare on purpose, so it means something when it shows up. Your board is built from your
+            league's scoring, not a generic list.
           </p>
         </div>
       </div>
@@ -88,11 +101,17 @@
     ══════════════════════════════════════════════ -->
     <section class="tools-section" aria-label="The three decisions UFD makes for you">
       <div class="section-inner">
+        <!--
+          "All off the same numbers" described our architecture, not the buyer's advantage.
+          Nobody has ever bought a shared engine. The claim that matters is that the output is
+          an instruction, not another list to interpret.
+        -->
         <div class="section-eyebrow eyebrow-secondary">Where seasons are won</div>
-        <h2 class="section-headline">Four decisions,<br/><span class="accent-secondary">all off the same numbers.</span></h2>
+        <h2 class="section-headline">Everyone gets rankings.<br/><span class="accent-secondary">You get the decision.</span></h2>
         <p class="section-sub tools-sub">
-          Draft, waiver, start/sit, trade. Every one of them runs on rankings built for your
-          league's exact scoring — so the advice changes when your league's rules do.
+          Four calls decide your season, and every one of them reads your league before it answers:
+          your exact scoring, the holes in your own roster, what the other eleven teams are
+          rostering, and how those managers have drafted before. What comes back is a move.
         </p>
 
         <div class="tools-grid tools-grid-4">
@@ -156,26 +175,33 @@
             <h3 class="tool-name">Trade Analyzer</h3>
             <div class="tool-vis" aria-hidden="true">
               <div class="tv-row tv-verdict">
-                <span class="tv-grade">B+</span>
-                <span class="tv-name">You win by 8.3 / wk</span>
+                <span class="tv-flag tv-flag-lev">Leverage</span>
+                <span class="tv-name">You win by 6.1 / wk</span>
               </div>
-              <div class="tv-sub">fills your TE hole &middot; they need RB depth</div>
+              <div class="tv-sub">a reach for them &middot; they start 2 RBs and roster 3</div>
             </div>
             <p class="tool-body">
-              Whether a deal helps you, who in your league is the natural partner, and what to send.
-              Scored against your roster's holes and theirs — not a generic value chart that has
-              never seen your lineup.
+              It reads every roster in your league to find the manager who's desperate for what
+              you're sitting on — then scores the deal for both sides and tells you when you have
+              the leverage to ask for more than fair.
             </p>
             <p class="tool-scope">Every league, all four sports &middot; points and category</p>
           </article>
         </div>
 
+        <!--
+          This block used to read as a footnote about file uploads. It is actually the answer to
+          the single biggest objection on the page — "why would I trust your projections" — so it
+          says the real thing: the rankings are an input you can replace, and the product is what
+          gets done with them.
+        -->
         <div class="tools-rankings">
-          <div class="tools-rankings-label">Our numbers, or yours</div>
+          <div class="tools-rankings-label">Don't trust our numbers? Use someone else's.</div>
           <p class="tools-rankings-body">
-            All four run on the same engine: rankings in three horizons, built for your league's
-            exact scoring. Trust someone else more? Paste or upload their list and it drives the
-            recommendations instead of ours. Your guy, our maths.
+            The rankings are the input, not the product. Paste or upload any list — the subscription
+            you already pay for, the analyst you actually listen to, your own spreadsheet — and every
+            recommendation on every page rebuilds off it: draft picks, waiver targets, lineup calls,
+            trade grades. <b>You keep your source. You get the decisions.</b>
           </p>
           <div class="horizons" aria-hidden="true">
             <span class="horizon"><b>Draft</b>August, once a year</span>
@@ -190,267 +216,147 @@
     <!-- ══════════════════════════════════════════════
          PICKER
     ══════════════════════════════════════════════ -->
-    <section class="picker-section" id="picker" aria-label="Connect your Sleeper, ESPN, or Yahoo fantasy league">
+    <section class="rules-section" id="picker" aria-label="Works with your league's exact rules">
       <div class="section-inner">
         <div class="section-eyebrow eyebrow-secondary">Your league, your rules</div>
-        <h2 class="section-headline">Works with <span class="accent-secondary">your</span> league. Right now.</h2>
-        <p class="section-sub">Pick your setup. We'll show you what you'd get.</p>
+        <h2 class="section-headline">One player.<br/><span class="accent-secondary">Three answers.</span></h2>
+        <p class="section-sub rules-sub">
+          Your settings are not a detail on a signup form — they change the call. Same receiver,
+          same Sunday, three sets of rules.
+        </p>
 
-        <div class="picker-grid">
-          <div class="picker-step">
-            <div class="picker-step-label"><span class="step-num">01</span> Your sport</div>
-            <div class="picker-options" role="group" aria-label="Choose your sport">
-              <button
-                v-for="s in sports" :key="s.id"
-                class="picker-option"
-                :class="{ active: selectedSport === s.id }"
-                :aria-pressed="selectedSport === s.id"
-                @click="selectedSport = s.id; ensureValidFormat()"
-              >
-                <span class="picker-emoji" aria-hidden="true">{{ s.emoji }}</span>
-                <span>{{ s.name }}</span>
-              </button>
+        <!--
+          The picker that lived here was interactive and resolved to a standings table: the user
+          did work, and the payoff was the least valuable screen we own. This makes the same
+          "it fits your league" argument with the most valuable one — a decision that flips
+          because the rules changed, which is precisely what a default projection cannot see.
+        -->
+        <div class="rules-block" aria-hidden="true">
+          <div class="rules-player">
+            <span class="rp-name">Jaylen Waddle</span>
+            <span class="cmp-pos pos-wr">WR</span>
+            <span class="rp-meta">Week 11 &middot; at KC &middot; on your bench</span>
+          </div>
+
+          <div class="rules-cards">
+            <div class="rule-card">
+              <div class="rc-league">10-team &middot; Standard</div>
+              <div class="rc-verdict rc-sit">Sit</div>
+              <div class="rc-detail"><b>8.1</b> proj &middot; WR38 this week</div>
+              <div class="rc-slot">your WR4</div>
+            </div>
+            <div class="rule-card">
+              <div class="rc-league">12-team &middot; Half-PPR</div>
+              <div class="rc-verdict rc-flex">Flex</div>
+              <div class="rc-detail"><b>11.4</b> proj &middot; WR26 this week</div>
+              <div class="rc-slot">your WR3</div>
+            </div>
+            <div class="rule-card rule-card-hi">
+              <div class="rc-league">14-team &middot; Full PPR</div>
+              <div class="rc-verdict rc-start">Start</div>
+              <div class="rc-detail"><b>14.6</b> proj &middot; WR14 this week</div>
+              <div class="rc-slot">your WR2</div>
             </div>
           </div>
 
-          <div class="picker-step">
-            <div class="picker-step-label"><span class="step-num">02</span> Your platform</div>
-            <div class="picker-options" role="group" aria-label="Choose your platform">
-              <button
-                v-for="p in platforms" :key="p.id"
-                class="picker-option picker-option-platform"
-                :class="{ active: selectedPlatform === p.id }"
-                :aria-pressed="selectedPlatform === p.id"
-                @click="selectedPlatform = p.id"
-              >
-                <img :src="p.logo" :alt="p.name + ' logo'" class="platform-btn-logo" />
-                <span>{{ p.name }}</span>
-              </button>
-            </div>
-          </div>
+          <p class="rules-caption">
+            Nothing about the player changed. Reception scoring and league size did — and that is
+            the difference between leaving him on your bench and starting him.
+          </p>
+        </div>
 
-          <div class="picker-step">
-            <div class="picker-step-label"><span class="step-num">03</span> Your format</div>
-            <div class="picker-options" role="group" aria-label="Choose your format">
-              <button
-                v-for="f in formats" :key="f"
-                class="picker-option"
-                :class="{ active: selectedFormat === f }"
-                :aria-pressed="selectedFormat === f"
-                @click="selectedFormat = f"
-              >{{ f }}</button>
-            </div>
+        <div class="compat">
+          <div class="compat-row">
+            <span class="compat-label">Platforms</span>
+            <span class="compat-vals">
+              <span class="compat-plat"><img src="/sleeper.svg" alt="" aria-hidden="true" class="compat-logo" />Sleeper</span>
+              <span class="compat-plat"><img src="/yahoo-fantasy.svg" alt="" aria-hidden="true" class="compat-logo" />Yahoo</span>
+              <span class="compat-plat"><img src="/espn-logo.svg" alt="" aria-hidden="true" class="compat-logo" />ESPN</span>
+            </span>
+          </div>
+          <div class="compat-row">
+            <span class="compat-label">Sports</span>
+            <span class="compat-vals">Football &middot; Baseball &middot; Basketball &middot; Hockey</span>
+          </div>
+          <div class="compat-row">
+            <span class="compat-label">Formats</span>
+            <span class="compat-vals">Points &middot; Head-to-head categories &middot; Redraft, keeper and dynasty</span>
+          </div>
+          <div class="compat-row">
+            <span class="compat-label">Setup</span>
+            <span class="compat-vals">Paste a league link or sign in. Nothing changes on your league's end.</span>
           </div>
         </div>
 
-        <div class="picker-preview">
-          <div class="preview-badge-row">
-            <img :src="activePlatform.logo" :alt="activePlatform.name + ' logo'" class="preview-platform-logo" />
-            <span class="preview-badge">{{ activeSport.emoji }} {{ activeSport.name }} . {{ activePlatform.name }} . {{ selectedFormat }}</span>
-          </div>
-
-          <div class="preview-card">
-            <div class="preview-header">
-              <div class="preview-header-left">
-                <img :src="activePlatform.logo" :alt="activePlatform.name + ' logo'" class="preview-header-logo" />
-                <span class="preview-title">Standings</span>
-              </div>
-              <span class="preview-week">Week {{ currentWeek }}</span>
-            </div>
-
-            <div class="preview-thead" :class="selectedFormat === 'Categories' ? 'thead-cat' : 'thead-pts'">
-              <span class="pth-rank">#</span>
-              <span class="pth-team">Team</span>
-              <span class="pth-rec">{{ selectedFormat === 'Categories' ? 'W-L-T' : 'W-L' }}</span>
-              <template v-if="selectedFormat === 'Points'">
-                <span class="pth-col">PF</span>
-                <span class="pth-col">All-Play</span>
-              </template>
-              <template v-else>
-                <span class="pth-col pth-cat" v-for="cat in activeCategoryColumns" :key="cat">{{ cat }}</span>
-              </template>
-            </div>
-
-            <div
-              v-for="(team, i) in previewTeams"
-              :key="team.name"
-              class="preview-rank-row"
-              :class="[selectedFormat === 'Categories' ? 'row-cat' : 'row-pts', i === 0 ? 'row-first' : '']"
-            >
-              <span class="prev-rank" :class="i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''">{{ i + 1 }}</span>
-
-              <div class="prev-team-cell">
-                <span class="prev-avatar" :style="{ background: team.color }" aria-hidden="true">
-                  {{ initials(team.name) }}
-                </span>
-                <span class="prev-name">{{ team.name }}</span>
-              </div>
-
-              <template v-if="selectedFormat === 'Points'">
-                <span class="prev-record">{{ team.record }}</span>
-                <span class="prev-pts">{{ team.pts }}</span>
-                <span class="prev-allplay">{{ team.allPlay }}</span>
-              </template>
-
-              <template v-else>
-                <span class="prev-record cat-rec">{{ team.catRecord }}</span>
-                <span class="prev-cat" v-for="(cv, ci) in team.cats" :key="ci">{{ cv }}</span>
-              </template>
-            </div>
-          </div>
-
-          <button class="cta-primary mt-6" @click="$emit('open-signup')" :aria-label="`Connect my ${activePlatform.name} league for free`">
-            Connect my {{ activePlatform.name }} league. Free.
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </button>
-        </div>
+        <button class="cta-primary rules-cta" @click="$emit('open-signup')" aria-label="Connect your league for free">
+          Connect your league. Free.
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
       </div>
     </section>
 
+
     <!-- ══════════════════════════════════════════════
-         SHARE-CARD MOMENT
+         THE PITCH — trade leverage
     ══════════════════════════════════════════════ -->
-    <section class="moment-section" aria-label="What Sunday night looks like with UFD">
-      <div class="section-inner moment-inner">
-        <div class="moment-copy">
+    <!--
+      This slot used to hold "It tells you when it doesn't know" — an argument for STAYING,
+      spent in the place a stranger decides whether to TRY. The restraint claim still lives in
+      the FAQ, where a skeptic goes looking for it. What belongs here is the single most
+      differentiated thing the product does and the page never mentioned: it reads the other
+      rosters, finds who is desperate, and drafts the message.
+    -->
+    <section class="pitch-section" aria-label="How the trade analyzer finds leverage and writes your offer">
+      <div class="section-inner pitch-inner">
+        <div class="pitch-copy">
           <div class="section-eyebrow eyebrow-tertiary">The part nobody else does</div>
-          <h2 class="section-headline">It tells you<br/><span class="accent-tertiary">when it doesn't know.</span></h2>
+          <h2 class="section-headline">It finds who's desperate.<br/><span class="accent-tertiary">Then it writes the message.</span></h2>
           <p class="section-sub">
-            Three weeks in, most tools will happily tell you who's lucky. There isn't enough
-            football played yet to know that, so this one says so and stays quiet — same as the
-            draft board when it hasn't got the data, and the wire when the sample is too small.
-            Every number waits until it can be checked, which is the only reason to trust the
-            ones that do show up.
+            A value chart has never seen your league. This reads every roster in it, finds the
+            manager whose hole your bench player fills, and scores the deal from both sides — so you
+            know whether you're asking for fair or asking for more than fair, before you send it.
           </p>
-          <button class="cta-primary moment-cta" @click="$emit('open-signup')" aria-label="Connect a league for free">
+          <p class="section-sub pitch-sub-2">
+            Then it drafts the opener, leading with <em>their</em> angle, because that's the one
+            that gets a reply.
+          </p>
+          <button class="cta-primary pitch-cta" @click="$emit('open-signup')" aria-label="Connect a league for free">
             Connect a league. Free.
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
         </div>
 
-        <div class="moment-stage">
-          <div class="moment-card-wrap">
-            <div class="card-stack" role="img" aria-label="A stack of three share cards from Ultimate Fantasy Dashboard: weekly standings, matchup of the week, and draft grades.">
-              <!-- Tag chips above the stack to label what's visible -->
-              <div class="card-stack-chips" aria-hidden="true">
-                <span class="cs-chip cs-chip-1">Standings</span>
-                <span class="cs-chip cs-chip-2">Matchups</span>
-                <span class="cs-chip cs-chip-3">Draft</span>
-                <span class="cs-chip cs-chip-more">+ more</span>
-              </div>
-
-              <!-- Back-left: Draft Grades -->
-              <div class="sc-card sc-mini-card sc-grades-card stack-back-left">
-                <div class="sc-brand-row">
-                  <span class="sc-brand-logo">UFD</span>
-                  <span class="sc-brand-sport">Draft Grades</span>
-                  <span class="sc-brand-week">2025</span>
-                </div>
-                <div class="sc-mini-title">Who actually won the draft</div>
-                <div class="sc-grades-list">
-                  <div v-for="(g, i) in draftGrades" :key="i" class="sc-grade-row">
-                    <div class="sc-grade-avatar" :class="'gav-' + i" aria-hidden="true">{{ initials(g.name) }}</div>
-                    <span class="sc-grade-team">{{ g.name }}</span>
-                    <span class="sc-grade-letter" :class="'grade-' + g.tone">{{ g.grade }}</span>
-                  </div>
-                </div>
-                <div class="sc-watermark">ultimatefantasydashboard.com</div>
-              </div>
-
-              <!-- Back-right: Matchup Preview -->
-              <div class="sc-card sc-mini-card sc-matchup-card stack-back-right">
-                <div class="sc-brand-row">
-                  <span class="sc-brand-logo">UFD</span>
-                  <span class="sc-brand-sport">Matchup</span>
-                  <span class="sc-brand-week">WK 12</span>
-                </div>
-                <div class="sc-mini-title">Matchup of the Week</div>
-                <div class="sc-mu-faceoff">
-                  <div class="sc-mu-side">
-                    <div class="sc-mu-avatar mu-left" aria-hidden="true">MM</div>
-                    <div class="sc-mu-name">Mahomes Magic</div>
-                    <div class="sc-mu-proj">142.8 proj</div>
-                  </div>
-                  <div class="sc-mu-vs">vs</div>
-                  <div class="sc-mu-side">
-                    <div class="sc-mu-avatar mu-right" aria-hidden="true">TA</div>
-                    <div class="sc-mu-name">The Algorithm</div>
-                    <div class="sc-mu-proj">139.4 proj</div>
-                  </div>
-                </div>
-                <div class="sc-mu-prob">
-                  <span>Win prob</span>
-                  <div class="sc-mu-bar"><div class="sc-mu-bar-fill" style="--w: 54%"></div></div>
-                  <span class="sc-mu-pct">54%</span>
-                </div>
-                <div class="sc-watermark">ultimatefantasydashboard.com</div>
-              </div>
-
-              <!-- Front card: Standings -->
-              <div class="sc-card sc-standings-card moment-card stack-front">
-                <div class="sc-brand-row">
-                  <span class="sc-brand-logo">UFD</span>
-                  <span class="sc-brand-sport">NFL Fantasy . PPR</span>
-                  <span class="sc-brand-week">WK 11</span>
-                </div>
-                <div class="sc-standings-title">Standings</div>
-                <div class="sc-standings-thead">
-                  <span class="std-rank">#</span>
-                  <span class="std-team">Team</span>
-                  <span class="std-rec">W-L</span>
-                  <span class="std-pf">PF</span>
-                  <span class="std-streak">Streak</span>
-                </div>
-                <div v-for="(t, i) in momentStandings" :key="i" class="sc-standings-row" :class="[t.playoff ? 'std-playoff' : '', t.myTeam ? 'std-myteam' : '']">
-                  <span class="std-rank-val" :class="i === 0 ? 'rank-gold' : i === 1 ? 'rank-silver' : i === 2 ? 'rank-bronze' : ''">
-                    {{ i + 1 }}<span v-if="t.playoff" class="std-playoff-dot" aria-hidden="true">●</span>
-                  </span>
-                  <div class="std-team-cell">
-                    <div class="std-avatar" :class="'stdav-' + i" aria-hidden="true">
-                      {{ initials(t.name) }}
-                      <div v-if="t.myTeam" class="std-my-star" aria-hidden="true">★</div>
-                    </div>
-                    <span class="std-name" :class="t.myTeam ? 'std-mine-name' : ''">{{ t.name }}</span>
-                  </div>
-                  <span class="std-rec-val">{{ t.wins }}-{{ t.losses }}</span>
-                  <span class="std-pf-val">{{ t.pf }}</span>
-                  <span class="std-streak-val" :class="t.streak.startsWith('W') ? 'str-w' : 'str-l'">{{ t.streak }}</span>
-                </div>
-                <div class="sc-watermark">ultimatefantasydashboard.com</div>
-              </div>
-            </div>
-          </div>
-
-          <!--
-            The group chat that used to sit here sold the other product. This shows the
-            claim the section actually makes: the same team, two weeks apart, where the
-            verdict is withheld until there is enough football to support it.
-          -->
-          <div class="proof-stack" role="img" aria-label="The same team in week two with the verdict withheld, and in week five with the verdict shown">
-            <div class="proof-card proof-card-early">
-              <div class="proof-week">Week 2</div>
-              <div class="proof-team">
-                <span class="proof-dot proof-dot-mm"></span>
-                <span class="proof-name">Mahomes Magic</span>
-                <span class="proof-rec">2-0</span>
-              </div>
-              <div class="proof-verdict proof-verdict-held">
-                Not enough games played to call this luck
-              </div>
-              <div class="proof-note">No arrow. No “due to regress”. Nothing to say yet.</div>
+        <div class="pitch-stage" role="img" aria-label="A trade suggestion card: get Garrett Wilson, give Rhamondre Stevenson, flagged as leverage and a reach for the other manager, with a ready-to-send message.">
+          <div class="deal-card" aria-hidden="true">
+            <div class="deal-head">
+              <span class="deal-flags"><b class="deal-lev">Leverage</b><span class="deal-sep">&middot;</span>a reach for them</span>
+              <span class="deal-meter">+6.1 / wk</span>
             </div>
 
-            <div class="proof-card proof-card-late">
-              <div class="proof-week">Week 5</div>
-              <div class="proof-team">
-                <span class="proof-dot proof-dot-mm"></span>
-                <span class="proof-name">Mahomes Magic</span>
-                <span class="proof-rec">4-1</span>
-              </div>
-              <div class="proof-verdict proof-verdict-shown">
-                <span class="proof-arrow">▼</span> 1st by record, 8th in all-play
-              </div>
-              <div class="proof-note">Now there is evidence, and it is worth acting on.</div>
+            <div class="deal-line">
+              <span class="deal-tag deal-get">Get</span>
+              <span class="deal-nm">Garrett Wilson</span>
+              <span class="cmp-pos pos-wr">WR</span>
+              <span class="deal-from">from Trash&nbsp;Can&nbsp;Wins</span>
+            </div>
+            <div class="deal-line">
+              <span class="deal-tag deal-give">Give</span>
+              <span class="deal-nm deal-nm-give">Rhamondre Stevenson</span>
+              <span class="cmp-pos pos-rb">RB</span>
+            </div>
+
+            <div class="deal-why">
+              <div class="dw-head">why this works</div>
+              <div class="dw-row"><span class="dw-k">You</span><span class="dw-v">WR2 &rarr; WR1 &middot; <b class="dw-up">+6.1 / wk</b> in your scoring</span></div>
+              <div class="dw-row"><span class="dw-k">Them</span><span class="dw-v">start 2 RBs, roster 3 &middot; 0&ndash;3 since their RB1 went down</span></div>
+            </div>
+
+            <div class="deal-pitch">
+              <div class="dp-head">Pitch<span class="dp-copy">copy</span></div>
+              <p class="dp-body">
+                “Trash Can Wins is thin at RB — Stevenson helps there and gives you a starter this
+                week. Offer Stevenson for Garrett Wilson, who fills your WR2.”
+              </p>
             </div>
           </div>
         </div>
@@ -549,169 +455,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 
 defineEmits<{ (e: 'open-signup'): void }>()
-
-// ── Sport / Platform / Format Picker ────────────────────────────────────────
-const sports = [
-  { id: 'football',   name: 'Football',   emoji: '🏈' },
-  { id: 'baseball',   name: 'Baseball',   emoji: '⚾' },
-  { id: 'basketball', name: 'Basketball', emoji: '🏀' },
-  { id: 'hockey',     name: 'Hockey',     emoji: '🏒' },
-]
-const platforms = [
-  { id: 'sleeper', name: 'Sleeper', logo: '/sleeper.svg' },
-  { id: 'yahoo',   name: 'Yahoo',   logo: '/yahoo-fantasy.svg' },
-  { id: 'espn',    name: 'ESPN',    logo: '/espn-logo.svg' },
-]
-const formats = ['Points', 'Categories']
-
-const selectedSport    = ref('football')
-const selectedPlatform = ref('sleeper')
-const selectedFormat   = ref('Points')
-
-const activeSport    = computed(() => sports.find(s => s.id === selectedSport.value)!)
-const activePlatform = computed(() => platforms.find(p => p.id === selectedPlatform.value)!)
-const currentWeek    = computed(() => selectedSport.value === 'baseball' ? 18 : selectedSport.value === 'football' ? 11 : 14)
-
-function ensureValidFormat() { /* both formats work for all sports */ }
-
-const categoryColumnsBySport: Record<string, string[]> = {
-  football:   ['PTS', 'YDS', 'TD'],
-  baseball:   ['HR',  'SB',  'ERA'],
-  basketball: ['PTS', 'REB', 'AST'],
-  hockey:     ['G',   'A',   'SOG'],
-}
-const activeCategoryColumns = computed(() => categoryColumnsBySport[selectedSport.value] ?? ['Cat1', 'Cat2', 'Cat3'])
-
-type PreviewTeam = {
-  name: string; color: string; record: string; pts: string; allPlay: string
-  catRecord: string; cats: string[]
-}
-const previewData: Record<string, Record<string, PreviewTeam[]>> = {
-  sleeper: {
-    football: [
-      { name: 'Mahomes Magic',   color: 'linear-gradient(135deg,oklch(0.78 0.18 92),oklch(0.65 0.16 72))', record: '9-2', pts: '1,456', allPlay: '7-4',  catRecord: '9-2-0', cats: ['8-3', '7-4', '9-2'] },
-      { name: 'Trash Can Wins',  color: 'linear-gradient(135deg,oklch(0.72 0.16 160),oklch(0.6 0.14 160))', record: '8-3', pts: '1,342', allPlay: '8-3',  catRecord: '8-3-0', cats: ['7-4', '8-3', '6-5'] },
-      { name: 'The Algorithm',   color: 'linear-gradient(135deg,oklch(0.62 0.2 280),oklch(0.5 0.2 280))',  record: '7-4', pts: '1,298', allPlay: '6-5',  catRecord: '7-3-1', cats: ['5-6', '7-4', '8-3'] },
-      { name: 'Waiver Wire Kid', color: 'linear-gradient(135deg,oklch(0.66 0.22 30),oklch(0.55 0.2 30))', record: '6-5', pts: '1,187', allPlay: '5-6',  catRecord: '6-4-1', cats: ['6-5', '5-6', '4-7'] },
-      { name: 'Toilet Bowl FC',  color: 'linear-gradient(135deg,oklch(0.55 0.02 270),oklch(0.42 0.02 270))', record: '3-8', pts: '982',   allPlay: '2-9',  catRecord: '3-8-0', cats: ['2-9', '3-8', '2-9'] },
-    ],
-    baseball: [
-      { name: 'Dingers Only',        color: 'linear-gradient(135deg,oklch(0.78 0.18 92),oklch(0.65 0.16 72))', record: '9-1',  pts: '87.5', allPlay: '8-2',  catRecord: '9-1-0', cats: ['9-1', '7-3', '6-4'] },
-      { name: 'ERA Zero',            color: 'linear-gradient(135deg,oklch(0.72 0.18 195),oklch(0.6 0.16 195))', record: '7-3',  pts: '82.0', allPlay: '7-3',  catRecord: '7-3-0', cats: ['5-5', '8-2', '9-1'] },
-      { name: 'Steals and Deals',    color: 'linear-gradient(135deg,oklch(0.72 0.16 160),oklch(0.6 0.14 160))', record: '6-4',  pts: '78.5', allPlay: '5-5',  catRecord: '6-4-0', cats: ['7-3', '6-4', '4-6'] },
-      { name: 'K-Rate Kings',        color: 'linear-gradient(135deg,oklch(0.62 0.2 290),oklch(0.5 0.2 290))',  record: '5-5',  pts: '73.0', allPlay: '4-6',  catRecord: '5-5-0', cats: ['4-6', '5-5', '7-3'] },
-      { name: 'Sub-.35 ERA or Bust', color: 'linear-gradient(135deg,oklch(0.55 0.02 270),oklch(0.42 0.02 270))', record: '2-8',  pts: '58.5', allPlay: '2-8',  catRecord: '2-8-0', cats: ['2-8', '2-8', '3-7'] },
-    ],
-    basketball: [
-      { name: 'Triple Double',   color: 'linear-gradient(135deg,oklch(0.78 0.18 92),oklch(0.65 0.16 72))', record: '9-3',  pts: '1,234', allPlay: '9-3',  catRecord: '9-3-0', cats: ['8-4', '9-3', '7-5'] },
-      { name: 'Giannis Mode',    color: 'linear-gradient(135deg,oklch(0.66 0.22 30),oklch(0.55 0.2 30))', record: '8-4',  pts: '1,189', allPlay: '8-4',  catRecord: '8-4-0', cats: ['7-5', '8-4', '9-3'] },
-      { name: 'Points Only',     color: 'linear-gradient(135deg,oklch(0.62 0.2 280),oklch(0.5 0.2 280))',  record: '7-5',  pts: '1,102', allPlay: '6-6',  catRecord: '7-5-0', cats: ['9-3', '6-6', '5-7'] },
-      { name: 'Bench Warmers',   color: 'linear-gradient(135deg,oklch(0.72 0.16 160),oklch(0.6 0.14 160))', record: '6-6',  pts: '1,041', allPlay: '5-7',  catRecord: '6-6-0', cats: ['5-7', '7-5', '6-6'] },
-      { name: 'Box Score Fraud', color: 'linear-gradient(135deg,oklch(0.55 0.02 270),oklch(0.42 0.02 270))', record: '4-8',  pts: '891',   allPlay: '3-9',  catRecord: '4-8-0', cats: ['4-8', '3-9', '4-8'] },
-    ],
-    hockey: [
-      { name: 'Save % Kings',   color: 'linear-gradient(135deg,oklch(0.78 0.18 92),oklch(0.65 0.16 72))', record: '10-2', pts: '1,567', allPlay: '9-3',  catRecord: '10-2-0', cats: ['8-4', '9-3', '10-2'] },
-      { name: 'Hat Trick City', color: 'linear-gradient(135deg,oklch(0.72 0.18 195),oklch(0.6 0.16 195))', record: '8-4',  pts: '1,423', allPlay: '8-4',  catRecord: '8-3-1',  cats: ['9-3', '7-5', '8-4'] },
-      { name: 'Power Play FC',  color: 'linear-gradient(135deg,oklch(0.62 0.2 290),oklch(0.5 0.2 290))',  record: '7-5',  pts: '1,312', allPlay: '6-6',  catRecord: '7-5-0',  cats: ['7-5', '8-4', '6-6'] },
-      { name: 'Empty Net Bros', color: 'linear-gradient(135deg,oklch(0.72 0.16 160),oklch(0.6 0.14 160))', record: '5-7',  pts: '1,189', allPlay: '5-7',  catRecord: '5-6-1',  cats: ['5-7', '5-7', '7-5'] },
-      { name: 'Penalty Box FC', color: 'linear-gradient(135deg,oklch(0.55 0.02 270),oklch(0.42 0.02 270))', record: '3-9',  pts: '978',   allPlay: '2-10', catRecord: '3-9-0',  cats: ['3-9', '3-9', '2-10'] },
-    ],
-  },
-  yahoo: {
-    football: [
-      { name: 'Fantasy Felons',    color: 'linear-gradient(135deg,oklch(0.55 0.22 290),oklch(0.45 0.2 290))', record: '10-1', pts: '1,512', allPlay: '8-3',  catRecord: '10-1-0', cats: ['9-2', '8-3', '10-1'] },
-      { name: 'Sunday Funday',     color: 'linear-gradient(135deg,oklch(0.7 0.18 50),oklch(0.58 0.16 50))', record: '8-3',  pts: '1,398', allPlay: '7-4',  catRecord: '8-3-0',  cats: ['7-4', '8-3', '7-4'] },
-      { name: 'Touch Down Town',   color: 'linear-gradient(135deg,oklch(0.72 0.18 195),oklch(0.6 0.16 195))', record: '7-4',  pts: '1,276', allPlay: '6-5',  catRecord: '7-4-0',  cats: ['6-5', '7-4', '8-3'] },
-      { name: 'No Kickers Needed', color: 'linear-gradient(135deg,oklch(0.72 0.16 160),oklch(0.6 0.14 160))', record: '5-6',  pts: '1,144', allPlay: '5-6',  catRecord: '5-6-0',  cats: ['5-6', '4-7', '5-6'] },
-      { name: 'IR\'d Out',         color: 'linear-gradient(135deg,oklch(0.55 0.02 270),oklch(0.42 0.02 270))', record: '2-9',  pts: '901',   allPlay: '1-10', catRecord: '2-9-0',  cats: ['2-9', '2-9', '1-10'] },
-    ],
-    baseball: [
-      { name: 'Diamond Dogs',     color: 'linear-gradient(135deg,oklch(0.55 0.22 290),oklch(0.45 0.2 290))', record: '8-2',  pts: '91.0', allPlay: '8-2',  catRecord: '8-2-0', cats: ['8-2', '7-3', '9-1'] },
-      { name: 'Swing Kings',      color: 'linear-gradient(135deg,oklch(0.7 0.18 50),oklch(0.58 0.16 50))', record: '7-3',  pts: '84.5', allPlay: '6-4',  catRecord: '7-3-0', cats: ['6-4', '8-2', '7-3'] },
-      { name: 'Launch Angle Lab', color: 'linear-gradient(135deg,oklch(0.72 0.18 195),oklch(0.6 0.16 195))', record: '5-5',  pts: '76.0', allPlay: '5-5',  catRecord: '5-5-0', cats: ['5-5', '4-6', '6-4'] },
-      { name: 'Bullpen Burners',  color: 'linear-gradient(135deg,oklch(0.72 0.16 160),oklch(0.6 0.14 160))', record: '4-6',  pts: '69.0', allPlay: '4-6',  catRecord: '4-6-0', cats: ['4-6', '5-5', '4-6'] },
-      { name: 'WHIP It Good',     color: 'linear-gradient(135deg,oklch(0.55 0.02 270),oklch(0.42 0.02 270))', record: '1-9',  pts: '54.0', allPlay: '2-8',  catRecord: '1-9-0', cats: ['2-8', '1-9', '1-9'] },
-    ],
-    basketball: [
-      { name: 'Dunk Tank',       color: 'linear-gradient(135deg,oklch(0.55 0.22 290),oklch(0.45 0.2 290))', record: '10-2', pts: '1,301', allPlay: '9-3',  catRecord: '10-2-0', cats: ['10-2', '9-3', '8-4'] },
-      { name: 'Mid-Range Mafia', color: 'linear-gradient(135deg,oklch(0.7 0.18 50),oklch(0.58 0.16 50))', record: '8-4',  pts: '1,198', allPlay: '8-4',  catRecord: '8-4-0',  cats: ['8-4', '8-4', '9-3'] },
-      { name: 'Steal Happy',     color: 'linear-gradient(135deg,oklch(0.72 0.18 195),oklch(0.6 0.16 195))', record: '7-5',  pts: '1,089', allPlay: '6-6',  catRecord: '7-5-0',  cats: ['7-5', '6-6', '7-5'] },
-      { name: 'FG% or Bust',     color: 'linear-gradient(135deg,oklch(0.72 0.16 160),oklch(0.6 0.14 160))', record: '5-7',  pts: '987',   allPlay: '5-7',  catRecord: '5-7-0',  cats: ['5-7', '7-5', '4-8'] },
-      { name: 'Benchland',       color: 'linear-gradient(135deg,oklch(0.55 0.02 270),oklch(0.42 0.02 270))', record: '3-9',  pts: '876',   allPlay: '3-9',  catRecord: '3-9-0',  cats: ['3-9', '2-10', '4-8'] },
-    ],
-    hockey: [
-      { name: 'Five Hole FC',   color: 'linear-gradient(135deg,oklch(0.55 0.22 290),oklch(0.45 0.2 290))', record: '9-3',  pts: '1,498', allPlay: '9-3',  catRecord: '9-3-0',  cats: ['9-3', '8-4', '9-3'] },
-      { name: 'Zamboni Riders', color: 'linear-gradient(135deg,oklch(0.7 0.18 50),oklch(0.58 0.16 50))', record: '8-4',  pts: '1,345', allPlay: '7-5',  catRecord: '8-4-0',  cats: ['8-4', '9-3', '7-5'] },
-      { name: 'Breakaway Boys', color: 'linear-gradient(135deg,oklch(0.72 0.18 195),oklch(0.6 0.16 195))', record: '6-6',  pts: '1,201', allPlay: '6-6',  catRecord: '6-6-0',  cats: ['6-6', '6-6', '8-4'] },
-      { name: 'PP Specialists', color: 'linear-gradient(135deg,oklch(0.72 0.16 160),oklch(0.6 0.14 160))', record: '5-7',  pts: '1,089', allPlay: '5-7',  catRecord: '5-6-1',  cats: ['5-7', '5-7', '6-6'] },
-      { name: 'Icing All Day',  color: 'linear-gradient(135deg,oklch(0.55 0.02 270),oklch(0.42 0.02 270))', record: '2-10', pts: '912',   allPlay: '2-10', catRecord: '2-10-0', cats: ['2-10', '3-9', '2-10'] },
-    ],
-  },
-  espn: {
-    football: [
-      { name: 'Gronk Spike FC',    color: 'linear-gradient(135deg,oklch(0.6 0.22 15),oklch(0.5 0.2 15))', record: '9-2', pts: '1,487', allPlay: '8-3',  catRecord: '9-2-0', cats: ['8-3', '9-2', '7-4'] },
-      { name: 'Scoreboard Watch',  color: 'linear-gradient(135deg,oklch(0.7 0.18 50),oklch(0.58 0.16 50))', record: '8-3', pts: '1,361', allPlay: '7-4',  catRecord: '8-3-0', cats: ['7-4', '7-4', '9-2'] },
-      { name: 'Commissioner Veto', color: 'linear-gradient(135deg,oklch(0.62 0.2 320),oklch(0.5 0.2 320))', record: '6-5', pts: '1,241', allPlay: '6-5',  catRecord: '6-5-0', cats: ['6-5', '6-5', '6-5'] },
-      { name: 'Garbage Time Guru', color: 'linear-gradient(135deg,oklch(0.65 0.18 230),oklch(0.5 0.18 230))', record: '5-6', pts: '1,129', allPlay: '4-7',  catRecord: '5-6-0', cats: ['4-7', '5-6', '5-6'] },
-      { name: 'Punt the Season',   color: 'linear-gradient(135deg,oklch(0.55 0.02 270),oklch(0.42 0.02 270))', record: '2-9', pts: '944',   allPlay: '2-9',  catRecord: '2-9-0', cats: ['2-9', '2-9', '3-8'] },
-    ],
-    baseball: [
-      { name: 'Clutch Factor',    color: 'linear-gradient(135deg,oklch(0.6 0.22 15),oklch(0.5 0.2 15))', record: '8-2',  pts: '89.0', allPlay: '7-3',  catRecord: '8-2-0', cats: ['7-3', '9-1', '8-2'] },
-      { name: 'Exit Velocity FC', color: 'linear-gradient(135deg,oklch(0.7 0.18 50),oklch(0.58 0.16 50))', record: '7-3',  pts: '83.0', allPlay: '7-3',  catRecord: '7-3-0', cats: ['8-2', '6-4', '7-3'] },
-      { name: 'OPS Kings',        color: 'linear-gradient(135deg,oklch(0.62 0.2 320),oklch(0.5 0.2 320))', record: '5-5',  pts: '74.5', allPlay: '5-5',  catRecord: '5-5-0', cats: ['5-5', '5-5', '5-5'] },
-      { name: 'Five Tool Bros',   color: 'linear-gradient(135deg,oklch(0.65 0.18 230),oklch(0.5 0.18 230))', record: '4-6',  pts: '67.0', allPlay: '4-6',  catRecord: '4-6-0', cats: ['3-7', '4-6', '4-6'] },
-      { name: 'BABIP Believers',  color: 'linear-gradient(135deg,oklch(0.55 0.02 270),oklch(0.42 0.02 270))', record: '1-9',  pts: '51.0', allPlay: '1-9',  catRecord: '1-9-0', cats: ['2-8', '1-9', '1-9'] },
-    ],
-    basketball: [
-      { name: 'Zion Mode',          color: 'linear-gradient(135deg,oklch(0.6 0.22 15),oklch(0.5 0.2 15))', record: '9-3',  pts: '1,289', allPlay: '10-2', catRecord: '9-3-0',  cats: ['10-2', '9-3', '8-4'] },
-      { name: 'Three Point Land',   color: 'linear-gradient(135deg,oklch(0.7 0.18 50),oklch(0.58 0.16 50))', record: '8-4',  pts: '1,201', allPlay: '7-5',  catRecord: '8-4-0',  cats: ['8-4', '7-5', '9-3'] },
-      { name: 'Lottery Pick FC',    color: 'linear-gradient(135deg,oklch(0.62 0.2 320),oklch(0.5 0.2 320))', record: '7-5',  pts: '1,099', allPlay: '6-6',  catRecord: '7-5-0',  cats: ['6-6', '8-4', '7-5'] },
-      { name: 'Trade Deadline All', color: 'linear-gradient(135deg,oklch(0.65 0.18 230),oklch(0.5 0.18 230))', record: '5-7',  pts: '982',   allPlay: '5-7',  catRecord: '5-7-0',  cats: ['5-7', '6-6', '5-7'] },
-      { name: 'DNP Status',         color: 'linear-gradient(135deg,oklch(0.55 0.02 270),oklch(0.42 0.02 270))', record: '3-9',  pts: '844',   allPlay: '2-10', catRecord: '3-9-0',  cats: ['3-9', '2-10', '3-9'] },
-    ],
-    hockey: [
-      { name: 'Brodeur\'s Legacy', color: 'linear-gradient(135deg,oklch(0.6 0.22 15),oklch(0.5 0.2 15))', record: '10-2', pts: '1,612', allPlay: '10-2', catRecord: '10-2-0', cats: ['10-2', '9-3', '10-2'] },
-      { name: 'Slap Shot Kings',   color: 'linear-gradient(135deg,oklch(0.7 0.18 50),oklch(0.58 0.16 50))', record: '8-4',  pts: '1,401', allPlay: '8-4',  catRecord: '8-4-0',  cats: ['8-4', '8-4', '8-4'] },
-      { name: 'PPG All Day',       color: 'linear-gradient(135deg,oklch(0.62 0.2 320),oklch(0.5 0.2 320))', record: '7-5',  pts: '1,287', allPlay: '7-5',  catRecord: '7-4-1',  cats: ['7-5', '7-5', '6-6'] },
-      { name: 'Enforcers Only',    color: 'linear-gradient(135deg,oklch(0.65 0.18 230),oklch(0.5 0.18 230))', record: '5-7',  pts: '1,102', allPlay: '5-7',  catRecord: '5-7-0',  cats: ['5-7', '5-7', '6-6'] },
-      { name: 'Offsides Again',    color: 'linear-gradient(135deg,oklch(0.55 0.02 270),oklch(0.42 0.02 270))', record: '2-10', pts: '934',   allPlay: '2-10', catRecord: '2-10-0', cats: ['2-10', '3-9', '2-10'] },
-    ],
-  },
-}
-
-const previewTeams = computed<PreviewTeam[]>(() =>
-  previewData[selectedPlatform.value]?.[selectedSport.value] ?? previewData.sleeper.football
-)
-
-// ── Hero card (static composition) ─────────────────────────────────────────
-const heroCardTeams = [
-  { name: 'Mahomes Magic',   score: 92, trend: 2,  pscore: '87.4', record: '9-2' },
-  { name: 'Trash Can Wins',  score: 78, trend: -1, pscore: '74.1', record: '8-3' },
-  { name: 'The Algorithm',   score: 66, trend:  0, pscore: '68.9', record: '7-4' },
-  { name: 'Waiver Wire Kid', score: 55, trend:  1, pscore: '61.2', record: '6-5' },
-  { name: 'Toilet Bowl FC',  score: 38, trend: -2, pscore: '44.8', record: '3-8' },
-]
-
-// ── Share-card moment standings ────────────────────────────────────────────
-const momentStandings = [
-  { name: 'Mahomes Magic',  wins: 9, losses: 2, pf: '1,456', streak: 'W3', playoff: true,  myTeam: true  },
-  { name: 'Trash Can Wins', wins: 8, losses: 3, pf: '1,342', streak: 'W2', playoff: true,  myTeam: false },
-  { name: 'The Algorithm',  wins: 7, losses: 4, pf: '1,298', streak: 'L1', playoff: true,  myTeam: false },
-  { name: 'Waiver Wire Kid',wins: 6, losses: 5, pf: '1,187', streak: 'W1', playoff: false, myTeam: false },
-  { name: 'Bench Boss',     wins: 5, losses: 6, pf: '1,102', streak: 'L2', playoff: false, myTeam: false },
-  { name: 'Toilet Bowl FC', wins: 3, losses: 8, pf: '982',   streak: 'L4', playoff: false, myTeam: false },
-]
-
-// ── Draft Grades card (mini) ──────────────────────────────────────────────
-const draftGrades = [
-  { name: 'Mahomes Magic',   grade: 'A+', tone: 'a' },
-  { name: 'The Algorithm',   grade: 'A-', tone: 'a' },
-  { name: 'Waiver Wire Kid', grade: 'B+', tone: 'b' },
-  { name: 'Toilet Bowl FC',  grade: 'F-', tone: 'f' },
-]
 
 // ── FAQ ────────────────────────────────────────────────────────────────────
 const openFaq = ref<number | null>(null)
@@ -755,10 +501,6 @@ function toggleFaq(i: number) {
 }
 
 // ── Utils ──────────────────────────────────────────────────────────────────
-function initials(name: string): string {
-  return name.split(' ').map(w => w[0]).join('').slice(0, 2)
-}
-
 function scrollTo(id: string) {
   const el = document.getElementById(id)
   if (!el) return
@@ -850,7 +592,7 @@ function scrollTo(id: string) {
   max-width: 65ch;
   line-height: 1.55;
 }
-.accent           { color: var(--accent-primary); }
+.accent-primary   { color: var(--accent-primary); }
 .accent-secondary { color: var(--accent-secondary); }
 .accent-tertiary  { color: var(--accent-tertiary); }
 
@@ -888,15 +630,13 @@ function scrollTo(id: string) {
   text-decoration: none;
 }
 .cta-xl { padding: 18px 40px; font-size: 1.25rem; }
-.mt-6 { margin-top: 24px; }
 
 /* Hover & focus (motion-aware) */
 @media (prefers-reduced-motion: no-preference) {
   .cta-primary { transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), background 0.18s, box-shadow 0.18s; }
   .cta-primary:hover { background: oklch(0.84 0.18 92); transform: translateY(-2px); box-shadow: 0 12px 36px oklch(0.78 0.18 92 / 0.28); }
   .cta-ghost { transition: color 0.18s, border-color 0.18s, background 0.18s; }
-  .cta-ghost:hover { color: var(--ink-1); border-color: var(--ink-4); background: oklch(0.18 0.015 90 / 0.6); }
-}
+  .cta-ghost:hover { color: var(--ink-1); border-color: var(--ink-4); background: oklch(0.18 0.015 90 / 0.6); }}
 .cta-primary:focus-visible,
 .cta-ghost:focus-visible {
   outline: 2px solid var(--accent-primary);
@@ -931,8 +671,7 @@ function scrollTo(id: string) {
   opacity: 1;
 }
 @media (max-width: 720px) {
-  .hero-logo { height: 56px; }
-}
+  .hero-logo { height: 56px; }}
 
 .hero-eyebrow {
   display: inline-flex;
@@ -967,14 +706,6 @@ function scrollTo(id: string) {
   margin: 0 auto 22px;
   max-width: 18ch;
 }
-.headline-line { display: block; }
-.headline-strike {
-  color: var(--ink-4);
-  text-decoration: line-through;
-  text-decoration-thickness: 3px;
-  text-decoration-color: var(--accent-secondary);
-  margin-right: 0.2em;
-}
 .headline-final {
   display: block;
   color: var(--accent-primary);
@@ -1006,722 +737,6 @@ function scrollTo(id: string) {
   max-width: 880px;
   margin: 0 auto;
 }
-.hero-stage-card {
-  width: 100%;
-  max-width: 520px;
-  position: relative;
-}
-.hero-stage-card::before {
-  content: "";
-  position: absolute;
-  inset: -28px -28px -32px -28px;
-  background: radial-gradient(ellipse at 50% 50%, oklch(0.78 0.18 92 / 0.10), transparent 65%);
-  pointer-events: none;
-  z-index: -1;
-}
-.hero-stage-caption {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  max-width: 180px;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--ink-3);
-  letter-spacing: 0.02em;
-  line-height: 1.3;
-  text-align: left;
-}
-.caption-arrow {
-  color: var(--accent-secondary);
-  opacity: 0.6;
-}
-
-/* ══════════════════════════════════════════════
-   PICKER SECTION
-══════════════════════════════════════════════ */
-.picker-section {
-  padding: 100px 0 80px;
-  background: linear-gradient(180deg, var(--ink-8) 0%, var(--ink-7) 50%, var(--ink-8) 100%);
-}
-.picker-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 32px;
-  margin-bottom: 40px;
-}
-.picker-step-label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  margin-bottom: 12px;
-}
-.step-num {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.68rem;
-  font-weight: 900;
-  color: var(--accent-secondary);
-  border: 1px solid var(--accent-secondary-border);
-  padding: 1px 6px;
-  border-radius: 4px;
-}
-.picker-options { display: flex; flex-wrap: wrap; gap: 8px; }
-.picker-option {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 14px;
-  background: transparent;
-  border: 1px solid var(--ink-5);
-  border-radius: 10px;
-  color: var(--ink-3);
-  font-family: 'Barlow', sans-serif;
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-.picker-option:focus-visible {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 2px;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .picker-option { transition: border-color 0.15s, color 0.15s, background 0.15s; }
-  .picker-option:hover { border-color: var(--ink-4); color: var(--ink-2); }
-  .platform-btn-logo { transition: filter 0.15s; }
-}
-.picker-option.active {
-  background: var(--accent-secondary-soft);
-  border-color: var(--accent-secondary-border);
-  color: var(--accent-secondary);
-}
-.picker-emoji { font-size: 1rem; }
-
-.picker-option-platform { gap: 8px; }
-.platform-btn-logo {
-  width: 18px; height: 18px;
-  object-fit: contain; flex-shrink: 0;
-  filter: grayscale(1) brightness(0.7);
-}
-.picker-option.active .platform-btn-logo { filter: none; }
-.picker-option:hover .platform-btn-logo  { filter: grayscale(0.3) brightness(0.85); }
-
-.picker-preview { text-align: center; }
-.preview-badge-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 14px;
-  background: var(--accent-secondary-soft);
-  border: 1px solid var(--accent-secondary-border);
-  border-radius: 999px;
-  margin-bottom: 20px;
-}
-.preview-platform-logo { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
-.preview-badge { font-size: 0.8rem; color: var(--accent-secondary); font-weight: 600; }
-
-.preview-card {
-  background: linear-gradient(135deg, oklch(0.16 0.015 90 / 0.98), oklch(0.12 0.018 90 / 0.98));
-  border: 1px solid var(--ink-5);
-  border-radius: 16px;
-  overflow: hidden;
-  max-width: 680px;
-  margin: 0 auto;
-}
-.preview-header {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--ink-5);
-}
-.preview-header-left { display: flex; align-items: center; gap: 8px; }
-.preview-header-logo { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
-.preview-title {
-  font-family: 'Barlow', sans-serif;
-  font-size: 0.92rem; font-weight: 700; color: var(--ink-2);
-}
-.preview-week { font-size: 0.75rem; color: var(--ink-3-soft); }
-
-.preview-thead {
-  display: grid;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 20px;
-  border-bottom: 1px solid var(--ink-6);
-  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--ink-4);
-}
-.thead-pts { grid-template-columns: 24px 1fr 52px 64px 64px; }
-.thead-cat { grid-template-columns: 24px 1fr 56px 48px 48px 48px; }
-.pth-rank  { text-align: right; }
-.pth-team  { text-align: left; }
-.pth-rec, .pth-col { text-align: center; }
-.pth-cat   { color: var(--ink-4); }
-
-.preview-rank-row {
-  display: grid;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 20px;
-  border-bottom: 1px solid var(--ink-6);
-}
-.preview-rank-row:last-of-type { border-bottom: none; }
-.row-pts { grid-template-columns: 24px 1fr 52px 64px 64px; }
-.row-cat { grid-template-columns: 24px 1fr 56px 48px 48px 48px; }
-.row-first { background: var(--accent-primary-faint); }
-
-.prev-rank {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 900; font-size: 0.95rem; color: var(--ink-4); text-align: right;
-}
-.prev-rank.gold   { color: var(--accent-primary); }
-.prev-rank.silver { color: var(--ink-3); }
-.prev-rank.bronze { color: oklch(0.55 0.12 60); }
-
-.prev-team-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.prev-avatar {
-  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.55rem; font-weight: 700; color: var(--ink-1);
-  border: 1.5px solid oklch(0.97 0.005 90 / 0.1);
-}
-.prev-name { font-size: 0.84rem; color: var(--ink-2); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.prev-record, .prev-pts {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.8rem; font-weight: 700; color: var(--ink-3); text-align: center;
-}
-.prev-record.cat-rec { font-size: 0.72rem; }
-.prev-allplay, .prev-cat {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.72rem; color: var(--ink-3-soft); text-align: center; font-weight: 700;
-}
-.row-first .prev-cat { color: var(--ink-2); }
-.row-first .prev-record { color: var(--ink-1); }
-.row-first .prev-pts { color: var(--accent-primary); }
-
-/* ══════════════════════════════════════════════
-   SHARE CARDS . authentic UFD output style (used in hero + moment)
-══════════════════════════════════════════════ */
-.sc-card {
-  border-radius: 14px;
-  overflow: hidden;
-  position: relative;
-  font-family: 'Barlow', sans-serif;
-  box-shadow: 0 32px 80px -20px oklch(0.05 0.018 90 / 0.7);
-}
-
-.sc-brand-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 12px 18px 10px;
-  border-bottom: 1px solid oklch(0.97 0.005 90 / 0.05);
-}
-.sc-brand-logo {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.68rem; font-weight: 900;
-  color: var(--accent-primary);
-  letter-spacing: 0.08em;
-  background: var(--accent-primary-soft);
-  border: 1px solid var(--accent-primary-border);
-  border-radius: 4px;
-  padding: 2px 6px;
-}
-.sc-brand-sport { font-size: 0.68rem; font-weight: 600; color: var(--ink-3-soft); flex: 1; }
-.sc-brand-week  { font-size: 0.62rem; color: var(--ink-4); font-weight: 700; letter-spacing: 0.08em; }
-.sc-watermark   { font-size: 0.55rem; color: var(--ink-5); font-weight: 500; padding: 6px 18px; font-family: 'Barlow', sans-serif; }
-
-/* ─ Power Rankings card */
-.sc-pr-card {
-  background: linear-gradient(145deg, var(--ink-7) 0%, var(--ink-6) 100%);
-  border: 1px solid var(--accent-primary-border);
-}
-.sc-pr-title-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 12px 18px 4px;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.sc-pr-title {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1.05rem; font-weight: 900; letter-spacing: 0.04em;
-  color: var(--ink-1); text-transform: uppercase;
-}
-.sc-pr-legend {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-.legend-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  display: inline-block;
-}
-.legend-mm  { background: var(--accent-primary);   box-shadow: 0 0 4px oklch(0.78 0.18 92 / 0.6); }
-.legend-tc  { background: oklch(0.70 0.18 145); }
-.legend-ta  { background: oklch(0.62 0.20 280); }
-.legend-wwk { background: oklch(0.66 0.22 30); }
-.legend-tbf { background: oklch(0.55 0.02 270); }
-.legend-label {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.56rem;
-  font-weight: 700;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color: var(--ink-4);
-  margin-left: 5px;
-}
-
-.sc-brand-mover {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  color: var(--accent-primary);
-  background: var(--accent-primary-soft);
-  padding: 2px 6px 2px 5px;
-  border-radius: 4px;
-  border: 1px solid var(--accent-primary-border);
-  text-transform: uppercase;
-}
-
-/* Bump chart */
-.sc-pr-chart-wrap {
-  padding: 2px 18px 6px;
-  position: relative;
-}
-.sc-pr-chart {
-  width: 100%;
-  height: 68px;
-  display: block;
-  overflow: visible;
-}
-.sc-pr-chart-grid line {
-  stroke: oklch(0.97 0.005 90 / 0.05);
-  stroke-width: 1;
-  stroke-dasharray: 2 3;
-}
-.sc-pr-line {
-  fill: none;
-  stroke-width: 1.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: 0.6;
-  vector-effect: non-scaling-stroke;
-}
-.sc-pr-line.line-mm {
-  stroke: var(--accent-primary);
-  stroke-width: 2.2;
-  opacity: 1;
-  filter: drop-shadow(0 0 4px oklch(0.78 0.18 92 / 0.45));
-}
-.sc-pr-line.line-tc  { stroke: oklch(0.70 0.18 145); opacity: 0.75; }
-.sc-pr-line.line-ta  { stroke: oklch(0.62 0.20 280); opacity: 0.65; }
-.sc-pr-line.line-wwk { stroke: oklch(0.66 0.22 30);  opacity: 0.7; }
-.sc-pr-line.line-tbf { stroke: oklch(0.55 0.02 270); opacity: 0.55; }
-
-.sc-pr-dot {
-  stroke: oklch(0.10 0.012 90);
-  stroke-width: 1.5;
-}
-.sc-pr-dot.dot-mm  { fill: var(--accent-primary); filter: drop-shadow(0 0 4px oklch(0.78 0.18 92 / 0.6)); }
-.sc-pr-dot.dot-tc  { fill: oklch(0.70 0.18 145); }
-.sc-pr-dot.dot-ta  { fill: oklch(0.62 0.20 280); }
-.sc-pr-dot.dot-wwk { fill: oklch(0.66 0.22 30); }
-.sc-pr-dot.dot-tbf { fill: oklch(0.55 0.02 270); }
-
-.sc-pr-table { display: flex; flex-direction: column; }
-.sc-pr-thead {
-  display: grid;
-  grid-template-columns: 28px 22px 1fr 80px 42px;
-  gap: 6px;
-  padding: 4px 18px;
-  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--ink-4);
-  border-bottom: 1px solid var(--ink-6);
-}
-.sc-pr-row {
-  display: grid;
-  grid-template-columns: 28px 22px 1fr 80px 42px;
-  gap: 6px; align-items: center;
-  padding: 8px 18px;
-  border-bottom: 1px solid var(--ink-6);
-}
-.sc-pr-row:last-of-type { border-bottom: none; }
-.sc-pr-leader { background: var(--accent-primary-faint); }
-.sc-pr-num {
-  width: 22px; height: 22px; border-radius: 50%;
-  background: var(--ink-5); color: var(--ink-3);
-  font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 0.7rem;
-  display: flex; align-items: center; justify-content: center;
-  position: relative;
-}
-.num-crown {
-  position: absolute;
-  top: -5px;
-  right: -4px;
-  color: var(--accent-primary);
-  filter: drop-shadow(0 0 3px oklch(0.78 0.18 92 / 0.5));
-  z-index: 1;
-}
-.num-gold   { background: var(--accent-primary-soft); color: var(--accent-primary); }
-.num-silver { background: oklch(0.66 0.010 90 / 0.12); color: var(--ink-3); }
-.num-bronze { background: oklch(0.55 0.12 60 / 0.14); color: oklch(0.62 0.12 60); }
-.sc-pr-chg { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; font-weight: 700; }
-.chg-up   { color: var(--signal-pos); }
-.chg-dn   { color: var(--signal-neg); }
-.chg-flat { color: var(--ink-4); }
-.sc-pr-team-cell { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.sc-pr-initials {
-  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.52rem; font-weight: 700; color: var(--ink-1);
-  border: 1.5px solid var(--ink-5);
-}
-.init-0 { background: linear-gradient(135deg, var(--accent-primary), oklch(0.65 0.16 72)); border-color: var(--accent-primary); }
-.init-1 { background: linear-gradient(135deg, var(--signal-pos), oklch(0.6 0.14 160)); }
-.init-2 { background: linear-gradient(135deg, oklch(0.62 0.2 280), oklch(0.5 0.2 280)); }
-.init-3 { background: linear-gradient(135deg, var(--signal-neg), oklch(0.55 0.2 25)); }
-.init-4 { background: linear-gradient(135deg, oklch(0.55 0.02 270), oklch(0.42 0.02 270)); }
-.sc-pr-name { font-size: 0.74rem; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.name-gold { color: var(--accent-primary); font-weight: 700; }
-.sc-pr-bar-wrap { display: flex; align-items: center; gap: 5px; }
-.sc-pr-bar {
-  height: 5px; border-radius: 3px; flex-shrink: 0;
-  background: linear-gradient(90deg, var(--signal-pos), oklch(0.6 0.14 160));
-  transform-origin: left;
-}
-.sc-pr-bar-num { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; color: var(--signal-pos); }
-.sc-pr-rec { font-size: 0.68rem; color: var(--ink-3); text-align: right; }
-
-/* ─ Standings card */
-.sc-standings-card {
-  background: linear-gradient(145deg, var(--ink-7) 0%, var(--ink-6) 100%);
-  border: 1px solid var(--accent-tertiary-border);
-}
-.sc-standings-title {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1.05rem; font-weight: 900; letter-spacing: 0.04em;
-  color: var(--ink-1); padding: 12px 18px 6px; text-transform: uppercase;
-}
-.sc-standings-thead {
-  display: grid;
-  grid-template-columns: 30px 1fr 44px 48px 40px;
-  gap: 6px;
-  padding: 4px 18px;
-  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--ink-4);
-  border-bottom: 1px solid var(--ink-6);
-}
-.sc-standings-row {
-  display: grid;
-  grid-template-columns: 30px 1fr 44px 48px 40px;
-  gap: 6px; align-items: center;
-  padding: 7px 18px;
-  border-bottom: 1px solid var(--ink-6);
-}
-.sc-standings-row:last-of-type { border-bottom: none; }
-.std-playoff { background: oklch(0.72 0.16 160 / 0.04); }
-.std-myteam  { background: var(--accent-primary-faint); }
-.std-rank-val {
-  font-family: 'Barlow Condensed', sans-serif; font-weight: 900;
-  font-size: 0.85rem; color: var(--ink-4); display: flex; align-items: center; gap: 3px;
-}
-.rank-gold   { color: var(--accent-primary); }
-.rank-silver { color: var(--ink-3); }
-.rank-bronze { color: oklch(0.55 0.12 60); }
-.std-playoff-dot { color: var(--signal-pos); font-size: 0.5rem; }
-.std-team-cell { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.std-avatar {
-  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.5rem; font-weight: 700; color: var(--ink-1);
-  border: 1.5px solid var(--ink-5);
-  position: relative;
-}
-.stdav-0 { background: linear-gradient(135deg, var(--accent-primary), oklch(0.65 0.16 72)); border-color: var(--accent-primary); }
-.stdav-1 { background: linear-gradient(135deg, var(--signal-pos), oklch(0.6 0.14 160)); }
-.stdav-2 { background: linear-gradient(135deg, oklch(0.62 0.2 280), oklch(0.5 0.2 280)); }
-.stdav-3 { background: linear-gradient(135deg, var(--signal-neg), oklch(0.55 0.2 25)); }
-.stdav-4 { background: linear-gradient(135deg, oklch(0.65 0.18 230), oklch(0.5 0.18 230)); }
-.stdav-5 { background: linear-gradient(135deg, oklch(0.55 0.02 270), oklch(0.42 0.02 270)); }
-.std-my-star {
-  position: absolute; top: -3px; right: -3px;
-  width: 9px; height: 9px; border-radius: 50%;
-  background: var(--accent-primary); color: var(--ink-8);
-  font-size: 5px; display: flex; align-items: center; justify-content: center;
-}
-.std-name { font-size: 0.74rem; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.std-mine-name { color: var(--accent-primary); font-weight: 700; }
-.std-rec-val { font-size: 0.7rem; color: var(--ink-3); font-weight: 600; }
-.std-pf-val  { font-size: 0.7rem; color: var(--ink-3); text-align: right; }
-.std-streak-val { font-size: 0.68rem; font-weight: 700; text-align: right; }
-.str-w { color: var(--signal-pos); }
-.str-l { color: var(--signal-neg); }
-
-/* ══════════════════════════════════════════════
-   SHARE-CARD MOMENT
-══════════════════════════════════════════════ */
-.moment-section {
-  padding: 100px 0;
-  background: var(--ink-7);
-  position: relative;
-}
-.moment-inner {
-  display: grid;
-  grid-template-columns: 0.9fr 1.1fr;
-  gap: 60px;
-  align-items: center;
-}
-.moment-copy .section-headline { margin-bottom: 18px; }
-.moment-cta { margin-top: 8px; }
-
-.moment-stage {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 240px;
-  gap: 44px;
-  align-items: center;
-}
-.moment-card-wrap {
-  position: relative;
-  padding: 36px 28px 28px;
-}
-.moment-card-wrap::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 60%, oklch(0.72 0.18 195 / 0.08), transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-}
-.moment-card { position: relative; }
-
-/* ── Card stack (3 cards layered) ─────────────────────────────────────── */
-.card-stack {
-  position: relative;
-  isolation: isolate;
-}
-.card-stack-chips {
-  position: absolute;
-  top: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: inline-flex;
-  gap: 6px;
-  z-index: 10;
-  white-space: nowrap;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-}
-.cs-chip {
-  padding: 4px 9px;
-  border-radius: 999px;
-  border: 1px solid var(--ink-5);
-  background: oklch(0.12 0.014 90 / 0.92);
-  color: var(--ink-2);
-  backdrop-filter: none;
-}
-.cs-chip-1 { color: var(--accent-primary);   border-color: oklch(0.78 0.18 92 / 0.4); }
-.cs-chip-2 { color: var(--accent-secondary); border-color: oklch(0.70 0.27 350 / 0.4); }
-.cs-chip-3 { color: var(--accent-tertiary);  border-color: oklch(0.72 0.18 195 / 0.4); }
-.cs-chip-more { color: var(--ink-3); }
-
-.stack-front {
-  position: relative;
-  z-index: 3;
-}
-.stack-back-left,
-.stack-back-right {
-  position: absolute;
-  z-index: 1;
-  width: 84%;
-  filter: drop-shadow(0 18px 36px oklch(0.06 0.012 90 / 0.55));
-}
-.stack-back-left {
-  top: 30px;
-  left: -34px;
-  transform: rotate(-5deg);
-  z-index: 1;
-}
-.stack-back-right {
-  top: 14px;
-  right: -38px;
-  transform: rotate(4.5deg);
-  z-index: 2;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .stack-back-left,
-  .stack-back-right,
-  .stack-front {
-    transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-  .card-stack:hover .stack-back-left  { transform: rotate(-7deg) translate(-6px, -4px); }
-  .card-stack:hover .stack-back-right { transform: rotate(6.5deg) translate(8px, -4px); }
-  .card-stack:hover .stack-front      { transform: translateY(-3px); }
-}
-
-/* ── Mini share-card variant (used by matchup + grades) ───────────────── */
-.sc-mini-card {
-  padding: 16px 18px 18px;
-}
-.sc-mini-title {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1.05rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  color: var(--ink-1);
-  margin: 10px 0 14px;
-  line-height: 1.15;
-}
-
-/* ── Matchup of the Week card ─────────────────────────────────────────── */
-.sc-mu-faceoff {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 14px;
-  align-items: center;
-  margin: 6px 0 14px;
-}
-.sc-mu-side {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  text-align: center;
-  min-width: 0;
-}
-.sc-mu-avatar {
-  width: 52px; height: 52px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 800;
-  font-family: 'Barlow Condensed', sans-serif;
-  color: var(--ink-8);
-  font-size: 1rem;
-  letter-spacing: 0.02em;
-  border: 2px solid oklch(0.18 0.012 90);
-}
-.mu-left  { background: linear-gradient(135deg, oklch(0.78 0.18 92), oklch(0.68 0.16 75)); }
-.mu-right { background: linear-gradient(135deg, oklch(0.65 0.20 280), oklch(0.55 0.18 285)); }
-.sc-mu-name {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--ink-1);
-  line-height: 1.15;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-.sc-mu-proj {
-  font-size: 0.7rem;
-  color: var(--ink-3);
-  font-family: 'Barlow Condensed', sans-serif;
-  letter-spacing: 0.04em;
-  font-weight: 600;
-}
-.sc-mu-vs {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.9rem;
-  font-weight: 800;
-  color: var(--accent-secondary);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  padding: 4px 10px;
-  border: 1px solid oklch(0.70 0.27 350 / 0.3);
-  border-radius: 999px;
-}
-.sc-mu-prob {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 10px;
-  align-items: center;
-  font-size: 0.7rem;
-  font-family: 'Barlow Condensed', sans-serif;
-  color: var(--ink-3);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-weight: 700;
-}
-.sc-mu-bar {
-  height: 7px;
-  background: oklch(0.20 0.012 90);
-  border-radius: 999px;
-  overflow: hidden;
-  position: relative;
-}
-.sc-mu-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent-primary), oklch(0.72 0.18 75));
-  width: var(--w);
-  border-radius: 999px;
-}
-.sc-mu-pct {
-  color: var(--accent-primary);
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
-/* ── Draft Grades card ────────────────────────────────────────────────── */
-.sc-grades-list {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  margin: 6px 0 8px;
-}
-.sc-grade-row {
-  display: grid;
-  grid-template-columns: 28px 1fr auto;
-  gap: 10px;
-  align-items: center;
-  font-size: 0.78rem;
-  color: var(--ink-1);
-}
-.sc-grade-avatar {
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.62rem;
-  font-weight: 800;
-  color: var(--ink-8);
-  font-family: 'Barlow Condensed', sans-serif;
-  letter-spacing: 0.02em;
-}
-.gav-0 { background: linear-gradient(135deg, oklch(0.78 0.18 92),  oklch(0.68 0.16 75)); }
-.gav-1 { background: linear-gradient(135deg, oklch(0.70 0.16 145), oklch(0.60 0.14 150)); }
-.gav-2 { background: linear-gradient(135deg, oklch(0.66 0.20 30),  oklch(0.56 0.18 35)); }
-.gav-3 { background: linear-gradient(135deg, oklch(0.55 0.02 270), oklch(0.42 0.02 270)); }
-.sc-grade-team {
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.sc-grade-letter {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1.0rem;
-  font-weight: 800;
-  padding: 2px 10px;
-  border-radius: 6px;
-  min-width: 42px;
-  text-align: center;
-  letter-spacing: 0.04em;
-}
-.grade-a { background: oklch(0.70 0.18 145 / 0.18); color: oklch(0.78 0.18 145); }
-.grade-b { background: oklch(0.75 0.16 75 / 0.18);  color: var(--accent-primary); }
-.grade-c { background: oklch(0.68 0.18 30 / 0.18);  color: oklch(0.74 0.18 30); }
-.grade-f { background: oklch(0.62 0.22 25 / 0.22);  color: oklch(0.75 0.22 25); }
 
 /* Small breathing room between successive outgoing attachment bubbles */
 /* ── Wordmark: the mark says UFD_, the text says what that stands for ───── */
@@ -1735,52 +750,6 @@ function scrollTo(id: string) {
   color: var(--ink-3);
   white-space: nowrap;
 }
-
-/* ── Hero comparison: the same players, two sets of numbers ─────────────── */
-.compare-stage { width: 100%; max-width: 860px; margin: 0 auto; }
-.compare-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-@media (max-width: 700px) { .compare-grid { grid-template-columns: 1fr; } }
-.compare-col {
-  border-radius: 16px;
-  padding: 18px 18px 14px;
-  background: var(--ink-7);
-  border: 1px solid var(--ink-5);
-  text-align: left;
-}
-.compare-col-you {
-  background: linear-gradient(180deg, var(--accent-primary-faint), transparent 60%), var(--ink-7);
-  border-color: var(--accent-primary-border);
-}
-.compare-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-.compare-label {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
-  font-size: 0.86rem; color: var(--ink-3);
-}
-.compare-label-you { color: var(--accent-primary); }
-.compare-tag {
-  font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase;
-  padding: 3px 7px; border-radius: 5px; white-space: nowrap;
-}
-.compare-tag-them { background: var(--ink-5); color: var(--ink-3-soft); }
-.compare-tag-you { background: var(--accent-primary-soft); color: var(--accent-primary); }
-.compare-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.compare-list li {
-  display: grid;
-  grid-template-columns: 20px 1fr auto auto;
-  align-items: center;
-  gap: 9px;
-  padding: 7px 0;
-  border-bottom: 1px solid oklch(1 0 0 / 0.05);
-  font-size: 0.9rem;
-}
-.compare-list li:last-child { border-bottom: 0; }
-.cmp-rk { font-variant-numeric: tabular-nums; color: var(--ink-4); font-size: 0.8rem; }
-.cmp-nm { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cmp-pos {
   font-size: 0.62rem; font-weight: 700; letter-spacing: 0.05em;
   padding: 2px 5px; border-radius: 4px;
@@ -1788,18 +757,6 @@ function scrollTo(id: string) {
 .pos-rb { background: oklch(0.62 0.16 150 / 0.18); color: oklch(0.78 0.16 150); }
 .pos-wr { background: oklch(0.62 0.16 250 / 0.18); color: oklch(0.78 0.14 250); }
 .pos-te { background: oklch(0.68 0.16 60 / 0.18); color: oklch(0.82 0.15 60); }
-.cmp-move { font-size: 0.7rem; font-variant-numeric: tabular-nums; min-width: 26px; text-align: right; }
-.cmp-up { color: oklch(0.78 0.16 150); }
-.cmp-down { color: oklch(0.68 0.18 25); }
-.cmp-hold { color: var(--ink-4); font-size: 0.7rem; min-width: 26px; text-align: right; }
-.compare-caption {
-  margin: 18px auto 0;
-  max-width: 58ch;
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: var(--ink-3);
-  text-align: center;
-}
 
 /* ── The free dashboard layer ──────────────────────────────────────────── */
 .dash-section { padding: clamp(56px, 8vw, 104px) 0; }
@@ -1845,10 +802,6 @@ function scrollTo(id: string) {
 .tv-stats b { color: var(--ink-1); font-variant-numeric: tabular-nums; }
 .tv-cliff { color: oklch(0.7 0.18 25); }
 .tv-sub { margin-top: 7px; font-size: 0.72rem; color: var(--ink-3-soft); }
-.tv-grade {
-  font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 1.25rem;
-  color: oklch(0.78 0.16 150); line-height: 1;
-}
 
 /* ── Ranking horizons ──────────────────────────────────────────────────── */
 .horizons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
@@ -1938,150 +891,11 @@ function scrollTo(id: string) {
   margin: 0;
   max-width: 74ch;
 }
-
-/* ── Proof stack: the verdict withheld, then the verdict earned ─────────── */
-.proof-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  width: 100%;
-  max-width: 380px;
-}
-.proof-card {
-  border-radius: 14px;
-  padding: 16px 18px;
-  background: oklch(0.16 0.012 265);
-  border: 1px solid oklch(0.28 0.012 265);
-}
-.proof-card-late { border-color: oklch(0.42 0.09 95); }
-.proof-week {
-  font-size: 0.7rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: oklch(0.62 0.01 265);
-  margin-bottom: 10px;
-}
-.proof-team { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
-.proof-dot { width: 22px; height: 22px; border-radius: 50%; flex: 0 0 auto; }
-.proof-dot-mm { background: linear-gradient(135deg, oklch(0.78 0.16 85), oklch(0.62 0.16 60)); }
-.proof-name { font-weight: 700; color: #fff; font-size: 0.95rem; }
-.proof-rec { margin-left: auto; font-variant-numeric: tabular-nums; color: oklch(0.72 0.01 265); font-size: 0.9rem; }
-.proof-verdict {
-  font-size: 0.86rem;
-  line-height: 1.45;
-  padding: 9px 11px;
-  border-radius: 9px;
-  margin-bottom: 9px;
-}
-.proof-verdict-held {
-  color: oklch(0.66 0.01 265);
-  background: oklch(0.21 0.008 265);
-  font-style: italic;
-}
-.proof-verdict-shown {
-  color: oklch(0.84 0.13 85);
-  background: oklch(0.26 0.05 85);
-  font-weight: 600;
-}
-.proof-arrow { margin-right: 4px; }
-.proof-note { font-size: 0.76rem; color: oklch(0.56 0.01 265); line-height: 1.5; }
-@media (max-width: 900px) {
-  .proof-stack { justify-self: stretch; max-width: 380px; margin: 0 auto; }
-}
-
-.imsg-out-spaced { margin-top: 8px; }
-
-@media (max-width: 960px) {
-  .moment-stage { grid-template-columns: 1fr; gap: 32px; }
-  .imessage-thread { justify-self: stretch; max-width: 360px; margin: 0 auto; }
-  .moment-card-wrap { padding: 36px 14px 28px; }
-  .stack-back-left  { left: -14px; }
-  .stack-back-right { right: -16px; }
-}
-
-/* iMessage thread */
-.imessage-thread {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 18px 14px;
-  background: oklch(0.10 0.012 270);
-  border: 1px solid var(--ink-5);
-  border-radius: 22px;
-  position: relative;
-  max-width: 260px;
-  justify-self: end;
-}
-.imsg-row { display: flex; }
-.imsg-bubble {
-  max-width: 90%;
-  padding: 8px 12px;
-  border-radius: 18px;
-  font-size: 0.82rem;
-  line-height: 1.32;
-  word-wrap: break-word;
-}
-.imsg-out {
-  align-self: flex-end;
-  background: var(--accent-primary);
-  color: var(--ink-8);
-  border-bottom-right-radius: 5px;
-  margin-left: auto;
-  padding: 10px 12px;
-}
-.imsg-in {
-  background: var(--imsg-grey);
-  color: var(--ink-1);
-  border-bottom-left-radius: 5px;
-}
-.imsg-attachment {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-.imsg-name {
-  font-size: 0.62rem;
-  font-weight: 700;
-  color: oklch(0.78 0.010 90);
-  margin-bottom: 2px;
-  letter-spacing: 0.04em;
-}
-.imsg-text { color: var(--ink-1); }
-.imsg-reactions {
-  position: absolute;
-  margin-top: 6px;
-  background: var(--imsg-grey-2);
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 0.7rem;
-}
-.imsg-typing {
-  align-self: flex-start;
-  display: inline-flex;
-  gap: 4px;
-  background: var(--imsg-grey);
-  padding: 10px 14px;
-  border-radius: 18px;
-  border-bottom-left-radius: 5px;
-  margin-top: 2px;
-}
-.imsg-typing span {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: oklch(0.66 0.010 90);
-}
 @media (prefers-reduced-motion: no-preference) {
   @keyframes imsg-blink {
     0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
     30%           { opacity: 1;   transform: translateY(-2px); }
-  }
-  .imsg-typing span { animation: imsg-blink 1.4s infinite cubic-bezier(0.22, 1, 0.36, 1); }
-  .imsg-typing span:nth-child(2) { animation-delay: 0.18s; }
-  .imsg-typing span:nth-child(3) { animation-delay: 0.36s; }
-}
+  }}
 
 /* ══════════════════════════════════════════════
    FINAL CTA
@@ -2178,9 +992,7 @@ function scrollTo(id: string) {
 }
 @media (prefers-reduced-motion: no-preference) {
   .faq-arrow { transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), color 0.22s; }
-  .faq-a-wrap { transition: grid-template-rows 0.28s cubic-bezier(0.22, 1, 0.36, 1), padding-bottom 0.22s; }
-  .faq-inner-fade { transition: opacity 0.22s; }
-}
+  .faq-a-wrap { transition: grid-template-rows 0.28s cubic-bezier(0.22, 1, 0.36, 1), padding-bottom 0.22s; }}
 .faq-arrow.open { transform: rotate(90deg); color: var(--accent-primary); }
 /* Non-clipping accordion via grid 0fr → 1fr trick */
 .faq-a-wrap {
@@ -2227,29 +1039,18 @@ function scrollTo(id: string) {
 }
 @media (prefers-reduced-motion: no-preference) {
   .legal-link { transition: color 0.15s; }
-  .legal-link:hover { color: var(--signal-pos); }
-}
+  .legal-link:hover { color: var(--signal-pos); }}
 
 /* ══════════════════════════════════════════════
    RESPONSIVE
 ══════════════════════════════════════════════ */
 @media (max-width: 900px) {
-  .picker-grid { grid-template-columns: 1fr; gap: 24px; }
-  .moment-inner { grid-template-columns: 1fr; gap: 40px; }
-  .moment-stage { grid-template-columns: 1fr; }
-  .imessage-thread { max-width: 100%; justify-self: stretch; }
-  .preview-rank-row { grid-template-columns: 24px 28px 1fr 60px; }
-  .prev-name { font-size: 0.75rem; }
-  .hero-stage { flex-direction: column; gap: 14px; }
-  .hero-stage-caption { max-width: 100%; align-items: center; text-align: center; }
-  .caption-arrow { transform: rotate(90deg); }
-}
+  .hero-stage { flex-direction: column; gap: 14px; }}
 
 @media (max-width: 600px) {
   .hero-headline { font-size: 3rem; }
   .section-headline { font-size: 1.8rem; }
-  .hero-section { padding: 64px 0 48px; }
-}
+  .hero-section { padding: 64px 0 48px; }}
 
 /* ══════════════════════════════════════════════
    REDUCED MOTION FALLBACK
@@ -2259,6 +1060,275 @@ function scrollTo(id: string) {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }}
+/* ── The board slice: where our rank and the market disagree ────────────── */
+/* The hero stage is a flex row built for a card beside a caption; the board
+   wants the caption underneath it, so this variant overrides the axis rather
+   than adding a second stage class. */
+.board-stage { flex-direction: column; gap: 16px; max-width: 720px; }
+.board-card {
+  /* The hero centres its text; a data table must not inherit that or the column
+     headers float in the middle of their columns. */
+  text-align: left;
+  width: 100%;
+  border-radius: 14px;
+  background: oklch(0.11 0.012 265);
+  border: 1px solid oklch(0.24 0.012 265);
+  box-shadow: 0 18px 48px oklch(0.05 0.02 265 / 0.55);
+  overflow: hidden;
+}
+.board-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 12px 16px;
+  border-bottom: 1px solid oklch(0.22 0.012 265);
+  background: oklch(0.13 0.014 265);
+}
+.board-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.82rem; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase;
+  color: var(--ink-1);
+}
+.board-tag {
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.05em;
+  color: var(--accent-primary);
+  background: var(--accent-primary-faint);
+  border: 1px solid var(--accent-primary-border);
+  border-radius: 999px; padding: 2px 9px;
+}
+.board-thead, .board-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 74px 74px 118px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+}
+.board-thead {
+  padding-top: 9px; padding-bottom: 7px;
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase;
+  color: var(--ink-4);
+}
+.board-thead .bd-num, .board-thead .bd-flag { text-align: right; }
+.board-row {
+  padding-top: 9px; padding-bottom: 9px;
+  border-top: 1px solid oklch(0.19 0.012 265);
+}
+.board-row .bd-nm { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.board-row .bd-nm b {
+  font-size: 0.88rem; font-weight: 600; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bd-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.84rem; color: var(--ink-3);
+}
+.bd-ours { color: var(--ink-1); font-weight: 700; }
+.bd-flag { display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
+.flag {
+  font-size: 0.6rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 3px 7px; border-radius: 4px;
+}
+.flag-value { background: oklch(0.62 0.16 150 / 0.18); color: oklch(0.80 0.16 150); }
+.flag-fade  { background: oklch(0.63 0.22 25 / 0.16);  color: oklch(0.75 0.19 25); }
+.bd-gap {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.72rem; font-weight: 700; color: oklch(0.80 0.16 150);
+  min-width: 54px; text-align: right;
+}
+.bd-gap-neg { color: oklch(0.75 0.19 25); }
+.bd-inline { font-size: 0.72rem; color: var(--ink-4); }
+.row-value .bd-nm b { color: var(--ink-1); }
+.row-value { background: oklch(0.62 0.16 150 / 0.05); }
+.row-fade  { background: oklch(0.63 0.22 25 / 0.04); }
+.row-fade .bd-nm b, .row-fade .bd-num { color: var(--ink-3-soft); }
+.board-caption {
+  max-width: 620px; margin: 0 auto;
+  font-size: 0.86rem; line-height: 1.6; color: var(--ink-3); text-align: center;
+}
+.board-caption b { color: var(--ink-1); font-weight: 700; }
+
+@media (max-width: 620px) {
+  .board-thead, .board-row { grid-template-columns: minmax(0, 1fr) 46px 46px 74px; gap: 6px; padding: 0 11px; }
+  .board-row { padding-top: 9px; padding-bottom: 9px; }
+  .board-thead { padding-top: 9px; padding-bottom: 7px; }
+  .bd-gap { display: none; }
+  /* A truncated player name proves nothing. Let the name wrap rather than
+     ellipsis away the exact thing the table is here to show. */
+  .board-row .bd-nm { align-items: baseline; }
+  .board-row .bd-nm b {
+    white-space: normal; overflow: visible; text-overflow: clip;
+    font-size: 0.8rem; line-height: 1.25;
   }
+  .bd-num { font-size: 0.78rem; }
+  .flag { padding: 3px 5px; letter-spacing: 0.06em; }
+}
+
+/* ── Trade card leverage flag ───────────────────────────────────────────── */
+.tv-flag-lev { background: var(--accent-tertiary-soft); color: var(--accent-tertiary); }
+
+/* ── Same player, three rule sets ───────────────────────────────────────── */
+.rules-section { padding: clamp(64px, 9vw, 120px) 0; }
+.rules-sub { max-width: 620px; }
+.rules-block {
+  margin-top: 34px;
+  border-radius: 16px;
+  border: 1px solid oklch(0.22 0.012 265);
+  background: oklch(0.11 0.012 265);
+  padding: 20px;
+}
+.rules-player {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  padding-bottom: 16px; margin-bottom: 18px;
+  border-bottom: 1px solid oklch(0.20 0.012 265);
+}
+.rp-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.4rem; font-weight: 800; letter-spacing: 0.01em; color: var(--ink-1);
+}
+.rp-meta { font-size: 0.78rem; color: var(--ink-3-soft); margin-left: 4px; }
+.rules-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.rule-card {
+  border-radius: 12px;
+  border: 1px solid oklch(0.22 0.012 265);
+  background: oklch(0.13 0.014 265);
+  padding: 14px;
+}
+.rule-card-hi {
+  border-color: var(--accent-primary-border);
+  background: var(--accent-primary-faint);
+}
+.rc-league {
+  font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-3-soft); margin-bottom: 10px;
+}
+.rc-verdict {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.65rem; font-weight: 900; line-height: 1; text-transform: uppercase;
+  letter-spacing: 0.02em; margin-bottom: 9px;
+}
+.rc-sit   { color: var(--ink-4); }
+.rc-flex  { color: oklch(0.80 0.15 75); }
+.rc-start { color: oklch(0.80 0.16 150); }
+.rc-detail { font-size: 0.8rem; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.rc-detail b { color: var(--ink-1); font-weight: 700; }
+.rc-slot { margin-top: 4px; font-size: 0.74rem; color: var(--ink-4); }
+.rules-caption {
+  margin: 18px 2px 0;
+  font-size: 0.86rem; line-height: 1.6; color: var(--ink-3);
+}
+
+/* ── Compatibility facts (replaces the interactive picker) ──────────────── */
+.compat {
+  margin-top: 26px;
+  border-top: 1px solid oklch(0.20 0.012 265);
+}
+.compat-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 13px 2px;
+  border-bottom: 1px solid oklch(0.18 0.012 265);
+}
+.compat-label {
+  font-size: 0.66rem; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase;
+  color: var(--ink-4);
+}
+.compat-vals {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px;
+  font-size: 0.9rem; color: var(--ink-2);
+}
+.compat-plat { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; }
+.compat-logo { width: 17px; height: 17px; object-fit: contain; flex-shrink: 0; }
+.rules-cta { margin-top: 28px; }
+
+@media (max-width: 560px) {
+  .compat-row { grid-template-columns: 1fr; gap: 6px; }
+}
+
+/* ── The pitch: leverage, and the message it writes ─────────────────────── */
+.pitch-section { padding: 96px 0; background: var(--ink-7); }
+.pitch-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 56px;
+  align-items: center;
+}
+.pitch-copy .section-headline { margin-bottom: 18px; }
+.pitch-sub-2 { margin-top: -6px; }
+.pitch-cta { margin-top: 26px; }
+.pitch-stage { display: flex; justify-content: center; }
+
+.deal-card {
+  width: 100%; max-width: 420px;
+  border-radius: 14px;
+  background: oklch(0.11 0.012 265);
+  border: 1px solid var(--accent-tertiary-border);
+  box-shadow: 0 20px 52px oklch(0.05 0.02 265 / 0.6);
+  overflow: hidden;
+}
+.deal-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 14px;
+  background: var(--accent-tertiary-soft);
+  border-bottom: 1px solid oklch(0.22 0.012 265);
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.deal-flags { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.deal-lev { color: var(--accent-tertiary); font-weight: 800; letter-spacing: 0.1em; }
+.deal-sep { color: var(--ink-4); }
+.deal-meter {
+  font-variant-numeric: tabular-nums; font-weight: 800; letter-spacing: 0.02em;
+  color: oklch(0.80 0.16 150); white-space: nowrap;
+}
+.deal-line { display: flex; align-items: center; gap: 8px; padding: 11px 14px 0; }
+.deal-line:last-of-type { padding-bottom: 12px; }
+.deal-tag {
+  font-size: 0.58rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+  width: 34px; flex-shrink: 0;
+}
+.deal-get  { color: oklch(0.80 0.16 150); }
+.deal-give { color: var(--ink-4); }
+.deal-nm {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.1rem; font-weight: 800; color: var(--ink-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.deal-nm-give { color: var(--ink-3); font-weight: 700; }
+.deal-from { margin-left: auto; font-size: 0.7rem; color: var(--ink-4); white-space: nowrap; }
+
+.deal-why { padding: 11px 14px; border-top: 1px solid oklch(0.19 0.012 265); }
+.dw-head {
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-4); margin-bottom: 8px;
+}
+.dw-row { display: flex; gap: 10px; font-size: 0.78rem; line-height: 1.5; }
+.dw-row + .dw-row { margin-top: 5px; }
+.dw-k { width: 38px; flex-shrink: 0; color: var(--ink-4); font-weight: 700; }
+.dw-v { color: var(--ink-3); min-width: 0; }
+.dw-up { color: oklch(0.80 0.16 150); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.deal-pitch {
+  padding: 11px 14px 13px;
+  border-top: 1px solid oklch(0.19 0.012 265);
+  background: oklch(0.13 0.014 265);
+}
+.dp-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-4); margin-bottom: 7px;
+}
+.dp-copy {
+  font-size: 0.58rem; letter-spacing: 0.08em;
+  color: var(--accent-tertiary);
+  border: 1px solid var(--accent-tertiary-border);
+  border-radius: 4px; padding: 2px 7px;
+}
+.dp-body { font-size: 0.84rem; line-height: 1.62; color: var(--ink-2); }
+
+@media (max-width: 900px) {
+  .pitch-inner { grid-template-columns: 1fr; gap: 36px; }
+  .pitch-section { padding: 72px 0; }
 }
 </style>
