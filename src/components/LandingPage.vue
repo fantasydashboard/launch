@@ -56,8 +56,11 @@
             Flag    — the rule in src/draft/room/marketDisagreement.ts: fires at one full
                       round, rounds = (adpRank - ourRank) / teams.
 
-          Because ADP moves, this table is a snapshot and goes stale. Refresh it each preseason
-          or wire the section to the live endpoint.
+          The rows are REGENERATED ON EVERY BUILD by scripts/build-landing-board.mjs, so the
+          board cannot drift from the market the way a hand-written table does. Fetching this
+          in the browser was never an option — the payloads are ~8.6MB and ~14MB — so it runs
+          at build time and ships four rows of JSON. If Sleeper is unreachable the committed
+          snapshot is kept and the build continues.
         -->
         <div class="hero-stage board-stage" aria-hidden="true">
           <div class="board-card">
@@ -72,35 +75,33 @@
               <span class="bd-flag">Read</span>
             </div>
 
-            <div class="board-row row-fade">
-              <span class="bd-nm"><b>Jeremiyah Love</b><span class="cmp-pos pos-rb">RB</span></span>
-              <span class="bd-num">3.03</span>
-              <span class="bd-num bd-ours">4.09</span>
-              <span class="bd-flag"><span class="flag flag-fade">Fade</span><span class="bd-gap bd-gap-neg">&minus;1.5 rds</span></span>
-            </div>
-            <div class="board-row row-value">
-              <span class="bd-nm"><b>Colston Loveland</b><span class="cmp-pos pos-te">TE</span></span>
-              <span class="bd-num">4.07</span>
-              <span class="bd-num bd-ours">3.04</span>
-              <span class="bd-flag"><span class="flag flag-value">Value</span><span class="bd-gap">+1.2 rds</span></span>
-            </div>
-            <div class="board-row">
-              <span class="bd-nm"><b>Tyler Warren</b><span class="cmp-pos pos-te">TE</span></span>
-              <span class="bd-num">5.02</span>
-              <span class="bd-num bd-ours">5.02</span>
-              <span class="bd-flag"><span class="bd-inline">in line</span></span>
-            </div>
-            <div class="board-row row-value">
-              <span class="bd-nm"><b>Christian Watson</b><span class="cmp-pos pos-wr">WR</span></span>
-              <span class="bd-num">6.05</span>
-              <span class="bd-num bd-ours">5.01</span>
-              <span class="bd-flag"><span class="flag flag-value">Value</span><span class="bd-gap">+1.3 rds</span></span>
+            <div
+              v-for="row in board.rows"
+              :key="row.name"
+              class="board-row"
+              :class="row.flag === 'value' ? 'row-value' : row.flag === 'fade' ? 'row-fade' : ''"
+            >
+              <span class="bd-nm"><b>{{ row.name }}</b><span class="cmp-pos" :class="'pos-' + row.pos.toLowerCase()">{{ row.pos }}</span></span>
+              <span class="bd-num">{{ row.adp }}</span>
+              <span class="bd-num bd-ours">{{ row.ours }}</span>
+              <span class="bd-flag">
+                <template v-if="row.flag">
+                  <span class="flag" :class="'flag-' + row.flag">{{ row.flag === 'value' ? 'Value' : 'Fade' }}</span>
+                  <span class="bd-gap" :class="{ 'bd-gap-neg': row.rounds < 0 }">
+                    {{ row.rounds > 0 ? '+' : '&minus;' }}{{ Math.abs(row.rounds).toFixed(1) }} rds
+                  </span>
+                </template>
+                <span v-else class="bd-inline">in line</span>
+              </span>
             </div>
           </div>
+          <!-- Names the in-line row from the data rather than hardcoding a player, so the
+               caption stays true when the build picks different rows. -->
           <p class="board-caption">
-            Live Sleeper half-PPR ADP against your board. TE premium moves Loveland up a round and
-            a bit — and leaves Warren exactly where the room has him, because the flag only fires on
-            a <b>full round</b> of disagreement. Rare on purpose, so it means something.
+            Sleeper half-PPR ADP against your board, refreshed {{ board.generatedAt }}. The flag
+            only fires on a <b>full round</b> of disagreement<template v-if="inlineRow">, which is why
+            {{ inlineRow.name }} sits exactly where the room has him</template>. Rare on purpose, so
+            it means something when it shows up.
           </p>
         </div>
       </div>
@@ -489,9 +490,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+/* Regenerated on every build from live Sleeper data — see scripts/build-landing-board.mjs. */
+import board from '@/data/landingBoard.json'
 
 defineEmits<{ (e: 'open-signup'): void }>()
+
+// The un-flagged row: the proof that the flag is rare rather than decorative.
+const inlineRow = computed(() => board.rows.find((r) => !r.flag) ?? null)
 
 // ── FAQ ────────────────────────────────────────────────────────────────────
 const openFaq = ref<number | null>(null)

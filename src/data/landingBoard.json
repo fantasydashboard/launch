@@ -1,0 +1,39 @@
+{
+  "generatedAt": "2026-09-02",
+  "season": "2026",
+  "teams": 12,
+  "rows": [
+    {
+      "name": "Jeremiyah Love",
+      "pos": "RB",
+      "adp": "3.03",
+      "ours": "4.09",
+      "rounds": -1.5,
+      "flag": "fade"
+    },
+    {
+      "name": "Malik Nabers",
+      "pos": "WR",
+      "adp": "3.04",
+      "ours": "3.03",
+      "rounds": 0.1,
+      "flag": ""
+    },
+    {
+      "name": "Colston Loveland",
+      "pos": "TE",
+      "adp": "4.07",
+      "ours": "3.04",
+      "rounds": 1.3,
+      "flag": "value"
+    },
+    {
+      "name": "Mike Evans",
+      "pos": "WR",
+      "adp": "6.02",
+      "ours": "3.08",
+      "rounds": 2.5,
+      "flag": "value"
+    }
+  ]
+}
