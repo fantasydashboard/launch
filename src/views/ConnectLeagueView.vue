@@ -138,12 +138,14 @@ import { useRouter } from 'vue-router'
 import { sleeperService } from '@/services/sleeper'
 import { useLeagueStore } from '@/stores/league'
 import { useSportStore } from '@/stores/sport'
+import { useAuthStore } from '@/stores/auth'
 
 defineEmits<{ (e: 'open-signup'): void }>()
 
 const router = useRouter()
 const leagueStore = useLeagueStore()
 const sportStore = useSportStore()
+const authStore = useAuthStore()
 
 type Platform = 'sleeper' | 'yahoo' | 'espn'
 type Sport = 'football' | 'baseball' | 'basketball' | 'hockey'
@@ -244,9 +246,13 @@ async function choose(league: any) {
   saving.value = true
   try {
     const sport = sportOf(league)
-    /* saveLeague writes to localStorage synchronously and only touches Supabase when a user
-       id is present, so this is the same call the signed-in flow makes. */
-    await leagueStore.saveLeague(league, username.value, sleeperUserId.value, sport)
+    /* The third argument is the SUPABASE user id that will own the row — not the Sleeper one.
+       Passing the Sleeper id here sent an 18-digit number at a uuid column and earned a
+       rejection on every connect. Anonymous visitors pass '', which skips the write entirely;
+       the league still lands in localStorage and syncs up when they make an account.
+       My-team detection does not need it either way — the store resolves that from the
+       username it just stored. */
+    await leagueStore.saveLeague(league, username.value, authStore.user?.id ?? '', sport)
     sportStore.setSport(sport)
     /* setActiveLeague is what actually pulls rosters, users and matchups. Awaiting it here
        means the dashboard has data the moment it renders instead of flashing an empty shell. */

@@ -4614,14 +4614,17 @@ async function loadLeagueSettings() {
   const leagueKey = effectiveLeagueKey.value || leagueStore.activeLeagueId
   if (!leagueKey) return
   
-  // For ESPN, scoring type is already in the store (set during league loading)
-  if (leagueStore.activePlatform === 'espn') {
-    console.log('[loadLeagueSettings] ESPN platform - using store data')
-    console.log('[loadLeagueSettings] scoringType:', scoringType.value)
-    statCategories.value = [] // ESPN doesn't need category details
+  /* Only Yahoo needs an API round-trip here; ESPN and Sleeper already have their scoring
+     type in the store from league loading. This used to early-return for ESPN alone and
+     then fall through to the Yahoo branch for EVERYTHING else — so every Sleeper league
+     fired four Yahoo requests that could only fail, and a signed-out visitor got
+     "Not authenticated - no session found" in the console on a working page. */
+  if (leagueStore.activePlatform !== 'yahoo') {
+    console.log(`[loadLeagueSettings] ${leagueStore.activePlatform} platform - using store data`)
+    statCategories.value = []
     return
   }
-  
+
   // For Yahoo, call the API
   try {
     // Get league details to get the season
