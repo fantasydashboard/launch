@@ -6,22 +6,26 @@
     ══════════════════════════════════════════════ -->
     <section class="hero-section" aria-label="Ultimate Fantasy Dashboard">
       <div class="hero-inner">
+        <!--
+          The mark alone reads "UFD_", which means nothing to a stranger. The full name is
+          set as text beside it so it is always legible, always correct, and never depends
+          on someone recognising a logo they have never seen.
+        -->
         <div class="hero-logo-wrap">
-          <img src="/brand/ufd-primary-dark.png" alt="Ultimate Fantasy Dashboard" class="hero-logo" />
+          <img src="/brand/ufd-primary-dark.png" alt="" class="hero-logo" aria-hidden="true" />
+          <span class="hero-wordmark">Ultimate&nbsp;Fantasy&nbsp;Dashboard</span>
         </div>
 
-        <div class="hero-eyebrow"><span class="eyebrow-dot eyebrow-dot-primary"></span>The draft. The wire. The trade.</div>
+        <div class="hero-eyebrow"><span class="eyebrow-dot eyebrow-dot-primary"></span>Draft &middot; Waiver &middot; Start/sit &middot; Trade</div>
 
         <h1 class="hero-headline">
-          Your platform tells you
-          <span class="headline-line">what happened.</span>
-          <span class="headline-final">This tells you what to do.</span>
+          <span class="headline-final">Don't tell your league.</span>
         </h1>
 
         <p class="hero-sub">
-          A cheat code for the three decisions that actually decide your season — who to
-          draft, who to claim, and whether that trade is any good. Use our projections or
-          upload your own. Free forever for the full picture; $39 a year for the decisions.
+          Everyone in your league is deciding off the same projections their platform handed
+          them. These are rankings built for your league's exact scoring — for the draft, the
+          rest of the season, and this week — and you can swap in your own any time.
         </p>
 
         <div class="hero-ctas">
@@ -34,104 +38,46 @@
           </a>
         </div>
 
-        <!-- Single hero composition: share card + caption -->
-        <div class="hero-stage" aria-hidden="true">
-          <div class="hero-stage-card">
-            <div class="sc-card sc-pr-card">
-              <div class="sc-brand-row">
-                <span class="sc-brand-logo">UFD</span>
-                <span class="sc-brand-sport">NFL Fantasy . PPR</span>
-                <span class="sc-brand-mover">
-                  <svg viewBox="0 0 12 12" width="9" height="9" aria-hidden="true"><path d="M6 1.5l4.5 6h-3v3.5h-3v-3.5h-3z" fill="currentColor"/></svg>
-                  <span>MM +2</span>
-                </span>
-                <span class="sc-brand-week">WK 11</span>
+        <!--
+          The old hero was a power-rankings card — built when this was a sharing tool, and
+          showing the free tier. This shows the actual product: the same players, ordered by
+          the projections everyone in the league already has, and ordered by rankings built
+          for this league's scoring. The gap between the columns IS the pitch.
+        -->
+        <div class="hero-stage compare-stage" aria-hidden="true">
+          <div class="compare-grid">
+            <div class="compare-col compare-col-them">
+              <div class="compare-head">
+                <span class="compare-label">Your league's default list</span>
+                <span class="compare-tag compare-tag-them">Everyone has this</span>
               </div>
+              <ol class="compare-list">
+                <li><span class="cmp-rk">1</span><span class="cmp-nm">Bijan Robinson</span><span class="cmp-pos pos-rb">RB</span></li>
+                <li><span class="cmp-rk">2</span><span class="cmp-nm">CeeDee Lamb</span><span class="cmp-pos pos-wr">WR</span></li>
+                <li><span class="cmp-rk">3</span><span class="cmp-nm">Breece Hall</span><span class="cmp-pos pos-rb">RB</span></li>
+                <li><span class="cmp-rk">4</span><span class="cmp-nm">Puka Nacua</span><span class="cmp-pos pos-wr">WR</span></li>
+                <li><span class="cmp-rk">5</span><span class="cmp-nm">Sam LaPorta</span><span class="cmp-pos pos-te">TE</span></li>
+              </ol>
+            </div>
 
-              <div class="sc-pr-title-row">
-                <div class="sc-pr-title">Weekly Power Rankings</div>
-                <div class="sc-pr-legend" aria-hidden="true">
-                  <span class="legend-dot legend-mm"></span>
-                  <span class="legend-dot legend-tc"></span>
-                  <span class="legend-dot legend-ta"></span>
-                  <span class="legend-dot legend-wwk"></span>
-                  <span class="legend-dot legend-tbf"></span>
-                  <span class="legend-label">last 6 weeks</span>
-                </div>
+            <div class="compare-col compare-col-you">
+              <div class="compare-head">
+                <span class="compare-label compare-label-you">Your rankings</span>
+                <span class="compare-tag compare-tag-you">Half-PPR &middot; TE premium</span>
               </div>
-
-              <!-- Bump chart: rank movement over the last 6 weeks -->
-              <div class="sc-pr-chart-wrap">
-                <svg class="sc-pr-chart" viewBox="0 0 340 92" preserveAspectRatio="none" aria-hidden="true">
-                  <defs>
-                    <linearGradient id="mmLineGlow" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0" stop-color="oklch(0.78 0.18 92)" stop-opacity="0"/>
-                      <stop offset="1" stop-color="oklch(0.78 0.18 92)" stop-opacity="1"/>
-                    </linearGradient>
-                  </defs>
-                  <g class="sc-pr-chart-grid">
-                    <line x1="0" y1="12" x2="340" y2="12"/>
-                    <line x1="0" y1="32" x2="340" y2="32"/>
-                    <line x1="0" y1="52" x2="340" y2="52"/>
-                    <line x1="0" y1="72" x2="340" y2="72"/>
-                    <line x1="0" y1="86" x2="340" y2="86"/>
-                  </g>
-                  <!-- Mahomes Magic: 3→3→2→2→3→1 -->
-                  <path class="sc-pr-line line-mm" d="M 10,52 C 31,52 53,52 74,52 S 117,32 138,32 S 181,32 202,32 S 245,52 266,52 S 309,12 330,12"/>
-                  <!-- Trash Can Wins: 1→1→1→1→1→2 -->
-                  <path class="sc-pr-line line-tc" d="M 10,12 C 31,12 53,12 74,12 S 117,12 138,12 S 181,12 202,12 S 245,12 266,12 S 309,32 330,32"/>
-                  <!-- The Algorithm: 2→2→4→3→3→3 -->
-                  <path class="sc-pr-line line-ta" d="M 10,32 C 31,32 53,32 74,32 S 117,72 138,72 S 181,52 202,52 S 245,52 266,52 S 309,52 330,52"/>
-                  <!-- Waiver Wire Kid: 4→5→5→4→5→4 -->
-                  <path class="sc-pr-line line-wwk" d="M 10,72 C 31,72 53,86 74,86 S 117,86 138,86 S 181,72 202,72 S 245,86 266,86 S 309,72 330,72"/>
-                  <!-- Toilet Bowl FC: 5→4→3→5→4→5 -->
-                  <path class="sc-pr-line line-tbf" d="M 10,86 C 31,86 53,72 74,72 S 117,52 138,52 S 181,86 202,86 S 245,72 266,72 S 309,86 330,86"/>
-                  <!-- endpoint dots (current rank) -->
-                  <circle class="sc-pr-dot dot-mm"  cx="330" cy="12" r="4"/>
-                  <circle class="sc-pr-dot dot-tc"  cx="330" cy="32" r="3.2"/>
-                  <circle class="sc-pr-dot dot-ta"  cx="330" cy="52" r="3.2"/>
-                  <circle class="sc-pr-dot dot-wwk" cx="330" cy="72" r="3.2"/>
-                  <circle class="sc-pr-dot dot-tbf" cx="330" cy="86" r="3.2"/>
-                </svg>
-              </div>
-
-              <div class="sc-pr-table">
-                <div class="sc-pr-thead">
-                  <span>Rank</span><span>+/-</span><span>Team</span><span>Score</span><span>W-L</span>
-                </div>
-                <div v-for="(t, i) in heroCardTeams" :key="i" class="sc-pr-row" :class="i === 0 ? 'sc-pr-leader' : ''">
-                  <span class="sc-pr-num" :class="i === 0 ? 'num-gold' : i === 1 ? 'num-silver' : i === 2 ? 'num-bronze' : ''">
-                    <svg v-if="i === 0" class="num-crown" viewBox="0 0 14 14" width="9" height="9" aria-hidden="true"><path d="M1 4l3 3 3-5 3 5 3-3v6H1z" fill="currentColor"/></svg>
-                    <span>{{ i + 1 }}</span>
-                  </span>
-                  <span class="sc-pr-chg" :class="t.trend > 0 ? 'chg-up' : t.trend < 0 ? 'chg-dn' : 'chg-flat'">
-                    <template v-if="t.trend > 0">▲{{ t.trend }}</template>
-                    <template v-else-if="t.trend < 0">▼{{ Math.abs(t.trend) }}</template>
-                    <template v-else>·</template>
-                  </span>
-                  <div class="sc-pr-team-cell">
-                    <div class="sc-pr-initials" :class="'init-' + i">{{ initials(t.name) }}</div>
-                    <span class="sc-pr-name" :class="i === 0 ? 'name-gold' : ''">{{ t.name }}</span>
-                  </div>
-                  <div class="sc-pr-bar-wrap">
-                    <div class="sc-pr-bar" :style="{ width: t.score + '%', opacity: Math.max(0.32, 1 - (i * 0.15)) }"></div>
-                    <span class="sc-pr-bar-num">{{ t.pscore }}</span>
-                  </div>
-                  <span class="sc-pr-rec">{{ t.record }}</span>
-                </div>
-              </div>
-              <div class="sc-watermark">ultimatefantasydashboard.com</div>
+              <ol class="compare-list">
+                <li><span class="cmp-rk">1</span><span class="cmp-nm">Bijan Robinson</span><span class="cmp-pos pos-rb">RB</span><span class="cmp-move cmp-hold">&mdash;</span></li>
+                <li><span class="cmp-rk">2</span><span class="cmp-nm">Sam LaPorta</span><span class="cmp-pos pos-te">TE</span><span class="cmp-move cmp-up">&#9650;3</span></li>
+                <li><span class="cmp-rk">3</span><span class="cmp-nm">CeeDee Lamb</span><span class="cmp-pos pos-wr">WR</span><span class="cmp-move cmp-down">&#9660;1</span></li>
+                <li><span class="cmp-rk">4</span><span class="cmp-nm">Puka Nacua</span><span class="cmp-pos pos-wr">WR</span><span class="cmp-hold">&mdash;</span></li>
+                <li><span class="cmp-rk">5</span><span class="cmp-nm">Breece Hall</span><span class="cmp-pos pos-rb">RB</span><span class="cmp-move cmp-down">&#9660;2</span></li>
+              </ol>
             </div>
           </div>
-
-          <div class="hero-stage-caption">
-            <div class="caption-arrow" aria-hidden="true">
-              <svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="2.2">
-                <path d="M6 8c8 0 18 6 22 16M32 18l-2 8 8-2"/>
-              </svg>
-            </div>
-            <span>The reads your league mates never see.</span>
-          </div>
+          <p class="compare-caption">
+            Same players. Your league's TE premium is worth three spots on LaPorta — and nobody
+            else in the league is looking at that.
+          </p>
         </div>
       </div>
     </section>
@@ -143,43 +89,82 @@
     <section class="tools-section" aria-label="The three decisions UFD makes for you">
       <div class="section-inner">
         <div class="section-eyebrow eyebrow-secondary">Where seasons are won</div>
-        <h2 class="section-headline">Three decisions.<br/><span class="accent-secondary">Everything else is scoreboard.</span></h2>
+        <h2 class="section-headline">Four decisions,<br/><span class="accent-secondary">all off the same numbers.</span></h2>
         <p class="section-sub tools-sub">
-          Standings tell you what already happened — every platform gives you those, and so do we,
-          free. These are the calls that change what happens next.
+          Draft, waiver, start/sit, trade. Every one of them runs on rankings built for your
+          league's exact scoring — so the advice changes when your league's rules do.
         </p>
 
-        <div class="tools-grid">
+        <div class="tools-grid tools-grid-4">
           <article class="tool-card">
-            <div class="tool-num">01</div>
+            <div class="tool-num">01 &middot; Draft</div>
             <h3 class="tool-name">The Draft Room</h3>
+            <div class="tool-vis" aria-hidden="true">
+              <div class="tv-row tv-take">
+                <span class="tv-label">Take</span>
+                <span class="tv-name">Sam LaPorta</span>
+                <span class="tv-pos pos-te">TE</span>
+              </div>
+              <div class="tv-stats">
+                <span><b>+18.4</b> edge</span>
+                <span><b>12%</b> lasts</span>
+                <span class="tv-cliff">cliff after him</span>
+              </div>
+            </div>
             <p class="tool-body">
-              Live, pick by pick. It tells you what it costs to wait on a position, who is likely
-              to still be there at your next pick, and where the board is about to fall off a
-              cliff. It learns how your league mates actually draft from their own past drafts —
-              so it knows the guy who always reaches for a quarterback.
+              Live, pick by pick. What it costs to wait, who survives to your next turn, and where
+              the board falls off. It learns how your league mates actually draft from their own
+              past drafts.
             </p>
             <p class="tool-scope">Live Sleeper football drafts &middot; basketball and hockey before their seasons</p>
           </article>
 
           <article class="tool-card">
-            <div class="tool-num">02</div>
+            <div class="tool-num">02 &middot; Waiver</div>
             <h3 class="tool-name">The Wire</h3>
+            <div class="tool-vis" aria-hidden="true">
+              <div class="tv-row">
+                <span class="tv-name">Jaylen Warren</span>
+                <span class="tv-pos pos-rb">RB</span>
+                <span class="tv-gain">+11.2 / wk</span>
+              </div>
+              <div class="tv-sub">replaces your RB2 &middot; 3% rostered</div>
+            </div>
             <p class="tool-body">
-              Waiver targets ranked by what they would actually add to <em>your</em> starting
-              lineup, not by who scored most last week. Names your real upgrades, and the ones
-              worth a claim before the rest of your league notices them.
+              Ranked by what a player adds to <em>your</em> starting lineup, not by who scored most
+              last week. The upgrades that are actually upgrades.
             </p>
             <p class="tool-scope">Every league, all four sports &middot; points and category</p>
           </article>
 
           <article class="tool-card">
-            <div class="tool-num">03</div>
-            <h3 class="tool-name">Trades</h3>
+            <div class="tool-num">03 &middot; Start/sit</div>
+            <h3 class="tool-name">Suggested Lineup</h3>
+            <div class="tool-vis" aria-hidden="true">
+              <div class="tv-row tv-start"><span class="tv-flag">Start</span><span class="tv-name">Tank Dell</span><span class="tv-proj">14.8</span></div>
+              <div class="tv-row tv-sit"><span class="tv-flag">Sit</span><span class="tv-name">Chris Godwin</span><span class="tv-proj">11.1</span></div>
+            </div>
             <p class="tool-body">
-              Whether a deal helps you, who in your league is the natural partner for it, and what
-              to actually send them. Scored against your roster's holes and theirs — not against a
-              generic trade-value chart that has never seen your lineup.
+              Your optimal lineup for this week, in your scoring, with the reason attached. The
+              close calls are where seasons quietly leak away.
+            </p>
+            <p class="tool-scope">Every league, all four sports</p>
+          </article>
+
+          <article class="tool-card">
+            <div class="tool-num">04 &middot; Trade</div>
+            <h3 class="tool-name">Trade Analyzer</h3>
+            <div class="tool-vis" aria-hidden="true">
+              <div class="tv-row tv-verdict">
+                <span class="tv-grade">B+</span>
+                <span class="tv-name">You win by 8.3 / wk</span>
+              </div>
+              <div class="tv-sub">fills your TE hole &middot; they need RB depth</div>
+            </div>
+            <p class="tool-body">
+              Whether a deal helps you, who in your league is the natural partner, and what to send.
+              Scored against your roster's holes and theirs — not a generic value chart that has
+              never seen your lineup.
             </p>
             <p class="tool-scope">Every league, all four sports &middot; points and category</p>
           </article>
@@ -188,11 +173,16 @@
         <div class="tools-rankings">
           <div class="tools-rankings-label">Our numbers, or yours</div>
           <p class="tools-rankings-body">
-            Every recommendation runs on projections we build for your league's exact scoring.
-            Trust someone else more? Paste or upload their list — draft, rest-of-season or
-            weekly — and the Draft Room and the Wire will use it instead of ours. Your guy,
-            our maths.
+            All four run on the same engine: rankings in three horizons, built for your league's
+            exact scoring. Trust someone else more? Paste or upload their list and it drives the
+            recommendations instead of ours. Your guy, our maths.
           </p>
+          <div class="horizons" aria-hidden="true">
+            <span class="horizon"><b>Draft</b>August, once a year</span>
+            <span class="horizon"><b>Rest of season</b>trades and holds</span>
+            <span class="horizon"><b>This week</b>waivers and start/sit</span>
+            <span class="horizon horizon-upload"><b>Yours</b>paste or upload &middot; CSV</span>
+          </div>
         </div>
       </div>
     </section>
@@ -327,9 +317,10 @@
           <h2 class="section-headline">It tells you<br/><span class="accent-tertiary">when it doesn't know.</span></h2>
           <p class="section-sub">
             Three weeks in, most tools will happily tell you who's lucky. There isn't enough
-            football played yet to know that, so this one says so and stays quiet. Every number
-            here waits until it can be checked — which is the only reason to trust the ones that
-            do show up.
+            football played yet to know that, so this one says so and stays quiet — same as the
+            draft board when it hasn't got the data, and the wire when the sample is too small.
+            Every number waits until it can be checked, which is the only reason to trust the
+            ones that do show up.
           </p>
           <button class="cta-primary moment-cta" @click="$emit('open-signup')" aria-label="Connect a league for free">
             Connect a league. Free.
@@ -467,14 +458,34 @@
     </section>
 
     <!-- ══════════════════════════════════════════════
+         THE DASHBOARD (free layer)
+    ══════════════════════════════════════════════ -->
+    <section class="dash-section" aria-label="Everything included free">
+      <div class="section-inner">
+        <div class="section-eyebrow eyebrow-primary">And the rest of it, free</div>
+        <h2 class="section-headline">The dashboard part<br/><span class="accent-primary">is the free part.</span></h2>
+        <p class="section-sub dash-sub">
+          The decisions are what you pay for. Everything that tells you where you stand — for every
+          league you're in, in all four sports — costs nothing and never expires.
+        </p>
+        <div class="dash-grid">
+          <div class="dash-item"><b>Power rankings</b>Ranked by roster strength, not record — with all-play and the luck read.</div>
+          <div class="dash-item"><b>League history</b>Every season your league has played. Records, head-to-head, career stats.</div>
+          <div class="dash-item"><b>Standings &amp; scores</b>Live through the week, in points or category formats.</div>
+          <div class="dash-item"><b>Every league you're in</b>ESPN, Yahoo and Sleeper. Football, baseball, basketball, hockey.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
          FINAL CTA
     ══════════════════════════════════════════════ -->
     <section class="final-cta-section" aria-label="Connect your league">
       <div class="section-inner final-inner">
         <div class="section-eyebrow eyebrow-primary">Ready</div>
         <h2 class="final-headline">
-          Everyone in your league<br/>has the same standings.<br/>
-          <span class="final-accent">Not everyone has this.</span>
+          Everyone in your league<br/>has the same projections.<br/>
+          <span class="final-accent">You don't have to.</span>
         </h2>
         <button class="cta-primary cta-xl" @click="$emit('open-signup')" aria-label="Connect your league for free">
           Connect your league. Free.
@@ -487,7 +498,7 @@
           is deciding, and "what does it cost" is the next question they have.
         -->
         <router-link to="/pricing" class="final-pricing-link">
-          Free forever, or $39 a year for the draft tools &rarr;
+          Free forever, or $39 a year for the decisions &rarr;
         </router-link>
       </div>
     </section>
@@ -1713,6 +1724,149 @@ function scrollTo(id: string) {
 .grade-f { background: oklch(0.62 0.22 25 / 0.22);  color: oklch(0.75 0.22 25); }
 
 /* Small breathing room between successive outgoing attachment bubbles */
+/* ── Wordmark: the mark says UFD_, the text says what that stands for ───── */
+.hero-logo-wrap { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.hero-wordmark {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: clamp(0.82rem, 1.5vw, 1rem);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* ── Hero comparison: the same players, two sets of numbers ─────────────── */
+.compare-stage { width: 100%; max-width: 860px; margin: 0 auto; }
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 700px) { .compare-grid { grid-template-columns: 1fr; } }
+.compare-col {
+  border-radius: 16px;
+  padding: 18px 18px 14px;
+  background: var(--ink-7);
+  border: 1px solid var(--ink-5);
+  text-align: left;
+}
+.compare-col-you {
+  background: linear-gradient(180deg, var(--accent-primary-faint), transparent 60%), var(--ink-7);
+  border-color: var(--accent-primary-border);
+}
+.compare-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.compare-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+  font-size: 0.86rem; color: var(--ink-3);
+}
+.compare-label-you { color: var(--accent-primary); }
+.compare-tag {
+  font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 3px 7px; border-radius: 5px; white-space: nowrap;
+}
+.compare-tag-them { background: var(--ink-5); color: var(--ink-3-soft); }
+.compare-tag-you { background: var(--accent-primary-soft); color: var(--accent-primary); }
+.compare-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.compare-list li {
+  display: grid;
+  grid-template-columns: 20px 1fr auto auto;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 0;
+  border-bottom: 1px solid oklch(1 0 0 / 0.05);
+  font-size: 0.9rem;
+}
+.compare-list li:last-child { border-bottom: 0; }
+.cmp-rk { font-variant-numeric: tabular-nums; color: var(--ink-4); font-size: 0.8rem; }
+.cmp-nm { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cmp-pos {
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.05em;
+  padding: 2px 5px; border-radius: 4px;
+}
+.pos-rb { background: oklch(0.62 0.16 150 / 0.18); color: oklch(0.78 0.16 150); }
+.pos-wr { background: oklch(0.62 0.16 250 / 0.18); color: oklch(0.78 0.14 250); }
+.pos-te { background: oklch(0.68 0.16 60 / 0.18); color: oklch(0.82 0.15 60); }
+.cmp-move { font-size: 0.7rem; font-variant-numeric: tabular-nums; min-width: 26px; text-align: right; }
+.cmp-up { color: oklch(0.78 0.16 150); }
+.cmp-down { color: oklch(0.68 0.18 25); }
+.cmp-hold { color: var(--ink-4); font-size: 0.7rem; min-width: 26px; text-align: right; }
+.compare-caption {
+  margin: 18px auto 0;
+  max-width: 58ch;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--ink-3);
+  text-align: center;
+}
+
+/* ── The free dashboard layer ──────────────────────────────────────────── */
+.dash-section { padding: clamp(56px, 8vw, 104px) 0; }
+.dash-sub { max-width: 62ch; margin-bottom: clamp(28px, 4vw, 44px); }
+.dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.dash-item {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 18px 18px 16px; border-radius: 13px;
+  background: oklch(0.13 0.012 265);
+  border: 1px solid oklch(0.23 0.012 265);
+  font-size: 0.86rem; line-height: 1.55; color: var(--ink-3);
+}
+.dash-item b {
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 0.92rem; color: var(--ink-1);
+}
+
+/* ── Decision-card visuals: a peek at the actual output ────────────────── */
+.tools-grid-4 { grid-template-columns: repeat(auto-fit, minmax(248px, 1fr)); }
+.tool-vis {
+  border-radius: 10px;
+  padding: 11px 12px;
+  margin-bottom: 14px;
+  background: oklch(0.11 0.012 265);
+  border: 1px solid oklch(0.22 0.012 265);
+  font-size: 0.82rem;
+}
+.tv-row { display: flex; align-items: center; gap: 8px; }
+.tv-row + .tv-row { margin-top: 7px; }
+.tv-label, .tv-flag {
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 4px;
+  background: var(--accent-primary-soft); color: var(--accent-primary);
+}
+.tv-sit .tv-flag { background: oklch(0.6 0.02 265 / 0.2); color: var(--ink-3-soft); }
+.tv-name { color: var(--ink-1); font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tv-pos { font-size: 0.6rem; font-weight: 700; padding: 2px 5px; border-radius: 4px; }
+.tv-proj, .tv-gain { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 0.8rem; }
+.tv-gain { color: oklch(0.78 0.16 150); font-weight: 700; }
+.tv-sit .tv-name, .tv-sit .tv-proj { color: var(--ink-3-soft); }
+.tv-stats { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 9px; font-size: 0.72rem; color: var(--ink-3-soft); }
+.tv-stats b { color: var(--ink-1); font-variant-numeric: tabular-nums; }
+.tv-cliff { color: oklch(0.7 0.18 25); }
+.tv-sub { margin-top: 7px; font-size: 0.72rem; color: var(--ink-3-soft); }
+.tv-grade {
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 1.25rem;
+  color: oklch(0.78 0.16 150); line-height: 1;
+}
+
+/* ── Ranking horizons ──────────────────────────────────────────────────── */
+.horizons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.horizon {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 9px 13px; border-radius: 9px;
+  background: oklch(0.12 0.012 265);
+  border: 1px solid oklch(0.24 0.012 265);
+  font-size: 0.7rem; color: var(--ink-3-soft);
+}
+.horizon b {
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  font-size: 0.78rem; color: var(--ink-2);
+}
+.horizon-upload { border-color: var(--accent-tertiary-border); }
+.horizon-upload b { color: var(--accent-tertiary); }
+
 /* ── The three decisions ───────────────────────────────────────────────── */
 .tools-section { padding: clamp(64px, 9vw, 120px) 0; }
 .tools-sub { max-width: 62ch; margin-bottom: clamp(32px, 5vw, 52px); }

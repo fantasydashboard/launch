@@ -18,7 +18,9 @@
           <div class="flex items-center justify-between h-16">
             <!-- Logo -->
             <div class="flex items-center gap-2 sm:gap-3">
-              <img src="/brand/ufd-primary-dark.png" alt="Ultimate Fantasy Dashboard" class="h-10 sm:h-12 object-contain" />
+              <img src="/brand/ufd-primary-dark.png" alt="" aria-hidden="true" class="h-9 sm:h-10 object-contain" />
+              <!-- The mark alone reads "UFD_". Spell the name out so a first-time visitor knows what they are looking at. -->
+              <span class="hidden sm:inline font-display text-sm font-bold uppercase tracking-[0.16em] text-gray-400">Ultimate Fantasy Dashboard</span>
             </div>
 
             <!-- Auth Buttons -->
@@ -63,7 +65,9 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex items-center justify-between h-16">
             <router-link to="/" class="flex items-center gap-2 sm:gap-3">
-              <img src="/brand/ufd-primary-dark.png" alt="Ultimate Fantasy Dashboard" class="h-10 sm:h-12 object-contain" />
+              <img src="/brand/ufd-primary-dark.png" alt="" aria-hidden="true" class="h-9 sm:h-10 object-contain" />
+              <!-- The mark alone reads "UFD_". Spell the name out so a first-time visitor knows what they are looking at. -->
+              <span class="hidden sm:inline font-display text-sm font-bold uppercase tracking-[0.16em] text-gray-400">Ultimate Fantasy Dashboard</span>
             </router-link>
             <div class="flex items-center gap-2 sm:gap-3">
               <button @click="showAuthModal = true; authMode = 'login'"
@@ -90,7 +94,9 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex items-center justify-between h-16">
             <router-link to="/" class="flex items-center gap-2 sm:gap-3">
-              <img src="/brand/ufd-primary-dark.png" alt="Ultimate Fantasy Dashboard" class="h-10 sm:h-12 object-contain" />
+              <img src="/brand/ufd-primary-dark.png" alt="" aria-hidden="true" class="h-9 sm:h-10 object-contain" />
+              <!-- The mark alone reads "UFD_". Spell the name out so a first-time visitor knows what they are looking at. -->
+              <span class="hidden sm:inline font-display text-sm font-bold uppercase tracking-[0.16em] text-gray-400">Ultimate Fantasy Dashboard</span>
             </router-link>
             <div class="flex items-center gap-2 sm:gap-3">
               <button
