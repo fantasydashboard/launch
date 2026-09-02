@@ -359,22 +359,43 @@ export const useLeagueStore = defineStore('league', () => {
       
       if (fetchError) throw fetchError
       
-      if (data && data.length > 0) {
+      const remote = data ?? []
+      const remoteIds = new Set(remote.map(l => l.league_id))
+      // Local-only leagues: connected on this device but never written to the account. Since
+      // /connect lets an anonymous visitor add a league, this is now the normal state for
+      // someone who signs up AFTER connecting, not just an ESPN edge case.
+      const localOnly = savedLeagues.value.filter(l => !remoteIds.has(l.league_id))
+
+      if (remote.length > 0) {
         // MERGE Supabase leagues with localStorage leagues instead of replacing
-        // This preserves local-only leagues (like ESPN leagues that don't sync to Supabase)
-        const localLeagues = savedLeagues.value
-        const supabaseLeagueIds = new Set(data.map(l => l.league_id))
-        
-        // Keep local leagues that aren't in Supabase (local-only leagues)
-        const localOnlyLeagues = localLeagues.filter(l => !supabaseLeagueIds.has(l.league_id))
-        
-        // Merge: Supabase leagues (source of truth) + local-only leagues
-        savedLeagues.value = [...data, ...localOnlyLeagues]
-        
-        console.log(`[League Store] Merged ${data.length} Supabase leagues + ${localOnlyLeagues.length} local-only leagues`)
+        savedLeagues.value = [...remote, ...localOnly]
+        console.log(`[League Store] Merged ${remote.length} Supabase leagues + ${localOnly.length} local-only leagues`)
         saveToLocalStorage()
       }
-      
+
+      /* Push local-only leagues UP to the account. Without this the merge is one-directional:
+         a visitor who connected a league anonymously and then created an account would keep
+         that league on one device forever, and the "save my league" promise we make to get
+         the signup would quietly not be kept. This also has to run when `remote` is empty —
+         a brand-new account has no rows, which is exactly the case that matters. */
+      if (localOnly.length > 0) {
+        const rows = localOnly.map(({ id: _id, user_id: _uid, ...rest }: any) => ({ ...rest, user_id: userId }))
+        const { data: inserted, error: upErr } = await supabase
+          .from('user_leagues')
+          // Matches UNIQUE(user_id, league_id, season) from 001_initial_schema.sql — all three
+          // columns, or Postgres has no constraint to resolve the conflict against.
+          .upsert(rows, { onConflict: 'user_id,league_id,season' })
+          .select()
+        if (upErr) {
+          console.warn('[League Store] Could not sync local leagues to the account:', upErr.message)
+        } else if (inserted?.length) {
+          const byLeagueId = new Map(inserted.map((r: any) => [r.league_id, r]))
+          savedLeagues.value = savedLeagues.value.map(l => byLeagueId.get(l.league_id) ?? l)
+          saveToLocalStorage()
+          console.log(`[League Store] Synced ${inserted.length} local league(s) to the account`)
+        }
+      }
+
       // Roll any saved Sleeper dynasty leagues forward to the current NFL season BEFORE we pick
       // the active league — otherwise we'd load last season's stale league. This mutates the saved
       // entries in place (so the primary lookup below sees the migrated id) and, if the previously
@@ -417,9 +438,12 @@ export const useLeagueStore = defineStore('league', () => {
     // Add to local state immediately
     savedLeagues.value.push(newLeague)
     saveToLocalStorage()
-    
-    // Sync to Supabase in background
-    if (supabase) {
+
+    /* Sync to Supabase in background — only when we actually have a user to own the row.
+       An anonymous visitor connecting a league is a supported path (the league lives in
+       localStorage until they make an account), and firing an insert with an empty user_id
+       just earns an RLS rejection and a console error on a flow that worked fine. */
+    if (supabase && userId) {
       try {
         const { data, error: saveError } = await supabase
           .from('user_leagues')

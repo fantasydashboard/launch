@@ -29,10 +29,10 @@
         </p>
 
         <div class="hero-ctas">
-          <button class="cta-primary" @click="$emit('open-signup')" aria-label="Connect your league for free">
+          <router-link to="/connect" class="cta-primary" aria-label="Connect your league for free">
             Connect a league. Free.
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </button>
+          </router-link>
           <a href="#picker" class="cta-ghost" @click.prevent="scrollTo('picker')" aria-label="See what you would get">
             See what you'd get
           </a>
@@ -319,10 +319,10 @@
           </div>
         </div>
 
-        <button class="cta-primary rules-cta" @click="$emit('open-signup')" aria-label="Connect your league for free">
+        <router-link to="/connect" class="cta-primary rules-cta" aria-label="Connect your league for free">
           Connect your league. Free.
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </button>
+        </router-link>
       </div>
     </section>
 
@@ -351,10 +351,10 @@
             Then it drafts the opener, leading with <em>their</em> angle, because that's the one
             that gets a reply.
           </p>
-          <button class="cta-primary pitch-cta" @click="$emit('open-signup')" aria-label="Connect a league for free">
+          <router-link to="/connect" class="cta-primary pitch-cta" aria-label="Connect a league for free">
             Connect a league. Free.
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </button>
+          </router-link>
         </div>
 
         <div class="pitch-stage" role="img" aria-label="A trade suggestion card: get Garrett Wilson, give Rhamondre Stevenson, flagged as leverage and a reach for the other manager, with a ready-to-send message.">
@@ -424,10 +424,10 @@
           Everyone in your league<br/>has the same projections.<br/>
           <span class="final-accent">You don't have to.</span>
         </h2>
-        <button class="cta-primary cta-xl" @click="$emit('open-signup')" aria-label="Connect your league for free">
+        <router-link to="/connect" class="cta-primary cta-xl" aria-label="Connect your league for free">
           Connect your league. Free.
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </button>
+        </router-link>
         <div class="final-trust">No credit card. Sleeper, Yahoo, ESPN. Four sports. Setup in 3 minutes.</div>
         <!--
           Pricing was only linked from the legal bar, beside Privacy and Contact — the place
@@ -477,7 +477,10 @@
     <div class="legal-bar">
       <span class="legal-text">© {{ new Date().getFullYear() }} Ultimate Fantasy Dashboard</span>
       <router-link to="/free-tools" class="legal-link">Free tools</router-link>
-      <router-link to="/resources" class="legal-link">Resources</router-link>
+<!-- "Resources" linked to /resources, which has no route — the hub view is still a
+           five-line "routing works!" stub, so the link 404'd in the router and logged a warning
+           on every landing page view. The four resource pages under it are real and written;
+           this link comes back when there is a hub to point it at. -->
       <router-link to="/privacy" class="legal-link">Privacy</router-link>
       <a href="mailto:support@ultimatefantasydashboard.com" class="legal-link">Contact</a>
     </div>

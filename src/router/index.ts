@@ -67,6 +67,17 @@ const router = createRouter({
       component: () => import('@/views/PrivacyView.vue'),
       meta: { public: true }
     },
+    /* Connecting a league does not require an account on Sleeper, whose read API is public.
+       This is where the landing CTA points: the visitor sees their own league before being
+       asked for anything. Yahoo and ESPN still gate, because a stored token has to belong
+       to someone. `publicLayout: 'marketing'` gives it the logo header and a Sign In link,
+       so a returning user who already has an account is one click from it. */
+    {
+      path: '/connect',
+      name: 'connect-league',
+      component: () => import('@/views/ConnectLeagueView.vue'),
+      meta: { public: true, publicLayout: 'marketing' }
+    },
     {
       path: '/auth/callback',
       name: 'auth-callback',
@@ -220,6 +231,10 @@ const router = createRouter({
       component: () => import('@/views/WeeklyRecapView.vue')
     },
   { path: '/admin', name: 'admin', component: () => import('@/views/AdminView.vue') },
+    // Betting edge beta. Admin-gated in the component and again by RLS on the
+    // odds tables, and deliberately not linked from anywhere in the nav: it is
+    // walled off from the fantasy brand until there is a decision to open it up.
+    { path: '/admin/edge', name: 'betting-edge', component: () => import('@/views/BettingEdgeView.vue') },
     // Demo league (no auth required, pre-baked The Pillars data)
     {
       path: '/demo',

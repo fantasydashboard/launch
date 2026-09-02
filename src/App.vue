@@ -2,16 +2,14 @@
   <div class="min-h-screen transition-colors overflow-x-hidden" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
 
     <!--
-      Signed-out routing is a hand-maintained allowlist of paths, duplicated across the
-      branches below: anything not named here renders the marketing page instead of the
-      route, with the URL unchanged so it looks like a redirect that never happened.
-      That is how /pricing spent its life invisible to everyone who had not signed up —
-      the route was reachable, the router was fine, and this list simply did not mention
-      it. Adding a public page means editing BOTH lists. Worth replacing with a check on
-      route meta, which would make a new public page work by declaring itself.
+      Signed-out routing used to be a hand-maintained allowlist of paths, written out twice:
+      once to decide "not the landing page" and again to pick a layout. Anything not named in
+      BOTH renders the marketing page with the URL unchanged, which is how /pricing spent its
+      life invisible to everyone who had not signed up. The lists now live once, in the script
+      block, and a route can also opt in by declaring `meta.public`.
     -->
     <!-- Show Landing Page for non-authenticated users -->
-    <template v-if="!authStore.isAuthenticated && !$route.path.startsWith('/resources') && !$route.path.startsWith('/powerrankings') && !$route.path.startsWith('/matchups-info') && !$route.path.startsWith('/draft-info') && !$route.path.startsWith('/history-info') && !$route.path.startsWith('/signup') && !$route.path.startsWith('/auth/') && !$route.path.startsWith('/privacy') && !$route.path.startsWith('/pricing') && !$route.path.startsWith('/free-tools') && !$route.path.startsWith('/draftlottery') && !$route.path.startsWith('/draftorder') && !$route.path.startsWith('/schedulegenerator') && !$route.path.startsWith('/demo')">
+    <template v-if="showLanding">
       <!-- Simple Header for Landing Page -->
       <header class="fixed top-0 left-0 right-0 z-50 border-b border-dark-border/50" style="background: rgba(10, 12, 20, 0.95); backdrop-filter: blur(10px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -50,7 +48,7 @@
     </template>
 
     <!-- Clean layout for public resource pages (unauthenticated only) -->
-    <template v-else-if="!authStore.isAuthenticated && ($route.path.startsWith('/resources') || $route.path.startsWith('/powerrankings') || $route.path.startsWith('/matchups-info') || $route.path.startsWith('/draft-info') || $route.path.startsWith('/history-info') || $route.path.startsWith('/signup') || $route.path.startsWith('/auth/') || $route.path.startsWith('/socialtemplates'))">
+    <template v-else-if="publicBare">
       <router-view />
     </template>
 
@@ -60,7 +58,7 @@
       whoever lands on it cannot get back to the product, cannot sign in, and has no brand
       to trust while being asked for $39.
     -->
-    <template v-else-if="!authStore.isAuthenticated && $route.path.startsWith('/pricing')">
+    <template v-else-if="publicMarketing">
       <header class="fixed top-0 left-0 right-0 z-50 border-b border-dark-border/50" style="background: rgba(10, 12, 20, 0.95); backdrop-filter: blur(10px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex items-center justify-between h-16">
@@ -84,12 +82,19 @@
         </div>
       </header>
       <div class="pt-16">
-        <router-view />
+        <!-- /connect's Yahoo and ESPN gates raise this to open the account modal in place. -->
+        <router-view @open-signup="showAuthModal = true; authMode = 'signup'" />
       </div>
+      <AuthModal
+        :isOpen="showAuthModal"
+        :initialMode="authMode"
+        @close="showAuthModal = false"
+        @success="handleAuthSuccess"
+      />
     </template>
 
     <!-- Public free tools layout (unauthenticated): minimal header + tool -->
-    <template v-else-if="!authStore.isAuthenticated && ($route.path.startsWith('/free-tools') || $route.path.startsWith('/draftlottery') || $route.path.startsWith('/draftorder') || $route.path.startsWith('/schedulegenerator'))">
+    <template v-else-if="publicTools">
       <header class="fixed top-0 left-0 right-0 z-50 border-b border-dark-border/50" style="background: rgba(10, 12, 20, 0.95); backdrop-filter: blur(10px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex items-center justify-between h-16">
@@ -140,6 +145,28 @@
 
     <!-- Show Full App for authenticated users -->
     <template v-else>
+
+      <!--
+        The account ask, placed where it is finally worth something to the person being asked.
+        A visitor who connected on /connect has no account and their league lives only in this
+        browser's localStorage — so this states that plainly and offers to fix it, instead of
+        demanding a password before they had seen anything. It is also the only route back to
+        sign-in from inside the app shell for someone who is not signed in.
+      -->
+      <div v-if="anon && hasLocalLeague" class="anon-bar">
+        <span class="anon-bar-text">
+          <b>Saved on this device only.</b>
+          Make a free account to keep this league, add more, and reach it from your phone.
+        </span>
+        <span class="anon-bar-actions">
+          <button class="anon-bar-cta" @click="showAuthModal = true; authMode = 'signup'">
+            Save my league
+          </button>
+          <button class="anon-bar-link" @click="showAuthModal = true; authMode = 'login'">
+            Sign in
+          </button>
+        </span>
+      </div>
 
       <!-- Trial / Expiry banner — hidden for active individual subscribers -->
       <Teleport to="body">
@@ -1156,6 +1183,40 @@ const authStore = useAuthStore()
 const sportStore = useSportStore()
 const platformsStore = usePlatformsStore()
 
+/* ── Signed-out routing ──────────────────────────────────────────────────────
+   One list per layout, in one place. Adding a public page means adding it here
+   once, or giving its route `meta.public` (plus `meta.publicLayout` if it wants
+   a header). Previously each path had to appear in two hand-written boolean
+   chains, and a page that made it into only one became unreachable. */
+const PUBLIC_BARE = ['/resources', '/powerrankings', '/matchups-info', '/draft-info',
+  '/history-info', '/signup', '/auth/', '/socialtemplates']
+const PUBLIC_MARKETING = ['/pricing', '/connect']
+const PUBLIC_TOOLS = ['/free-tools', '/draftlottery', '/draftorder', '/schedulegenerator']
+/* Rendered by the main app shell even when signed out; they were already reaching it by
+   falling past every branch above, which was accidental rather than declared. */
+const PUBLIC_APP_SHELL = ['/privacy']
+
+const startsWithAny = (path: string, list: string[]) => list.some((p) => path.startsWith(p))
+const anon = computed(() => !authStore.isAuthenticated)
+
+const publicBare = computed(() => anon.value && startsWithAny(route.path, PUBLIC_BARE))
+const publicMarketing = computed(() =>
+  anon.value && (startsWithAny(route.path, PUBLIC_MARKETING) || route.meta.publicLayout === 'marketing'))
+const publicTools = computed(() => anon.value && startsWithAny(route.path, PUBLIC_TOOLS))
+
+/* A visitor who has connected a league has something of their own to look at, so the
+   marketing page stops being the right answer for them — even before they make an account.
+   The league lives in localStorage until they do; see ConnectLeagueView. */
+const hasLocalLeague = computed(() => leagueStore.savedLeagues.length > 0)
+const showLanding = computed(() =>
+  anon.value &&
+  !hasLocalLeague.value &&
+  !route.meta.public &&
+  !startsWithAny(route.path, [
+    ...PUBLIC_BARE, ...PUBLIC_MARKETING, ...PUBLIC_TOOLS, ...PUBLIC_APP_SHELL, '/demo',
+  ]),
+)
+
 const showAuthModal = ref(false)
 const authMode = ref<'login' | 'signup'>('signup')
 const showLeagueDropdown = ref(false)
@@ -1717,6 +1778,36 @@ watch(() => route.path, () => {
 </script>
 
 <style scoped>
+/* ── Anonymous session bar ───────────────────────────────────────────────────
+   Shown only to a visitor who connected a league without an account. States the
+   real limitation (this browser only) rather than nagging, and carries the only
+   sign-in affordance available inside the app shell when signed out. */
+.anon-bar {
+  display: flex; align-items: center; justify-content: center;
+  flex-wrap: wrap; gap: 8px 16px;
+  padding: 9px 16px;
+  background: rgba(250, 204, 21, 0.09);
+  border-bottom: 1px solid rgba(250, 204, 21, 0.28);
+  font-size: 0.86rem; color: #e7e3d8; line-height: 1.45;
+}
+.anon-bar-text b { color: #facc15; font-weight: 700; }
+.anon-bar-actions { display: inline-flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.anon-bar-cta {
+  padding: 5px 14px; border-radius: 7px; border: none;
+  background: #facc15; color: #14151a;
+  font-size: 0.84rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.anon-bar-cta:hover { filter: brightness(1.06); }
+.anon-bar-link {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: #b9b4a6; font-size: 0.84rem; text-decoration: underline; white-space: nowrap;
+}
+.anon-bar-link:hover { color: #e7e3d8; }
+.anon-bar-cta:focus-visible, .anon-bar-link:focus-visible { outline: 2px solid #facc15; outline-offset: 2px; }
+@media (max-width: 560px) {
+  .anon-bar { font-size: 0.8rem; padding: 8px 12px; }
+}
+
 /* League helper tooltip pop-in animation */
 .helper-pop-enter-active {
   transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
