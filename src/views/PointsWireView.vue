@@ -71,6 +71,19 @@ const { wire: fbWire, loading: fbLoading, rosSource, weekSource } = useFootballW
   season,
   enabled: isFootball,
 })
+/**
+ * Your most droppable bodies: lowest value-over-replacement among players you own.
+ * "Who do I cut for this?" is the second half of every waiver decision, and the page only
+ * ever answered it inside a concrete upgrade — so when no upgrade cleared the bar, the
+ * question went unanswered entirely.
+ */
+const cutCandidates = computed(() => {
+  const b = fbWire.value?.board
+  if (!b) return []
+  const mine = Object.values(b).flat().filter((r) => r.owned)
+  return [...mine].sort((a, b2) => a.vorRos - b2.vorRos).slice(0, 3)
+})
+
 const boardOpen = ref(false)
 // Canonical order only — which of these actually appear is decided by the league's own
 // roster_positions inside buildFootballWire, so a league with no K/DEF slot never sees them.
@@ -253,6 +266,27 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
         <div v-else-if="!fbWire" class="py-10 text-center text-dark-textMuted">No free agents available right now.</div>
 
         <template v-else>
+          <!--
+            No upgrade clearing the bar is a real answer, not an empty state to hide. Saying
+            it out loud (and naming who you'd cut if you do add someone anyway) is the
+            difference between "nothing to do" and the page appearing not to have loaded.
+          -->
+          <section v-if="!fbWire.upgrades.length" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+            <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">No add worth a drop</h2>
+            <p class="font-mono text-[10px] text-dark-textMuted">
+              Nothing available beats a body already in your lineup, so there's no cut to make this week.
+            </p>
+            <div v-if="cutCandidates.length" class="mt-3 border-t border-dark-border/40 pt-3">
+              <p class="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">If you add anyway, cut from here</p>
+              <div class="flex flex-wrap gap-2">
+                <span v-for="c in cutCandidates" :key="'cut-' + c.playerKey"
+                      class="rounded bg-dark-bg px-2 py-1 font-mono text-[11px] text-dark-textSecondary">
+                  {{ c.name }} <span class="text-dark-textMuted/70">{{ c.position }} · {{ c.vorRos >= 0 ? '+' : '' }}{{ round(c.vorRos) }}</span>
+                </span>
+              </div>
+            </div>
+          </section>
+
           <!-- 1. BEST UPGRADES — flex-aware lineup-marginal -->
           <section v-if="fbWire.upgrades.length" class="mb-5 rounded-xl border border-primary/40 bg-dark-card p-4">
             <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-primary">★ Best upgrades</h2>

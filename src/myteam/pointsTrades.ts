@@ -29,6 +29,13 @@ export interface TradeIdea {
   oppTeamName: string
   myGain: number // my optimal-lineup point gain
   theirGain: number // their optimal-lineup point gain (fairness — both improve)
+  /**
+   * 'winWin'  both lineups improve — propose as-is.
+   * 'ask'     you improve, they don't. A real deal to go after, but you'll have to
+   *           sweeten it or catch them wanting the name. Surfaced separately and
+   *           labelled, never mixed in with the win-wins.
+   */
+  kind: 'winWin' | 'ask'
 }
 
 interface Dp extends DepthPlayer {
@@ -115,11 +122,14 @@ export function buildPointsTrades(
         if (myGain <= 0) continue
         const theirNew = optimal(swap(theirDp, theirs.playerKey, mine), slots)
         const theirGain = theirNew.total - theirBase.total
-        if (theirGain <= 0) continue
         // Skip deals lopsided in THEIR favor — if you barely improve while they
         // gain a lot, it's a gift, not a deal you'd propose. You should benefit at
         // least ~40% as much as they do.
-        if (myGain < 0.4 * theirGain) continue
+        if (theirGain > 0 && myGain < 0.4 * theirGain) continue
+        /* A deal that helps you and not them is still information — it is the deal to go
+           after. Returning nothing at all when no mutual upgrade exists left the page
+           saying "no clean win-win swap" and stopping, which reads as having no opinion
+           rather than having a harder-to-sell one. Kept separate and labelled. */
         ideas.push({
           give: sideOf(mine.playerKey),
           get: sideOf(theirs.playerKey),
@@ -127,13 +137,15 @@ export function buildPointsTrades(
           oppTeamName: teamNames[oppKey] || 'Opponent',
           myGain: Math.round(myGain),
           theirGain: Math.round(theirGain),
+          kind: theirGain > 0 ? 'winWin' : 'ask',
         })
       }
     }
   }
   // Best for me first; no duplicate acquisitions, and cap how many times the same
   // body is the one you give up (so the list isn't all one surplus player).
-  ideas.sort((a, b) => b.myGain - a.myGain)
+  // Win-wins first (proposable as-is), then asks, each by what they do for you.
+  ideas.sort((a, b) => (a.kind === b.kind ? b.myGain - a.myGain : a.kind === 'winWin' ? -1 : 1))
   const seenGet = new Set<string>()
   const giveCount = new Map<string, number>()
   const out: TradeIdea[] = []

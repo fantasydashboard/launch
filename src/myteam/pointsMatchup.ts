@@ -38,15 +38,25 @@ export interface PointsMatchup {
   volumeRead: string
 }
 
-// NOTE: the weekly hitter/pitcher figures derive from an MLB schedule (gamesByTeam,
-// two-start pitchers). For football, valueByKey has undefined side and the MLB
-// schedule is empty, so this renders season-total lineup strength (startingPoints)
-// only — football's NFL-schedule-driven weekly matchup lands in Phase 4.
+/**
+ * The weekly figures derive from an MLB schedule (gamesByTeam, two-start pitchers).
+ *
+ * The old note here claimed the MLB schedule is "empty" for football, so football would
+ * fall back to season totals. That was wrong, and expensively so: the NFL and MLB share
+ * team abbreviations — DET, CHI, SF, MIN, HOU and more — so every NFL player on a
+ * colliding code silently picked up a BASEBALL game count. The result was a football
+ * matchup reporting "23 hitter-games" and projecting 423 points for a nine-man lineup
+ * that actually projects about 140.
+ *
+ * `weekly` makes the basis explicit instead of inferring it from an empty lookup: in
+ * football every starter plays exactly once, so a week is one game each.
+ */
 function teamWeek(
   players: PointsPoolPlayer[],
   valueByKey: ValueByKey,
   slots: Record<string, number>,
   schedule: WeekSchedule,
+  weekly: 'mlb-schedule' | 'one-game-each' = 'mlb-schedule',
 ): TeamWeek {
   const ptsBy = new Map(players.map((p) => [p.playerKey, valueByKey[p.playerKey] ?? ZERO_VALUE]))
   const byKey = new Map(players.map((p) => [p.playerKey, p]))
@@ -72,7 +82,11 @@ function teamWeek(
       if (!pl || !pp) continue
       startingPoints += pp.total
       const perGame = pp.games > 0 ? pp.total / pp.games : 0
-      if (isPitcherSlot(pos)) {
+      if (weekly === 'one-game-each') {
+        // No pitchers in football; every started body is one game of scoring.
+        hitterGames += 1
+        weeklyHitterPoints += perGame
+      } else if (isPitcherSlot(pos)) {
         const starts = lookupStarts(schedule, pl.name).length
         pitcherStarts += starts
         if (starts >= 2) twoStartArms.push({ name: pl.name, starts })
@@ -86,7 +100,7 @@ function teamWeek(
         const appearances = isPureReliever ? Math.round(teamGames * 0.5) : starts
         weeklyPitcherPoints += perGame * appearances
       } else {
-        const g = schedule.gamesByTeam[pl.proTeam ?? ''] ?? 0
+        const g = weekly === 'one-game-each' ? 1 : (schedule.gamesByTeam[pl.proTeam ?? ''] ?? 0)
         hitterGames += g
         weeklyHitterPoints += perGame * g
       }
@@ -112,14 +126,16 @@ export function buildPointsMatchup(
   oppTeamKey: string,
   slots: Record<string, number>,
   schedule: WeekSchedule,
+  /** Football starts everyone once a week; baseball's volume comes from the MLB schedule. */
+  weekly: 'mlb-schedule' | 'one-game-each' = 'mlb-schedule',
 ): PointsMatchup | null {
   if (!myTeamKey || !oppTeamKey) return null
   const mine = pool.filter((p) => p.teamKey === myTeamKey)
   const theirs = pool.filter((p) => p.teamKey === oppTeamKey)
   if (!mine.length || !theirs.length) return null
 
-  const my = teamWeek(mine, valueByKey, slots, schedule)
-  const opp = teamWeek(theirs, valueByKey, slots, schedule)
+  const my = teamWeek(mine, valueByKey, slots, schedule, weekly)
+  const opp = teamWeek(theirs, valueByKey, slots, schedule, weekly)
   const gamesDiff = my.hitterGames - opp.hitterGames
 
   // Win probability from the projected weekly-points margin. Logistic with a

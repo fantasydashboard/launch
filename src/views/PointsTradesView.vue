@@ -50,10 +50,14 @@ const { vorByKey: fbVor } = useFootballVor({
 })
 const tradeVor = computed(() => (isFootball.value ? fbVor.value : undefined))
 
-const ideas = computed(() => {
+const allIdeas = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return []
   return buildPointsTrades(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value, teamNames.value, tradeVor.value)
 })
+// Deals proposable as-is, and deals worth chasing — never mixed, so a one-sided ask is
+// never presented as something the other manager should happily accept.
+const ideas = computed(() => allIdeas.value.filter((i) => i.kind === 'winWin'))
+const asks = computed(() => allIdeas.value.filter((i) => i.kind === 'ask').slice(0, 4))
 
 const landscape = computed(() => {
   if (!pool.value.length || !myTeamKey.value) return null
@@ -159,8 +163,28 @@ function fairness(myGain: number, theirGain: number): string {
       <p v-if="ideas.length" class="mb-3 font-mono text-[11px] text-dark-textMuted">
         ★ Best deals — send a bench body, get one that <span class="text-primary">starts</span> for you. Both lineups improve.
       </p>
-      <div v-if="!ideas.length && !loading" class="mb-4 rounded-xl border border-dark-border bg-dark-card px-4 py-6 text-center text-sm text-dark-textMuted">
-        No clean win-win swap right now — use the partners and landscape below to target a deal.
+      <div v-if="!ideas.length && !loading" class="mb-3 rounded-xl border border-dark-border bg-dark-card px-4 py-4 text-center text-sm text-dark-textMuted">
+        No swap right now raises both lineups.<template v-if="asks.length"> These do raise yours:</template>
+      </div>
+
+      <!-- ASKS — you gain, they don't. Real targets, honestly labelled. -->
+      <div v-for="(idea, i) in asks" :key="'ask' + i" class="mb-3 rounded-xl border border-dark-border bg-dark-card p-4">
+        <div class="mb-2 flex items-center justify-between">
+          <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">ask {{ idea.oppTeamName }}</span>
+          <span class="text-right">
+            <span class="font-mono text-sm font-bold text-primary">+{{ idea.myGain }}</span>
+            <span class="ml-1 font-mono text-[9px] uppercase text-dark-textMuted">pts to you</span>
+          </span>
+        </div>
+        <div class="font-mono text-[12px] text-dark-text">
+          <span class="text-[#FF5C5C]">give</span> {{ idea.give.name }} <span class="text-dark-textMuted">{{ idea.give.position }}</span>
+          <span class="mx-1.5 text-dark-textMuted">&rarr;</span>
+          <span class="text-primary">get</span> {{ idea.get.name }} <span class="text-dark-textMuted">{{ idea.get.position }}</span>
+        </div>
+        <p class="mt-2 font-mono text-[10px] leading-relaxed text-dark-textMuted">
+          Doesn't improve their lineup ({{ idea.theirGain }} pts), so they have no reason to say yes on the
+          numbers alone — sweeten it, or catch them wanting the name.
+        </p>
       </div>
 
       <div v-for="(idea, i) in ideas" :key="i" class="mb-3 rounded-xl border border-dark-border bg-dark-card p-4">

@@ -61,13 +61,13 @@ const myTeamLogo = source.myTeamLogo
 const matchup = computed(() => {
   const opp = oppSvc.opponent.value
   if (!opp || !pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
-  return buildPointsMatchup(pool.value, valueByKey.value, myTeamKey.value, opp.opponentKey, rosterSlots.value, schedule.value)
+  return buildPointsMatchup(pool.value, valueByKey.value, myTeamKey.value, opp.opponentKey, rosterSlots.value, schedule.value, isFootball.value ? 'one-game-each' : 'mlb-schedule')
 })
 // Today-only volume, for the daily cadence ("X hitter-games and Y starts today").
 const dayMatchup = computed(() => {
   const opp = oppSvc.opponent.value
   if (!opp || !pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
-  return buildPointsMatchup(pool.value, valueByKey.value, myTeamKey.value, opp.opponentKey, rosterSlots.value, todaySchedule.value)
+  return buildPointsMatchup(pool.value, valueByKey.value, myTeamKey.value, opp.opponentKey, rosterSlots.value, todaySchedule.value, isFootball.value ? 'one-game-each' : 'mlb-schedule')
 })
 const volMatchup = computed(() => (cadence.value === 'daily' ? dayMatchup.value : matchup.value))
 
@@ -115,6 +115,11 @@ const stakes = computed(() =>
     leagueSize: leagueSize.value,
     weeksLeft: weeksLeft.value,
     playoffSpots: Math.ceil(leagueSize.value / 2),
+    // At 0-0 the rank is a tiebreak artifact, not a standing.
+    gamesPlayed:
+      (outlook.value?.record.wins ?? 0) +
+      (outlook.value?.record.losses ?? 0) +
+      (outlook.value?.record.ties ?? 0),
   }),
 )
 
@@ -278,8 +283,13 @@ const trend = useWinProbTrend({
         <p class="mt-1 text-sm text-dark-text">{{ path }}</p>
       </section>
 
-      <!-- The volume lever (cadence-aware) -->
-      <div v-if="volMatchup" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+      <!--
+        The volume lever is baseball-only: it counts hitter-games and two-start arms from the
+        MLB schedule. In football every roster plays exactly once, so there is no volume edge
+        to win — and worse, NFL and MLB share team codes (DET, CHI, SF, MIN, HOU), so this
+        block was reporting real baseball game counts for NFL players.
+      -->
+      <div v-if="volMatchup && !isFootball" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
         <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
           The volume edge <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">· {{ cadence === 'daily' ? 'today' : 'this week' }}</span>
         </h2>
@@ -312,10 +322,24 @@ const trend = useWinProbTrend({
         </p>
       </div>
 
+      <!-- Football keeps the one genuinely useful part of the volume block: an unfilled slot
+           is points you forfeit, and that is true in any sport. -->
+      <p v-if="isFootball && matchup && matchup.my.openHitterSlots > 0"
+         class="mb-5 rounded-lg bg-[#FF5C5C]/10 px-3 py-2 text-sm text-[#FF5C5C]">
+        You're leaving {{ matchup.my.openHitterSlots }} lineup slot{{ matchup.my.openHitterSlots > 1 ? 's' : '' }} empty —
+        that's points you forfeit. Plug a body before kickoff.
+      </p>
+
       <!-- Close the gap -->
       <div class="rounded-xl border border-dark-border bg-dark-card p-4 text-sm text-dark-textMuted">
-        Need more bites at the apple this week?
-        <router-link to="/players" class="text-primary hover:underline">stream a bat or a two-start arm → The Wire</router-link>
+        <template v-if="isFootball">
+          Need a better body in a flex spot?
+          <router-link to="/the-wire" class="text-primary hover:underline">see who's available → The Wire</router-link>
+        </template>
+        <template v-else>
+          Need more bites at the apple this week?
+          <router-link to="/players" class="text-primary hover:underline">stream a bat or a two-start arm → The Wire</router-link>
+        </template>
       </div>
     </template>
   </div>

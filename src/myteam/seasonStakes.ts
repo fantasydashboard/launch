@@ -4,6 +4,8 @@ export interface StakesInput {
   leagueSize: number
   weeksLeft: number // playoffWeekStart - currentWeek
   playoffSpots: number // teams that make the bracket
+  /** Games this team has actually played. 0 means the standings carry no signal yet. */
+  gamesPlayed?: number
 }
 export interface Stakes {
   mode: StakesMode
@@ -21,7 +23,16 @@ export interface Stakes {
  * and never returns 'maximize' (that needs seeding/total-cats rules we can't parse — it's override
  * only). The manual override in the view is the safety valve for league nuances.
  */
-export function seasonStakes({ rank, leagueSize, weeksLeft, playoffSpots }: StakesInput): Stakes {
+export function seasonStakes({ rank, leagueSize, weeksLeft, playoffSpots, gamesPlayed }: StakesInput): Stakes {
+  /*
+   * At 0-0 the standings are alphabetical noise: everyone is tied, so "1st of 10" is a
+   * tiebreak artifact, and the fallthrough below turned it into "comfortably in — you can
+   * pick your spots and conserve moves" before a snap was played. There is no cushion to
+   * be comfortable about yet. Say what is actually true and stop there.
+   */
+  if (typeof gamesPlayed === 'number' && gamesPlayed <= 0) {
+    return { mode: 'maximize', reasoning: `Nothing played yet — every week from here is seeding.` }
+  }
   const cushion = playoffSpots - rank // >0 inside the cut by N
   const deficit = rank - playoffSpots // >0 outside the cut by N
   // Ordinal that includes the number: 2 -> "2nd", 11 -> "11th", 21 -> "21st".
