@@ -1303,7 +1303,13 @@ const tabs = computed(() => [
     ? [{ name: 'Draft Room', path: '/draft-room' }]
     : []),
   { name: 'My Team', path: '/my-team' },
-  { name: isRotoLeague.value ? 'Roto Race' : 'Matchup', path: '/matchup' },
+  /* Football folds the matchup into This Week — the opponent belongs beside the lineup it is
+     measured against, and two tabs for one Sunday decision meant one of them was always the
+     wrong place to look. Baseball and category leagues keep the tab: there the matchup is a
+     genuinely separate, multi-day read (volume, two-start arms, category races). */
+  ...(leagueStore.activeSport === 'football'
+    ? []
+    : [{ name: isRotoLeague.value ? 'Roto Race' : 'Matchup', path: '/matchup' }]),
   { name: 'The Wire', path: '/players' },
   { name: 'Trades', path: '/trades' },
   { name: 'League', path: '/league' },

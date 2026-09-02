@@ -266,7 +266,7 @@ const injuredCount = computed(() =>
           <h2 class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
             Your lineup vs the league
           </h2>
-          <span class="font-mono text-[10px] text-dark-textMuted/70">projected points · your starter vs every team's</span>
+          <span class="font-mono text-[10px] text-dark-textMuted/70">projected points, rest of season · your starter vs every team's</span>
         </div>
         <div class="space-y-1.5 px-4 pb-4 pt-2">
           <div v-for="(s, i) in model.slotRanks" :key="i" class="flex items-center gap-3">

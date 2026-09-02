@@ -124,3 +124,76 @@ describe('buildWeeklyBoard', () => {
     expect(board.moves.every((m) => m.kind !== 'bye')).toBe(true)
   })
 })
+
+/**
+ * This Week absorbed the Matchup tab, so the board now carries the fantasy opponent, the
+ * near coin-flips, and the byes. All three are computed off the SAME weekly points as the
+ * lineup rows, which is the point: the margin on screen can be checked against the numbers
+ * beside it. The old Matchup tab derived its totals from a different (baseball) model.
+ */
+describe('buildWeeklyBoard — the Sunday page', () => {
+  const vorByKey: Record<string, PlayerVor> = {
+    qb: pv(300), rb1: pv(200), rb2: pv(150), rb3: pv(120), rb4: pv(80), opp: pv(400),
+  }
+
+  it('projects the fantasy matchup from the same weekly points as the lineup', () => {
+    const board = buildWeeklyBoard({
+      pool, vorByKey, slots, myTeamKey: 'me',
+      currentStarters: ['qb', 'rb1', 'rb2', 'rb3'],
+      freeAgents: [], opponentByTeam: opp,
+      oppTeamKey: 'other', oppTeamName: 'Their Team', oppTeamLogo: 'logo.png',
+    })
+    expect(board.matchup).not.toBeNull()
+    // My starters are qb+rb1+rb2+rb3 = 300+200+150+120; theirs is one 400-point body.
+    expect(board.matchup!.myPoints).toBe(770)
+    expect(board.matchup!.oppPoints).toBe(400)
+    expect(board.matchup!.margin).toBe(370)
+    expect(board.matchup!.opponentName).toBe('Their Team')
+    // The header total must equal the rows shown beneath it, or the page contradicts itself.
+    expect(board.matchup!.myPoints).toBe(board.starters.reduce((s, r) => s + r.weekPoints, 0))
+    expect(board.matchup!.myWinPct).toBeGreaterThan(50)
+    expect(board.matchup!.myWinPct).toBeLessThanOrEqual(99)
+  })
+
+  it('leaves the matchup null when no opponent is known (bye week)', () => {
+    const board = buildWeeklyBoard({
+      pool, vorByKey, slots, myTeamKey: 'me',
+      currentStarters: [], freeAgents: [], opponentByTeam: opp,
+    })
+    expect(board.matchup).toBeNull()
+  })
+
+  it('flags starters on a bye', () => {
+    // GB and DAL are off this week, so rb3/rb4 are on bye — rb3 starts in the FLEX.
+    const partial = { BUF: opp.BUF, KC: opp.KC, SF: opp.SF, NYG: opp.NYG }
+    const board = buildWeeklyBoard({
+      pool, vorByKey, slots, myTeamKey: 'me',
+      currentStarters: ['qb', 'rb1', 'rb2', 'rb3'],
+      freeAgents: [], opponentByTeam: partial,
+    })
+    expect(board.byeStarters.every((s) => s.bye)).toBe(true)
+    expect(board.starters.filter((s) => s.bye).length).toBe(board.byeStarters.length)
+  })
+
+  it('surfaces a near coin-flip and ignores a decision that is not close', () => {
+    // rb3 (120) starts in the FLEX over rb4 (119) — a one-point call.
+    const close = { ...vorByKey, rb3: pv(120), rb4: pv(119) }
+    const board = buildWeeklyBoard({
+      pool, vorByKey: close, slots, myTeamKey: 'me',
+      currentStarters: ['qb', 'rb1', 'rb2', 'rb3'],
+      freeAgents: [], opponentByTeam: opp,
+    })
+    const flex = board.closeCalls.find((c) => c.sitName === 'RB Four')
+    expect(flex).toBeTruthy()
+    expect(flex!.gap).toBeCloseTo(1, 5)
+
+    // Widen the gap well past the threshold and it should stop being a close call.
+    const wide = { ...vorByKey, rb3: pv(120), rb4: pv(20) }
+    const board2 = buildWeeklyBoard({
+      pool, vorByKey: wide, slots, myTeamKey: 'me',
+      currentStarters: ['qb', 'rb1', 'rb2', 'rb3'],
+      freeAgents: [], opponentByTeam: opp,
+    })
+    expect(board2.closeCalls.find((c) => c.sitName === 'RB Four')).toBeUndefined()
+  })
+})

@@ -2,7 +2,7 @@
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { useWeeklyBoard } from '@/composables/useWeeklyBoard'
 
-const { board, live, currentWeek, hasCurrentLineup, loading } = useWeeklyBoard()
+const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo } = useWeeklyBoard()
 
 const teamLogo = (abbr?: string) => nflTeamLogo(abbr)
 const round = (n: number) => Math.round(n)
@@ -27,6 +27,48 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
     <div v-else-if="!board" class="py-16 text-center text-dark-textMuted">Couldn't assemble this week's board.</div>
 
     <template v-else>
+      <!--
+        The fantasy matchup, at the top of the page you actually set your lineup on. It used
+        to live on its own tab, computed from a different (baseball) model — so the margin
+        there could not be checked against the rows here. Same weekly points now drive both.
+      -->
+      <section v-if="board.matchup" class="mb-5 rounded-xl border border-dark-border bg-dark-card px-4 py-3">
+        <div class="mb-2 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Week {{ currentWeek }}</div>
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex min-w-0 items-center gap-2">
+            <img v-if="myTeamLogo" :src="myTeamLogo" alt="" @error="onLogoErr" class="h-9 w-9 shrink-0 rounded-lg bg-dark-border object-cover" />
+            <div class="min-w-0">
+              <div class="truncate text-[13px] font-bold text-dark-text">{{ myTeamName }}</div>
+              <div class="font-mono text-lg font-extrabold leading-none text-primary">{{ round(board.matchup.myPoints) }}</div>
+            </div>
+          </div>
+          <div class="shrink-0 text-center">
+            <div class="font-mono text-[10px] text-dark-textMuted">projected</div>
+            <div class="font-mono text-[11px] font-bold" :class="board.matchup.margin >= 0 ? 'text-primary' : 'text-[#FF5C5C]'">
+              {{ board.matchup.margin >= 0 ? 'you +' : 'them +' }}{{ Math.abs(round(board.matchup.margin)) }}
+            </div>
+            <div class="font-mono text-[10px] text-dark-textMuted">{{ board.matchup.myWinPct }}% to win</div>
+          </div>
+          <div class="flex min-w-0 items-center justify-end gap-2 text-right">
+            <div class="min-w-0">
+              <div class="truncate text-[13px] font-bold text-dark-text">{{ board.matchup.opponentName }}</div>
+              <div class="font-mono text-lg font-extrabold leading-none text-[#e69a4a]">{{ round(board.matchup.oppPoints) }}</div>
+            </div>
+            <img v-if="board.matchup.opponentLogo" :src="board.matchup.opponentLogo" alt="" @error="onLogoErr" class="h-9 w-9 shrink-0 rounded-lg bg-dark-border object-cover" />
+          </div>
+        </div>
+      </section>
+
+      <!-- A started player on a bye is points you forfeit outright — loudest thing on the page. -->
+      <div v-if="board.byeStarters.length" class="mb-5 rounded-xl border border-[#FF5C5C]/40 bg-[#FF5C5C]/[0.06] px-4 py-3">
+        <p class="font-display text-xs font-semibold uppercase tracking-wide text-[#FF5C5C]">
+          {{ board.byeStarters.length }} starter{{ board.byeStarters.length > 1 ? 's' : '' }} on bye
+        </p>
+        <p class="mt-1 font-mono text-[11px] text-dark-textSecondary">
+          {{ board.byeStarters.map((b) => b.name).join(' · ') }} — zero points unless you move them.
+        </p>
+      </div>
+
       <!-- 1. START/SIT MOVES -->
       <section v-if="board.moves.length" class="mb-5 rounded-xl border border-primary/40 bg-dark-card p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-primary">★ Start / sit moves</h2>
@@ -54,7 +96,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
       <!-- 2. OPTIMAL LINEUP -->
       <section class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
         <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
-          Best lineup <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">· week {{ currentWeek }} projections</span>
+          Best lineup <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">· week {{ currentWeek }} projections · pts/wk</span>
         </h2>
         <template v-for="s in board.starters" :key="'st-' + s.playerKey">
           <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
@@ -73,6 +115,29 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               </span>
             </span>
             <span class="w-12 shrink-0 text-right font-mono text-sm text-dark-text">{{ round(s.weekPoints) }}</span>
+          </div>
+        </template>
+      </section>
+
+      <!--
+        Where the week is actually decided. The optimizer is confident about the top of a
+        lineup and nearly indifferent at the bottom; only the second kind is worth a
+        manager's attention, and "already optimal" was hiding it behind a checkmark.
+      -->
+      <section v-if="board.closeCalls.length" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+        <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Closest calls</h2>
+        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">near coin-flips — the projection barely separates these</p>
+        <template v-for="(c, i) in board.closeCalls" :key="'cc-' + i">
+          <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
+            <span class="w-10 shrink-0 font-mono text-[10px] uppercase text-dark-textMuted">{{ c.slot }}</span>
+            <span class="min-w-0 flex-1 text-sm">
+              <span class="text-dark-text">{{ c.startName }}</span>
+              <span class="font-mono text-[11px] text-dark-textMuted"> {{ round(c.startPoints) }}</span>
+              <span class="mx-1.5 text-dark-textMuted">over</span>
+              <span class="text-dark-textMuted">{{ c.sitName }}</span>
+              <span class="font-mono text-[11px] text-dark-textMuted"> {{ round(c.sitPoints) }}</span>
+            </span>
+            <span class="shrink-0 text-right font-mono text-[11px] text-dark-textMuted">by {{ c.gap.toFixed(1) }}</span>
           </div>
         </template>
       </section>

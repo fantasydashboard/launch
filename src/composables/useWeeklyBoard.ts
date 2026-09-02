@@ -5,6 +5,7 @@ import { useFootballVor } from '@/composables/useFootballVor'
 import { sleeperService } from '@/services/sleeper'
 import { opponentMap } from '@/football/footballBye'
 import { buildWeeklyBoard, type WeeklyBoard } from '@/football/weeklyBoard'
+import { useThisWeekOpponent } from '@/composables/useThisWeekOpponent'
 import type { SleeperRoster } from '@/types/sleeper'
 
 /**
@@ -18,6 +19,8 @@ export function useWeeklyBoard(): {
   currentWeek: Ref<number>
   hasCurrentLineup: ComputedRef<boolean>
   loading: ComputedRef<boolean>
+  myTeamName: ComputedRef<string>
+  myTeamLogo: ComputedRef<string>
 } {
   const leagueStore = useLeagueStore()
   const isFootball = computed(() => leagueStore.activeSport === 'football')
@@ -32,6 +35,10 @@ export function useWeeklyBoard(): {
     season,
     enabled: isFootball,
   })
+
+  /* This Week is now the Sunday page: the fantasy opponent belongs here, beside the lineup
+     it is measured against, rather than on a separate tab computed from a different model. */
+  const oppSvc = useThisWeekOpponent()
 
   const live = ref(false)
   const currentWeek = ref(0)
@@ -63,6 +70,7 @@ export function useWeeklyBoard(): {
     src.load()
     src.loadFreeAgents(200)
     loadWeek()
+    oppSvc.load()
   }
   onMounted(init)
   watch(() => leagueStore.activeLeagueId, init)
@@ -88,10 +96,13 @@ export function useWeeklyBoard(): {
       currentStarters: currentStarters.value,
       freeAgents: src.freeAgents.value,
       opponentByTeam: opponentByTeam.value,
+      oppTeamKey: oppSvc.opponent.value?.opponentKey,
+      oppTeamName: oppSvc.opponent.value?.opponentName,
+      oppTeamLogo: oppSvc.opponent.value?.opponentLogo,
     })
   })
 
   const loading = computed(() => scheduleLoading.value || vorLoading.value || src.loading.value)
 
-  return { board, live, currentWeek, hasCurrentLineup, loading }
+  return { board, live, currentWeek, hasCurrentLineup, loading, myTeamName: src.myTeamName, myTeamLogo: src.myTeamLogo }
 }
