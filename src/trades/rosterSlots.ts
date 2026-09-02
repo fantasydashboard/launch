@@ -96,3 +96,23 @@ export function parseRosterSlots(
   if (Object.keys(out).length) return out
   return isFootball ? { ...DEFAULT_NFL_SLOTS } : { ...DEFAULT_SLOTS }
 }
+
+/**
+ * The concrete positions a league can actually START, with flex slots expanded to the
+ * positions eligible to fill them.
+ *
+ * Recommending a kicker to a league with no kicker slot is the loudest possible way to
+ * say "this tool did not read your settings" — and The Wire did exactly that, because it
+ * carried a hardcoded QB/RB/WR/TE/K/DEF list while the parsed slots were sitting right
+ * next to it. A league running QB/RB/RB/WR/WR/TE/FLEX×3 gets {QB, RB, WR, TE} here.
+ */
+export function startablePositions(slots: Record<string, number>): Set<string> {
+  const out = new Set<string>()
+  for (const [slot, count] of Object.entries(slots ?? {})) {
+    if (!Number.isFinite(count) || Number(count) <= 0) continue
+    const eligible = FLEX_ELIGIBILITY[slot]
+    if (eligible) for (const p of eligible) out.add(p)
+    else out.add(slot)
+  }
+  return out
+}

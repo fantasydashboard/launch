@@ -181,10 +181,18 @@ export function buildPowerRankings(teams: PowerTeamInput[]): PowerRankings {
           ? [
               `Thin on paper — ${ord(sr)} in talent heading in. Needs the waiver wire to break right.`,
               `${ord(sr)}-best roster to start. There's work to do here.`,
+              `${ord(sr)} in talent before a snap. The margin has to come from moves, not the draft.`,
             ]
           : [
+              /* Five mid-table teams sharing two sentences meant the same line appeared
+                 four times down one page. At 0-0 there genuinely isn't much to say, so
+                 these stay short — but each is a different construction, so the page
+                 reads as five reads rather than one sentence with the number swapped. */
               `Middle of the pack on paper — ${ord(sr)} in talent heading into the season.`,
               `${ord(sr)} in talent to start: in the mix, not yet in the top group.`,
+              `${ord(sr)}-best roster. Good enough to matter, not good enough to coast.`,
+              `Right in the muddle at ${ord(sr)} — this tier gets decided in-season, not on paper.`,
+              `${ord(sr)} on talent. Close enough to the top group that one hit changes it.`,
             ]
     } else if (tier === 'Contender') {
       // "Class of the league" is reserved for the actual #1; everyone else is a

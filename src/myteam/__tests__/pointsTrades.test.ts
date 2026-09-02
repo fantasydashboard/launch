@@ -36,15 +36,37 @@ describe('buildPointsTrades', () => {
   rows.forEach((r) => (fg[r.p.playerKey] = r.fg))
   const names = { A: 'My Team', B: 'Their Team' }
 
-  it('finds a win-win: send surplus OF, get a surplus SP that starts for me', () => {
+  it('finds a win-win: send surplus OF, get the SP that most upgrades my slot', () => {
     const ideas = buildPointsTrades(pool, buildBaseballValue(fg, weights), 'A', slots, names)
     expect(ideas.length).toBeGreaterThan(0)
     const top = ideas[0]
     expect(top.give.playerKey).toBe('A_OF2') // my benched OF
-    expect(top.get.playerKey).toBe('B_SP2') // their benched SP, upgrades my SP slot
+    /*
+     * B's STARTING SP, not their benched one. Candidates used to be bench-only, which in a
+     * flex-heavy lineup makes a mutual upgrade nearly impossible to construct — the live
+     * symptom was a ten-team league with full rosters reporting "no clean win-win swap".
+     * With starters offerable, both deals qualify and the better one for me sorts first:
+     * B_SP1 is +65 to me, B_SP2 is +55. B improves either way (SP2 backfills the slot they
+     * vacate, and they gain a far better OF), so the fairness guard still holds.
+     */
+    expect(top.get.playerKey).toBe('B_SP1')
     expect(top.myGain).toBeGreaterThan(0)
     expect(top.theirGain).toBeGreaterThan(0)
     expect(top.oppTeamName).toBe('Their Team')
+  })
+
+  it('still offers the bench-for-bench deal as an alternative', () => {
+    const ideas = buildPointsTrades(pool, buildBaseballValue(fg, weights), 'A', slots, names)
+    expect(ideas.some((i) => i.give.playerKey === 'A_OF2' && i.get.playerKey === 'B_SP2')).toBe(true)
+  })
+
+  it('never proposes a deal that fails to improve BOTH lineups', () => {
+    const ideas = buildPointsTrades(pool, buildBaseballValue(fg, weights), 'A', slots, names)
+    for (const i of ideas) {
+      expect(i.myGain).toBeGreaterThan(0)
+      expect(i.theirGain).toBeGreaterThan(0)
+      expect(i.myGain).toBeGreaterThanOrEqual(0.4 * i.theirGain)
+    }
   })
 
   it('returns nothing when there is no mutual upgrade', () => {
@@ -55,12 +77,12 @@ describe('buildPointsTrades', () => {
   })
 
   it('annotates each trade side with VOR when a vorByKey is supplied', () => {
-    // Key VOR on the two surplus bodies the win-win moves: give A_OF2, get B_SP2.
-    const vorByKey = { A_OF2: { vorRos: 25 }, B_SP2: { vorRos: 40 } }
+    // Key VOR on the two bodies the top win-win moves: give A_OF2, get B_SP1.
+    const vorByKey = { A_OF2: { vorRos: 25 }, B_SP1: { vorRos: 40 } }
     const ideas = buildPointsTrades(pool, buildBaseballValue(fg, weights), 'A', slots, names, vorByKey)
     expect(ideas.length).toBeGreaterThan(0)
     expect(ideas[0].give.vor).toBe(25) // A_OF2
-    expect(ideas[0].get.vor).toBe(40)  // B_SP2
+    expect(ideas[0].get.vor).toBe(40)  // B_SP1
   })
 
   it('leaves VOR undefined when no vorByKey is supplied (baseball default)', () => {

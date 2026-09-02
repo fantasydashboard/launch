@@ -612,7 +612,9 @@ const sosBarColor = (sosRank: number, total: number) => {
               </div>
               <div class="text-right font-mono text-[9px] text-dark-textMuted">
                 <template v-if="isCategory">{{ r.strength.toFixed(1) }} cats/wk</template>
-                <template v-else>{{ Math.round(r.strength / 10) * 10 }} pts/wk</template>
+                <!-- Rounding to the nearest 10 flattened ten teams into "150" and "140": the bars
+                     differed, the numbers didn't, and the column stopped carrying any ordering. -->
+                <template v-else>{{ r.strength.toFixed(1) }} pts/wk</template>
               </div>
             </div>
           </template>

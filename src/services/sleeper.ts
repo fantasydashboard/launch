@@ -569,25 +569,43 @@ class SleeperService {
    * Get NFL schedule for a week (includes game info).
    * seasonType matches Sleeper's NFL state ('regular' | 'post'); the playoff weeks
    * live under a different path, so callers on a post week must pass it through.
+   *
+   * The per-week path this used to call — /schedule/nfl/{type}/{season}/{week} — 404s,
+   * and has for at least two seasons (2025 and 2026 both). It failed quietly: the catch
+   * returned [], `playingTeams([])` produced an empty set, and `zeroByeWeek` reads an
+   * empty set as "no team is playing this week", so it zeroed EVERY player's weekly
+   * projection. That is where every 0 on This Week came from, and why the optimal
+   * lineup was ordering an all-zero list and calling the result a recommendation.
+   *
+   * The season-level path returns all 273 games with `week` on each, so one request
+   * covers the whole year and we filter locally. Cached, because every week now shares it.
    */
   async getNflSchedule(
     season: string,
     week: number,
     seasonType: string = 'regular'
   ): Promise<any[]> {
-    try {
-      const type = seasonType === 'post' ? 'post' : 'regular'
-      const url = `https://api.sleeper.app/schedule/nfl/${type}/${season}/${week}`
-      const response = await fetch(url)
-      if (!response.ok) {
-        console.warn(`Failed to fetch NFL schedule for week ${week}`)
+    const type = seasonType === 'post' ? 'post' : 'regular'
+    const cacheKey = `schedule_nfl_${type}_${season}`
+    let games = cache.get<any[]>('sleeper_schedule', cacheKey)
+
+    if (!games) {
+      try {
+        const response = await fetch(`https://api.sleeper.app/schedule/nfl/${type}/${season}`)
+        if (!response.ok) {
+          console.warn(`[Sleeper] Schedule endpoint returned ${response.status} for ${type} ${season}`)
+          return []
+        }
+        const data = await response.json()
+        games = Array.isArray(data) ? data : []
+        cache.set('sleeper_schedule', games, CACHE_TTL.METADATA, cacheKey)
+      } catch (error) {
+        console.error('Error fetching NFL schedule:', error)
         return []
       }
-      return response.json()
-    } catch (error) {
-      console.error('Error fetching NFL schedule:', error)
-      return []
     }
+
+    return games.filter((g: any) => Number(g?.week) === Number(week))
   }
 
   // Get avatar URL for a roster (league-specific avatar or user avatar)

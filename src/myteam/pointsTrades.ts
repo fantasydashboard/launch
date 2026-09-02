@@ -48,7 +48,9 @@ function optimal(players: Dp[], slots: Record<string, number>): { total: number;
   return { total, started }
 }
 
-const CAND = 5 // surplus candidates considered per side (keeps the search small)
+// Candidates considered per side. Raised from 5 when starters became offerable — the
+// search is CAND x CAND x opponents lineup solves, so this stays deliberately bounded.
+const CAND = 8
 
 export function buildPointsTrades(
   pool: PointsPoolPlayer[],
@@ -78,10 +80,26 @@ export function buildPointsTrades(
     const p = meta.get(key)!
     return { playerKey: key, name: p.name, position: p.position, proTeam: p.proTeam, headshot: p.headshot, points: ptsByKey.get(key) ?? 0, vor: vorByKey[key]?.vorRos }
   }
-  // Surplus = a healthy body with value that ISN'T in the optimal lineup.
-  const surplus = (dp: Dp[], base: Set<string>): Dp[] =>
-    dp.filter((p) => !base.has(p.playerKey) && p.points > 0 && !p.status).sort((a, b) => b.points - a.points).slice(0, CAND)
-  const mySurplus = surplus(myDp, myBase.started)
+  /**
+   * Bodies worth offering. This used to be bench-only ("not in the optimal lineup"), which
+   * cannot produce a win-win in a flex-heavy league: with three FLEX slots the optimal
+   * lineup is simply your nine best players, so every bench body is worse than every
+   * starter, and requiring BOTH sides to improve off a bench-for-bench swap is close to
+   * arithmetically impossible. That is why a ten-team league with full rosters returned
+   * "no clean win-win swap" rather than any real scarcity of deals.
+   *
+   * Starters are now offerable too — trading from genuine positional depth is how real
+   * trades work. The honesty guard is unchanged and is the one that matters: both lineups
+   * must actually improve, and you must gain at least ~40% of what they gain.
+   */
+  const candidates = (dp: Dp[], base: Set<string>): Dp[] => {
+    const healthy = dp.filter((p) => p.points > 0 && !p.status)
+    const bench = healthy.filter((p) => !base.has(p.playerKey)).sort((a, b) => b.points - a.points)
+    // Starters ascending: your weakest starter is the realistic thing to move, not your best.
+    const starters = healthy.filter((p) => base.has(p.playerKey)).sort((a, b) => a.points - b.points)
+    return [...bench, ...starters].slice(0, CAND)
+  }
+  const mySurplus = candidates(myDp, myBase.started)
 
   const swap = (dp: Dp[], outKey: string, incoming: Dp): Dp[] => [...dp.filter((p) => p.playerKey !== outKey), incoming]
 
@@ -89,7 +107,7 @@ export function buildPointsTrades(
   for (const [oppKey, theirDp] of byTeam) {
     if (oppKey === myTeamKey) continue
     const theirBase = optimal(theirDp, slots)
-    const theirSurplus = surplus(theirDp, theirBase.started)
+    const theirSurplus = candidates(theirDp, theirBase.started)
     for (const mine of mySurplus) {
       for (const theirs of theirSurplus) {
         const myNew = optimal(swap(myDp, mine.playerKey, theirs), slots)

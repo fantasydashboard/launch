@@ -10,12 +10,21 @@ export function playingTeams(games: any[]): Set<string> {
   return set
 }
 
-/** Return a copy of weekly points with bye-week players (team not playing) zeroed. */
+/**
+ * Return a copy of weekly points with bye-week players (team not playing) zeroed.
+ *
+ * An EMPTY `playing` set means the schedule could not be read, not that the league has
+ * a week where nobody plays. Treating it as the latter zeroed every projection in the
+ * product the moment Sleeper's per-week schedule path started 404ing, and the weekly
+ * board then ranked an all-zero list and presented the ordering as advice. Absence of
+ * evidence gets handed back unchanged; a real bye needs a real schedule to prove it.
+ */
 export function zeroByeWeek(
   points: Record<string, number>,
   proTeamByKey: Record<string, string>,
   playing: Set<string>,
 ): Record<string, number> {
+  if (playing.size === 0) return { ...points }
   const out: Record<string, number> = {}
   for (const [key, pts] of Object.entries(points)) {
     const team = (proTeamByKey[key] ?? '').toUpperCase()

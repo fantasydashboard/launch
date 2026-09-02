@@ -36,6 +36,17 @@ describe('zeroByeWeek', () => {
     zeroByeWeek(points, { a: 'SF' }, new Set(['BUF']))
     expect(points.a).toBe(20)
   })
+
+  /**
+   * The schedule fetch returning nothing is the shape of a broken endpoint, not of a
+   * week where all 32 teams are off. Zeroing on an empty set wiped every weekly
+   * projection in the app and left the weekly board ranking an all-zero list.
+   */
+  it('leaves points untouched when the schedule could not be read', () => {
+    const points = { a: 20, b: 15 }
+    const out = zeroByeWeek(points, { a: 'BUF', b: 'SF' }, new Set())
+    expect(out).toEqual({ a: 20, b: 15 })
+  })
 })
 
 describe('opponentMap', () => {

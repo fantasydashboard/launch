@@ -39,6 +39,12 @@ export function buildPointsTradeLandscape(
   teamNames: Record<string, string> = {},
   sport: string = 'baseball',
   vorByKey?: Record<string, { vorRos: number }>,
+  /**
+   * The league's starting slots. When supplied, a position's strength counts as many
+   * bodies as the league actually starts there instead of only the best one — see
+   * `strengthAt`. Omitted (baseball today) keeps the single-best-body behaviour.
+   */
+  slots?: Record<string, number>,
 ): PointsTradeLandscape | null {
   if (!myTeamKey || !pool.length) return null
 
@@ -58,27 +64,38 @@ export function buildPointsTradeLandscape(
   if (!teamKeys.includes(myTeamKey)) return null
   const teams = teamKeys.length
 
-  // Best body's value per team per position (null = no eligible body), then rank teams desc.
-  const bestAt = (team: string, pos: string): number | null => {
-    let best: number | null = null
+  /**
+   * A team's strength at a position: the sum of its top-N bodies there, where N is how
+   * many that league actually starts. Null = no eligible body.
+   *
+   * Ranking on the single best body is why Trades and My Team contradicted each other on
+   * the same roster: Trades saw one elite RB and called RB a strength to trade FROM,
+   * while My Team ranked the RB slots — including a weak RB2 — and called RB the biggest
+   * hole. Both were right about different questions. Counting the bodies the league
+   * actually starts asks the question the manager is actually asking.
+   */
+  const depthFor = (pos: string): number => Math.max(1, Math.floor(Number(slots?.[pos] ?? 1)) || 1)
+  const strengthAt = (team: string, pos: string): number | null => {
+    const vals: number[] = []
     for (const pl of byTeam.get(team) ?? []) {
-      if (!coversSlot(pl.eligible, pos)) continue
-      if (best === null || pl.points > best) best = pl.points
+      if (coversSlot(pl.eligible, pos)) vals.push(pl.points)
     }
-    return best
+    if (!vals.length) return null
+    vals.sort((a, b) => b - a)
+    return vals.slice(0, depthFor(pos)).reduce((sum, v) => sum + v, 0)
   }
   // A position "shows" if some team has a startable body there. Baseball keeps the
   // >0 gate (non-positive points = no real body); football (VOR) counts any eligible
   // body, since a below-replacement starter is still a real, rankable body.
   const present = (t: string, pos: string): boolean => {
-    const v = bestAt(t, pos)
+    const v = strengthAt(t, pos)
     return useVor ? v !== null : v !== null && v > 0
   }
   const positions = positionRowsFor(sport).filter((pos) => teamKeys.some((t) => present(t, pos)))
   const rank: Record<string, Record<string, number>> = {}
   for (const pos of positions) {
     const rows = teamKeys
-      .map((t) => ({ t, v: bestAt(t, pos) }))
+      .map((t) => ({ t, v: strengthAt(t, pos) }))
       .sort((a, b) => (b.v ?? -Infinity) - (a.v ?? -Infinity))
     const r: Record<string, number> = {}
     let prev = Infinity

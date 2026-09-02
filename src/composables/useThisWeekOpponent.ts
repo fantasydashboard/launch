@@ -32,7 +32,52 @@ export function useThisWeekOpponent() {
     loading.value = true
     opponent.value = null
     try {
-      if (leagueStore.activePlatform === 'espn') {
+      if (leagueStore.activePlatform === 'sleeper') {
+        /*
+         * Sleeper had no branch here at all, so a Sleeper league fell through to the Yahoo
+         * path, found no yahooTeams, and returned with `opponent` still null — which the
+         * view reads as "no matchup exists" and renders "weekly matchup for football is
+         * coming soon". The screen was built the whole time; nothing was resolving an
+         * opponent for it. Sleeper publishes pairings as soon as the schedule is set, so
+         * this works from the moment a draft ends.
+         *
+         * Pairing is by `matchup_id`: the two roster entries sharing one are playing
+         * each other. teamKey is the roster_id as a string, matching the league pool.
+         */
+        // Same helper the league pool uses, so `opponentKey` lands in the same
+        // namespace as every pool teamKey (the roster_id as a string).
+        const { sleeperMyTeamKey, buildSleeperTeamNames, buildSleeperTeamLogos } =
+          await import('@/composables/useSleeperLeaguePool')
+        const rosters = (leagueStore.rosters ?? []) as any[]
+        const meKey = sleeperMyTeamKey(rosters as any, leagueStore.currentUserId)
+        if (!meKey) return
+
+        const { sleeperService } = await import('@/services/sleeper')
+        const rows = await sleeperService.getMatchups(String(leagueKey), week)
+        if (leagueStore.activeLeagueId !== requestedId) return
+
+        const mine = (rows || []).find((m: any) => String(m.roster_id) === meKey)
+        // A bye week (odd league size) has no matchup_id — correctly leaves opponent null.
+        if (!mine || mine.matchup_id == null) return
+        const oppRow = (rows || []).find(
+          (m: any) => m.matchup_id === mine.matchup_id && String(m.roster_id) !== meKey,
+        )
+        if (!oppRow) return
+
+        const oppKey = String(oppRow.roster_id)
+        const names = buildSleeperTeamNames(rosters as any, (leagueStore.users ?? []) as any)
+        const logos = buildSleeperTeamLogos(
+          rosters as any,
+          (leagueStore.users ?? []) as any,
+          leagueStore.currentLeague as any,
+        )
+        opponent.value = {
+          opponentKey: oppKey,
+          opponentName: names[oppKey] || `Team ${oppKey}`,
+          opponentLogo: logos[oppKey] || '',
+          week,
+        }
+      } else if (leagueStore.activePlatform === 'espn') {
         const parts = String(leagueKey).split('_') // espn_{sport}_{id}_{season}
         if (parts.length < 4 || parts[0] !== 'espn') return
         const sport = parts[1] as Sport

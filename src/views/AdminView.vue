@@ -401,7 +401,7 @@
             </div>
             <div class="ctrl-group">
               <label class="ctrl-label">CTA Button Text</label>
-              <input v-model="emailCta" class="ctrl-input" placeholder="GET LEAGUE PASS →" />
+              <input v-model="emailCta" class="ctrl-input" placeholder="GET THE SEASON PASS →" />
             </div>
             <div class="ctrl-group">
               <label class="ctrl-label">CTA URL</label>
@@ -1475,24 +1475,19 @@ const TRIAL_ENDING_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><met
 </table>
 <div style="background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.25);border-radius:10px;padding:16px 18px;margin:0 0 20px;"><span style="font-size:22px;">&#x1F4F2;</span>&nbsp;&nbsp;<span style="font-size:13px;color:#9ca3af;line-height:1.6;"><strong style="color:#06b6d4;">Plus shareable graphics for the group chat.</strong> One tap to download a branded card. Nothing starts a league argument faster.</span></div>
 <!-- PRICING -->
-<p style="font-size:13px;font-weight:700;color:#fff;margin:0 0 10px;">&#x1F4B0; Two ways to keep access:</p>
+<!-- These cards advertised two retired plans: a $4/mo Individual and a $29 League Pass.
+     Neither is purchasable — the only thing on sale is the $39/yr Season Pass — so the
+     email was selling products the reader could not buy and quoting prices that would not
+     match Checkout. One accurate offer replaces both. -->
+<p style="font-size:13px;font-weight:700;color:#fff;margin:0 0 10px;">&#x1F4B0; Keep your access:</p>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
 <tr>
-<td width="48%" valign="top" style="padding-right:6px;">
-<div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:16px;">
-<div style="font-size:12px;font-weight:800;color:#22c55e;letter-spacing:0.04em;margin-bottom:6px;">INDIVIDUAL</div>
-<div style="font-size:28px;font-weight:900;color:#fff;">$4<span style="font-size:14px;font-weight:600;color:#9ca3af;">/mo</span></div>
-<div style="font-size:11px;color:#6b7280;margin-top:4px;">billed annually at $39/yr</div>
-<div style="font-size:11px;color:#9ca3af;margin-top:8px;line-height:1.5;">All your leagues. All sports. Just you.</div>
-</div>
-</td>
-<td width="4%"></td>
-<td width="48%" valign="top" style="padding-left:6px;">
+<td valign="top">
 <div style="background:rgba(234,179,8,0.06);border:1px solid rgba(234,179,8,0.25);border-radius:10px;padding:16px;">
-<div style="font-size:12px;font-weight:800;color:#eab308;letter-spacing:0.04em;margin-bottom:6px;">LEAGUE PASS</div>
-<div style="font-size:28px;font-weight:900;color:#fff;">$29<span style="font-size:14px;font-weight:600;color:#9ca3af;"> once</span></div>
-<div style="font-size:11px;color:#6b7280;margin-top:4px;">one league, 365 days, everyone included</div>
-<div style="font-size:11px;color:#9ca3af;margin-top:8px;line-height:1.5;">Buy it once. Your whole league gets in.</div>
+<div style="font-size:12px;font-weight:800;color:#eab308;letter-spacing:0.04em;margin-bottom:6px;">SEASON PASS</div>
+<div style="font-size:28px;font-weight:900;color:#fff;">$39<span style="font-size:14px;font-weight:600;color:#9ca3af;">/year</span></div>
+<div style="font-size:11px;color:#6b7280;margin-top:4px;">every league you're in, all four sports</div>
+<div style="font-size:11px;color:#9ca3af;margin-top:8px;line-height:1.5;">Draft Room, waiver targets, start/sit and trade analysis. The dashboard stays free.</div>
 </div>
 </td>
 </tr>
@@ -1509,7 +1504,7 @@ const TRIAL_ENDING_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><met
 <hr style="border:none;border-top:1px solid #1e2130;margin:22px 0;">
 <p style="font-size:13px;color:#6b7280;font-style:italic;margin:0 0 24px;">Your league is still playing. Your analytics are still running. The only question is whether you&#x2019;ll still be able to see them after Thursday.</p>
 <div style="text-align:center;margin:0 0 8px;"><a href="https://ultimatefantasydashboard.com/pricing" style="display:inline-block;background:#f59e0b;color:#0a0c14;font-size:14px;font-weight:800;letter-spacing:0.05em;padding:14px 36px;border-radius:10px;text-decoration:none;">KEEP MY ACCESS &#x2192;</a></div>
-<p style="font-size:11px;color:#374151;text-align:center;margin:0;">Individual $4/mo &middot; League Pass $29 &middot; Cancel anytime</p>
+<p style="font-size:11px;color:#374151;text-align:center;margin:0;">$39 a year &middot; Cancel anytime</p>
 </td></tr>
 <!-- FOOTER -->
 <tr><td style="background:#080a10;padding:14px 28px;border-top:1px solid #1e2130;text-align:center;font-size:11px;color:#374151;">ultimatefantasydashboard.com &nbsp;&middot;&nbsp; <a href="{{{RESEND_UNSUBSCRIBE_URL}}}" style="color:#374151;text-decoration:none;">Unsubscribe</a></td></tr>
@@ -1573,21 +1568,13 @@ const TRIAL_EXPIRED_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><me
 <!-- PRICING -->
 <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
 <tr>
-<td width="48%" valign="top" style="padding-right:6px;">
-<div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:16px;">
-<div style="font-size:12px;font-weight:800;color:#22c55e;letter-spacing:0.04em;margin-bottom:6px;">INDIVIDUAL</div>
-<div style="font-size:28px;font-weight:900;color:#fff;">$4<span style="font-size:14px;font-weight:600;color:#9ca3af;">/mo</span></div>
-<div style="font-size:11px;color:#6b7280;margin-top:4px;">billed annually at $39/yr</div>
-<div style="font-size:11px;color:#9ca3af;margin-top:8px;line-height:1.5;">All your leagues. All sports. Just you.</div>
-</div>
-</td>
-<td width="4%"></td>
-<td width="48%" valign="top" style="padding-left:6px;">
+<!-- Same retired-plan cards as the template above; one accurate offer instead. -->
+<td valign="top">
 <div style="background:rgba(234,179,8,0.06);border:1px solid rgba(234,179,8,0.25);border-radius:10px;padding:16px;">
-<div style="font-size:12px;font-weight:800;color:#eab308;letter-spacing:0.04em;margin-bottom:6px;">LEAGUE PASS</div>
-<div style="font-size:28px;font-weight:900;color:#fff;">$29<span style="font-size:14px;font-weight:600;color:#9ca3af;"> once</span></div>
-<div style="font-size:11px;color:#6b7280;margin-top:4px;">one league, 365 days, everyone included</div>
-<div style="font-size:11px;color:#9ca3af;margin-top:8px;line-height:1.5;">Buy it once. Your whole league gets in.</div>
+<div style="font-size:12px;font-weight:800;color:#eab308;letter-spacing:0.04em;margin-bottom:6px;">SEASON PASS</div>
+<div style="font-size:28px;font-weight:900;color:#fff;">$39<span style="font-size:14px;font-weight:600;color:#9ca3af;">/year</span></div>
+<div style="font-size:11px;color:#6b7280;margin-top:4px;">every league you're in, all four sports</div>
+<div style="font-size:11px;color:#9ca3af;margin-top:8px;line-height:1.5;">Draft Room, waiver targets, start/sit and trade analysis. The dashboard stays free.</div>
 </div>
 </td>
 </tr>
@@ -1604,7 +1591,7 @@ const TRIAL_EXPIRED_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><me
 <hr style="border:none;border-top:1px solid #1e2130;margin:22px 0;">
 <p style="font-size:13px;color:#6b7280;font-style:italic;margin:0 0 24px;">Nothing to re-connect. Nothing to set up again. Your league data is saved &#x2014; just pick up where you left off.</p>
 <div style="text-align:center;margin:0 0 8px;"><a href="https://ultimatefantasydashboard.com/pricing" style="display:inline-block;background:#22c55e;color:#0a0c14;font-size:14px;font-weight:800;letter-spacing:0.05em;padding:14px 36px;border-radius:10px;text-decoration:none;">UNLOCK MY LEAGUE &#x2192;</a></div>
-<p style="font-size:11px;color:#374151;text-align:center;margin:0;">Individual $4/mo &middot; League Pass $29 &middot; Cancel anytime</p>
+<p style="font-size:11px;color:#374151;text-align:center;margin:0;">$39 a year &middot; Cancel anytime</p>
 </td></tr>
 <!-- FOOTER -->
 <tr><td style="background:#080a10;padding:14px 28px;border-top:1px solid #1e2130;text-align:center;font-size:11px;color:#374151;">ultimatefantasydashboard.com &nbsp;&middot;&nbsp; <a href="{{{RESEND_UNSUBSCRIBE_URL}}}" style="color:#374151;text-decoration:none;">Unsubscribe</a></td></tr>

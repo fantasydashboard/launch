@@ -8,6 +8,8 @@ import { parseEligible, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { DepthPlayer } from '@/trades/positionalLandscape'
 import { lineupMarginal } from './lineupMarginal'
 import type { PlayerVor } from './footballVor'
+import { startablePositions } from '@/trades/rosterSlots'
+import { assignTiers } from '@/draft/room/tierCliffs'
 
 /** A free agent joined to its VOR row (the Wire's currency). */
 export interface WireVorRow {
@@ -37,6 +39,18 @@ export interface BoardRow {
   vorRos: number
   owned: boolean
   unprojected?: boolean // a rostered player with no projection match (VOR is a placeholder 0)
+  /**
+   * Actually claimable right now. `owned` only ever meant "mine", so every other
+   * team's roster and the entire free-agent pool both read as `owned: false` — on a
+   * waiver page, where availability is the first thing you need to know.
+   */
+  free: boolean
+  /** Tier within this position, 1 = best. Same cut rule as the draft board. */
+  tier: number
+  /** True on the first row of a new tier, so the view can draw the cliff. */
+  tierBreak?: boolean
+  /** Points of separation from the tier above — only set on a tier's first row. */
+  tierDrop?: number
 }
 
 export interface FootballWire {
@@ -59,11 +73,18 @@ export function buildFootballWire(input: {
 }): FootballWire {
   const { freeAgents, vorByKey, pool, slots, myTeamKey } = input
 
+  /* Only positions this league can actually start. A league with no K or DEF slot was
+     being handed kickers and defenses as "best available" — roughly 40% of the list —
+     which is unusable advice and evidence the tool never read the settings. `slots` is
+     already the parsed roster_positions, so the answer was always one call away. */
+  const startable = startablePositions(slots)
+
   // Join each FA to its VOR row; only keep projectable (has a VOR entry).
   const rows: WireVorRow[] = []
   for (const fa of freeAgents) {
     const v = vorByKey[faKey(fa)]
     if (!v) continue
+    if (!startable.has(String(fa.position ?? '').toUpperCase())) continue
     rows.push({
       player: fa,
       vorRos: v.vorRos,
@@ -113,22 +134,41 @@ export function buildFootballWire(input: {
   }
   upgrades.sort((a, b) => b.marginal - a.marginal)
 
-  // Full board: rostered + FA per position, VOR-ranked, owned flagged.
+  // Full board: rostered + FA per position, VOR-ranked, owned/free flagged, tiered.
   const board: Record<string, BoardRow[]> = {}
-  for (const pos of BOARD_POSITIONS) {
+  for (const pos of BOARD_POSITIONS.filter((p) => startable.has(p))) {
     const entries: BoardRow[] = []
     for (const p of pool) {
       if (normPos(p.position) !== pos) continue
       const pv = vorByKey[p.playerKey]
-      entries.push({ playerKey: p.playerKey, name: p.name, position: pos, team: p.proTeam, headshot: p.headshot, vorRos: pv?.vorRos ?? 0, owned: p.teamKey === myTeamKey, unprojected: !pv })
+      entries.push({ playerKey: p.playerKey, name: p.name, position: pos, team: p.proTeam, headshot: p.headshot, vorRos: pv?.vorRos ?? 0, owned: p.teamKey === myTeamKey, unprojected: !pv, free: false, tier: 0 })
     }
     for (const fa of freeAgents) {
       if (normPos(fa.position) !== pos) continue
       const v = vorByKey[faKey(fa)]
       if (!v) continue
-      entries.push({ playerKey: faKey(fa), name: fa.name, position: pos, team: fa.team, headshot: fa.headshot, vorRos: v.vorRos, owned: false })
+      entries.push({ playerKey: faKey(fa), name: fa.name, position: pos, team: fa.team, headshot: fa.headshot, vorRos: v.vorRos, owned: false, free: true, tier: 0 })
     }
-    if (entries.length) board[pos] = entries.sort((a, b) => b.vorRos - a.vorRos)
+    if (!entries.length) continue
+
+    entries.sort((a, b) => b.vorRos - a.vorRos)
+    /* Same cut rule the draft board uses — tiers are the visible cliffs, not every gap
+       over a threshold. A flat ranked column of 40 receivers hides the only thing the
+       reader is actually looking for: where the drop-off is. */
+    const tierByKey = assignTiers(entries.map((e) => ({ playerKey: e.playerKey, value: e.vorRos })))
+    let prevTier = 0
+    let prevVor = 0
+    for (const row of entries) {
+      row.tier = tierByKey[row.playerKey] ?? 1
+      // Sorted descending, so the previous row IS the last row of the tier above.
+      if (prevTier && row.tier !== prevTier) {
+        row.tierBreak = true
+        row.tierDrop = Math.max(0, prevVor - row.vorRos)
+      }
+      prevTier = row.tier
+      prevVor = row.vorRos
+    }
+    board[pos] = entries
   }
 
   return { bestAvailable, upgrades, thisWeek, board }

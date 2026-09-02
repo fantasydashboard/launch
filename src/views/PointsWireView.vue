@@ -72,6 +72,8 @@ const { wire: fbWire, loading: fbLoading, rosSource, weekSource } = useFootballW
   enabled: isFootball,
 })
 const boardOpen = ref(false)
+// Canonical order only — which of these actually appear is decided by the league's own
+// roster_positions inside buildFootballWire, so a league with no K/DEF slot never sees them.
 const boardPositions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 const boardPos = ref('RB') // which position the Full Board shows (one at a time)
 // This-week streamers worth showing: only those above a replacement streamer. Empty in
@@ -81,6 +83,11 @@ const streamers = computed(() => (fbWire.value?.thisWeek ?? []).filter((r) => r.
 const boardPositionsWithRows = computed(() =>
   fbWire.value ? boardPositions.filter((p) => fbWire.value!.board[p]?.length) : [],
 )
+// Keep the selected pill on a position this league actually has — otherwise switching to a
+// league without the current selection leaves the board rendering nothing.
+watch(boardPositionsWithRows, (available) => {
+  if (available.length && !available.includes(boardPos.value)) boardPos.value = available[0]
+})
 
 const teamModel = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
@@ -346,12 +353,31 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                   {{ pos }}
                 </button>
               </div>
+              <!-- legend: the board mixes three states and only one of them used to be visible -->
+              <div class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted">
+                <span><span class="text-primary">★</span> yours</span>
+                <span><span class="text-[#4ade80]">●</span> free agent</span>
+                <span><span class="text-dark-textMuted/50">●</span> rostered elsewhere</span>
+              </div>
               <!-- selected position only, top 25 by VOR -->
               <template v-for="row in (fbWire.board[boardPos] ?? []).slice(0, 25)" :key="'fbbd-' + row.playerKey">
-                <div class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm last:border-0" :class="row.owned ? 'text-primary' : 'text-dark-text'">
+                <!-- tier cliff: the drop-off is the decision, so name it rather than leaving a flat list -->
+                <div v-if="row.tierBreak" class="flex items-center gap-2 py-1.5">
+                  <span class="h-px flex-1 bg-dark-border"></span>
+                  <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70">
+                    tier {{ row.tier }} &middot; &minus;{{ round(row.tierDrop ?? 0) }} pts
+                  </span>
+                  <span class="h-px flex-1 bg-dark-border"></span>
+                </div>
+                <div class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm last:border-0" :class="row.owned ? 'text-primary' : row.free ? 'text-dark-text' : 'text-dark-textMuted'">
                   <img v-if="row.headshot" :src="row.headshot" :alt="row.name" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
                   <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
                   <span class="min-w-0 flex-1 truncate">{{ row.owned ? '★ ' : '' }}{{ row.name }}</span>
+                  <span
+                    v-if="!row.owned"
+                    class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide"
+                    :class="row.free ? 'bg-[#4ade80]/15 text-[#4ade80]' : 'bg-dark-bg text-dark-textMuted/60'"
+                  >{{ row.free ? 'free' : 'rostered' }}</span>
                   <img v-if="row.team" :src="teamLogo(row.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 shrink-0 object-contain" />
                   <span v-if="row.unprojected" class="w-10 shrink-0 text-right font-mono text-[10px] italic text-dark-textMuted/50">no proj</span>
                   <span v-else class="w-10 shrink-0 text-right font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">{{ row.vorRos >= 0 ? '+' : '' }}{{ round(row.vorRos) }}</span>

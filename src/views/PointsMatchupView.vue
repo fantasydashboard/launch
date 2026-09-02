@@ -122,8 +122,15 @@ const stakes = computed(() =>
 const path = computed(() => {
   const m = matchup.value
   if (!m) return ''
-  const vol =
-    m.gamesDiff >= 3
+  /* Volume is a baseball lever: more games played means more counting stats, and you can
+     stream into open days. Football gives every roster the same one game a week, so this
+     copy read as nonsense there ("stream bats into your open days"). Football's lever is
+     the lineup itself. */
+  const vol = isFootball.value
+    ? m.myWinPct >= 55
+      ? 'your starters carry it — just make sure none are on bye'
+      : 'the margin is in your flex spots and any start/sit you get wrong'
+    : m.gamesDiff >= 3
       ? 'you out-game them, so bank the counting stats'
       : m.gamesDiff <= -3
         ? 'they out-game you, so stream bats into your open days'
@@ -167,13 +174,14 @@ const trend = useWinProbTrend({
 <template>
   <div class="mx-auto max-w-3xl px-4 py-6">
     <div v-if="loading && !matchup" class="py-16 text-center text-dark-textMuted">Loading this week…</div>
+    <!--
+      This said "coming soon for football" — but the screen was built, and the schedule is
+      published by the platform the moment the draft ends. Nothing was resolving a Sleeper
+      opponent to hand it (see useThisWeekOpponent). With that wired, the only honest reason
+      to land here is a genuine bye, so say that instead of blaming an unbuilt feature.
+    -->
     <div v-else-if="!oppSvc.opponent.value" class="py-16 text-center text-dark-textMuted">
-      <template v-if="isFootball">
-        Weekly matchup for football is coming soon — for now, see your roster strength on My Team and Power Rankings.
-      </template>
-      <template v-else>
-        No matchup found for this week.
-      </template>
+      No matchup scheduled for week {{ leagueStore.currentWeek }} — you're on a bye.
     </div>
     <div v-else-if="!matchup" class="py-16 text-center text-dark-textMuted">Assembling the week…</div>
 
@@ -192,10 +200,14 @@ const trend = useWinProbTrend({
               <div class="font-mono text-lg font-extrabold leading-none" :style="{ color: ME }">{{ round(myWinPct) }}%</div>
             </div>
           </div>
-          <!-- Center: days left + daily/weekly cadence -->
+          <!--
+            Center: days left, and (baseball only) the daily/weekly cadence toggle. A
+            football week has no daily slice to switch to — every roster plays once — so
+            offering the choice there is a control that cannot change the answer.
+          -->
           <div class="flex flex-col items-center gap-1.5">
             <div class="font-mono text-[10px] text-dark-textMuted">{{ daysRemaining }}d left</div>
-            <div class="inline-flex items-center gap-0.5 rounded-md border border-dark-border p-0.5 font-mono text-[9px]">
+            <div v-if="!isFootball" class="inline-flex items-center gap-0.5 rounded-md border border-dark-border p-0.5 font-mono text-[9px]">
               <button type="button" class="rounded px-2 py-0.5 transition-colors"
                 :class="cadence === 'daily' ? 'bg-dark-border text-dark-text' : 'text-dark-textMuted hover:text-dark-textSecondary'"
                 @click="cadence = 'daily'">daily</button>

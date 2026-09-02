@@ -4,7 +4,9 @@
       <div class="lp-inner">
         <span class="lp-icon">🏆</span>
         <span class="lp-text">
-          <strong>League Pass Active</strong>
+          <!-- "League Pass" is a retired plan; the only thing sold now is the Season Pass,
+               so the badge named a product the buyer never purchased. -->
+          <strong>Season Pass Active</strong>
           <span class="lp-sep">·</span>
           <span class="lp-league">{{ leagueName }}</span>
           <span v-if="sport" class="lp-sep">·</span>

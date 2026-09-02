@@ -80,7 +80,22 @@ export function buildLegendaryMoments(
       }
     }
   }
-  const nameOf = (k: string) => nameByKey.get(k)?.name ?? k
+  /**
+   * A roster whose manager has left comes back from the platform with no owner, and the
+   * adapters fall back to `Team {id}`. Taking the newest name then stamps that placeholder
+   * over a franchise that had a real name for years — the record book read "Worst season:
+   * Team 3", which names nobody and reads like a data error. Fall back to the most recent
+   * season where the franchise actually had a name.
+   */
+  const PLACEHOLDER = /^Team\s+\d+$/i
+  const namedByKey = new Map<string, string>()
+  for (const s of [...seasons].sort((a, b) => b.season - a.season)) {
+    for (const t of s.teams) {
+      if (namedByKey.has(t.teamKey)) continue
+      if (t.teamName && !PLACEHOLDER.test(t.teamName.trim())) namedByKey.set(t.teamKey, t.teamName)
+    }
+  }
+  const nameOf = (k: string) => namedByKey.get(k) ?? nameByKey.get(k)?.name ?? k
   const logoOf = (k: string) => nameByKey.get(k)?.logo
 
   const moments: Moment[] = []

@@ -57,7 +57,39 @@ const ideas = computed(() => {
 
 const landscape = computed(() => {
   if (!pool.value.length || !myTeamKey.value) return null
-  return buildPointsTradeLandscape(pool.value, valueByKey.value, fgByKey.value, myTeamKey.value, teamNames.value, leagueStore.activeSport, tradeVor.value)
+  /* Football passes the league's starting slots so a position is judged on the bodies the
+     league actually starts (2 RBs here, not 1). Without it, one elite back made RB a
+     "strength to trade from" on this page while My Team called RB the biggest hole —
+     the same roster, two answers. Baseball keeps the previous single-best-body basis. */
+  return buildPointsTradeLandscape(
+    pool.value, valueByKey.value, fgByKey.value, myTeamKey.value, teamNames.value,
+    leagueStore.activeSport, tradeVor.value,
+    leagueStore.activeSport === 'football' ? rosterSlots.value : undefined,
+  )
+})
+
+/**
+ * Your worst-ranked position even when nothing is bad enough to be bottom-third.
+ * "No glaring hole" on a roster that visibly has a thinnest spot reads as the tool not
+ * looking, and it contradicted My Team, which always names a biggest hole. Every roster
+ * has a weakest position; only some have a crisis.
+ */
+const ordinal = (n: number): string => {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`
+}
+const weakestSpot = computed(() => {
+  const ls = landscape.value
+  if (!ls || ls.myWeak.length) return ''
+  let worst = ''
+  let worstRank = 0
+  for (const pos of ls.positions) {
+    // teamKeys[0] is me, by the landscape's own contract.
+    const r = ls.rank[pos]?.[ls.teamKeys[0]] ?? 0
+    if (r > worstRank) { worstRank = r; worst = pos }
+  }
+  return worst ? `${worst} (${ordinal(worstRank)})` : ''
 })
 
 // Short column label for the heatmap (initials / first chars of the team name).
@@ -116,7 +148,9 @@ function fairness(myGain: number, theirGain: number): string {
         <div class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 font-mono text-[11px]">
           <span class="w-14 shrink-0 text-dark-textMuted">to fix</span>
           <span v-for="p in landscape.myWeak" :key="'w' + p" class="rounded bg-[#FF5C5C]/10 px-1.5 py-0.5 text-[#FF5C5C]">{{ p }}</span>
-          <span v-if="!landscape.myWeak.length" class="text-dark-textMuted/60">no glaring hole</span>
+          <span v-if="!landscape.myWeak.length" class="text-dark-textMuted/60">
+            nothing bottom-third<template v-if="weakestSpot"> &middot; thinnest is <span class="text-dark-textSecondary">{{ weakestSpot }}</span></template>
+          </span>
         </div>
         <p class="mt-1.5 font-mono text-[9px] text-dark-textMuted">deal a body from a spot you're deep → land one where you're thin.</p>
       </section>
@@ -236,7 +270,7 @@ function fairness(myGain: number, theirGain: number): string {
           </table>
         </div>
         <p class="mt-2 font-mono text-[9px] leading-relaxed text-dark-textMuted">
-          each cell = that team's rank at the position (its best body's {{ isFootball ? 'value over replacement' : 'projected points' }}) ·
+          each cell = that team's rank at the position ({{ isFootball ? 'its starters there, by value over replacement' : "its best body's projected points" }}) ·
           <span class="text-primary">green</span> strong · <span class="text-[#FF5C5C]">red</span> weak ·
           a partner green where you're red is your best fit
         </p>

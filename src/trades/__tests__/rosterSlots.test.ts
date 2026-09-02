@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseRosterSlots, FLEX_ELIGIBILITY, DEFAULT_SLOTS } from '../rosterSlots'
+import { startablePositions, parseRosterSlots, FLEX_ELIGIBILITY, DEFAULT_SLOTS } from '../rosterSlots'
 
 describe('parseRosterSlots', () => {
   it('parses Yahoo roster_positions, dropping bench/IL', () => {
@@ -100,5 +100,36 @@ describe('parseRosterSlots — football', () => {
     expect(parseRosterSlots('sleeper', null, 'football')).toEqual({
       QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, K: 1, DEF: 1,
     })
+  })
+})
+
+describe('startablePositions', () => {
+  it("expands flex slots and omits positions the league doesn't start", () => {
+    // League of Record: QB/RB/RB/WR/WR/TE/FLEX x3 + bench. No K, no DEF.
+    const slots = parseRosterSlots(
+      'sleeper',
+      { roster_positions: ['QB','RB','RB','WR','WR','TE','FLEX','FLEX','FLEX','BN','BN','BN','BN','BN'] },
+      'football',
+    )
+    const startable = startablePositions(slots)
+    expect([...startable].sort()).toEqual(['QB', 'RB', 'TE', 'WR'])
+  })
+
+  it('keeps K and DEF when the league actually starts them', () => {
+    const slots = parseRosterSlots(
+      'sleeper',
+      { roster_positions: ['QB','RB','WR','TE','K','DEF','BN'] },
+      'football',
+    )
+    expect(startablePositions(slots).has('K')).toBe(true)
+    expect(startablePositions(slots).has('DEF')).toBe(true)
+  })
+
+  it('SUPER_FLEX makes QB startable even with no dedicated QB slot', () => {
+    expect(startablePositions({ SUPER_FLEX: 1 }).has('QB')).toBe(true)
+  })
+
+  it('ignores zero-count slots', () => {
+    expect(startablePositions({ QB: 1, K: 0 }).has('K')).toBe(false)
   })
 })
