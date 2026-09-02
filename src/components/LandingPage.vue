@@ -239,7 +239,7 @@
         <h2 class="section-headline">One player.<br/><span class="accent-secondary">Three answers.</span></h2>
         <p class="section-sub rules-sub">
           Your settings are not a detail on a signup form — they change the call. Same receiver,
-          same Sunday, three sets of rules.
+          same projection, three sets of rules.
         </p>
 
         <!--
@@ -248,37 +248,51 @@
           "it fits your league" argument with the most valuable one — a decision that flips
           because the rules changed, which is precisely what a default projection cannot see.
         -->
+        <!--
+          Waddle was the wrong player for this card: at a half-PPR ADP of 46.6 he is a starter in
+          every one of these leagues, so "Sit" was never a real verdict. The argument needs a
+          genuine bubble player, and specifically a reception-dependent one — otherwise PPR
+          scoring has nothing to move.
+
+          Josh Downs, real 2026 Sleeper projections, one row per scoring format the payload
+          already carries: pts_std 102.3, pts_half_ppr 137.3, pts_ppr 172.3, on 70 projected
+          catches. Weekly figures are those totals over a 17-game season; the WR ranks are his
+          position rank under each of those three scorings — WR48 / WR43 / WR39. The roster slot
+          moves the other way for a separate reason: a deeper league spreads the same talent over
+          more teams, so the same player sits higher on your own depth chart.
+        -->
         <div class="rules-block" aria-hidden="true">
           <div class="rules-player">
-            <span class="rp-name">Jaylen Waddle</span>
+            <span class="rp-name">Josh Downs</span>
             <span class="cmp-pos pos-wr">WR</span>
-            <span class="rp-meta">Week 11 &middot; at KC &middot; on your bench</span>
+            <span class="rp-meta">Slot receiver &middot; 70 catches projected &middot; on your bench</span>
           </div>
 
           <div class="rules-cards">
             <div class="rule-card">
               <div class="rc-league">10-team &middot; Standard</div>
               <div class="rc-verdict rc-sit">Sit</div>
-              <div class="rc-detail"><b>8.1</b> proj &middot; WR38 this week</div>
-              <div class="rc-slot">your WR4</div>
+              <div class="rc-detail"><b>6.0</b> / wk &middot; WR48</div>
+              <div class="rc-slot">your WR5</div>
             </div>
             <div class="rule-card">
               <div class="rc-league">12-team &middot; Half-PPR</div>
               <div class="rc-verdict rc-flex">Flex</div>
-              <div class="rc-detail"><b>11.4</b> proj &middot; WR26 this week</div>
-              <div class="rc-slot">your WR3</div>
+              <div class="rc-detail"><b>8.1</b> / wk &middot; WR43</div>
+              <div class="rc-slot">your WR4</div>
             </div>
             <div class="rule-card rule-card-hi">
               <div class="rc-league">14-team &middot; Full PPR</div>
               <div class="rc-verdict rc-start">Start</div>
-              <div class="rc-detail"><b>14.6</b> proj &middot; WR14 this week</div>
-              <div class="rc-slot">your WR2</div>
+              <div class="rc-detail"><b>10.1</b> / wk &middot; WR39</div>
+              <div class="rc-slot">your WR3</div>
             </div>
           </div>
 
           <p class="rules-caption">
-            Nothing about the player changed. Reception scoring and league size did — and that is
-            the difference between leaving him on your bench and starting him.
+            Nothing about the player changed — same 70 catches in all three. Reception scoring is
+            worth nine spots of positional rank to him, and a deeper league moves him up your own
+            depth chart. That is the difference between a bench player and a starter.
           </p>
         </div>
 
