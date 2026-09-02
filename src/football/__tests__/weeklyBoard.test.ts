@@ -155,6 +155,41 @@ describe('buildWeeklyBoard — the Sunday page', () => {
     expect(board.matchup!.myWinPct).toBeLessThanOrEqual(99)
   })
 
+  /*
+   * The screen prints each row rounded. If the header rounds the true total instead of
+   * summing those rounded rows, a reader who adds the column gets a different number — the
+   * live page showed 142 above nine rows adding to 143. The view sums the rounded rows; this
+   * pins the property that makes that safe.
+   */
+  it('rounded row values are what the header must sum, and they can differ from a rounded total', () => {
+    const fractional: Record<string, PlayerVor> = {
+      qb: pv(19.6), rb1: pv(20.6), rb2: pv(13.6), rb3: pv(11.6), rb4: pv(8), opp: pv(120),
+    }
+    const board = buildWeeklyBoard({
+      pool, vorByKey: fractional, slots, myTeamKey: 'me',
+      currentStarters: ['qb', 'rb1', 'rb2', 'rb3'],
+      freeAgents: [], opponentByTeam: opp,
+      oppTeamKey: 'other', oppTeamName: 'Them',
+    })
+    const rowSum = board.starters.reduce((s, r) => s + Math.round(r.weekPoints), 0)
+    // 19.6+20.6+13.6+11.6 = 65.4 -> rounds to 65, but the printed rows are 20+21+14+12 = 67.
+    expect(Math.round(board.matchup!.myPoints)).toBe(65)
+    expect(rowSum).toBe(67)
+    expect(rowSum).not.toBe(Math.round(board.matchup!.myPoints))
+  })
+
+  it('never offers the same bench player as the alternative for two slots', () => {
+    // Two FLEX-ish slots and a single strong bench body both could claim.
+    const twoFlex = { QB: 1, RB: 1, FLEX: 2 }
+    const board = buildWeeklyBoard({
+      pool, vorByKey: { qb: pv(30), rb1: pv(20), rb2: pv(19), rb3: pv(18.5), rb4: pv(18), opp: pv(1) },
+      slots: twoFlex, myTeamKey: 'me',
+      currentStarters: [], freeAgents: [], opponentByTeam: opp,
+    })
+    const alts = board.closeCalls.map((c) => c.sitName)
+    expect(new Set(alts).size).toBe(alts.length)
+  })
+
   it('leaves the matchup null when no opponent is known (bye week)', () => {
     const board = buildWeeklyBoard({
       pool, vorByKey, slots, myTeamKey: 'me',

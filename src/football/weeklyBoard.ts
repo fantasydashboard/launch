@@ -212,7 +212,7 @@ export function buildWeeklyBoard(input: {
    * the second kind is worth a manager's attention.
    */
   const CLOSE_PTS = 2.5
-  const closeCalls: WeeklyCloseCall[] = []
+  const candidates: (WeeklyCloseCall & { altKey: string })[] = []
   for (const st of starters) {
     if (st.bye) continue
     // bench is sorted desc by weekPoints, so the first eligible body IS the best alternative.
@@ -224,18 +224,28 @@ export function buildWeeklyBoard(input: {
     })
     if (!alt) continue
     const gap = st.weekPoints - alt.weekPoints
-    if (gap >= 0 && gap <= CLOSE_PTS) {
-      closeCalls.push({
-        slot: st.slot,
-        startName: st.name,
-        startPoints: st.weekPoints,
-        sitName: alt.name,
-        sitPoints: alt.weekPoints,
-        gap,
-      })
-    }
+    if (gap < 0 || gap > CLOSE_PTS) continue
+    candidates.push({
+      slot: st.slot,
+      startName: st.name,
+      startPoints: st.weekPoints,
+      sitName: alt.name,
+      sitPoints: alt.weekPoints,
+      gap,
+      altKey: alt.playerKey,
+    })
   }
-  closeCalls.sort((a, b) => a.gap - b.gap)
+  /* A bench player can only fill ONE slot, so he can only be one alternative. Offering the
+     same body as the swap for two different FLEX spots reads as two independent choices when
+     taking either forecloses the other. Tightest gap wins him; the rest are dropped. */
+  const closeCalls: WeeklyCloseCall[] = []
+  const usedAlt = new Set<string>()
+  for (const c of [...candidates].sort((a, b) => a.gap - b.gap)) {
+    if (usedAlt.has(c.altKey)) continue
+    usedAlt.add(c.altKey)
+    const { altKey: _drop, ...row } = c
+    closeCalls.push(row)
+  }
 
   const byeStarters = starters.filter((s) => s.bye)
 

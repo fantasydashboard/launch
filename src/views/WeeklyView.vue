@@ -1,8 +1,19 @@
 <script setup lang="ts">
 import { nflTeamLogo } from '@/players/nflTeamLogo'
+import { computed } from 'vue'
 import { useWeeklyBoard } from '@/composables/useWeeklyBoard'
 
 const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo } = useWeeklyBoard()
+
+/*
+ * Header totals are summed from the ROUNDED row values, not rounded from the raw sum.
+ * Rounding the true total gave 142 above a column of nine numbers that add to 143, and a
+ * reader who checks the arithmetic — exactly the reader worth having — finds the page
+ * contradicting itself. The margin is derived the same way so it agrees with both totals.
+ */
+const myTotal = computed(() => board.value?.starters.reduce((sum, s) => sum + Math.round(s.weekPoints), 0) ?? 0)
+const oppTotal = computed(() => Math.round(board.value?.matchup?.oppPoints ?? 0))
+const margin = computed(() => myTotal.value - oppTotal.value)
 
 const teamLogo = (abbr?: string) => nflTeamLogo(abbr)
 const round = (n: number) => Math.round(n)
@@ -39,20 +50,20 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             <img v-if="myTeamLogo" :src="myTeamLogo" alt="" @error="onLogoErr" class="h-9 w-9 shrink-0 rounded-lg bg-dark-border object-cover" />
             <div class="min-w-0">
               <div class="truncate text-[13px] font-bold text-dark-text">{{ myTeamName }}</div>
-              <div class="font-mono text-lg font-extrabold leading-none text-primary">{{ round(board.matchup.myPoints) }}</div>
+              <div class="font-mono text-lg font-extrabold leading-none text-primary">{{ myTotal }}</div>
             </div>
           </div>
           <div class="shrink-0 text-center">
             <div class="font-mono text-[10px] text-dark-textMuted">projected</div>
-            <div class="font-mono text-[11px] font-bold" :class="board.matchup.margin >= 0 ? 'text-primary' : 'text-[#FF5C5C]'">
-              {{ board.matchup.margin >= 0 ? 'you +' : 'them +' }}{{ Math.abs(round(board.matchup.margin)) }}
+            <div class="font-mono text-[11px] font-bold" :class="margin >= 0 ? 'text-primary' : 'text-[#FF5C5C]'">
+              {{ margin >= 0 ? 'you +' : 'them +' }}{{ Math.abs(margin) }}
             </div>
             <div class="font-mono text-[10px] text-dark-textMuted">{{ board.matchup.myWinPct }}% to win</div>
           </div>
           <div class="flex min-w-0 items-center justify-end gap-2 text-right">
             <div class="min-w-0">
               <div class="truncate text-[13px] font-bold text-dark-text">{{ board.matchup.opponentName }}</div>
-              <div class="font-mono text-lg font-extrabold leading-none text-[#e69a4a]">{{ round(board.matchup.oppPoints) }}</div>
+              <div class="font-mono text-lg font-extrabold leading-none text-[#e69a4a]">{{ oppTotal }}</div>
             </div>
             <img v-if="board.matchup.opponentLogo" :src="board.matchup.opponentLogo" alt="" @error="onLogoErr" class="h-9 w-9 shrink-0 rounded-lg bg-dark-border object-cover" />
           </div>
@@ -132,10 +143,10 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             <span class="w-10 shrink-0 font-mono text-[10px] uppercase text-dark-textMuted">{{ c.slot }}</span>
             <span class="min-w-0 flex-1 text-sm">
               <span class="text-dark-text">{{ c.startName }}</span>
-              <span class="font-mono text-[11px] text-dark-textMuted"> {{ round(c.startPoints) }}</span>
+              <span class="font-mono text-[11px] text-dark-textMuted"> {{ c.startPoints.toFixed(1) }}</span>
               <span class="mx-1.5 text-dark-textMuted">over</span>
               <span class="text-dark-textMuted">{{ c.sitName }}</span>
-              <span class="font-mono text-[11px] text-dark-textMuted"> {{ round(c.sitPoints) }}</span>
+              <span class="font-mono text-[11px] text-dark-textMuted"> {{ c.sitPoints.toFixed(1) }}</span>
             </span>
             <span class="shrink-0 text-right font-mono text-[11px] text-dark-textMuted">by {{ c.gap.toFixed(1) }}</span>
           </div>
