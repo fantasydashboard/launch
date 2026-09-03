@@ -79,6 +79,10 @@ const round = (n: number) => Math.round(n)
    in a non-superflex league doesn't get a meaningless number beside his name. */
 /* The weekly rankings board. Open by default: this is a reason to visit the page, not a
    footnote — the same reasoning that took The Wire's board out from behind a "+". */
+/* The lineup detail folds; the verdict does not. Collapsed by default because "is my lineup
+   right" is answered by the header alone, and the rankings board underneath was being pushed
+   below the fold by three stacked lists nobody needed open at once. */
+const lineupOpen = ref(false)
 const boardOpen = ref(true)
 const boardPos = ref('RB')
 const boardPositions = computed(() => board.value?.boardPositions ?? [])
@@ -244,14 +248,23 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             and by how much of the position.
           -->
           <div class="mb-1 flex items-center gap-2 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70">
-            <span class="min-w-0 flex-1 truncate">{{ myTeamName }}</span>
+            <span class="flex min-w-0 flex-1 items-center gap-1.5">
+              <img v-if="myTeamLogo" :src="myTeamLogo" alt="" @error="onLogoErr" class="h-4 w-4 shrink-0 rounded bg-dark-border object-cover" />
+              <span class="truncate">{{ myTeamName }}</span>
+            </span>
             <span class="w-10 shrink-0 text-center">slot</span>
-            <span class="min-w-0 flex-1 truncate text-right">{{ board.matchup.opponentName }}</span>
+            <span class="flex min-w-0 flex-1 items-center justify-end gap-1.5">
+              <span class="truncate">{{ board.matchup.opponentName }}</span>
+              <img v-if="board.matchup.opponentLogo" :src="board.matchup.opponentLogo" alt="" @error="onLogoErr" class="h-4 w-4 shrink-0 rounded bg-dark-border object-cover" />
+            </span>
           </div>
           <div v-for="(d, i) in board.matchup.duels" :key="'duel-' + i"
                class="flex items-center gap-2 border-b border-dark-border/40 py-1.5 last:border-0">
             <!-- mine -->
             <span class="flex min-w-0 flex-1 items-center gap-1.5" :class="d.edge > 0 ? 'text-dark-text' : 'text-dark-textMuted'">
+              <img v-if="d.mine && d.mine.headshot" :src="d.mine.headshot" :alt="d.mine.name" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
+              <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
+              <img v-if="d.mine && d.mine.team" :src="teamLogo(d.mine.team)" alt="" @error="onLogoErr" class="hidden h-3.5 w-3.5 shrink-0 object-contain sm:block" />
               <span class="min-w-0 flex-1 truncate text-[13px]">
                 {{ d.mine ? d.mine.name : '—' }}
                 <span v-if="d.mine && d.mine.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>
@@ -274,6 +287,9 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
                 {{ d.theirs ? d.theirs.name : '—' }}
                 <span v-if="d.theirs && d.theirs.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>
               </span>
+              <img v-if="d.theirs && d.theirs.team" :src="teamLogo(d.theirs.team)" alt="" @error="onLogoErr" class="hidden h-3.5 w-3.5 shrink-0 object-contain sm:block" />
+              <img v-if="d.theirs && d.theirs.headshot" :src="d.theirs.headshot" :alt="d.theirs.name" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
+              <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
             </span>
           </div>
           <p class="mt-2 font-mono text-[9px] text-dark-textMuted">
@@ -292,8 +308,37 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
         </p>
       </div>
 
+      <!--
+        The verdict stays visible; the detail folds. Whether the lineup is optimal is the
+        headline, and the lineup, the close calls and the bench are the working behind it —
+        all of which were pushing the rankings board off the bottom of the page.
+      -->
+      <section class="mb-5 rounded-xl border bg-dark-card"
+               :class="board.moves.length ? 'border-primary/40' : 'border-dark-border'">
+        <button class="flex w-full items-center justify-between gap-3 p-4" @click="lineupOpen = !lineupOpen">
+          <span class="min-w-0 text-left">
+            <span v-if="board.moves.length" class="font-display text-xs font-semibold uppercase tracking-wide text-primary">
+              ★ {{ board.moves.length }} start / sit move{{ board.moves.length > 1 ? 's' : '' }}
+              <span class="font-mono text-[10px] normal-case text-dark-textMuted">
+                · +{{ board.moves.reduce((t, m) => t + m.gain, 0) }} pts on the table
+              </span>
+            </span>
+            <span v-else-if="hasCurrentLineup" class="font-mono text-[11px] text-dark-textMuted">
+              ✓ Your lineup is already optimal for week {{ currentWeek }}.
+            </span>
+            <span v-else class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+              Your best lineup
+            </span>
+            <span class="mt-0.5 block font-mono text-[10px] text-dark-textMuted/70">
+              lineup · closest calls · bench
+            </span>
+          </span>
+          <span class="shrink-0 font-mono text-dark-textMuted">{{ lineupOpen ? '−' : '+' }}</span>
+        </button>
+
+      <div v-if="lineupOpen" class="px-4 pb-4">
       <!-- 1. START/SIT MOVES -->
-      <section v-if="board.moves.length" class="mb-5 rounded-xl border border-primary/40 bg-dark-card p-4">
+      <section v-if="board.moves.length" class="mb-5 rounded-xl border border-primary/40 bg-dark-bg/40 p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-primary">★ Start / sit moves</h2>
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">your set lineup vs the best lineup for week {{ currentWeek }}</p>
         <template v-for="(m, i) in board.moves" :key="'mv-' + i">
@@ -311,13 +356,8 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
           </div>
         </template>
       </section>
-      <!-- Only claim the lineup is optimal when we actually know what's set (Sleeper). -->
-      <p v-else-if="hasCurrentLineup" class="mb-5 rounded-xl border border-dark-border bg-dark-card px-4 py-3 font-mono text-[11px] text-dark-textMuted">
-        ✓ Your lineup is already optimal for week {{ currentWeek }}.
-      </p>
-
       <!-- 2. OPTIMAL LINEUP -->
-      <section class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+      <section class="mb-5 rounded-xl border border-dark-border bg-dark-bg/40 p-4">
         <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
           Best lineup
           <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">
@@ -353,7 +393,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
         lineup and nearly indifferent at the bottom; only the second kind is worth a
         manager's attention, and "already optimal" was hiding it behind a checkmark.
       -->
-      <section v-if="board.closeCalls.length" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+      <section v-if="board.closeCalls.length" class="mb-5 rounded-xl border border-dark-border bg-dark-bg/40 p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Closest calls</h2>
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">near coin-flips — the projection barely separates these</p>
         <template v-for="(c, i) in board.closeCalls" :key="'cc-' + i">
@@ -372,10 +412,13 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
       </section>
 
       <!-- 3. BENCH -->
-      <section v-if="board.bench.length" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+      <section v-if="board.bench.length" class="rounded-xl border border-dark-border bg-dark-bg/40 p-4">
         <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Bench</h2>
         <template v-for="b in board.bench" :key="'bn-' + b.playerKey">
           <div class="flex items-center gap-2.5 border-b border-dark-border/40 py-1 text-sm last:border-0">
+            <img v-if="b.headshot" :src="b.headshot" :alt="b.name" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
+            <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
+            <img v-if="b.team" :src="teamLogo(b.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 shrink-0 object-contain" />
             <span class="min-w-0 flex-1 truncate text-dark-textMuted">
               {{ b.name }} <span class="text-[11px]">{{ b.position }}</span>
               <span v-if="b.bye" class="ml-1 text-[10px] text-[#FF5C5C]">BYE</span>
@@ -386,6 +429,8 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             <span class="w-8 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ round(b.weekPoints) }}</span>
           </div>
         </template>
+      </section>
+      </div><!-- /lineup collapsible -->
       </section>
 
       <!--
