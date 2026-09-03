@@ -61,6 +61,25 @@ describe('buildRosterCompare', () => {
     expect(c.youBuy).not.toContain('RB')
   })
 
+  it('ranks each player against the whole league pool, not against his own roster', () => {
+    const rb = cmp.positions.find((x) => x.position === 'RB')!
+    // League RBs by value: myRB1 90, myRB2 60, thRB1 50, myRB3 40.
+    expect(rb.mine.map((b) => [b.name, b.posRank])).toEqual([
+      ['myRB1', 1], ['myRB2', 2], ['myRB3', 4],
+    ])
+    // Their only back slots BETWEEN two of mine — which is the whole point of a shared scale.
+    expect(rb.theirs.map((b) => [b.name, b.posRank])).toEqual([['thRB1', 3]])
+  })
+
+  it('ranks overall across every rostered player', () => {
+    // All seven by value: myRB1 90, thTE1 70, myRB2 60, thRB1 50, myRB3 40, thTE2 30, myTE1 5.
+    const all = cmp.positions.flatMap((p) => [...p.mine, ...p.theirs])
+    const byName = new Map(all.map((b) => [b.name, b.overallRank]))
+    expect(byName.get('myRB1')).toBe(1)
+    expect(byName.get('thTE1')).toBe(2)
+    expect(byName.get('myTE1')).toBe(7)
+  })
+
   it('returns null without both teams', () => {
     expect(buildRosterCompare({
       pool, valueByKey: {}, fgByKey: fg, myTeamKey: 'me', theirTeamKey: '', slots, sport: 'football', vorByKey,

@@ -26,6 +26,13 @@ export interface CompareBody {
   value: number // rest-of-season currency (VOR for football, projected points otherwise)
   /** Would start for that roster right now — depth beyond this is trade fodder. */
   starter: boolean
+  /**
+   * Rank at this position among every ROSTERED player in the league, and rank overall on the
+   * same population. Not NFL-wide: the only players a trade can move are the ones somebody in
+   * your league already owns, so "RB4" here means fourth-best back available to negotiate for.
+   */
+  posRank: number
+  overallRank: number
 }
 
 export interface ComparePosition {
@@ -71,12 +78,26 @@ export function buildRosterCompare(input: {
   const valueOf = (key: string): number =>
     useVor ? (vorByKey![key]?.vorRos ?? 0) : (valueByKey[key]?.total ?? 0)
 
+  /* One ranking pass over the whole league pool, so both columns are measured against the
+     same population — a player's rank must not depend on which roster he happens to sit on. */
+  const overallRank = new Map(
+    [...pool]
+      .sort((a, b) => valueOf(b.playerKey) - valueOf(a.playerKey))
+      .map((p, i) => [p.playerKey, i + 1] as const),
+  )
+
   const startable = startablePositions(slots)
   const positions = positionRowsFor(sport).filter((p) => startable.has(p) || !useVor)
 
-  const bodiesFor = (teamKey: string, pos: string): CompareBody[] =>
+  const coversPos = (p: PointsPoolPlayer, pos: string) => coversSlot(lineupEligFor(p, fgByKey), pos)
+
+  const bodiesFor = (
+    teamKey: string,
+    pos: string,
+    posRank: Map<string, number>,
+  ): CompareBody[] =>
     pool
-      .filter((p) => p.teamKey === teamKey && coversSlot(lineupEligFor(p, fgByKey), pos))
+      .filter((p) => p.teamKey === teamKey && coversPos(p, pos))
       .map((p) => ({
         playerKey: p.playerKey,
         name: p.name,
@@ -85,13 +106,23 @@ export function buildRosterCompare(input: {
         headshot: p.headshot,
         value: valueOf(p.playerKey),
         starter: false,
+        posRank: posRank.get(p.playerKey) ?? 0,
+        overallRank: overallRank.get(p.playerKey) ?? 0,
       }))
       .sort((a, b) => b.value - a.value)
 
   const out: ComparePosition[] = []
   for (const position of positions) {
-    const mine = bodiesFor(myTeamKey, position)
-    const theirs = bodiesFor(theirTeamKey, position)
+    // Positional rank is computed over everyone eligible there, league-wide — the same list
+    // both columns are drawn from, so the two sides are directly comparable.
+    const posRank = new Map(
+      pool
+        .filter((p) => coversPos(p, position))
+        .sort((a, b) => valueOf(b.playerKey) - valueOf(a.playerKey))
+        .map((p, i) => [p.playerKey, i + 1] as const),
+    )
+    const mine = bodiesFor(myTeamKey, position, posRank)
+    const theirs = bodiesFor(theirTeamKey, position, posRank)
     if (!mine.length && !theirs.length) continue
 
     /* How many bodies "count" here is how many the league starts at the position. Judging a

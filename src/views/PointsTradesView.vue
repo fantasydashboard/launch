@@ -383,7 +383,8 @@ function fairness(myGain: number, theirGain: number): string {
                 <span class="min-w-0 flex-1 truncate" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted'">
                   {{ b.name }}
                 </span>
-                <span class="shrink-0 font-mono text-[10px]" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted/70'">
+                <span class="shrink-0 font-mono text-[9px] text-dark-textMuted/60">{{ row.position }}{{ b.posRank }}&middot;#{{ b.overallRank }}</span>
+                <span class="w-10 shrink-0 text-right font-mono text-[10px]" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted/70'">
                   {{ b.value >= 0 ? '+' : '' }}{{ round(b.value) }}
                 </span>
               </div>
@@ -394,7 +395,8 @@ function fairness(myGain: number, theirGain: number): string {
                 <span class="min-w-0 flex-1 truncate" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted'">
                   {{ b.name }}
                 </span>
-                <span class="shrink-0 font-mono text-[10px]" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted/70'">
+                <span class="shrink-0 font-mono text-[9px] text-dark-textMuted/60">{{ row.position }}{{ b.posRank }}&middot;#{{ b.overallRank }}</span>
+                <span class="w-10 shrink-0 text-right font-mono text-[10px]" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted/70'">
                   {{ b.value >= 0 ? '+' : '' }}{{ round(b.value) }}
                 </span>
               </div>
