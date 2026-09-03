@@ -9,6 +9,7 @@ import { buildPointsTrades } from '@/myteam/pointsTrades'
 import { buildPointsTeam } from '@/myteam/pointsTeam'
 import { buildPointsTradeLandscape } from '@/myteam/pointsTradeLandscape'
 import { buildRosterCompare } from '@/myteam/rosterCompare'
+import { startableCounts, startableFraction } from '@/trades/rosterSlots'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import type { AvailablePlayer } from '@/players/types'
@@ -62,6 +63,8 @@ const allIdeas = computed(() => {
 // never presented as something the other manager should happily accept.
 const ideas = computed(() => allIdeas.value.filter((i) => i.kind === 'winWin'))
 const asks = computed(() => allIdeas.value.filter((i) => i.kind === 'ask').slice(0, 4))
+// Win-wins first, then the bounded asks — one list, one card shape.
+const dealCards = computed(() => [...ideas.value, ...asks.value])
 
 const landscape = computed(() => {
   if (!pool.value.length || !myTeamKey.value) return null
@@ -107,6 +110,30 @@ function barClass(rank: number, teams: number): string {
   return 'bg-dark-textMuted/50'
 }
 const rankBar = (rank: number, teams: number) => (teams <= 1 ? 100 : Math.round(((teams - rank + 1) / teams) * 100))
+
+/**
+ * Colour a positional rank by where it sits in the STARTABLE pool rather than by the raw
+ * number. WR44 and WR51 look identical otherwise, and RB3 only reads as elite if you already
+ * know the league size. The pool comes from the league's own slots, so a 14-team superflex
+ * gets different thresholds with no extra code — and onesie positions need no special case,
+ * because "only ten quarterbacks start" is already the denominator.
+ */
+const startable = computed(() => startableCounts(rosterSlots.value, leagueSize.value))
+function rankTone(posRank: number, position: string): string {
+  const f = startableFraction(posRank, position, startable.value)
+  if (f === null) return 'text-dark-textMuted/60'
+  if (f <= 1 / 3) return 'text-[#7ee787]'   // top third of starters
+  if (f <= 2 / 3) return 'text-[#3fb950]'   // comfortable starter
+  if (f <= 1) return 'text-dark-textMuted'  // last startable third — replaceable
+  if (f <= 1.5) return 'text-[#d29922]'     // just off the pool
+  return 'text-[#f85149]'                   // deep bench
+}
+
+/* The slot spine carries only a player key, so images come from the pool the page already
+   has rather than being threaded through buildPointsTeam. */
+const poolByKey = computed(() => new Map(pool.value.map((pl) => [pl.playerKey, pl])))
+const headshotOf = (key: string) => poolByKey.value.get(key)?.headshot ?? ''
+const proTeamOf = (key: string) => poolByKey.value.get(key)?.proTeam ?? ''
 
 const ordinal = (n: number): string => {
   const s = ['th', 'st', 'nd', 'rd']
@@ -228,7 +255,10 @@ function fairness(myGain: number, theirGain: number): string {
                   :class="sl.starterKey ? rankClass(sl.rank, sl.teams) : 'text-dark-textMuted/50'">
               {{ sl.starterKey ? ordinal(sl.rank) : '—' }}
             </span>
-            <span class="w-36 shrink-0 truncate text-sm sm:w-44"
+            <img v-if="sl.starterKey && headshotOf(sl.starterKey)" :src="headshotOf(sl.starterKey)" :alt="sl.starterName" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
+            <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
+            <img v-if="sl.starterKey && proTeamOf(sl.starterKey)" :src="teamLogo(proTeamOf(sl.starterKey))" alt="" @error="onLogoErr" class="hidden h-3.5 w-3.5 shrink-0 object-contain sm:block" />
+            <span class="w-32 shrink-0 truncate text-sm sm:w-40"
                   :class="sl.starterKey ? 'text-dark-text' : 'italic text-dark-textMuted/60'">
               {{ sl.starterKey ? sl.starterName : 'open slot' }}
             </span>
@@ -269,81 +299,67 @@ function fairness(myGain: number, theirGain: number): string {
         No swap right now raises both lineups.<template v-if="asks.length"> These do raise yours:</template>
       </div>
 
-      <!-- ASKS — you gain, they don't. Real targets, honestly labelled. -->
-      <div v-for="(idea, i) in asks" :key="'ask' + i" class="mb-3 rounded-xl border border-dark-border bg-dark-card p-4">
-        <div class="mb-2 flex items-center justify-between">
-          <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">ask {{ idea.oppTeamName }}</span>
-          <span class="text-right">
-            <span class="font-mono text-sm font-bold text-primary">+{{ idea.myGain }}</span>
-            <span class="ml-1 font-mono text-[9px] uppercase text-dark-textMuted">pts to you</span>
-          </span>
-        </div>
-        <div class="font-mono text-[12px] text-dark-text">
-          <span class="text-[#FF5C5C]">give</span> {{ idea.give.name }} <span class="text-dark-textMuted">{{ idea.give.position }}</span>
-          <span class="mx-1.5 text-dark-textMuted">&rarr;</span>
-          <span class="text-primary">get</span> {{ idea.get.name }} <span class="text-dark-textMuted">{{ idea.get.position }}</span>
-        </div>
-        <p class="mt-2 font-mono text-[10px] leading-relaxed text-dark-textMuted">
-          Doesn't improve their lineup ({{ idea.theirGain }} pts), so they have no reason to say yes on the
-          numbers alone — sweeten it, or catch them wanting the name.
-        </p>
-      </div>
-
-      <div v-for="(idea, i) in ideas" :key="i" class="mb-3 rounded-xl border border-dark-border bg-dark-card p-4">
-        <div class="mb-2 flex items-center justify-between">
-          <span class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">with {{ idea.oppTeamName }}</span>
-          <span class="text-right">
-            <span class="font-mono text-sm font-bold text-primary">+{{ idea.myGain }}</span>
-            <span class="ml-1 font-mono text-[9px] uppercase text-dark-textMuted">pts to you</span>
-          </span>
-        </div>
-
-        <div class="flex items-center gap-3">
-          <!-- GET (their player → you) -->
-          <div class="flex min-w-0 flex-1 items-center gap-2">
-            <img v-if="idea.get.headshot" :src="idea.get.headshot" :alt="idea.get.name" loading="lazy" class="h-9 w-9 shrink-0 rounded-full bg-dark-border object-cover" />
-            <span v-else class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[10px] text-dark-textMuted">{{ idea.get.position }}</span>
-            <span class="min-w-0">
-              <span class="block font-mono text-[9px] uppercase text-primary">get</span>
-              <span class="truncate text-sm font-semibold text-dark-text">{{ idea.get.name }}</span>
-              <span class="flex items-center gap-1 text-[11px] text-dark-textMuted">
-                {{ idea.get.position }} ·
-                <img :src="teamLogo(idea.get.proTeam)" alt="" @error="onLogoErr" class="h-3 w-3 object-contain" />{{ idea.get.proTeam }} ·
-                {{ round(tradePoints(idea.get.playerKey, idea.get.points)) }} {{ isFootball ? 'pts/wk' : 'pts' }}
-              </span>
+      <!--
+        One card shape for every deal — 1-for-1 or 2-for-1, win-win or ask. The old markup
+        assumed a single body per side, which is the assumption that made every suggestion a
+        beg: in a 1-for-1 you only gain a lot when they lose a lot.
+      -->
+      <template v-for="(idea, i) in dealCards" :key="'deal-' + i">
+        <div class="mb-3 rounded-xl border bg-dark-card p-4"
+             :class="idea.kind === 'winWin' ? 'border-primary/40' : 'border-dark-border'">
+          <div class="mb-2 flex items-center justify-between gap-2">
+            <span class="flex min-w-0 items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
+              <img v-if="teamLogos[idea.oppTeamKey]" :src="teamLogos[idea.oppTeamKey]" alt="" @error="onLogoErr" class="h-4 w-4 shrink-0 rounded bg-dark-border object-cover" />
+              <span class="truncate">{{ idea.kind === 'winWin' ? 'with' : 'ask' }} {{ idea.oppTeamName }}</span>
+              <span v-if="idea.shape === '2for1'" class="shrink-0 rounded bg-dark-bg px-1.5 py-0.5 text-[9px] text-dark-textSecondary">2-for-1</span>
+            </span>
+            <span class="shrink-0 text-right">
+              <span class="font-mono text-sm font-bold text-primary">+{{ idea.myGain }}</span>
+              <span class="ml-1 font-mono text-[9px] uppercase text-dark-textMuted">pts to you</span>
             </span>
           </div>
 
-          <span class="shrink-0 font-mono text-xs text-dark-textMuted">⇄</span>
-
-          <!-- GIVE (your player → them) -->
-          <div class="flex min-w-0 flex-1 flex-row-reverse items-center gap-2 text-right">
-            <img v-if="idea.give.headshot" :src="idea.give.headshot" :alt="idea.give.name" loading="lazy" class="h-9 w-9 shrink-0 rounded-full bg-dark-border object-cover" />
-            <span v-else class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[10px] text-dark-textMuted">{{ idea.give.position }}</span>
-            <span class="min-w-0">
-              <span class="block font-mono text-[9px] uppercase text-dark-textMuted">give</span>
-              <span class="truncate text-sm font-semibold text-dark-text">{{ idea.give.name }}</span>
-              <span class="flex flex-row-reverse items-center gap-1 text-[11px] text-dark-textMuted">
-                {{ idea.give.position }} ·
-                <img :src="teamLogo(idea.give.proTeam)" alt="" @error="onLogoErr" class="h-3 w-3 object-contain" />{{ idea.give.proTeam }} ·
-                {{ round(tradePoints(idea.give.playerKey, idea.give.points)) }} {{ isFootball ? 'pts/wk' : 'pts' }}
-              </span>
-            </span>
+          <div class="grid gap-2 sm:grid-cols-2">
+            <div class="rounded-lg bg-dark-bg/50 p-2">
+              <span class="mb-1 block font-mono text-[9px] uppercase text-primary">get</span>
+              <div v-for="g in idea.gets" :key="'g-' + g.playerKey" class="flex items-center gap-2 py-0.5">
+                <img v-if="g.headshot" :src="g.headshot" :alt="g.name" loading="lazy" @error="onLogoErr" class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" />
+                <span v-else class="h-7 w-7 shrink-0 rounded-full bg-dark-border" />
+                <img v-if="g.proTeam" :src="teamLogo(g.proTeam)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 shrink-0 object-contain" />
+                <span class="min-w-0 flex-1 truncate text-sm text-dark-text">{{ g.name }}</span>
+                <span class="shrink-0 font-mono text-[10px] text-dark-textMuted">{{ g.position }}</span>
+                <span class="w-12 shrink-0 text-right font-mono text-[11px] text-dark-textMuted">{{ round(tradePoints(g.playerKey, g.points)) }}</span>
+              </div>
+            </div>
+            <div class="rounded-lg bg-dark-bg/50 p-2">
+              <span class="mb-1 block font-mono text-[9px] uppercase text-[#FF5C5C]">give</span>
+              <div v-for="g in idea.gives" :key="'v-' + g.playerKey" class="flex items-center gap-2 py-0.5">
+                <img v-if="g.headshot" :src="g.headshot" :alt="g.name" loading="lazy" @error="onLogoErr" class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" />
+                <span v-else class="h-7 w-7 shrink-0 rounded-full bg-dark-border" />
+                <img v-if="g.proTeam" :src="teamLogo(g.proTeam)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 shrink-0 object-contain" />
+                <span class="min-w-0 flex-1 truncate text-sm text-dark-textSecondary">{{ g.name }}</span>
+                <span class="shrink-0 font-mono text-[10px] text-dark-textMuted">{{ g.position }}</span>
+                <span class="w-12 shrink-0 text-right font-mono text-[11px] text-dark-textMuted">{{ round(tradePoints(g.playerKey, g.points)) }}</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div class="mt-2 flex items-center justify-between border-t border-dark-border/40 pt-2 font-mono text-[10px] text-dark-textMuted">
-          <span>they gain <span class="text-[#e69a4a]">+{{ idea.theirGain }}</span> — {{ fairness(idea.myGain, idea.theirGain) }}</span>
-          <span v-if="idea.get.vor != null && idea.give.vor != null" class="text-dark-textMuted">
-            value <span class="text-primary">{{ idea.get.vor >= 0 ? '+' : '' }}{{ round(idea.get.vor) }}</span>
-            ⇄ <span>{{ idea.give.vor >= 0 ? '+' : '' }}{{ round(idea.give.vor) }}</span>
-          </span>
-          <span v-else>both lineups improve</span>
+          <p class="mt-2 font-mono text-[10px] leading-relaxed text-dark-textMuted">
+            <template v-if="idea.kind === 'winWin'">
+              Both lineups improve — theirs by {{ idea.theirGain }}. {{ fairness(idea.myGain, idea.theirGain) }}.
+            </template>
+            <template v-else>
+              Costs them {{ Math.abs(idea.theirGain) }} — worth asking, but you'll need to sweeten it or catch them wanting the name.
+            </template>
+            <template v-if="idea.shape === '2for1'">
+              Two bodies for one also frees a roster spot you'll have to fill.
+            </template>
+          </p>
         </div>
-      </div>
+      </template>
 
-      <p v-if="ideas.length" class="mb-5 font-mono text-[10px] leading-relaxed text-dark-textMuted">
-        gain = the lift to each side's optimal starting-lineup projected points · surplus-for-surplus, so neither side loses a starter
+      <p v-if="dealCards.length" class="mb-5 font-mono text-[10px] leading-relaxed text-dark-textMuted">
+        gain = the lift to each side's optimal starting-lineup projected points
       </p>
 
       <!-- BEST TRADE PARTNERS -->
@@ -352,7 +368,8 @@ function fairness(myGain: number, theirGain: number): string {
         <p class="mb-2 font-mono text-[9px] text-dark-textMuted">two-way fits first — they hold what you need, you hold what they need — then sell targets, where they're thin at a spot you're loaded</p>
         <div class="divide-y divide-dark-border/40 rounded-xl border border-dark-border bg-dark-card">
           <div v-for="p in landscape.partners" :key="p.teamKey" class="flex items-center gap-3 px-4 py-2.5">
-            <span class="w-32 shrink-0 truncate text-sm text-dark-text">{{ p.teamName }}</span>
+            <img v-if="teamLogos[p.teamKey]" :src="teamLogos[p.teamKey]" alt="" @error="onLogoErr" class="h-5 w-5 shrink-0 rounded bg-dark-border object-cover" />
+            <span class="w-28 shrink-0 truncate text-sm text-dark-text sm:w-32">{{ p.teamName }}</span>
             <span class="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px]">
               <template v-if="p.youBuy.length">
                 <span class="text-dark-textMuted">you buy</span>
@@ -463,7 +480,7 @@ function fairness(myGain: number, theirGain: number): string {
                 <span class="min-w-0 flex-1 truncate" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted'">
                   {{ b.name }}
                 </span>
-                <span class="shrink-0 font-mono text-[9px] text-dark-textMuted/60">{{ row.position }}{{ b.posRank }}&middot;#{{ b.overallRank }}</span>
+                <span class="shrink-0 font-mono text-[9px]" :class="rankTone(b.posRank, row.position)">{{ row.position }}{{ b.posRank }}<span class="text-dark-textMuted/50">&middot;#{{ b.overallRank }}</span></span>
                 <span class="w-10 shrink-0 text-right font-mono text-[10px]" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted/70'">
                   {{ b.value >= 0 ? '+' : '' }}{{ round(b.value) }}
                 </span>
@@ -478,7 +495,7 @@ function fairness(myGain: number, theirGain: number): string {
                 <span class="min-w-0 flex-1 truncate" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted'">
                   {{ b.name }}
                 </span>
-                <span class="shrink-0 font-mono text-[9px] text-dark-textMuted/60">{{ row.position }}{{ b.posRank }}&middot;#{{ b.overallRank }}</span>
+                <span class="shrink-0 font-mono text-[9px]" :class="rankTone(b.posRank, row.position)">{{ row.position }}{{ b.posRank }}<span class="text-dark-textMuted/50">&middot;#{{ b.overallRank }}</span></span>
                 <span class="w-10 shrink-0 text-right font-mono text-[10px]" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted/70'">
                   {{ b.value >= 0 ? '+' : '' }}{{ round(b.value) }}
                 </span>

@@ -23,8 +23,10 @@ export interface TradeSide {
 }
 
 export interface TradeIdea {
-  give: TradeSide // my surplus body
-  get: TradeSide // their surplus body that upgrades my lineup
+  /** What leaves your roster. Two bodies in a consolidation. */
+  gives: TradeSide[]
+  /** What arrives. One body in a consolidation. */
+  gets: TradeSide[]
   oppTeamKey: string
   oppTeamName: string
   myGain: number // my optimal-lineup point gain
@@ -36,7 +38,21 @@ export interface TradeIdea {
    *           labelled, never mixed in with the win-wins.
    */
   kind: 'winWin' | 'ask'
+  /**
+   * 2-for-1 is how a lopsided-LOOKING trade actually gets done: they gain two startable
+   * bodies, you gain one better than your worst starter. It also costs you a roster spot,
+   * which the view has to say out loud.
+   */
+  shape: '1for1' | '2for1'
 }
+
+/**
+ * How much worse off the other manager is allowed to be for a deal to still count as an ASK
+ * rather than a fantasy. Unbounded, the search happily proposed giving a WR44 for Sam LaPorta
+ * — a 192-point hit to their lineup — which is not a negotiation, it is a punchline. An ask
+ * has to be arguably fair: their loss within half again your gain.
+ */
+const ASK_MAX_LOSS_RATIO = 1.5
 
 interface Dp extends DepthPlayer {
   points: number
@@ -58,6 +74,8 @@ function optimal(players: Dp[], slots: Record<string, number>): { total: number;
 // Candidates considered per side. Raised from 5 when starters became offerable — the
 // search is CAND x CAND x opponents lineup solves, so this stays deliberately bounded.
 const CAND = 8
+/** Per side for the 2-for-1 pass. Pairs are quadratic, so this stays well under CAND. */
+const PAIR_CAND = 6
 
 export function buildPointsTrades(
   pool: PointsPoolPlayer[],
@@ -111,50 +129,90 @@ export function buildPointsTrades(
   const swap = (dp: Dp[], outKey: string, incoming: Dp): Dp[] => [...dp.filter((p) => p.playerKey !== outKey), incoming]
 
   const ideas: TradeIdea[] = []
+
+  /** Score a candidate deal from both sides and keep it if it is worth proposing. */
+  const consider = (
+    oppKey: string,
+    theirDp: Dp[],
+    theirBase: { total: number },
+    outMine: Dp[],
+    outTheirs: Dp[],
+    shape: '1for1' | '2for1',
+  ) => {
+    const myKeys = new Set(outMine.map((p) => p.playerKey))
+    const theirKeys = new Set(outTheirs.map((p) => p.playerKey))
+    const myNew = optimal([...myDp.filter((p) => !myKeys.has(p.playerKey)), ...outTheirs], slots)
+    const myGain = myNew.total - myBase.total
+    if (myGain <= 0) return
+    const theirNew = optimal([...theirDp.filter((p) => !theirKeys.has(p.playerKey)), ...outMine], slots)
+    const theirGain = theirNew.total - theirBase.total
+
+    // Lopsided in THEIR favour is a gift, not a deal you'd propose.
+    if (theirGain > 0 && myGain < 0.4 * theirGain) return
+    // Lopsided in YOURS past the point of plausibility is not an ask, it's a punchline.
+    if (theirGain <= 0 && -theirGain > ASK_MAX_LOSS_RATIO * myGain) return
+
+    ideas.push({
+      gives: outMine.map((p) => sideOf(p.playerKey)),
+      gets: outTheirs.map((p) => sideOf(p.playerKey)),
+      oppTeamKey: oppKey,
+      oppTeamName: teamNames[oppKey] || 'Opponent',
+      myGain: Math.round(myGain),
+      theirGain: Math.round(theirGain),
+      kind: theirGain > 0 ? 'winWin' : 'ask',
+      shape,
+    })
+  }
+
   for (const [oppKey, theirDp] of byTeam) {
     if (oppKey === myTeamKey) continue
     const theirBase = optimal(theirDp, slots)
     const theirSurplus = candidates(theirDp, theirBase.started)
+
     for (const mine of mySurplus) {
       for (const theirs of theirSurplus) {
-        const myNew = optimal(swap(myDp, mine.playerKey, theirs), slots)
-        const myGain = myNew.total - myBase.total
-        if (myGain <= 0) continue
-        const theirNew = optimal(swap(theirDp, theirs.playerKey, mine), slots)
-        const theirGain = theirNew.total - theirBase.total
-        // Skip deals lopsided in THEIR favor — if you barely improve while they
-        // gain a lot, it's a gift, not a deal you'd propose. You should benefit at
-        // least ~40% as much as they do.
-        if (theirGain > 0 && myGain < 0.4 * theirGain) continue
-        /* A deal that helps you and not them is still information — it is the deal to go
-           after. Returning nothing at all when no mutual upgrade exists left the page
-           saying "no clean win-win swap" and stopping, which reads as having no opinion
-           rather than having a harder-to-sell one. Kept separate and labelled. */
-        ideas.push({
-          give: sideOf(mine.playerKey),
-          get: sideOf(theirs.playerKey),
-          oppTeamKey: oppKey,
-          oppTeamName: teamNames[oppKey] || 'Opponent',
-          myGain: Math.round(myGain),
-          theirGain: Math.round(theirGain),
-          kind: theirGain > 0 ? 'winWin' : 'ask',
-        })
+        consider(oppKey, theirDp, theirBase, [mine], [theirs], '1for1')
+      }
+    }
+
+    /*
+     * Consolidation. Two of your bodies for one of theirs: they gain depth, you gain at the
+     * top. This is the shape that produces a genuine win-win when 1-for-1 cannot — in a
+     * 1-for-1 the only way you gain a lot is if they lose a lot, which is why every
+     * suggestion read as a beg. Bounded to the strongest few per side to keep the search
+     * from exploding: pairs are quadratic and every candidate costs two lineup solves.
+     */
+    const myPairPool = mySurplus.slice(0, PAIR_CAND)
+    for (let i = 0; i < myPairPool.length; i++) {
+      for (let j = i + 1; j < myPairPool.length; j++) {
+        for (const theirs of theirSurplus.slice(0, PAIR_CAND)) {
+          consider(oppKey, theirDp, theirBase, [myPairPool[i], myPairPool[j]], [theirs], '2for1')
+        }
       }
     }
   }
-  // Best for me first; no duplicate acquisitions, and cap how many times the same
-  // body is the one you give up (so the list isn't all one surplus player).
-  // Win-wins first (proposable as-is), then asks, each by what they do for you.
-  ideas.sort((a, b) => (a.kind === b.kind ? b.myGain - a.myGain : a.kind === 'winWin' ? -1 : 1))
+
+  /*
+   * Win-wins first, then asks. Within asks, rank by NET surplus (my gain minus their loss)
+   * rather than by my gain alone — an ask that costs them a little is a conversation, one
+   * that guts them is not, and sorting on my gain alone put the least plausible first.
+   */
+  const net = (i: TradeIdea) => i.myGain + i.theirGain
+  ideas.sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind === 'winWin' ? -1 : 1
+    return a.kind === 'winWin' ? b.myGain - a.myGain : net(b) - net(a)
+  })
+
+  // No duplicate acquisitions, and cap how often the same body is the one you give up, so
+  // the list isn't four variations on offering the same fringe player.
   const seenGet = new Set<string>()
   const giveCount = new Map<string, number>()
   const out: TradeIdea[] = []
   for (const idea of ideas) {
-    if (seenGet.has(idea.get.playerKey)) continue
-    const gc = giveCount.get(idea.give.playerKey) ?? 0
-    if (gc >= 3) continue
-    seenGet.add(idea.get.playerKey)
-    giveCount.set(idea.give.playerKey, gc + 1)
+    if (idea.gets.some((g) => seenGet.has(g.playerKey))) continue
+    if (idea.gives.some((g) => (giveCount.get(g.playerKey) ?? 0) >= 2)) continue
+    for (const g of idea.gets) seenGet.add(g.playerKey)
+    for (const g of idea.gives) giveCount.set(g.playerKey, (giveCount.get(g.playerKey) ?? 0) + 1)
     out.push(idea)
     if (out.length >= 8) break
   }

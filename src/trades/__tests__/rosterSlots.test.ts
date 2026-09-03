@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { startablePositions, parseRosterSlots, FLEX_ELIGIBILITY, DEFAULT_SLOTS } from '../rosterSlots'
+import { startableCounts, startableFraction, startablePositions, parseRosterSlots, FLEX_ELIGIBILITY, DEFAULT_SLOTS } from '../rosterSlots'
 
 describe('parseRosterSlots', () => {
   it('parses Yahoo roster_positions, dropping bench/IL', () => {
@@ -131,5 +131,45 @@ describe('startablePositions', () => {
 
   it('ignores zero-count slots', () => {
     expect(startablePositions({ QB: 1, K: 0 }).has('K')).toBe(false)
+  })
+})
+
+describe('startableCounts', () => {
+  const slots = parseRosterSlots(
+    'sleeper',
+    { roster_positions: ['QB','RB','RB','WR','WR','TE','FLEX','FLEX','FLEX','BN','BN','BN','BN','BN'] },
+    'football',
+  )
+
+  it('scales each position by how many the league actually starts', () => {
+    // 10 teams: QB 1 each; RB 2 + a third of the 3 flex = 3; WR 3; TE 1 + 1 = 2.
+    const c = startableCounts(slots, 10)
+    expect(c.QB).toBe(10)
+    expect(c.RB).toBe(30)
+    expect(c.WR).toBe(30)
+    expect(c.TE).toBe(20)
+  })
+
+  it('needs no special case for onesie positions — the pool encodes it', () => {
+    const c = startableCounts(slots, 10)
+    // QB5 is mid-pack among starters; RB5 is elite. Same rank, different meaning.
+    expect(startableFraction(5, 'QB', c)).toBeCloseTo(0.5, 5)
+    expect(startableFraction(5, 'RB', c)).toBeCloseTo(1 / 6, 5)
+  })
+
+  it('marks anyone past the pool as unstartable', () => {
+    const c = startableCounts(slots, 10)
+    expect(startableFraction(36, 'RB', c)!).toBeGreaterThan(1)
+    expect(startableFraction(30, 'RB', c)!).toBeCloseTo(1, 5)
+  })
+
+  it('scales with league size rather than hardcoding thresholds', () => {
+    expect(startableCounts(slots, 14).QB).toBe(14)
+    expect(startableCounts(slots, 14).RB).toBe(42)
+  })
+
+  it('returns null when the rank cannot be placed', () => {
+    expect(startableFraction(0, 'RB', startableCounts(slots, 10))).toBeNull()
+    expect(startableFraction(5, 'K', startableCounts(slots, 10))).toBeNull()
   })
 })

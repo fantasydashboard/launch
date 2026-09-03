@@ -116,3 +116,50 @@ export function startablePositions(slots: Record<string, number>): Set<string> {
   }
   return out
 }
+
+/**
+ * How many players at each position are STARTABLE across the whole league.
+ *
+ * A positional rank means nothing without this denominator: "WR44" and "WR51" look equally
+ * bad, and "RB3" only reads as elite if you already know the league size. Dividing the rank
+ * by the startable pool turns both into the same scale — and it handles onesie positions for
+ * free, because "only ten quarterbacks start" is already in the denominator. No special case.
+ *
+ * Flex slots are split evenly across the positions eligible to fill them. In practice flex
+ * skews to RB/WR, so a TE's pool is a little generous here — a deliberate simplification
+ * rather than an oversight.
+ */
+export function startableCounts(
+  slots: Record<string, number>,
+  leagueSize: number,
+): Record<string, number> {
+  const perTeam: Record<string, number> = {}
+  for (const [slot, rawCount] of Object.entries(slots ?? {})) {
+    const count = Number(rawCount)
+    if (!Number.isFinite(count) || count <= 0) continue
+    const eligible = FLEX_ELIGIBILITY[slot]
+    if (eligible?.length) {
+      for (const pos of eligible) perTeam[pos] = (perTeam[pos] ?? 0) + count / eligible.length
+    } else {
+      perTeam[slot] = (perTeam[slot] ?? 0) + count
+    }
+  }
+  const teams = Math.max(1, Math.floor(Number(leagueSize) || 0))
+  const out: Record<string, number> = {}
+  for (const [pos, n] of Object.entries(perTeam)) out[pos] = Math.max(1, Math.round(n * teams))
+  return out
+}
+
+/**
+ * Where a positional rank sits in the startable pool, as a fraction. <= 1 is a starter.
+ * Returns null when the position has no startable pool (rank can't be placed on a scale).
+ */
+export function startableFraction(
+  posRank: number,
+  position: string,
+  counts: Record<string, number>,
+): number | null {
+  const pool = counts[String(position ?? '').toUpperCase()]
+  if (!pool || !posRank || posRank <= 0) return null
+  return posRank / pool
+}
