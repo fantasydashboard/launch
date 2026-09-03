@@ -9,6 +9,8 @@ import { buildPointsTrades } from '@/myteam/pointsTrades'
 import { buildPointsTeam } from '@/myteam/pointsTeam'
 import { buildPointsTradeLandscape } from '@/myteam/pointsTradeLandscape'
 import { buildRosterCompare } from '@/myteam/rosterCompare'
+import { useDynastyValues } from '@/composables/useDynastyValues'
+import { scoreDynastyTrade } from '@/football/dynastyValues'
 import { startableCounts, startableFraction } from '@/trades/rosterSlots'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
@@ -65,6 +67,42 @@ const ideas = computed(() => allIdeas.value.filter((i) => i.kind === 'winWin'))
 const asks = computed(() => allIdeas.value.filter((i) => i.kind === 'ask').slice(0, 4))
 // Win-wins first, then the bounded asks — one list, one card shape.
 const dealCards = computed(() => [...ideas.value, ...asks.value])
+
+/*
+ * The second horizon, beside the first — never instead of it.
+ *
+ * Every trade tool gives one number and hides which clock it is on. A deal that wins you six
+ * points a week and costs you a 22-year-old is a real trade a real manager might still want;
+ * so is the reverse. Scoring both and printing the disagreement is the thing that makes this
+ * a decision rather than a verdict.
+ *
+ * Our per-week points stay OUR number. Dynasty comes from the market and stays on the
+ * market's scale. They are shown side by side and never averaged, for the same reason talent
+ * and record are two sorts on the League board instead of one blended score.
+ */
+const dynasty = useDynastyValues({
+  rosterSlots,
+  leagueSize,
+  scoring: computed(() => scoring.weights.value as Record<string, number>),
+  enabled: computed(() => leagueStore.activeSport === 'football'),
+})
+/* Returns null when the market has not priced every player in the deal. Summing what we
+   happen to know would print a confident number over a hole, and it would look exactly like
+   a complete one. Better to say nothing about that deal's future. */
+const dynastyScore = (idea: { gives: { playerKey: string }[]; gets: { playerKey: string }[] }) =>
+  dynasty.ready.value
+    ? scoreDynastyTrade(idea.gives.map((g) => g.playerKey), idea.gets.map((g) => g.playerKey), dynasty.rows.value)
+    : null
+/* Two signs, four readings. Both up is the rare one worth calling out; both down never
+   reaches the page because the engine does not propose deals that lose now. */
+const dealVerdict = (nowGain: number, dyn: { delta: number } | null) => {
+  if (!dyn) return null
+  const futureUp = dyn.delta > 0
+  if (nowGain > 0 && futureUp) return { text: 'win-win', cls: 'bg-primary/15 text-primary' }
+  if (nowGain > 0) return { text: 'win-now', cls: 'bg-[#e69a4a]/15 text-[#e69a4a]' }
+  if (futureUp) return { text: 'rebuild', cls: 'bg-[#7ee787]/15 text-[#7ee787]' }
+  return null
+}
 
 const landscape = computed(() => {
   if (!pool.value.length || !myTeamKey.value) return null
@@ -320,9 +358,34 @@ function fairness(myGain: number, theirGain: number): string {
               <span v-if="idea.shape === '2for1'" class="shrink-0 rounded bg-dark-bg px-1.5 py-0.5 text-[9px] text-dark-textSecondary">2-for-1</span>
             </span>
             <span class="shrink-0 text-right">
+              <span v-if="dealVerdict(idea.myGain, dynastyScore(idea))"
+                    class="mr-1.5 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide"
+                    :class="dealVerdict(idea.myGain, dynastyScore(idea))!.cls">
+                {{ dealVerdict(idea.myGain, dynastyScore(idea))!.text }}
+              </span>
               <span class="font-mono text-sm font-bold text-primary">+{{ idea.myGain }}</span>
               <span class="ml-1 font-mono text-[9px] uppercase text-dark-textMuted">pts to you</span>
             </span>
+          </div>
+
+          <!--
+            Both clocks, side by side. The per-week number is ours, from projections; the
+            dynasty number is the market's, on the market's own scale. They are never
+            averaged — a single blended score is exactly how every other tool hides which
+            horizon a deal actually wins on.
+          -->
+          <div v-if="dynasty.ready.value" class="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg bg-dark-bg/50 px-2.5 py-1.5 font-mono text-[10px]">
+            <span class="text-dark-textMuted">this year <span class="text-primary">+{{ idea.myGain }}</span> / wk</span>
+            <span v-if="dynastyScore(idea)" class="text-dark-textMuted">
+              dynasty
+              <span :class="dynastyScore(idea)!.delta >= 0 ? 'text-[#7ee787]' : 'text-[#e69a4a]'">
+                {{ dynastyScore(idea)!.delta >= 0 ? '+' : '−' }}{{ Math.abs(Math.round(dynastyScore(idea)!.delta)).toLocaleString() }}
+              </span>
+            </span>
+            <!-- Refusing to score is a result. A total summed over a player the market never
+                 priced looks identical to a complete one. -->
+            <span v-else class="text-dark-textMuted/60">dynasty — not all players priced</span>
+            <span class="text-dark-textMuted/50">picks not included</span>
           </div>
 
           <div class="grid gap-2 sm:grid-cols-2">

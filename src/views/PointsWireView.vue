@@ -11,6 +11,7 @@ import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { useFootballWire } from '@/composables/useFootballWire'
 import RankingPicker from '@/components/RankingPicker.vue'
+import { useDynastyValues } from '@/composables/useDynastyValues'
 
 const leagueStore = useLeagueStore()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
@@ -65,6 +66,35 @@ const { valueByKey, valueOf, loading: valueLoading } = usePointsValue({
 /* Folded by default. Whether there is a move to make is the headline; the rows behind it are
    the working, and they were pushing the board — the thing you actually browse — off-screen. */
 const movesOpen = ref(false)
+
+/*
+ * Dynasty rides ALONGSIDE the rest-of-season number, never replacing it. A dynasty manager
+ * still has to decide this week, and a win-now contender still has to know what an ageing
+ * asset costs long term — showing one horizon means picking the wrong one for half the users
+ * half the time. Both columns, and where they disagree is the read.
+ *
+ * Only fetched for actual dynasty leagues; a redraft manager never spends the request.
+ */
+const dynasty = useDynastyValues({
+  rosterSlots: source.rosterSlots,
+  leagueSize: source.leagueSize,
+  scoring: computed(() => scoring.weights.value as Record<string, number>),
+  enabled: isFootball,
+})
+const dynRow = (key?: string) => (key ? dynasty.rows.value[key] ?? null : null)
+/* Position rank among players the market has priced, toned on the same scale as everything
+   else on the page. Absent = "—", never a zero that would read as a verdict. */
+const dynTone = (r: { positionRank: number } | null) =>
+  !r ? 'text-dark-textMuted/40'
+    : r.positionRank <= 12 ? 'text-[#7ee787]'
+    : r.positionRank <= 24 ? 'text-[#3fb950]'
+    : r.positionRank <= 48 ? 'text-dark-textMuted'
+    : 'text-[#d29922]'
+const LEAN_LABEL: Record<string, { text: string; cls: string }> = {
+  'future': { text: 'future', cls: 'text-[#7ee787]' },
+  'win-now': { text: 'win-now', cls: 'text-[#e69a4a]' },
+  'level': { text: '', cls: '' },
+}
 
 const { wire: fbWire, loading: fbLoading, rosSource } = useFootballWire({
   pool,
@@ -370,6 +400,18 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                     {{ r.player.position }} · <img :src="teamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-3 w-3 object-contain" />{{ r.player.team }}
                   </span>
                 </span>
+                <!-- Where the two horizons disagree, say which way. A 22-year-old the market
+                     likes and the projection does not is the entire dynasty waiver thesis. -->
+                <span v-if="dynasty.ready.value" class="hidden w-24 shrink-0 text-right sm:block">
+                  <span class="block font-mono text-[11px]" :class="dynTone(dynRow(r.player.playerKey))">
+                    {{ dynRow(r.player.playerKey) ? 'DYN ' + r.player.position + dynRow(r.player.playerKey)!.positionRank : '—' }}
+                  </span>
+                  <span v-if="dynRow(r.player.playerKey) && LEAN_LABEL[dynRow(r.player.playerKey)!.lean].text"
+                        class="block font-mono text-[9px] uppercase tracking-wide"
+                        :class="LEAN_LABEL[dynRow(r.player.playerKey)!.lean].cls">
+                    {{ LEAN_LABEL[dynRow(r.player.playerKey)!.lean].text }}<template v-if="dynRow(r.player.playerKey)!.age"> &middot; {{ Math.floor(dynRow(r.player.playerKey)!.age!) }}</template>
+                  </span>
+                </span>
                 <span class="w-12 shrink-0 text-right font-mono text-sm font-semibold" :class="r.vorRos >= 0 ? 'text-dark-text' : 'text-dark-textMuted'">{{ r.vorRos >= 0 ? '+' : '' }}{{ round(r.vorRos) }}</span>
               </div>
             </template>
@@ -399,6 +441,9 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                 <span><span class="text-primary">★</span> yours</span>
                 <span><span class="text-[#4ade80]">●</span> free agent</span>
                 <span><span class="text-dark-textMuted/50">●</span> rostered elsewhere</span>
+                <span v-if="dynasty.ready.value" class="hidden sm:inline">
+                  <span class="text-dark-textSecondary">DYN</span> = dynasty market rank &middot; age
+                </span>
               </div>
               <!-- selected position only, top 25 by VOR -->
               <template v-for="row in (fbWire.board[boardPos] ?? []).slice(0, 25)" :key="'fbbd-' + row.playerKey">
@@ -425,6 +470,21 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                     :class="row.free ? 'bg-[#4ade80]/15 text-[#4ade80]' : 'bg-dark-bg text-dark-textMuted/60'"
                   >{{ row.free ? 'free' : 'rostered' }}</span>
                   <img v-if="row.team" :src="teamLogo(row.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 shrink-0 object-contain" />
+                  <!--
+                    The second horizon. Only in dynasty leagues, and only for players the
+                    market actually priced — an unpriced player shows an em dash, because a
+                    zero here would sort a real body last and read as a verdict we never made.
+                  -->
+                  <template v-if="dynasty.ready.value">
+                    <span class="hidden w-9 shrink-0 text-right font-mono text-[10px] sm:inline"
+                          :class="dynTone(dynRow(row.playerKey))"
+                          :title="dynRow(row.playerKey) ? `Dynasty market: ${row.position}${dynRow(row.playerKey)!.positionRank} overall ${dynRow(row.playerKey)!.overallRank}` : 'Not priced by the dynasty market'">
+                      {{ dynRow(row.playerKey) ? row.position + dynRow(row.playerKey)!.positionRank : '—' }}
+                    </span>
+                    <span class="hidden w-6 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/60 md:inline">
+                      {{ dynRow(row.playerKey)?.age ? Math.floor(dynRow(row.playerKey)!.age!) : '' }}
+                    </span>
+                  </template>
                   <span v-if="row.unprojected" class="w-10 shrink-0 text-right font-mono text-[10px] italic text-dark-textMuted/50">no proj</span>
                   <span v-else class="w-10 shrink-0 text-right font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">{{ row.vorRos >= 0 ? '+' : '' }}{{ round(row.vorRos) }}</span>
                 </div>
