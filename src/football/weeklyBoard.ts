@@ -3,7 +3,7 @@ import { parseEligible, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { PlayerVor } from './footballVor'
 import type { OpportunityTag } from './footballOpportunity'
 import type { AvailablePlayer } from '@/players/types'
-import { FLEX_ELIGIBILITY } from '@/trades/rosterSlots'
+import { FLEX_ELIGIBILITY, startablePositions } from '@/trades/rosterSlots'
 
 export interface WeeklyStarter {
   slot: string
@@ -117,6 +117,25 @@ export interface WeeklyMatchup {
   myWinPct: number // 0..100
 }
 
+/** Who holds a player, from the point of view of the manager reading the page. */
+export type WeeklyOwner = 'me' | 'opp' | 'free' | 'other'
+
+export interface WeeklyBoardRow {
+  playerKey: string
+  name: string
+  position: string
+  team?: string
+  headshot?: string
+  weekPoints: number
+  posRank: number
+  flexRank: number
+  owner: WeeklyOwner
+  ownerName: string // '' for me and for free agents
+  bye: boolean
+  opponent: string
+  home: boolean
+}
+
 export interface WeeklyBoard {
   starters: WeeklyStarter[]
   bench: WeeklyBenchRow[]
@@ -128,6 +147,15 @@ export interface WeeklyBoard {
   matchup: WeeklyMatchup | null
   /** Starters on a bye — points you are certain to forfeit unless you move them. */
   byeStarters: WeeklyStarter[]
+  /**
+   * Every rostered player and free agent, ranked for THIS week, keyed by position — plus a
+   * 'FLEX' key holding everyone the league's flex slots can take, ranked together. Answers
+   * "where do my guys sit against the wire, and who goes in the flex" from one list rather
+   * than from two mental cross-references.
+   */
+  board: Record<string, WeeklyBoardRow[]>
+  /** Positions with rows, in canonical order, FLEX last. Drives the picker. */
+  boardPositions: string[]
 }
 
 const SLOT_ORDER = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPER_FLEX', 'K', 'DEF']
@@ -152,8 +180,10 @@ export function buildWeeklyBoard(input: {
   oppTeamKey?: string
   oppTeamName?: string
   oppTeamLogo?: string
+  /** pool teamKey -> display name, for badging whoever else holds a player. */
+  teamNames?: Record<string, string>
 }): WeeklyBoard {
-  const { pool, vorByKey, slots, myTeamKey, currentStarters, freeAgents, opponentByTeam, oppTeamKey, oppTeamName, oppTeamLogo } = input
+  const { pool, vorByKey, slots, myTeamKey, currentStarters, freeAgents, opponentByTeam, oppTeamKey, oppTeamName, oppTeamLogo, teamNames } = input
   const week = (key: string): number => vorByKey[key]?.pointsNextWeek ?? 0
   const meta = new Map(pool.map((p) => [p.playerKey, p]))
   const teamOf = (key: string) => (meta.get(key)?.proTeam ?? '').toUpperCase()
@@ -386,5 +416,62 @@ export function buildWeeklyBoard(input: {
     }
   }
 
-  return { starters, bench, moves, streamers, closeCalls, matchup, byeStarters }
+  /*
+   * The weekly board: everyone who could occupy a slot this week, in one order per position,
+   * plus a FLEX list. Bye players are KEPT here (you need to see your own guy is idle) but
+   * carry no rank, matching how they were excluded from the ranking above — a zero-point
+   * player ranked last would push dozens of real bodies down the list.
+   */
+  const boardRow = (
+    key: string,
+    name: string,
+    position: string,
+    team: string | undefined,
+    headshot: string | undefined,
+    owner: WeeklyOwner,
+    ownerName: string,
+  ): WeeklyBoardRow => ({
+    playerKey: key,
+    name,
+    position: normPosOf(position),
+    team,
+    headshot,
+    weekPoints: week(key),
+    ...ranksOf(key),
+    owner,
+    ownerName,
+    bye: scheduleKnown && !opponentByTeam[(team ?? '').toUpperCase()],
+    opponent: opponentByTeam[(team ?? '').toUpperCase()]?.opp ?? '',
+    home: opponentByTeam[(team ?? '').toUpperCase()]?.home ?? false,
+  })
+
+  const allRows: WeeklyBoardRow[] = []
+  for (const p of pool) {
+    const owner: WeeklyOwner =
+      p.teamKey === myTeamKey ? 'me' : oppTeamKey && p.teamKey === oppTeamKey ? 'opp' : 'other'
+    allRows.push(
+      boardRow(p.playerKey, p.name, p.position, p.proTeam, p.headshot, owner,
+        owner === 'me' ? '' : (teamNames?.[p.teamKey] ?? '')),
+    )
+  }
+  for (const fa of freeAgents) {
+    const k = faKey(fa)
+    if (!vorByKey[k]) continue
+    allRows.push(boardRow(k, fa.name, fa.position, fa.team, fa.headshot, 'free', ''))
+  }
+
+  const byPoints = (a: WeeklyBoardRow, b: WeeklyBoardRow) => b.weekPoints - a.weekPoints
+  const board: Record<string, WeeklyBoardRow[]> = {}
+  for (const pos of ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']) {
+    if (!startablePositions(slots).has(pos)) continue
+    const rows = allRows.filter((r) => r.position === pos).sort(byPoints)
+    if (rows.length) board[pos] = rows
+  }
+  // FLEX is a filter over the same rows, not a separate ranking — it IS the flex decision.
+  const flexRows = allRows.filter((r) => flexPositions.has(r.position)).sort(byPoints)
+  if (flexPositions.size && flexRows.length) board.FLEX = flexRows
+
+  const boardPositions = [...Object.keys(board).filter((k) => k !== 'FLEX'), ...(board.FLEX ? ['FLEX'] : [])]
+
+  return { starters, bench, moves, streamers, closeCalls, matchup, byeStarters, board, boardPositions }
 }

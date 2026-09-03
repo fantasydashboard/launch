@@ -99,6 +99,7 @@ export function useWeeklyBoard(): {
       oppTeamKey: oppSvc.opponent.value?.opponentKey,
       oppTeamName: oppSvc.opponent.value?.opponentName,
       oppTeamLogo: oppSvc.opponent.value?.opponentLogo,
+      teamNames: src.teamNames.value,
     })
   })
 

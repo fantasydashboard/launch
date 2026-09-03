@@ -220,6 +220,44 @@ describe('buildWeeklyBoard — the Sunday page', () => {
     expect(qb.posRank).toBeGreaterThan(0)
   })
 
+  it("badges every row by who holds the player, including this week's opponent", () => {
+    const fa: AvailablePlayer[] = [
+      { playerKey: 'faRB', name: 'Wire Back', position: 'RB', team: 'BUF' } as AvailablePlayer,
+    ]
+    const v = { ...vorByKey, faRB: pv(18, { vorWeek: 5 }) }
+    const board = buildWeeklyBoard({
+      pool, vorByKey: v, slots, myTeamKey: 'me',
+      currentStarters: [], freeAgents: fa, opponentByTeam: opp,
+      oppTeamKey: 'other', oppTeamName: 'Them', teamNames: { other: 'Them' },
+    })
+    const rbs = board.board.RB
+    const owner = new Map(rbs.map((r) => [r.name, r.owner]))
+    expect(owner.get('RB One')).toBe('me')
+    expect(owner.get('Their Guy')).toBe('opp')
+    expect(owner.get('Wire Back')).toBe('free')
+  })
+
+  it('offers a FLEX list that is every flex-eligible body in one order', () => {
+    const board = buildWeeklyBoard({
+      pool, vorByKey, slots, myTeamKey: 'me',
+      currentStarters: [], freeAgents: [], opponentByTeam: opp,
+    })
+    expect(board.boardPositions).toContain('FLEX')
+    expect(board.boardPositions[board.boardPositions.length - 1]).toBe('FLEX')
+    // slots are QB/RB/FLEX and FLEX takes RB/WR/TE — so no quarterback in the flex list.
+    expect(board.board.FLEX.some((r) => r.position === 'QB')).toBe(false)
+    expect(board.board.FLEX.length).toBeGreaterThan(0)
+  })
+
+  it('only lists positions the league actually starts', () => {
+    const board = buildWeeklyBoard({
+      pool, vorByKey, slots, myTeamKey: 'me',
+      currentStarters: [], freeAgents: [], opponentByTeam: opp,
+    })
+    expect(board.boardPositions).not.toContain('K')
+    expect(board.boardPositions).not.toContain('DEF')
+  })
+
   it('leaves the matchup null when no opponent is known (bye week)', () => {
     const board = buildWeeklyBoard({
       pool, vorByKey, slots, myTeamKey: 'me',

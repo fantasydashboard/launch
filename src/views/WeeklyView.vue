@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nflTeamLogo } from '@/players/nflTeamLogo'
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useWeeklyBoard } from '@/composables/useWeeklyBoard'
 
 const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo } = useWeeklyBoard()
@@ -19,6 +19,30 @@ const teamLogo = (abbr?: string) => nflTeamLogo(abbr)
 const round = (n: number) => Math.round(n)
 /* Position rank always; flex rank only when the league's flex can actually take him, so a QB
    in a non-superflex league doesn't get a meaningless number beside his name. */
+/* The weekly rankings board. Open by default: this is a reason to visit the page, not a
+   footnote — the same reasoning that took The Wire's board out from behind a "+". */
+const boardOpen = ref(true)
+const boardPos = ref('RB')
+const boardPositions = computed(() => board.value?.boardPositions ?? [])
+watch(boardPositions, (avail) => {
+  if (avail.length && !avail.includes(boardPos.value)) boardPos.value = avail[0]
+}, { immediate: true })
+/* Your own players are always shown, even when they fall outside the visible top of the
+   list — a board that truncates away the guy you are deciding about answers nothing. */
+const BOARD_LIMIT = 30
+const boardRows = computed(() => {
+  const rows = board.value?.board[boardPos.value] ?? []
+  const head = rows.slice(0, BOARD_LIMIT)
+  const mineBelow = rows.slice(BOARD_LIMIT).filter((r) => r.owner === 'me')
+  return [...head, ...mineBelow]
+})
+const OWNER_BADGE: Record<string, { label: string; cls: string }> = {
+  me: { label: 'you', cls: 'bg-primary/15 text-primary' },
+  opp: { label: 'vs', cls: 'bg-[#e69a4a]/15 text-[#e69a4a]' },
+  free: { label: 'free', cls: 'bg-[#4ade80]/15 text-[#4ade80]' },
+  other: { label: '', cls: '' },
+}
+
 const rankLabel = (r: { position: string; posRank: number; flexRank: number }): string => {
   const parts: string[] = []
   if (r.posRank) parts.push(`${(r.position || '').toUpperCase().split(/[,/|]/)[0]}${r.posRank}`)
@@ -182,6 +206,65 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             </span>
           </div>
         </template>
+      </section>
+
+      <!--
+        The weekly rankings board. Same shape as The Wire's, different clock — and the clock is
+        stated loudly on both, because two identically-shaped tables are otherwise just one
+        table shown twice. The badges are what make it answer three questions at once: where
+        my guys sit, what's free, and what my opponent is holding.
+      -->
+      <section v-if="board.boardPositions.length" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+        <button class="flex w-full items-center justify-between" @click="boardOpen = !boardOpen">
+          <span class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+            This week's rankings
+            <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">· your roster, the wire and the league</span>
+          </span>
+          <span class="font-mono text-dark-textMuted">{{ boardOpen ? '−' : '+' }}</span>
+        </button>
+
+        <div v-if="boardOpen" class="mt-3">
+          <div class="mb-2 flex flex-wrap gap-1.5">
+            <button
+              v-for="pos in board.boardPositions"
+              :key="'bp-' + pos"
+              class="rounded px-2.5 py-1 font-mono text-[11px] uppercase tracking-wide transition-colors"
+              :class="boardPos === pos ? 'bg-primary/20 text-primary' : 'bg-dark-bg text-dark-textMuted hover:text-dark-text'"
+              @click="boardPos = pos"
+            >{{ pos }}</button>
+          </div>
+          <p class="mb-2 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted/70">
+            <span class="text-primary">you</span> ·
+            <span class="text-[#e69a4a]">vs</span> = {{ board.matchup ? board.matchup.opponentName : 'your opponent' }} ·
+            <span class="text-[#4ade80]">free</span> = on waivers
+          </p>
+
+          <template v-for="(row, i) in boardRows" :key="'bw-' + row.playerKey">
+            <div
+              class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm last:border-0"
+              :class="row.owner === 'me' ? 'text-dark-text' : row.owner === 'free' ? 'text-dark-textSecondary' : 'text-dark-textMuted'"
+            >
+              <span class="w-6 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/60">{{ i + 1 }}</span>
+              <img v-if="row.headshot" :src="row.headshot" :alt="row.name" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
+              <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
+              <span class="min-w-0 flex-1 truncate">
+                {{ row.name }}
+                <span v-if="row.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>
+              </span>
+              <span
+                v-if="OWNER_BADGE[row.owner].label"
+                class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase"
+                :class="OWNER_BADGE[row.owner].cls"
+              >{{ OWNER_BADGE[row.owner].label }}</span>
+              <span v-else-if="row.ownerName" class="hidden shrink-0 truncate font-mono text-[9px] text-dark-textMuted/50 sm:inline" style="max-width:8rem">{{ row.ownerName }}</span>
+              <img v-if="row.team" :src="teamLogo(row.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 shrink-0 object-contain" />
+              <span class="w-10 shrink-0 text-right font-mono text-xs">{{ round(row.weekPoints) }}</span>
+            </div>
+          </template>
+          <p class="mt-2 font-mono text-[9px] text-dark-textMuted">
+            week {{ currentWeek }} projections · top {{ BOARD_LIMIT }}, plus any of your players below it
+          </p>
+        </div>
       </section>
 
       <!-- 4. STREAMERS -->
