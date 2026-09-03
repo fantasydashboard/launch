@@ -9,6 +9,8 @@ import { useThisWeekOpponent } from '@/composables/useThisWeekOpponent'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
 import { seasonStakes, type Stakes } from '@/myteam/seasonStakes'
+import { useCustomRankings } from '@/composables/useCustomRankings'
+import { applyRankingOrder } from '@/draft/room/customRankings'
 import type { SleeperRoster } from '@/types/sleeper'
 
 /**
@@ -25,6 +27,7 @@ export function useWeeklyBoard(): {
   myTeamName: ComputedRef<string>
   myTeamLogo: ComputedRef<string>
   stakes: ComputedRef<Stakes | null>
+  weekSource: ComputedRef<string>
   outlook: ComputedRef<ReturnType<typeof useSeasonOutlook>['outlook']['value']>
 } {
   const leagueStore = useLeagueStore()
@@ -91,11 +94,47 @@ export function useWeeklyBoard(): {
   })
   const hasCurrentLineup = computed(() => currentStarters.value.length > 0)
 
+  /*
+   * An uploaded weekly list drives EVERYTHING here, not just the order of a list. Earlier I
+   * left this out precisely because a reorder would have been a lie next to a lineup chosen
+   * by an optimiser that ignored it — a control labelled "your rankings" that the headline
+   * recommendation overrules is worse than no control.
+   *
+   * applyRankingOrder re-seats our projected points onto the analyst's order: ranked players
+   * take the point values already occupied by that slot on our board, unranked players keep
+   * their own. So the optimiser, the closest calls, the streamers and the board all move
+   * together, and every number on screen is still a projection rather than a rank pretending
+   * to be one.
+   */
+  const weekRankings = useCustomRankings('week')
+  const nameByKey = computed(() => {
+    const m = new Map<string, string>()
+    for (const p of src.pool.value) m.set(p.playerKey, p.name)
+    for (const fa of src.freeAgents.value) m.set(fa.playerKey ?? `fa:${fa.name}`, fa.name)
+    return m
+  })
+  const effectiveVor = computed(() => {
+    const base = vorByKey.value
+    if (!weekRankings.enabled.value || !Object.keys(base).length) return base
+    const named = Object.keys(base).map((k) => ({ playerKey: k, name: nameByKey.value.get(k) ?? '' }))
+    const { rankByKey } = weekRankings.match(named)
+    if (!Object.keys(rankByKey).length) return base
+    const reseated = applyRankingOrder(
+      Object.entries(base).map(([k, v]) => ({ playerKey: k, value: v.pointsNextWeek })),
+      rankByKey,
+    )
+    const out: typeof base = {}
+    for (const [k, v] of Object.entries(base)) {
+      out[k] = { ...v, pointsNextWeek: reseated[k] ?? v.pointsNextWeek }
+    }
+    return out
+  })
+
   const board = computed<WeeklyBoard | null>(() => {
-    if (!isFootball.value || !live.value || !src.myTeamKey.value || !Object.keys(vorByKey.value).length) return null
+    if (!isFootball.value || !live.value || !src.myTeamKey.value || !Object.keys(effectiveVor.value).length) return null
     return buildWeeklyBoard({
       pool: src.pool.value,
-      vorByKey: vorByKey.value,
+      vorByKey: effectiveVor.value,
       slots: src.rosterSlots.value,
       myTeamKey: src.myTeamKey.value,
       currentStarters: currentStarters.value,
@@ -147,5 +186,7 @@ export function useWeeklyBoard(): {
     board, live, currentWeek, hasCurrentLineup, loading,
     myTeamName: src.myTeamName, myTeamLogo: src.myTeamLogo,
     stakes, outlook,
+    /** Whose weekly numbers are driving the page — 'UFD' unless a list is active. */
+    weekSource: computed(() => (weekRankings.enabled.value ? weekRankings.sourceName.value : 'UFD')),
   }
 }

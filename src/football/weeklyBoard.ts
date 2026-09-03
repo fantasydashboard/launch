@@ -4,6 +4,7 @@ import type { PlayerVor } from './footballVor'
 import type { OpportunityTag } from './footballOpportunity'
 import type { AvailablePlayer } from '@/players/types'
 import { FLEX_ELIGIBILITY, startablePositions } from '@/trades/rosterSlots'
+import { assignTiers } from '@/draft/room/tierCliffs'
 
 export interface WeeklyStarter {
   slot: string
@@ -180,6 +181,12 @@ export interface WeeklyBoardRow {
   bye: boolean
   opponent: string
   home: boolean
+  /** Tier within this list, 1 = best. Same cut rule as the draft board and The Wire. */
+  tier: number
+  /** First row of a new tier — where the view draws the cliff. */
+  tierBreak?: boolean
+  /** Points of separation from the tier above; only set on a tier's first row. */
+  tierDrop?: number
 }
 
 export interface WeeklyBoard {
@@ -534,6 +541,7 @@ export function buildWeeklyBoard(input: {
     bye: scheduleKnown && !opponentByTeam[(team ?? '').toUpperCase()],
     opponent: opponentByTeam[(team ?? '').toUpperCase()]?.opp ?? '',
     home: opponentByTeam[(team ?? '').toUpperCase()]?.home ?? false,
+    tier: 0,
   })
 
   const allRows: WeeklyBoardRow[] = []
@@ -552,15 +560,35 @@ export function buildWeeklyBoard(input: {
   }
 
   const byPoints = (a: WeeklyBoardRow, b: WeeklyBoardRow) => b.weekPoints - a.weekPoints
+  /* Tiers are the visible cliffs, not every gap over a threshold — the same rule the draft
+     board cuts on, so "tier" means one thing across the product. A flat column of forty
+     receivers hides the only thing the reader is looking for: where the drop-off is. */
+  const tierUp = (rows: WeeklyBoardRow[]): WeeklyBoardRow[] => {
+    const byKey = assignTiers(rows.map((r) => ({ playerKey: r.playerKey, value: r.weekPoints })))
+    let prevTier = 0
+    let prevPts = 0
+    for (const r of rows) {
+      r.tier = byKey[r.playerKey] ?? 1
+      if (prevTier && r.tier !== prevTier) {
+        r.tierBreak = true
+        r.tierDrop = Math.max(0, prevPts - r.weekPoints)
+      }
+      prevTier = r.tier
+      prevPts = r.weekPoints
+    }
+    return rows
+  }
   const board: Record<string, WeeklyBoardRow[]> = {}
   for (const pos of ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']) {
     if (!startablePositions(slots).has(pos)) continue
     const rows = allRows.filter((r) => r.position === pos).sort(byPoints)
-    if (rows.length) board[pos] = rows
+    if (rows.length) board[pos] = tierUp(rows)
   }
   // FLEX is a filter over the same rows, not a separate ranking — it IS the flex decision.
-  const flexRows = allRows.filter((r) => flexPositions.has(r.position)).sort(byPoints)
-  if (flexPositions.size && flexRows.length) board.FLEX = flexRows
+  // FLEX rows are the same objects as the per-position ones, so tier them on a copy — a
+  // player's tier among all flex bodies is a different fact from his tier among receivers.
+  const flexRows = allRows.filter((r) => flexPositions.has(r.position)).map((r) => ({ ...r })).sort(byPoints)
+  if (flexPositions.size && flexRows.length) board.FLEX = tierUp(flexRows)
 
   const boardPositions = [...Object.keys(board).filter((k) => k !== 'FLEX'), ...(board.FLEX ? ['FLEX'] : [])]
 

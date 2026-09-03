@@ -249,6 +249,33 @@ describe('buildWeeklyBoard — the Sunday page', () => {
     expect(board.board.FLEX.length).toBeGreaterThan(0)
   })
 
+  it('tiers each board list and marks where the cliff falls', () => {
+    const gappy = { qb: pv(30), rb1: pv(29), rb2: pv(28), rb3: pv(9), rb4: pv(8), opp: pv(1) }
+    const board = buildWeeklyBoard({
+      pool, vorByKey: gappy, slots, myTeamKey: 'me',
+      currentStarters: [], freeAgents: [], opponentByTeam: opp,
+    })
+    const rbs = board.board.RB
+    expect(rbs.every((r) => r.tier >= 1)).toBe(true)
+    const cliff = rbs.find((r) => r.tierBreak)
+    expect(cliff).toBeTruthy()
+    // The break lands at the real drop (28 -> 9), not at an arbitrary row.
+    expect(cliff!.tierDrop).toBeGreaterThan(15)
+  })
+
+  it('tiers FLEX on its own scale without disturbing the position lists', () => {
+    const board = buildWeeklyBoard({
+      pool, vorByKey, slots, myTeamKey: 'me',
+      currentStarters: [], freeAgents: [], opponentByTeam: opp,
+    })
+    // Same player appears in both lists; his flex tier is a different fact from his RB tier,
+    // so the two must not share an object.
+    const inRb = board.board.RB.find((r) => r.name === 'RB Three')!
+    const inFlex = board.board.FLEX.find((r) => r.name === 'RB Three')!
+    expect(inRb).not.toBe(inFlex)
+    expect(inFlex.tier).toBeGreaterThanOrEqual(1)
+  })
+
   it('only lists positions the league actually starts', () => {
     const board = buildWeeklyBoard({
       pool, vorByKey, slots, myTeamKey: 'me',

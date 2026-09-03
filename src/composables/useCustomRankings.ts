@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import {
   parseRankings,
@@ -136,11 +136,22 @@ function loadActive(): Record<RankingKind, string> {
  *
  * Pass the kind the calling surface cares about; Settings manages all of them.
  */
+/*
+ * Module-level, deliberately. Every surface that reads a list and the picker that changes it
+ * were each constructing their own refs from localStorage, so choosing a list in the picker
+ * did not reach the board beside it until a reload — the write landed, the other instance
+ * never re-read it. One store per tab keeps them honest.
+ */
+const sharedSets = ref<RankingSet[] | null>(null)
+const sharedActive = ref<Record<RankingKind, string> | null>(null)
+
 export function useCustomRankings(kind: RankingKind = 'draft') {
   const { isAdmin } = useFeatureAccess()
 
-  const sets = ref<RankingSet[]>(loadSets())
-  const activeByKind = ref<Record<RankingKind, string>>(loadActive())
+  if (sharedSets.value === null) sharedSets.value = loadSets()
+  if (sharedActive.value === null) sharedActive.value = loadActive()
+  const sets = sharedSets as Ref<RankingSet[]>
+  const activeByKind = sharedActive as Ref<Record<RankingKind, string>>
 
   const persistSets = () => write(SETS_KEY, JSON.stringify(sets.value))
   const persistActive = () => write(ACTIVE_KEY, JSON.stringify(activeByKind.value))

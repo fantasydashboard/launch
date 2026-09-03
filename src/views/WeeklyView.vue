@@ -6,8 +6,11 @@ import { winPctFromMargin } from '@/football/weeklyBoard'
 import { useWinProbTrend } from '@/composables/useWinProbTrend'
 import MatchupWinProbChart from '@/components/matchup/MatchupWinProbChart.vue'
 import { useLeagueStore } from '@/stores/league'
+import { useActivePointsSource } from '@/composables/useActivePointsSource'
+import { startableCounts, startableFraction } from '@/trades/rosterSlots'
+import RankingPicker from '@/components/RankingPicker.vue'
 
-const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes } = useWeeklyBoard()
+const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes, weekSource } = useWeeklyBoard()
 
 /*
  * Header totals are summed from the ROUNDED row values, not rounded from the raw sum.
@@ -109,6 +112,36 @@ const OWNER_BADGE: Record<string, { label: string; cls: string }> = {
    noise when the two players are already competing for the same slot. */
 const posBadge = (r: { position: string; posRank: number }): string =>
   r.posRank ? `${(r.position || '').toUpperCase().split(/[,/|]/)[0]}${r.posRank}` : ''
+
+/*
+ * Same five-band scale as Trades, so a green here means what a green there means. Rank is
+ * placed against the STARTABLE pool rather than shown raw: WR44 and WR51 look identical
+ * otherwise, and the pool is derived from this league's own slots.
+ */
+const source = useActivePointsSource()
+const startable = computed(() => startableCounts(source.rosterSlots.value, source.leagueSize.value))
+function toneForFraction(f: number | null): string {
+  if (f === null) return 'text-dark-textMuted/60'
+  if (f <= 1 / 3) return 'text-[#7ee787]'
+  if (f <= 2 / 3) return 'text-[#3fb950]'
+  if (f <= 1) return 'text-dark-textMuted'
+  if (f <= 1.5) return 'text-[#d29922]'
+  return 'text-[#f85149]'
+}
+const posTone = (r: { position: string; posRank: number }) =>
+  toneForFraction(startableFraction(r.posRank, normPos(r.position), startable.value))
+/* A flex badge is measured against every body that could fill a flex seat, so the pool is
+   the flex-eligible positions added together. */
+const flexPool = computed(() =>
+  Object.entries(startable.value)
+    .filter(([pos]) => ['RB', 'WR', 'TE'].includes(pos))
+    .reduce((sum, [, n]) => sum + n, 0),
+)
+const flexTone = (flexRank: number) =>
+  toneForFraction(flexRank && flexPool.value ? flexRank / flexPool.value : null)
+const normPos = (p: string) => (p || '').toUpperCase().split(/[,/|]/)[0].trim()
+const posLabel = (r: { position: string; posRank: number }) =>
+  r.posRank ? `${normPos(r.position)}${r.posRank}` : ''
 
 const rankLabel = (r: { position: string; posRank: number; flexRank: number }): string => {
   const parts: string[] = []
@@ -269,7 +302,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
                 {{ d.mine ? d.mine.name : '—' }}
                 <span v-if="d.mine && d.mine.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>
               </span>
-              <span v-if="d.mine" class="shrink-0 font-mono text-[9px] text-dark-textMuted/60">{{ posBadge(d.mine) }}</span>
+              <span v-if="d.mine" class="shrink-0 font-mono text-[9px]" :class="posTone(d.mine)">{{ posBadge(d.mine) }}</span>
               <span v-if="d.mine" class="w-7 shrink-0 text-right font-mono text-xs">{{ round(d.mine.weekPoints) }}</span>
             </span>
 
@@ -282,7 +315,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             <!-- theirs -->
             <span class="flex min-w-0 flex-1 items-center justify-end gap-1.5" :class="d.edge < 0 ? 'text-dark-text' : 'text-dark-textMuted'">
               <span v-if="d.theirs" class="w-7 shrink-0 text-left font-mono text-xs">{{ round(d.theirs.weekPoints) }}</span>
-              <span v-if="d.theirs" class="shrink-0 font-mono text-[9px] text-dark-textMuted/60">{{ posBadge(d.theirs) }}</span>
+              <span v-if="d.theirs" class="shrink-0 font-mono text-[9px]" :class="posTone(d.theirs)">{{ posBadge(d.theirs) }}</span>
               <span class="min-w-0 flex-1 truncate text-right text-[13px]">
                 {{ d.theirs ? d.theirs.name : '—' }}
                 <span v-if="d.theirs && d.theirs.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>
@@ -382,7 +415,10 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             </span>
             <span class="w-20 shrink-0 text-right">
               <span class="block font-mono text-sm text-dark-text">{{ round(s.weekPoints) }}</span>
-              <span class="block font-mono text-[9px] text-dark-textMuted/70">{{ rankLabel(s) }}</span>
+              <span class="block font-mono text-[9px]">
+                <span :class="posTone(s)">{{ posLabel(s) }}</span>
+                <span v-if="s.flexRank" :class="flexTone(s.flexRank)"> &middot; FLX{{ s.flexRank }}</span>
+              </span>
             </span>
           </div>
         </template>
@@ -465,6 +501,15 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
           </p>
 
           <template v-for="(row, i) in boardRows" :key="'bw-' + row.playerKey">
+            <!-- The cliff, named. A flat ranked column hides the drop-off, which is the
+                 decision — same treatment as the draft board and The Wire. -->
+            <div v-if="row.tierBreak" class="flex items-center gap-2 py-1.5">
+              <span class="h-px flex-1 bg-dark-border"></span>
+              <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70">
+                tier {{ row.tier }} &middot; &minus;{{ round(row.tierDrop ?? 0) }} pts
+              </span>
+              <span class="h-px flex-1 bg-dark-border"></span>
+            </div>
             <div
               class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm last:border-0"
               :class="row.owner === 'me' ? 'text-dark-text' : row.owner === 'free' ? 'text-dark-textSecondary' : 'text-dark-textMuted'"
@@ -483,6 +528,9 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               >{{ OWNER_BADGE[row.owner].label }}</span>
               <span v-else-if="row.ownerName" class="hidden shrink-0 truncate font-mono text-[9px] text-dark-textMuted/50 sm:inline" style="max-width:8rem">{{ row.ownerName }}</span>
               <img v-if="row.team" :src="teamLogo(row.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 shrink-0 object-contain" />
+              <span class="shrink-0 font-mono text-[9px]" :class="boardPos === 'FLEX' ? flexTone(row.flexRank) : posTone(row)">
+                {{ boardPos === 'FLEX' ? 'FLX' + row.flexRank : posLabel(row) }}
+              </span>
               <span class="w-10 shrink-0 text-right font-mono text-xs">{{ round(row.weekPoints) }}</span>
             </div>
           </template>
@@ -512,7 +560,10 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             <span v-if="r.streamOf > 0" class="shrink-0 rounded bg-dark-border/50 px-1.5 py-0.5 font-mono text-[10px] text-dark-textMuted">startable {{ r.streamWeeks }}/{{ r.streamOf }}</span>
             <span class="w-24 shrink-0 text-right">
               <span class="block font-mono text-sm text-dark-text">{{ round(r.weekPoints) }}</span>
-              <span class="block font-mono text-[9px] text-dark-textMuted/70">{{ rankLabel({ position: r.player.position, posRank: r.posRank, flexRank: r.flexRank }) }}</span>
+              <span class="block font-mono text-[9px]">
+                <span :class="posTone({ position: r.player.position, posRank: r.posRank })">{{ posLabel({ position: r.player.position, posRank: r.posRank }) }}</span>
+                <span v-if="r.flexRank" :class="flexTone(r.flexRank)"> &middot; FLX{{ r.flexRank }}</span>
+              </span>
               <span v-if="r.dropName" class="block font-mono text-[9px] text-primary">
                 drop {{ r.dropName }} &middot; +{{ round(r.gain) }}
               </span>
