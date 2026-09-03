@@ -1348,8 +1348,13 @@ const tabs = computed(() => [
     : [{ name: isRotoLeague.value ? 'Roto Race' : 'Matchup', path: '/matchup' }]),
   { name: 'The Wire', path: '/players' },
   { name: 'Trades', path: '/trades' },
+  /* Power Rankings folded into League. The two were the same ten rows sorted differently —
+     League ordered by record and annotated the talent, Power Rankings ordered by talent and
+     annotated the record, and neither held a row the other did not. That is why they kept
+     growing copies of each other's furniture (the race chart rendered on both). One page
+     with a sort control says it outright, and switching readings is a click instead of a
+     navigation. The route still resolves so old links and bookmarks land somewhere. */
   { name: 'League', path: '/league' },
-  { name: 'Power Rankings', path: '/power-rankings' },
   { name: 'History', path: '/history' },
   { name: 'Free Tools', path: '/free-tools', isTool: true },
   /* "Ultimate Tools" is retired. Its four tabs (Rest of Season, Teams, Start/Sit, Trade

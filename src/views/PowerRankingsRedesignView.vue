@@ -10,7 +10,7 @@ import { buildSituations, type SituationInput } from '@/league/situations'
 import { useCategoryStrength } from '@/composables/useCategoryStrength'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
-import { buildPowerRankings, RESUME_ALLPLAY_WEIGHT, type PowerTeamInput, type PowerRow } from '@/league/powerRankings'
+import { buildPowerRankings, type PowerTeamInput } from '@/league/powerRankings'
 import { seasonStakes } from '@/myteam/seasonStakes'
 import { buildTrajectory, type TalentSnapshot } from '@/league/powerTrajectory'
 import { readTalentSnapshots, recordTalentSnapshot } from '@/league/talentSnapshots'
@@ -85,22 +85,6 @@ const teamMeta = computed<Record<string, Meta>>(() => {
   return out
 })
 
-/*
- * All-play, computed BEFORE the rankings because the rankings now consume it. Sourcing the
- * team list from the rankings (as this used to) would be circular once résumé is part of
- * the board — so it comes from the league's own team list instead.
- *
- * Passed through only when the season is long enough to read. An absent signal has to
- * contribute nothing rather than a zero: the résumé rank falls back to the standings, which
- * is what a two-week-old season honestly supports.
- */
-const allPlayKeys = computed(() => {
-  const cat = Object.keys(catStrength.teamMeta.value ?? {})
-  return isCategory.value && cat.length ? cat : Object.keys(teamMeta.value)
-})
-const allPlayPctFor = (teamKey: string): number | undefined =>
-  allPlay.value.weeksCounted > 0 ? allPlay.value.byTeam.get(teamKey)?.pct : undefined
-
 // CATEGORY strength = expected categories won per week (ECW) from the projected roster
 // output. Same Yahoo "Manager-less Team N" abandoned read as points; ESPN has no equivalent.
 const categoryRankings = computed(() => {
@@ -118,7 +102,6 @@ const categoryRankings = computed(() => {
       losses: m.losses,
       ties: m.ties,
       managerless: isEspn.value ? false : /manager-?less/i.test(m.name),
-      allPlayPct: allPlayPctFor(s.teamKey),
     }
   })
   return buildPowerRankings(inputs)
@@ -138,7 +121,7 @@ const pointsRankings = computed(() => {
   const meta = teamMeta.value
   const inputs: PowerTeamInput[] = model.standings.map((s) => {
     const m = meta[s.teamKey] ?? { name: 'Team', logo: '', wins: 0, losses: 0, ties: 0, pointsFor: 0, managerless: false }
-    return { teamKey: s.teamKey, teamName: m.name, teamLogo: m.logo, strength: s.startingPoints, wins: m.wins, losses: m.losses, ties: m.ties, pointsFor: m.pointsFor, managerless: m.managerless, allPlayPct: allPlayPctFor(s.teamKey) }
+    return { teamKey: s.teamKey, teamName: m.name, teamLogo: m.logo, strength: s.startingPoints, wins: m.wins, losses: m.losses, ties: m.ties, pointsFor: m.pointsFor, managerless: m.managerless }
   })
   return buildPowerRankings(inputs)
 })
@@ -231,48 +214,9 @@ const hasAbandoned = computed(() => (rankings.value?.rows ?? []).some((r) => r.m
    same question the standings ask, with the schedule luck taken out, so a 3-6 team sitting
    at 30-24 in all-play reads as what it is: a good team that keeps drawing the high scorer.
    Costs nothing to compute — the per-week points are already loaded for the chart. */
-const allPlay = computed(() => buildAllPlay(trajectory.outcomes.value, allPlayKeys.value))
-/*
- * Two ranks, one board. Talent asks who is best going forward; résumé asks who has actually
- * had the season. Blending them into a single number was the alternative and it fails twice:
- * the units do not match without normalising (a win rate against points-per-week), and
- * folding record into talent collapses the luck read, which is exactly the gap between these
- * two ranks. Keeping them separate is what makes the disagreement legible.
- */
-type RankMode = 'talent' | 'resume'
-const rankMode = ref<RankMode>('talent')
-const rankOf = (r: PowerRow) => (rankMode.value === 'talent' ? r.strengthRank : r.resumeRank)
-const otherRankOf = (r: PowerRow) => (rankMode.value === 'talent' ? r.resumeRank : r.strengthRank)
-const orderedRows = computed(() => {
-  const rows = rankings.value?.rows ?? []
-  return rankMode.value === 'talent' ? rows : [...rows].sort((a, b) => a.resumeRank - b.resumeRank)
-})
-
-/*
- * luckDelta split into the two things it was hiding. They want different responses: a roster
- * scoring below its own talent has a problem it can act on, while a roster out-scoring the
- * league and still losing has a schedule it can only wait out. One number could not say
- * which, so the page said "unlucky" to both.
- *
- * A gap under two spots is inside the noise of a ten-team league and is not worth a sentence.
- */
-const GAP_MIN = 2
-const gapNotes = (r: PowerRow): { text: string; cls: string }[] => {
-  if (!rankings.value?.resumeReadable || r.managerless) return []
-  const out: { text: string; cls: string }[] = []
-  if (Math.abs(r.executionDelta) >= GAP_MIN) {
-    out.push(r.executionDelta < 0
-      ? { text: `scoring ${Math.abs(r.executionDelta)} below the roster`, cls: 'text-[#e69a4a]' }
-      : { text: `outscoring the roster by ${r.executionDelta}`, cls: 'text-primary' })
-  }
-  if (Math.abs(r.scheduleDelta) >= GAP_MIN) {
-    out.push(r.scheduleDelta > 0
-      ? { text: `schedule worth ${r.scheduleDelta} spots`, cls: 'text-[#e69a4a]' }
-      : { text: `schedule cost ${Math.abs(r.scheduleDelta)} spots`, cls: 'text-primary' })
-  }
-  return out
-}
-
+const allPlay = computed(() =>
+  buildAllPlay(trajectory.outcomes.value, (rankings.value?.rows ?? []).map((r) => r.teamKey)),
+)
 const allPlayFor = (teamKey: string) => (allPlay.value.weeksCounted > 0 ? allPlay.value.byTeam.get(teamKey) ?? null : null)
 
 /* Form = the same all-play question over the last three weeks, against their own season.
@@ -325,7 +269,7 @@ const SITUATION_CLASS: Record<string, string> = {
 const FORM_WINDOW = 3
 const FORM_MIN_DELTA = 0.10
 const allPlayForm = computed(() =>
-  buildAllPlayForm(trajectory.outcomes.value, allPlayKeys.value, FORM_WINDOW),
+  buildAllPlayForm(trajectory.outcomes.value, (rankings.value?.rows ?? []).map((r) => r.teamKey), FORM_WINDOW),
 )
 const formFor = (teamKey: string) => {
   if (!allPlayForm.value.readable) return null
@@ -470,29 +414,11 @@ const showHow = ref(false)
         </div>
       </div>
 
-      <!-- Rank switch. Only offered once all-play is readable — before that the résumé rank
-           is just the standings, and a toggle between "talent" and "the standings you can
-           already see" is a control that does nothing. -->
-      <div v-if="rankings.resumeReadable" class="mb-2 flex items-center gap-2 font-mono text-[10px]">
-        <span class="uppercase tracking-widest text-dark-textMuted">rank by</span>
-        <div class="flex items-center gap-0.5 rounded-lg border border-dark-border p-0.5">
-          <button v-for="m in (['talent', 'resume'] as const)" :key="m"
-                  class="rounded-md px-2.5 py-1 uppercase tracking-wider transition-colors"
-                  :class="rankMode === m ? 'font-bold text-dark-text' : 'text-dark-textMuted hover:text-dark-text'"
-                  :style="rankMode === m ? { backgroundColor: primaryTint(14) } : {}"
-                  @click="rankMode = m">{{ m === 'talent' ? 'Talent' : 'Résumé' }}</button>
-        </div>
-        <span class="text-dark-textMuted/70">
-          <template v-if="rankMode === 'talent'">the roster you own, going forward</template>
-          <template v-else>the season you have had — {{ Math.round(RESUME_ALLPLAY_WEIGHT * 100) }}% all-play, {{ Math.round((1 - RESUME_ALLPLAY_WEIGHT) * 100) }}% record</template>
-        </span>
-      </div>
-
       <!-- The board -->
       <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
-        <div v-for="r in orderedRows" :key="r.teamKey" class="px-4 py-3" :style="isMe(r.teamKey) ? { backgroundColor: primaryTint(6) } : {}">
+        <div v-for="r in rankings.rows" :key="r.teamKey" class="px-4 py-3" :style="isMe(r.teamKey) ? { backgroundColor: primaryTint(6) } : {}">
           <div class="flex items-center gap-3">
-            <span class="w-6 shrink-0 text-center font-mono text-sm font-bold text-dark-textMuted">{{ rankOf(r) }}</span>
+            <span class="w-6 shrink-0 text-center font-mono text-sm font-bold text-dark-textMuted">{{ r.strengthRank }}</span>
             <img v-if="r.teamLogo" :src="r.teamLogo" alt="" @error="onLogoErr" class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
             <span v-else class="h-8 w-8 shrink-0 rounded-full bg-dark-border" />
             <span class="min-w-0 flex-1">
@@ -527,20 +453,9 @@ const showHow = ref(false)
                       :title="`Last ${FORM_WINDOW} weeks they have beaten ${formFor(r.teamKey)!.recent}% of the league, against ${formFor(r.teamKey)!.season}% across the season.`">
                   · {{ formFor(r.teamKey)!.hot ? 'heating up' : 'cooling off' }} {{ formFor(r.teamKey)!.hot ? '+' : '−' }}{{ formFor(r.teamKey)!.pts }}
                 </span>
-                <!-- The rank you are NOT sorted by, so both readings are on every row and the
-                     one you switched away from never disappears. -->
-                <span v-if="rankings.resumeReadable" class="text-dark-textSecondary"
-                      :title="rankMode === 'talent' ? 'Where the season they have actually had ranks them' : 'Where the roster they own ranks them'">
-                  · {{ ord(otherRankOf(r)) }} by {{ rankMode === 'talent' ? 'résumé' : 'talent' }}
-                </span>
                 <span v-if="r.managerless" class="text-dark-textMuted">· no manager — talent stranded</span>
-                <!-- Luck, split. Which half it is decides whether there is anything to do
-                     about it, and the old single line could not say. -->
-                <template v-else-if="gapNotes(r).length">
-                  <span v-for="g in gapNotes(r)" :key="g.text" :class="g.cls">· {{ g.text }}</span>
-                </template>
-                <span v-else-if="!rankings.resumeReadable && r.luck === 'pretender'" class="text-[#e69a4a]">· lucky (record {{ Math.abs(r.luckDelta) }} ahead of talent)</span>
-                <span v-else-if="!rankings.resumeReadable && r.luck === 'sleeper'" class="text-primary">· unlucky (talent {{ Math.abs(r.luckDelta) }} ahead of record)</span>
+                <span v-else-if="r.luck === 'pretender'" class="text-[#e69a4a]">· lucky (record {{ Math.abs(r.luckDelta) }} ahead of talent)</span>
+                <span v-else-if="r.luck === 'sleeper'" class="text-primary">· unlucky (talent {{ Math.abs(r.luckDelta) }} ahead of record)</span>
               </span>
             </span>
             <!-- Strength bar (length = strength) + forecast arrow (rise/fall) -->
@@ -561,11 +476,6 @@ const showHow = ref(false)
         </div>
       </div>
 
-      <p v-if="rankings.resumeReadable" class="mt-3 font-mono text-[10px] leading-relaxed text-dark-textMuted">
-        two readings, kept apart on purpose · <span class="text-dark-textSecondary">talent</span> = the roster, <span class="text-dark-textSecondary">résumé</span> = the season · where they disagree, the gap splits into
-        <span class="text-dark-textSecondary">scoring</span> (what you did with the roster — actionable) and
-        <span class="text-dark-textSecondary">schedule</span> (who you drew — nobody's fault)
-      </p>
       <p class="mt-3 font-mono text-[10px] leading-relaxed text-dark-textMuted">
         rank = roster strength
         ({{ isCategory ? 'expected categories won per week' : `projected optimal-lineup points${perWeekBasis ? ' per week' : ''}` }})

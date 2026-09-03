@@ -97,10 +97,12 @@ const router = createRouter({
       path: '/standings',
       redirect: '/'
     },
+    /* Folded into /league. Kept as a redirect rather than deleted: this path is bookmarked,
+       linked from onboarding and shared between league mates. The public marketing page at
+       /powerrankings is a different route and is untouched. */
     {
       path: '/power-rankings',
-      name: 'power-rankings',
-      component: () => import('@/views/PowerRankingsWrapper.vue')
+      redirect: '/league'
     },
     {
       path: '/league',

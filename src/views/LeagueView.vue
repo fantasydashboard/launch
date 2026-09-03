@@ -5,19 +5,18 @@ import { useCategoryStrength } from '@/composables/useCategoryStrength'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { usePowerTrajectory } from '@/composables/usePowerTrajectory'
-import { useLeagueLandscape } from '@/composables/useLeagueLandscape'
-import { buildPowerRankings, type PowerTeamInput } from '@/league/powerRankings'
-import { buildLeagueStandings, type StakesTag } from '@/league/leagueStandings'
+import { buildPowerRankings, RESUME_ALLPLAY_WEIGHT, type PowerTeamInput } from '@/league/powerRankings'
+import { buildAllPlay, formatAllPlay } from '@/league/allPlay'
+import { buildLeagueStandings, BOARD_SORTS, type StakesTag, type BoardSort } from '@/league/leagueStandings'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
-import { buildPointsPositional } from '@/league/pointsPositional'
 import { seasonStakes } from '@/myteam/seasonStakes'
+import { buildTrajectory } from '@/league/powerTrajectory'
 import { simulatePlayoffOdds, buildLeverage, type OddsTeam, type GameLeverage } from '@/league/playoffOdds'
 import { buildHotCold } from '@/league/hotCold'
-import { buildTradeFit } from '@/league/tradeFit'
 import { buildStrengthOfSchedule } from '@/league/strengthOfSchedule'
+import PowerTrajectoryChart from '@/components/league/PowerTrajectoryChart.vue'
 import TeamAvatar from '@/components/league/TeamAvatar.vue'
-import type { Landscape } from '@/trades/landscape'
 
 const props = withDefaults(defineProps<{ scoring?: 'points' | 'category' }>(), { scoring: 'points' })
 const isCategory = computed(() => props.scoring === 'category')
@@ -90,6 +89,25 @@ const pointsTeamMeta = computed<Record<string, PointsMeta>>(() => {
   return out
 })
 
+/*
+ * All-play — what your record would be if you played everyone every week. Computed before
+ * the rankings because the résumé sort is built from it, and keyed off the league's own team
+ * list rather than off the rankings (which would be circular).
+ *
+ * Passed through only once a week has actually been scored. An absent signal must contribute
+ * nothing rather than a zero, so before kickoff the résumé sort simply is the standings.
+ */
+const allPlayKeys = computed(() => {
+  const catKeys = Object.keys(cat.teamMeta.value ?? {})
+  return isCategory.value && catKeys.length ? catKeys : Object.keys(pointsTeamMeta.value)
+})
+const allPlay = computed(() => buildAllPlay(trajectory.outcomes.value, allPlayKeys.value))
+const allPlayReadable = computed(() => allPlay.value.weeksCounted > 0)
+const allPlayPctFor = (teamKey: string): number | undefined =>
+  allPlayReadable.value ? allPlay.value.byTeam.get(teamKey)?.pct : undefined
+const allPlayFor = (teamKey: string) =>
+  allPlayReadable.value ? allPlay.value.byTeam.get(teamKey) ?? null : null
+
 // ── RANKINGS: category or points ─────────────────────────────────────────────
 
 const catRankings = computed(() => {
@@ -98,7 +116,7 @@ const catRankings = computed(() => {
   const meta = cat.teamMeta.value
   const inputs: PowerTeamInput[] = s.map((x) => {
     const m = meta[x.teamKey] ?? { name: 'Team', logo: '', wins: 0, losses: 0, ties: 0 }
-    return { teamKey: x.teamKey, teamName: m.name, teamLogo: m.logo, strength: x.strength, wins: m.wins, losses: m.losses, ties: m.ties, managerless: isEspn.value ? false : /manager-?less/i.test(m.name) }
+    return { teamKey: x.teamKey, teamName: m.name, teamLogo: m.logo, strength: x.strength, wins: m.wins, losses: m.losses, ties: m.ties, managerless: isEspn.value ? false : /manager-?less/i.test(m.name), allPlayPct: allPlayPctFor(x.teamKey) }
   })
   return buildPowerRankings(inputs)
 })
@@ -123,6 +141,7 @@ const pointsRankings = computed(() => {
       ties: m.ties,
       pointsFor: m.pointsFor,
       managerless: m.managerless,
+      allPlayPct: allPlayPctFor(s.teamKey),
     }
   })
   return buildPowerRankings(inputs)
@@ -151,9 +170,41 @@ const stakesMap = computed(() => {
   return out
 })
 
+/* Default to Record. This page opens on "where do I sit", and the two other readings are a
+   click away rather than a page away — which is the whole point of merging them. */
+const boardSort = ref<BoardSort>('record')
+const calloutsOpen = ref(false)
 const standings = computed(() =>
-  rankings.value ? buildLeagueStandings(rankings.value.rows, stakesMap.value, activeMyTeamKey.value) : [],
+  rankings.value
+    ? buildLeagueStandings(rankings.value.rows, stakesMap.value, activeMyTeamKey.value, boardSort.value)
+    : [],
 )
+
+/* luckDelta split into the two things it was hiding, because they want different responses:
+   a roster scoring under its own talent has something to fix, while a roster out-scoring the
+   league and still losing has a schedule to wait out. Under two spots is noise in a ten-team
+   league and not worth a sentence. */
+const GAP_MIN = 2
+const gapNotes = (r: { executionDelta: number; scheduleDelta: number; managerless: boolean }) => {
+  if (!allPlayReadable.value || r.managerless) return [] as { text: string; cls: string }[]
+  const out: { text: string; cls: string }[] = []
+  if (Math.abs(r.executionDelta) >= GAP_MIN)
+    out.push(r.executionDelta < 0
+      ? { text: `scoring ${Math.abs(r.executionDelta)} under the roster`, cls: 'text-[#e69a4a]' }
+      : { text: `outscoring the roster by ${r.executionDelta}`, cls: 'text-primary' })
+  if (Math.abs(r.scheduleDelta) >= GAP_MIN)
+    out.push(r.scheduleDelta > 0
+      ? { text: `schedule worth ${r.scheduleDelta}`, cls: 'text-[#e69a4a]' }
+      : { text: `schedule cost ${Math.abs(r.scheduleDelta)}`, cls: 'text-primary' })
+  return out
+}
+/* The rank you are NOT sorted by, so switching never hides a reading. */
+const crossRank = (r: { talentRank: number; resumeRank: number; recordRank: number }) =>
+  boardSort.value === 'talent'
+    ? { label: 'résumé', n: r.resumeRank }
+    : boardSort.value === 'resume'
+      ? { label: 'talent', n: r.talentRank }
+      : { label: 'talent', n: r.talentRank }
 
 // ── Strength bar: min-anchored (same pattern as PowerRankingsRedesignView) ──────
 
@@ -167,36 +218,9 @@ const barPct = (s: number) => {
   return 14 + 86 * ((s - min) / (max - min))
 }
 
-// ── CATEGORY LANDSCAPE ────────────────────────────────────────────────────────
-
-const { view: landscapeView } = useLeagueLandscape({
-  pool: cat.pool,
-  fgByKey: cat.fgByKey,
-  catSpecs: cat.catSpecs,
-  landscape: computed<Landscape>(() => cat.engine.value?.landscape ?? new Map()),
-  roleValueByKey: computed(() => cat.engine.value?.roleValueByKey ?? new Map<string, number>()),
-  myTeamKey: cat.myTeamKey,
-  teamNameByKey: cat.teamNameByKey,
-  labelOf: cat.labelOf,
-})
 
 // ── POINTS LANDSCAPE ──────────────────────────────────────────────────────────
 
-// Ordered team keys: YOU first, then remaining teams by standings rank (record-sorted).
-// This makes YOU the leftmost column in the position grid so it's pinned/prominent.
-const pointsOrderedTeamKeys = computed<string[]>(() => {
-  const myKey = activeMyTeamKey.value
-  // standings is already sorted by recordRank ascending
-  const rankOrdered = standings.value.map((r) => r.teamKey)
-  if (!myKey) return rankOrdered
-  const withoutMe = rankOrdered.filter((k) => k !== myKey)
-  return [myKey, ...withoutMe]
-})
-
-const pointsPositional = computed(() => {
-  if (!pool.value.length) return null
-  return buildPointsPositional(pool.value, valueByKey.value, pointsOrderedTeamKeys.value)
-})
 
 // ── LOADING ───────────────────────────────────────────────────────────────────
 
@@ -238,43 +262,9 @@ function edgeExposed(
   return { edge, exposed }
 }
 
-// Points grid: gather MY ranks per position from the ordered grid.
-const pointsEdgeExposed = computed(() => {
-  if (!pointsPositional.value) return { edge: [], exposed: [] }
-  const myKey = activeMyTeamKey.value
-  const numTeams = pointsOrderedTeamKeys.value.length
-  const myRanks = pointsPositional.value.positions.map((row) => {
-    const cell = row.cells.find((c) => c.teamKey === myKey)
-    return { label: row.position, rank: cell?.rank ?? null }
-  })
-  return edgeExposed(myRanks, numTeams)
-})
 
-// MY ranks per category, from the landscape's category rows (transposed: category × team).
-const catEdgeExposed = computed(() => {
-  const lv = landscapeView.value
-  if (!lv) return { edge: [], exposed: [] }
-  const myIdx = lv.teams.findIndex((t) => t.isMe)
-  if (myIdx < 0) return { edge: [], exposed: [] }
-  const myRanks = lv.categoryRows.map((row) => ({ label: row.label, rank: row.ranks[myIdx] ?? null }))
-  return edgeExposed(myRanks, lv.numTeams)
-})
 
-// Category branch ROSTER-POSITION edge/exposed (from the landscape position grid), so
-// the position view of the matrix toggle is as actionable as the category view.
-const catPositionEdgeExposed = computed(() => {
-  const lv = landscapeView.value
-  if (!lv) return { edge: [], exposed: [] }
-  const myIdx = lv.teams.findIndex((t) => t.isMe)
-  if (myIdx < 0) return { edge: [], exposed: [] }
-  const myRanks = lv.positionRows.map((row) => ({ label: row.label, rank: row.ranks[myIdx] ?? null }))
-  return edgeExposed(myRanks, lv.numTeams)
-})
 
-// Matrix toggle for category leagues: show categories OR roster positions, one at a time.
-// Both render the SAME transposed grid (teams as columns, the metric as rows) so columns
-// stay aligned regardless of team-name length — only the row source differs.
-const catMatrixView = ref<'category' | 'position'>('category')
 
 const activeMatrixRows = computed(() => {
   const lv = landscapeView.value
@@ -286,16 +276,6 @@ const activeMatrixEdge = computed(() =>
   catMatrixView.value === 'category' ? catEdgeExposed.value : catPositionEdgeExposed.value,
 )
 
-// Trade radar: complementary fits across the league (category leagues), built from the
-// same category landscape. A pointer to "who to talk to" — the deal itself lives on Trades.
-const tradeRadar = computed(() => {
-  const lv = landscapeView.value
-  if (!lv || !isCategory.value || !activeMyTeamKey.value) return []
-  return buildTradeFit(
-    { teams: lv.teams, rows: lv.categoryRows, numTeams: lv.numTeams },
-    activeMyTeamKey.value,
-  ).slice(0, 3)
-})
 
 // ── HOT / COLD (last 3 weeks) ─────────────────────────────────────────────────
 
@@ -308,6 +288,12 @@ const hotCold = computed(() => {
 
 // ── "THE RACE" TRAJECTORY CHART ───────────────────────────────────────────────
 
+const trajectoryView = computed(() => {
+  const rows = rankings.value?.rows ?? []
+  if (!rows.length) return null
+  const meta = rows.map((r) => ({ teamKey: r.teamKey, teamName: r.teamName, isMe: r.teamKey === activeMyTeamKey.value, teamLogo: r.teamLogo }))
+  return buildTrajectory(trajectory.outcomes.value, [], meta) // [] = no talent overlay; League shows just the standings race
+})
 
 // ── PLAYOFF ODDS ──────────────────────────────────────────────────────────────
 
@@ -495,6 +481,71 @@ const sosBarColor = (sosRank: number, total: number) => {
         </div>
       </div>
 
+      <!--
+        The triage shortlist — who to act on, and the move. Actionable only: abandoned teams
+        and bottom-tier "sleepers" are held out, because a thin roster is not a real buy-low.
+        Folded, with the count visible, so it cannot push the board off the screen.
+      -->
+      <section v-if="rankings && (rankings.pretenders.length || rankings.sleepers.length)"
+               class="mb-4 rounded-xl border bg-dark-card"
+               :style="{ borderColor: primaryTint(35) }">
+        <button class="flex w-full items-center justify-between gap-3 p-4" @click="calloutsOpen = !calloutsOpen">
+          <span class="min-w-0 text-left">
+            <span class="font-display text-xs font-semibold uppercase tracking-wide text-primary">
+              ★ {{ rankings.sleepers.length + rankings.pretenders.length }} team{{ rankings.sleepers.length + rankings.pretenders.length > 1 ? 's' : '' }} due to move
+            </span>
+            <span class="mt-0.5 block font-mono text-[10px] text-dark-textMuted/70">
+              {{ rankings.sleepers.length }} due to rise &middot; {{ rankings.pretenders.length }} due to fall
+            </span>
+          </span>
+          <span class="shrink-0 font-mono text-dark-textMuted">{{ calloutsOpen ? '&minus;' : '+' }}</span>
+        </button>
+        <div v-if="calloutsOpen" class="grid gap-3 border-t border-dark-border/40 px-4 pb-4 pt-3 sm:grid-cols-2">
+          <div v-if="rankings.sleepers.length">
+            <p class="font-mono text-[10px] uppercase tracking-widest text-primary">&#9650; Record due to rise</p>
+            <p class="mb-2 font-mono text-[9px] text-dark-textMuted">roster the standings haven't caught up to</p>
+            <div v-for="r in rankings.sleepers.slice(0, 3)" :key="'sl-' + r.teamKey" class="border-t border-dark-border/40 py-2 first:border-0">
+              <p class="truncate text-sm text-dark-text">{{ r.teamName }}</p>
+              <p class="font-mono text-[11px] text-dark-textMuted">
+                {{ r.wins }}-{{ r.losses }} record, but <span class="text-primary">{{ ord(r.strengthRank) }} in talent</span>
+              </p>
+            </div>
+          </div>
+          <div v-if="rankings.pretenders.length">
+            <p class="font-mono text-[10px] uppercase tracking-widest text-[#e69a4a]">&#9660; Record due to fall</p>
+            <p class="mb-2 font-mono text-[9px] text-dark-textMuted">the standings are flattering them</p>
+            <div v-for="r in rankings.pretenders.slice(0, 3)" :key="'pr-' + r.teamKey" class="border-t border-dark-border/40 py-2 first:border-0">
+              <p class="truncate text-sm text-dark-text">{{ r.teamName }}</p>
+              <p class="font-mono text-[11px] text-dark-textMuted">
+                {{ r.wins }}-{{ r.losses }} record, but only <span class="text-[#e69a4a]">{{ ord(r.strengthRank) }} in talent</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Three readings of the same ten rows. Résumé only appears once a week has been
+           scored: before that it IS the record, and a control that changes nothing is worse
+           than no control. -->
+      <div v-if="standings.length" class="mb-2 flex flex-wrap items-center gap-2 font-mono text-[10px]">
+        <span class="uppercase tracking-widest text-dark-textMuted">rank by</span>
+        <div class="flex items-center gap-0.5 rounded-lg border border-dark-border p-0.5">
+          <button
+            v-for="sortOpt in BOARD_SORTS"
+            :key="sortOpt.key"
+            v-show="sortOpt.key !== 'resume' || allPlayReadable"
+            class="rounded-md px-2.5 py-1 uppercase tracking-wider transition-colors"
+            :class="boardSort === sortOpt.key ? 'font-bold text-dark-text' : 'text-dark-textMuted hover:text-dark-text'"
+            :style="boardSort === sortOpt.key ? { backgroundColor: primaryTint(14) } : {}"
+            @click="boardSort = sortOpt.key"
+          >{{ sortOpt.label }}</button>
+        </div>
+        <span class="text-dark-textMuted/70">
+          {{ BOARD_SORTS.find((o) => o.key === boardSort)?.hint }}<template
+            v-if="boardSort === 'resume'"> ({{ Math.round(RESUME_ALLPLAY_WEIGHT * 100) }}% all-play)</template>
+        </span>
+      </div>
+
       <div v-if="!standings.length" class="py-10 text-center font-mono text-xs text-dark-textMuted">
         Loading standings…
       </div>
@@ -527,7 +578,7 @@ const sosBarColor = (sosRank: number, total: number) => {
           :style="r.isMe ? { backgroundColor: primaryTint(6) } : {}"
         >
           <!-- Position -->
-          <span class="w-6 shrink-0 text-center font-mono text-sm text-dark-textMuted">{{ i + 1 }}</span>
+          <span class="w-6 shrink-0 text-center font-mono text-sm text-dark-textMuted">{{ r.rank }}</span>
 
           <!-- Logo (falls back to initials) -->
           <TeamAvatar :name="r.teamName" :logo="r.teamLogo" :size="32" />
@@ -557,10 +608,18 @@ const sosBarColor = (sosRank: number, total: number) => {
           <!-- Text cluster: record · talent rank + luck arrow · proj record (when odds) -->
           <span class="shrink-0 flex items-center gap-1.5 font-mono text-[11px] text-dark-textMuted">
             {{ r.wins }}-{{ r.losses }}{{ r.ties ? '-' + r.ties : '' }}
+            <!-- All-play sits beside the real record on purpose: the two disagreeing IS the
+                 read. Hidden until a week has been scored so it can never print 0-0. -->
+            <span v-if="allPlayFor(r.teamKey)" class="hidden md:inline text-dark-textSecondary"
+                  :title="`Scored against every team every week: ${formatAllPlay(allPlayFor(r.teamKey)!)} over ${allPlay.weeksCounted} week${allPlay.weeksCounted === 1 ? '' : 's'}. Schedule luck removed.`">
+              · {{ formatAllPlay(allPlayFor(r.teamKey)!) }} all-play
+            </span>
             <span class="hidden sm:inline text-dark-border/60">·</span>
-            <span class="hidden sm:inline">talent {{ ord(r.talentRank) }}</span>
-            <span v-if="r.luck === 'sleeper'" class="hidden sm:inline text-primary">▲</span>
-            <span v-else-if="r.luck === 'pretender'" class="hidden sm:inline text-[#e69a4a]">▼</span>
+            <span class="hidden sm:inline">{{ crossRank(r).label }} {{ ord(crossRank(r).n) }}</span>
+            <span v-if="r.luck === 'sleeper'" class="hidden sm:inline text-primary" title="Due to rise">▲</span>
+            <span v-else-if="r.luck === 'pretender'" class="hidden sm:inline text-[#e69a4a]" title="Due to fall">▼</span>
+            <!-- Luck, split. Which half it is decides whether there is anything to do. -->
+            <span v-for="g in gapNotes(r)" :key="g.text" class="hidden lg:inline" :class="g.cls">· {{ g.text }}</span>
             <template v-if="oddsByKey.get(r.teamKey) as any">
               <span class="hidden sm:inline text-dark-border/60">·</span>
               <span class="hidden sm:inline font-mono text-[11px] text-dark-textMuted">
@@ -615,8 +674,6 @@ const sosBarColor = (sosRank: number, total: number) => {
       <p class="mt-2 font-mono text-[10px] text-dark-textMuted">
         <template v-if="playoffOdds">proj = projected final record · % = playoff odds (rest-of-season sim)</template>
         <template v-else>bar = roster talent · short bar near top = riding luck · long bar near bottom = due to climb</template>
-        ·
-        <router-link to="/power-rankings" class="text-primary hover:underline">how good is everyone? →</router-link>
       </p>
 
       <!-- Hot / Cold callout (last 3 weeks) -->
@@ -758,200 +815,40 @@ const sosBarColor = (sosRank: number, total: number) => {
       </div>
     </section>
 
+    <!-- ── "THE RACE" standings line graph ───────────────────────────────────── -->
+    <section v-if="trajectoryView && trajectoryView.weeks.length >= 2" class="mb-8">
+      <h2 class="font-display text-lg font-bold text-dark-text">The race</h2>
+      <p class="mb-3 font-mono text-xs text-dark-textMuted">
+        Standings rank, week by week — rank 1 up top.
+      </p>
+      <div class="rounded-xl border border-dark-border bg-dark-card p-3">
+        <PowerTrajectoryChart :trajectory="trajectoryView" />
+      </div>
+    </section>
+
     <!--
-      "The race" lived here as a standings-only line — the same chart Power Rankings draws,
-      minus the dashed talent overlay, which is the half that makes it worth looking at. Two
-      pages rendering one chart at different fidelities is how a reader ends up unsure which
-      one is the real version, so this page links to it rather than drawing a lesser copy.
+      Trade radar, Position Strength and "Where you stack up" lived here and were all three
+      the Trades page, rebuilt. Worse than duplicated: they were SEPARATE implementations —
+      league/tradeFit.ts and league/pointsPositional.ts and composables/useLeagueLandscape.ts
+      against myteam/pointsTradeLandscape.ts — free to disagree about who your best partner
+      is depending on which tab you were looking at. tradeFit's own docstring conceded the
+      point ("the actual player-for-player engine lives on the Trades page"), and
+      useLeagueLandscape calls itself "the Trades league landscape" in its first line.
+
+      One answer, on the page that can attach players to it.
     -->
-
-    <!-- ── CATEGORY landscape (toggled: category matrix ⇄ roster positions) ─── -->
-    <template v-if="isCategory">
-      <section
-        v-if="landscapeView && (landscapeView.categoryRows.length || landscapeView.positionRows.length)"
-        class="mb-8"
-      >
-        <!-- Header + matrix toggle -->
-        <div class="mb-1 flex items-center justify-between gap-3">
-          <h2 class="font-display text-lg font-bold text-dark-text">Where you stack up</h2>
-          <div class="flex shrink-0 items-center gap-0.5 rounded-lg border border-dark-border p-0.5 font-mono text-[10px]">
-            <button
-              class="rounded-md px-2.5 py-1 uppercase tracking-wider transition-colors"
-              :class="catMatrixView === 'category' ? 'font-bold' : 'text-dark-textMuted hover:text-dark-text'"
-              :style="catMatrixView === 'category' ? { backgroundColor: 'var(--color-primary, #C6FF3A)', color: '#10130a' } : {}"
-              @click="catMatrixView = 'category'"
-            >Categories</button>
-            <button
-              class="rounded-md px-2.5 py-1 uppercase tracking-wider transition-colors"
-              :class="catMatrixView === 'position' ? 'font-bold' : 'text-dark-textMuted hover:text-dark-text'"
-              :style="catMatrixView === 'position' ? { backgroundColor: 'var(--color-primary, #C6FF3A)', color: '#10130a' } : {}"
-              @click="catMatrixView = 'position'"
-            >Positions</button>
-          </div>
-        </div>
-        <p class="mb-2 font-mono text-[10px] text-dark-textMuted">
-          <template v-if="catMatrixView === 'category'">rank in each scoring category across the league · brighter = stronger · you're the ringed column</template>
-          <template v-else>rank by best eligible player at each roster position · brighter = stronger · you're the ringed column</template>
+    <section class="mb-8">
+      <div class="rounded-xl border border-dark-border bg-dark-card p-4">
+        <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Where to deal</h2>
+        <p class="font-mono text-[10px] text-dark-textMuted">
+          Who is strong where you are thin, who wants what you are sitting on, and the deal
+          itself — scored for both sides.
         </p>
-
-        <!-- Edge / exposed readout (swaps with the active view) -->
-        <div
-          v-if="activeMatrixEdge.edge.length || activeMatrixEdge.exposed.length"
-          class="mb-3 rounded-lg border border-dark-border/50 bg-dark-card px-3 py-2 font-mono text-[11px] leading-snug space-y-0.5"
-        >
-          <div v-if="activeMatrixEdge.edge.length">
-            <span class="text-primary">Your edge: </span><span class="text-dark-text">{{ activeMatrixEdge.edge.join(', ') }}</span>
-          </div>
-          <div v-if="activeMatrixEdge.exposed.length">
-            <span class="text-[#e69a4a]">Exposed: </span><span class="text-dark-textMuted">{{ activeMatrixEdge.exposed.join(', ') }} — your upgrade targets</span>
-          </div>
-        </div>
-
-        <!-- Unified transposed matrix: teams as columns (logos on top), metric as rows.
-             Fixed-width columns keep numbers aligned regardless of team-name length. -->
-        <div v-if="landscapeView && activeMatrixRows.length" class="w-fit max-w-full rounded-xl border border-dark-border bg-dark-card overflow-x-auto">
-          <!-- Header: team logos (YOU ringed + first) -->
-          <div class="flex border-b border-dark-border/40">
-            <div class="min-w-[3.5rem] shrink-0" />
-            <div
-              v-for="team in landscapeView.teams"
-              :key="team.key"
-              class="w-10 shrink-0 py-1.5 flex items-center justify-center"
-              :title="team.name"
-            >
-              <TeamAvatar :name="team.name" :logo="teamLogoOf(team.key)" :size="18" :ring="team.isMe" :dim="!team.isMe" />
-            </div>
-          </div>
-
-          <!-- Rows: one per category / position -->
-          <div
-            v-for="row in activeMatrixRows"
-            :key="row.key"
-            class="flex items-center border-b border-dark-border/20 last:border-0"
-          >
-            <div class="min-w-[3.5rem] shrink-0 px-3 py-1.5 font-mono text-[10px] text-dark-textSecondary uppercase tracking-wider">
-              {{ row.label }}
-            </div>
-
-            <div
-              v-for="(rank, ti) in row.ranks"
-              :key="ti"
-              class="w-10 shrink-0 py-1.5 text-center font-mono text-[10px] text-dark-text leading-none"
-              :style="{
-                backgroundColor: rank == null
-                  ? 'transparent'
-                  : heatBg(landscapeView.numTeams <= 1 ? 0.5 : (landscapeView.numTeams - rank) / (landscapeView.numTeams - 1))
-              }"
-            >
-              {{ rank ?? '' }}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── TRADE RADAR (complementary fits across the league) ─────────────── -->
-      <section v-if="tradeRadar.length" class="mb-8">
-        <h2 class="font-display text-lg font-bold text-dark-text">Trade radar</h2>
-        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
-          best complementary fits — teams strong where you're exposed, weak where you're strong
-        </p>
-        <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
-          <div v-for="p in tradeRadar" :key="p.teamKey" class="px-4 py-3">
-            <div class="mb-1.5 flex items-center gap-2">
-              <TeamAvatar :name="p.teamName" :logo="teamLogoOf(p.teamKey)" :size="20" />
-              <span class="min-w-0 truncate font-mono text-[13px] font-semibold text-dark-text">{{ p.teamName }}</span>
-            </div>
-            <div class="space-y-0.5 font-mono text-[11px] leading-relaxed">
-              <div>
-                <span class="text-primary">You get: </span><span class="text-dark-text">{{ p.youGet.map((d) => d.label).join(', ') }}</span>
-              </div>
-              <div>
-                <span class="text-[#e69a4a]">They want: </span><span class="text-dark-textMuted">{{ p.theyGet.map((d) => d.label).join(', ') }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
         <router-link to="/trades" class="mt-2 inline-block font-mono text-[11px] text-primary hover:underline">
-          Build the deal on Trades →
+          Open Trades &rarr;
         </router-link>
-      </section>
-    </template>
-
-    <!-- ── POINTS landscape ───────────────────────────────────────────────── -->
-    <template v-else>
-      <!-- Position strength grid (points): YOU first, then teams by standing rank -->
-      <section
-        v-if="pointsPositional && pointsPositional.positions.length"
-        class="mb-8"
-      >
-        <h2 class="mb-1 font-display text-lg font-bold text-dark-text">Position Strength</h2>
-        <p class="mb-2 font-mono text-[10px] text-dark-textMuted">
-          best startable player per position, ranked across the league · brighter = stronger
-        </p>
-
-        <!-- Edge / exposed readout for points positions -->
-        <div
-          v-if="pointsEdgeExposed.edge.length || pointsEdgeExposed.exposed.length"
-          class="mb-3 rounded-lg border border-dark-border/50 bg-dark-card px-3 py-2 font-mono text-[11px] leading-snug space-y-0.5"
-        >
-          <div v-if="pointsEdgeExposed.edge.length">
-            <span class="text-primary">Your edge: </span><span class="text-dark-text">{{ pointsEdgeExposed.edge.join(', ') }}</span>
-          </div>
-          <div v-if="pointsEdgeExposed.exposed.length">
-            <span class="text-[#e69a4a]">Exposed: </span><span class="text-dark-textMuted">{{ pointsEdgeExposed.exposed.join(', ') }} — your upgrade targets</span>
-          </div>
-        </div>
-
-        <div class="rounded-xl border border-dark-border bg-dark-card overflow-x-auto">
-          <!-- Header: YOU first (logo+ring), then teams by standing rank (logos) -->
-          <div class="flex border-b border-dark-border/40">
-            <div class="min-w-[3.5rem] shrink-0" />
-            <div
-              v-for="tk in pointsOrderedTeamKeys"
-              :key="tk"
-              class="w-10 shrink-0 py-1.5 flex items-center justify-center"
-              :title="pointsTeamMeta[tk]?.name ?? tk"
-            >
-              <TeamAvatar
-                :name="pointsTeamMeta[tk]?.name ?? tk"
-                :logo="pointsTeamMeta[tk]?.logo"
-                :size="18"
-                :ring="tk === activeMyTeamKey"
-                :dim="tk !== activeMyTeamKey"
-              />
-            </div>
-          </div>
-
-          <!-- Position rows -->
-          <div
-            v-for="posRow in pointsPositional.positions"
-            :key="posRow.position"
-            class="flex items-center border-b border-dark-border/20 last:border-0"
-          >
-            <div class="min-w-[3.5rem] shrink-0 px-3 py-1.5 font-mono text-[10px] text-dark-textSecondary uppercase tracking-wider">
-              {{ posRow.position }}
-            </div>
-            <div
-              v-for="cell in posRow.cells"
-              :key="cell.teamKey"
-              class="w-10 shrink-0 py-1.5 text-center font-mono text-[10px] text-dark-text leading-none"
-              :style="{
-                backgroundColor: cell.rank == null
-                  ? 'transparent'
-                  : heatBg(
-                      (() => {
-                        const tc = pointsOrderedTeamKeys.length
-                        return tc <= 1 ? 0.5 : (tc - cell.rank) / (tc - 1)
-                      })()
-                    )
-              }"
-            >
-              {{ cell.rank ?? '' }}
-            </div>
-          </div>
-        </div>
-      </section>
-    </template>
+      </div>
+    </section>
     </template><!-- /v-else (rankings ready) -->
   </div>
 </template>
