@@ -105,6 +105,18 @@ const byDynasty = (ka?: string, kb?: string) => {
   if (!b) return -1
   return a.overallRank - b.overallRank
 }
+/* Folded, like the add/drop card above it. This list is long and, on a deep dynasty
+   roster, almost entirely below replacement — so it was pushing the Full Board, the thing
+   you actually browse, off the bottom of the page. */
+const bestOpen = ref(false)
+/* How many free agents are genuinely better than a replacement body. Counting them is what
+   lets the collapsed header say something true: on a barren wire the honest headline is that
+   nothing clears your roster, not a ranked list of players you would never add. */
+const bestAboveReplacement = computed(() =>
+  (fbWire.value?.bestAvailable ?? []).filter((r) => r.vorRos > 0).length,
+)
+const bestTopValue = computed(() => fbWire.value?.bestAvailable?.[0]?.vorRos ?? 0)
+
 const sortedBest = computed(() => {
   const rows = fbWire.value?.bestAvailable ?? []
   if (wireSort.value === 'season' || !dynasty.ready.value) return rows
@@ -406,7 +418,26 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
           -->
 
           <!-- 3. BEST AVAILABLE — ROS VOR -->
-          <section class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+          <section class="mb-5 rounded-xl border border-dark-border bg-dark-card">
+            <button class="flex w-full items-center justify-between gap-3 p-4" @click="bestOpen = !bestOpen">
+              <span class="min-w-0 text-left">
+                <span v-if="bestAboveReplacement" class="font-display text-xs font-semibold uppercase tracking-wide text-primary">
+                  ★ {{ bestAboveReplacement }} above replacement
+                  <span class="font-mono text-[10px] normal-case text-dark-textMuted">· best +{{ round(bestTopValue) }}</span>
+                </span>
+                <!-- The true answer on a deep roster, said plainly rather than as a ranked
+                     list of players nobody would add. -->
+                <span v-else class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+                  ✓ Nothing on the wire clears your roster
+                </span>
+                <span class="mt-0.5 block font-mono text-[10px] text-dark-textMuted/70">
+                  best available · the top of the wire either way
+                </span>
+              </span>
+              <span class="shrink-0 font-mono text-dark-textMuted">{{ bestOpen ? '−' : '+' }}</span>
+            </button>
+
+            <div v-if="bestOpen" class="border-t border-dark-border/40 px-4 pb-4 pt-3">
             <div class="mb-1 flex flex-wrap items-baseline justify-between gap-2">
               <h2 class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
                 Best available
@@ -460,6 +491,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                 <span class="w-12 shrink-0 text-right font-mono text-sm font-semibold" :class="r.vorRos >= 0 ? 'text-dark-text' : 'text-dark-textMuted'">{{ r.vorRos >= 0 ? '+' : '' }}{{ round(r.vorRos) }}</span>
               </div>
             </template>
+            </div>
           </section>
 
           <!-- 4. FULL BOARD — every player by position, VOR-ranked, yours highlighted -->
