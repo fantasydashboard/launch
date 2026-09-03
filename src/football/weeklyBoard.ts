@@ -107,6 +107,30 @@ export interface WeeklyCloseCall {
   gap: number
 }
 
+/**
+ * Win probability from a projected margin. Exported so the view can recompute it from the
+ * ROUNDED margin it actually prints — deriving it from the raw margin put "you +8" beside
+ * "60% to win" when eight points is 62%, the same rounding mismatch as the totals, one layer
+ * deeper. One formula, fed whichever number is on screen.
+ *
+ * Logistic with a 16-point scale: ~28 points of weekly noise is the conventional football
+ * spread, which puts a 10-point edge near 62%.
+ */
+export function winPctFromMargin(margin: number): number {
+  return Math.max(1, Math.min(99, Math.round(100 / (1 + Math.exp(-margin / 16)))))
+}
+
+/** One of the opponent's projected starters. */
+export interface OppStarter {
+  slot: string
+  name: string
+  position: string
+  team?: string
+  headshot?: string
+  weekPoints: number
+  bye: boolean
+}
+
 /** This week's fantasy matchup, projected off the same weekly points as the lineup. */
 export interface WeeklyMatchup {
   opponentName: string
@@ -115,6 +139,11 @@ export interface WeeklyMatchup {
   oppPoints: number
   margin: number // my - opp
   myWinPct: number // 0..100
+  /** Their projected starting lineup — you cannot change it, but you can read it. */
+  oppStarters: OppStarter[]
+  /** Their starters who are idle. Their problem is your margin, and it is the one
+      genuinely actionable thing about another manager's roster. */
+  oppByes: OppStarter[]
 }
 
 /** Who holds a player, from the point of view of the manager reading the page. */
@@ -153,6 +182,8 @@ export interface WeeklyBoard {
    * "where do my guys sit against the wire, and who goes in the flex" from one list rather
    * than from two mental cross-references.
    */
+  /** Starting slots with nobody in them. Points forfeited, not merely lost. */
+  emptySlots: number
   board: Record<string, WeeklyBoardRow[]>
   /** Positions with rows, in canonical order, FLEX last. Drives the picker. */
   boardPositions: string[]
@@ -242,7 +273,11 @@ export function buildWeeklyBoard(input: {
     value: week(p.playerKey),
     status: p.onIL ? 'IL' : '',
   }))
-  const assigned = assignSlots(myDepth, slots, 0).assignedByPos
+  const myAssign = assignSlots(myDepth, slots, 0)
+  const assigned = myAssign.assignedByPos
+  /* A slot you never filled scores zero — the loudest, cheapest thing to warn about, and it
+     was stranded on the Matchup page when that tab was hidden for football. */
+  const emptySlots = myAssign.unfilled.length
   const currentSet = new Set(currentStarters)
 
   const starters: WeeklyStarter[] = []
@@ -399,19 +434,34 @@ export function buildWeeklyBoard(input: {
     if (oppDepth.length) {
       const oppAssigned = assignSlots(oppDepth, slots, 0).assignedByPos
       let oppPoints = 0
-      for (const keys of Object.values(oppAssigned)) for (const k of keys) oppPoints += week(k)
+      const oppStarters: OppStarter[] = []
+      for (const [slot, keys] of Object.entries(oppAssigned)) {
+        for (const k of keys) {
+          oppPoints += week(k)
+          const p = meta.get(k)
+          oppStarters.push({
+            slot,
+            name: p?.name ?? '—',
+            position: p?.position ?? '',
+            team: p?.proTeam,
+            headshot: p?.headshot,
+            weekPoints: week(k),
+            bye: byeOf(k),
+          })
+        }
+      }
+      oppStarters.sort((a, b) => slotIdx(a.slot) - slotIdx(b.slot) || b.weekPoints - a.weekPoints)
       const myPoints = starters.reduce((sum, s) => sum + s.weekPoints, 0)
       const margin = myPoints - oppPoints
-      // Logistic on the margin. ~28 points of weekly noise in a football week is the
-      // conventional spread; it puts a 10-point edge near 60%, which matches intuition.
-      const myWinPct = Math.round(100 / (1 + Math.exp(-margin / 16)))
       matchup = {
         opponentName: oppTeamName || 'Opponent',
         opponentLogo: oppTeamLogo || '',
         myPoints,
         oppPoints,
         margin,
-        myWinPct: Math.max(1, Math.min(99, myWinPct)),
+        myWinPct: winPctFromMargin(margin),
+        oppStarters,
+        oppByes: oppStarters.filter((o) => o.bye),
       }
     }
   }
@@ -473,5 +523,5 @@ export function buildWeeklyBoard(input: {
 
   const boardPositions = [...Object.keys(board).filter((k) => k !== 'FLEX'), ...(board.FLEX ? ['FLEX'] : [])]
 
-  return { starters, bench, moves, streamers, closeCalls, matchup, byeStarters, board, boardPositions }
+  return { starters, bench, moves, streamers, closeCalls, matchup, byeStarters, emptySlots, board, boardPositions }
 }

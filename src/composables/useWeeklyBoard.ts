@@ -6,6 +6,9 @@ import { sleeperService } from '@/services/sleeper'
 import { opponentMap } from '@/football/footballBye'
 import { buildWeeklyBoard, type WeeklyBoard } from '@/football/weeklyBoard'
 import { useThisWeekOpponent } from '@/composables/useThisWeekOpponent'
+import { usePointsValue } from '@/composables/usePointsValue'
+import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
+import { seasonStakes, type Stakes } from '@/myteam/seasonStakes'
 import type { SleeperRoster } from '@/types/sleeper'
 
 /**
@@ -21,6 +24,8 @@ export function useWeeklyBoard(): {
   loading: ComputedRef<boolean>
   myTeamName: ComputedRef<string>
   myTeamLogo: ComputedRef<string>
+  stakes: ComputedRef<Stakes | null>
+  outlook: ComputedRef<ReturnType<typeof useSeasonOutlook>['outlook']['value']>
 } {
   const leagueStore = useLeagueStore()
   const isFootball = computed(() => leagueStore.activeSport === 'football')
@@ -103,7 +108,44 @@ export function useWeeklyBoard(): {
     })
   })
 
+  /*
+   * Season context. This lived on the Matchup page and was stranded when that tab was hidden
+   * for football — along with a 0-0 fix and football copy written for it days earlier. It
+   * belongs beside the lineup: what a week is worth depends on where the season stands.
+   */
+  const { valueByKey } = usePointsValue({
+    pool: src.pool,
+    fgByKey: src.fgByKey,
+    sport: computed(() => leagueStore.activeSport),
+    season,
+  })
+  const { outlook } = useSeasonOutlook({
+    pool: src.pool,
+    valueByKey,
+    rosterSlots: src.rosterSlots,
+    myTeamKey: src.myTeamKey,
+    teamMeta: src.teamMeta,
+  })
+  const stakes = computed<Stakes | null>(() => {
+    const o = outlook.value
+    if (!o) return null
+    const leagueSize = new Set(src.pool.value.map((p) => p.teamKey)).size
+    if (!leagueSize) return null
+    return seasonStakes({
+      rank: o.recordRank,
+      leagueSize,
+      weeksLeft: Math.max(0, leagueStore.playoffWeekStart - leagueStore.currentWeek),
+      playoffSpots: Math.ceil(leagueSize / 2),
+      // At 0-0 the rank is a tiebreak artifact; seasonStakes says so rather than inventing one.
+      gamesPlayed: o.record.wins + o.record.losses + o.record.ties,
+    })
+  })
+
   const loading = computed(() => scheduleLoading.value || vorLoading.value || src.loading.value)
 
-  return { board, live, currentWeek, hasCurrentLineup, loading, myTeamName: src.myTeamName, myTeamLogo: src.myTeamLogo }
+  return {
+    board, live, currentWeek, hasCurrentLineup, loading,
+    myTeamName: src.myTeamName, myTeamLogo: src.myTeamLogo,
+    stakes, outlook,
+  }
 }

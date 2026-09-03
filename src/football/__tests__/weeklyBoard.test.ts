@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildWeeklyBoard } from '../weeklyBoard'
+import { buildWeeklyBoard, winPctFromMargin } from '../weeklyBoard'
 import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { PlayerVor } from '../footballVor'
 import type { AvailablePlayer } from '@/players/types'
@@ -256,6 +256,40 @@ describe('buildWeeklyBoard — the Sunday page', () => {
     })
     expect(board.boardPositions).not.toContain('K')
     expect(board.boardPositions).not.toContain('DEF')
+  })
+
+  it("carries the opponent's projected starters and flags their byes", () => {
+    const board = buildWeeklyBoard({
+      pool, vorByKey, slots, myTeamKey: 'me',
+      currentStarters: [], freeAgents: [], opponentByTeam: opp,
+      oppTeamKey: 'other', oppTeamName: 'Them',
+    })
+    expect(board.matchup!.oppStarters.length).toBeGreaterThan(0)
+    expect(board.matchup!.oppStarters.every((o) => o.name !== '—')).toBe(true)
+    // Everyone plays in this fixture, so nobody is idle.
+    expect(board.matchup!.oppByes).toEqual([])
+  })
+
+  it("counts starting slots nobody could fill", () => {
+    // Four slots but only a single body — three seats stay empty.
+    const thin = buildWeeklyBoard({
+      pool: [pool[0]], vorByKey, slots, myTeamKey: 'me',
+      currentStarters: [], freeAgents: [], opponentByTeam: opp,
+    })
+    expect(thin.emptySlots).toBe(3)
+  })
+
+  /*
+   * The page prints a rounded margin. Feeding the raw one into the formula put "you +8" beside
+   * "60% to win" — eight points is 62%. One exported formula, fed the number on screen.
+   */
+  it('win% is a pure function of the margin it is given', () => {
+    expect(winPctFromMargin(8)).toBe(62)
+    expect(winPctFromMargin(6.5)).toBe(60)
+    expect(winPctFromMargin(0)).toBe(50)
+    expect(winPctFromMargin(-8)).toBe(38)
+    expect(winPctFromMargin(500)).toBe(99)
+    expect(winPctFromMargin(-500)).toBe(1)
   })
 
   it('leaves the matchup null when no opponent is known (bye week)', () => {

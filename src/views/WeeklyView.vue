@@ -2,8 +2,9 @@
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { computed, ref, watch } from 'vue'
 import { useWeeklyBoard } from '@/composables/useWeeklyBoard'
+import { winPctFromMargin } from '@/football/weeklyBoard'
 
-const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo } = useWeeklyBoard()
+const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes } = useWeeklyBoard()
 
 /*
  * Header totals are summed from the ROUNDED row values, not rounded from the raw sum.
@@ -14,6 +15,44 @@ const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamL
 const myTotal = computed(() => board.value?.starters.reduce((sum, s) => sum + Math.round(s.weekPoints), 0) ?? 0)
 const oppTotal = computed(() => Math.round(board.value?.matchup?.oppPoints ?? 0))
 const margin = computed(() => myTotal.value - oppTotal.value)
+/* Win% from the margin the page PRINTS, not the raw one. Deriving it from the unrounded
+   margin put "you +8" beside "60% to win" when eight points is 62%. */
+const winPct = computed(() => winPctFromMargin(margin.value))
+
+// Matchup detail: their lineup and the season read. Closed by default — the page's job is
+// still your lineup, and this is the evidence behind the scoreboard above it.
+const matchupOpen = ref(false)
+
+/* The strategic read, restored from the Matchup page. Volume is a baseball lever — football
+   gives both rosters one game each — so the football branch talks about the lineup instead. */
+const path = computed(() => {
+  const m = board.value?.matchup
+  const st = stakes.value
+  if (!m || !st) return ''
+  const lever = winPct.value >= 55
+    ? 'your starters carry it — just make sure none are on bye'
+    : 'the margin is in your flex spots and any start/sit you get wrong'
+  switch (st.mode) {
+    case 'coast':
+      return st.coastKind === 'eliminated'
+        ? 'Out of reach for the bracket — conserve your moves, no need to chase this week.'
+        : 'Locked into the bracket — rest your guys and pick your spots.'
+    case 'must-win':
+      return `Must-win — empty the tank: ${lever}.`
+    case 'maximize':
+      return `Every win is seeding — push: ${lever}.`
+    case 'clinch':
+      return winPct.value >= 55
+        ? 'Comfortably in and favored — bank the win, no need to overspend.'
+        : "Comfortably in but an underdog — your season's fine, so don't chase it."
+    default:
+      return winPct.value >= 55
+        ? `You're favored — protect it: ${lever}.`
+        : winPct.value <= 45
+          ? `Underdog this week — ${lever}.`
+          : `Coin-flip week — ${lever}.`
+  }
+})
 
 const teamLogo = (abbr?: string) => nflTeamLogo(abbr)
 const round = (n: number) => Math.round(n)
@@ -90,7 +129,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             <div class="font-mono text-[11px] font-bold" :class="margin >= 0 ? 'text-primary' : 'text-[#FF5C5C]'">
               {{ margin >= 0 ? 'you +' : 'them +' }}{{ Math.abs(margin) }}
             </div>
-            <div class="font-mono text-[10px] text-dark-textMuted">{{ board.matchup.myWinPct }}% to win</div>
+            <div class="font-mono text-[10px] text-dark-textMuted">{{ winPct }}% to win</div>
           </div>
           <div class="flex min-w-0 items-center justify-end gap-2 text-right">
             <div class="min-w-0">
@@ -98,6 +137,55 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               <div class="font-mono text-lg font-extrabold leading-none text-[#e69a4a]">{{ oppTotal }}</div>
             </div>
             <img v-if="board.matchup.opponentLogo" :src="board.matchup.opponentLogo" alt="" @error="onLogoErr" class="h-9 w-9 shrink-0 rounded-lg bg-dark-border object-cover" />
+          </div>
+        </div>
+      </section>
+
+      <!--
+        The rest of what the Matchup page held: their lineup, the season read, and the empty-slot
+        warning. All of it was stranded when that tab was hidden for football, including fixes
+        written for it days earlier. Closed by default — the page is still your lineup, and this
+        is the evidence behind the scoreboard above.
+      -->
+      <section v-if="board.matchup" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+        <button class="flex w-full items-center justify-between" @click="matchupOpen = !matchupOpen">
+          <span class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+            The matchup
+            <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">
+              · {{ board.matchup.opponentName }}'s lineup{{ stakes ? ' · what the week is worth' : '' }}
+            </span>
+          </span>
+          <span class="font-mono text-dark-textMuted">{{ matchupOpen ? '−' : '+' }}</span>
+        </button>
+
+        <div v-if="matchupOpen" class="mt-3">
+          <!-- Their idle starters: you can't change their lineup, but this is your real margin. -->
+          <p v-if="board.matchup.oppByes.length" class="mb-3 rounded-lg bg-primary/10 px-3 py-2 font-mono text-[11px] text-primary">
+            {{ board.matchup.oppByes.length }} of their starters {{ board.matchup.oppByes.length > 1 ? 'are' : 'is' }} on bye
+            ({{ board.matchup.oppByes.map((o) => o.name).join(' · ') }}) — your edge is bigger than the projection says.
+          </p>
+
+          <p v-if="stakes" class="mb-1 font-mono text-[11px] text-dark-textSecondary">{{ stakes.reasoning }}</p>
+          <p v-if="path" class="mb-3 text-sm text-dark-text">{{ path }}</p>
+
+          <p v-if="board.emptySlots > 0" class="mb-3 rounded-lg bg-[#FF5C5C]/10 px-3 py-2 text-sm text-[#FF5C5C]">
+            You're leaving {{ board.emptySlots }} starting slot{{ board.emptySlots > 1 ? 's' : '' }} empty —
+            that's points forfeited, not lost. Plug a body before kickoff.
+          </p>
+
+          <p class="mb-2 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
+            {{ board.matchup.opponentName }} — projected starters
+          </p>
+          <div v-for="(o, i) in board.matchup.oppStarters" :key="'os-' + i"
+               class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm last:border-0">
+            <span class="w-10 shrink-0 font-mono text-[10px] uppercase text-dark-textMuted">{{ o.slot }}</span>
+            <img v-if="o.headshot" :src="o.headshot" :alt="o.name" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
+            <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
+            <span class="min-w-0 flex-1 truncate text-dark-textSecondary">
+              {{ o.name }} <span class="text-[11px] text-dark-textMuted">{{ o.position }}</span>
+              <span v-if="o.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>
+            </span>
+            <span class="w-10 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ round(o.weekPoints) }}</span>
           </div>
         </div>
       </section>
@@ -195,15 +283,15 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
       <section v-if="board.bench.length" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
         <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Bench</h2>
         <template v-for="b in board.bench" :key="'bn-' + b.playerKey">
-          <div class="flex items-center gap-3 border-b border-dark-border/40 py-1.5 text-sm last:border-0">
+          <div class="flex items-center gap-2.5 border-b border-dark-border/40 py-1 text-sm last:border-0">
             <span class="min-w-0 flex-1 truncate text-dark-textMuted">
               {{ b.name }} <span class="text-[11px]">{{ b.position }}</span>
               <span v-if="b.bye" class="ml-1 text-[10px] text-[#FF5C5C]">BYE</span>
             </span>
-            <span class="w-20 shrink-0 text-right">
-              <span class="block font-mono text-xs text-dark-textMuted">{{ round(b.weekPoints) }}</span>
-              <span class="block font-mono text-[9px] text-dark-textMuted/60">{{ rankLabel(b) }}</span>
-            </span>
+            <!-- One line, not a stacked block: the bench is a reference list, and five
+                 two-line rows took as much room as the lineup they support. -->
+            <span class="shrink-0 font-mono text-[9px] text-dark-textMuted/60">{{ rankLabel(b) }}</span>
+            <span class="w-8 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ round(b.weekPoints) }}</span>
           </div>
         </template>
       </section>
