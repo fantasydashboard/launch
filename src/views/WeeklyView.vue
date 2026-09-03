@@ -17,6 +17,14 @@ const margin = computed(() => myTotal.value - oppTotal.value)
 
 const teamLogo = (abbr?: string) => nflTeamLogo(abbr)
 const round = (n: number) => Math.round(n)
+/* Position rank always; flex rank only when the league's flex can actually take him, so a QB
+   in a non-superflex league doesn't get a meaningless number beside his name. */
+const rankLabel = (r: { position: string; posRank: number; flexRank: number }): string => {
+  const parts: string[] = []
+  if (r.posRank) parts.push(`${(r.position || '').toUpperCase().split(/[,/|]/)[0]}${r.posRank}`)
+  if (r.flexRank) parts.push(`FLX${r.flexRank}`)
+  return parts.join(' · ')
+}
 const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none')
 </script>
 
@@ -107,7 +115,10 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
       <!-- 2. OPTIMAL LINEUP -->
       <section class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
         <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
-          Best lineup <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">· week {{ currentWeek }} projections · pts/wk</span>
+          Best lineup
+          <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">
+            · week {{ currentWeek }} · pts/wk · rank among rostered players and free agents
+          </span>
         </h2>
         <template v-for="s in board.starters" :key="'st-' + s.playerKey">
           <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
@@ -125,7 +136,10 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
                 <template v-else-if="s.opponent"> · {{ s.home ? 'vs' : '@' }} <img :src="teamLogo(s.opponent)" alt="" @error="onLogoErr" class="h-3 w-3 object-contain" />{{ s.opponent }}</template>
               </span>
             </span>
-            <span class="w-12 shrink-0 text-right font-mono text-sm text-dark-text">{{ round(s.weekPoints) }}</span>
+            <span class="w-20 shrink-0 text-right">
+              <span class="block font-mono text-sm text-dark-text">{{ round(s.weekPoints) }}</span>
+              <span class="block font-mono text-[9px] text-dark-textMuted/70">{{ rankLabel(s) }}</span>
+            </span>
           </div>
         </template>
       </section>
@@ -162,7 +176,10 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               {{ b.name }} <span class="text-[11px]">{{ b.position }}</span>
               <span v-if="b.bye" class="ml-1 text-[10px] text-[#FF5C5C]">BYE</span>
             </span>
-            <span class="w-12 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ round(b.weekPoints) }}</span>
+            <span class="w-20 shrink-0 text-right">
+              <span class="block font-mono text-xs text-dark-textMuted">{{ round(b.weekPoints) }}</span>
+              <span class="block font-mono text-[9px] text-dark-textMuted/60">{{ rankLabel(b) }}</span>
+            </span>
           </div>
         </template>
       </section>
@@ -187,6 +204,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             <span v-if="r.streamOf > 0" class="shrink-0 rounded bg-dark-border/50 px-1.5 py-0.5 font-mono text-[10px] text-dark-textMuted">startable {{ r.streamWeeks }}/{{ r.streamOf }}</span>
             <span class="w-24 shrink-0 text-right">
               <span class="block font-mono text-sm text-dark-text">{{ round(r.weekPoints) }}</span>
+              <span class="block font-mono text-[9px] text-dark-textMuted/70">{{ rankLabel({ position: r.player.position, posRank: r.posRank, flexRank: r.flexRank }) }}</span>
               <span v-if="r.dropName" class="block font-mono text-[9px] text-primary">
                 drop {{ r.dropName }} &middot; +{{ round(r.gain) }}
               </span>

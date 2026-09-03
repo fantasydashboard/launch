@@ -190,6 +190,36 @@ describe('buildWeeklyBoard — the Sunday page', () => {
     expect(new Set(alts).size).toBe(alts.length)
   })
 
+  it('ranks starters and free agents on one weekly scale', () => {
+    const fa: AvailablePlayer[] = [
+      { playerKey: 'faRB', name: 'Wire Back', position: 'RB', team: 'BUF' } as AvailablePlayer,
+    ]
+    const v = { qb: pv(30), rb1: pv(22), rb2: pv(14), rb3: pv(12), rb4: pv(9), opp: pv(1), faRB: pv(18, { vorWeek: 5 }) }
+    const board = buildWeeklyBoard({
+      pool, vorByKey: v, slots, myTeamKey: 'me',
+      currentStarters: ['qb', 'rb1', 'rb2', 'rb3'], freeAgents: fa, opponentByTeam: opp,
+    })
+    // Backs by week: rb1 22, faRB 18, rb2 14, rb3 12, rb4 9. The wire body must land
+    // BETWEEN my starters — that is the comparison the page exists to make.
+    const byName = new Map(board.starters.map((s2) => [s2.name, s2.posRank]))
+    expect(byName.get('RB One')).toBe(1)
+    expect(byName.get('RB Two')).toBe(3)
+    expect(board.streamers.find((r) => r.player.name === 'Wire Back')!.posRank).toBe(2)
+  })
+
+  it('gives a flex rank only to positions the flex can take', () => {
+    const board = buildWeeklyBoard({
+      pool, vorByKey, slots, myTeamKey: 'me',
+      currentStarters: [], freeAgents: [], opponentByTeam: opp,
+    })
+    const qb = board.starters.find((s2) => s2.position === 'QB')!
+    const rb = board.starters.find((s2) => s2.position === 'RB')!
+    // slots here are QB/RB/FLEX, and FLEX takes RB/WR/TE — never a quarterback.
+    expect(qb.flexRank).toBe(0)
+    expect(rb.flexRank).toBeGreaterThan(0)
+    expect(qb.posRank).toBeGreaterThan(0)
+  })
+
   it('leaves the matchup null when no opponent is known (bye week)', () => {
     const board = buildWeeklyBoard({
       pool, vorByKey, slots, myTeamKey: 'me',

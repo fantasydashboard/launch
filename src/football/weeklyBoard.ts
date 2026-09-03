@@ -18,6 +18,19 @@ export interface WeeklyStarter {
   bye: boolean
   opportunity: OpportunityTag
   inCurrent: boolean // manager already has him starting
+  /**
+   * Rank THIS WEEK at his own position, and among everyone eligible for a flex slot, over
+   * every player rostered in the league PLUS the free agents — because the waiver wire is
+   * available weekly and a start/sit is decided against it.
+   *
+   * There is deliberately no cross-position "overall": weekly ranking runs on raw projected
+   * points, where quarterbacks outscore everyone, so an overall list would just be every QB
+   * followed by everyone else. Flex rank is the number that answers the question a lineup
+   * actually asks, since the QB slot has no competition.
+   */
+  posRank: number
+  /** 0 when the league's flex slots can't take his position (a QB in a non-superflex league). */
+  flexRank: number
 }
 
 export interface WeeklyBenchRow {
@@ -29,6 +42,19 @@ export interface WeeklyBenchRow {
   weekPoints: number
   bye: boolean
   opportunity: OpportunityTag
+  /**
+   * Rank THIS WEEK at his own position, and among everyone eligible for a flex slot, over
+   * every player rostered in the league PLUS the free agents — because the waiver wire is
+   * available weekly and a start/sit is decided against it.
+   *
+   * There is deliberately no cross-position "overall": weekly ranking runs on raw projected
+   * points, where quarterbacks outscore everyone, so an overall list would just be every QB
+   * followed by everyone else. Flex rank is the number that answers the question a lineup
+   * actually asks, since the QB slot has no competition.
+   */
+  posRank: number
+  /** 0 when the league's flex slots can't take his position (a QB in a non-superflex league). */
+  flexRank: number
 }
 
 export interface WeeklyMove {
@@ -48,6 +74,19 @@ export interface WeeklyStreamer {
   streamWeeks: number
   streamOf: number
   opportunity: OpportunityTag
+  /**
+   * Rank THIS WEEK at his own position, and among everyone eligible for a flex slot, over
+   * every player rostered in the league PLUS the free agents — because the waiver wire is
+   * available weekly and a start/sit is decided against it.
+   *
+   * There is deliberately no cross-position "overall": weekly ranking runs on raw projected
+   * points, where quarterbacks outscore everyone, so an overall list would just be every QB
+   * followed by everyone else. Flex rank is the number that answers the question a lineup
+   * actually asks, since the QB slot has no competition.
+   */
+  posRank: number
+  /** 0 when the league's flex slots can't take his position (a QB in a non-superflex league). */
+  flexRank: number
   /**
    * Who comes off for him, and what the week actually gains. An add with no drop is half a
    * decision — "add Dak Prescott, 19" is useless beside a QB already projecting 19, and the
@@ -92,6 +131,7 @@ export interface WeeklyBoard {
 }
 
 const SLOT_ORDER = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPER_FLEX', 'K', 'DEF']
+const normPosOf = (p: string) => (p || '').toUpperCase().split(/[,/|]/)[0].trim()
 const slotIdx = (s: string) => { const i = SLOT_ORDER.indexOf(s.toUpperCase()); return i < 0 ? SLOT_ORDER.length : i }
 const faKey = (fa: { playerKey?: string; name: string }): string => fa.playerKey ?? `fa:${fa.name}`
 
@@ -125,6 +165,44 @@ export function buildWeeklyBoard(input: {
   const homeOf = (key: string) => opponentByTeam[teamOf(key)]?.home ?? false
   const oppTag = (key: string): OpportunityTag => vorByKey[key]?.opportunity ?? ''
 
+  /*
+   * Weekly ranks over the population a start/sit is actually decided against: every rostered
+   * player in the league PLUS the free agents. Leaving the wire out would rank your WR3 among
+   * rostered receivers only and hide the fact that a better one is sitting there unowned.
+   *
+   * Bye players are excluded from the ranking entirely rather than ranked last on zero points,
+   * which would bury dozens of real players beneath them and distort every number below.
+   */
+  const flexPositions = new Set(
+    Object.entries(slots)
+      .filter(([slot, n]) => Number(n) > 0 && FLEX_ELIGIBILITY[slot])
+      .flatMap(([slot]) => FLEX_ELIGIBILITY[slot]),
+  )
+  const rankable: { key: string; pos: string; pts: number }[] = []
+  for (const p of pool) {
+    if (byeOf(p.playerKey)) continue
+    rankable.push({ key: p.playerKey, pos: normPosOf(p.position), pts: week(p.playerKey) })
+  }
+  for (const fa of freeAgents) {
+    const k = faKey(fa)
+    if (!vorByKey[k]) continue
+    const t = (fa.team ?? '').toUpperCase()
+    if (scheduleKnown && !opponentByTeam[t]) continue
+    rankable.push({ key: k, pos: normPosOf(fa.position), pts: week(k) })
+  }
+  const rankIn = (rows: { key: string; pts: number }[]): Map<string, number> =>
+    new Map([...rows].sort((a, b) => b.pts - a.pts).map((r, i) => [r.key, i + 1] as const))
+
+  const posRankByKey = new Map<string, number>()
+  for (const pos of new Set(rankable.map((r) => r.pos))) {
+    for (const [k, v] of rankIn(rankable.filter((r) => r.pos === pos))) posRankByKey.set(k, v)
+  }
+  const flexRankByKey = rankIn(rankable.filter((r) => flexPositions.has(r.pos)))
+  const ranksOf = (key: string) => ({
+    posRank: posRankByKey.get(key) ?? 0,
+    flexRank: flexRankByKey.get(key) ?? 0,
+  })
+
   // Optimal weekly lineup for my roster (value = this-week points; IL excluded).
   const myPlayers = pool.filter((p) => p.teamKey === myTeamKey)
   const myDepth: DepthPlayer[] = myPlayers.map((p) => ({
@@ -156,6 +234,7 @@ export function buildWeeklyBoard(input: {
         bye: byeOf(key),
         opportunity: oppTag(key),
         inCurrent: currentSet.has(key),
+        ...ranksOf(key),
       })
     }
   }
@@ -172,6 +251,7 @@ export function buildWeeklyBoard(input: {
       weekPoints: week(p.playerKey),
       bye: byeOf(p.playerKey),
       opportunity: oppTag(p.playerKey),
+      ...ranksOf(p.playerKey),
     }))
     .sort((a, b) => b.weekPoints - a.weekPoints)
 
@@ -219,6 +299,7 @@ export function buildWeeklyBoard(input: {
         streamWeeks: v!.streamWeeks,
         streamOf: v!.streamOf,
         opportunity: v!.opportunity,
+        ...ranksOf(faKey(fa)),
         dropName: beatsDrop ? droppable!.name : null,
         dropKey: beatsDrop ? droppable!.playerKey : null,
         gain: beatsDrop ? v!.pointsNextWeek - droppable!.weekPoints : 0,
