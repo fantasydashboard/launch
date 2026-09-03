@@ -555,28 +555,47 @@ function scrollTo(id: string) {
 
 /* ── Tokens ────────────────────────────────────────────────────── */
 .landing-root {
-  /* Neutrals tinted warm toward brand hue (no pure black/white) */
-  --ink-1: oklch(0.97 0.005 90);   /* near-white, off-warm */
-  --ink-2: oklch(0.86 0.008 90);   /* light text */
-  --ink-3: oklch(0.66 0.010 90);   /* muted text */
-  --ink-3-soft: oklch(0.55 0.010 90);
-  --ink-4: oklch(0.36 0.012 90);   /* dim text / borders */
-  --ink-5: oklch(0.25 0.015 90);   /* dark surface */
-  --ink-6: oklch(0.18 0.015 90);   /* deeper surface */
-  --ink-7: oklch(0.14 0.018 90);   /* near-black bg, warm tinted */
-  --ink-8: oklch(0.10 0.018 90);   /* deepest bg */
+  /*
+   * Neutrals tinted COOL, toward the product's own dark (#0B0E13). They used to lean warm
+   * (hue 90) because they were tuned to a yellow accent this page no longer has, and the
+   * ground sat at L 0.10 — near enough to pure black that the accents had nothing to sit on.
+   * Lifting the two darkest steps and turning the whole ladder blue is what makes the page
+   * read as the same surface the app is drawn on.
+   */
+  --ink-1: oklch(0.97 0.005 265);  /* near-white */
+  --ink-2: oklch(0.86 0.008 265);  /* light text */
+  --ink-3: oklch(0.66 0.010 265);  /* muted text */
+  --ink-3-soft: oklch(0.55 0.010 265);
+  --ink-4: oklch(0.36 0.012 265);  /* dim text / borders */
+  --ink-5: oklch(0.25 0.015 265);  /* dark surface */
+  --ink-6: oklch(0.18 0.015 265);  /* deeper surface */
+  --ink-7: oklch(0.165 0.018 265); /* elevated bg */
+  --ink-8: oklch(0.13 0.018 265);  /* page bg */
 
-  /* Brand */
-  --accent-primary: oklch(0.78 0.18 92);    /* yellow. CTA + my-team only */
-  --accent-primary-soft: oklch(0.78 0.18 92 / 0.14);
-  --accent-primary-faint: oklch(0.78 0.18 92 / 0.06);
-  --accent-primary-border: oklch(0.78 0.18 92 / 0.35);
-  --accent-secondary: oklch(0.70 0.27 350);  /* magenta-pink */
-  --accent-secondary-soft: oklch(0.70 0.27 350 / 0.14);
-  --accent-secondary-border: oklch(0.70 0.27 350 / 0.35);
-  --accent-tertiary: oklch(0.72 0.18 195);   /* teal */
-  --accent-tertiary-soft: oklch(0.72 0.18 195 / 0.14);
-  --accent-tertiary-border: oklch(0.72 0.18 195 / 0.35);
+  /*
+   * ONE accent, and it is the product's — inherited from the same token the app renders
+   * with, so the two can never drift apart again.
+   *
+   * There were three: yellow, magenta and teal, none of them the brand. The only brand-lime
+   * thing on the whole page was the "Get Started" button, and only because the nav is a
+   * shared component — so the one element that obeyed the design system was the one element
+   * that looked out of place. Three accents at full chroma on black also meant none of them
+   * led, and the same action appeared in two colours in a single viewport.
+   *
+   * secondary and tertiary are kept as aliases rather than deleted: they are referenced from
+   * inside the product mockups further down, where resolving to the brand is now the correct
+   * answer anyway.
+   */
+  --accent-primary: var(--color-primary, #C6FF3A);
+  --accent-primary-soft: color-mix(in oklab, var(--accent-primary) 14%, transparent);
+  --accent-primary-faint: color-mix(in oklab, var(--accent-primary) 6%, transparent);
+  --accent-primary-border: color-mix(in oklab, var(--accent-primary) 35%, transparent);
+  --accent-secondary: var(--accent-primary);
+  --accent-secondary-soft: var(--accent-primary-soft);
+  --accent-secondary-border: var(--accent-primary-border);
+  --accent-tertiary: var(--accent-primary);
+  --accent-tertiary-soft: var(--accent-primary-soft);
+  --accent-tertiary-border: var(--accent-primary-border);
 
   /* Signals */
   --signal-pos: oklch(0.72 0.16 160);
@@ -607,15 +626,17 @@ function scrollTo(id: string) {
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--accent-primary);
+  color: var(--ink-3);
   margin-bottom: 14px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
-.eyebrow-primary   { color: var(--accent-primary); }
-.eyebrow-secondary { color: var(--accent-secondary); }
-.eyebrow-tertiary  { color: var(--accent-tertiary); }
+/* Kept so the markup does not have to change; all three now read as the label they are.
+   The lit dot beside them is where the brand shows up in an eyebrow. */
+.eyebrow-primary,
+.eyebrow-secondary,
+.eyebrow-tertiary { color: var(--ink-3); }
 .section-headline {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: clamp(2rem, 5vw, 3.25rem);
@@ -674,9 +695,13 @@ function scrollTo(id: string) {
 /* Hover & focus (motion-aware) */
 @media (prefers-reduced-motion: no-preference) {
   .cta-primary { transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), background 0.18s, box-shadow 0.18s; }
-  .cta-primary:hover { background: oklch(0.84 0.18 92); transform: translateY(-2px); box-shadow: 0 12px 36px oklch(0.78 0.18 92 / 0.28); }
+  .cta-primary:hover {
+    background: color-mix(in oklab, var(--accent-primary) 88%, white);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 36px color-mix(in oklab, var(--accent-primary) 28%, transparent);
+  }
   .cta-ghost { transition: color 0.18s, border-color 0.18s, background 0.18s; }
-  .cta-ghost:hover { color: var(--ink-1); border-color: var(--ink-4); background: oklch(0.18 0.015 90 / 0.6); }}
+  .cta-ghost:hover { color: var(--ink-1); border-color: var(--ink-4); background: color-mix(in oklab, var(--ink-6) 60%, transparent); }}
 .cta-primary:focus-visible,
 .cta-ghost:focus-visible {
   outline: 2px solid var(--accent-primary);
@@ -748,7 +773,7 @@ function scrollTo(id: string) {
 }
 .headline-final {
   display: block;
-  color: var(--accent-primary);
+  color: var(--ink-1);
 }
 
 .hero-sub {
@@ -881,7 +906,7 @@ function scrollTo(id: string) {
   font-family: var(--font-display, inherit);
   font-size: 0.78rem;
   letter-spacing: 0.2em;
-  color: oklch(0.66 0.17 350);
+  color: var(--ink-3-soft);
   margin-bottom: 14px;
 }
 .tool-name {
@@ -921,7 +946,7 @@ function scrollTo(id: string) {
   font-size: 0.74rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: oklch(0.78 0.14 200);
+  color: var(--ink-3);
   margin-bottom: 10px;
 }
 .tools-rankings-body {
@@ -953,7 +978,7 @@ function scrollTo(id: string) {
   top: 50%; left: 50%;
   width: 800px; height: 400px;
   transform: translate(-50%, -50%);
-  background: radial-gradient(ellipse, oklch(0.78 0.18 92 / 0.06) 0%, transparent 65%);
+  background: radial-gradient(ellipse, var(--accent-primary-faint) 0%, transparent 65%);
   pointer-events: none;
 }
 .final-inner { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; }
@@ -967,14 +992,14 @@ function scrollTo(id: string) {
   margin: 16px 0 36px;
   max-width: 18ch;
 }
-.final-accent { color: var(--accent-primary); }
+.final-accent { color: var(--ink-1); }
 .final-pricing-link {
   display: inline-block;
   margin-top: 1.1rem;
   font-size: 0.95rem;
-  color: #9ca3af;
+  color: var(--ink-3);
   text-decoration: none;
-  border-bottom: 1px solid rgba(156, 163, 175, 0.35);
+  border-bottom: 1px solid var(--ink-4);
   padding-bottom: 2px;
   transition: color 0.15s ease, border-color 0.15s ease;
 }
@@ -1079,7 +1104,7 @@ function scrollTo(id: string) {
 }
 @media (prefers-reduced-motion: no-preference) {
   .legal-link { transition: color 0.15s; }
-  .legal-link:hover { color: var(--signal-pos); }}
+  .legal-link:hover { color: var(--accent-primary); }}
 
 /* ══════════════════════════════════════════════
    RESPONSIVE
