@@ -23,7 +23,16 @@ export interface PowerTeamInput {
   ties?: number
   pointsFor?: number // optional record tiebreaker / display
   managerless?: boolean // abandoned team — talent won't be optimized
+  /**
+   * All-play win rate, 0..1 — what the record would be if you played everyone every week.
+   * Omit when the season is too short to read it; an absent signal must contribute nothing
+   * rather than a zero, which is the whole lesson of the 0-0 luck bug below.
+   */
+  allPlayPct?: number
 }
+
+/** How much of the résumé is all-play rather than actual record. See RESUME below. */
+export const RESUME_ALLPLAY_WEIGHT = 0.65
 
 export type Tier = 'Contender' | 'Bubble' | 'Rebuilder'
 export type LuckStatus = 'pretender' | 'sleeper' | 'legit'
@@ -40,6 +49,35 @@ export interface PowerRow {
   ties: number
   winPct: number
   luckDelta: number // strengthRank − recordRank (positive = record beats talent = lucky)
+  /**
+   * The season you have actually had: mostly all-play, partly the standings.
+   *
+   * Both inputs are already win rates on 0..1, so this is a plain weighted average and stays
+   * readable as one ("they have played like a .640 team"). That is the reason to combine
+   * these two and not, say, projected points — averaging a win rate with a points-per-week
+   * figure needs normalising first, and every weight you pick after that is arbitrary.
+   *
+   * All-play carries the larger share because it is the record with the coin flip taken out.
+   * Actual record still earns a share: seeding is real and wins are banked.
+   *
+   * Falls back to actual win rate when all-play is unreadable, so an early-season board
+   * degrades to the standings rather than to zeros.
+   */
+  resumePct: number
+  resumeRank: number // 1 = best season so far
+  allPlayRank: number // 1 = best all-play record; equals recordRank when unreadable
+  /**
+   * luckDelta, split into its two halves — they mean different things and want different
+   * responses, which a single number cannot say:
+   *
+   *   execution = strengthRank − allPlayRank   what you did with the roster you have
+   *   schedule  = allPlayRank  − recordRank    who the schedule happened to hand you
+   *
+   * The first is lineup calls, injuries and players missing projections. The second is
+   * nobody's fault and nobody's credit. They sum to luckDelta exactly.
+   */
+  executionDelta: number
+  scheduleDelta: number
   luck: LuckStatus
   tier: Tier
   managerless: boolean
@@ -51,6 +89,8 @@ export interface PowerRankings {
   rows: PowerRow[] // ranked by roster strength
   pretenders: PowerRow[] // lucky, actionable — sell-high marks
   sleepers: PowerRow[] // unlucky, actionable — buy-low targets
+  /** True when all-play was supplied, so résumé and the two gaps mean something. */
+  resumeReadable: boolean
 }
 
 const ord = (n: number) => {
@@ -81,7 +121,7 @@ function rankBy<T>(items: T[], key: (t: T) => number): Map<T, number> {
 
 export function buildPowerRankings(teams: PowerTeamInput[]): PowerRankings {
   const n = teams.length
-  if (!n) return { rows: [], pretenders: [], sleepers: [] }
+  if (!n) return { rows: [], pretenders: [], sleepers: [], resumeReadable: false }
 
   const winPct = (t: PowerTeamInput) => {
     const g = t.wins + t.losses + (t.ties ?? 0)
@@ -90,6 +130,20 @@ export function buildPowerRankings(teams: PowerTeamInput[]): PowerRankings {
   const strengthRank = rankBy(teams, (t) => t.strength)
   // Record rank: win% first, then points-for as the tiebreaker.
   const recordRank = rankBy(teams, (t) => winPct(t) * 1000 + (t.pointsFor ?? 0) / 1e6)
+
+  /* All-play needs every team to have it — ranking a mix of teams that have the signal
+     against teams that don't would order them by whether the data arrived. */
+  const resumeReadable = teams.every((t) => typeof t.allPlayPct === 'number')
+  const allPlayRank = resumeReadable
+    ? rankBy(teams, (t) => t.allPlayPct!)
+    : recordRank
+  const resumePct = (t: PowerTeamInput) =>
+    resumeReadable
+      ? RESUME_ALLPLAY_WEIGHT * t.allPlayPct! + (1 - RESUME_ALLPLAY_WEIGHT) * winPct(t)
+      : winPct(t)
+  const resumeRank = resumeReadable
+    ? rankBy(teams, (t) => resumePct(t) * 1000 + (t.pointsFor ?? 0) / 1e6)
+    : recordRank
 
   /* Luck is a comparison between the standings and the roster, so it needs standings that
      mean something. Before kickoff every team is 0-0 with 0 points-for, so they all tie and
@@ -236,6 +290,11 @@ export function buildPowerRankings(teams: PowerTeamInput[]): PowerRankings {
       ties: t.ties ?? 0,
       winPct: winPct(t),
       luckDelta,
+      resumePct: resumePct(t),
+      resumeRank: resumeRank.get(t)!,
+      allPlayRank: allPlayRank.get(t)!,
+      executionDelta: sr - allPlayRank.get(t)!,
+      scheduleDelta: allPlayRank.get(t)! - rr,
       luck,
       tier,
       managerless,
@@ -269,5 +328,6 @@ export function buildPowerRankings(teams: PowerTeamInput[]): PowerRankings {
     sleepers: rows
       .filter((r) => r.luck === 'sleeper' && r.tier !== 'Rebuilder' && !r.managerless)
       .sort((a, b) => a.luckDelta - b.luckDelta),
+    resumeReadable,
   }
 }

@@ -12,12 +12,10 @@ import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { buildPointsPositional } from '@/league/pointsPositional'
 import { seasonStakes } from '@/myteam/seasonStakes'
-import { buildTrajectory } from '@/league/powerTrajectory'
 import { simulatePlayoffOdds, buildLeverage, type OddsTeam, type GameLeverage } from '@/league/playoffOdds'
 import { buildHotCold } from '@/league/hotCold'
 import { buildTradeFit } from '@/league/tradeFit'
 import { buildStrengthOfSchedule } from '@/league/strengthOfSchedule'
-import PowerTrajectoryChart from '@/components/league/PowerTrajectoryChart.vue'
 import TeamAvatar from '@/components/league/TeamAvatar.vue'
 import type { Landscape } from '@/trades/landscape'
 
@@ -310,12 +308,6 @@ const hotCold = computed(() => {
 
 // ── "THE RACE" TRAJECTORY CHART ───────────────────────────────────────────────
 
-const trajectoryView = computed(() => {
-  const rows = rankings.value?.rows ?? []
-  if (!rows.length) return null
-  const meta = rows.map((r) => ({ teamKey: r.teamKey, teamName: r.teamName, isMe: r.teamKey === activeMyTeamKey.value, teamLogo: r.teamLogo }))
-  return buildTrajectory(trajectory.outcomes.value, [], meta) // [] = no talent overlay; League shows just the standings race
-})
 
 // ── PLAYOFF ODDS ──────────────────────────────────────────────────────────────
 
@@ -623,6 +615,8 @@ const sosBarColor = (sosRank: number, total: number) => {
       <p class="mt-2 font-mono text-[10px] text-dark-textMuted">
         <template v-if="playoffOdds">proj = projected final record · % = playoff odds (rest-of-season sim)</template>
         <template v-else>bar = roster talent · short bar near top = riding luck · long bar near bottom = due to climb</template>
+        ·
+        <router-link to="/power-rankings" class="text-primary hover:underline">how good is everyone? →</router-link>
       </p>
 
       <!-- Hot / Cold callout (last 3 weeks) -->
@@ -764,16 +758,12 @@ const sosBarColor = (sosRank: number, total: number) => {
       </div>
     </section>
 
-    <!-- ── "THE RACE" standings line graph ───────────────────────────────────── -->
-    <section v-if="trajectoryView && trajectoryView.weeks.length >= 2" class="mb-8">
-      <h2 class="font-display text-lg font-bold text-dark-text">The race</h2>
-      <p class="mb-3 font-mono text-xs text-dark-textMuted">
-        Standings rank, week by week — rank 1 up top.
-      </p>
-      <div class="rounded-xl border border-dark-border bg-dark-card p-3">
-        <PowerTrajectoryChart :trajectory="trajectoryView" />
-      </div>
-    </section>
+    <!--
+      "The race" lived here as a standings-only line — the same chart Power Rankings draws,
+      minus the dashed talent overlay, which is the half that makes it worth looking at. Two
+      pages rendering one chart at different fidelities is how a reader ends up unsure which
+      one is the real version, so this page links to it rather than drawing a lesser copy.
+    -->
 
     <!-- ── CATEGORY landscape (toggled: category matrix ⇄ roster positions) ─── -->
     <template v-if="isCategory">

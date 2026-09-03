@@ -170,3 +170,84 @@ describe('buildPowerRankings — before the season has said anything', () => {
     expect(buildPowerRankings(twoWeeks).pretenders).toEqual([])
   })
 })
+
+/*
+ * The résumé rank and the decomposition of luck into its two halves.
+ *
+ * The point of splitting it: "unlucky" currently covers two different problems that want
+ * two different responses. A roster scoring below its talent has a lineup problem it can
+ * fix; a roster out-scoring the league and still losing has a schedule it can only wait out.
+ */
+describe('résumé rank and the two gaps', () => {
+  // Four teams. Talent order t1 > t2 > t3 > t4.
+  const base = [
+    { teamKey: 't1', teamName: 'A', strength: 130, wins: 1, losses: 3 },
+    { teamKey: 't2', teamName: 'B', strength: 120, wins: 2, losses: 2 },
+    { teamKey: 't3', teamName: 'C', strength: 110, wins: 2, losses: 2 },
+    { teamKey: 't4', teamName: 'D', strength: 100, wins: 3, losses: 1 },
+  ]
+  const withAllPlay = (pcts: number[]) => base.map((t, i) => ({ ...t, allPlayPct: pcts[i] }))
+
+  it('blends all-play with actual record and stays readable as a win rate', () => {
+    // t1 has been scoring like the best team (.90) while losing (1-3 = .25).
+    const pr = buildPowerRankings(withAllPlay([0.9, 0.5, 0.5, 0.2]))
+    const t1 = pr.rows.find((r) => r.teamKey === 't1')!
+    expect(t1.resumePct).toBeCloseTo(0.65 * 0.9 + 0.35 * 0.25, 6)
+    expect(t1.resumePct).toBeGreaterThan(0)
+    expect(t1.resumePct).toBeLessThan(1)
+    expect(pr.resumeReadable).toBe(true)
+  })
+
+  it('ranks the season you actually had, not the roster you own', () => {
+    // t4 owns the worst roster but has the best record and the second-best all-play.
+    const pr = buildPowerRankings(withAllPlay([0.9, 0.4, 0.3, 0.7]))
+    const byKey = new Map(pr.rows.map((r) => [r.teamKey, r]))
+    expect(byKey.get('t1')!.strengthRank).toBe(1)
+    expect(byKey.get('t4')!.strengthRank).toBe(4)
+    // Résumé disagrees with talent — which is the entire reason to show both. The worst
+    // roster in the league has had the best season, because he has both won AND scored.
+    expect(byKey.get('t4')!.resumeRank).toBe(1)
+    // t1's scoring drags him up from a 1-3 record, but not past a team doing both.
+    expect(byKey.get('t1')!.resumeRank).toBe(2)
+    expect(byKey.get('t1')!.recordRank).toBe(4)
+  })
+
+  it('splits luck into execution and schedule, and the halves sum to the whole', () => {
+    const pr = buildPowerRankings(withAllPlay([0.9, 0.5, 0.5, 0.2]))
+    for (const r of pr.rows) {
+      expect(r.executionDelta + r.scheduleDelta).toBe(r.luckDelta)
+    }
+  })
+
+  it('tells a schedule problem apart from a lineup problem', () => {
+    // t1: best roster, best all-play, worst record → pure schedule luck, nothing to fix.
+    const scheduled = buildPowerRankings(withAllPlay([0.9, 0.6, 0.4, 0.2]))
+    const t1 = scheduled.rows.find((r) => r.teamKey === 't1')!
+    expect(t1.executionDelta).toBe(0) // 1st in talent, 1st in all-play — doing his job
+    expect(t1.scheduleDelta).toBeLessThan(0) // all-play way ahead of the standings
+
+    // t1 again: best roster, but scoring like the worst team → the roster is not the problem.
+    const executed = buildPowerRankings(withAllPlay([0.2, 0.6, 0.5, 0.9]))
+    const e1 = executed.rows.find((r) => r.teamKey === 't1')!
+    expect(e1.executionDelta).toBeLessThan(0) // talent 1st, all-play last
+  })
+
+  it('falls back to the standings rather than to zeros when all-play is unreadable', () => {
+    const pr = buildPowerRankings(base) // no allPlayPct supplied
+    expect(pr.resumeReadable).toBe(false)
+    for (const r of pr.rows) {
+      expect(r.resumePct).toBe(r.winPct)
+      expect(r.resumeRank).toBe(r.recordRank)
+      expect(r.allPlayRank).toBe(r.recordRank)
+      // With no all-play, the whole gap is attributed to execution and none to schedule —
+      // the honest reading, since we cannot see which half it was.
+      expect(r.scheduleDelta).toBe(0)
+      expect(r.executionDelta).toBe(r.luckDelta)
+    }
+  })
+
+  it('ignores all-play unless every team has it', () => {
+    const partial = base.map((t, i) => (i === 0 ? { ...t, allPlayPct: 0.9 } : t))
+    expect(buildPowerRankings(partial).resumeReadable).toBe(false)
+  })
+})
