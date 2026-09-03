@@ -62,7 +62,11 @@ const { valueByKey, valueOf, loading: valueLoading } = usePointsValue({
 })
 
 // Football Wire runs off the VOR engine (separate from the baseball wire brain above).
-const { wire: fbWire, loading: fbLoading, rosSource, weekSource } = useFootballWire({
+/* Folded by default. Whether there is a move to make is the headline; the rows behind it are
+   the working, and they were pushing the board — the thing you actually browse — off-screen. */
+const movesOpen = ref(false)
+
+const { wire: fbWire, loading: fbLoading, rosSource } = useFootballWire({
   pool,
   freeAgents,
   slots: rosterSlots,
@@ -267,48 +271,66 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
 
         <template v-else>
           <!--
-            No upgrade clearing the bar is a real answer, not an empty state to hide. Saying
-            it out loud (and naming who you'd cut if you do add someone anyway) is the
-            difference between "nothing to do" and the page appearing not to have loaded.
+            One card, folded, carrying the verdict either way — the same shape This Week gives
+            start/sit. "No add worth a drop" is a real answer rather than an empty state to
+            hide, so it keeps its own headline; what folds is the working behind it (the rows,
+            or the who-to-cut chips). Both used to sit open above the board and pushed the
+            thing you actually browse off the bottom of the page.
           -->
-          <section v-if="!fbWire.upgrades.length" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
-            <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">No add worth a drop</h2>
-            <p class="font-mono text-[10px] text-dark-textMuted">
-              Nothing available beats a body already in your lineup, so there's no cut to make this week.
-            </p>
-            <div v-if="cutCandidates.length" class="mt-3 border-t border-dark-border/40 pt-3">
-              <p class="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">If you add anyway, cut from here</p>
-              <div class="flex flex-wrap gap-2">
-                <span v-for="c in cutCandidates" :key="'cut-' + c.playerKey"
-                      class="rounded bg-dark-bg px-2 py-1 font-mono text-[11px] text-dark-textSecondary">
-                  {{ c.name }} <span class="text-dark-textMuted/70">{{ c.position }} · {{ c.vorRos >= 0 ? '+' : '' }}{{ round(c.vorRos) }}</span>
+          <section class="mb-5 rounded-xl border bg-dark-card"
+                   :class="fbWire.upgrades.length ? 'border-primary/40' : 'border-dark-border'">
+            <button class="flex w-full items-center justify-between gap-3 p-4" @click="movesOpen = !movesOpen">
+              <span class="min-w-0 text-left">
+                <span v-if="fbWire.upgrades.length" class="font-display text-xs font-semibold uppercase tracking-wide text-primary">
+                  ★ {{ fbWire.upgrades.length }} add / drop move{{ fbWire.upgrades.length > 1 ? 's' : '' }}
+                  <span class="font-mono text-[10px] normal-case text-dark-textMuted">
+                    · +{{ round(fbWire.upgrades.reduce((t, s) => t + s.marginal, 0)) }} lineup pts on the table
+                  </span>
                 </span>
-              </div>
-            </div>
-          </section>
+                <span v-else class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+                  ✓ No add worth a drop
+                </span>
+                <span class="mt-0.5 block font-mono text-[10px] text-dark-textMuted/70">
+                  <template v-if="fbWire.upgrades.length">add a free agent, cut the body it beats — the lineup points you'd gain</template>
+                  <template v-else>nothing available beats a body already in your lineup<template v-if="cutCandidates.length"> · who to cut if you add anyway</template></template>
+                </span>
+              </span>
+              <span class="shrink-0 font-mono text-dark-textMuted">{{ movesOpen ? '−' : '+' }}</span>
+            </button>
 
-          <!-- 1. BEST UPGRADES — flex-aware lineup-marginal -->
-          <section v-if="fbWire.upgrades.length" class="mb-5 rounded-xl border border-primary/40 bg-dark-card p-4">
-            <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-primary">★ Best upgrades</h2>
-            <p class="mb-3 font-mono text-[10px] text-dark-textMuted">add a free agent, cut the body it beats — the lineup points you'd gain</p>
-            <template v-for="(s, i) in fbWire.upgrades" :key="'fbup-' + i">
-              <div class="flex items-center gap-3 border-b border-dark-border/40 py-2.5 last:border-0">
-                <img :src="teamLogo(s.add.player.team)" alt="" @error="onLogoErr" class="h-6 w-6 shrink-0 object-contain" />
-                <span class="min-w-0 flex-1">
-                  <span class="text-sm text-dark-text">
-                    <span class="font-mono text-[10px] uppercase text-primary">add</span> <span class="font-semibold">{{ s.add.player.name }}</span>
-                    <span class="text-[11px] text-dark-textMuted"> {{ s.add.player.position }} · {{ s.add.player.team }}</span>
+            <div v-if="movesOpen" class="border-t border-dark-border/40 px-4 pb-4 pt-3">
+              <template v-if="fbWire.upgrades.length">
+                <div v-for="(s, i) in fbWire.upgrades" :key="'fbup-' + i"
+                     class="flex items-center gap-3 border-b border-dark-border/40 py-2.5 last:border-0">
+                  <img :src="teamLogo(s.add.player.team)" alt="" @error="onLogoErr" class="h-6 w-6 shrink-0 object-contain" />
+                  <span class="min-w-0 flex-1">
+                    <span class="text-sm text-dark-text">
+                      <span class="font-mono text-[10px] uppercase text-primary">add</span> <span class="font-semibold">{{ s.add.player.name }}</span>
+                      <span class="text-[11px] text-dark-textMuted"> {{ s.add.player.position }} · {{ s.add.player.team }}</span>
+                    </span>
+                    <span class="block text-xs text-dark-textMuted">
+                      <span class="font-mono text-[10px] uppercase">drop</span> {{ s.dropName }}
+                    </span>
                   </span>
-                  <span class="block text-xs text-dark-textMuted">
-                    <span class="font-mono text-[10px] uppercase">drop</span> {{ s.dropName }}
+                  <span class="shrink-0 text-right">
+                    <span class="font-mono text-sm font-bold text-primary">+{{ round(s.marginal) }}</span>
+                    <span class="block font-mono text-[9px] uppercase text-dark-textMuted">lineup pts</span>
                   </span>
-                </span>
-                <span class="shrink-0 text-right">
-                  <span class="font-mono text-sm font-bold text-primary">+{{ round(s.marginal) }}</span>
-                  <span class="block font-mono text-[9px] uppercase text-dark-textMuted">lineup pts</span>
-                </span>
-              </div>
-            </template>
+                </div>
+              </template>
+              <template v-else-if="cutCandidates.length">
+                <p class="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">If you add anyway, cut from here</p>
+                <div class="flex flex-wrap gap-2">
+                  <span v-for="c in cutCandidates" :key="'cut-' + c.playerKey"
+                        class="rounded bg-dark-bg px-2 py-1 font-mono text-[11px] text-dark-textSecondary">
+                    {{ c.name }} <span class="text-dark-textMuted/70">{{ c.position }} · {{ c.vorRos >= 0 ? '+' : '' }}{{ round(c.vorRos) }}</span>
+                  </span>
+                </div>
+              </template>
+              <p v-else class="font-mono text-[10px] text-dark-textMuted">
+                Nothing available beats a body already in your lineup, so there's no cut to make this week.
+              </p>
+            </div>
           </section>
 
           <!--
@@ -329,7 +351,9 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
               <RankingPicker kind="ros" />
             </div>
             <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
-              <template v-if="rosSource !== 'UFD'">ordered by {{ rosSource }} · numbers are ours</template>
+              <!-- Say the scope out loud: the list drives this card, the board below it and the
+                   add/drop verdict above it, so naming only this card would understate it. -->
+              <template v-if="rosSource !== 'UFD'">{{ rosSource }}'s order, our points — drives this page</template>
               <template v-else>value over replacement (season)</template>
             </p>
             <template v-for="r in fbWire.bestAvailable.slice(0, 15)" :key="'fbba-' + (r.player.playerKey ?? r.player.name)">
