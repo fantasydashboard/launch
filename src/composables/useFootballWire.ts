@@ -1,8 +1,10 @@
-import { computed, type ComputedRef, type Ref } from 'vue'
+import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import { buildFootballWire, type FootballWire } from '@/football/footballWire'
 import { orderByRanking } from '@/draft/room/customRankings'
 import { useCustomRankings } from '@/composables/useCustomRankings'
 import { useFootballVor } from './useFootballVor'
+import { sleeperService } from '@/services/sleeper'
+import { playingTeams as playingTeamsOf } from '@/football/footballBye'
 import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { AvailablePlayer } from '@/players/types'
 
@@ -41,6 +43,24 @@ export function useFootballWire(inputs: {
     enabled: inputs.enabled,
   })
 
+  /* This week's NFL schedule, so a rest-of-season board can still warn that a body is idle
+     on Sunday. Empty until it loads (and if it fails), which reads as "unknown" rather than
+     as 32 byes. */
+  const playingTeams = ref<Set<string>>(new Set())
+  async function loadSchedule() {
+    if (!inputs.enabled.value) return
+    try {
+      const state = await sleeperService.getNflState()
+      const week = Number(state.week) || 0
+      if (!week) return
+      const games = await sleeperService.getNflSchedule(state.season, week, String(state.season_type || 'regular'))
+      playingTeams.value = playingTeamsOf(games)
+    } catch {
+      playingTeams.value = new Set()
+    }
+  }
+  watch(inputs.enabled, loadSchedule, { immediate: true })
+
   const wire = computed<FootballWire | null>(() => {
     if (!inputs.enabled.value || !inputs.myTeamKey.value || !Object.keys(vorByKey.value).length) return null
     const built = buildFootballWire({
@@ -49,6 +69,7 @@ export function useFootballWire(inputs: {
       pool: inputs.pool.value,
       slots: inputs.slots.value,
       myTeamKey: inputs.myTeamKey.value,
+      playingTeams: playingTeams.value,
     })
 
     // Order only — every number on these rows stays ours. Upgrades are left

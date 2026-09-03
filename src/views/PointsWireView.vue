@@ -84,14 +84,14 @@ const cutCandidates = computed(() => {
   return [...mine].sort((a, b2) => a.vorRos - b2.vorRos).slice(0, 3)
 })
 
-const boardOpen = ref(false)
+/* Open by default. This board is the product's rest-of-season ranked list — your roster and
+   the wire in one order — and it was collapsed behind a "+" on a page framed as a waiver
+   feed, so the most complete thing here was also the least likely to be seen. */
+const boardOpen = ref(true)
 // Canonical order only — which of these actually appear is decided by the league's own
 // roster_positions inside buildFootballWire, so a league with no K/DEF slot never sees them.
 const boardPositions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 const boardPos = ref('RB') // which position the Full Board shows (one at a time)
-// This-week streamers worth showing: only those above a replacement streamer. Empty in
-// the offseason / a completed season (no live week), which hides the section entirely.
-const streamers = computed(() => (fbWire.value?.thisWeek ?? []).filter((r) => r.vorWeek > 0))
 // Positions that actually have players, in canonical order — drives the picker pills.
 const boardPositionsWithRows = computed(() =>
   fbWire.value ? boardPositions.filter((p) => fbWire.value!.board[p]?.length) : [],
@@ -140,7 +140,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
   <div class="mx-auto max-w-3xl px-4 py-6">
     <header class="mb-4">
       <h1 class="font-display text-2xl font-bold text-dark-text">The Wire</h1>
-      <p class="font-mono text-xs text-dark-textMuted">Add points. Stream volume.</p>
+      <p class="font-mono text-xs text-dark-textMuted">Your roster vs the wire &middot; rest of season</p>
     </header>
 
     <div v-if="loading && !wire" class="py-16 text-center text-dark-textMuted">Loading the wire…</div>
@@ -311,31 +311,14 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
             </template>
           </section>
 
-          <!-- 2. THIS WEEK — next-week VOR + streamability (hidden in the offseason: no live week) -->
-          <section v-if="streamers.length" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
-            <div class="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-              <h2 class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">This week</h2>
-              <RankingPicker kind="week" />
-            </div>
-            <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
-              value over a replacement-level streamer this week<template v-if="weekSource !== 'UFD'">
-              · ordered by {{ weekSource }}</template>
-            </p>
-            <template v-for="r in streamers" :key="'fbtw-' + (r.player.playerKey ?? r.player.name)">
-              <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
-                <img :src="teamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-6 w-6 shrink-0 object-contain" />
-                <span class="min-w-0 flex-1">
-                  <span class="truncate text-sm font-semibold text-dark-text">
-                    {{ r.player.name }}
-                    <span v-if="r.opportunity === 'backup-elevated'" class="ml-1 rounded bg-amber-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-amber-400" title="Healthy backup — the starter ahead of him is injured">step-up</span>
-                  </span>
-                  <span class="text-xs text-dark-textMuted">{{ r.player.position }} · {{ r.player.team }}</span>
-                </span>
-                <span v-if="r.streamOf > 0" class="shrink-0 rounded bg-dark-border/50 px-1.5 py-0.5 font-mono text-[10px] text-dark-textMuted">startable {{ r.streamWeeks }}/{{ r.streamOf }}</span>
-                <span class="w-12 shrink-0 text-right font-mono text-sm" :class="r.vorWeek >= 0 ? 'text-dark-text' : 'text-dark-textMuted'">{{ r.vorWeek >= 0 ? '+' : '' }}{{ round(r.vorWeek) }}</span>
-              </div>
-            </template>
-          </section>
+          <!--
+            The weekly streamer block moved to This Week. The Wire is a REST-OF-SEASON page —
+            "should this player be on my roster instead of one of mine" — and a one-week
+            rental is a different decision on a different clock. Running both here meant the
+            page answered two questions with two currencies and the reader had to notice which
+            was which. This Week owns the weekly clock; the drop is obvious there because the
+            bench is on the same screen.
+          -->
 
           <!-- 3. BEST AVAILABLE — ROS VOR -->
           <section class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
@@ -406,7 +389,12 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                 <div class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm last:border-0" :class="row.owned ? 'text-primary' : row.free ? 'text-dark-text' : 'text-dark-textMuted'">
                   <img v-if="row.headshot" :src="row.headshot" :alt="row.name" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
                   <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
-                  <span class="min-w-0 flex-1 truncate">{{ row.owned ? '★ ' : '' }}{{ row.name }}</span>
+                  <span class="min-w-0 flex-1 truncate">
+                    {{ row.owned ? '★ ' : '' }}{{ row.name }}
+                    <!-- A season-long call still has to survive Sunday: don't cut a player who
+                         is playing for one who is idle without seeing it. -->
+                    <span v-if="row.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>
+                  </span>
                   <span
                     v-if="!row.owned"
                     class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide"

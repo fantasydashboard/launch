@@ -170,7 +170,9 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
       <!-- 4. STREAMERS -->
       <section v-if="board.streamers.length" class="rounded-xl border border-dark-border bg-dark-card p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Streamers</h2>
-        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">best free agents for week {{ currentWeek }}</p>
+        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
+          one-week adds for week {{ currentWeek }} — the drop is the other half of the decision
+        </p>
         <template v-for="r in board.streamers" :key="'sm-' + (r.player.playerKey ?? r.player.name)">
           <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
             <img v-if="r.player.headshot" :src="r.player.headshot" :alt="r.player.name" loading="lazy" @error="onLogoErr" class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
@@ -183,7 +185,13 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               <span class="text-xs text-dark-textMuted">{{ r.player.position }} · {{ r.player.team }}</span>
             </span>
             <span v-if="r.streamOf > 0" class="shrink-0 rounded bg-dark-border/50 px-1.5 py-0.5 font-mono text-[10px] text-dark-textMuted">startable {{ r.streamWeeks }}/{{ r.streamOf }}</span>
-            <span class="w-12 shrink-0 text-right font-mono text-sm text-dark-text">{{ round(r.weekPoints) }}</span>
+            <span class="w-24 shrink-0 text-right">
+              <span class="block font-mono text-sm text-dark-text">{{ round(r.weekPoints) }}</span>
+              <span v-if="r.dropName" class="block font-mono text-[9px] text-primary">
+                drop {{ r.dropName }} &middot; +{{ round(r.gain) }}
+              </span>
+              <span v-else class="block font-mono text-[9px] text-dark-textMuted/70">no upgrade</span>
+            </span>
           </div>
         </template>
       </section>

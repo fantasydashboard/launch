@@ -389,7 +389,7 @@
 
             <!-- RIGHT: Tools + context chip + settings -->
             <div class="flex items-center gap-1">
-              <!-- Tools (Free Tools link + Ultimate Tools upsell CTA) -->
+              <!-- Tools (Free Tools) + the League Beat cross-link -->
               <router-link
                 v-for="tool in toolTabs"
                 :key="tool.path"
@@ -406,6 +406,34 @@
                 ]"
               >
                 {{ tool.name }}
+              </router-link>
+              <!--
+                The League Beat, in the slot the retired upsell used to occupy. Signed-in only:
+                it points off-site, which is fine for someone already inside the product (and
+                the Beat feeds them back) but wrong to put in front of a visitor still deciding.
+              -->
+              <a
+                href="https://www.theleaguebeat.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="px-3 py-1 text-xs font-semibold rounded-full transition-colors text-dark-textSecondary hover:text-dark-text"
+              >
+                The League Beat &#8599;
+              </a>
+              <!--
+                The retired Ultimate Tools chip was the only route to pricing from the nav, so
+                removing it removed the upgrade path with it. This replaces it honestly: shown
+                only to people who haven't paid, and it says what it is.
+              -->
+              <router-link
+                v-if="!isActivePaidUser"
+                to="/pricing"
+                class="px-3 py-1 text-xs font-semibold rounded-full transition-colors"
+                :class="$route.path === '/pricing'
+                  ? 'bg-primary text-dark-bg'
+                  : 'text-primary border border-primary/50 hover:bg-primary/15'"
+              >
+                Upgrade
               </router-link>
 
               <!-- Context chip: Week n · season -->
@@ -1316,12 +1344,15 @@ const tabs = computed(() => [
   { name: 'Power Rankings', path: '/power-rankings' },
   { name: 'History', path: '/history' },
   { name: 'Free Tools', path: '/free-tools', isTool: true },
-  { name: 'Ultimate Tools', path: '/ultimate-tools', isUltimate: true, isTool: true }
+  /* "Ultimate Tools" is retired. Its four tabs (Rest of Season, Teams, Start/Sit, Trade
+     Analyzer) were older duplicates of My Team, Power Rankings, This Week and Trades, and
+     keeping it in the nav offered a second, worse answer to questions those pages already
+     own. The route stays alive so /projections and /dynasty deep links still resolve. */
 ])
 
 // Section tabs (Tier 2 nav) — exclude the tools, which live in Tier 1
 const sectionTabs = computed(() => tabs.value.filter((t: any) => !t.isTool))
-// Tool tabs (Tier 1 utility bar): Free Tools + Ultimate Tools
+// Tool tabs (Tier 1 utility bar). The League Beat link sits beside these in the template.
 const toolTabs = computed(() => tabs.value.filter((t: any) => (t as any).isTool))
 
 // Available sports for grouping leagues

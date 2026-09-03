@@ -45,6 +45,8 @@ export interface BoardRow {
    * waiver page, where availability is the first thing you need to know.
    */
   free: boolean
+  /** On bye this week. A rest-of-season decision still has to survive Sunday. */
+  bye?: boolean
   /** Tier within this position, 1 = best. Same cut rule as the draft board. */
   tier: number
   /** True on the first row of a new tier, so the view can draw the cliff. */
@@ -70,8 +72,15 @@ export function buildFootballWire(input: {
   pool: PointsPoolPlayer[]
   slots: Record<string, number>
   myTeamKey: string
+  /**
+   * NFL teams playing this week. Empty means the schedule is unknown — never fabricate byes
+   * from missing data, the same rule zeroByeWeek follows.
+   */
+  playingTeams?: Set<string>
 }): FootballWire {
-  const { freeAgents, vorByKey, pool, slots, myTeamKey } = input
+  const { freeAgents, vorByKey, pool, slots, myTeamKey, playingTeams } = input
+  const scheduleKnown = !!playingTeams && playingTeams.size > 0
+  const onBye = (team?: string) => scheduleKnown && !playingTeams!.has(String(team ?? '').toUpperCase())
 
   /* Only positions this league can actually start. A league with no K or DEF slot was
      being handed kickers and defenses as "best available" — roughly 40% of the list —
@@ -141,13 +150,13 @@ export function buildFootballWire(input: {
     for (const p of pool) {
       if (normPos(p.position) !== pos) continue
       const pv = vorByKey[p.playerKey]
-      entries.push({ playerKey: p.playerKey, name: p.name, position: pos, team: p.proTeam, headshot: p.headshot, vorRos: pv?.vorRos ?? 0, owned: p.teamKey === myTeamKey, unprojected: !pv, free: false, tier: 0 })
+      entries.push({ playerKey: p.playerKey, name: p.name, position: pos, team: p.proTeam, headshot: p.headshot, vorRos: pv?.vorRos ?? 0, owned: p.teamKey === myTeamKey, unprojected: !pv, free: false, tier: 0, bye: onBye(p.proTeam) })
     }
     for (const fa of freeAgents) {
       if (normPos(fa.position) !== pos) continue
       const v = vorByKey[faKey(fa)]
       if (!v) continue
-      entries.push({ playerKey: faKey(fa), name: fa.name, position: pos, team: fa.team, headshot: fa.headshot, vorRos: v.vorRos, owned: false, free: true, tier: 0 })
+      entries.push({ playerKey: faKey(fa), name: fa.name, position: pos, team: fa.team, headshot: fa.headshot, vorRos: v.vorRos, owned: false, free: true, tier: 0, bye: onBye(fa.team) })
     }
     if (!entries.length) continue
 

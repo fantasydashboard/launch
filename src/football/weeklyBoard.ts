@@ -48,6 +48,14 @@ export interface WeeklyStreamer {
   streamWeeks: number
   streamOf: number
   opportunity: OpportunityTag
+  /**
+   * Who comes off for him, and what the week actually gains. An add with no drop is half a
+   * decision — "add Dak Prescott, 19" is useless beside a QB already projecting 19, and the
+   * page never said so. Null when nobody on your bench is worse than him.
+   */
+  dropName: string | null
+  dropKey: string | null
+  gain: number
 }
 
 /** A start/sit that is nearly a coin flip — where a week is quietly won or lost. */
@@ -191,19 +199,31 @@ export function buildWeeklyBoard(input: {
     })
   }
 
+  /* The weakest body you could reasonably cut: last on the bench by this week's points.
+     Byes are skipped as drop candidates — a player on bye this week is not automatically
+     the right cut, he is just idle. */
+  const droppable = [...bench].filter((b) => !b.bye).sort((a, b) => a.weekPoints - b.weekPoints)[0] ?? null
+
   const streamers: WeeklyStreamer[] = freeAgents
     .map((fa) => ({ fa, v: vorByKey[faKey(fa)] }))
     .filter((x) => x.v && x.v.vorWeek > 0)
     .sort((a, b) => b.v!.vorWeek - a.v!.vorWeek)
     .slice(0, 8)
-    .map(({ fa, v }) => ({
-      player: fa,
-      weekPoints: v!.pointsNextWeek,
-      vorWeek: v!.vorWeek,
-      streamWeeks: v!.streamWeeks,
-      streamOf: v!.streamOf,
-      opportunity: v!.opportunity,
-    }))
+    .map(({ fa, v }) => {
+      // Only a real upgrade counts: the streamer has to beat the body he would replace.
+      const beatsDrop = droppable !== null && v!.pointsNextWeek > droppable.weekPoints
+      return {
+        player: fa,
+        weekPoints: v!.pointsNextWeek,
+        vorWeek: v!.vorWeek,
+        streamWeeks: v!.streamWeeks,
+        streamOf: v!.streamOf,
+        opportunity: v!.opportunity,
+        dropName: beatsDrop ? droppable!.name : null,
+        dropKey: beatsDrop ? droppable!.playerKey : null,
+        gain: beatsDrop ? v!.pointsNextWeek - droppable!.weekPoints : 0,
+      }
+    })
 
   /*
    * Close calls: a started body whose best benched alternative for the same slot is within
