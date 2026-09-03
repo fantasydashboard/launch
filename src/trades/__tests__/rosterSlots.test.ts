@@ -142,30 +142,50 @@ describe('startableCounts', () => {
   )
 
   it('scales each position by how many the league actually starts', () => {
-    // 10 teams: QB 1 each; RB 2 + a third of the 3 flex = 3; WR 3; TE 1 + 1 = 2.
+    // 10 teams. QB: 1 each. Flex (3) splits 2:2:1 by dedicated slots -> RB +1.2, WR +1.2, TE +0.6.
     const c = startableCounts(slots, 10)
     expect(c.QB).toBe(10)
-    expect(c.RB).toBe(30)
-    expect(c.WR).toBe(30)
-    expect(c.TE).toBe(20)
+    expect(c.RB).toBe(32)
+    expect(c.WR).toBe(32)
+    expect(c.TE).toBe(16)
+  })
+
+  /*
+   * The bug this weighting fixes: an even flex split gave TE a pool of 20 against QB's 10, so
+   * TE11 read as a comfortable starter (0.55) while QB9 read as replaceable (0.90). Two
+   * onesie positions, two different scales, visible on screen as one green and one grey.
+   */
+  it('keeps the two onesie positions on comparable scales', () => {
+    const c = startableCounts(slots, 10)
+    expect(startableFraction(11, 'TE', c)!).toBeGreaterThan(2 / 3)
+    expect(startableFraction(9, 'QB', c)!).toBeGreaterThan(2 / 3)
+    // And a mid-pack starter at either reads the same.
+    expect(startableFraction(8, 'TE', c)!).toBeCloseTo(0.5, 2)
+    expect(startableFraction(5, 'QB', c)!).toBeCloseTo(0.5, 2)
+  })
+
+  it('still gives a flex-only position a share rather than a pool of zero', () => {
+    // No dedicated TE slot: TE exists solely through the flex.
+    const flexOnly = { QB: 1, RB: 2, WR: 2, FLEX: 2 }
+    expect(startableCounts(flexOnly, 10).TE).toBeGreaterThan(0)
   })
 
   it('needs no special case for onesie positions — the pool encodes it', () => {
     const c = startableCounts(slots, 10)
     // QB5 is mid-pack among starters; RB5 is elite. Same rank, different meaning.
     expect(startableFraction(5, 'QB', c)).toBeCloseTo(0.5, 5)
-    expect(startableFraction(5, 'RB', c)).toBeCloseTo(1 / 6, 5)
+    expect(startableFraction(5, 'RB', c)!).toBeLessThan(0.2)
   })
 
   it('marks anyone past the pool as unstartable', () => {
     const c = startableCounts(slots, 10)
     expect(startableFraction(36, 'RB', c)!).toBeGreaterThan(1)
-    expect(startableFraction(30, 'RB', c)!).toBeCloseTo(1, 5)
+    expect(startableFraction(32, 'RB', c)!).toBeCloseTo(1, 5)
   })
 
   it('scales with league size rather than hardcoding thresholds', () => {
     expect(startableCounts(slots, 14).QB).toBe(14)
-    expect(startableCounts(slots, 14).RB).toBe(42)
+    expect(startableCounts(slots, 14).RB).toBe(45)
   })
 
   it('returns null when the rank cannot be placed', () => {

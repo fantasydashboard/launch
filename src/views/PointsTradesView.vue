@@ -95,20 +95,6 @@ const teamModel = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
   return buildPointsTeam(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value)
 })
-function rankClass(rank: number, teams: number): string {
-  if (teams <= 1) return 'text-dark-text'
-  const f = rank / teams
-  if (f <= 0.34) return 'text-primary'
-  if (f >= 0.75) return 'text-[#FF5C5C]'
-  return 'text-dark-text'
-}
-function barClass(rank: number, teams: number): string {
-  if (teams <= 1) return 'bg-dark-textMuted/40'
-  const f = rank / teams
-  if (f <= 0.34) return 'bg-primary'
-  if (f >= 0.75) return 'bg-[#FF5C5C]/70'
-  return 'bg-dark-textMuted/50'
-}
 const rankBar = (rank: number, teams: number) => (teams <= 1 ? 100 : Math.round(((teams - rank + 1) / teams) * 100))
 
 /**
@@ -119,15 +105,35 @@ const rankBar = (rank: number, teams: number) => (teams <= 1 ? 100 : Math.round(
  * because "only ten quarterbacks start" is already the denominator.
  */
 const startable = computed(() => startableCounts(rosterSlots.value, leagueSize.value))
-function rankTone(posRank: number, position: string): string {
-  const f = startableFraction(posRank, position, startable.value)
+
+/**
+ * One five-band scale, fed a fraction of "how far through the field are you". Both callers
+ * below hand it a different kind of fraction — rank within the startable pool, or rank among
+ * the league's teams at a slot — and get the same colours, so a green on one block means the
+ * same thing as a green on the other.
+ */
+function toneForFraction(f: number | null): string {
   if (f === null) return 'text-dark-textMuted/60'
-  if (f <= 1 / 3) return 'text-[#7ee787]'   // top third of starters
-  if (f <= 2 / 3) return 'text-[#3fb950]'   // comfortable starter
-  if (f <= 1) return 'text-dark-textMuted'  // last startable third — replaceable
+  if (f <= 1 / 3) return 'text-[#7ee787]'   // top third
+  if (f <= 2 / 3) return 'text-[#3fb950]'   // comfortably in
+  if (f <= 1) return 'text-dark-textMuted'  // last third — replaceable
   if (f <= 1.5) return 'text-[#d29922]'     // just off the pool
-  return 'text-[#f85149]'                   // deep bench
+  return 'text-[#f85149]'                   // well outside
 }
+function barForFraction(f: number | null): string {
+  if (f === null) return 'bg-dark-textMuted/40'
+  if (f <= 1 / 3) return 'bg-[#7ee787]'
+  if (f <= 2 / 3) return 'bg-[#3fb950]'
+  if (f <= 1) return 'bg-dark-textMuted/50'
+  if (f <= 1.5) return 'bg-[#d29922]/70'
+  return 'bg-[#f85149]/70'
+}
+const rankTone = (posRank: number, position: string) =>
+  toneForFraction(startableFraction(posRank, position, startable.value))
+/* The slot spine ranks you against the other teams at that seat, so the fraction is rank over
+   league size — a different measurement, deliberately shown on the same scale. */
+const slotTone = (rank: number, teams: number) => toneForFraction(teams > 0 ? rank / teams : null)
+const slotBar = (rank: number, teams: number) => barForFraction(teams > 0 ? rank / teams : null)
 
 /* The slot spine carries only a player key, so images come from the pool the page already
    has rather than being threaded through buildPointsTeam. */
@@ -252,7 +258,7 @@ function fairness(myGain: number, theirGain: number): string {
           <div v-for="(sl, i) in teamModel.slotRanks" :key="'slot-' + i" class="flex items-center gap-3">
             <span class="w-10 shrink-0 font-mono text-xs text-dark-textMuted">{{ sl.slot }}</span>
             <span class="w-12 shrink-0 text-right font-mono text-sm font-semibold"
-                  :class="sl.starterKey ? rankClass(sl.rank, sl.teams) : 'text-dark-textMuted/50'">
+                  :class="sl.starterKey ? slotTone(sl.rank, sl.teams) : 'text-dark-textMuted/50'">
               {{ sl.starterKey ? ordinal(sl.rank) : '—' }}
             </span>
             <img v-if="sl.starterKey && headshotOf(sl.starterKey)" :src="headshotOf(sl.starterKey)" :alt="sl.starterName" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
@@ -263,7 +269,7 @@ function fairness(myGain: number, theirGain: number): string {
               {{ sl.starterKey ? sl.starterName : 'open slot' }}
             </span>
             <div class="relative h-2 flex-1 overflow-hidden rounded-full bg-dark-bg">
-              <div v-if="sl.starterKey" class="absolute inset-y-0 left-0 rounded-full" :class="barClass(sl.rank, sl.teams)"
+              <div v-if="sl.starterKey" class="absolute inset-y-0 left-0 rounded-full" :class="slotBar(sl.rank, sl.teams)"
                    :style="{ width: rankBar(sl.rank, sl.teams) + '%' }" />
             </div>
             <span class="w-12 shrink-0 text-right font-mono text-xs text-dark-textMuted">

@@ -125,9 +125,13 @@ export function startablePositions(slots: Record<string, number>): Set<string> {
  * by the startable pool turns both into the same scale — and it handles onesie positions for
  * free, because "only ten quarterbacks start" is already in the denominator. No special case.
  *
- * Flex slots are split evenly across the positions eligible to fill them. In practice flex
- * skews to RB/WR, so a TE's pool is a little generous here — a deliberate simplification
- * rather than an oversight.
+ * Flex slots are split across eligible positions in proportion to the DEDICATED starters the
+ * league already gives each one. Splitting evenly was wrong in a way you could see: a league
+ * starting QB/RB/RB/WR/WR/TE with three flex gave TE a pool of 20 against QB's 10, so TE11
+ * rendered as a comfortable starter while QB9 rendered as replaceable — two onesie positions
+ * coloured on different scales. Weighting by dedicated slots (2 RB : 2 WR : 1 TE here) keeps
+ * the ratio the league itself set, and it comes from the settings rather than from a
+ * hardcoded football convention.
  */
 export function startableCounts(
   slots: Record<string, number>,
@@ -137,12 +141,21 @@ export function startableCounts(
   for (const [slot, rawCount] of Object.entries(slots ?? {})) {
     const count = Number(rawCount)
     if (!Number.isFinite(count) || count <= 0) continue
+    if (!FLEX_ELIGIBILITY[slot]) perTeam[slot] = (perTeam[slot] ?? 0) + count
+  }
+
+  /* Flex is allocated after the dedicated slots are known, so the weights exist to divide by.
+     A position eligible for flex but with no dedicated slot of its own still deserves a
+     share, so weights floor at a token amount rather than at zero. */
+  for (const [slot, rawCount] of Object.entries(slots ?? {})) {
+    const count = Number(rawCount)
     const eligible = FLEX_ELIGIBILITY[slot]
-    if (eligible?.length) {
-      for (const pos of eligible) perTeam[pos] = (perTeam[pos] ?? 0) + count / eligible.length
-    } else {
-      perTeam[slot] = (perTeam[slot] ?? 0) + count
-    }
+    if (!eligible?.length || !Number.isFinite(count) || count <= 0) continue
+    const weights = eligible.map((pos) => Math.max(perTeam[pos] ?? 0, 0.25))
+    const total = weights.reduce((a, b) => a + b, 0)
+    eligible.forEach((pos, i) => {
+      perTeam[pos] = (perTeam[pos] ?? 0) + (count * weights[i]) / total
+    })
   }
   const teams = Math.max(1, Math.floor(Number(leagueSize) || 0))
   const out: Record<string, number> = {}
