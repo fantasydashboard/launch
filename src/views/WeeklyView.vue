@@ -101,11 +101,21 @@ const boardRows = computed(() => {
   const mineBelow = rows.slice(BOARD_LIMIT).filter((r) => r.owner === 'me')
   return [...head, ...mineBelow]
 })
-const OWNER_BADGE: Record<string, { label: string; cls: string }> = {
-  me: { label: 'you', cls: 'bg-primary/15 text-primary' },
-  opp: { label: 'vs', cls: 'bg-[#e69a4a]/15 text-[#e69a4a]' },
-  free: { label: 'free', cls: 'bg-[#4ade80]/15 text-[#4ade80]' },
-  other: { label: '', cls: '' },
+/*
+ * Ownership, marked the way The Wire marks it: a star and green type for your own players,
+ * because a chip in a column of chips is something you have to read, and a star is something
+ * you see. This board has a fourth state The Wire does not — the manager you are actually
+ * playing this week — and it deserves a marker of the same weight rather than a quieter one.
+ * A glyph carries it (a diamond against the star, distinct in silhouette, not just in hue)
+ * and their crest carries the rest: on a page about one specific opponent, the picture of
+ * that team says "this is the guy" faster than any word does.
+ */
+const OWNER_GLYPH: Record<string, string> = { me: '★', opp: '◆' }
+const OWNER_TEXT: Record<string, string> = {
+  me: 'text-primary',
+  opp: 'text-[#e69a4a]',
+  free: 'text-dark-text',
+  other: 'text-dark-textMuted',
 }
 
 /* Position rank only, for the seat-by-seat view — a flex rank on both sides of a duel is
@@ -494,10 +504,11 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               @click="boardPos = pos"
             >{{ pos }}</button>
           </div>
-          <p class="mb-2 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted/70">
-            <span class="text-primary">you</span> ·
-            <span class="text-[#e69a4a]">vs</span> = {{ board.matchup ? board.matchup.opponentName : 'your opponent' }} ·
-            <span class="text-[#4ade80]">free</span> = on waivers
+          <p class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted/70">
+            <span><span class="text-primary">★</span> yours</span>
+            <span v-if="board.matchup"><span class="text-[#e69a4a]">◆</span> {{ board.matchup.opponentName }} — this week</span>
+            <span><span class="text-[#4ade80]">●</span> free agent</span>
+            <span><span class="text-dark-textMuted/50">●</span> rostered elsewhere</span>
           </p>
 
           <template v-for="(row, i) in boardRows" :key="'bw-' + row.playerKey">
@@ -512,20 +523,25 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             </div>
             <div
               class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm last:border-0"
-              :class="row.owner === 'me' ? 'text-dark-text' : row.owner === 'free' ? 'text-dark-textSecondary' : 'text-dark-textMuted'"
+              :class="OWNER_TEXT[row.owner]"
             >
               <span class="w-6 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/60">{{ i + 1 }}</span>
               <img v-if="row.headshot" :src="row.headshot" :alt="row.name" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
               <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
               <span class="min-w-0 flex-1 truncate">
-                {{ row.name }}
+                <span v-if="OWNER_GLYPH[row.owner]">{{ OWNER_GLYPH[row.owner] }} </span>{{ row.name }}
                 <span v-if="row.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>
               </span>
+              <!-- The opponent gets their crest beside their name; every other manager stays a
+                   name in muted type, so the team you are playing is the only one with a face. -->
+              <span v-if="row.owner === 'opp'" class="hidden shrink-0 items-center gap-1.5 sm:flex">
+                <span class="truncate font-mono text-[9px] text-[#e69a4a]/80" style="max-width:8rem">{{ row.ownerName }}</span>
+                <img v-if="board.matchup && board.matchup.opponentLogo" :src="board.matchup.opponentLogo" alt="" @error="onLogoErr" class="h-4 w-4 shrink-0 rounded bg-dark-border object-cover" />
+              </span>
               <span
-                v-if="OWNER_BADGE[row.owner].label"
-                class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase"
-                :class="OWNER_BADGE[row.owner].cls"
-              >{{ OWNER_BADGE[row.owner].label }}</span>
+                v-else-if="row.owner === 'free'"
+                class="shrink-0 rounded bg-[#4ade80]/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-[#4ade80]"
+              >free</span>
               <span v-else-if="row.ownerName" class="hidden shrink-0 truncate font-mono text-[9px] text-dark-textMuted/50 sm:inline" style="max-width:8rem">{{ row.ownerName }}</span>
               <img v-if="row.team" :src="teamLogo(row.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 shrink-0 object-contain" />
               <span class="shrink-0 font-mono text-[9px]" :class="boardPos === 'FLEX' ? flexTone(row.flexRank) : posTone(row)">
