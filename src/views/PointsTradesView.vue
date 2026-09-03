@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
@@ -7,6 +7,7 @@ import { usePointsValue } from '@/composables/usePointsValue'
 import { useFootballVor } from '@/composables/useFootballVor'
 import { buildPointsTrades } from '@/myteam/pointsTrades'
 import { buildPointsTradeLandscape } from '@/myteam/pointsTradeLandscape'
+import { buildRosterCompare } from '@/myteam/rosterCompare'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import type { AvailablePlayer } from '@/players/types'
@@ -95,6 +96,43 @@ const weakestSpot = computed(() => {
   }
   return worst ? `${worst} (${ordinal(worstRank)})` : ''
 })
+
+/**
+ * The detail view under the landscape grid. The grid says who is strong where; it never shows
+ * a player, so it cannot tell you what to actually offer. Picking a manager puts both rosters
+ * side by side in one order, which is the form the conversation actually takes.
+ */
+const comparePartner = ref('')
+const compareOptions = computed(() => {
+  const ls = landscape.value
+  if (!ls) return []
+  return ls.teamKeys
+    .filter((k) => k !== myTeamKey.value)
+    .map((k) => ({ key: k, name: ls.teamNames[k] || teamNames.value[k] || 'Team' }))
+})
+// Default to the best-fit partner rather than making the user guess where to start.
+watch(compareOptions, (opts) => {
+  if (!opts.length) { comparePartner.value = ''; return }
+  if (opts.some((o) => o.key === comparePartner.value)) return
+  comparePartner.value = landscape.value?.partners[0]?.teamKey ?? opts[0].key
+}, { immediate: true })
+
+const compare = computed(() => {
+  if (!comparePartner.value || !myTeamKey.value || !pool.value.length) return null
+  return buildRosterCompare({
+    pool: pool.value,
+    valueByKey: valueByKey.value,
+    fgByKey: fgByKey.value,
+    myTeamKey: myTeamKey.value,
+    theirTeamKey: comparePartner.value,
+    slots: rosterSlots.value,
+    sport: leagueStore.activeSport,
+    vorByKey: tradeVor.value,
+  })
+})
+const comparePartnerName = computed(
+  () => compareOptions.value.find((o) => o.key === comparePartner.value)?.name ?? 'them',
+)
 
 // Short column label for the heatmap (initials / first chars of the team name).
 function shortName(name: string): string {
@@ -297,6 +335,77 @@ function fairness(myGain: number, theirGain: number): string {
           each cell = that team's rank at the position ({{ isFootball ? 'its starters there, by value over replacement' : "its best body's projected points" }}) ·
           <span class="text-primary">green</span> strong · <span class="text-[#FF5C5C]">red</span> weak ·
           a partner green where you're red is your best fit
+        </p>
+      </section>
+
+      <!--
+        Head to head. The grid above is an aggregate and never shows a player, so it can tell
+        you WHO to talk to but not what to offer. This is the same question at roster level:
+        both benches in one order, with the surplus you'd sell from and the hole you'd buy
+        into on adjacent rows.
+      -->
+      <section v-if="compare" class="mt-4 rounded-xl border border-dark-border bg-dark-card p-4">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Head to head</p>
+          <select
+            v-model="comparePartner"
+            class="rounded border border-dark-border bg-dark-bg px-2 py-1 font-mono text-[11px] text-dark-text"
+            aria-label="Compare your roster with another team"
+          >
+            <option v-for="o in compareOptions" :key="o.key" :value="o.key">{{ o.name }}</option>
+          </select>
+        </div>
+
+        <p class="mb-3 font-mono text-[10px] leading-relaxed text-dark-textMuted">
+          <template v-if="compare.youBuy.length || compare.youSell.length">
+            <template v-if="compare.youSell.length">
+              you're deeper at <span class="text-primary">{{ compare.youSell.join(', ') }}</span>
+            </template>
+            <template v-if="compare.youSell.length && compare.youBuy.length"> · </template>
+            <template v-if="compare.youBuy.length">
+              they're deeper at <span class="text-[#FF5C5C]">{{ compare.youBuy.join(', ') }}</span>
+            </template>
+          </template>
+          <template v-else>no position separates you two by enough to build a deal around</template>
+        </p>
+
+        <div v-for="row in compare.positions" :key="'cmp-' + row.position" class="mb-3 last:mb-0">
+          <div class="mb-1 flex items-baseline justify-between font-mono text-[10px] uppercase tracking-wider">
+            <span class="text-dark-textMuted">{{ row.position }}</span>
+            <span :class="row.edge > 0 ? 'text-primary' : row.edge < 0 ? 'text-[#FF5C5C]' : 'text-dark-textMuted'">
+              {{ row.edge > 0 ? 'you +' : row.edge < 0 ? 'them +' : 'even ' }}{{ Math.abs(round(row.edge)) }}
+            </span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div class="rounded-lg bg-dark-bg/60 p-2">
+              <div v-if="!row.mine.length" class="font-mono text-[10px] text-dark-textMuted/60">nobody</div>
+              <div v-for="b in row.mine" :key="b.playerKey" class="flex items-center gap-1.5 py-0.5 text-[12px]">
+                <span class="min-w-0 flex-1 truncate" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted'">
+                  {{ b.name }}
+                </span>
+                <span class="shrink-0 font-mono text-[10px]" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted/70'">
+                  {{ b.value >= 0 ? '+' : '' }}{{ round(b.value) }}
+                </span>
+              </div>
+            </div>
+            <div class="rounded-lg bg-dark-bg/60 p-2">
+              <div v-if="!row.theirs.length" class="font-mono text-[10px] text-dark-textMuted/60">nobody</div>
+              <div v-for="b in row.theirs" :key="b.playerKey" class="flex items-center gap-1.5 py-0.5 text-[12px]">
+                <span class="min-w-0 flex-1 truncate" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted'">
+                  {{ b.name }}
+                </span>
+                <span class="shrink-0 font-mono text-[10px]" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted/70'">
+                  {{ b.value >= 0 ? '+' : '' }}{{ round(b.value) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="mt-3 font-mono text-[9px] leading-relaxed text-dark-textMuted">
+          you on the left, {{ comparePartnerName }} on the right ·
+          bright = starts for that roster, dim = depth ·
+          {{ isFootball ? 'value over replacement, rest of season' : 'projected points, rest of season' }}
         </p>
       </section>
     </template>
