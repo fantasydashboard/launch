@@ -129,6 +129,21 @@ export interface OppStarter {
   headshot?: string
   weekPoints: number
   bye: boolean
+  posRank: number
+  flexRank: number
+}
+
+/**
+ * One roster spot, squared off. Both sides fill the same slot, so the comparison is the one
+ * the week actually turns on — not "who has the better team" but "who wins this seat".
+ * Either side can be null when the two rosters fill a slot a different number of times.
+ */
+export interface SlotDuel {
+  slot: string
+  mine: WeeklyStarter | null
+  theirs: OppStarter | null
+  /** Mine minus theirs, in this week's points. */
+  edge: number
 }
 
 /** This week's fantasy matchup, projected off the same weekly points as the lineup. */
@@ -144,6 +159,8 @@ export interface WeeklyMatchup {
   /** Their starters who are idle. Their problem is your margin, and it is the one
       genuinely actionable thing about another manager's roster. */
   oppByes: OppStarter[]
+  /** Slot-by-slot, mine against theirs, in lineup order. */
+  duels: SlotDuel[]
 }
 
 /** Who holds a player, from the point of view of the manager reading the page. */
@@ -447,10 +464,33 @@ export function buildWeeklyBoard(input: {
             headshot: p?.headshot,
             weekPoints: week(k),
             bye: byeOf(k),
+            ...ranksOf(k),
           })
         }
       }
       oppStarters.sort((a, b) => slotIdx(a.slot) - slotIdx(b.slot) || b.weekPoints - a.weekPoints)
+
+      /* Pair the two lineups seat by seat. Both are already sorted by slot then by points, so
+         the nth body at a slot on one side faces the nth on the other — a league that starts
+         two backs pits RB1 against RB1 and RB2 against RB2, which is the comparison a manager
+         makes in their head anyway. */
+      const duels: SlotDuel[] = []
+      const slotOrder = [...new Set([...starters.map((x) => x.slot), ...oppStarters.map((x) => x.slot)])]
+        .sort((a, b) => slotIdx(a) - slotIdx(b))
+      for (const slot of slotOrder) {
+        const mineAt = starters.filter((x) => x.slot === slot)
+        const theirsAt = oppStarters.filter((x) => x.slot === slot)
+        for (let i = 0; i < Math.max(mineAt.length, theirsAt.length); i++) {
+          const mine = mineAt[i] ?? null
+          const theirs = theirsAt[i] ?? null
+          duels.push({
+            slot,
+            mine,
+            theirs,
+            edge: (mine?.weekPoints ?? 0) - (theirs?.weekPoints ?? 0),
+          })
+        }
+      }
       const myPoints = starters.reduce((sum, s) => sum + s.weekPoints, 0)
       const margin = myPoints - oppPoints
       matchup = {
@@ -462,6 +502,7 @@ export function buildWeeklyBoard(input: {
         myWinPct: winPctFromMargin(margin),
         oppStarters,
         oppByes: oppStarters.filter((o) => o.bye),
+        duels,
       }
     }
   }

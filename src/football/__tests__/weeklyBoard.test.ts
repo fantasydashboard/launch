@@ -270,6 +270,35 @@ describe('buildWeeklyBoard — the Sunday page', () => {
     expect(board.matchup!.oppByes).toEqual([])
   })
 
+  it('pairs the two lineups seat by seat, nth against nth at each slot', () => {
+    const board = buildWeeklyBoard({
+      pool, vorByKey, slots, myTeamKey: 'me',
+      currentStarters: [], freeAgents: [], opponentByTeam: opp,
+      oppTeamKey: 'other', oppTeamName: 'Them',
+    })
+    const duels = board.matchup!.duels
+    // One row per seat in the lineup: QB + RB + RB + FLEX.
+    expect(duels.length).toBe(4)
+    expect(duels.map((d) => d.slot)).toEqual(['QB', 'RB', 'RB', 'FLEX'])
+    // They have a single body, so most seats are unopposed rather than silently dropped.
+    const contested = duels.filter((d) => d.mine && d.theirs)
+    expect(contested.length).toBe(1)
+    expect(duels.every((d) => d.mine !== null)).toBe(true)
+    // Edge is mine minus theirs, so a positive number always means I win that seat.
+    for (const d of duels) {
+      expect(d.edge).toBe((d.mine?.weekPoints ?? 0) - (d.theirs?.weekPoints ?? 0))
+    }
+  })
+
+  it("carries the opponent's positional rank so a seat can be read at a glance", () => {
+    const board = buildWeeklyBoard({
+      pool, vorByKey, slots, myTeamKey: 'me',
+      currentStarters: [], freeAgents: [], opponentByTeam: opp,
+      oppTeamKey: 'other', oppTeamName: 'Them',
+    })
+    expect(board.matchup!.oppStarters.every((o) => o.posRank > 0)).toBe(true)
+  })
+
   it("counts starting slots nobody could fill", () => {
     // Four slots but only a single body — three seats stay empty.
     const thin = buildWeeklyBoard({

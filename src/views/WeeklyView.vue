@@ -22,10 +22,6 @@ const margin = computed(() => myTotal.value - oppTotal.value)
    margin put "you +8" beside "60% to win" when eight points is 62%. */
 const winPct = computed(() => winPctFromMargin(margin.value))
 
-// Matchup detail: their lineup and the season read. Closed by default — the page's job is
-// still your lineup, and this is the evidence behind the scoreboard above it.
-const matchupOpen = ref(false)
-
 /*
  * Win-probability trend. A daily capture keyed to league + week, so the line builds as the
  * week plays out — the one thing on this page that is a record rather than a projection.
@@ -105,6 +101,11 @@ const OWNER_BADGE: Record<string, { label: string; cls: string }> = {
   other: { label: '', cls: '' },
 }
 
+/* Position rank only, for the seat-by-seat view — a flex rank on both sides of a duel is
+   noise when the two players are already competing for the same slot. */
+const posBadge = (r: { position: string; posRank: number }): string =>
+  r.posRank ? `${(r.position || '').toUpperCase().split(/[,/|]/)[0]}${r.posRank}` : ''
+
 const rankLabel = (r: { position: string; posRank: number; flexRank: number }): string => {
   const parts: string[] = []
   if (r.posRank) parts.push(`${(r.position || '').toUpperCase().split(/[,/|]/)[0]}${r.posRank}`)
@@ -171,17 +172,19 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
         is the evidence behind the scoreboard above.
       -->
       <section v-if="board.matchup" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
-        <button class="flex w-full items-center justify-between" @click="matchupOpen = !matchupOpen">
-          <span class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
-            The matchup
-            <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">
-              · {{ board.matchup.opponentName }}'s lineup{{ stakes ? ' · what the week is worth' : '' }}
-            </span>
+        <!--
+          No longer collapsible. Who you're playing and how each seat matches up is the frame
+          for every start/sit below it, and a decision you have to open a drawer to see is a
+          decision most people never see.
+        -->
+        <p class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+          The matchup
+          <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">
+            · seat by seat vs {{ board.matchup.opponentName }}
           </span>
-          <span class="font-mono text-dark-textMuted">{{ matchupOpen ? '−' : '+' }}</span>
-        </button>
+        </p>
 
-        <div v-if="matchupOpen" class="mt-3">
+        <div>
           <!-- Their idle starters: you can't change their lineup, but this is your real margin. -->
           <p v-if="board.matchup.oppByes.length" class="mb-3 rounded-lg bg-primary/10 px-3 py-2 font-mono text-[11px] text-primary">
             {{ board.matchup.oppByes.length }} of their starters {{ board.matchup.oppByes.length > 1 ? 'are' : 'is' }} on bye
@@ -234,20 +237,48 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             </div>
           </div>
 
-          <p class="mb-2 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
-            {{ board.matchup.opponentName }} — projected starters
-          </p>
-          <div v-for="(o, i) in board.matchup.oppStarters" :key="'os-' + i"
-               class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm last:border-0">
-            <span class="w-10 shrink-0 font-mono text-[10px] uppercase text-dark-textMuted">{{ o.slot }}</span>
-            <img v-if="o.headshot" :src="o.headshot" :alt="o.name" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
-            <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
-            <span class="min-w-0 flex-1 truncate text-dark-textSecondary">
-              {{ o.name }} <span class="text-[11px] text-dark-textMuted">{{ o.position }}</span>
-              <span v-if="o.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>
-            </span>
-            <span class="w-10 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ round(o.weekPoints) }}</span>
+          <!--
+            Seat by seat. Both lineups are sorted by slot then points, so the nth body at a slot
+            faces the nth on the other side — RB1 against RB1. The rank badge is what makes a
+            row readable at a glance: 21 vs 14 says little, RB3 against RB8 says who is favoured
+            and by how much of the position.
+          -->
+          <div class="mb-1 flex items-center gap-2 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70">
+            <span class="min-w-0 flex-1 truncate">{{ myTeamName }}</span>
+            <span class="w-10 shrink-0 text-center">slot</span>
+            <span class="min-w-0 flex-1 truncate text-right">{{ board.matchup.opponentName }}</span>
           </div>
+          <div v-for="(d, i) in board.matchup.duels" :key="'duel-' + i"
+               class="flex items-center gap-2 border-b border-dark-border/40 py-1.5 last:border-0">
+            <!-- mine -->
+            <span class="flex min-w-0 flex-1 items-center gap-1.5" :class="d.edge > 0 ? 'text-dark-text' : 'text-dark-textMuted'">
+              <span class="min-w-0 flex-1 truncate text-[13px]">
+                {{ d.mine ? d.mine.name : '—' }}
+                <span v-if="d.mine && d.mine.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>
+              </span>
+              <span v-if="d.mine" class="shrink-0 font-mono text-[9px] text-dark-textMuted/60">{{ posBadge(d.mine) }}</span>
+              <span v-if="d.mine" class="w-7 shrink-0 text-right font-mono text-xs">{{ round(d.mine.weekPoints) }}</span>
+            </span>
+
+            <!-- the seat, tinted toward whoever wins it -->
+            <span class="w-10 shrink-0 text-center font-mono text-[9px] uppercase"
+                  :class="d.edge > 0 ? 'text-primary' : d.edge < 0 ? 'text-[#e69a4a]' : 'text-dark-textMuted'">
+              {{ d.slot }}
+            </span>
+
+            <!-- theirs -->
+            <span class="flex min-w-0 flex-1 items-center justify-end gap-1.5" :class="d.edge < 0 ? 'text-dark-text' : 'text-dark-textMuted'">
+              <span v-if="d.theirs" class="w-7 shrink-0 text-left font-mono text-xs">{{ round(d.theirs.weekPoints) }}</span>
+              <span v-if="d.theirs" class="shrink-0 font-mono text-[9px] text-dark-textMuted/60">{{ posBadge(d.theirs) }}</span>
+              <span class="min-w-0 flex-1 truncate text-right text-[13px]">
+                {{ d.theirs ? d.theirs.name : '—' }}
+                <span v-if="d.theirs && d.theirs.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>
+              </span>
+            </span>
+          </div>
+          <p class="mt-2 font-mono text-[9px] text-dark-textMuted">
+            brighter side wins the seat · rank is at that position among rostered players and free agents
+          </p>
         </div>
       </section>
 
