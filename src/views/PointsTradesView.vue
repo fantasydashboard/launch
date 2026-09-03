@@ -6,6 +6,7 @@ import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { useFootballVor } from '@/composables/useFootballVor'
 import { buildPointsTrades } from '@/myteam/pointsTrades'
+import { buildPointsTeam } from '@/myteam/pointsTeam'
 import { buildPointsTradeLandscape } from '@/myteam/pointsTradeLandscape'
 import { buildRosterCompare } from '@/myteam/rosterCompare'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
@@ -33,6 +34,8 @@ const loading = source.loading
 const myTeamKey = source.myTeamKey
 const teamNames = source.teamNames
 const leagueSize = source.leagueSize
+const myTeamLogo = source.myTeamLogo
+const teamLogos = source.teamLogos
 
 const season = computed(() => '')
 const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
@@ -79,6 +82,32 @@ const landscape = computed(() => {
  * looking, and it contradicted My Team, which always names a biggest hole. Every roster
  * has a weakest position; only some have a crisis.
  */
+/**
+ * Your lineup against the league, slot by slot. This was the one thing on My Team that lived
+ * nowhere else, and it belongs here: "which of my seats is weakest against the other nine
+ * rosters" is the question that MOTIVATES a trade. On My Team it diagnosed a structural hole
+ * and then offered a lineup button, which cannot fix one.
+ */
+const teamModel = computed(() => {
+  if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
+  return buildPointsTeam(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value)
+})
+function rankClass(rank: number, teams: number): string {
+  if (teams <= 1) return 'text-dark-text'
+  const f = rank / teams
+  if (f <= 0.34) return 'text-primary'
+  if (f >= 0.75) return 'text-[#FF5C5C]'
+  return 'text-dark-text'
+}
+function barClass(rank: number, teams: number): string {
+  if (teams <= 1) return 'bg-dark-textMuted/40'
+  const f = rank / teams
+  if (f <= 0.34) return 'bg-primary'
+  if (f >= 0.75) return 'bg-[#FF5C5C]/70'
+  return 'bg-dark-textMuted/50'
+}
+const rankBar = (rank: number, teams: number) => (teams <= 1 ? 100 : Math.round(((teams - rank + 1) / teams) * 100))
+
 const ordinal = (n: number): string => {
   const s = ['th', 'st', 'nd', 'rd']
   const v = n % 100
@@ -179,6 +208,41 @@ function fairness(myGain: number, theirGain: number): string {
     <div v-if="loading && !landscape" class="py-16 text-center text-dark-textMuted">Scanning the league…</div>
 
     <template v-else>
+      <!--
+        Your lineup against the league, moved here from My Team. It is the setup for
+        everything below it: the weakest seat is what you are trading FOR, and the leverage
+        block underneath names what you would trade FROM.
+      -->
+      <section v-if="teamModel && teamModel.slotRanks.length" class="mb-4 rounded-xl border border-dark-border bg-dark-card">
+        <div class="flex items-baseline justify-between gap-3 px-4 pt-4 pb-1">
+          <h2 class="flex items-center gap-2 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+            <img v-if="myTeamLogo" :src="myTeamLogo" alt="" @error="onLogoErr" class="h-4 w-4 rounded bg-dark-border object-cover" />
+            Your lineup vs the league
+          </h2>
+          <span class="font-mono text-[10px] text-dark-textMuted/70">projected points, rest of season · your starter vs every team's</span>
+        </div>
+        <div class="space-y-1.5 px-4 pb-4 pt-2">
+          <div v-for="(sl, i) in teamModel.slotRanks" :key="'slot-' + i" class="flex items-center gap-3">
+            <span class="w-10 shrink-0 font-mono text-xs text-dark-textMuted">{{ sl.slot }}</span>
+            <span class="w-12 shrink-0 text-right font-mono text-sm font-semibold"
+                  :class="sl.starterKey ? rankClass(sl.rank, sl.teams) : 'text-dark-textMuted/50'">
+              {{ sl.starterKey ? ordinal(sl.rank) : '—' }}
+            </span>
+            <span class="w-36 shrink-0 truncate text-sm sm:w-44"
+                  :class="sl.starterKey ? 'text-dark-text' : 'italic text-dark-textMuted/60'">
+              {{ sl.starterKey ? sl.starterName : 'open slot' }}
+            </span>
+            <div class="relative h-2 flex-1 overflow-hidden rounded-full bg-dark-bg">
+              <div v-if="sl.starterKey" class="absolute inset-y-0 left-0 rounded-full" :class="barClass(sl.rank, sl.teams)"
+                   :style="{ width: rankBar(sl.rank, sl.teams) + '%' }" />
+            </div>
+            <span class="w-12 shrink-0 text-right font-mono text-xs text-dark-textMuted">
+              {{ sl.starterKey ? round(sl.points) : '' }}
+            </span>
+          </div>
+        </div>
+      </section>
+
       <!-- YOUR LEVERAGE -->
       <section v-if="landscape && (landscape.myStrong.length || landscape.myWeak.length)" class="mb-4 rounded-xl border border-dark-border bg-dark-card px-4 py-3">
         <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Your leverage</p>
@@ -369,6 +433,19 @@ function fairness(myGain: number, theirGain: number): string {
           <template v-else>no position separates you two by enough to build a deal around</template>
         </p>
 
+        <!-- Whose column is whose, with the fantasy crests — the same treatment the seat-by-seat
+             grid on This Week uses, so the two comparison views read as one idea. -->
+        <div class="mb-2 grid grid-cols-2 gap-2 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70">
+          <span class="flex min-w-0 items-center gap-1.5">
+            <img v-if="myTeamLogo" :src="myTeamLogo" alt="" @error="onLogoErr" class="h-4 w-4 shrink-0 rounded bg-dark-border object-cover" />
+            <span class="truncate">You</span>
+          </span>
+          <span class="flex min-w-0 items-center gap-1.5">
+            <img v-if="teamLogos[comparePartner]" :src="teamLogos[comparePartner]" alt="" @error="onLogoErr" class="h-4 w-4 shrink-0 rounded bg-dark-border object-cover" />
+            <span class="truncate">{{ comparePartnerName }}</span>
+          </span>
+        </div>
+
         <div v-for="row in compare.positions" :key="'cmp-' + row.position" class="mb-3 last:mb-0">
           <div class="mb-1 flex items-baseline justify-between font-mono text-[10px] uppercase tracking-wider">
             <span class="text-dark-textMuted">{{ row.position }}</span>
@@ -380,6 +457,9 @@ function fairness(myGain: number, theirGain: number): string {
             <div class="rounded-lg bg-dark-bg/60 p-2">
               <div v-if="!row.mine.length" class="font-mono text-[10px] text-dark-textMuted/60">nobody</div>
               <div v-for="b in row.mine" :key="b.playerKey" class="flex items-center gap-1.5 py-0.5 text-[12px]">
+                <img v-if="b.headshot" :src="b.headshot" :alt="b.name" loading="lazy" @error="onLogoErr" class="h-5 w-5 shrink-0 rounded-full bg-dark-border object-cover" />
+                <span v-else class="h-5 w-5 shrink-0 rounded-full bg-dark-border" />
+                <img v-if="b.proTeam" :src="teamLogo(b.proTeam)" alt="" @error="onLogoErr" class="hidden h-3 w-3 shrink-0 object-contain sm:block" />
                 <span class="min-w-0 flex-1 truncate" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted'">
                   {{ b.name }}
                 </span>
@@ -392,6 +472,9 @@ function fairness(myGain: number, theirGain: number): string {
             <div class="rounded-lg bg-dark-bg/60 p-2">
               <div v-if="!row.theirs.length" class="font-mono text-[10px] text-dark-textMuted/60">nobody</div>
               <div v-for="b in row.theirs" :key="b.playerKey" class="flex items-center gap-1.5 py-0.5 text-[12px]">
+                <img v-if="b.headshot" :src="b.headshot" :alt="b.name" loading="lazy" @error="onLogoErr" class="h-5 w-5 shrink-0 rounded-full bg-dark-border object-cover" />
+                <span v-else class="h-5 w-5 shrink-0 rounded-full bg-dark-border" />
+                <img v-if="b.proTeam" :src="teamLogo(b.proTeam)" alt="" @error="onLogoErr" class="hidden h-3 w-3 shrink-0 object-contain sm:block" />
                 <span class="min-w-0 flex-1 truncate" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted'">
                   {{ b.name }}
                 </span>

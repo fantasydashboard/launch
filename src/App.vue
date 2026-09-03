@@ -187,7 +187,9 @@
           <div class="flex items-center justify-between h-9 px-4 xl:px-8">
             <!-- LEFT: Brand logo + League switcher (identity + context) -->
             <div class="flex items-center gap-3">
-              <router-link to="/my-team" class="flex items-center flex-shrink-0">
+              <!-- Home is the sport's primary page. It pointed at /my-team, which football no
+                   longer has — clicking the logo would have bounced you to Trades. -->
+              <router-link :to="homePath" class="flex items-center flex-shrink-0">
                 <img
                   src="/brand/ufd-primary-dark.png"
                   alt="Ultimate Fantasy Dashboard"
@@ -1330,7 +1332,13 @@ const tabs = computed(() => [
   ...(leagueStore.activeSport === 'football' && leagueStore.activePlatform === 'sleeper'
     ? [{ name: 'Draft Room', path: '/draft-room' }]
     : []),
-  { name: 'My Team', path: '/my-team' },
+  /* My Team is retired for football. Of its five blocks, four already existed elsewhere in
+     better form — the VOR ledger on The Wire's board, the luck read on Power Rankings, the
+     hole diagnosis on Trades, and "set this week's lineup" was a signpost. The fifth, your
+     lineup ranked against the league, moved to Trades, where the weakest seat is the thing
+     you are trading FOR. Category and baseball leagues keep the tab: their Wire and Trades
+     are a different shape and do not absorb it. */
+  ...(leagueStore.activeSport === 'football' ? [] : [{ name: 'My Team', path: '/my-team' }]),
   /* Football folds the matchup into This Week — the opponent belongs beside the lineup it is
      measured against, and two tabs for one Sunday decision meant one of them was always the
      wrong place to look. Baseball and category leagues keep the tab: there the matchup is a
@@ -1351,6 +1359,8 @@ const tabs = computed(() => [
 ])
 
 // Section tabs (Tier 2 nav) — exclude the tools, which live in Tier 1
+/* Where the logo goes: the first section tab for this sport. */
+const homePath = computed(() => (leagueStore.activeSport === 'football' ? '/this-week' : '/my-team'))
 const sectionTabs = computed(() => tabs.value.filter((t: any) => !t.isTool))
 // Tool tabs (Tier 1 utility bar). The League Beat link sits beside these in the template.
 const toolTabs = computed(() => tabs.value.filter((t: any) => (t as any).isTool))

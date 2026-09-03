@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watchEffect } from 'vue'
+import { useRouter } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { isYahooCategoryLeague } from '@/composables/useIsCategoryLeague'
 import { getLeagueType } from '@/config/sports'
@@ -14,6 +15,14 @@ const scoringType = computed(() => {
   if (live) return live
   const saved = leagueStore.savedLeagues.find((l) => l.league_id === leagueStore.activeLeagueId)
   return saved?.scoring_type
+})
+
+/* Football's My Team is retired; its one unique block lives on Trades now. The route stays
+   linkable — bookmarks, the anonymous banner, old deep links — and lands where the content
+   went rather than on a stranded page. */
+const router = useRouter()
+watchEffect(() => {
+  if (leagueStore.activeSport === 'football') router.replace('/trades')
 })
 
 const isCategoryLeague = computed(() => isYahooCategoryLeague(scoringType.value))
