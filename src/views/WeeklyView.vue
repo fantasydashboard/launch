@@ -3,6 +3,9 @@ import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { computed, ref, watch } from 'vue'
 import { useWeeklyBoard } from '@/composables/useWeeklyBoard'
 import { winPctFromMargin } from '@/football/weeklyBoard'
+import { useWinProbTrend } from '@/composables/useWinProbTrend'
+import MatchupWinProbChart from '@/components/matchup/MatchupWinProbChart.vue'
+import { useLeagueStore } from '@/stores/league'
 
 const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes } = useWeeklyBoard()
 
@@ -22,6 +25,26 @@ const winPct = computed(() => winPctFromMargin(margin.value))
 // Matchup detail: their lineup and the season read. Closed by default — the page's job is
 // still your lineup, and this is the evidence behind the scoreboard above it.
 const matchupOpen = ref(false)
+
+/*
+ * Win-probability trend. A daily capture keyed to league + week, so the line builds as the
+ * week plays out — the one thing on this page that is a record rather than a projection.
+ * It was stranded on the Matchup tab; I listed it as lost and then restored everything
+ * except it.
+ */
+const leagueStore = useLeagueStore()
+const ME = '#5ec8e6'
+const OPP = '#e69a4a'
+const daysRemaining = computed(() => (7 - new Date().getDay()) % 7)
+const oppName = computed(() => board.value?.matchup?.opponentName ?? 'Opponent')
+const trend = useWinProbTrend({
+  leagueId: computed(() => leagueStore.activeLeagueId),
+  week: currentWeek,
+  my: winPct,
+  opp: computed(() => 100 - winPct.value),
+  daysRemaining,
+  ready: computed(() => !!board.value?.matchup),
+})
 
 /* The strategic read, restored from the Matchup page. Volume is a baseball lever — football
    gives both rosters one game each — so the football branch talks about the lineup instead. */
@@ -172,6 +195,44 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             You're leaving {{ board.emptySlots }} starting slot{{ board.emptySlots > 1 ? 's' : '' }} empty —
             that's points forfeited, not lost. Plug a body before kickoff.
           </p>
+
+          <!--
+            The chart once two daily readings exist; today's standing as two bars before that.
+            A single reading drawn as a line is a flat segment pretending to be a trend.
+          -->
+          <div class="mb-3 rounded-lg bg-dark-bg/40 px-3 pt-2 pb-1">
+            <div class="flex items-center justify-between">
+              <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Win-probability trend</p>
+              <p v-if="trend.points.length >= 2" class="font-mono text-[9px] text-dark-textMuted">solid = actual · dotted = projected</p>
+            </div>
+            <MatchupWinProbChart
+              v-if="trend.points.length >= 2"
+              :points="trend.points"
+              :projected="trend.projected"
+              :me-name="myTeamName"
+              :opp-name="oppName"
+              :height="trend.points.length >= 3 ? 160 : 120"
+            />
+            <div v-else class="mt-2 space-y-1.5 pb-1 font-mono text-[11px]">
+              <div class="flex items-center gap-2">
+                <span class="w-28 shrink-0 truncate" :style="{ color: ME }">{{ myTeamName }}</span>
+                <div class="relative h-1.5 flex-1 overflow-hidden rounded-full bg-dark-border/40">
+                  <div class="absolute inset-y-0 left-0 rounded-full" :style="{ width: winPct + '%', backgroundColor: ME }" />
+                </div>
+                <span class="w-9 shrink-0 text-right tabular-nums" :style="{ color: ME }">{{ winPct }}%</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-28 shrink-0 truncate" :style="{ color: OPP }">{{ oppName }}</span>
+                <div class="relative h-1.5 flex-1 overflow-hidden rounded-full bg-dark-border/40">
+                  <div class="absolute inset-y-0 left-0 rounded-full" :style="{ width: (100 - winPct) + '%', backgroundColor: OPP }" />
+                </div>
+                <span class="w-9 shrink-0 text-right tabular-nums" :style="{ color: OPP }">{{ 100 - winPct }}%</span>
+              </div>
+              <p class="pt-1 font-mono text-[9px] text-dark-textMuted">
+                the line builds as the week goes — check back tomorrow for the trend
+              </p>
+            </div>
+          </div>
 
           <p class="mb-2 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
             {{ board.matchup.opponentName }} — projected starters
