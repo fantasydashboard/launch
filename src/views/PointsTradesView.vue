@@ -89,6 +89,7 @@ const dynasty = useDynastyValues({
 /* Returns null when the market has not priced every player in the deal. Summing what we
    happen to know would print a confident number over a hole, and it would look exactly like
    a complete one. Better to say nothing about that deal's future. */
+const dynRow = (key?: string) => (key ? dynasty.rows.value[key] ?? null : null)
 const dynastyScore = (idea: { gives: { playerKey: string }[]; gets: { playerKey: string }[] }) =>
   dynasty.ready.value
     ? scoreDynastyTrade(idea.gives.map((g) => g.playerKey), idea.gets.map((g) => g.playerKey), dynasty.rows.value)
@@ -397,6 +398,9 @@ function fairness(myGain: number, theirGain: number): string {
                 <img v-if="g.proTeam" :src="teamLogo(g.proTeam)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 shrink-0 object-contain" />
                 <span class="min-w-0 flex-1 truncate text-sm text-dark-text">{{ g.name }}</span>
                 <span class="shrink-0 font-mono text-[10px] text-dark-textMuted">{{ g.position }}</span>
+                <span v-if="dynasty.ready.value" class="hidden w-14 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/70 sm:inline">
+                  {{ dynRow(g.playerKey) ? g.position + dynRow(g.playerKey)!.positionRank : '—' }}
+                </span>
                 <span class="w-12 shrink-0 text-right font-mono text-[11px] text-dark-textMuted">{{ round(tradePoints(g.playerKey, g.points)) }}</span>
               </div>
             </div>
@@ -408,6 +412,9 @@ function fairness(myGain: number, theirGain: number): string {
                 <img v-if="g.proTeam" :src="teamLogo(g.proTeam)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 shrink-0 object-contain" />
                 <span class="min-w-0 flex-1 truncate text-sm text-dark-textSecondary">{{ g.name }}</span>
                 <span class="shrink-0 font-mono text-[10px] text-dark-textMuted">{{ g.position }}</span>
+                <span v-if="dynasty.ready.value" class="hidden w-14 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/70 sm:inline">
+                  {{ dynRow(g.playerKey) ? g.position + dynRow(g.playerKey)!.positionRank : '—' }}
+                </span>
                 <span class="w-12 shrink-0 text-right font-mono text-[11px] text-dark-textMuted">{{ round(tradePoints(g.playerKey, g.points)) }}</span>
               </div>
             </div>
@@ -550,6 +557,11 @@ function fairness(myGain: number, theirGain: number): string {
                   {{ b.name }}
                 </span>
                 <span class="shrink-0 font-mono text-[9px]" :class="rankTone(b.posRank, row.position)">{{ row.position }}{{ b.posRank }}<span class="text-dark-textMuted/50">&middot;#{{ b.overallRank }}</span></span>
+                <!-- The long-term rank beside this season's. Both sides of a dynasty trade
+                     are argued in this currency, and it was the one number missing. -->
+                <span v-if="dynasty.ready.value" class="shrink-0 font-mono text-[9px] text-dark-textMuted/70" :title="dynRow(b.playerKey) ? 'Dynasty market rank' : 'Not priced by the dynasty market'">
+                  {{ dynRow(b.playerKey) ? 'DYN ' + row.position + dynRow(b.playerKey)!.positionRank : 'DYN —' }}
+                </span>
                 <span class="w-10 shrink-0 text-right font-mono text-[10px]" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted/70'">
                   {{ b.value >= 0 ? '+' : '' }}{{ round(b.value) }}
                 </span>
@@ -565,6 +577,11 @@ function fairness(myGain: number, theirGain: number): string {
                   {{ b.name }}
                 </span>
                 <span class="shrink-0 font-mono text-[9px]" :class="rankTone(b.posRank, row.position)">{{ row.position }}{{ b.posRank }}<span class="text-dark-textMuted/50">&middot;#{{ b.overallRank }}</span></span>
+                <!-- The long-term rank beside this season's. Both sides of a dynasty trade
+                     are argued in this currency, and it was the one number missing. -->
+                <span v-if="dynasty.ready.value" class="shrink-0 font-mono text-[9px] text-dark-textMuted/70" :title="dynRow(b.playerKey) ? 'Dynasty market rank' : 'Not priced by the dynasty market'">
+                  {{ dynRow(b.playerKey) ? 'DYN ' + row.position + dynRow(b.playerKey)!.positionRank : 'DYN —' }}
+                </span>
                 <span class="w-10 shrink-0 text-right font-mono text-[10px]" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted/70'">
                   {{ b.value >= 0 ? '+' : '' }}{{ round(b.value) }}
                 </span>

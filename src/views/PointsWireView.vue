@@ -82,6 +82,39 @@ const dynasty = useDynastyValues({
   enabled: isFootball,
 })
 const dynRow = (key?: string) => (key ? dynasty.rows.value[key] ?? null : null)
+
+/*
+ * Which clock the page is ordered by. Both numbers were already on every row, but the ORDER
+ * was always this season's — so the dynasty column could tell you a 22-year-old was RB4 and
+ * still bury him forty rows down behind bodies that score more this year. Reading a ranking
+ * you cannot sort by is most of the way to not having it.
+ *
+ * Players the market never priced sink to the bottom of a dynasty sort rather than to the
+ * top: absent is not "best available", and an unpriced player must never outrank a priced one.
+ */
+type WireSort = 'season' | 'dynasty'
+const wireSort = ref<WireSort>('season')
+const WIRE_SORTS: { key: WireSort; label: string; hint: string }[] = [
+  { key: 'season', label: 'This season', hint: 'value over replacement, rest of season' },
+  { key: 'dynasty', label: 'Dynasty', hint: 'the long-term market, ours untouched' },
+]
+const byDynasty = (ka?: string, kb?: string) => {
+  const a = dynRow(ka), b = dynRow(kb)
+  if (!a && !b) return 0
+  if (!a) return 1
+  if (!b) return -1
+  return a.overallRank - b.overallRank
+}
+const sortedBest = computed(() => {
+  const rows = fbWire.value?.bestAvailable ?? []
+  if (wireSort.value === 'season' || !dynasty.ready.value) return rows
+  return [...rows].sort((x, y) => byDynasty(x.player.playerKey, y.player.playerKey))
+})
+const sortedBoard = computed(() => {
+  const rows = fbWire.value?.board[boardPos.value] ?? []
+  if (wireSort.value === 'season' || !dynasty.ready.value) return rows
+  return [...rows].sort((x, y) => byDynasty(x.playerKey, y.playerKey))
+})
 /* Position rank among players the market has priced, toned on the same scale as everything
    else on the page. Absent = "—", never a zero that would read as a verdict. */
 const dynTone = (r: { positionRank: number } | null) =>
@@ -378,15 +411,27 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
               <h2 class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
                 Best available
               </h2>
-              <RankingPicker kind="ros" />
+              <div class="flex items-center gap-2">
+                <!-- Which clock the page is ordered by. Only offered in dynasty leagues,
+                     where there are genuinely two answers to sort by. -->
+                <div v-if="dynasty.ready.value" class="flex items-center gap-0.5 rounded-lg border border-dark-border p-0.5 font-mono text-[10px]">
+                  <button v-for="opt in WIRE_SORTS" :key="opt.key"
+                          class="rounded-md px-2 py-1 uppercase tracking-wider transition-colors"
+                          :class="wireSort === opt.key ? 'bg-primary/15 font-bold text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+                          :title="opt.hint"
+                          @click="wireSort = opt.key">{{ opt.label }}</button>
+                </div>
+                <RankingPicker kind="ros" />
+              </div>
             </div>
             <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
               <!-- Say the scope out loud: the list drives this card, the board below it and the
                    add/drop verdict above it, so naming only this card would understate it. -->
-              <template v-if="rosSource !== 'UFD'">{{ rosSource }}'s order, our points — drives this page</template>
+              <template v-if="dynasty.ready.value && wireSort === 'dynasty'">dynasty market order · our season points still shown at right</template>
+              <template v-else-if="rosSource !== 'UFD'">{{ rosSource }}'s order, our points — drives this page</template>
               <template v-else>value over replacement (season)</template>
             </p>
-            <template v-for="r in fbWire.bestAvailable.slice(0, 15)" :key="'fbba-' + (r.player.playerKey ?? r.player.name)">
+            <template v-for="r in sortedBest.slice(0, 15)" :key="'fbba-' + (r.player.playerKey ?? r.player.name)">
               <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
                 <img v-if="r.player.headshot" :src="r.player.headshot" :alt="r.player.name" loading="lazy" @error="onLogoErr" class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
                 <span v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[10px] text-dark-textMuted">{{ r.player.position }}</span>
@@ -444,9 +489,16 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                 <span v-if="dynasty.ready.value" class="hidden sm:inline">
                   <span class="text-dark-textSecondary">DYN</span> = dynasty market rank &middot; age
                 </span>
+                <span v-if="dynasty.ready.value" class="flex items-center gap-0.5 rounded-lg border border-dark-border p-0.5">
+                  <button v-for="opt in WIRE_SORTS" :key="'bd-' + opt.key"
+                          class="rounded-md px-2 py-0.5 uppercase tracking-wider transition-colors"
+                          :class="wireSort === opt.key ? 'bg-primary/15 font-bold text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+                          :title="opt.hint"
+                          @click="wireSort = opt.key">{{ opt.label }}</button>
+                </span>
               </div>
               <!-- selected position only, top 25 by VOR -->
-              <template v-for="row in (fbWire.board[boardPos] ?? []).slice(0, 25)" :key="'fbbd-' + row.playerKey">
+              <template v-for="row in sortedBoard.slice(0, 25)" :key="'fbbd-' + row.playerKey">
                 <!-- tier cliff: the drop-off is the decision, so name it rather than leaving a flat list -->
                 <div v-if="row.tierBreak" class="flex items-center gap-2 py-1.5">
                   <span class="h-px flex-1 bg-dark-border"></span>
