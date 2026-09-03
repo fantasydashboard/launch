@@ -125,14 +125,22 @@ export function startablePositions(slots: Record<string, number>): Set<string> {
  * by the startable pool turns both into the same scale — and it handles onesie positions for
  * free, because "only ten quarterbacks start" is already in the denominator. No special case.
  *
- * Flex slots are split across eligible positions in proportion to the DEDICATED starters the
- * league already gives each one. Splitting evenly was wrong in a way you could see: a league
- * starting QB/RB/RB/WR/WR/TE with three flex gave TE a pool of 20 against QB's 10, so TE11
- * rendered as a comfortable starter while QB9 rendered as replaceable — two onesie positions
- * coloured on different scales. Weighting by dedicated slots (2 RB : 2 WR : 1 TE here) keeps
- * the ratio the league itself set, and it comes from the settings rather than from a
- * hardcoded football convention.
+ * Flex slots are allocated by how managers ACTUALLY fill them, because neither of the two
+ * obvious derivations survives contact with real leagues:
+ *
+ *  - Splitting evenly gave TE a pool of 20 against QB's 10 in a standard league, so TE11 read
+ *    as a comfortable starter while QB9 read as replaceable.
+ *  - Splitting by dedicated slots still overfed TE (2:2:1 leaves it a fifth of every flex
+ *    seat, which nobody plays), and it collapses entirely in superflex, where QB has one
+ *    dedicated slot and yet roughly fifteen quarterbacks start.
+ *
+ * FLEX_USAGE is a stated football convention rather than something derived, and it is written
+ * down here so it can be argued with: a superflex seat goes to a quarterback almost every
+ * time, a standard flex goes to a back or receiver and only occasionally a tight end. The
+ * weights are normalised across whichever positions a given slot admits, so the same table
+ * produces the right answer for standard, superflex, and two-tight-end leagues alike.
  */
+const FLEX_USAGE: Record<string, number> = { QB: 1.0, RB: 0.4, WR: 0.45, TE: 0.1 }
 export function startableCounts(
   slots: Record<string, number>,
   leagueSize: number,
@@ -151,7 +159,7 @@ export function startableCounts(
     const count = Number(rawCount)
     const eligible = FLEX_ELIGIBILITY[slot]
     if (!eligible?.length || !Number.isFinite(count) || count <= 0) continue
-    const weights = eligible.map((pos) => Math.max(perTeam[pos] ?? 0, 0.25))
+    const weights = eligible.map((pos) => FLEX_USAGE[pos] ?? 0.25)
     const total = weights.reduce((a, b) => a + b, 0)
     eligible.forEach((pos, i) => {
       perTeam[pos] = (perTeam[pos] ?? 0) + (count * weights[i]) / total

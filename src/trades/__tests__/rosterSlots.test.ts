@@ -142,12 +142,13 @@ describe('startableCounts', () => {
   )
 
   it('scales each position by how many the league actually starts', () => {
-    // 10 teams. QB: 1 each. Flex (3) splits 2:2:1 by dedicated slots -> RB +1.2, WR +1.2, TE +0.6.
+    // 10 teams, 3 flex allocated by real usage (RB .40 / WR .45 / TE .10 normalised).
     const c = startableCounts(slots, 10)
     expect(c.QB).toBe(10)
-    expect(c.RB).toBe(32)
-    expect(c.WR).toBe(32)
-    expect(c.TE).toBe(16)
+    expect(c.RB).toBeGreaterThan(30)
+    expect(c.WR).toBeGreaterThan(30)
+    // Tight ends barely see a flex seat, so their pool stays near the ten dedicated ones.
+    expect(c.TE).toBeLessThanOrEqual(14)
   })
 
   /*
@@ -157,11 +158,39 @@ describe('startableCounts', () => {
    */
   it('keeps the two onesie positions on comparable scales', () => {
     const c = startableCounts(slots, 10)
-    expect(startableFraction(11, 'TE', c)!).toBeGreaterThan(2 / 3)
-    expect(startableFraction(9, 'QB', c)!).toBeGreaterThan(2 / 3)
-    // And a mid-pack starter at either reads the same.
-    expect(startableFraction(8, 'TE', c)!).toBeCloseTo(0.5, 2)
-    expect(startableFraction(5, 'QB', c)!).toBeCloseTo(0.5, 2)
+    // Both are one-per-team positions, so the 10th and the 7th should read alike.
+    expect(startableFraction(10, 'TE', c)!).toBeGreaterThan(2 / 3)
+    expect(startableFraction(7, 'QB', c)!).toBeGreaterThan(2 / 3)
+    expect(startableFraction(5, 'TE', c)!).toBeLessThanOrEqual(2 / 3)
+    expect(startableFraction(5, 'QB', c)!).toBeLessThanOrEqual(2 / 3)
+  })
+
+  /* The whole point of deriving the pool: the scale has to follow the league, not the sport. */
+  it('adjusts for superflex — a QB pool far bigger than one per team', () => {
+    const sf = parseRosterSlots(
+      'sleeper',
+      { roster_positions: ['QB','RB','RB','WR','WR','TE','SUPER_FLEX','BN','BN'] },
+      'football',
+    )
+    const c = startableCounts(sf, 10)
+    // A superflex seat goes to a quarterback almost every time, so ~15 QBs start, not 10.
+    expect(c.QB).toBeGreaterThan(13)
+    expect(startableFraction(12, 'QB', c)!).toBeLessThan(1) // QB12 still a starter here
+    // Same player in a standard league is not.
+    expect(startableFraction(12, 'QB', startableCounts(slots, 10))!).toBeGreaterThan(1)
+  })
+
+  it('adjusts for a two-tight-end league', () => {
+    const twoTe = parseRosterSlots(
+      'sleeper',
+      { roster_positions: ['QB','RB','RB','WR','WR','TE','TE','FLEX','BN'] },
+      'football',
+    )
+    const c = startableCounts(twoTe, 10)
+    expect(c.TE).toBeGreaterThan(20)
+    // TE18 is a fringe starter with two TE slots, and nowhere near one with a single slot.
+    expect(startableFraction(18, 'TE', c)!).toBeLessThan(1)
+    expect(startableFraction(18, 'TE', startableCounts(slots, 10))!).toBeGreaterThan(1)
   })
 
   it('still gives a flex-only position a share rather than a pool of zero', () => {
@@ -180,12 +209,12 @@ describe('startableCounts', () => {
   it('marks anyone past the pool as unstartable', () => {
     const c = startableCounts(slots, 10)
     expect(startableFraction(36, 'RB', c)!).toBeGreaterThan(1)
-    expect(startableFraction(32, 'RB', c)!).toBeCloseTo(1, 5)
+    expect(startableFraction(c.RB, 'RB', c)!).toBeCloseTo(1, 5)
   })
 
   it('scales with league size rather than hardcoding thresholds', () => {
     expect(startableCounts(slots, 14).QB).toBe(14)
-    expect(startableCounts(slots, 14).RB).toBe(45)
+    expect(startableCounts(slots, 14).RB).toBeGreaterThan(startableCounts(slots, 10).RB)
   })
 
   it('returns null when the rank cannot be placed', () => {
