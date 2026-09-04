@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   buildDynastyRows,
+  momentumOf,
+  MOMENTUM_THRESHOLD,
   leanOf,
   dynastyTotal,
   dynastyCoverage,
@@ -11,7 +13,7 @@ import { normalizeFantasyCalc } from '@/services/dynastyService'
 
 const src = (sleeperId: string, value: number, redraftValue: number, extra: Partial<DynastySource> = {}): DynastySource => ({
   sleeperId, name: 'P' + sleeperId, position: 'RB', age: 25,
-  value, redraftValue, overallRank: 1, positionRank: 1, ...extra,
+  value, redraftValue, overallRank: 1, positionRank: 1, trend30: 0, ...extra,
 })
 
 describe('leanOf', () => {
@@ -122,5 +124,54 @@ describe('normalizeFantasyCalc', () => {
   it('defaults a missing redraft value to zero without dropping the row', () => {
     const out = normalizeFantasyCalc([{ value: 900, player: { sleeperId: '5', position: 'TE' } }])
     expect(out[0].redraftValue).toBe(0)
+  })
+})
+
+/*
+ * Telling a mispricing apart from a news event.
+ *
+ * Josh Jacobs, live, the day he went on the exempt list: dynasty value 2126 after a 30-day
+ * fall of 842 — the biggest drop in the whole feed — while Sleeper still carried him Active
+ * with an 18-game projection and a fourth-round ADP. Our own buy-low rule would have fired on
+ * that gap and told someone to trade for a player who may never play again.
+ */
+describe('momentum', () => {
+  it('flags the real collapse that motivated it', () => {
+    expect(momentumOf(2126, -842)).toBe('falling') // -28%
+  })
+
+  it('leaves ordinary churn alone', () => {
+    // The median player moves under 5% in a month; the 75th percentile is under 12%.
+    expect(momentumOf(10000, -480)).toBe('steady')
+    expect(momentumOf(10000, 1180)).toBe('steady')
+  })
+
+  it('is symmetric, and sits exactly on the stated threshold', () => {
+    expect(momentumOf(1000, -250)).toBe('falling')
+    expect(momentumOf(1000, 250)).toBe('rising')
+    expect(MOMENTUM_THRESHOLD).toBe(0.25)
+  })
+
+  it('is scale-free, so a stud and a flier are judged the same way', () => {
+    expect(momentumOf(12000, -4000)).toBe('falling')
+    expect(momentumOf(600, -200)).toBe('falling')
+  })
+
+  it('says steady when it has nothing to go on', () => {
+    expect(momentumOf(0, -500)).toBe('steady')
+    expect(momentumOf(1000, 0)).toBe('steady')
+    expect(momentumOf(1000, NaN)).toBe('steady')
+  })
+
+  it('carries onto the joined row', () => {
+    const rows = buildDynastyRows([src('5850', 2126, 1708, { trend30: -842 })])
+    expect(rows['5850'].momentum).toBe('falling')
+    expect(rows['5850'].trend30).toBe(-842)
+  })
+
+  it('defaults a row with no trend to steady rather than dropping it', () => {
+    const rows = buildDynastyRows([src('x', 5000, 4000)])
+    expect(rows['x'].momentum).toBe('steady')
+    expect(rows['x'].trend30).toBe(0)
   })
 })

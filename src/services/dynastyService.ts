@@ -41,7 +41,11 @@ interface Cached {
   rows: DynastySource[]
 }
 
-const memo = new Map<string, DynastySource[]>()
+/* Timestamped. The memo used to be checked BEFORE the localStorage TTL and carried no clock
+   of its own, so a tab left open served the same values for as long as it stayed open — the
+   real staleness was session length, not the twelve hours the cache advertised. That is the
+   difference between seeing a player's value collapse and not. */
+const memo = new Map<string, { at: number; rows: DynastySource[] }>()
 const paramKey = (p: DynastyParams) => `${p.numQbs}|${p.numTeams}|${p.ppr}`
 
 function readCache(key: string): DynastySource[] | null {
@@ -86,6 +90,9 @@ export function normalizeFantasyCalc(payload: unknown): DynastySource[] {
       redraftValue: Number.isFinite(Number(row?.redraftValue)) ? Number(row.redraftValue) : 0,
       overallRank: Number(row?.overallRank) || 0,
       positionRank: Number(row?.positionRank) || 0,
+      // Already in the payload we fetch; we were throwing away the one field that says
+      // "something happened to this player".
+      trend30: Number.isFinite(Number(row?.trend30Day)) ? Number(row.trend30Day) : 0,
     })
   }
   return out
@@ -98,10 +105,10 @@ export function normalizeFantasyCalc(payload: unknown): DynastySource[] {
 export async function getDynastyValues(params: DynastyParams): Promise<DynastySource[]> {
   const key = paramKey(params)
   const inMemo = memo.get(key)
-  if (inMemo) return inMemo
+  if (inMemo && Date.now() - inMemo.at <= TTL_MS) return inMemo.rows
   const cached = readCache(key)
   if (cached) {
-    memo.set(key, cached)
+    memo.set(key, { at: Date.now(), rows: cached })
     return cached
   }
 
@@ -113,7 +120,7 @@ export async function getDynastyValues(params: DynastyParams): Promise<DynastySo
     if (!res.ok) throw new Error(String(res.status))
     const rows = normalizeFantasyCalc(await res.json())
     if (!rows.length) return []
-    memo.set(key, rows)
+    memo.set(key, { at: Date.now(), rows })
     writeCache(key, params, rows)
     return rows
   } catch {

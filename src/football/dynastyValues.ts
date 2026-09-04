@@ -35,10 +35,44 @@ export interface DynastySource {
   redraftValue: number
   overallRank: number
   positionRank: number
+  /** Change in dynasty value over the last 30 days, on the same scale as `value`. */
+  trend30: number
 }
 
 /** Which way a player leans once you compare the two horizons. */
 export type DynastyLean = 'win-now' | 'future' | 'level'
+
+/**
+ * Recent movement, which is how you tell a mispricing from a news event.
+ *
+ * "Buy low" means the market is asleep on a player. It is exactly the wrong read when the
+ * market has just marked him down 28% in a month, because then the market is not asleep — it
+ * is early, and the projection is the thing lagging. Josh Jacobs is the case that made this
+ * necessary: placed on the exempt list, the single biggest 30-day faller in the whole feed,
+ * while Sleeper still carried him as Active with an 18-game projection and a fourth-round
+ * ADP. Our own rule would have tagged him BUY-LOW and told someone to trade for a player who
+ * may never play again.
+ */
+export type DynastyMomentum = 'falling' | 'rising' | 'steady'
+
+/**
+ * How far a 30-day move has to run before it is news rather than churn.
+ *
+ * Measured against the live feed: the median player moves 4.8% in a month and the 75th
+ * percentile moves 11.8%, so ordinary preseason drift is well under this. A quarter of a
+ * player's value sits between the 75th and 90th percentile (32.5%) and catches about an
+ * eighth of the field — which in September, with camp and depth charts still settling, is
+ * roughly the number of players something has actually happened to.
+ */
+export const MOMENTUM_THRESHOLD = 0.25
+
+export function momentumOf(value: number, trend30: number): DynastyMomentum {
+  if (!value || !Number.isFinite(trend30) || !trend30) return 'steady'
+  const share = trend30 / Math.abs(value)
+  if (share <= -MOMENTUM_THRESHOLD) return 'falling'
+  if (share >= MOMENTUM_THRESHOLD) return 'rising'
+  return 'steady'
+}
 
 export interface DynastyRow {
   playerKey: string
@@ -54,6 +88,8 @@ export interface DynastyRow {
    * compared across a 12,000-point stud and a 500-point flier.
    */
   skew: number
+  trend30: number
+  momentum: DynastyMomentum
 }
 
 /**
@@ -90,6 +126,7 @@ export function buildDynastyRows(source: DynastySource[]): Record<string, Dynast
     if (!key || !Number.isFinite(s.value)) continue
     const redraftValue = Number.isFinite(s.redraftValue) ? s.redraftValue : 0
     const { lean, skew } = leanOf(s.value, redraftValue)
+    const trend30 = Number.isFinite(s.trend30) ? s.trend30 : 0
     out[key] = {
       playerKey: key,
       value: s.value,
@@ -99,6 +136,8 @@ export function buildDynastyRows(source: DynastySource[]): Record<string, Dynast
       age: Number.isFinite(s.age as number) ? (s.age as number) : null,
       lean,
       skew,
+      trend30,
+      momentum: momentumOf(s.value, trend30),
     }
   }
   return out

@@ -135,16 +135,33 @@ const rankGap = (key: string) => {
   if (!d || !season) return null
   // Positive = the long-term market likes him more than this season does.
   const delta = season - d.positionRank
-  return {
-    season,
-    dyn: d.positionRank,
-    delta,
-    tag: delta >= RANK_GAP_MIN ? 'buy-low' : delta <= -RANK_GAP_MIN ? 'sell-high' : '',
-  }
+  let tag = delta >= RANK_GAP_MIN ? 'buy-low' : delta <= -RANK_GAP_MIN ? 'sell-high' : ''
+  /*
+   * A gap the market has JUST created is not a mispricing.
+   *
+   * "Buy low" claims the market is asleep on a player. When it has cut him a quarter of his
+   * value inside a month, the market is not asleep — it is early, and our season projection
+   * is the thing lagging. Josh Jacobs is why: exempt list, biggest 30-day faller in the feed,
+   * and Sleeper still carrying him Active with an 18-game projection and a fourth-round ADP.
+   * The old rule would have told someone to trade for a player who may never play again.
+   *
+   * Only the matching direction is suppressed. A falling player can still be a genuine
+   * sell-high — that reading agrees with the move rather than arguing with it.
+   */
+  if (tag === 'buy-low' && d.momentum === 'falling') tag = ''
+  if (tag === 'sell-high' && d.momentum === 'rising') tag = ''
+  return { season, dyn: d.positionRank, delta, tag, momentum: d.momentum }
 }
 const GAP_CLS: Record<string, string> = {
   'buy-low': 'text-[#7ee787]',
   'sell-high': 'text-[#e69a4a]',
+}
+/* Shown INSTEAD of a buy/sell read, not beside it — the point is that the market moving is a
+   different fact from the market being wrong. */
+const MOMENTUM_CLS: Record<string, string> = {
+  falling: 'text-[#f85149]',
+  rising: 'text-[#7ee787]',
+  steady: '',
 }
 
 const byDynasty = (ka?: string, kb?: string) => {
@@ -559,7 +576,8 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                 <span v-if="dynasty.ready.value" class="hidden sm:inline">
                   this season &middot; <span class="text-dark-textSecondary">dynasty</span> &middot;
                   <span class="text-[#7ee787]">buy-low</span>/<span class="text-[#e69a4a]">sell-high</span> when they disagree by {{ RANK_GAP_MIN }}+ &middot;
-                  age <span class="text-[#7ee787]">rising</span>/<span class="text-[#d29922]">ageing</span>/<span class="text-[#f85149]">old</span> for the position
+                  age <span class="text-[#7ee787]">rising</span>/<span class="text-[#d29922]">ageing</span>/<span class="text-[#f85149]">old</span> for the position &middot;
+                  <span class="text-[#f85149]">falling</span> = the market just moved him, so the gap is news
                 </span>
                 <span v-if="dynasty.ready.value && wireSort === 'dynasty'" class="hidden text-dark-textMuted/50 sm:inline">
                   tier cliffs are season point drops — hidden in this order
@@ -621,9 +639,16 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                     </span>
                     <!-- The gap, named. This is the whole reason both rankings are here. -->
                     <span class="hidden w-16 shrink-0 text-right font-mono text-[9px] uppercase tracking-wide lg:inline"
-                          :class="GAP_CLS[rankGap(row.playerKey)?.tag ?? ''] ?? 'text-dark-textMuted/40'"
-                          :title="rankGap(row.playerKey) ? `${row.position}${rankGap(row.playerKey)!.season} this season vs ${row.position}${rankGap(row.playerKey)!.dyn} in the dynasty market` : ''">
-                      {{ rankGap(row.playerKey)?.tag || '' }}
+                          :class="rankGap(row.playerKey)?.tag
+                            ? GAP_CLS[rankGap(row.playerKey)!.tag]
+                            : MOMENTUM_CLS[rankGap(row.playerKey)?.momentum ?? 'steady']"
+                          :title="rankGap(row.playerKey)
+                            ? (rankGap(row.playerKey)!.momentum !== 'steady'
+                                ? `The dynasty market has moved him sharply in the last 30 days — this gap is news, not a mispricing.`
+                                : `${row.position}${rankGap(row.playerKey)!.season} this season vs ${row.position}${rankGap(row.playerKey)!.dyn} in the dynasty market`)
+                            : ''">
+                      {{ rankGap(row.playerKey)?.tag
+                         || (rankGap(row.playerKey)?.momentum !== 'steady' ? rankGap(row.playerKey)?.momentum : '') }}
                     </span>
                     <!-- Age, read against the position. 28 is late for a back and prime for
                          a receiver, and the board used to print both as "28". -->
