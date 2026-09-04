@@ -90,6 +90,8 @@ export interface DynastyRow {
   skew: number
   trend30: number
   momentum: DynastyMomentum
+  /** Whose opinion put him at this rank — your uploaded list, or our market. */
+  source: 'list' | 'market'
 }
 
 /**
@@ -224,4 +226,105 @@ export function reseatByDynasty<T extends { vorRos: number }>(
     out[k] = { ...vorByKey[k], vorRos: curve[i] }
   })
   return out
+}
+
+
+/**
+ * Splice an uploaded list on top of the market, so a 200-deep list still ranks a 324-player
+ * league.
+ *
+ * A list shorter than the league is the normal case, not an edge one: measured against a real
+ * dynasty league, a 200-row file covered 198 rostered players and left 126 — 39% of everyone
+ * rostered — with no rank at all, showing "—" and sinking to the bottom of the sort. Your
+ * opinion of the top 200 says nothing about who is 201st, and it should not have to.
+ *
+ * Two bands. Your list holds 1..N in your order; the market fills N+1 onward in its own
+ * order. Every row records which band it came from, because a board where row 197 and row
+ * 205 look equally authoritative hides the moment your opinion stopped and ours started —
+ * the view draws that boundary.
+ *
+ * There is deliberately no third band. Players NEITHER source priced stay absent rather than
+ * being ranked off our season points: a season projection is not a dynasty opinion, which is
+ * the same reason this feature reads a market instead of discounting our own numbers by an
+ * age curve. Absent still sinks to the bottom of a dynasty sort, which is where they belong.
+ */
+export interface DynastyMerge {
+  rows: Record<string, DynastyRow>
+  /** How many of the list's entries actually resolved to a player. */
+  matched: number
+  /** How many rows the market filled in below the list. */
+  filled: number
+  /** Rank of the first market-sourced row — where the view draws the line. 0 if none. */
+  boundary: number
+  /**
+   * True when the list does not look like a top-N board — it misses most of the market's
+   * best players, which is what a positional or partial list looks like. Appending the
+   * market below such a list would bury every unlisted position behind the listed one, so
+   * the caller is told rather than silently mis-ordered.
+   */
+  suspectPartial: boolean
+}
+
+const TOP_SLICE = 50
+const TOP_COVERAGE_MIN = 0.6
+
+export function mergeDynastyOrder(
+  market: Record<string, DynastyRow>,
+  rankByKey: Record<string, number>,
+  positionOf: (playerKey: string) => string,
+): DynastyMerge {
+  const listed = Object.keys(rankByKey).filter((k) => rankByKey[k] > 0)
+  if (!listed.length) {
+    return { rows: market, matched: 0, filled: 0, boundary: 0, suspectPartial: false }
+  }
+
+  /* Does this behave like a top-N board? Take the market's own best fifty and see how many
+     the list bothered to rank. A genuine top-200 covers nearly all of them; a list of forty
+     running backs covers a quarter. */
+  const marketTop = Object.values(market)
+    .sort((a, b) => a.overallRank - b.overallRank)
+    .slice(0, TOP_SLICE)
+  const covered = marketTop.filter((r) => rankByKey[r.playerKey] > 0).length
+  const suspectPartial = marketTop.length >= TOP_SLICE && covered / marketTop.length < TOP_COVERAGE_MIN
+
+  const band1 = [...listed].sort((a, b) => rankByKey[a] - rankByKey[b])
+  const band2 = suspectPartial
+    ? []
+    : Object.keys(market)
+        .filter((k) => !rankByKey[k])
+        .sort((a, b) => market[a].overallRank - market[b].overallRank)
+
+  const seenByPos = new Map<string, number>()
+  const out: Record<string, DynastyRow> = {}
+  const place = (key: string, i: number, source: 'list' | 'market') => {
+    const pos = (positionOf(key) || '').toUpperCase().split(/[,/|]/)[0].trim()
+    const n = (seenByPos.get(pos) ?? 0) + 1
+    seenByPos.set(pos, n)
+    const m = market[key]
+    out[key] = {
+      playerKey: key,
+      // Values stay the market's. A list gives an ORDER; deal totals need magnitudes, and a
+      // player your list ranks but the market never priced still contributes nothing.
+      value: m?.value ?? 0,
+      redraftValue: m?.redraftValue ?? 0,
+      age: m?.age ?? null,
+      lean: m?.lean ?? 'level',
+      skew: m?.skew ?? 0,
+      trend30: m?.trend30 ?? 0,
+      momentum: m?.momentum ?? 'steady',
+      overallRank: i + 1,
+      positionRank: n,
+      source,
+    }
+  }
+  band1.forEach((k, i) => place(k, i, 'list'))
+  band2.forEach((k, i) => place(k, band1.length + i, 'market'))
+
+  return {
+    rows: out,
+    matched: band1.length,
+    filled: band2.length,
+    boundary: band2.length ? band1.length + 1 : 0,
+    suspectPartial,
+  }
 }

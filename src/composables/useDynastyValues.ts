@@ -1,7 +1,7 @@
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { getDynastyValues, type DynastyParams } from '@/services/dynastyService'
-import { buildDynastyRows, type DynastyRow, type DynastySource } from '@/football/dynastyValues'
+import { buildDynastyRows, mergeDynastyOrder, type DynastyRow, type DynastySource } from '@/football/dynastyValues'
 import { useCustomRankings, UFD_LABEL } from '@/composables/useCustomRankings'
 
 /** Sleeper league type: 0 redraft, 1 keeper, 2 dynasty. */
@@ -40,6 +40,10 @@ export function useDynastyValues(inputs: {
   load: () => void
   /** Whose dynasty order the board is in — the market, or a list you uploaded. */
   sourceName: ComputedRef<string>
+  /** How much of an uploaded list resolved, and where the market takes over. */
+  coverage: ComputedRef<{
+    matched: number; filled: number; boundary: number; suspectPartial: boolean; listRows: number
+  }>
 } {
   const leagueStore = useLeagueStore()
   const source = ref<DynastySource[]>([])
@@ -102,41 +106,36 @@ export function useDynastyValues(inputs: {
    * priced still gets a rank; he simply contributes nothing to a deal total, which is the
    * same rule as before and is why a trade containing him refuses to score.
    */
-  const rows = computed<Record<string, DynastyRow>>(() => {
+  /*
+   * An uploaded list sits ON TOP of the market rather than replacing it.
+   *
+   * A 200-row file against a 324-player league left 126 rostered players — 39% of everyone
+   * rostered — with no rank at all. Your opinion of the top 200 says nothing about who is
+   * 201st and should not have to, so the market fills in below the list and every row records
+   * which of the two put it there.
+   */
+  const merged = computed(() => {
     const market = marketRows.value
     const list = inputs.players?.value ?? []
-    if (!custom.enabled.value || !list.length) return market
-
+    if (!custom.enabled.value || !list.length) {
+      return { rows: market, matched: 0, filled: 0, boundary: 0, suspectPartial: false }
+    }
     const { rankByKey } = custom.match(list)
-    if (!Object.keys(rankByKey).length) return market
-
-    const ordered = list
-      .filter((p) => rankByKey[p.playerKey])
-      .sort((a, b) => rankByKey[a.playerKey] - rankByKey[b.playerKey])
-
-    const seenByPos = new Map<string, number>()
-    const out: Record<string, DynastyRow> = {}
-    ordered.forEach((p, i) => {
-      const pos = (p.position ?? '').toUpperCase().split(/[,/|]/)[0].trim()
-      const n = (seenByPos.get(pos) ?? 0) + 1
-      seenByPos.set(pos, n)
-      const m = market[p.playerKey]
-      out[p.playerKey] = {
-        playerKey: p.playerKey,
-        value: m?.value ?? 0,
-        redraftValue: m?.redraftValue ?? 0,
-        age: m?.age ?? null,
-        lean: m?.lean ?? 'level',
-        skew: m?.skew ?? 0,
-        overallRank: i + 1,
-        positionRank: n,
-      }
-    })
-    return out
+    const posOf = new Map(list.map((p) => [p.playerKey, p.position ?? '']))
+    return mergeDynastyOrder(market, rankByKey, (k) => posOf.get(k) ?? '')
   })
+  const rows = computed<Record<string, DynastyRow>>(() => merged.value.rows)
+  /** What the view says out loud, so a list that half-resolved cannot look complete. */
+  const coverage = computed(() => ({
+    matched: merged.value.matched,
+    filled: merged.value.filled,
+    boundary: merged.value.boundary,
+    suspectPartial: merged.value.suspectPartial,
+    listRows: custom.parsed.value.length,
+  }))
 
   const ready = computed(() => isDynasty.value && Object.keys(rows.value).length > 0)
   const sourceName = computed(() => (custom.enabled.value ? custom.sourceName.value : UFD_LABEL))
 
-  return { isDynasty, rows, ready, loading, load, sourceName }
+  return { isDynasty, rows, ready, loading, load, sourceName, coverage }
 }

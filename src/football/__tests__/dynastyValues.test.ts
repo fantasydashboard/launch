@@ -3,6 +3,7 @@ import {
   buildDynastyRows,
   momentumOf,
   reseatByDynasty,
+  mergeDynastyOrder,
   MOMENTUM_THRESHOLD,
   leanOf,
   dynastyTotal,
@@ -206,5 +207,89 @@ describe('reseatByDynasty', () => {
   it('is identity when there is no market to re-seat onto', () => {
     expect(reseatByDynasty(vor, {})).toBe(vor)
     expect(reseatByDynasty({}, rows)).toEqual({})
+  })
+})
+
+
+/*
+ * A list shorter than the league is the normal case. Measured on a real dynasty league: a
+ * 200-row file covered 198 rostered players and left 126 — 39% of everyone rostered — with no
+ * rank at all, showing "—" and sinking to the bottom of the sort.
+ */
+describe('mergeDynastyOrder', () => {
+  const POS: Record<string, string> = { a: 'RB', b: 'RB', c: 'WR', d: 'WR', e: 'TE' }
+  const posOf = (k: string) => POS[k] ?? ''
+  const market = buildDynastyRows([
+    { ...src('a', 900, 500), position: 'RB', overallRank: 1 },
+    { ...src('b', 800, 500), position: 'RB', overallRank: 2 },
+    { ...src('c', 700, 500), position: 'WR', overallRank: 3 },
+    { ...src('d', 600, 500), position: 'WR', overallRank: 4 },
+    { ...src('e', 500, 500), position: 'TE', overallRank: 5 },
+  ])
+
+  it('puts your list on top and fills the rest from the market', () => {
+    // You ranked only c and a, in that order.
+    const m = mergeDynastyOrder(market, { c: 1, a: 2 }, posOf)
+    expect(m.rows.c.overallRank).toBe(1)
+    expect(m.rows.a.overallRank).toBe(2)
+    // b, d, e follow in the market's own order.
+    expect([m.rows.b.overallRank, m.rows.d.overallRank, m.rows.e.overallRank]).toEqual([3, 4, 5])
+    expect(m.matched).toBe(2)
+    expect(m.filled).toBe(3)
+    expect(m.boundary).toBe(3)
+  })
+
+  it('records which opinion put each player where', () => {
+    const m = mergeDynastyOrder(market, { c: 1, a: 2 }, posOf)
+    expect(m.rows.c.source).toBe('list')
+    expect(m.rows.b.source).toBe('market')
+  })
+
+  it('keeps position ranks counting across the boundary', () => {
+    const m = mergeDynastyOrder(market, { c: 1, a: 2 }, posOf)
+    expect(m.rows.c.positionRank).toBe(1) // first WR seen
+    expect(m.rows.a.positionRank).toBe(1) // first RB seen
+    expect(m.rows.b.positionRank).toBe(2) // second RB, from the market band
+    expect(m.rows.d.positionRank).toBe(2) // second WR
+  })
+
+  it('keeps the market values, so deal totals still refuse over an unpriced player', () => {
+    const m = mergeDynastyOrder(market, { c: 1 }, posOf)
+    expect(m.rows.c.value).toBe(700)
+    // A listed player the market never priced gets a rank and no value.
+    const m2 = mergeDynastyOrder(market, { ghost: 1, c: 2 }, (k) => (k === 'ghost' ? 'RB' : posOf(k)))
+    expect(m2.rows.ghost.overallRank).toBe(1)
+    expect(m2.rows.ghost.value).toBe(0)
+    expect(scoreDynastyTrade(['c'], ['ghost'], m2.rows)).not.toBeNull() // priced, just worth 0
+  })
+
+  it('is the plain market when no list is active', () => {
+    const m = mergeDynastyOrder(market, {}, posOf)
+    expect(m.rows).toBe(market)
+    expect(m.boundary).toBe(0)
+    expect(m.matched).toBe(0)
+  })
+
+  /* A list of forty running backs is not a top-N board. Appending the market below it would
+     bury every quarterback, receiver and tight end behind RB40. */
+  it('refuses to append below a list that is not a top-N board', () => {
+    const big: DynastySource[] = Array.from({ length: 60 }, (_, i) =>
+      ({ ...src(`p${i}`, 1000 - i, 500), position: i % 2 ? 'WR' : 'RB', overallRank: i + 1 }))
+    const wide = buildDynastyRows(big)
+    // Only ranks players from deep in the market — misses most of the top 50.
+    const sparse = Object.fromEntries(big.slice(50).map((x, i) => [x.sleeperId, i + 1]))
+    const m = mergeDynastyOrder(wide, sparse, () => 'RB')
+    expect(m.suspectPartial).toBe(true)
+    expect(m.filled).toBe(0)
+  })
+
+  it('does not cry wolf on a genuine top-N list', () => {
+    const big: DynastySource[] = Array.from({ length: 60 }, (_, i) =>
+      ({ ...src(`p${i}`, 1000 - i, 500), position: 'RB', overallRank: i + 1 }))
+    const wide = buildDynastyRows(big)
+    const topN = Object.fromEntries(big.slice(0, 55).map((x, i) => [x.sleeperId, i + 1]))
+    const m = mergeDynastyOrder(wide, topN, () => 'RB')
+    expect(m.suspectPartial).toBe(false)
+    expect(m.filled).toBe(5)
   })
 })

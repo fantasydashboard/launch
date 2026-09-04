@@ -582,10 +582,30 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                   </span>
                   <RankingPicker :kind="wireSort === 'dynasty' ? 'dynasty' : 'ros'" />
                 </span>
+                <!-- Said out loud, because a list that resolved 140 of 200 names renders
+                     exactly like one that resolved all of them. -->
+                <span v-if="wireSort === 'dynasty' && dynasty.coverage.value.matched"
+                      class="w-full text-dark-textMuted/70">
+                  {{ dynasty.coverage.value.matched }} of {{ dynasty.coverage.value.listRows }} from your list<template
+                    v-if="dynasty.coverage.value.filled"> · {{ dynasty.coverage.value.filled }} more from UFD below</template>
+                  <span v-if="dynasty.coverage.value.suspectPartial" class="text-[#d29922]">
+                    · this doesn't look like a top-to-bottom list, so nothing was appended
+                  </span>
+                </span>
               </div>
               <!-- selected position only, top 25 by VOR -->
               <template v-for="row in sortedBoard.slice(0, 25)" :key="'fbbd-' + row.playerKey">
                 <!-- tier cliff: the drop-off is the decision, so name it rather than leaving a flat list -->
+                <!-- Where your opinion stops and ours starts. Without this, row 197 and row
+                     205 look equally authoritative. -->
+                <div v-if="wireSort === 'dynasty' && dynRow(row.playerKey)?.source === 'market' && dynRow(row.playerKey)?.overallRank === dynasty.coverage.value.boundary"
+                     class="flex items-center gap-2 py-1.5">
+                  <span class="h-px flex-1 bg-dark-border"></span>
+                  <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70">
+                    your list ends &middot; UFD order below
+                  </span>
+                  <span class="h-px flex-1 bg-dark-border"></span>
+                </div>
                 <div v-if="row.tierBreak && wireSort === 'season'" class="flex items-center gap-2 py-1.5">
                   <span class="h-px flex-1 bg-dark-border"></span>
                   <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70">
