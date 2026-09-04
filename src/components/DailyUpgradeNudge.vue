@@ -17,7 +17,7 @@
             <div class="nudge-header-left">
               <span class="nudge-emoji">⚡</span>
               <div>
-                <div class="nudge-title">Unlock the Draft Room</div>
+                <div class="nudge-title">Unlock the decisions</div>
                 <div class="nudge-sub">Power rankings and history stay free. The Season Pass adds the pick, the wire and the trades.</div>
               </div>
             </div>
@@ -41,11 +41,11 @@
             <!-- Plan cards -->
             <div class="nudge-plans">
 
-              <!-- Individual -->
+              <!-- Season Pass — the name the pricing page and Settings both use -->
               <div class="nudge-plan nudge-plan-green">
                 <div class="nudge-plan-top">
                   <div>
-                    <div class="nudge-plan-name">Individual</div>
+                    <div class="nudge-plan-name">Season Pass</div>
                     <div class="nudge-plan-desc">You only · all leagues · all sports</div>
                   </div>
                   <div class="nudge-plan-price">
@@ -54,7 +54,7 @@
                   </div>
                 </div>
                 <button class="nudge-btn nudge-btn-green" @click="goTo('individual')">
-                  Get Individual →
+                  Get the Season Pass →
                 </button>
                 <div class="nudge-plan-alt">or <strong>$7.99/mo</strong> billed monthly</div>
               </div>
@@ -67,7 +67,7 @@
                     <div class="nudge-plan-desc">One league · whole team · 365 days</div>
                   </div>
                   <div class="nudge-plan-price">
-                    <span class="nudge-plan-amount" style="color:#eab308;">$29</span>
+                    <span class="nudge-plan-amount" style="color:#e6eaf2;">$29</span>
                     <span class="nudge-plan-period"> one-time</span>
                   </div>
                 </div>
@@ -99,12 +99,20 @@ const STORAGE_KEY = 'ufd_upgrade_nudge_last_shown'
 const show = ref(false)
 const collapsed = ref(false)
 
+/*
+ * These bullets used to list "Full power rankings with trend graph" and "Complete league
+ * history & career stats" — directly under a line reading "Power rankings and history stay
+ * free". The card sold, as its headline benefits, the two things it had just given away.
+ *
+ * They now name the four calls the Season Pass actually buys, which is what the pricing page,
+ * Settings and every in-app wall already say.
+ */
 const features = [
-  'Expand full lists, popups & team details',
-  'Download & share social graphics',
-  'Full power rankings with trend graph',
-  'Complete league history & career stats',
-  'Head-to-head records & legacy scores',
+  'The draft pick — and what it costs you to wait',
+  'The waiver call — what clears your roster, and who to cut',
+  'Your start/sit, and the calls that are closest',
+  'Trades scored for both sides, with the message to send',
+  'Swap in your own rankings any time',
 ]
 
 function getTodayStr() {
@@ -174,7 +182,7 @@ watch([isTrialExpired, isPaid], () => {
 }
 .nudge-tab:hover { background: #161a24; }
 .nudge-tab-icon { font-size: 13px; }
-.nudge-tab-text { font-size: 12px; font-weight: 700; color: #eab308; letter-spacing: 0.04em; }
+.nudge-tab-text { font-size: 12px; font-weight: 700; color: var(--color-primary, #C6FF3A); letter-spacing: 0.04em; }
 .nudge-tab-caret { font-size: 9px; color: #6b7280; }
 
 /* ── Full panel ── */
@@ -195,7 +203,7 @@ watch([isTrialExpired, isPaid], () => {
   content: '';
   display: block;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #eab308, #22c55e, transparent);
+  background: linear-gradient(90deg, transparent, var(--color-primary, #C6FF3A), transparent);
 }
 
 /* ── Header ── */
@@ -252,7 +260,7 @@ watch([isTrialExpired, isPaid], () => {
   font-size: 12px;
   color: #9ca3af;
 }
-.nudge-feature-check { color: #22c55e; font-size: 11px; flex-shrink: 0; }
+.nudge-feature-check { color: var(--color-primary, #C6FF3A); font-size: 11px; flex-shrink: 0; }
 
 /* Plan cards */
 .nudge-plans {
@@ -266,12 +274,12 @@ watch([isTrialExpired, isPaid], () => {
   padding: 12px 14px;
 }
 .nudge-plan-green {
-  background: rgba(34,197,94,0.07);
-  border: 1px solid rgba(34,197,94,0.3);
+  background: color-mix(in oklab, var(--color-primary, #C6FF3A) 7%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-primary, #C6FF3A) 30%, transparent);
 }
 .nudge-plan-gold {
-  background: rgba(234,179,8,0.07);
-  border: 1px solid rgba(234,179,8,0.3);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.12);
 }
 .nudge-plan-top {
   display: flex;
@@ -283,7 +291,7 @@ watch([isTrialExpired, isPaid], () => {
 .nudge-plan-name { font-size: 13px; font-weight: 800; color: #fff; }
 .nudge-plan-desc { font-size: 10px; color: #6b7280; margin-top: 2px; }
 .nudge-plan-price { text-align: right; flex-shrink: 0; }
-.nudge-plan-amount { font-size: 16px; font-weight: 900; color: #22c55e; }
+.nudge-plan-amount { font-size: 16px; font-weight: 900; color: var(--color-primary, #C6FF3A); }
 .nudge-plan-period { font-size: 10px; color: #6b7280; }
 .nudge-plan-alt { font-size: 10px; color: #4b5563; margin-top: 5px; text-align: center; }
 
@@ -298,16 +306,19 @@ watch([isTrialExpired, isPaid], () => {
   cursor: pointer;
   transition: all 0.15s;
 }
+/* Brand lime, inherited from the same token the app renders with, so this cannot drift
+   from the product the way the retired gold below it did. */
 .nudge-btn-green {
-  background: #22c55e;
+  background: var(--color-primary, #C6FF3A);
   color: #0a0c14;
 }
-.nudge-btn-green:hover { background: #16a34a; }
+.nudge-btn-green:hover { background: color-mix(in oklab, var(--color-primary, #C6FF3A) 88%, white); }
 .nudge-btn-gold {
-  background: #eab308;
-  color: #0a0c14;
+  background: transparent;
+  color: #e6eaf2;
+  border: 1px solid rgba(255,255,255,0.25);
 }
-.nudge-btn-gold:hover { background: #ca8a04; }
+.nudge-btn-gold:hover { background: rgba(255,255,255,0.08); }
 
 /* ── Transition ── */
 .nudge-slide-enter-active { transition: transform 0.35s cubic-bezier(0.34,1.1,0.64,1), opacity 0.25s ease; }

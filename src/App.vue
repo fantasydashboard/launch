@@ -168,13 +168,16 @@
         </span>
       </div>
 
-      <!-- Trial / Expiry banner — hidden for active individual subscribers -->
-      <Teleport to="body">
-        <!-- Active trial (not paid yet) -->
-      </Teleport>
+      <!--
+        A trial banner used to live here, inside a Teleport, with a 33px spacer below it to
+        push the header down and make room. The banner was removed; the spacer was not. So
+        anyone on a trial — which every new account auto-starts — got a band of empty space
+        above the header holding a place for something that no longer exists.
 
-      <!-- Push content down when banner is visible (not for active paid users) -->
-      <div v-if="(isOnActiveTrial || isTrialExpired) && !isActivePaidUser" style="height:33px;flex-shrink:0;"></div>
+        Both are gone. LeaguePassBanner below carries its own `v-if="show"` and occupies real
+        height only when it has something to say, so nothing outside it needs to reserve room
+        on its behalf.
+      -->
 
       <!-- Combined Header Container -->
         <LeaguePassBanner />

@@ -12,7 +12,31 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView
+      component: HomeView,
+      /*
+       * A connected user lands on the page the product actually leads with.
+       *
+       * "/" renders UnifiedHomeComponent — 6,726 lines of the pre-redesign dashboard — so
+       * connecting a league dropped you onto the old design, and it only became the new one
+       * once you clicked a tab. Every nav destination had been rebuilt except the one you
+       * arrive at.
+       *
+       * Read straight from localStorage rather than the store, because this guard runs
+       * before Pinia has hydrated and a store read here is empty on a cold load — which
+       * would send a connected user to the old dashboard exactly once per visit, the hardest
+       * version of this bug to notice.
+       *
+       * Anonymous visitors are untouched: no saved league means no redirect, and App.vue
+       * still swaps in the marketing page for them.
+       */
+      beforeEnter: (_to, _from, next) => {
+        let hasLeague = false
+        try {
+          hasLeague = !!localStorage.getItem('fd_active_league')
+            || JSON.parse(localStorage.getItem('fd_saved_leagues') || '[]').length > 0
+        } catch { /* private mode — fall through to the old home rather than crash */ }
+        next(hasLeague ? { path: '/this-week' } : undefined)
+      },
     },
     // Sport-specific landing pages (public)
     {
