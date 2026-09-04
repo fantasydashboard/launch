@@ -205,12 +205,39 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { supabase } from '@/lib/supabase'
 
 const router = useRouter()
 const route = useRoute()
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
+const { refreshAccess } = useFeatureAccess()
+
+/*
+ * Pull the entitlement down after paying.
+ *
+ * Returning from Stripe showed "Season Pass Activated!" and re-checked nothing. The profile
+ * in the store still carried the tier it was loaded with, so hasFullAccess stayed false and
+ * every wall on the site stayed up — you paid, were congratulated, and were still locked
+ * out until a hard reload. Invisible until this week, because until the walls went up there
+ * was nothing for a stale entitlement to block.
+ *
+ * Retried, because the redirect races Stripe's webhook: the browser comes back the instant
+ * checkout completes, while checkout.session.completed lands a moment later. One immediate
+ * fetch would usually read the OLD tier and stop. Backing off across ~15 seconds covers the
+ * normal case without spinning.
+ */
+async function claimAccessAfterPurchase() {
+  for (const wait of [0, 1500, 3000, 5000, 5000]) {
+    if (wait) await new Promise((r) => setTimeout(r, wait))
+    try {
+      await authStore.fetchProfile()
+      await refreshAccess()
+    } catch { /* keep trying — a transient failure here must not strand a paying user */ }
+    if (authStore.profile?.subscription_tier && authStore.profile.subscription_tier !== 'free') return
+  }
+}
 const isLoggedIn = computed(() => !!authStore.user)
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -243,6 +270,7 @@ onMounted(() => {
       }
     }, 1500)
     router.replace({ path: '/pricing', query: {} })
+    void claimAccessAfterPurchase()
   }
 })
 
