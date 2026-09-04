@@ -80,6 +80,12 @@ const dynasty = useDynastyValues({
   leagueSize: source.leagueSize,
   scoring: computed(() => scoring.weights.value as Record<string, number>),
   enabled: isFootball,
+  /* Roster and wire together, so an uploaded list can be matched against every body the
+     board can show rather than only the ones you already own. */
+  players: computed(() => [
+    ...pool.value.map((p) => ({ playerKey: p.playerKey, name: p.name, position: p.position })),
+    ...freeAgents.value.map((f) => ({ playerKey: f.playerKey ?? `fa:${f.name}`, name: f.name, position: f.position })),
+  ]),
 })
 const dynRow = (key?: string) => (key ? dynasty.rows.value[key] ?? null : null)
 
@@ -489,7 +495,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
             <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
               <!-- Say the scope out loud: the list drives this card, the board below it and the
                    add/drop verdict above it, so naming only this card would understate it. -->
-              <template v-if="dynasty.ready.value && wireSort === 'dynasty'">dynasty market order · our season points still shown at right</template>
+              <template v-if="dynasty.ready.value && wireSort === 'dynasty'">{{ dynasty.sourceName.value === 'UFD' ? 'dynasty market order' : dynasty.sourceName.value + "'s dynasty order" }} · our season points still shown at right</template>
               <template v-else-if="rosSource !== 'UFD'">{{ rosSource }}'s order, our points — drives this page</template>
               <template v-else>value over replacement (season)</template>
             </p>
@@ -567,7 +573,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                             :title="opt.hint"
                             @click="wireSort = opt.key">{{ opt.label }}</button>
                   </span>
-                  <RankingPicker kind="ros" />
+                  <RankingPicker :kind="wireSort === 'dynasty' ? 'dynasty' : 'ros'" />
                 </span>
               </div>
               <!-- selected position only, top 25 by VOR -->

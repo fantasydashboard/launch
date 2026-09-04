@@ -25,12 +25,13 @@ const LEGACY_ON = 'ufd:draftRoom:analystRankingsOn'
  * stale on completely different clocks, so a set has to declare which it is
  * rather than being applied wherever it happens to be selected.
  */
-export type RankingKind = 'draft' | 'ros' | 'week'
+export type RankingKind = 'draft' | 'ros' | 'week' | 'dynasty'
 
 export const KIND_LABELS: Record<RankingKind, string> = {
   draft: 'Draft rankings',
   ros: 'Rest of season rankings',
   week: "This week's rankings",
+  dynasty: 'Dynasty rankings',
 }
 
 /** How long before a list of this kind is probably out of date. */
@@ -38,6 +39,9 @@ export const KIND_STALE_DAYS: Record<RankingKind, number> = {
   draft: 14,
   ros: 10,
   week: 4,
+  /* Dynasty consensus moves over months, not weeks — a list from six weeks ago is still
+     broadly the same list, which is not true of any other kind here. */
+  dynasty: 45,
 }
 
 export interface RankingSet {
@@ -63,7 +67,8 @@ const drop = (k: string) => {
   try { localStorage.removeItem(k) } catch { /* private mode */ }
 }
 
-const isKind = (v: unknown): v is RankingKind => v === 'draft' || v === 'ros' || v === 'week'
+const isKind = (v: unknown): v is RankingKind =>
+  v === 'draft' || v === 'ros' || v === 'week' || v === 'dynasty'
 
 function loadSets(): RankingSet[] {
   const coerce = (arr: any[]): RankingSet[] =>
@@ -104,13 +109,13 @@ function loadSets(): RankingSet[] {
 }
 
 function loadActive(): Record<RankingKind, string> {
-  const base: Record<RankingKind, string> = { draft: UFD, ros: UFD, week: UFD }
+  const base: Record<RankingKind, string> = { draft: UFD, ros: UFD, week: UFD, dynasty: UFD }
   try {
     const raw = read(ACTIVE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
       if (parsed && typeof parsed === 'object') {
-        for (const k of ['draft', 'ros', 'week'] as RankingKind[]) {
+        for (const k of ['draft', 'ros', 'week', 'dynasty'] as RankingKind[]) {
           if (typeof parsed[k] === 'string') base[k] = parsed[k]
         }
         return base

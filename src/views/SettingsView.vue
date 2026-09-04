@@ -387,7 +387,7 @@ async function openBillingPortal() {
 // Custom draft rankings — an account-level preference, not draft state, so it
 // belongs beside the other standing settings rather than inside a draft tool.
 const customRankings = useCustomRankings()
-const KINDS: RankingKind[] = ['draft', 'ros', 'week']
+const KINDS: RankingKind[] = ['draft', 'ros', 'week', 'dynasty']
 const newName = ref<Record<RankingKind, string>>({ draft: '', ros: '', week: '' })
 const rankingsFileMsg = ref('')
 

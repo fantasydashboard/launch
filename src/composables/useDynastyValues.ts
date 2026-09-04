@@ -2,6 +2,7 @@ import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { getDynastyValues, type DynastyParams } from '@/services/dynastyService'
 import { buildDynastyRows, type DynastyRow, type DynastySource } from '@/football/dynastyValues'
+import { useCustomRankings, UFD_LABEL } from '@/composables/useCustomRankings'
 
 /** Sleeper league type: 0 redraft, 1 keeper, 2 dynasty. */
 const DYNASTY_LEAGUE_TYPE = 2
@@ -28,6 +29,8 @@ export function useDynastyValues(inputs: {
   leagueSize: Ref<number> | ComputedRef<number>
   scoring: Ref<Record<string, number>> | ComputedRef<Record<string, number>>
   enabled: Ref<boolean> | ComputedRef<boolean>
+  /** Everyone the board can show, so an uploaded list can be matched by name. */
+  players?: Ref<{ playerKey: string; name: string; position?: string }[]> | ComputedRef<{ playerKey: string; name: string; position?: string }[]>
 }): {
   isDynasty: ComputedRef<boolean>
   rows: ComputedRef<Record<string, DynastyRow>>
@@ -35,6 +38,8 @@ export function useDynastyValues(inputs: {
   ready: ComputedRef<boolean>
   loading: Ref<boolean>
   load: () => void
+  /** Whose dynasty order the board is in — the market, or a list you uploaded. */
+  sourceName: ComputedRef<string>
 } {
   const leagueStore = useLeagueStore()
   const source = ref<DynastySource[]>([])
@@ -81,8 +86,57 @@ export function useDynastyValues(inputs: {
     { immediate: true },
   )
 
-  const rows = computed(() => (source.value.length ? buildDynastyRows(source.value) : {}))
-  const ready = computed(() => isDynasty.value && Object.keys(rows.value).length > 0)
+  const custom = useCustomRankings('dynasty')
+  const marketRows = computed(() => (source.value.length ? buildDynastyRows(source.value) : {}))
 
-  return { isDynasty, rows, ready, loading, load }
+  /*
+   * An uploaded list REPLACES the market order rather than sitting beside it.
+   *
+   * The rest-of-season picker shipped as a cosmetic re-sort of one card while every number
+   * around it stayed on our own order, and a control that cannot change what you are told is
+   * worse than no control. So a dynasty list you upload becomes the dynasty ranking: the sort,
+   * the DYN column, the buy-low read, all of it.
+   *
+   * Value is carried over from the market where we have it, because a ranking gives an ORDER
+   * and the trade delta needs magnitudes. A player your list ranks but the market has never
+   * priced still gets a rank; he simply contributes nothing to a deal total, which is the
+   * same rule as before and is why a trade containing him refuses to score.
+   */
+  const rows = computed<Record<string, DynastyRow>>(() => {
+    const market = marketRows.value
+    const list = inputs.players?.value ?? []
+    if (!custom.enabled.value || !list.length) return market
+
+    const { rankByKey } = custom.match(list)
+    if (!Object.keys(rankByKey).length) return market
+
+    const ordered = list
+      .filter((p) => rankByKey[p.playerKey])
+      .sort((a, b) => rankByKey[a.playerKey] - rankByKey[b.playerKey])
+
+    const seenByPos = new Map<string, number>()
+    const out: Record<string, DynastyRow> = {}
+    ordered.forEach((p, i) => {
+      const pos = (p.position ?? '').toUpperCase().split(/[,/|]/)[0].trim()
+      const n = (seenByPos.get(pos) ?? 0) + 1
+      seenByPos.set(pos, n)
+      const m = market[p.playerKey]
+      out[p.playerKey] = {
+        playerKey: p.playerKey,
+        value: m?.value ?? 0,
+        redraftValue: m?.redraftValue ?? 0,
+        age: m?.age ?? null,
+        lean: m?.lean ?? 'level',
+        skew: m?.skew ?? 0,
+        overallRank: i + 1,
+        positionRank: n,
+      }
+    })
+    return out
+  })
+
+  const ready = computed(() => isDynasty.value && Object.keys(rows.value).length > 0)
+  const sourceName = computed(() => (custom.enabled.value ? custom.sourceName.value : UFD_LABEL))
+
+  return { isDynasty, rows, ready, loading, load, sourceName }
 }

@@ -85,6 +85,7 @@ const dynasty = useDynastyValues({
   leagueSize,
   scoring: computed(() => scoring.weights.value as Record<string, number>),
   enabled: computed(() => leagueStore.activeSport === 'football'),
+  players: computed(() => pool.value.map((p) => ({ playerKey: p.playerKey, name: p.name, position: p.position }))),
 })
 /* Returns null when the market has not priced every player in the deal. Summing what we
    happen to know would print a confident number over a hole, and it would look exactly like
