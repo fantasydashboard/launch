@@ -171,10 +171,6 @@ const byDynasty = (ka?: string, kb?: string) => {
   if (!b) return -1
   return a.overallRank - b.overallRank
 }
-/* Folded, like the add/drop card above it. This list is long and, on a deep dynasty
-   roster, almost entirely below replacement — so it was pushing the Full Board, the thing
-   you actually browse, off the bottom of the page. */
-const bestOpen = ref(false)
 /* How many free agents are genuinely better than a replacement body. Counting them is what
    lets the collapsed header say something true: on a barren wire the honest headline is that
    nothing clears your roster, not a ranked list of players you would never add. */
@@ -422,18 +418,25 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                    :class="fbWire.upgrades.length ? 'border-primary/40' : 'border-dark-border'">
             <button class="flex w-full items-center justify-between gap-3 p-4" @click="movesOpen = !movesOpen">
               <span class="min-w-0 text-left">
+                <!-- One verdict. There were two cards here — "no add worth a drop" and
+                     "nothing clears your roster" — the same finding stated twice, each behind
+                     its own fold, leaving a reader to reconcile two headlines that could never
+                     disagree with each other. -->
                 <span v-if="fbWire.upgrades.length" class="font-display text-xs font-semibold uppercase tracking-wide text-primary">
-                  ★ {{ fbWire.upgrades.length }} add / drop move{{ fbWire.upgrades.length > 1 ? 's' : '' }}
+                  ★ {{ fbWire.upgrades.length }} pickup{{ fbWire.upgrades.length > 1 ? 's' : '' }} worth making
                   <span class="font-mono text-[10px] normal-case text-dark-textMuted">
                     · +{{ round(fbWire.upgrades.reduce((t, s) => t + s.marginal, 0)) }} lineup pts on the table
                   </span>
                 </span>
+                <span v-else-if="bestAboveReplacement" class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textSecondary">
+                  {{ bestAboveReplacement }} above replacement, none worth a drop
+                  <span class="font-mono text-[10px] normal-case text-dark-textMuted">· best +{{ round(bestTopValue) }}</span>
+                </span>
                 <span v-else class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
-                  ✓ No add worth a drop
+                  ✓ Nothing on the wire clears your roster
                 </span>
                 <span class="mt-0.5 block font-mono text-[10px] text-dark-textMuted/70">
-                  <template v-if="fbWire.upgrades.length">add a free agent, cut the body it beats — the lineup points you'd gain</template>
-                  <template v-else>nothing available beats a body already in your lineup<template v-if="cutCandidates.length"> · who to cut if you add anyway</template></template>
+                  best available · what it would cost you<template v-if="cutCandidates.length"> · who to cut</template>
                 </span>
               </span>
               <span class="shrink-0 font-mono text-dark-textMuted">{{ movesOpen ? '−' : '+' }}</span>
@@ -472,38 +475,10 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                 Nothing available beats a body already in your lineup, so there's no cut to make this week.
               </p>
             </div>
-          </section>
 
-          <!--
-            The weekly streamer block moved to This Week. The Wire is a REST-OF-SEASON page —
-            "should this player be on my roster instead of one of mine" — and a one-week
-            rental is a different decision on a different clock. Running both here meant the
-            page answered two questions with two currencies and the reader had to notice which
-            was which. This Week owns the weekly clock; the drop is obvious there because the
-            bench is on the same screen.
-          -->
-
-          <!-- 3. BEST AVAILABLE — ROS VOR -->
-          <section class="mb-5 rounded-xl border border-dark-border bg-dark-card">
-            <button class="flex w-full items-center justify-between gap-3 p-4" @click="bestOpen = !bestOpen">
-              <span class="min-w-0 text-left">
-                <span v-if="bestAboveReplacement" class="font-display text-xs font-semibold uppercase tracking-wide text-primary">
-                  ★ {{ bestAboveReplacement }} above replacement
-                  <span class="font-mono text-[10px] normal-case text-dark-textMuted">· best +{{ round(bestTopValue) }}</span>
-                </span>
-                <!-- The true answer on a deep roster, said plainly rather than as a ranked
-                     list of players nobody would add. -->
-                <span v-else class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
-                  ✓ Nothing on the wire clears your roster
-                </span>
-                <span class="mt-0.5 block font-mono text-[10px] text-dark-textMuted/70">
-                  best available · the top of the wire either way
-                </span>
-              </span>
-              <span class="shrink-0 font-mono text-dark-textMuted">{{ bestOpen ? '−' : '+' }}</span>
-            </button>
-
-            <div v-if="bestOpen" class="border-t border-dark-border/40 px-4 pb-4 pt-3">
+              <!-- The wire's top, inside the same fold as the verdict about it, because the
+                   verdict IS about this list. -->
+              <div class="mt-4 border-t border-dark-border/40 pt-3">
             <div class="mb-1 flex flex-wrap items-baseline justify-between gap-2">
               <h2 class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
                 Best available
