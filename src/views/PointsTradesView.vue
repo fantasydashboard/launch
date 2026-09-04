@@ -12,12 +12,15 @@ import { buildRosterCompare } from '@/myteam/rosterCompare'
 import { useDynastyValues } from '@/composables/useDynastyValues'
 import { scoreDynastyTrade, reseatByDynasty } from '@/football/dynastyValues'
 import { readAge, AGE_TONE } from '@/football/positionalAge'
+import SeasonPassGate from '@/components/SeasonPassGate.vue'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { startableCounts, startableFraction } from '@/trades/rosterSlots'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import type { AvailablePlayer } from '@/players/types'
 
 const leagueStore = useLeagueStore()
+const { hasFullAccess } = useFeatureAccess()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
 const teamLogo = (abbr?: string) => (isFootball.value ? nflTeamLogo(abbr) : mlbTeamLogo(abbr))
 
@@ -376,6 +379,19 @@ function fairness(myGain: number, theirGain: number): string {
         </div>
       </section>
 
+      <!--
+        Where your lineup ranks against the league stays free — that is "where you stand",
+        which the landing page gives away. Everything below is the trade itself, which is one
+        of the four calls the Season Pass sells and was fully readable to anyone.
+      -->
+      <SeasonPassGate
+        v-if="!hasFullAccess"
+        headline="The deal, and who to send it to"
+        body="Where your lineup ranks against the league stays free, as do standings, power rankings and history. This is the trade itself: who is thin where you are deep, what a swap is worth to both sides, and the message that gets a reply."
+        cta="Unlock trades — $39"
+      />
+
+      <template v-else>
       <!-- YOUR LEVERAGE -->
       <section v-if="landscape && (landscape.myStrong.length || landscape.myWeak.length)" class="mb-4 rounded-xl border border-dark-border bg-dark-card px-4 py-3">
         <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Your leverage</p>
@@ -672,6 +688,7 @@ function fairness(myGain: number, theirGain: number): string {
           {{ isFootball ? 'value over replacement, rest of season' : 'projected points, rest of season' }}
         </p>
       </section>
+      </template>
     </template>
   </div>
 </template>

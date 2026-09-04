@@ -9,7 +9,10 @@ import { useLeagueStore } from '@/stores/league'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { startableCounts, startableFraction } from '@/trades/rosterSlots'
 import RankingPicker from '@/components/RankingPicker.vue'
+import SeasonPassGate from '@/components/SeasonPassGate.vue'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
+const { hasFullAccess } = useFeatureAccess()
 const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes, weekSource } = useWeeklyBoard()
 
 /*
@@ -356,6 +359,19 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
         headline, and the lineup, the close calls and the bench are the working behind it —
         all of which were pushing the rankings board off the bottom of the page.
       -->
+      <!--
+        The matchup and the scoreboard above stay free — that is where you stand, which the
+        landing page gives away. Start/sit and the weekly rankings are advice, one of the four
+        calls the Season Pass sells, and were readable by anyone.
+      -->
+      <SeasonPassGate
+        v-if="!hasFullAccess"
+        headline="Who to start, and who to sit"
+        body="Your matchup, the scoreboard, standings, power rankings and history all stay free. This is the weekly call: the lineup to set, the closest calls, and where every startable player ranks in your scoring."
+        cta="Unlock this week — $39"
+      />
+
+      <template v-else>
       <section class="mb-5 rounded-xl border bg-dark-card"
                :class="board.moves.length ? 'border-primary/40' : 'border-dark-border'">
         <button class="flex w-full items-center justify-between gap-3 p-4" @click="lineupOpen = !lineupOpen">
@@ -588,6 +604,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
           </div>
         </template>
       </section>
+      </template>
     </template>
   </div>
 </template>
