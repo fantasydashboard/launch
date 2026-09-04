@@ -36,6 +36,37 @@ export function collapseSeasons<T extends Row>(saved: T[]): T[] {
     const newest = g.reduce((a, b) => (Number(b.season) > Number(a.season) ? b : a))
     out.push(...g.filter((l) => String(l.season) === String(newest.season)))
   }
-  const keep = new Set(out.map((l) => l.league_id))
-  return saved.filter((l) => keep.has(l.league_id))
+  /*
+   * Dedupe by id LAST, and unconditionally.
+   *
+   * The previous version rebuilt the result by filtering the input against a set of kept ids,
+   * which re-admitted every copy when the same league_id appeared more than once — so a store
+   * holding three identical rows produced three identical rows, and the switcher showed the
+   * same league three times with the same name AND the same season. The season rule above
+   * cannot catch that: rows sharing a name and a season are deliberately kept, because two
+   * genuinely different leagues can be named alike.
+   *
+   * Whatever put a duplicate id in the list upstream, a league list must never show one league
+   * twice. Ids are stringified because the two sources they arrive from do not agree on type,
+   * and a Set of mixed types silently keeps both.
+   */
+  const seen = new Set<string>()
+  const keep = new Set(out.map((l) => String(l.league_id)))
+  return saved.filter((l) => {
+    const id = String(l.league_id)
+    if (!keep.has(id) || seen.has(id)) return false
+    seen.add(id)
+    return true
+  })
+}
+
+/** Drop repeated league_ids, keeping the first. Ids are stringified — the sources disagree. */
+export function collapseById<T extends { league_id: string }>(rows: T[]): T[] {
+  const seen = new Set<string>()
+  return rows.filter((r) => {
+    const id = String(r.league_id)
+    if (seen.has(id)) return false
+    seen.add(id)
+    return true
+  })
 }

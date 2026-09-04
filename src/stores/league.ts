@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { collapseSeasons } from './leagueLineage'
+import { collapseSeasons, collapseById } from './leagueLineage'
 import { ref, computed, watch } from 'vue'
 import { sleeperService } from '@/services/sleeper'
 import { supabase } from '@/lib/supabase'
@@ -382,15 +382,20 @@ export const useLeagueStore = defineStore('league', () => {
       if (fetchError) throw fetchError
       
       const remote = data ?? []
-      const remoteIds = new Set(remote.map(l => l.league_id))
+      /* Stringified on both sides. Supabase and localStorage do not agree on whether a
+         league_id is a string or a number, and a mixed-type Set misses the match — which
+         drops the row into localOnly, re-appends it beside the remote copy, and grows the
+         list by one duplicate on every load. */
+      const remoteIds = new Set(remote.map(l => String(l.league_id)))
       // Local-only leagues: connected on this device but never written to the account. Since
       // /connect lets an anonymous visitor add a league, this is now the normal state for
       // someone who signs up AFTER connecting, not just an ESPN edge case.
-      const localOnly = savedLeagues.value.filter(l => !remoteIds.has(l.league_id))
+      const localOnly = savedLeagues.value.filter(l => !remoteIds.has(String(l.league_id)))
 
       if (remote.length > 0) {
         // MERGE Supabase leagues with localStorage leagues instead of replacing
-        savedLeagues.value = [...remote, ...localOnly]
+        // Deduped on the way in, so a bad row upstream cannot accumulate across loads.
+        savedLeagues.value = collapseById([...remote, ...localOnly])
         console.log(`[League Store] Merged ${remote.length} Supabase leagues + ${localOnly.length} local-only leagues`)
         saveToLocalStorage()
       }
