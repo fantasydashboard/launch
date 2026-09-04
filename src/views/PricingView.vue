@@ -327,8 +327,22 @@ function goToDashboard() { router.push('/') }
 async function startTrial(_target?: 'individual') {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) {
-    // Not logged in — send to sign up, trial starts automatically on account creation
-    router.push('/auth?intent=signup')
+    /*
+     * This pushed to '/auth?intent=signup', a route that does not exist. Vue Router matched
+     * nothing, so the click did nothing at all: no navigation, no modal, no error. The
+     * checkout button on the pricing page silently went nowhere.
+     *
+     * It is reachable even when the page says you are signed in, which is how it stayed
+     * hidden. The button's label reads `isLoggedIn`, which is Pinia state rehydrated from
+     * storage, while this line asks Supabase for a live session — so an expired or
+     * unrestored session shows "Get the Season Pass" and then lands here.
+     *
+     * ?signup=true is the mechanism App.vue already watches for, on any route. Setting it
+     * here opens the signup modal WITHOUT navigating, so someone who came to buy stays on
+     * the page they came to buy from and can carry straight on once they have an account.
+     */
+    checkoutError.value = null
+    router.replace({ path: '/pricing', query: { ...route.query, signup: 'true' } })
     return
   }
 
