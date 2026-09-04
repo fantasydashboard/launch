@@ -11,6 +11,7 @@ import { buildPointsTradeLandscape } from '@/myteam/pointsTradeLandscape'
 import { buildRosterCompare } from '@/myteam/rosterCompare'
 import { useDynastyValues } from '@/composables/useDynastyValues'
 import { scoreDynastyTrade } from '@/football/dynastyValues'
+import { readAge, AGE_TONE } from '@/football/positionalAge'
 import { startableCounts, startableFraction } from '@/trades/rosterSlots'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
@@ -581,6 +582,13 @@ function fairness(myGain: number, theirGain: number): string {
                       :title="dynRow(b.playerKey) ? `${row.position}${b.posRank} this season vs ${row.position}${dynRow(b.playerKey)!.positionRank} in the dynasty market` : 'Not priced by the dynasty market'">
                   {{ dynRow(b.playerKey) ? 'DYN ' + row.position + dynRow(b.playerKey)!.positionRank : 'DYN —' }}<template v-if="h2hGap(b)"> {{ h2hGap(b) === 'buy-low' ? '▲' : '▼' }}</template>
                 </span>
+                <!-- Whether that age is early or late FOR HIS POSITION — the single fact a
+                     dynasty trade turns on, and the one the board was withholding. -->
+                <span v-if="dynasty.ready.value && dynRow(b.playerKey)?.age" class="shrink-0 font-mono text-[9px]"
+                      :class="AGE_TONE[readAge(row.position, dynRow(b.playerKey)!.age)?.phase ?? 'prime']"
+                      :title="readAge(row.position, dynRow(b.playerKey)!.age)?.detail ?? ''">
+                  {{ Math.floor(dynRow(b.playerKey)!.age!) }}
+                </span>
                 <span class="w-10 shrink-0 text-right font-mono text-[10px]" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted/70'">
                   {{ b.value >= 0 ? '+' : '' }}{{ round(b.value) }}
                 </span>
@@ -602,6 +610,13 @@ function fairness(myGain: number, theirGain: number): string {
                       :class="GAP_CLS[h2hGap(b)] ?? 'text-dark-textMuted/70'"
                       :title="dynRow(b.playerKey) ? `${row.position}${b.posRank} this season vs ${row.position}${dynRow(b.playerKey)!.positionRank} in the dynasty market` : 'Not priced by the dynasty market'">
                   {{ dynRow(b.playerKey) ? 'DYN ' + row.position + dynRow(b.playerKey)!.positionRank : 'DYN —' }}<template v-if="h2hGap(b)"> {{ h2hGap(b) === 'buy-low' ? '▲' : '▼' }}</template>
+                </span>
+                <!-- Whether that age is early or late FOR HIS POSITION — the single fact a
+                     dynasty trade turns on, and the one the board was withholding. -->
+                <span v-if="dynasty.ready.value && dynRow(b.playerKey)?.age" class="shrink-0 font-mono text-[9px]"
+                      :class="AGE_TONE[readAge(row.position, dynRow(b.playerKey)!.age)?.phase ?? 'prime']"
+                      :title="readAge(row.position, dynRow(b.playerKey)!.age)?.detail ?? ''">
+                  {{ Math.floor(dynRow(b.playerKey)!.age!) }}
                 </span>
                 <span class="w-10 shrink-0 text-right font-mono text-[10px]" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted/70'">
                   {{ b.value >= 0 ? '+' : '' }}{{ round(b.value) }}

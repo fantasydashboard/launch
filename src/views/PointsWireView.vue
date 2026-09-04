@@ -12,6 +12,7 @@ import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { useFootballWire } from '@/composables/useFootballWire'
 import RankingPicker from '@/components/RankingPicker.vue'
 import { useDynastyValues } from '@/composables/useDynastyValues'
+import { readAge, AGE_TONE } from '@/football/positionalAge'
 
 const leagueStore = useLeagueStore()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
@@ -557,7 +558,8 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                 <span><span class="text-dark-textMuted/50">●</span> rostered elsewhere</span>
                 <span v-if="dynasty.ready.value" class="hidden sm:inline">
                   this season &middot; <span class="text-dark-textSecondary">dynasty</span> &middot;
-                  <span class="text-[#7ee787]">buy-low</span>/<span class="text-[#e69a4a]">sell-high</span> when they disagree by {{ RANK_GAP_MIN }}+ &middot; age
+                  <span class="text-[#7ee787]">buy-low</span>/<span class="text-[#e69a4a]">sell-high</span> when they disagree by {{ RANK_GAP_MIN }}+ &middot;
+                  age <span class="text-[#7ee787]">rising</span>/<span class="text-[#d29922]">ageing</span>/<span class="text-[#f85149]">old</span> for the position
                 </span>
                 <span v-if="dynasty.ready.value && wireSort === 'dynasty'" class="hidden text-dark-textMuted/50 sm:inline">
                   tier cliffs are season point drops — hidden in this order
@@ -623,7 +625,11 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                           :title="rankGap(row.playerKey) ? `${row.position}${rankGap(row.playerKey)!.season} this season vs ${row.position}${rankGap(row.playerKey)!.dyn} in the dynasty market` : ''">
                       {{ rankGap(row.playerKey)?.tag || '' }}
                     </span>
-                    <span class="hidden w-6 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/60 md:inline">
+                    <!-- Age, read against the position. 28 is late for a back and prime for
+                         a receiver, and the board used to print both as "28". -->
+                    <span class="hidden w-6 shrink-0 text-right font-mono text-[10px] md:inline"
+                          :class="AGE_TONE[readAge(row.position, dynRow(row.playerKey)?.age)?.phase ?? 'prime']"
+                          :title="readAge(row.position, dynRow(row.playerKey)?.age)?.detail ?? ''">
                       {{ dynRow(row.playerKey)?.age ? Math.floor(dynRow(row.playerKey)!.age!) : '' }}
                     </span>
                   </template>
