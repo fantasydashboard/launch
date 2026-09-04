@@ -4,7 +4,7 @@
 
       <!-- ── Purchase success banner ── -->
       <div v-if="purchaseSuccess" class="mb-8 rounded-2xl p-6 flex items-start gap-4"
-        style="background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.4);">
+        style="background: color-mix(in oklab, var(--color-primary, #C6FF3A) 10%, transparent); border: 1px solid color-mix(in oklab, var(--color-primary, #C6FF3A) 40%, transparent);">
         <div class="text-3xl">🎉</div>
         <div>
           <h2 class="font-black text-white text-lg mb-1"
@@ -15,13 +15,13 @@
             You now have full access across all your leagues and sports.
           </p>
           <button @click="goToDashboard" class="mt-3 inline-flex items-center gap-2 text-sm font-bold"
-            style="color: #22c55e;">← Back to dashboard</button>
+            style="color: var(--color-primary, #C6FF3A);">← Back to dashboard</button>
         </div>
       </div>
 
       <!-- ── Page header ── -->
       <div class="text-center mb-4">
-        <p class="text-sm font-bold tracking-widest mb-3" style="color: #22c55e; text-transform: uppercase; letter-spacing: 0.18em;">Pricing</p>
+        <p class="text-sm font-bold tracking-widest mb-3" style="color: var(--color-primary, #C6FF3A); text-transform: uppercase; letter-spacing: 0.18em;">Pricing</p>
         <h1 class="text-4xl sm:text-5xl font-black text-white mb-4"
           style="font-family: 'Barlow Condensed', sans-serif; letter-spacing: -0.01em;">
 Free forever. Upgrade to win.
@@ -71,10 +71,10 @@ Free forever. Upgrade to win.
         </div>
 
         <!-- UFD SEASON PASS -->
-        <div class="rounded-2xl p-8 relative flex flex-col" style="background: linear-gradient(135deg, rgba(34,197,94,0.07) 0%, rgba(6,182,212,0.04) 100%); border: 2px solid #22c55e;">
+        <div class="rounded-2xl p-8 relative flex flex-col" style="background: linear-gradient(135deg, color-mix(in oklab, var(--color-primary, #C6FF3A) 7%, transparent) 0%, transparent 100%); border: 2px solid var(--color-primary, #C6FF3A);">
           <div class="absolute -top-4 left-1/2 -translate-x-1/2">
             <span class="px-4 py-1 rounded-full text-xs font-black"
-              style="background: #22c55e; color: #0a0c14; letter-spacing: 0.06em; text-transform: uppercase;">Founding price</span>
+              style="background: var(--color-primary, #C6FF3A); color: #0a0c14; letter-spacing: 0.06em; text-transform: uppercase;">Founding price</span>
           </div>
 
           <div class="mb-6">
@@ -83,7 +83,7 @@ Free forever. Upgrade to win.
           </div>
 
           <div class="mb-2">
-            <span class="text-5xl font-black" style="color: #22c55e;">$39</span>
+            <span class="text-5xl font-black" style="color: var(--color-primary, #C6FF3A);">$39</span>
             <span class="text-sm ml-1" style="color: #6b7280;">/ year</span>
           </div>
           <p class="text-xs mb-6" style="color: #6b7280;">One season, 365 days · renews each year · cancel anytime</p>
@@ -102,7 +102,7 @@ Free forever. Upgrade to win.
 
           <button @click="startTrial('individual')" :disabled="checkingOut"
             class="w-full py-4 rounded-xl font-black text-base transition-all transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
-            style="background: linear-gradient(135deg, #22c55e, #16a34a); color: #0a0c14; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 4px 20px rgba(34,197,94,0.3);">
+            style="background: var(--color-primary, #C6FF3A); color: #0a0c14; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 4px 20px color-mix(in oklab, var(--color-primary, #C6FF3A) 30%, transparent);">
             <span v-if="checkingOut && checkoutTarget === 'individual'">Redirecting…</span>
             <span v-else-if="isLoggedIn">Get the Season Pass — $39</span>
             <span v-else>Create an account to subscribe</span>
@@ -138,7 +138,7 @@ Free forever. Upgrade to win.
               <tr style="background: #0a0c14; border-bottom: 1px solid #1e2130;">
                 <th class="text-left px-6 py-3 text-xs font-bold text-dark-textMuted" style="color: #6b7280; text-transform: uppercase; letter-spacing: 0.1em; width: 45%;">Feature</th>
                 <th class="px-4 py-3 text-center text-xs font-bold" style="color: #6b7280; text-transform: uppercase; letter-spacing: 0.1em;">Free</th>
-                <th class="px-4 py-3 text-center text-xs font-bold" style="color: #22c55e; text-transform: uppercase; letter-spacing: 0.1em;">Season Pass</th>
+                <th class="px-4 py-3 text-center text-xs font-bold" style="color: var(--color-primary, #C6FF3A); text-transform: uppercase; letter-spacing: 0.1em;">Season Pass</th>
               </tr>
             </thead>
             <tbody>
@@ -146,14 +146,14 @@ Free forever. Upgrade to win.
                 :style="{ background: i % 2 === 0 ? '#0d0f18' : '#0a0c14', borderBottom: '1px solid #1a1c26' }">
                 <td class="px-6 py-3 text-sm" style="color: #d1d5db;">{{ row.feature }}</td>
                 <td class="px-4 py-3 text-center text-sm">
-                  <span v-if="row.free === true" style="color: #22c55e;">✓</span>
+                  <span v-if="row.free === true" style="color: var(--color-primary, #C6FF3A);">✓</span>
                   <span v-else-if="row.free === false" style="color: #374151;">✗</span>
                   <span v-else class="text-xs" style="color: #9ca3af;">{{ row.free }}</span>
                 </td>
                 <td class="px-4 py-3 text-center text-sm">
-                  <span v-if="row.individual === true" style="color: #22c55e;">✓</span>
+                  <span v-if="row.individual === true" style="color: var(--color-primary, #C6FF3A);">✓</span>
                   <span v-else-if="row.individual === false" style="color: #374151;">✗</span>
-                  <span v-else class="text-xs font-bold" style="color: #22c55e;">{{ row.individual }}</span>
+                  <span v-else class="text-xs font-bold" style="color: var(--color-primary, #C6FF3A);">{{ row.individual }}</span>
                 </td>
               </tr>
             </tbody>
