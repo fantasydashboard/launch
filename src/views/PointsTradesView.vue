@@ -90,6 +90,16 @@ const dynasty = useDynastyValues({
    happen to know would print a confident number over a hole, and it would look exactly like
    a complete one. Better to say nothing about that deal's future. */
 const dynRow = (key?: string) => (key ? dynasty.rows.value[key] ?? null : null)
+/* The same disagreement read the Wire shows: where the long-term market and this season's
+   value rank a player very differently, that is the buy or the sell. */
+const H2H_GAP_MIN = 8
+const GAP_CLS: Record<string, string> = { 'buy-low': 'text-[#7ee787]', 'sell-high': 'text-[#e69a4a]' }
+const h2hGap = (b: { playerKey: string; posRank: number }): string => {
+  const d = dynRow(b.playerKey)
+  if (!d || !b.posRank) return ''
+  const delta = b.posRank - d.positionRank
+  return delta >= H2H_GAP_MIN ? 'buy-low' : delta <= -H2H_GAP_MIN ? 'sell-high' : ''
+}
 const dynastyScore = (idea: { gives: { playerKey: string }[]; gets: { playerKey: string }[] }) =>
   dynasty.ready.value
     ? scoreDynastyTrade(idea.gives.map((g) => g.playerKey), idea.gets.map((g) => g.playerKey), dynasty.rows.value)
@@ -102,7 +112,10 @@ const dealVerdict = (nowGain: number, dyn: { delta: number } | null) => {
   if (nowGain > 0 && futureUp) return { text: 'win-win', cls: 'bg-primary/15 text-primary' }
   if (nowGain > 0) return { text: 'win-now', cls: 'bg-[#e69a4a]/15 text-[#e69a4a]' }
   if (futureUp) return { text: 'rebuild', cls: 'bg-[#7ee787]/15 text-[#7ee787]' }
-  return null
+  /* The fourth case, which was missing: nothing gained now and value lost later. Three
+     verdicts for good outcomes and silence for the bad one meant the worst deals on the page
+     were the only ones with no label at all. */
+  return { text: 'avoid', cls: 'bg-[#FF5C5C]/15 text-[#FF5C5C]' }
 }
 
 const landscape = computed(() => {
@@ -265,7 +278,10 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
 function fairness(myGain: number, theirGain: number): string {
   const hi = Math.max(myGain, theirGain)
   const lo = Math.min(myGain, theirGain)
-  if (hi === 0 || lo >= 0.6 * hi) return 'even — both win'
+  /* `hi === 0` used to return "even — both win", which is how a swap worth nothing to either
+     side came to be endorsed. Two zeroes are not a mutual win; they are not a trade. */
+  if (hi <= 0) return 'neither lineup really moves'
+  if (lo >= 0.6 * hi) return 'even — both win'
   return myGain > theirGain ? 'favors you' : "favors them — easy yes"
 }
 </script>
@@ -559,8 +575,10 @@ function fairness(myGain: number, theirGain: number): string {
                 <span class="shrink-0 font-mono text-[9px]" :class="rankTone(b.posRank, row.position)">{{ row.position }}{{ b.posRank }}<span class="text-dark-textMuted/50">&middot;#{{ b.overallRank }}</span></span>
                 <!-- The long-term rank beside this season's. Both sides of a dynasty trade
                      are argued in this currency, and it was the one number missing. -->
-                <span v-if="dynasty.ready.value" class="shrink-0 font-mono text-[9px] text-dark-textMuted/70" :title="dynRow(b.playerKey) ? 'Dynasty market rank' : 'Not priced by the dynasty market'">
-                  {{ dynRow(b.playerKey) ? 'DYN ' + row.position + dynRow(b.playerKey)!.positionRank : 'DYN —' }}
+                <span v-if="dynasty.ready.value" class="shrink-0 font-mono text-[9px]"
+                      :class="GAP_CLS[h2hGap(b)] ?? 'text-dark-textMuted/70'"
+                      :title="dynRow(b.playerKey) ? `${row.position}${b.posRank} this season vs ${row.position}${dynRow(b.playerKey)!.positionRank} in the dynasty market` : 'Not priced by the dynasty market'">
+                  {{ dynRow(b.playerKey) ? 'DYN ' + row.position + dynRow(b.playerKey)!.positionRank : 'DYN —' }}<template v-if="h2hGap(b)"> {{ h2hGap(b) === 'buy-low' ? '▲' : '▼' }}</template>
                 </span>
                 <span class="w-10 shrink-0 text-right font-mono text-[10px]" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted/70'">
                   {{ b.value >= 0 ? '+' : '' }}{{ round(b.value) }}
@@ -579,8 +597,10 @@ function fairness(myGain: number, theirGain: number): string {
                 <span class="shrink-0 font-mono text-[9px]" :class="rankTone(b.posRank, row.position)">{{ row.position }}{{ b.posRank }}<span class="text-dark-textMuted/50">&middot;#{{ b.overallRank }}</span></span>
                 <!-- The long-term rank beside this season's. Both sides of a dynasty trade
                      are argued in this currency, and it was the one number missing. -->
-                <span v-if="dynasty.ready.value" class="shrink-0 font-mono text-[9px] text-dark-textMuted/70" :title="dynRow(b.playerKey) ? 'Dynasty market rank' : 'Not priced by the dynasty market'">
-                  {{ dynRow(b.playerKey) ? 'DYN ' + row.position + dynRow(b.playerKey)!.positionRank : 'DYN —' }}
+                <span v-if="dynasty.ready.value" class="shrink-0 font-mono text-[9px]"
+                      :class="GAP_CLS[h2hGap(b)] ?? 'text-dark-textMuted/70'"
+                      :title="dynRow(b.playerKey) ? `${row.position}${b.posRank} this season vs ${row.position}${dynRow(b.playerKey)!.positionRank} in the dynasty market` : 'Not priced by the dynasty market'">
+                  {{ dynRow(b.playerKey) ? 'DYN ' + row.position + dynRow(b.playerKey)!.positionRank : 'DYN —' }}<template v-if="h2hGap(b)"> {{ h2hGap(b) === 'buy-low' ? '▲' : '▼' }}</template>
                 </span>
                 <span class="w-10 shrink-0 text-right font-mono text-[10px]" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted/70'">
                   {{ b.value >= 0 ? '+' : '' }}{{ round(b.value) }}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildPointsTrades } from '../pointsTrades'
+import { buildPointsTrades, MIN_MEANINGFUL_GAIN } from '../pointsTrades'
 import { buildBaseballValue } from '../playerValue'
 import type { PointsPoolPlayer } from '../pointsTeam'
 import type { FGProjection } from '@/services/projectionService'
@@ -171,5 +171,55 @@ describe('buildPointsTrades — consolidation', () => {
     const counts = new Map<string, number>()
     for (const i of ideas) for (const g of i.gives) counts.set(g.playerKey, (counts.get(g.playerKey) ?? 0) + 1)
     for (const n of counts.values()) expect(n).toBeLessThanOrEqual(2)
+  })
+})
+
+/*
+ * The rule that stops the page endorsing nothing.
+ *
+ * A gain of a few tenths survived the old `myGain <= 0` filter, then rounded to zero for
+ * display — so the board carried "+0 PTS TO YOU" under a Best deals heading, captioned
+ * "even — both win", and in a dynasty league sitting above "dynasty −3,200".
+ */
+describe('a trade has to be worth proposing', () => {
+  const slots = { OF: 1, SP: 1 }
+
+  it('drops a swap whose gain rounds away to nothing', () => {
+    // A's bench OF is a hair better than B's starter — a real but meaningless upgrade.
+    const rows = [
+      bat('A_OF1', 'A', 'OF', 40),
+      bat('A_OF2', 'A', 'OF', 39),
+      arm('A_SP1', 'A', 20),
+      bat('B_OF1', 'B', 'OF', 10),
+      arm('B_SP1', 'B', 20.05),
+      arm('B_SP2', 'B', 20.02),
+    ]
+    const pool = rows.map((r) => r.p)
+    const fg: Record<string, FGProjection | null> = {}
+    rows.forEach((r) => (fg[r.p.playerKey] = r.fg))
+    const ideas = buildPointsTrades(pool, buildBaseballValue(fg, { HR: 4, R: 1, RBI: 1, K: 1, IP: 3, W: 5 }), 'A', slots, { A: 'Me', B: 'Them' })
+    // Whatever survives, nothing may display as +0.
+    for (const i of ideas) expect(i.myGain).toBeGreaterThanOrEqual(MIN_MEANINGFUL_GAIN)
+  })
+
+  it('still finds the deal when it is genuinely worth something', () => {
+    const rows = [
+      bat('A_OF1', 'A', 'OF', 40),
+      bat('A_OF2', 'A', 'OF', 38),
+      arm('A_SP1', 'A', 5),
+      bat('B_OF1', 'B', 'OF', 10),
+      arm('B_SP1', 'B', 18),
+      arm('B_SP2', 'B', 16),
+    ]
+    const pool = rows.map((r) => r.p)
+    const fg: Record<string, FGProjection | null> = {}
+    rows.forEach((r) => (fg[r.p.playerKey] = r.fg))
+    const ideas = buildPointsTrades(pool, buildBaseballValue(fg, { HR: 4, R: 1, RBI: 1, K: 1, IP: 3, W: 5 }), 'A', slots, { A: 'Me', B: 'Them' })
+    expect(ideas.length).toBeGreaterThan(0)
+    for (const i of ideas) expect(i.myGain).toBeGreaterThanOrEqual(MIN_MEANINGFUL_GAIN)
+  })
+
+  it('holds the floor at a point a week', () => {
+    expect(MIN_MEANINGFUL_GAIN).toBe(1)
   })
 })

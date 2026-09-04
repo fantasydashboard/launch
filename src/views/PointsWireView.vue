@@ -98,6 +98,48 @@ const WIRE_SORTS: { key: WireSort; label: string; hint: string }[] = [
   { key: 'season', label: 'This season', hint: 'value over replacement, rest of season' },
   { key: 'dynasty', label: 'Dynasty', hint: 'the long-term market, ours untouched' },
 ]
+/*
+ * THE COMPARISON, which is the point and was the thing missing.
+ *
+ * Both rankings were on the page and the gap between them never was — so finding a buy-low
+ * meant holding "Henry is DYN RB17" in your head, flipping the sort, hunting for him again
+ * and subtracting by eye. Worse, the board printed a dynasty RANK beside a season POINT
+ * total, which are not comparable quantities at all.
+ *
+ * So each row now carries its season position rank as well, and the signed distance between
+ * the two. A player the long-term market rates well above his rest-of-season points is
+ * someone you can buy while his current production hides him; the reverse is someone to sell
+ * while this year's box score still flatters him.
+ */
+const seasonRankByKey = computed(() => {
+  const m = new Map<string, number>()
+  const rows = fbWire.value?.board[boardPos.value] ?? []
+  // The board arrives sorted by rest-of-season value, so position in that list IS the rank.
+  rows.forEach((r, i) => m.set(r.playerKey, i + 1))
+  return m
+})
+/* Under this many places the two rankings agree closely enough that a badge would be noise;
+   in a position pool of forty-plus bodies a handful of spots is inside the disagreement you
+   would expect between any two honest sources. */
+const RANK_GAP_MIN = 8
+const rankGap = (key: string) => {
+  const d = dynRow(key)
+  const season = seasonRankByKey.value.get(key)
+  if (!d || !season) return null
+  // Positive = the long-term market likes him more than this season does.
+  const delta = season - d.positionRank
+  return {
+    season,
+    dyn: d.positionRank,
+    delta,
+    tag: delta >= RANK_GAP_MIN ? 'buy-low' : delta <= -RANK_GAP_MIN ? 'sell-high' : '',
+  }
+}
+const GAP_CLS: Record<string, string> = {
+  'buy-low': 'text-[#7ee787]',
+  'sell-high': 'text-[#e69a4a]',
+}
+
 const byDynasty = (ka?: string, kb?: string) => {
   const a = dynRow(ka), b = dynRow(kb)
   if (!a && !b) return 0
@@ -442,18 +484,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
               <h2 class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
                 Best available
               </h2>
-              <div class="flex items-center gap-2">
-                <!-- Which clock the page is ordered by. Only offered in dynasty leagues,
-                     where there are genuinely two answers to sort by. -->
-                <div v-if="dynasty.ready.value" class="flex items-center gap-0.5 rounded-lg border border-dark-border p-0.5 font-mono text-[10px]">
-                  <button v-for="opt in WIRE_SORTS" :key="opt.key"
-                          class="rounded-md px-2 py-1 uppercase tracking-wider transition-colors"
-                          :class="wireSort === opt.key ? 'bg-primary/15 font-bold text-primary' : 'text-dark-textMuted hover:text-dark-text'"
-                          :title="opt.hint"
-                          @click="wireSort = opt.key">{{ opt.label }}</button>
-                </div>
-                <RankingPicker kind="ros" />
-              </div>
+
             </div>
             <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
               <!-- Say the scope out loud: the list drives this card, the board below it and the
@@ -519,20 +550,30 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                 <span><span class="text-[#4ade80]">●</span> free agent</span>
                 <span><span class="text-dark-textMuted/50">●</span> rostered elsewhere</span>
                 <span v-if="dynasty.ready.value" class="hidden sm:inline">
-                  <span class="text-dark-textSecondary">DYN</span> = dynasty market rank &middot; age
+                  this season &middot; <span class="text-dark-textSecondary">dynasty</span> &middot;
+                  <span class="text-[#7ee787]">buy-low</span>/<span class="text-[#e69a4a]">sell-high</span> when they disagree by {{ RANK_GAP_MIN }}+ &middot; age
                 </span>
-                <span v-if="dynasty.ready.value" class="flex items-center gap-0.5 rounded-lg border border-dark-border p-0.5">
-                  <button v-for="opt in WIRE_SORTS" :key="'bd-' + opt.key"
-                          class="rounded-md px-2 py-0.5 uppercase tracking-wider transition-colors"
-                          :class="wireSort === opt.key ? 'bg-primary/15 font-bold text-primary' : 'text-dark-textMuted hover:text-dark-text'"
-                          :title="opt.hint"
-                          @click="wireSort = opt.key">{{ opt.label }}</button>
+                <span v-if="dynasty.ready.value && wireSort === 'dynasty'" class="hidden text-dark-textMuted/50 sm:inline">
+                  tier cliffs are season point drops — hidden in this order
+                </span>
+                <!-- Both controls together, once. They were two dropdowns in two cards that
+                     from the reader's seat asked the same question — which ranking am I
+                     looking at — and one of them lived inside a card that is folded shut. -->
+                <span class="ml-auto flex items-center gap-2">
+                  <span v-if="dynasty.ready.value" class="flex items-center gap-0.5 rounded-lg border border-dark-border p-0.5">
+                    <button v-for="opt in WIRE_SORTS" :key="'bd-' + opt.key"
+                            class="rounded-md px-2 py-0.5 uppercase tracking-wider transition-colors"
+                            :class="wireSort === opt.key ? 'bg-primary/15 font-bold text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+                            :title="opt.hint"
+                            @click="wireSort = opt.key">{{ opt.label }}</button>
+                  </span>
+                  <RankingPicker kind="ros" />
                 </span>
               </div>
               <!-- selected position only, top 25 by VOR -->
               <template v-for="row in sortedBoard.slice(0, 25)" :key="'fbbd-' + row.playerKey">
                 <!-- tier cliff: the drop-off is the decision, so name it rather than leaving a flat list -->
-                <div v-if="row.tierBreak" class="flex items-center gap-2 py-1.5">
+                <div v-if="row.tierBreak && wireSort === 'season'" class="flex items-center gap-2 py-1.5">
                   <span class="h-px flex-1 bg-dark-border"></span>
                   <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70">
                     tier {{ row.tier }} &middot; &minus;{{ round(row.tierDrop ?? 0) }} pts
@@ -560,10 +601,21 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                     zero here would sort a real body last and read as a verdict we never made.
                   -->
                   <template v-if="dynasty.ready.value">
+                    <!-- Season rank, so the dynasty rank beside it is a like-for-like
+                         comparison rather than a rank sitting next to a point total. -->
+                    <span class="hidden w-9 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/70 sm:inline">
+                      {{ seasonRankByKey.get(row.playerKey) ? row.position + seasonRankByKey.get(row.playerKey) : '' }}
+                    </span>
                     <span class="hidden w-9 shrink-0 text-right font-mono text-[10px] sm:inline"
                           :class="dynTone(dynRow(row.playerKey))"
-                          :title="dynRow(row.playerKey) ? `Dynasty market: ${row.position}${dynRow(row.playerKey)!.positionRank} overall ${dynRow(row.playerKey)!.overallRank}` : 'Not priced by the dynasty market'">
+                          :title="dynRow(row.playerKey) ? `Dynasty market: ${row.position}${dynRow(row.playerKey)!.positionRank}, overall ${dynRow(row.playerKey)!.overallRank}` : 'Not priced by the dynasty market'">
                       {{ dynRow(row.playerKey) ? row.position + dynRow(row.playerKey)!.positionRank : '—' }}
+                    </span>
+                    <!-- The gap, named. This is the whole reason both rankings are here. -->
+                    <span class="hidden w-16 shrink-0 text-right font-mono text-[9px] uppercase tracking-wide lg:inline"
+                          :class="GAP_CLS[rankGap(row.playerKey)?.tag ?? ''] ?? 'text-dark-textMuted/40'"
+                          :title="rankGap(row.playerKey) ? `${row.position}${rankGap(row.playerKey)!.season} this season vs ${row.position}${rankGap(row.playerKey)!.dyn} in the dynasty market` : ''">
+                      {{ rankGap(row.playerKey)?.tag || '' }}
                     </span>
                     <span class="hidden w-6 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/60 md:inline">
                       {{ dynRow(row.playerKey)?.age ? Math.floor(dynRow(row.playerKey)!.age!) : '' }}

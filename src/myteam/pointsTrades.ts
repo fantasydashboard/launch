@@ -52,6 +52,8 @@ export interface TradeIdea {
  * — a 192-point hit to their lineup — which is not a negotiation, it is a punchline. An ask
  * has to be arguably fair: their loss within half again your gain.
  */
+/** Points per week a swap must be worth before it is worth proposing at all. */
+export const MIN_MEANINGFUL_GAIN = 1
 const ASK_MAX_LOSS_RATIO = 1.5
 
 interface Dp extends DepthPlayer {
@@ -143,7 +145,18 @@ export function buildPointsTrades(
     const theirKeys = new Set(outTheirs.map((p) => p.playerKey))
     const myNew = optimal([...myDp.filter((p) => !myKeys.has(p.playerKey)), ...outTheirs], slots)
     const myGain = myNew.total - myBase.total
-    if (myGain <= 0) return
+    /*
+     * A gain that rounds to zero is not a deal.
+     *
+     * The filter was `myGain <= 0`, so a swap worth 0.3 points a week survived it and then
+     * printed as "+0 PTS TO YOU" — under a "Best deals" heading, captioned "even — both win",
+     * and in a dynasty league sitting above a line reading "dynasty −3,200". The page was
+     * proposing that you hand over the QB4 in dynasty for the TE25 and calling it mutual.
+     *
+     * One point a week is the floor for a swap being worth the message you have to send to
+     * make it happen. Below that the honest output is nothing at all.
+     */
+    if (myGain < MIN_MEANINGFUL_GAIN) return
     const theirNew = optimal([...theirDp.filter((p) => !theirKeys.has(p.playerKey)), ...outMine], slots)
     const theirGain = theirNew.total - theirBase.total
 
