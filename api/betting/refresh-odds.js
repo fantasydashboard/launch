@@ -13,12 +13,17 @@
 //   3. Refuse to fire when the projected cost would break the monthly budget,
 //      and log the refusal so it is visible rather than silent.
 //
-// Region note: this pulls 'us' only, which gets BetOnline and LowVig as the
-// fair-value anchor. Pinnacle is 'eu' on this provider and adding that region
-// doubles the credit cost of every call. On a paid tier, add it.
+// Region note: this pulls three regions, because a Florida build needs all of
+// them. 'us' carries the anchor books (BetOnline, LowVig), 'us2' carries Hard
+// Rock Bet Florida, and 'us_dfs' carries PrizePicks and Underdog. Regions
+// multiply the credit cost, so three regions means every prop market costs three
+// credits per game. That is why this runs on game days only and prices three
+// markets on three games rather than everything on everything.
+//
+// Pinnacle is 'eu' and would be a fourth region. Not worth it on the free tier.
 
 import { createClient } from '@supabase/supabase-js'
-import { theOddsApi, NFL_PROP_MARKETS, NFL_GAME_MARKETS } from './providers.js'
+import { theOddsApi, NFL_PROP_MARKETS, NFL_GAME_MARKETS, FL_REGIONS } from './providers.js'
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -30,10 +35,12 @@ const CRON_SECRET = process.env.CRON_SECRET
 const MONTHLY_CREDIT_BUDGET = Number(process.env.ODDS_MONTHLY_CREDIT_BUDGET || 400)
 
 const SPORT_KEY = process.env.ODDS_SPORT_KEY || 'americanfootball_nfl'
-const REGIONS = ['us']
-// How many games to pull props for per run. Four games at four markets is
-// sixteen credits, which sustains roughly two runs a day across an NFL week.
-const MAX_PROP_EVENTS = Number(process.env.ODDS_MAX_PROP_EVENTS || 4)
+const REGIONS = (process.env.ODDS_REGIONS || FL_REGIONS.join(',')).split(',')
+// How many games to pull props for per run. Three games at three markets across
+// three regions is 27 credits, and on a Thursday/Sunday/Monday schedule that is
+// roughly 350 a month, which fits inside the 500-credit free tier with room for
+// a few manual refreshes.
+const MAX_PROP_EVENTS = Number(process.env.ODDS_MAX_PROP_EVENTS || 3)
 // Only price games kicking off inside this window. Lines far out are wide and
 // move a lot, so paying for them is paying for noise.
 const LOOKAHEAD_HOURS = Number(process.env.ODDS_LOOKAHEAD_HOURS || 72)

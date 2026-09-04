@@ -16,7 +16,28 @@
 // tier the anchor is BetOnline plus LowVig at 1x cost, not Pinnacle at 2x. That
 // is a real downgrade in anchor quality and the UI has to be honest that the
 // beta is running on a second-best anchor.
+//
+// These are reference prices, not places anyone bets. That distinction is the
+// whole reason a Florida-only build still works: you measure against the sharpest
+// market you can see, and you place the wager wherever you are actually allowed to.
 export const ANCHOR_BOOKS = ['pinnacle', 'betonlineag', 'lowvig', 'circasports', 'bookmaker']
+
+// ── Where a Florida user can actually act ────────────────────────────────────
+// Hard Rock is the only licensed sportsbook in Florida, and The Odds API carries
+// a Florida-specific variant, so we get this state's real numbers rather than a
+// national blend. Sleeper is not carried by any affordable feed, so PrizePicks
+// and Underdog stand in for the pick'em market: same product, same player pool,
+// lines that normally sit within half a point of each other.
+export const FL_SPORTSBOOKS = ['hardrockbet_fl', 'hardrockbet']
+export const DFS_APPS = ['prizepicks', 'underdog']
+export const FL_BETTABLE = [...FL_SPORTSBOOKS, ...DFS_APPS]
+
+// Regions needed to see all of the above. Each one multiplies the credit cost of
+// every priced call, which is the single biggest constraint on the free tier:
+//   us      anchor books (BetOnline, LowVig)
+//   us2     Hard Rock Bet Florida
+//   us_dfs  PrizePicks, Underdog
+export const FL_REGIONS = ['us', 'us2', 'us_dfs']
 
 // ── The Odds API ─────────────────────────────────────────────────────────────
 const ODDS_API_BASE = 'https://api.the-odds-api.com/v4'
@@ -89,6 +110,11 @@ function normalizeOddsApiQuotes(event, provider = 'theoddsapi') {
           point: typeof o.point === 'number' ? o.point : null,
           book: book.key,
           american: Math.round(o.price),
+          // DFS pick'em apps do not price a leg individually; they publish a
+          // payout multiplier for the whole entry. The provider returns it here
+          // when includeMultipliers is on, and it is worth storing because a
+          // hand-maintained payout table goes stale silently.
+          multiplier: typeof o.multiplier === 'number' ? o.multiplier : null,
           observed_at: observedAt,
         })
       }
@@ -168,6 +194,8 @@ export const theOddsApi = {
       markets: markets.join(','),
       oddsFormat: 'american',
       dateFormat: 'iso',
+      // Only meaningful for the us_dfs region, and free to ask for otherwise.
+      includeMultipliers: 'true',
     }, apiKey)
 
     if (!res.ok) return { ...res, events: [], quotes: [] }
@@ -185,11 +213,14 @@ export const theOddsApi = {
 // Deliberately short. Every market added multiplies the credit cost of every
 // event pulled, and a screener showing four markets across six games it can
 // price accurately is worth more than twenty markets across two.
+// Three regions means every market here costs three credits per game, so this
+// list got shorter when Florida got added. Receptions came out first: it is the
+// lowest-variance market of the four and the one where DFS lines are hardest to
+// beat, so it was paying the least rent.
 export const NFL_PROP_MARKETS = [
   'player_pass_yds',
   'player_rush_yds',
   'player_reception_yds',
-  'player_receptions',
 ]
 
 export const NFL_GAME_MARKETS = ['h2h', 'spreads', 'totals']

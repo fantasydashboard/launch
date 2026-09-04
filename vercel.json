@@ -1,8 +1,14 @@
 {
-  "crons": [{
-    "path": "/api/admin/refresh-projections",
-    "schedule": "30 12 * * *"
-  }],
+  "crons": [
+    {
+      "path": "/api/admin/refresh-projections",
+      "schedule": "30 12 * * *"
+    },
+    {
+      "path": "/api/betting/refresh-odds",
+      "schedule": "0 15 * * 0,1,4"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/supabase/(.*)",
