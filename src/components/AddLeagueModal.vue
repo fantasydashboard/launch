@@ -12,10 +12,9 @@
       <div class="relative bg-dark-card rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-dark-border/50">
         <!-- Header -->
         <div class="p-6 text-center border-b border-dark-border/30">
-          <div class="text-4xl mb-2">🏆</div>
-          <h2 class="text-2xl font-bold text-dark-text">Add a League</h2>
-          <p class="text-sm text-dark-textMuted mt-1">
-            Connect your fantasy league to get started
+          <h2 class="font-display text-2xl font-bold text-dark-text">Add a league</h2>
+          <p class="mt-1 font-mono text-xs text-dark-textMuted">
+            Sleeper, Yahoo or ESPN &middot; every league you're in
           </p>
         </div>
 
@@ -528,12 +527,21 @@
                   </div>
                   <div>
                     <p class="text-sm text-dark-text font-semibold">Install the ESPN Extension</p>
-                    <p class="text-xs text-dark-textMuted">Free • One-click league import • No manual ID needed</p>
+                    <p class="text-xs text-dark-textMuted">Free • Imports your leagues without hunting for an ID</p>
                   </div>
                 </div>
                 <p class="text-xs text-dark-textMuted mb-4 leading-relaxed">
-                  Install our free extension and make sure you're signed into ESPN in Chrome. Your leagues will appear here automatically — no League ID hunting required.
+                  Install our free extension and make sure you're signed into ESPN in Chrome, then hit detect. If it doesn't come through, the League ID below always works.
                 </p>
+                <!-- The detect came back empty. Naming the likely causes beats a spinner that
+                     stops, and the manual path is opened rather than left collapsed. -->
+                <div v-if="espnDetectFailed" class="mb-3 rounded-lg border border-[#e69a4a]/30 bg-[#e69a4a]/10 p-3">
+                  <p class="text-xs font-semibold text-[#e69a4a]">Couldn't reach the extension</p>
+                  <p class="mt-1 text-xs leading-relaxed text-dark-textMuted">
+                    It has to be installed <em>and</em> enabled in this Chrome profile, and the page may need a reload
+                    after installing. If you've done both, use the League ID below — it's opened for you.
+                  </p>
+                </div>
                 <a
                   :href="getExtensionStoreUrl()"
                   target="_blank"
@@ -1131,6 +1139,9 @@ const espnSwidCookie = ref('')
 const espnIsChrome = ref(false)
 const espnExtensionInstalled = ref(false)
 const espnExtensionChecking = ref(false)
+/* True once a detect has run and come back empty — so the UI can say so instead of
+   redrawing the install prompt and looking inert. */
+const espnDetectFailed = ref(false)
 const espnExtensionImporting = ref(false)
 const espnExtensionError = ref('')
 const espnShowManualFields = ref(false)
@@ -1295,6 +1306,7 @@ watch(() => props.isOpen, async (isOpen) => {
     espnDiscoveredLeague.value = null
     espnExtensionInstalled.value = false
     espnExtensionChecking.value = false
+    espnDetectFailed.value = false
     espnExtensionError.value = ''
     espnShowManualFields.value = false
     espnExtensionLeagues.value = []
@@ -1354,6 +1366,7 @@ async function checkEspnExtension() {
   if (!espnIsChrome.value) return
 
   espnExtensionChecking.value = true
+  espnDetectFailed.value = false
   try {
     espnExtensionInstalled.value = await isExtensionInstalled()
   } finally {
@@ -1362,7 +1375,16 @@ async function checkEspnExtension() {
 
   if (espnExtensionInstalled.value) {
     await loadEspnLeaguesFromExtension()
+    return
   }
+  /*
+   * Say so. The detect runs three pings across up to fourteen seconds and, on failure, simply
+   * left espnExtensionInstalled false — which re-rendered the identical install panel. Someone
+   * who HAS the extension clicks, waits, and watches nothing happen, with no way to tell a
+   * failed detection from a dead button.
+   */
+  espnDetectFailed.value = true
+  espnShowManualFields.value = true
 }
 
 async function loadEspnLeaguesFromExtension() {
