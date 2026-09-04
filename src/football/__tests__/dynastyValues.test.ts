@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   buildDynastyRows,
   momentumOf,
+  reseatByDynasty,
   MOMENTUM_THRESHOLD,
   leanOf,
   dynastyTotal,
@@ -173,5 +174,37 @@ describe('momentum', () => {
     const rows = buildDynastyRows([src('x', 5000, 4000)])
     expect(rows['x'].momentum).toBe('steady')
     expect(rows['x'].trend30).toBe(0)
+  })
+})
+
+describe('reseatByDynasty', () => {
+  const vor = { a: { vorRos: 100 }, b: { vorRos: 60 }, c: { vorRos: 20 } }
+  // Market order is the reverse of ours: c is the best long-term asset, a the worst.
+  const rows = buildDynastyRows([
+    { ...src('a', 500, 500), overallRank: 3 },
+    { ...src('b', 800, 500), overallRank: 2 },
+    { ...src('c', 900, 500), overallRank: 1 },
+  ])
+
+  it('hands our own value curve out in the market order', () => {
+    const out = reseatByDynasty(vor, rows)
+    expect(out.c.vorRos).toBe(100)
+    expect(out.b.vorRos).toBe(60)
+    expect(out.a.vorRos).toBe(20)
+  })
+
+  it('keeps the curve intact — the same numbers, different owners', () => {
+    const out = reseatByDynasty(vor, rows)
+    expect(Object.values(out).map((v) => v.vorRos).sort((x, y) => y - x)).toEqual([100, 60, 20])
+  })
+
+  it('leaves unpriced players on their own value rather than inventing one', () => {
+    const out = reseatByDynasty({ ...vor, z: { vorRos: 7 } }, rows)
+    expect(out.z.vorRos).toBe(7)
+  })
+
+  it('is identity when there is no market to re-seat onto', () => {
+    expect(reseatByDynasty(vor, {})).toBe(vor)
+    expect(reseatByDynasty({}, rows)).toEqual({})
   })
 })

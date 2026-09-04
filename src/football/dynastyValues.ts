@@ -187,3 +187,41 @@ export function scoreDynastyTrade(
     lean: skew >= LEAN_THRESHOLD ? 'future' : skew <= -LEAN_THRESHOLD ? 'win-now' : 'level',
   }
 }
+
+/**
+ * Re-seat our own value onto the dynasty market's ORDER.
+ *
+ * The trade page's landscape, leverage, best-partners and head-to-head all read one value
+ * map, so re-seating that map is what makes every one of them answer the dynasty question at
+ * once — the same move The Wire makes for an uploaded rest-of-season list.
+ *
+ * Our value CURVE is preserved and merely re-assigned, rather than the market's own numbers
+ * being substituted in. Those live on a different scale entirely (a five-figure trade value
+ * against points per week), and everything downstream — lineup optimisation, positional
+ * ranks, the strength bars — is built to consume points. Handing it a market value would
+ * produce numbers that render fine and mean nothing.
+ *
+ * Players the market never priced keep their own value and sort below the priced ones, which
+ * is the same rule the dynasty sort already follows: absent is not "best available".
+ */
+export function reseatByDynasty<T extends { vorRos: number }>(
+  vorByKey: Record<string, T>,
+  rows: Record<string, DynastyRow>,
+): Record<string, T> {
+  const keys = Object.keys(vorByKey)
+  if (!keys.length || !Object.keys(rows).length) return vorByKey
+
+  const priced = keys.filter((k) => rows[k])
+  if (!priced.length) return vorByKey
+
+  // Our own values, richest first — the curve that gets handed out in the market's order.
+  const curve = priced.map((k) => vorByKey[k].vorRos).sort((a, b) => b - a)
+  const byMarketOrder = [...priced].sort((a, b) => rows[a].overallRank - rows[b].overallRank)
+
+  const out: Record<string, T> = {}
+  for (const k of keys) out[k] = vorByKey[k]
+  byMarketOrder.forEach((k, i) => {
+    out[k] = { ...vorByKey[k], vorRos: curve[i] }
+  })
+  return out
+}

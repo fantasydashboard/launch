@@ -10,7 +10,7 @@ import { buildPointsTeam } from '@/myteam/pointsTeam'
 import { buildPointsTradeLandscape } from '@/myteam/pointsTradeLandscape'
 import { buildRosterCompare } from '@/myteam/rosterCompare'
 import { useDynastyValues } from '@/composables/useDynastyValues'
-import { scoreDynastyTrade } from '@/football/dynastyValues'
+import { scoreDynastyTrade, reseatByDynasty } from '@/football/dynastyValues'
 import { readAge, AGE_TONE } from '@/football/positionalAge'
 import { startableCounts, startableFraction } from '@/trades/rosterSlots'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
@@ -57,6 +57,31 @@ const { vorByKey: fbVor } = useFootballVor({
   weeklyHorizon: 0, // Trades uses only rest-of-season VOR — skip weekly/streamability fetches
 })
 const tradeVor = computed(() => (isFootball.value ? fbVor.value : undefined))
+
+/*
+ * Which horizon the ANALYSIS answers for.
+ *
+ * Landscape, leverage, best partners and head to head all read one value map, so re-seating
+ * that map is what turns every one of them dynasty-aware at once: "who is deep at receiver"
+ * has a genuinely different answer when depth means assets rather than this year's points.
+ *
+ * The DEAL CARDS deliberately do not follow it. Their number is lineup-marginal — what a swap
+ * does to the eleven players you actually start — which is a this-season quantity by
+ * construction; re-seating it would produce a figure in units of nothing. Every card already
+ * carries the dynasty delta beside it, which is the honest way to show both: two currencies,
+ * never averaged, same rule as everywhere else in here.
+ */
+type TradeView = 'season' | 'dynasty'
+const tradeView = ref<TradeView>('season')
+const TRADE_VIEWS: { key: TradeView; label: string; hint: string }[] = [
+  { key: 'season', label: 'This season', hint: 'depth measured in rest-of-season points' },
+  { key: 'dynasty', label: 'Dynasty', hint: 'depth measured in long-term asset value' },
+]
+const analysisVor = computed(() => {
+  const base = tradeVor.value
+  if (!base || tradeView.value !== 'dynasty' || !dynasty.ready.value) return base
+  return reseatByDynasty(base, dynasty.rows.value)
+})
 
 const allIdeas = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return []
@@ -128,7 +153,7 @@ const landscape = computed(() => {
      the same roster, two answers. Baseball keeps the previous single-best-body basis. */
   return buildPointsTradeLandscape(
     pool.value, valueByKey.value, fgByKey.value, myTeamKey.value, teamNames.value,
-    leagueStore.activeSport, tradeVor.value,
+    leagueStore.activeSport, analysisVor.value,
     leagueStore.activeSport === 'football' ? rosterSlots.value : undefined,
   )
 })
@@ -243,7 +268,7 @@ const compare = computed(() => {
     theirTeamKey: comparePartner.value,
     slots: rosterSlots.value,
     sport: leagueStore.activeSport,
-    vorByKey: tradeVor.value,
+    vorByKey: analysisVor.value,
   })
 })
 const comparePartnerName = computed(
@@ -293,6 +318,21 @@ function fairness(myGain: number, theirGain: number): string {
     <header class="mb-4">
       <h1 class="font-display text-2xl font-bold text-dark-text">Trades</h1>
       <p class="font-mono text-xs text-dark-textMuted">Deals that raise your projected points — and the other guy's too.</p>
+      <!-- One switch for the whole analysis. Only in dynasty leagues, where "who is deep at
+           receiver" genuinely has two answers. -->
+      <div v-if="dynasty.ready.value" class="mt-2 flex flex-wrap items-center gap-2 font-mono text-[10px]">
+        <span class="uppercase tracking-widest text-dark-textMuted">depth measured in</span>
+        <span class="flex items-center gap-0.5 rounded-lg border border-dark-border p-0.5">
+          <button v-for="v in TRADE_VIEWS" :key="v.key"
+                  class="rounded-md px-2.5 py-1 uppercase tracking-wider transition-colors"
+                  :class="tradeView === v.key ? 'bg-primary/15 font-bold text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+                  :title="v.hint"
+                  @click="tradeView = v.key">{{ v.label }}</button>
+        </span>
+        <span class="text-dark-textMuted/70">
+          {{ TRADE_VIEWS.find((v) => v.key === tradeView)?.hint }}<template v-if="tradeView === 'dynasty'"> &middot; deal gains stay per-week, with the dynasty cost beside them</template>
+        </span>
+      </div>
     </header>
 
     <div v-if="loading && !landscape" class="py-16 text-center text-dark-textMuted">Scanning the league…</div>
