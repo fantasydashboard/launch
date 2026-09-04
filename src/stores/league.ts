@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { collapseSeasons } from './leagueLineage'
 import { ref, computed, watch } from 'vue'
 import { sleeperService } from '@/services/sleeper'
 import { supabase } from '@/lib/supabase'
@@ -144,6 +145,27 @@ export const useLeagueStore = defineStore('league', () => {
   
   // Alias for savedLeagues for easier template access
   const allLeagues = computed(() => savedLeagues.value)
+
+  /*
+   * Leagues you can actually switch TO: one per league, newest season only.
+   *
+   * Sleeper mints a NEW league_id every season and chains it back through
+   * previous_league_id, so a league you have been in for three years is three saved rows with
+   * three different ids. Every dedup in this store keys on league_id, so all three are
+   * legitimately distinct and all three survived — and the switcher renders name, format and
+   * team count with no season, so they came out as "League of Record" three times over. Not a
+   * duplicate-insert bug; three real rows that look identical.
+   *
+   * Collapsing on previous_league_id would be the exact fix, but saveLeague never persisted
+   * it, so no existing row carries the chain. Season is persisted, so: same platform, same
+   * sport, same name, DIFFERENT seasons is one league across years — keep the newest. Rows
+   * that share a name AND a season are two different leagues that happen to be named alike
+   * (which does occur), so both are kept.
+   *
+   * Nothing is deleted. History still reads every season; this only decides what the switcher
+   * offers, because switching to last season's copy is never what anyone meant to do.
+   */
+  const switchableLeagues = computed<SavedLeague[]>(() => collapseSeasons(savedLeagues.value))
   
   // Filter saved leagues by active sport
   const filteredLeaguesBySport = computed(() => {
@@ -432,7 +454,10 @@ export const useLeagueStore = defineStore('league', () => {
       sleeper_username: username,
       is_primary: isPrimary,
       league_type: league.settings?.type ?? 0, // 0 = redraft, 1 = keeper, 2 = dynasty
-      num_teams: league.total_rosters || league.settings?.num_teams
+      num_teams: league.total_rosters || league.settings?.num_teams,
+      // Stored so the switcher can one day collapse a league's seasons on the actual chain
+      // instead of inferring it from a matching name.
+      previous_league_id: league.previous_league_id ?? null
     }
     
     // Add to local state immediately
@@ -2361,6 +2386,7 @@ export const useLeagueStore = defineStore('league', () => {
     seasonFractionComplete,
     hasSavedLeagues,
     allLeagues,
+    switchableLeagues,
     filteredLeaguesBySport,
     
     // Actions

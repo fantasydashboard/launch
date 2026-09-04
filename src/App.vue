@@ -315,7 +315,7 @@
                               </span>
                             </div>
                             <div class="text-xs text-dark-textMuted">
-                              {{ formatScoringType(league) }} · {{ league.num_teams || league.total_rosters }} teams
+                              {{ formatScoringType(league) }} · {{ league.num_teams || league.total_rosters }} teams<template v-if="league.season"> · {{ league.season }}</template>
                             </div>
                           </div>
                           <button
@@ -651,7 +651,7 @@
                                   </span>
                                 </div>
                                 <div class="text-xs text-dark-textMuted">
-                                  {{ formatScoringType(league) }} · {{ league.num_teams || league.total_rosters }} teams
+                                  {{ formatScoringType(league) }} · {{ league.num_teams || league.total_rosters }} teams<template v-if="league.season"> · {{ league.season }}</template>
                                 </div>
                               </div>
                             </div>
@@ -799,7 +799,7 @@
                                   </span>
                                 </div>
                                 <div class="text-xs text-dark-textMuted">
-                                  {{ formatScoringType(league) }} · {{ league.num_teams || league.total_rosters }} teams
+                                  {{ formatScoringType(league) }} · {{ league.num_teams || league.total_rosters }} teams<template v-if="league.season"> · {{ league.season }}</template>
                                 </div>
                               </div>
                             </div>
@@ -1448,7 +1448,12 @@ function getLeaguesBySport(sport: string) {
   if (!leagueStore.allLeagues || !Array.isArray(leagueStore.allLeagues)) {
     return []
   }
-  const leagues = leagueStore.allLeagues.filter(league => {
+  /* switchableLeagues, not allLeagues: a Sleeper league you have been in for three seasons is
+     three saved rows with three different ids, and the switcher showed all three under the
+     same name. History still reads every season — this list only decides what you can switch
+     to, and last season's copy is never the answer. */
+  const source = leagueStore.switchableLeagues?.length ? leagueStore.switchableLeagues : leagueStore.allLeagues
+  const leagues = source.filter(league => {
     // Determine league sport from platform or stored sport
     const leagueSport = league.sport || (league.platform === 'sleeper' ? 'football' : 'baseball')
     return leagueSport === sport
