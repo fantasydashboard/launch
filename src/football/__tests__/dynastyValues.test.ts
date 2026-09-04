@@ -4,6 +4,7 @@ import {
   momentumOf,
   reseatByDynasty,
   mergeDynastyOrder,
+  readHorizons,
   MOMENTUM_THRESHOLD,
   leanOf,
   dynastyTotal,
@@ -291,5 +292,71 @@ describe('mergeDynastyOrder', () => {
     const m = mergeDynastyOrder(wide, topN, () => 'RB')
     expect(m.suspectPartial).toBe(false)
     expect(m.filled).toBe(5)
+  })
+})
+
+
+/*
+ * The badge used to fire on the raw gap, which correlates with age at r = -0.67 on the live
+ * market — under 24 it flagged 36 players one way against 1 the other. It was printing "young"
+ * and "old" beside a column that already prints age.
+ */
+describe('readHorizons', () => {
+  /** A cohort where the gap is exactly what age predicts: the young all skew future. */
+  const cohort = (n: number, age: number, gap: number, tag: string) =>
+    Array.from({ length: n }, (_, i) => ({
+      playerKey: `${tag}${i}`, age, seasonRank: 50 + i, dynastyRank: 50 + i - gap,
+    }))
+
+  it('says nothing about a player whose gap is exactly typical for his age', () => {
+    const players = [...cohort(8, 22, 20, 'y'), ...cohort(8, 31, -20, 'o')]
+    const r = readHorizons(players)
+    // Every one of them has a large raw gap; none of it is news.
+    expect(r['y0'].gap).toBe(20)
+    expect(r['y0'].lean).toBe('')
+    expect(r['o0'].gap).toBe(-20)
+    expect(r['o0'].lean).toBe('')
+  })
+
+  it('flags the player his own age band does not explain', () => {
+    const players = [
+      ...cohort(8, 22, 20, 'y'),
+      ...cohort(8, 31, -20, 'o'),
+      // A 22-year-old the market rates level while every other 22-year-old is +20.
+      { playerKey: 'dart', age: 22, seasonRank: 74, dynastyRank: 72 },
+    ]
+    const r = readHorizons(players)
+    expect(r['dart'].expected).toBe(20)
+    expect(r['dart'].residual).toBeLessThan(0)
+    expect(r['dart'].lean).toBe('win-now')
+  })
+
+  it('flags an old player the market still likes for the future', () => {
+    const players = [
+      ...cohort(8, 31, -20, 'o'),
+      { playerKey: 'love', age: 31, seasonRank: 128, dynastyRank: 85 },
+    ]
+    expect(readHorizons(players)['love'].lean).toBe('future')
+  })
+
+  it('flags nobody on a board where everyone agrees', () => {
+    const players = cohort(12, 25, 5, 'a')
+    const r = readHorizons(players)
+    expect(Object.values(r).every((x) => x.lean === '')).toBe(true)
+  })
+
+  it('falls back to the board median when an age band is too thin to trust', () => {
+    const players = [...cohort(10, 25, 5, 'a'), { playerKey: 'lone', age: 40, seasonRank: 10, dynastyRank: 5 }]
+    // One 40-year-old cannot supply his own baseline, so the board's stands in.
+    expect(readHorizons(players)['lone'].expected).toBe(5)
+  })
+
+  it('ignores players missing either rank rather than guessing one', () => {
+    const players = [...cohort(6, 24, 10, 'a'), { playerKey: 'x', age: 24, seasonRank: 0, dynastyRank: 12 }]
+    expect(readHorizons(players)['x']).toBeUndefined()
+  })
+
+  it('returns nothing at all on a board too small to have a baseline', () => {
+    expect(readHorizons([{ playerKey: 'a', age: 25, seasonRank: 1, dynastyRank: 2 }])).toEqual({})
   })
 })

@@ -328,3 +328,106 @@ export function mergeDynastyOrder(
     suspectPartial,
   }
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * WHAT THE HORIZON GAP IS, AND WHAT IT IS NOT
+ *
+ * The board used to stamp "buy-low" and "sell-high" on the gap between a player's
+ * rest-of-season rank and his dynasty rank. Both terms were wrong, in two separate ways.
+ *
+ * WRONG TERM. Buy-low and sell-high describe a PRICE that has come adrift from a VALUE — the
+ * market has mispriced someone against what he will actually produce. That is not what this
+ * measures, and we cannot measure it: testing a price requires an independent estimate of
+ * value, and the dynasty price is the only long-term number we have. You cannot check a
+ * price against itself.
+ *
+ * WRONG DIRECTION, FOR HALF THE READERS. Christian McCaffrey at season RB3 and dynasty RB13
+ * was labelled sell-high. For a contender he is the opposite: the third-best back this season
+ * at the price of the thirteenth-best dynasty asset. The labels were backwards for anyone
+ * chasing a title and roughly right for anyone rebuilding, and the page silently picked one.
+ *
+ * AND IT WAS MOSTLY AN AGE READOUT. Measured on the live market, the raw gap correlates with
+ * age at r = -0.67. Under 24, thirty-six players flagged "buy-low" against one "sell-high";
+ * over 30 it inverted to one against twenty-five. The badge was saying "young" and "old" in
+ * different words, directly beside a column that already prints age.
+ *
+ * So the gap is reported for what it is — a WIN-NOW or FUTURE asset, descriptive rather than
+ * prescriptive — and only where it survives what age and position already explain. Fourteen
+ * rank places of spread remain after that subtraction, and it is a different fourteen: a
+ * 23-year-old the market rates level across both horizons is saying something age cannot,
+ * while the thirty-sixth 22-year-old with a positive gap is saying nothing at all.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export type HorizonLean = 'win-now' | 'future' | ''
+
+export interface HorizonRead {
+  /** seasonRank − dynastyRank. Positive = the long market likes him more than this year does. */
+  gap: number
+  /** What a player of this age and position typically shows. */
+  expected: number
+  /** gap − expected. The part age does not already account for. */
+  residual: number
+  lean: HorizonLean
+}
+
+/** Age buckets wide enough to hold a useful sample inside one position's board. */
+const AGE_BUCKET = 2
+/** Below this a bucket cannot support a median, so the board-wide median stands in. */
+const MIN_BUCKET = 4
+/** A residual under this many rank places is noise however the board is scaled. */
+const MIN_PLACES = 6
+
+const median = (xs: number[]): number => {
+  if (!xs.length) return 0
+  const s = [...xs].sort((a, b) => a - b)
+  const m = s.length >> 1
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
+}
+
+/**
+ * Read every player's horizon gap against what his own age band typically shows.
+ *
+ * The baseline comes from the board in front of you rather than a table written here, so it
+ * recalibrates per position and per league instead of asserting a curve. The flagging
+ * threshold scales off the spread of the residuals for the same reason: a board where
+ * everyone agrees should flag nobody.
+ */
+export function readHorizons(
+  players: { playerKey: string; seasonRank: number; dynastyRank: number; age: number | null }[],
+): Record<string, HorizonRead> {
+  const usable = players.filter((p) => p.seasonRank > 0 && p.dynastyRank > 0)
+  const out: Record<string, HorizonRead> = {}
+  if (usable.length < MIN_BUCKET) return out
+
+  const gapOf = (p: (typeof usable)[number]) => p.seasonRank - p.dynastyRank
+  const bucketOf = (age: number | null) =>
+    age === null ? 'na' : String(Math.floor(age / AGE_BUCKET) * AGE_BUCKET)
+
+  const buckets = new Map<string, number[]>()
+  for (const p of usable) {
+    const b = bucketOf(p.age)
+    buckets.set(b, [...(buckets.get(b) ?? []), gapOf(p)])
+  }
+  const boardMedian = median(usable.map(gapOf))
+
+  const residuals: { key: string; gap: number; expected: number; residual: number }[] = usable.map((p) => {
+    const b = buckets.get(bucketOf(p.age)) ?? []
+    const expected = b.length >= MIN_BUCKET ? median(b) : boardMedian
+    const gap = gapOf(p)
+    return { key: p.playerKey, gap, expected, residual: gap - expected }
+  })
+
+  const mean = residuals.reduce((s, r) => s + r.residual, 0) / residuals.length
+  const sd = Math.sqrt(residuals.reduce((s, r) => s + (r.residual - mean) ** 2, 0) / residuals.length)
+  const threshold = Math.max(MIN_PLACES, sd)
+
+  for (const r of residuals) {
+    out[r.key] = {
+      gap: r.gap,
+      expected: r.expected,
+      residual: r.residual,
+      lean: r.residual >= threshold ? 'future' : r.residual <= -threshold ? 'win-now' : '',
+    }
+  }
+  return out
+}

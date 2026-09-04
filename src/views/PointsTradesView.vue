@@ -12,6 +12,7 @@ import { buildRosterCompare } from '@/myteam/rosterCompare'
 import { useDynastyValues } from '@/composables/useDynastyValues'
 import { scoreDynastyTrade, reseatByDynasty } from '@/football/dynastyValues'
 import { readAge, AGE_TONE } from '@/football/positionalAge'
+import { readHorizons } from '@/football/dynastyValues'
 import SeasonPassGate from '@/components/SeasonPassGate.vue'
 import RankingPicker from '@/components/RankingPicker.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
@@ -121,16 +122,33 @@ const dynasty = useDynastyValues({
    happen to know would print a confident number over a hole, and it would look exactly like
    a complete one. Better to say nothing about that deal's future. */
 const dynRow = (key?: string) => (key ? dynasty.rows.value[key] ?? null : null)
-/* The same disagreement read the Wire shows: where the long-term market and this season's
-   value rank a player very differently, that is the buy or the sell. */
-const H2H_GAP_MIN = 8
-const GAP_CLS: Record<string, string> = { 'buy-low': 'text-[#7ee787]', 'sell-high': 'text-[#e69a4a]' }
-const h2hGap = (b: { playerKey: string; posRank: number }): string => {
-  const d = dynRow(b.playerKey)
-  if (!d || !b.posRank) return ''
-  const delta = b.posRank - d.positionRank
-  return delta >= H2H_GAP_MIN ? 'buy-low' : delta <= -H2H_GAP_MIN ? 'sell-high' : ''
-}
+/*
+ * The same read the Wire shows, and for the same reason it changed there: this fired on the
+ * raw distance between the two ranks and called it buy-low or sell-high. Those terms describe
+ * a price adrift from a value, which is not what this measures, and the raw gap is mostly an
+ * age readout (r = -0.67 on the live market). It is descriptive now — win-now or future — and
+ * only where the gap outruns what age and position already account for.
+ *
+ * Read across BOTH rosters at once, so a player is measured against the same population his
+ * counterpart is, rather than against whichever side of the table he happens to sit on.
+ */
+const GAP_CLS: Record<string, string> = { future: 'text-[#7ee787]', 'win-now': 'text-[#e69a4a]' }
+const h2hHorizons = computed(() => {
+  const out: Record<string, ReturnType<typeof readHorizons>> = {}
+  for (const row of compare.value?.positions ?? []) {
+    out[row.position] = readHorizons(
+      [...row.mine, ...row.theirs].map((b) => ({
+        playerKey: b.playerKey,
+        seasonRank: b.posRank,
+        dynastyRank: dynRow(b.playerKey)?.positionRank ?? 0,
+        age: dynRow(b.playerKey)?.age ?? null,
+      })),
+    )
+  }
+  return out
+})
+const h2hGap = (b: { playerKey: string }, position: string): string =>
+  h2hHorizons.value[position]?.[b.playerKey]?.lean ?? ''
 const dynastyScore = (idea: { gives: { playerKey: string }[]; gets: { playerKey: string }[] }) =>
   dynasty.ready.value
     ? scoreDynastyTrade(idea.gives.map((g) => g.playerKey), idea.gets.map((g) => g.playerKey), dynasty.rows.value)
@@ -646,9 +664,9 @@ function fairness(myGain: number, theirGain: number): string {
                 <!-- The long-term rank beside this season's. Both sides of a dynasty trade
                      are argued in this currency, and it was the one number missing. -->
                 <span v-if="dynasty.ready.value" class="shrink-0 font-mono text-[9px]"
-                      :class="GAP_CLS[h2hGap(b)] ?? 'text-dark-textMuted/70'"
+                      :class="GAP_CLS[h2hGap(b, row.position)] ?? 'text-dark-textMuted/70'"
                       :title="dynRow(b.playerKey) ? `${row.position}${b.posRank} this season vs ${row.position}${dynRow(b.playerKey)!.positionRank} in the dynasty market` : 'Not priced by the dynasty market'">
-                  {{ dynRow(b.playerKey) ? 'DYN ' + row.position + dynRow(b.playerKey)!.positionRank : 'DYN —' }}<template v-if="h2hGap(b)"> {{ h2hGap(b) === 'buy-low' ? '▲' : '▼' }}</template>
+                  {{ dynRow(b.playerKey) ? 'DYN ' + row.position + dynRow(b.playerKey)!.positionRank : 'DYN —' }}<template v-if="h2hGap(b, row.position)"> {{ h2hGap(b, row.position) === 'future' ? '▲' : '▼' }}</template>
                 </span>
                 <!-- Whether that age is early or late FOR HIS POSITION — the single fact a
                      dynasty trade turns on, and the one the board was withholding. -->
@@ -675,9 +693,9 @@ function fairness(myGain: number, theirGain: number): string {
                 <!-- The long-term rank beside this season's. Both sides of a dynasty trade
                      are argued in this currency, and it was the one number missing. -->
                 <span v-if="dynasty.ready.value" class="shrink-0 font-mono text-[9px]"
-                      :class="GAP_CLS[h2hGap(b)] ?? 'text-dark-textMuted/70'"
+                      :class="GAP_CLS[h2hGap(b, row.position)] ?? 'text-dark-textMuted/70'"
                       :title="dynRow(b.playerKey) ? `${row.position}${b.posRank} this season vs ${row.position}${dynRow(b.playerKey)!.positionRank} in the dynasty market` : 'Not priced by the dynasty market'">
-                  {{ dynRow(b.playerKey) ? 'DYN ' + row.position + dynRow(b.playerKey)!.positionRank : 'DYN —' }}<template v-if="h2hGap(b)"> {{ h2hGap(b) === 'buy-low' ? '▲' : '▼' }}</template>
+                  {{ dynRow(b.playerKey) ? 'DYN ' + row.position + dynRow(b.playerKey)!.positionRank : 'DYN —' }}<template v-if="h2hGap(b, row.position)"> {{ h2hGap(b, row.position) === 'future' ? '▲' : '▼' }}</template>
                 </span>
                 <!-- Whether that age is early or late FOR HIS POSITION — the single fact a
                      dynasty trade turns on, and the one the board was withholding. -->
