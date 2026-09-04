@@ -13,6 +13,7 @@ import { useDynastyValues } from '@/composables/useDynastyValues'
 import { scoreDynastyTrade, reseatByDynasty } from '@/football/dynastyValues'
 import { readAge, AGE_TONE } from '@/football/positionalAge'
 import SeasonPassGate from '@/components/SeasonPassGate.vue'
+import RankingPicker from '@/components/RankingPicker.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { startableCounts, startableFraction } from '@/trades/rosterSlots'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
@@ -335,6 +336,17 @@ function fairness(myGain: number, theirGain: number): string {
         <span class="text-dark-textMuted/70">
           {{ TRADE_VIEWS.find((v) => v.key === tradeView)?.hint }}<template v-if="tradeView === 'dynasty'"> &middot; deal gains stay per-week, with the dynasty cost beside them</template>
         </span>
+        <!--
+          Whose dynasty order the page is using, and the control to change it. There was no
+          picker here at all: an uploaded list already drove this page through
+          useDynastyValues, and nothing on screen said so or let you switch it.
+
+          Only offered in the dynasty view, because the season side of this page runs on our
+          own VOR straight from useFootballVor — no rest-of-season list is consulted, so a
+          picker there would be a control that changes nothing, which is the failure I have
+          spent this week removing.
+        -->
+        <RankingPicker v-if="tradeView === 'dynasty'" kind="dynasty" />
       </div>
     </header>
 

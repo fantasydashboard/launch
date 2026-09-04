@@ -150,7 +150,20 @@ function loadActive(): Record<RankingKind, string> {
 const sharedSets = ref<RankingSet[] | null>(null)
 const sharedActive = ref<Record<RankingKind, string> | null>(null)
 
-export function useCustomRankings(kind: RankingKind = 'draft') {
+/**
+ * Accepts a getter as well as a literal, because one caller's kind CHANGES.
+ *
+ * RankingPicker takes `kind` as a prop and the Wire flips it between 'ros' and 'dynasty' when
+ * you switch the board's clock. Passing `props.kind` captured the string once at setup, so
+ * after uploading a dynasty list and switching to Dynasty the dropdown still filtered for
+ * rest-of-season lists and offered only UFD — the uploaded list was unreachable, and had it
+ * been reachable, setActive would have written the choice against 'ros'. One captured string,
+ * both halves broken.
+ */
+export function useCustomRankings(kindInput: RankingKind | (() => RankingKind) = 'draft') {
+  const kindRef = computed<RankingKind>(() =>
+    typeof kindInput === 'function' ? kindInput() : kindInput,
+  )
   const { isAdmin } = useFeatureAccess()
 
   if (sharedSets.value === null) sharedSets.value = loadSets()
@@ -161,10 +174,10 @@ export function useCustomRankings(kind: RankingKind = 'draft') {
   const persistSets = () => write(SETS_KEY, JSON.stringify(sets.value))
   const persistActive = () => write(ACTIVE_KEY, JSON.stringify(activeByKind.value))
 
-  const setsOfKind = computed(() => sets.value.filter((s) => s.kind === kind))
-  const activeId = computed(() => activeByKind.value[kind] ?? UFD)
+  const setsOfKind = computed(() => sets.value.filter((s) => s.kind === kindRef.value))
+  const activeId = computed(() => activeByKind.value[kindRef.value] ?? UFD)
   const activeSet = computed<RankingSet | null>(
-    () => sets.value.find((s) => s.id === activeId.value && s.kind === kind) ?? null,
+    () => sets.value.find((s) => s.id === activeId.value && s.kind === kindRef.value) ?? null,
   )
 
   const parsed = computed<ParsedRanking[]>(() =>
@@ -178,13 +191,13 @@ export function useCustomRankings(kind: RankingKind = 'draft') {
   /** What a surface should say its order came from. */
   const sourceName = computed(() => (enabled.value ? activeSet.value!.name : UFD_LABEL))
 
-  function setActive(id: string, forKind: RankingKind = kind) {
+  function setActive(id: string, forKind: RankingKind = kindRef.value) {
     const ok = sets.value.some((s) => s.id === id && s.kind === forKind)
     activeByKind.value = { ...activeByKind.value, [forKind]: ok ? id : UFD }
     persistActive()
   }
 
-  function addSet(name: string, text: string, forKind: RankingKind = kind): RankingSet {
+  function addSet(name: string, text: string, forKind: RankingKind = kindRef.value): RankingSet {
     const set: RankingSet = {
       id: `r${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`,
       name: name?.trim() || `${KIND_LABELS[forKind]} ${sets.value.length + 1}`,
@@ -224,7 +237,7 @@ export function useCustomRankings(kind: RankingKind = 'draft') {
     file: File,
     name?: string,
     replaceId?: string,
-    forKind: RankingKind = kind,
+    forKind: RankingKind = kindRef.value,
   ): Promise<number> {
     const text = await file.text()
     const label = name?.trim() || file.name.replace(/\.[^.]+$/, '')
@@ -244,7 +257,7 @@ export function useCustomRankings(kind: RankingKind = 'draft') {
   const ageDays = computed(() => (activeSet.value ? ageDaysOf(activeSet.value.updatedAt) : null))
   const isStale = computed(() => {
     const d = ageDays.value
-    return d !== null && d > KIND_STALE_DAYS[kind]
+    return d !== null && d > KIND_STALE_DAYS[kindRef.value]
   })
 
   function match(players: { playerKey: string; name: string; position?: string }[]) {
@@ -273,7 +286,7 @@ export function useCustomRankings(kind: RankingKind = 'draft') {
 
   return {
     isAdmin,
-    kind,
+    kind: kindRef,
     sets,
     setsOfKind,
     activeByKind,

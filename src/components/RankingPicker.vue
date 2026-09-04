@@ -14,7 +14,8 @@ import { useCustomRankings, UFD_LABEL, KIND_STALE_DAYS, type RankingKind } from 
 
 const props = defineProps<{ kind: RankingKind }>()
 
-const rankings = useCustomRankings(props.kind)
+// A getter, not props.kind — the Wire changes this prop when you switch the board's clock.
+const rankings = useCustomRankings(() => props.kind)
 
 /** Say it out loud when a weekly list is older than the week it describes. */
 const staleNote = computed(() => {
