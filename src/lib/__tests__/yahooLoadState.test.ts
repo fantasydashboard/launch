@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { errorMessageOf, summarizeYahooLoad } from '../yahooLoadState'
 
-const UNAVAILABLE = "Yahoo Fantasy is temporarily unavailable — Yahoo changed their API access and we've applied to restore it. Your ESPN and Sleeper leagues are unaffected."
+import { YAHOO_UNAVAILABLE_MESSAGE } from '@/lib/yahooStatus'
+/* One source of truth — the copy lives beside the flag that turns Yahoo back on, so a
+   reworded message cannot leave this test asserting a string nothing produces. */
+const UNAVAILABLE = YAHOO_UNAVAILABLE_MESSAGE
 
 describe('errorMessageOf', () => {
   it('prefers an Error message', () => {

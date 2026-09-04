@@ -9,6 +9,7 @@
  */
 
 import { supabase } from '@/lib/supabase'
+import { YAHOO_UNAVAILABLE_MESSAGE } from '@/lib/yahooStatus'
 import type { Sport } from '@/types/supabase'
 import { cache, CACHE_TTL, CACHE_KEYS } from './cache'
 
@@ -263,7 +264,7 @@ export class YahooFantasyService {
       // of raw "Yahoo API error: 403 — {xml…}" spam. See memory `yahoo-fantasy-api-access`.
       if (response.status === 403 && /not authorized to perform this action/i.test(detailRaw)) {
         throw new Error(
-          "Yahoo Fantasy is temporarily unavailable — Yahoo changed their API access and we've applied to restore it. Your ESPN and Sleeper leagues are unaffected.",
+          YAHOO_UNAVAILABLE_MESSAGE,
         )
       }
       // Otherwise surface Yahoo's actual reason (the proxy returns it as `details`) so a

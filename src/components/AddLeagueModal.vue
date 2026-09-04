@@ -49,12 +49,22 @@
                 <div class="flex-1">
                   <div class="font-semibold text-dark-text flex items-center gap-2">
                     Yahoo Fantasy
-                    <span v-if="platformsStore.isYahooConnected" class="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
+                    <!--
+                      "Connected" reads isYahooConnected, which only means a token exists.
+                      Yahoo issues tokens happily and then 403s every Fantasy call, so this
+                      badge was green on a platform that cannot return one league — and the
+                      failure only surfaced two screens later.
+                    -->
+                    <span v-if="!YAHOO_API_AVAILABLE" class="text-xs px-2 py-0.5 rounded-full bg-[#e69a4a]/20 text-[#e69a4a]">
+                      {{ YAHOO_UNAVAILABLE_SHORT }}
+                    </span>
+                    <span v-else-if="platformsStore.isYahooConnected" class="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
                       Connected
                     </span>
                   </div>
                   <div class="text-xs text-dark-textMuted">
-                    {{ platformsStore.isYahooConnected ? 'Select from your Yahoo leagues' : 'Sign in with Yahoo to connect' }}
+                    <template v-if="!YAHOO_API_AVAILABLE">Yahoo hasn't granted API access yet — ESPN and Sleeper work normally</template>
+                    <template v-else>{{ platformsStore.isYahooConnected ? 'Select from your Yahoo leagues' : 'Sign in with Yahoo to connect' }}</template>
                   </div>
                 </div>
                 <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1031,6 +1041,7 @@
 </template>
 
 <script setup lang="ts">
+import { YAHOO_API_AVAILABLE, YAHOO_UNAVAILABLE_MESSAGE, YAHOO_UNAVAILABLE_SHORT } from '@/lib/yahooStatus'
 import { ref, watch, computed, onMounted } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { usePlatformsStore } from '@/stores/platforms'
@@ -1117,7 +1128,7 @@ const loadingYahooLeagues = ref(false)
 const showYahooAccountMenu = ref(false)
 // Set when EVERY Yahoo per-sport fetch failed — distinguishes an outage from an
 // account that genuinely has no leagues. Null means "not an outage".
-const yahooUnavailableMessage = ref<string | null>(null)
+const yahooUnavailableMessage = ref<string | null>(YAHOO_API_AVAILABLE ? null : YAHOO_UNAVAILABLE_MESSAGE)
 const yahooLeaguesBySport = ref<Record<Sport, any[]>>({
   football: [],
   baseball: [],
