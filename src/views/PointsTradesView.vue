@@ -14,7 +14,7 @@ import { scoreDynastyTrade, reseatByDynasty } from '@/football/dynastyValues'
 import { readAge, AGE_TONE } from '@/football/positionalAge'
 import { readHorizons } from '@/football/dynastyValues'
 import { buildPowerRankings, type PowerTeamInput } from '@/league/powerRankings'
-import type { TeamSituation } from '@/myteam/tradeStrategy'
+import { MIN_SENDABLE_ODDS, type TeamSituation } from '@/myteam/tradeStrategy'
 import SeasonPassGate from '@/components/SeasonPassGate.vue'
 import RankingPicker from '@/components/RankingPicker.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
@@ -155,7 +155,12 @@ async function copyPitch(text: string, i: number) {
 }
 
 const dealCards = computed(() =>
-  [...ideas.value, ...asks.value].sort((a, b) => b.myGain * b.odds - a.myGain * a.odds),
+  [...ideas.value, ...asks.value]
+    /* Under the floor is clutter, not a long shot. The board printed a swap at 2% acceptance
+       under a heading offering it as something to send; nobody sends that, and it pushed real
+       deals down the page. */
+    .filter((d) => d.odds >= MIN_SENDABLE_ODDS)
+    .sort((a, b) => b.myGain * b.odds - a.myGain * a.odds),
 )
 
 /*
@@ -614,12 +619,14 @@ function fairness(myGain: number, theirGain: number): string {
             <p class="font-mono text-[11px] leading-relaxed text-dark-textSecondary">{{ idea.pitch }}</p>
           </div>
 
-          <p class="mt-2 font-mono text-[10px] leading-relaxed text-dark-textMuted">
+          <!-- The old sentence read "worth asking, but you'll need to sweeten it" on every
+               ask — identical on one costing them 5 and one costing them 29 — and it now
+               contradicted the LONG SHOT badge and the odds sitting directly above it. The
+               read is stated once, up there, where it is specific to the deal. -->
+          <p v-if="idea.kind === 'winWin' || idea.shape === '2for1'"
+             class="mt-2 font-mono text-[10px] leading-relaxed text-dark-textMuted">
             <template v-if="idea.kind === 'winWin'">
               Both lineups improve — theirs by {{ idea.theirGain }}. {{ fairness(idea.myGain, idea.theirGain) }}.
-            </template>
-            <template v-else>
-              Costs them {{ Math.abs(idea.theirGain) }} — worth asking, but you'll need to sweeten it or catch them wanting the name.
             </template>
             <template v-if="idea.shape === '2for1'">
               Two bodies for one also frees a roster spot you'll have to fill.

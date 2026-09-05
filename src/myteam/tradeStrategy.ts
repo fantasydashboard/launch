@@ -47,20 +47,35 @@ export interface TeamSituation {
  * both sides: the slot is a single seat, so whatever one team gains the other loses.
  */
 export function singleSlotPositions(slots: Record<string, number>): Set<string> {
+  /*
+   * DEDICATED seats only. The first version added flex shares to every eligible position, so
+   * a league with one TE slot and a flex counted TE as two-seated and the rule never fired —
+   * which is nearly every league, and is why a tight end for a tight end still reached the
+   * board after I claimed to have stopped it. I even wrote a test asserting that behaviour.
+   *
+   * A flex seat is contested by every eligible position at once, so it is not a second home
+   * for a tight end in any way that makes a like-for-like swap mutual. Where a flex genuinely
+   * does help them, the lineup solver says so directly and the caller keeps the deal on that
+   * evidence rather than on this heuristic.
+   */
   const seats: Record<string, number> = {}
   for (const [slot, raw] of Object.entries(slots ?? {})) {
     const n = Number(raw)
     if (!Number.isFinite(n) || n <= 0) continue
-    const flexes = FLEX_ELIGIBILITY[slot]
-    if (flexes?.length) {
-      // A flex seat means the position is NOT single-slot — a second body can start.
-      for (const p of flexes) seats[p] = (seats[p] ?? 0) + n
-    } else {
-      seats[slot] = (seats[slot] ?? 0) + n
-    }
+    if (FLEX_ELIGIBILITY[slot]?.length) continue
+    seats[slot] = (seats[slot] ?? 0) + n
   }
   return new Set(Object.entries(seats).filter(([, n]) => n === 1).map(([p]) => p))
 }
+
+/**
+ * Below this, a deal is clutter rather than a long shot.
+ *
+ * The board showed a swap at 2% acceptance under a heading offering it as something to send.
+ * Printing a number that low is not honesty about a marginal deal — nobody sends it, and it
+ * pushes real ones down the page.
+ */
+export const MIN_SENDABLE_ODDS = 0.15
 
 /**
  * A same-position one-for-one is pointless wherever the position has a single seat.
@@ -148,7 +163,10 @@ export function acceptOdds(input: {
     /* It costs them. How much, relative to what you are gaining, is the whole story: giving up
        a little to fix a hole is a normal trade, giving up as much as you gain is a donation. */
     const ratio = myGain > 0 ? -theirGain / myGain : 2
-    p = ratio <= 0.25 ? 0.45 : ratio <= 0.6 ? 0.3 : ratio <= 1 ? 0.15 : 0.05
+    /* The band boundaries matter more than they look. A deal costing them roughly what it
+       gains you is the "costs them 29" case — a request for a donation — so it sits BELOW the
+       sendable floor rather than on it, where it would still have reached the board. */
+    p = ratio <= 0.25 ? 0.45 : ratio <= 0.6 ? 0.3 : ratio <= 1 ? 0.1 : 0.05
   }
 
   // Filling a genuine hole is the strongest lever there is — they are starting someone

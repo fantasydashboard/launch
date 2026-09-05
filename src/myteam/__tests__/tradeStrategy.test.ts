@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  MIN_SENDABLE_ODDS,
   singleSlotPositions, isZeroSumSwap, readNeeds, acceptOdds, rungFor, pitchFor,
 } from '../tradeStrategy'
 
@@ -12,14 +13,13 @@ describe('single-slot positions', () => {
     expect(singleSlotPositions({ QB: 1, RB: 2, WR: 2, TE: 1 })).toEqual(new Set(['QB', 'TE']))
   })
 
-  it('stops calling a position single-slot once a flex can start a second one', () => {
+  /* The bug this rule was written for, and then failed to catch: counting flex shares made
+     TE two-seated in any league with a flex, so a TE-for-TE swap sailed through. */
+  it('counts dedicated seats only, so a flex does not excuse a like-for-like swap', () => {
     const s = singleSlotPositions(SLOTS)
-    expect(s.has('QB')).toBe(true)   // no flex takes a QB in a 1QB league
-    expect(s.has('TE')).toBe(false)  // FLEX can start a second TE
-  })
-
-  it('treats superflex as opening up quarterback', () => {
-    expect(singleSlotPositions({ QB: 1, RB: 2, WR: 2, TE: 1, SUPER_FLEX: 1 }).has('QB')).toBe(false)
+    expect(s.has('QB')).toBe(true)
+    expect(s.has('TE')).toBe(true)   // one dedicated TE seat, flex or no flex
+    expect(s.has('RB')).toBe(false)  // two dedicated seats — upgrading RB2 is real
   })
 })
 
@@ -33,6 +33,10 @@ describe('zero-sum swaps', () => {
 
   it('rejects a tight end for a tight end when only one starts', () => {
     expect(isZeroSumSwap(['TE'], ['TE'], ONE_TE)).toBe(true)
+  })
+
+  it('still rejects it when the league has a flex — the case that reached the board', () => {
+    expect(isZeroSumSwap(['TE'], ['TE'], { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1 })).toBe(true)
   })
 
   it('allows running back for running back, where two start', () => {
@@ -126,5 +130,16 @@ describe('the pitch', () => {
     const base = { theirTeamName: 'X', getNames: ['A'], giveNames: ['B'], theirGain: -2 }
     expect(pitchFor({ ...base, situation: { posture: 'bubble', stakes: 'must-win' } })).toContain('win this week')
     expect(pitchFor(base)).not.toContain('win this week')
+  })
+})
+
+
+describe('the sendable floor', () => {
+  it('is above the 2% deal the board actually printed', () => {
+    expect(acceptOdds({ theirGain: -25, myGain: 25 })).toBeLessThan(MIN_SENDABLE_ODDS)
+  })
+
+  it('keeps a deal that genuinely helps them', () => {
+    expect(acceptOdds({ theirGain: 8, myGain: 10 })).toBeGreaterThan(MIN_SENDABLE_ODDS)
   })
 })
