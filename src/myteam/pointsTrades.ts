@@ -9,6 +9,10 @@
  * each side's optimal lineup (assignSlots) with the swap applied.
  */
 import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
+import {
+  isZeroSumSwap, readNeeds, acceptOdds, rungFor, pitchFor,
+  type PositionNeed, type TeamSituation, type Rung,
+} from '@/myteam/tradeStrategy'
 import { parseEligible, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { type ValueByKey } from '@/myteam/playerValue'
 
@@ -38,6 +42,14 @@ export interface TradeIdea {
    *           labelled, never mixed in with the win-wins.
    */
   kind: 'winWin' | 'ask'
+  /** 0..1 estimate that they say yes. Ranking runs on gain × this, not gain alone. */
+  odds: number
+  /** Where it sits on the ask ladder — open with a reach, settle at fair. */
+  rung: Rung
+  /** The hole on their roster this fills, when it fills one. */
+  fills?: PositionNeed | null
+  /** The opener, led with their angle rather than yours. */
+  pitch: string
   /**
    * 2-for-1 is how a lopsided-LOOKING trade actually gets done: they gain two startable
    * bodies, you gain one better than your worst starter. It also costs you a roster spot,
@@ -86,6 +98,9 @@ export function buildPointsTrades(
   slots: Record<string, number>,
   teamNames: Record<string, string> = {},
   vorByKey: Record<string, { vorRos: number }> = {},
+  /* Whether each rival is contending, rebuilding or already done. The engine treated every
+     opponent as an identical bag of players; posture is most of what decides who says yes. */
+  situations: Record<string, TeamSituation> = {},
 ): TradeIdea[] {
   if (!myTeamKey || !pool.length || !Object.keys(slots).length) return []
 
@@ -126,6 +141,10 @@ export function buildPointsTrades(
     const starters = healthy.filter((p) => base.has(p.playerKey)).sort((a, b) => a.points - b.points)
     return [...bench, ...starters].slice(0, CAND)
   }
+  /** A player's primary position, from the pool meta already indexed above. */
+  const posOf = (key: string): string =>
+    (meta.get(key)?.position || '').toUpperCase().split(/[,/|]/)[0].trim()
+
   const mySurplus = candidates(myDp, myBase.started)
 
   const swap = (dp: Dp[], outKey: string, incoming: Dp): Dp[] => [...dp.filter((p) => p.playerKey !== outKey), incoming]
@@ -141,6 +160,19 @@ export function buildPointsTrades(
     outTheirs: Dp[],
     shape: '1for1' | '2for1',
   ) => {
+    /*
+     * A same-position one-for-one at a single-seat position can never help both sides — the
+     * two lineups move by equal and opposite amounts, so no sweetener makes it mutual. This is
+     * the rule the board broke in public when it offered a tight end for a tight end and
+     * captioned it "costs them 29 — worth asking". Checked before any lineup is solved, since
+     * the answer is structural rather than numeric.
+     */
+    if (isZeroSumSwap(
+      outMine.map((p) => posOf(p.playerKey)),
+      outTheirs.map((p) => posOf(p.playerKey)),
+      slots,
+    )) return
+
     const myKeys = new Set(outMine.map((p) => p.playerKey))
     const theirKeys = new Set(outTheirs.map((p) => p.playerKey))
     const myNew = optimal([...myDp.filter((p) => !myKeys.has(p.playerKey)), ...outTheirs], slots)
@@ -165,16 +197,44 @@ export function buildPointsTrades(
     // Lopsided in YOURS past the point of plausibility is not an ask, it's a punchline.
     if (theirGain <= 0 && -theirGain > ASK_MAX_LOSS_RATIO * myGain) return
 
+    /* Which of their holes this lands in — the reason they would want it, if there is one. */
+    const theirNeeds = needsByTeam.get(oppKey) ?? {}
+    const fills = outMine
+      .map((p) => theirNeeds[posOf(p.playerKey)])
+      .filter(Boolean)
+      .sort((a, b) => a!.worstStarterVor - b!.worstStarterVor)[0] ?? null
+    const situation = situations[oppKey]
+    const oppTeamName = teamNames[oppKey] || 'Opponent'
+    const giveNames = outMine.map((p) => meta.get(p.playerKey)?.name ?? '')
+    const getNames = outTheirs.map((p) => meta.get(p.playerKey)?.name ?? '')
+
     ideas.push({
       gives: outMine.map((p) => sideOf(p.playerKey)),
       gets: outTheirs.map((p) => sideOf(p.playerKey)),
       oppTeamKey: oppKey,
-      oppTeamName: teamNames[oppKey] || 'Opponent',
+      oppTeamName,
       myGain: Math.round(myGain),
       theirGain: Math.round(theirGain),
       kind: theirGain > 0 ? 'winWin' : 'ask',
       shape,
+      odds: acceptOdds({ theirGain, myGain, fills, situation }),
+      rung: rungFor(theirGain, myGain),
+      fills,
+      pitch: pitchFor({ theirTeamName: oppTeamName, getNames, giveNames, fills, theirGain, situation }),
     })
+  }
+
+  /* Every rival's holes, read once. A hole is a starter below replacement — the difference
+     between "ranked eighth at running back" and "starting someone worse than a free agent",
+     which is the only version of need worth acting on. */
+  const needsByTeam = new Map<string, Record<string, PositionNeed>>()
+  for (const [oppKey, theirDp] of byTeam) {
+    if (oppKey === myTeamKey) continue
+    const base = optimal(theirDp, slots)
+    needsByTeam.set(oppKey, readNeeds(
+      [...base.started].map((k) => ({ position: posOf(k), vor: vorByKey[k]?.vorRos ?? 0 })),
+      slots,
+    ))
   }
 
   for (const [oppKey, theirDp] of byTeam) {

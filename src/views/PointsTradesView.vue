@@ -13,6 +13,8 @@ import { useDynastyValues } from '@/composables/useDynastyValues'
 import { scoreDynastyTrade, reseatByDynasty } from '@/football/dynastyValues'
 import { readAge, AGE_TONE } from '@/football/positionalAge'
 import { readHorizons } from '@/football/dynastyValues'
+import { buildPowerRankings, type PowerTeamInput } from '@/league/powerRankings'
+import type { TeamSituation } from '@/myteam/tradeStrategy'
 import SeasonPassGate from '@/components/SeasonPassGate.vue'
 import RankingPicker from '@/components/RankingPicker.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
@@ -88,16 +90,73 @@ const analysisVor = computed(() => {
   return reseatByDynasty(base, dynasty.rows.value)
 })
 
+/*
+ * Who is contending, who is rebuilding, and whose season is already over.
+ *
+ * The deal engine treated every opponent as an identical bag of players, when posture is most
+ * of what decides who says yes: a team playing out the string stops answering, and a team that
+ * needs the win this week will pay for it. powerRankings already computes this for the League
+ * board — the trade page simply never asked it.
+ */
+const situations = computed<Record<string, TeamSituation>>(() => {
+  const model = teamModel.value
+  const meta = source.teamMeta.value ?? {}
+  if (!model?.standings?.length) return {}
+  const inputs: PowerTeamInput[] = model.standings.map((st) => {
+    const m: any = meta[st.teamKey] ?? {}
+    return {
+      teamKey: st.teamKey, teamName: teamNames.value[st.teamKey] ?? 'Team',
+      strength: st.startingPoints,
+      wins: m.wins ?? 0, losses: m.losses ?? 0, ties: m.ties ?? 0, pointsFor: m.pointsFor ?? 0,
+    }
+  })
+  const pr = buildPowerRankings(inputs)
+  const out: Record<string, TeamSituation> = {}
+  const n = pr.rows.length
+  for (const r of pr.rows) {
+    const posture = r.tier === 'Contender' ? 'contender' : r.tier === 'Rebuilder' ? 'rebuilder' : 'bubble'
+    /* Stakes need games played to mean anything — before that, every record is 0-0 and any
+       read is an assertion about a season that has not happened. */
+    const played = r.wins + r.losses + r.ties
+    const stakes = played < 3
+      ? 'unknown'
+      : r.recordRank <= Math.ceil(n / 3) ? 'live'
+      : r.recordRank > n - Math.floor(n / 4) ? 'coasting'
+      : 'must-win'
+    out[r.teamKey] = { posture, stakes } as TeamSituation
+  }
+  return out
+})
+
 const allIdeas = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return []
-  return buildPointsTrades(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value, teamNames.value, tradeVor.value)
+  return buildPointsTrades(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value, teamNames.value, tradeVor.value, situations.value)
 })
 // Deals proposable as-is, and deals worth chasing — never mixed, so a one-sided ask is
 // never presented as something the other manager should happily accept.
 const ideas = computed(() => allIdeas.value.filter((i) => i.kind === 'winWin'))
 const asks = computed(() => allIdeas.value.filter((i) => i.kind === 'ask').slice(0, 4))
 // Win-wins first, then the bounded asks — one list, one card shape.
-const dealCards = computed(() => [...ideas.value, ...asks.value])
+/*
+ * Ranked by whether they would actually say yes, not by what you would gain.
+ *
+ * Asks were sorted on net surplus — my gain minus their loss — which optimises my outcome
+ * while ignoring acceptance entirely, and is exactly how "costs them 29 — worth asking"
+ * reached the top of the board. A five-point gain a desperate team takes beats a thirty-point
+ * gain nobody takes, so the sort runs on gain × odds.
+ */
+const copiedPitch = ref<number | null>(null)
+async function copyPitch(text: string, i: number) {
+  try {
+    await navigator.clipboard.writeText(text)
+    copiedPitch.value = i
+    setTimeout(() => { if (copiedPitch.value === i) copiedPitch.value = null }, 1600)
+  } catch { /* clipboard blocked — the text is on screen to select by hand */ }
+}
+
+const dealCards = computed(() =>
+  [...ideas.value, ...asks.value].sort((a, b) => b.myGain * b.odds - a.myGain * a.odds),
+)
 
 /*
  * The second horizon, beside the first — never instead of it.
@@ -522,6 +581,37 @@ function fairness(myGain: number, theirGain: number): string {
                 <span class="w-12 shrink-0 text-right font-mono text-[11px] text-dark-textMuted">{{ round(tradePoints(g.playerKey, g.points)) }}</span>
               </div>
             </div>
+          </div>
+
+          <!--
+            Why they would say yes, named. Every card used to carry the same sentence — "worth
+            asking, but you'll need to sweeten it" — on a deal costing them 29 and on one
+            costing them 5, which are not the same proposition at all.
+          -->
+          <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px]">
+            <span class="rounded px-1.5 py-0.5 uppercase tracking-wide"
+                  :class="idea.rung === 'fair' ? 'bg-primary/15 text-primary'
+                        : idea.rung === 'reach' ? 'bg-[#e69a4a]/15 text-[#e69a4a]'
+                        : 'bg-[#FF5C5C]/15 text-[#FF5C5C]'">
+              {{ idea.rung === 'fair' ? 'they gain too' : idea.rung === 'reach' ? 'open here' : 'long shot' }}
+            </span>
+            <span class="text-dark-textMuted">{{ Math.round(idea.odds * 100) }}% they take it</span>
+            <span v-if="idea.fills?.isHole" class="text-[#7ee787]">
+              fills their {{ idea.fills.position }} hole — they're starting one below replacement
+            </span>
+            <span v-else-if="idea.theirGain > 0" class="text-dark-textMuted">lifts their lineup by {{ idea.theirGain }}</span>
+            <span v-else class="text-dark-textMuted/70">nothing they need — costs them {{ Math.abs(idea.theirGain) }}</span>
+          </div>
+
+          <!-- The opener, led with their angle. Promised on the landing page and on the
+               paywall, and never written until now. -->
+          <div class="mt-2 rounded-lg bg-dark-bg/50 p-2.5">
+            <div class="mb-1 flex items-center justify-between gap-2">
+              <span class="font-mono text-[9px] uppercase tracking-widest text-dark-textMuted">Pitch</span>
+              <button class="rounded bg-dark-border/60 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wide text-dark-textSecondary hover:text-dark-text"
+                      @click="copyPitch(idea.pitch, i)">{{ copiedPitch === i ? 'copied' : 'copy' }}</button>
+            </div>
+            <p class="font-mono text-[11px] leading-relaxed text-dark-textSecondary">{{ idea.pitch }}</p>
           </div>
 
           <p class="mt-2 font-mono text-[10px] leading-relaxed text-dark-textMuted">
