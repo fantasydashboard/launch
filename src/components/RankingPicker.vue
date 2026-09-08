@@ -7,7 +7,7 @@
  * is the failure mode worth engineering against: the user has to be able to
  * answer "whose ranking am I looking at?" without leaving the screen.
  *
- * Invisible to non-admin accounts, like the lists themselves.
+ * Shown to any account holding the Season Pass, like the lists themselves.
  */
 import { computed } from 'vue'
 import { useCustomRankings, UFD_LABEL, KIND_STALE_DAYS, type RankingKind } from '@/composables/useCustomRankings'
@@ -26,7 +26,7 @@ const staleNote = computed(() => {
 </script>
 
 <template>
-  <p v-if="rankings.isAdmin.value" class="flex items-center gap-2 font-mono text-[11px]">
+  <p v-if="rankings.canUseRankings.value" class="flex items-center gap-2 font-mono text-[11px]">
     <span class="text-dark-textMuted">ranked by</span>
     <select
       :value="rankings.activeId.value"

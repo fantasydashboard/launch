@@ -26,7 +26,7 @@
     </div>
 
     <!-- Ranking lists (admin only for now) -->
-    <div v-if="customRankings.isAdmin.value" class="card">
+    <div v-if="customRankings.canUseRankings.value" class="card">
       <div class="card-header">
         <div class="flex items-center gap-2">
           <span class="text-2xl">📋</span>

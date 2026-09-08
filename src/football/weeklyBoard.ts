@@ -579,6 +579,16 @@ export function buildWeeklyBoard(input: {
      * break only ever counts as one when the tier actually advances.
      */
     const walk = [...rows].sort((a, b) => b.weekPoints - a.weekPoints)
+    /*
+     * Clear before walking, because this runs TWICE over the same rows.
+     *
+     * The per-position pass goes first and mutates the shared row objects; FLEX then copies
+     * them and re-tiers. Only ever SETTING the flag meant every cliff earned in the receiver
+     * column rode into the flex column still flagged, attached to a flex tier number that had
+     * already been printed — so the repeats came back on FLEX after the walk-order fix cured
+     * them everywhere else. Same symptom, entirely different cause.
+     */
+    for (const r of walk) { r.tierBreak = undefined; r.tierDrop = undefined }
     for (const r of walk) {
       r.tier = byKey[r.playerKey] ?? 1
       if (prevTier && r.tier > prevTier) {

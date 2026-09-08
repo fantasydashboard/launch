@@ -397,6 +397,46 @@ describe('buildWeeklyBoard — the Sunday page', () => {
  * array while the tiers had been computed on a value-sorted copy, and a weekly board ties
  * constantly (half a column on 20 points), so the two orderings disagreed.
  */
+/*
+ * The same repeats came back on the FLEX column after the per-position fix.
+ *
+ * They could not come from the walk this time. The per-position pass runs FIRST and mutates
+ * the shared row objects, setting tierBreak and tierDrop; FLEX then copies those same objects
+ * and re-tiers them. tierUp only ever SETS the flag, so every break earned in the receiver
+ * column rode into the flex column attached to a flex tier number that had already been
+ * printed — "TIER 5" twice, "TIER 6" three times, exactly as before and for a new reason.
+ */
+describe('tier labels down the FLEX column', () => {
+  it('does not inherit tier breaks from the positional pass', () => {
+    // Receivers and backs interleave on points, so their positional cliffs land in the middle
+    // of the flex order rather than on its own cliffs.
+    const rows = [
+      { k: 'rb1', pos: 'RB', p: 24 }, { k: 'rb2', pos: 'RB', p: 21 },
+      { k: 'wr1', pos: 'WR', p: 21 }, { k: 'wr2', pos: 'WR', p: 20 },
+      { k: 'rb3', pos: 'RB', p: 20 }, { k: 'wr3', pos: 'WR', p: 20 },
+      { k: 'rb4', pos: 'RB', p: 20 }, { k: 'wr4', pos: 'WR', p: 17 },
+      { k: 'rb5', pos: 'RB', p: 17 }, { k: 'wr5', pos: 'WR', p: 17 },
+      { k: 'rb6', pos: 'RB', p: 14 }, { k: 'wr6', pos: 'WR', p: 12 },
+    ]
+    const board = buildWeeklyBoard({
+      pool: rows.map((r) => ({ playerKey: r.k, name: r.k, position: r.pos, teamKey: 'me', proTeam: 'DET' })) as any,
+      vorByKey: Object.fromEntries(rows.map((r) => [r.k, {
+        playerKey: r.k, position: r.pos, pointsRos: r.p * 17, vorRos: r.p, pointsNextWeek: r.p,
+        vorWeek: r.p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+      }])) as any,
+      slots: { RB: 2, WR: 2, FLEX: 1 },
+      myTeamKey: 'me',
+      currentStarters: [],
+      freeAgents: [],
+      opponentByTeam: { DET: { opp: 'CHI', home: true } },
+    })
+    const seen = board.board.FLEX.filter((r) => r.tierBreak).map((r) => r.tier)
+    expect(seen).toEqual([...new Set(seen)])
+    // And every break must be a real advance down the column, not a leftover.
+    expect([...seen].sort((a, b) => a - b)).toEqual(seen)
+  })
+})
+
 describe('tier labels down a weekly column', () => {
   it('never repeats a tier number, even with heavy ties', () => {
     const rows = [

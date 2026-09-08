@@ -597,7 +597,7 @@ const guideAvailable = computed(() => {
           <template v-else>your board, your league, your opponents</template>
         </p>
         <!-- Always say which rankings the board is built from. -->
-        <p v-if="customRankings.isAdmin.value" class="mt-1 flex items-center gap-2 font-mono text-[11px]">
+        <p v-if="customRankings.canUseRankings.value" class="mt-1 flex items-center gap-2 font-mono text-[11px]">
           <span class="text-dark-textMuted">ranked by</span>
           <select
             :value="customRankings.activeId.value"
@@ -656,7 +656,7 @@ const guideAvailable = computed(() => {
     <!-- Admin-only: how the uploaded list compares to our projections.
          Uploading and toggling live in Settings — this is a standing preference,
          not draft state. -->
-    <section v-if="customRankings.isAdmin.value && customRankings.hasRankings.value" class="mb-4 rounded-xl border border-dark-border bg-dark-card p-4">
+    <section v-if="customRankings.canUseRankings.value && customRankings.hasRankings.value" class="mb-4 rounded-xl border border-dark-border bg-dark-card p-4">
       <div class="flex items-center justify-between gap-3">
         <button @click="showRankings = !showRankings" class="font-mono text-[11px] text-dark-textMuted hover:text-dark-text">
           {{ showRankings ? '▾' : '▸' }} {{ customRankings.sourceName.value }} vs UFD

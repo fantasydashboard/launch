@@ -174,7 +174,17 @@ export function useCustomRankings(kindInput: RankingKind | (() => RankingKind) =
   const kindRef = computed<RankingKind>(() =>
     typeof kindInput === 'function' ? kindInput() : kindInput,
   )
-  const { isAdmin } = useFeatureAccess()
+  /*
+   * Season Pass, not admin.
+   *
+   * Custom rankings shipped behind `isAdmin`, so the upload flow, the picker and the effect
+   * were all invisible to every paying account — someone could add a weekly list and find no
+   * way to select it, which is what happened. The rest of this page is already behind the
+   * pass; there is no reason for the one control that says whose numbers you are reading to
+   * be held back further. Admins keep access because hasFullAccess is set true for them.
+   */
+  const { isAdmin, hasFullAccess } = useFeatureAccess()
+  const canUseRankings = hasFullAccess
 
   if (sharedSets.value === null) sharedSets.value = loadSets()
   if (sharedActive.value === null) sharedActive.value = loadActive()
@@ -210,8 +220,8 @@ export function useCustomRankings(kindInput: RankingKind | (() => RankingKind) =
   )
   const hasRankings = computed(() => parsed.value.length > 0)
 
-  /** Only ever on for an admin, whatever is stored. */
-  const enabled = computed(() => isAdmin.value && !!activeSet.value && hasRankings.value)
+  /** Only ever on for an account that holds the pass, whatever is stored. */
+  const enabled = computed(() => canUseRankings.value && !!activeSet.value && hasRankings.value)
 
   /** What a surface should say its order came from. */
   const sourceName = computed(() => (enabled.value ? activeSet.value!.name : UFD_LABEL))
@@ -340,6 +350,7 @@ export function useCustomRankings(kindInput: RankingKind | (() => RankingKind) =
 
   return {
     isAdmin,
+    canUseRankings,
     kind: kindRef,
     sets,
     setsOfKind,
