@@ -50,6 +50,16 @@ export interface RankingSet {
   text: string
   updatedAt: string
   kind: RankingKind
+  /**
+   * Extra single-position files folded into the same set.
+   *
+   * Weekly analyst rankings arrive one file per position, and each restarts at rank 1 — so
+   * seven files uploaded as seven sets would be seven lists whose #1s all collide, and
+   * uploaded as one concatenated list would be worse. A set holds them side by side instead,
+   * each tagged with the position read out of its own header, and ranks stay scoped inside a
+   * position where they were always meant to live.
+   */
+  parts?: { position: string; text: string }[]
 }
 
 /** Sentinel for "use our own numbers". */
@@ -180,8 +190,23 @@ export function useCustomRankings(kindInput: RankingKind | (() => RankingKind) =
     () => sets.value.find((s) => s.id === activeId.value && s.kind === kindRef.value) ?? null,
   )
 
-  const parsed = computed<ParsedRanking[]>(() =>
-    activeSet.value ? parseRankings(activeSet.value.text) : [],
+  const parsed = computed<ParsedRanking[]>(() => {
+    const set = activeSet.value
+    if (!set) return []
+    const base = parseRankings(set.text)
+    if (!set.parts?.length) return base
+    /* Each part carries its own position, so its rows are stamped with it. Rank stays as the
+       file gave it — first at the position, not first overall — and consumers scope the
+       ordering per position rather than pretending one global order exists. */
+    const extra = set.parts.flatMap((part) =>
+      parseRankings(part.text).map((r) => ({ ...r, position: r.position || part.position })),
+    )
+    return [...base, ...extra]
+  })
+
+  /** Positions this set covers with a dedicated file, for the UI to show what is loaded. */
+  const partPositions = computed<string[]>(() =>
+    (activeSet.value?.parts ?? []).map((p) => p.position),
   )
   const hasRankings = computed(() => parsed.value.length > 0)
 
@@ -216,6 +241,35 @@ export function useCustomRankings(kindInput: RankingKind | (() => RankingKind) =
       s.id === id
         ? { ...s, text, name: name?.trim() || s.name, updatedAt: new Date().toISOString() }
         : s,
+    )
+    persistSets()
+  }
+
+  /**
+   * Fold a single-position file into an existing set.
+   *
+   * Replaces the part when that position is already present, so re-uploading a corrected
+   * running-back sheet updates it rather than stacking a second one that silently competes
+   * with the first.
+   */
+  function addPart(id: string, position: string, text: string) {
+    const pos = (position || '').toUpperCase().trim()
+    if (!pos) return
+    sets.value = sets.value.map((s) =>
+      s.id === id
+        ? {
+            ...s,
+            updatedAt: new Date().toISOString(),
+            parts: [...(s.parts ?? []).filter((p) => p.position !== pos), { position: pos, text }],
+          }
+        : s,
+    )
+    persistSets()
+  }
+
+  function removePart(id: string, position: string) {
+    sets.value = sets.value.map((s) =>
+      s.id === id ? { ...s, parts: (s.parts ?? []).filter((p) => p.position !== position) } : s,
     )
     persistSets()
   }
@@ -289,6 +343,9 @@ export function useCustomRankings(kindInput: RankingKind | (() => RankingKind) =
     kind: kindRef,
     sets,
     setsOfKind,
+    partPositions,
+    addPart,
+    removePart,
     activeByKind,
     activeId,
     activeSet,

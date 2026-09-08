@@ -108,21 +108,49 @@ export function useWeeklyBoard(): {
    */
   const weekRankings = useCustomRankings('week')
   const nameByKey = computed(() => {
-    const m = new Map<string, string>()
-    for (const p of src.pool.value) m.set(p.playerKey, p.name)
-    for (const fa of src.freeAgents.value) m.set(fa.playerKey ?? `fa:${fa.name}`, fa.name)
+    const m = new Map<string, { name: string; position: string }>()
+    for (const p of src.pool.value) m.set(p.playerKey, { name: p.name, position: p.position ?? '' })
+    for (const fa of src.freeAgents.value)
+      m.set(fa.playerKey ?? `fa:${fa.name}`, { name: fa.name, position: fa.position ?? '' })
     return m
   })
   const effectiveVor = computed(() => {
     const base = vorByKey.value
     if (!weekRankings.enabled.value || !Object.keys(base).length) return base
-    const named = Object.keys(base).map((k) => ({ playerKey: k, name: nameByKey.value.get(k) ?? '' }))
+    const named = Object.keys(base).map((k) => ({
+      playerKey: k,
+      name: nameByKey.value.get(k)?.name ?? '',
+      position: nameByKey.value.get(k)?.position ?? '',
+    }))
     const { rankByKey } = weekRankings.match(named)
     if (!Object.keys(rankByKey).length) return base
-    const reseated = applyRankingOrder(
-      Object.entries(base).map(([k, v]) => ({ playerKey: k, value: v.pointsNextWeek })),
-      rankByKey,
-    )
+
+    const normPos = (p: string) => (p || '').toUpperCase().split(/[,/|]/)[0].trim()
+    const entries = Object.entries(base).map(([k, v]) => ({
+      playerKey: k, value: v.pointsNextWeek, position: normPos(nameByKey.value.get(k)?.position ?? ''),
+    }))
+
+    /*
+     * Scoped per position when the list was built from per-position files.
+     *
+     * Analyst weekly rankings arrive one file per position and each restarts at rank 1, so a
+     * global re-seat would treat the best quarterback and the best running back as tied for
+     * first and hand out point values accordingly. Grouping first keeps a rank meaning what
+     * the file meant: first AT THAT POSITION.
+     *
+     * A single cross-position list keeps the old global behaviour, because for that shape the
+     * ranks genuinely are one order.
+     */
+    let reseated: Record<string, number>
+    if (weekRankings.partPositions.value.length) {
+      reseated = {}
+      const byPos = new Map<string, typeof entries>()
+      for (const e of entries) byPos.set(e.position, [...(byPos.get(e.position) ?? []), e])
+      for (const group of byPos.values()) Object.assign(reseated, applyRankingOrder(group, rankByKey))
+    } else {
+      reseated = applyRankingOrder(entries, rankByKey)
+    }
+
     const out: typeof base = {}
     for (const [k, v] of Object.entries(base)) {
       out[k] = { ...v, pointsNextWeek: reseated[k] ?? v.pointsNextWeek }

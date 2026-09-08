@@ -156,6 +156,19 @@ export function parseRankings(text: string): ParsedRanking[] {
     .map((r, i) => ({ ...r, rank: i + 1 }))
 }
 
+/**
+ * A ranking row that matched more than one player by name, with the candidates it could not
+ * choose between. Reported rather than resolved: picking one silently is how a list quietly
+ * ranks the wrong Josh Allen.
+ *
+ * This was used in four places and declared in none — the file only ever typechecked because
+ * parse errors elsewhere stopped vue-tsc before it arrived here.
+ */
+export interface AmbiguousMatch {
+  entry: ParsedRanking
+  candidates: { playerKey: string; name: string; position?: string }[]
+}
+
 export interface MatchResult {
   /** playerKey -> analyst rank. */
   rankByKey: Record<string, number>
@@ -386,4 +399,40 @@ export function orderByRanking<T>(
   }
   ranked.sort((a, b) => a.rank - b.rank)
   return [...ranked.map((r) => r.row), ...rest]
+}
+
+/**
+ * Which position a single-position ranking file covers, read from its own header.
+ *
+ * Analyst weekly rankings arrive as one file per position, and the position is never in a
+ * column — it is the NAME of the player column: "Quarterback", "Running Back", "Tight End".
+ * Each file also restarts at rank 1, so uploading seven of them naively produces seven
+ * different players all ranked first.
+ *
+ * Returns null for a file that spans positions (a FLEX sheet carries its own `Pos` column and
+ * needs no inference) or for anything unrecognised, so the caller can fall back to treating it
+ * as one undifferentiated list rather than guessing wrong.
+ */
+const POSITION_HEADERS: [RegExp, string][] = [
+  [/\bquarterback\b|^qb$/i, 'QB'],
+  [/\brunning\s*back\b|^rb$/i, 'RB'],
+  [/\bwide\s*receiver\b|^wr$/i, 'WR'],
+  [/\btight\s*end\b|^te$/i, 'TE'],
+  [/\bkicker\b|^k$/i, 'K'],
+  [/\bdefen[cs]e\b|^d\/?st$|^def$/i, 'DEF'],
+]
+
+export function inferRankingPosition(text: string): string | null {
+  if (!text) return null
+  const header = text.split(/\r?\n/).find((l) => l.trim())
+  if (!header) return null
+  // A sheet with its own position column spans positions; nothing to infer.
+  if (/["',\t]\s*pos(ition)?\s*["',\t]?/i.test(header)) return null
+  const cells = header.split(/[,\t]/).map((c) => c.trim().replace(/^"|"$/g, ''))
+  for (const cell of cells) {
+    for (const [re, pos] of POSITION_HEADERS) {
+      if (re.test(cell)) return pos
+    }
+  }
+  return null
 }

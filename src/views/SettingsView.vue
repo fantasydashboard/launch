@@ -68,7 +68,7 @@
             </span>
             <label class="shrink-0 cursor-pointer rounded border border-dark-border px-2 py-1 font-mono text-[10px] text-dark-textMuted hover:text-dark-text" @click.stop>
               replace
-              <input type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden" @change="(e) => onRankingsFile(e, k, set.id)" />
+              <input type="file" multiple accept=".csv,.txt,text/csv,text/plain" class="hidden" @change="(e) => onRankingsFile(e, k, set.id)" />
             </label>
             <button @click.prevent.stop="customRankings.deleteSet(set.id)"
                     class="shrink-0 rounded border border-dark-border px-2 py-1 font-mono text-[10px] text-dark-textMuted hover:text-[#FF5C5C]">
@@ -83,8 +83,8 @@
               class="w-64 rounded-lg border border-dark-border bg-dark-bg px-3 py-1.5 font-mono text-xs text-dark-text"
             />
             <label class="cursor-pointer rounded-lg bg-primary/20 px-3 py-1.5 font-mono text-xs text-primary hover:bg-primary/30">
-              upload csv
-              <input type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden" @change="(e) => onRankingsFile(e, k)" />
+              upload csv — one file, or one per position
+              <input type="file" multiple accept=".csv,.txt,text/csv,text/plain" class="hidden" @change="(e) => onRankingsFile(e, k)" />
             </label>
           </div>
         </div>
@@ -347,7 +347,7 @@ import { supabase } from '@/lib/supabase'
 import { cache } from '@/services/cache'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { useCustomRankings, KIND_LABELS, KIND_STALE_DAYS, UFD_LABEL, type RankingKind } from '@/composables/useCustomRankings'
-import { parseRankings } from '@/draft/room/customRankings'
+import { parseRankings, inferRankingPosition } from '@/draft/room/customRankings'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const leagueStore = useLeagueStore()
@@ -403,18 +403,44 @@ const isStale = (set: { updatedAt: string; kind: RankingKind }) => {
   return d !== null && d > KIND_STALE_DAYS[set.kind]
 }
 
+/**
+ * Accepts several files at once, routing each to the position its own header names.
+ *
+ * Weekly analyst rankings ship one file per position — qb, rb, wr, te, flex, k, def — and the
+ * position is never a column: it is the NAME of the player column ("Quarterback", "Tight
+ * End"). Each file also restarts at rank 1, so uploading them as separate lists gives seven
+ * lists whose #1s all collide, and concatenating them is worse. Files that name a position
+ * become parts of one set; a file that spans positions (a FLEX sheet, with its own Pos
+ * column) becomes the set's own list.
+ */
 async function onRankingsFile(e: Event, kind: RankingKind, replaceId?: string) {
   const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
+  const files = Array.from(input.files ?? [])
+  if (!files.length) return
   try {
-    const n = await customRankings.loadFromFile(
-      file,
-      replaceId ? undefined : newName.value[kind],
-      replaceId,
-      kind,
-    )
-    rankingsFileMsg.value = `loaded ${n} players from ${file.name}`
+    let setId = replaceId
+    const loaded: string[] = []
+    for (const file of files) {
+      const text = await file.text()
+      const pos = inferRankingPosition(text)
+      if (!setId) {
+        // The first file establishes the set — a cross-position sheet becomes its base list.
+        const n = await customRankings.loadFromFile(
+          file, newName.value[kind], undefined, kind,
+        )
+        setId = customRankings.activeId.value || undefined
+        loaded.push(`${pos ?? 'all'} (${n})`)
+        continue
+      }
+      if (pos) {
+        customRankings.addPart(setId, pos, text)
+        loaded.push(`${pos} (${parseRankings(text).length})`)
+      } else {
+        customRankings.replaceSet(setId, text)
+        loaded.push(`all (${parseRankings(text).length})`)
+      }
+    }
+    rankingsFileMsg.value = `loaded ${loaded.join(' · ')}`
     newName.value = { ...newName.value, [kind]: '' }
   } catch {
     rankingsFileMsg.value = "couldn't read that file"
