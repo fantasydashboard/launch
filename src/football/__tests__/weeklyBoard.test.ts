@@ -390,3 +390,34 @@ describe('buildWeeklyBoard — the Sunday page', () => {
     expect(board2.closeCalls.find((c) => c.sitName === 'RB Four')).toBeUndefined()
   })
 })
+
+/*
+ * The board printed "TIER 5" twice and "TIER 6" three times down one column. assignTiers is
+ * strictly increasing, so the repeats could not come from it — the loop walked the caller's
+ * array while the tiers had been computed on a value-sorted copy, and a weekly board ties
+ * constantly (half a column on 20 points), so the two orderings disagreed.
+ */
+describe('tier labels down a weekly column', () => {
+  it('never repeats a tier number, even with heavy ties', () => {
+    const rows = [
+      { k: 'a', p: 24 }, { k: 'b', p: 21 }, { k: 'c', p: 21 },
+      { k: 'd', p: 20 }, { k: 'e', p: 20 }, { k: 'f', p: 20 }, { k: 'g', p: 20 },
+      { k: 'h', p: 17 }, { k: 'i', p: 17 }, { k: 'j', p: 17 },
+    ]
+    const board = buildWeeklyBoard({
+      pool: rows.map((r) => ({ playerKey: r.k, name: r.k, position: 'RB', teamKey: 'me', proTeam: 'DET' })) as any,
+      vorByKey: Object.fromEntries(rows.map((r) => [r.k, {
+        playerKey: r.k, position: 'RB', pointsRos: r.p * 17, vorRos: r.p, pointsNextWeek: r.p,
+        vorWeek: r.p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+      }])) as any,
+      slots: { RB: 2, FLEX: 1 },
+      myTeamKey: 'me',
+      currentStarters: [],
+      freeAgents: [],
+      opponentByTeam: { DET: { opp: 'CHI', home: true } },
+    })
+    const seen = board.board.RB.filter((r) => r.tierBreak).map((r) => r.tier)
+    expect(seen).toEqual([...new Set(seen)])       // no repeats
+    expect(seen).toEqual([...seen].sort((a, b) => a - b)) // and strictly ascending
+  })
+})

@@ -511,6 +511,20 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
         </button>
 
         <div v-if="boardOpen" class="mt-3">
+          <!--
+            The control that says whose order this is. The import for it has sat in this file
+            unused since the weekly-rankings feature was built — the picker was never actually
+            placed, so an uploaded weekly list drove the board with nothing on screen naming it
+            or offering a way back to ours.
+          -->
+          <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <RankingPicker kind="week" />
+            <!-- weekSource was destructured in this file and never rendered, so a board being
+                 driven by an uploaded list looked identical to one on our own numbers. -->
+            <span v-if="weekSource !== 'UFD'" class="font-mono text-[10px] text-dark-textMuted/70">
+              {{ weekSource }}'s order &middot; our points
+            </span>
+          </div>
           <div class="mb-2 flex flex-wrap gap-1.5">
             <button
               v-for="pos in board.boardPositions"

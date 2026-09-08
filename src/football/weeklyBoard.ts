@@ -567,9 +567,21 @@ export function buildWeeklyBoard(input: {
     const byKey = assignTiers(rows.map((r) => ({ playerKey: r.playerKey, value: r.weekPoints })))
     let prevTier = 0
     let prevPts = 0
-    for (const r of rows) {
+    /*
+     * assignTiers sorts internally by value and hands back a strictly increasing tier, but
+     * this loop walked the caller's array. Wherever players tie — and a weekly board ties
+     * constantly, half a column sitting on 20 points — the two orderings disagree about which
+     * of the tied players comes first, so the walk could go 5, 6, 5 and print "TIER 5" twice
+     * with a row between them. The board showed exactly that: TIER 5 and TIER 6 each labelled
+     * more than once down a single column.
+     *
+     * Walking in the same order the tiers were computed in removes the disagreement, and a
+     * break only ever counts as one when the tier actually advances.
+     */
+    const walk = [...rows].sort((a, b) => b.weekPoints - a.weekPoints)
+    for (const r of walk) {
       r.tier = byKey[r.playerKey] ?? 1
-      if (prevTier && r.tier !== prevTier) {
+      if (prevTier && r.tier > prevTier) {
         r.tierBreak = true
         r.tierDrop = Math.max(0, prevPts - r.weekPoints)
       }
