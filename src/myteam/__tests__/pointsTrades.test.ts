@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildPointsTrades, MIN_MEANINGFUL_GAIN } from '../pointsTrades'
+import { buildPointsTrades, MIN_GAIN_PER_WEEK } from '../pointsTrades'
 import { buildBaseballValue } from '../playerValue'
 import type { PointsPoolPlayer } from '../pointsTeam'
 import type { FGProjection } from '@/services/projectionService'
@@ -166,11 +166,19 @@ describe('buildPointsTrades — consolidation', () => {
     }
   })
 
-  it('never gives the same player away in two different deals more than twice', () => {
+  /*
+   * Shopping one player to several managers is the strategy, not a bug.
+   *
+   * The cap was two, on the theory that repeats are clutter. They are not: you send the same
+   * surplus back around the league to find out who bites, and only one of those offers can be
+   * accepted anyway. The cap exists to stop the board becoming four variations on one player,
+   * not to stop you canvassing — so it is loose, and it is still a cap.
+   */
+  it('shops a player around without letting one name take over the board', () => {
     const ideas = buildPointsTrades(pool, buildBaseballValue(fg, weights), 'A', slots, {})
     const counts = new Map<string, number>()
     for (const i of ideas) for (const g of i.gives) counts.set(g.playerKey, (counts.get(g.playerKey) ?? 0) + 1)
-    for (const n of counts.values()) expect(n).toBeLessThanOrEqual(2)
+    for (const n of counts.values()) expect(n).toBeLessThanOrEqual(4)
   })
 })
 
@@ -199,7 +207,7 @@ describe('a trade has to be worth proposing', () => {
     rows.forEach((r) => (fg[r.p.playerKey] = r.fg))
     const ideas = buildPointsTrades(pool, buildBaseballValue(fg, { HR: 4, R: 1, RBI: 1, K: 1, IP: 3, W: 5 }), 'A', slots, { A: 'Me', B: 'Them' })
     // Whatever survives, nothing may display as +0.
-    for (const i of ideas) expect(i.myGain).toBeGreaterThanOrEqual(MIN_MEANINGFUL_GAIN)
+    for (const i of ideas) expect(i.myGain).toBeGreaterThanOrEqual(MIN_GAIN_PER_WEEK)
   })
 
   it('still finds the deal when it is genuinely worth something', () => {
@@ -216,10 +224,12 @@ describe('a trade has to be worth proposing', () => {
     rows.forEach((r) => (fg[r.p.playerKey] = r.fg))
     const ideas = buildPointsTrades(pool, buildBaseballValue(fg, { HR: 4, R: 1, RBI: 1, K: 1, IP: 3, W: 5 }), 'A', slots, { A: 'Me', B: 'Them' })
     expect(ideas.length).toBeGreaterThan(0)
-    for (const i of ideas) expect(i.myGain).toBeGreaterThanOrEqual(MIN_MEANINGFUL_GAIN)
+    for (const i of ideas) expect(i.myGain).toBeGreaterThanOrEqual(MIN_GAIN_PER_WEEK)
   })
 
   it('holds the floor at a point a week', () => {
-    expect(MIN_MEANINGFUL_GAIN).toBe(1)
+    // Stated per week and multiplied by the weeks left, rather than a bare season point —
+    // which is what the constant used to be while its comment claimed otherwise.
+    expect(MIN_GAIN_PER_WEEK).toBe(1)
   })
 })

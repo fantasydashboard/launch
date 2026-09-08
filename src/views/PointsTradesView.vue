@@ -682,7 +682,7 @@ function fairness(myGain: number, theirGain: number): string {
       </div>
 
       <!--
-        One card shape for every deal — 1-for-1 or 2-for-1, win-win or ask. The old markup
+        One card shape for every deal — 1-for-1, 2-for-1 or 2-for-2, win-win or ask. The old markup
         assumed a single body per side, which is the assumption that made every suggestion a
         beg: in a 1-for-1 you only gain a lot when they lose a lot.
       -->
@@ -693,7 +693,9 @@ function fairness(myGain: number, theirGain: number): string {
             <span class="flex min-w-0 items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
               <img v-if="teamLogos[idea.oppTeamKey]" :src="teamLogos[idea.oppTeamKey]" alt="" @error="onLogoErr" class="h-4 w-4 shrink-0 rounded bg-dark-border object-cover" />
               <span class="truncate">{{ idea.kind === 'winWin' ? 'with' : 'ask' }} {{ idea.oppTeamName }}</span>
-              <span v-if="idea.shape === '2for1'" class="shrink-0 rounded bg-dark-bg px-1.5 py-0.5 text-[9px] text-dark-textSecondary">2-for-1</span>
+              <span v-if="idea.shape !== '1for1'" class="shrink-0 rounded bg-dark-bg px-1.5 py-0.5 text-[9px] text-dark-textSecondary">
+                {{ idea.shape === '2for1' ? '2-for-1' : '2-for-2' }}
+              </span>
             </span>
             <span class="shrink-0 text-right">
               <span v-if="dealVerdict(idea.myGain, dynastyScore(idea))"
@@ -792,13 +794,13 @@ function fairness(myGain: number, theirGain: number): string {
                ask — identical on one costing them 5 and one costing them 29 — and it now
                contradicted the LONG SHOT badge and the odds sitting directly above it. The
                read is stated once, up there, where it is specific to the deal. -->
-          <p v-if="idea.kind === 'winWin' || idea.shape === '2for1'"
+          <p v-if="idea.kind === 'winWin' || idea.spots > 0"
              class="mt-2 font-mono text-[10px] leading-relaxed text-dark-textMuted">
             <template v-if="idea.kind === 'winWin'">
               Both lineups improve — theirs by {{ idea.theirGain }}. {{ fairness(idea.myGain, idea.theirGain) }}.
             </template>
-            <template v-if="idea.shape === '2for1'">
-              Two bodies for one also frees a roster spot you'll have to fill.
+            <template v-if="idea.spots > 0">
+              Frees {{ idea.spots }} roster spot{{ idea.spots > 1 ? 's' : '' }} you'll have to fill — thinner cover for byes.
             </template>
           </p>
         </div>

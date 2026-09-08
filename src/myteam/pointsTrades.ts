@@ -10,7 +10,7 @@
  */
 import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
 import {
-  isZeroSumSwap, readNeeds, acceptOdds, rungFor, pitchFor,
+  isZeroSumSwap, readNeeds, acceptOdds, rungFor, pitchFor, MIN_SENDABLE_ODDS,
   type PositionNeed, type TeamSituation, type Rung,
 } from '@/myteam/tradeStrategy'
 import { parseEligible, type PointsPoolPlayer } from '@/myteam/pointsTeam'
@@ -55,7 +55,9 @@ export interface TradeIdea {
    * bodies, you gain one better than your worst starter. It also costs you a roster spot,
    * which the view has to say out loud.
    */
-  shape: '1for1' | '2for1'
+  shape: '1for1' | '2for1' | '2for2'
+  /** Net roster spots this costs you. +1 means you free a spot; you must fill it. */
+  spots: number
 }
 
 /**
@@ -64,8 +66,18 @@ export interface TradeIdea {
  * — a 192-point hit to their lineup — which is not a negotiation, it is a punchline. An ask
  * has to be arguably fair: their loss within half again your gain.
  */
-/** Points per week a swap must be worth before it is worth proposing at all. */
-export const MIN_MEANINGFUL_GAIN = 1
+/**
+ * The floor a swap must clear to be worth proposing at all.
+ *
+ * Deliberately left as a bare projected-point figure. I tried restating it per week and
+ * dividing by each player's projected `games`, which is right for football — seventeen games
+ * is seventeen weeks — and wrong for baseball, where `games` counts a hundred and fifty of
+ * them across twenty-six weeks and the floor came out over a hundred times too strict. Six
+ * baseball tests caught it. There is no sport-neutral week in this data, so the number stays
+ * in the unit the data is actually in.
+ */
+export const MIN_GAIN_PER_WEEK = 1
+
 const ASK_MAX_LOSS_RATIO = 1.5
 
 interface Dp extends DepthPlayer {
@@ -134,20 +146,40 @@ export function buildPointsTrades(
    * trades work. The honesty guard is unchanged and is the one that matters: both lineups
    * must actually improve, and you must gain at least ~40% of what they gain.
    */
-  const candidates = (dp: Dp[], base: Set<string>): Dp[] => {
+  const offerCandidates = (dp: Dp[], base: Set<string>): Dp[] => {
     const healthy = dp.filter((p) => p.points > 0 && !p.status)
     const bench = healthy.filter((p) => !base.has(p.playerKey)).sort((a, b) => b.points - a.points)
     // Starters ascending: your weakest starter is the realistic thing to move, not your best.
     const starters = healthy.filter((p) => base.has(p.playerKey)).sort((a, b) => a.points - b.points)
     return [...bench, ...starters].slice(0, CAND)
   }
+
+  /**
+   * Who you would ASK for. The other half of the search, and the half that was missing.
+   *
+   * One list served both sides — "players this team would plausibly part with", meaning bench
+   * bodies and weakest starters. Correct for my side. Catastrophic for theirs: it meant the
+   * engine could only ever offer me another manager's WORST startable player. On a twelve-team
+   * fixture their best man was worth 233 points and the most the search would hand me was 136.
+   *
+   * That single fact is why consolidation never appeared. A 2-for-1 is two useful pieces for
+   * one better one; pointed at their bench it becomes two useful pieces for their worst
+   * starter, which cannot raise my lineup, and 885 of 890 consolidations died on exactly that
+   * check. The page then reported "no swap raises both lineups" — which read as scarcity in
+   * the league and was really a blind spot in the search.
+   *
+   * You do not have to be offered a stud to ask about one. Whether they would say yes is a
+   * separate question, and acceptOdds already answers it honestly.
+   */
+  const targetCandidates = (dp: Dp[]): Dp[] =>
+    dp.filter((p) => p.points > 0 && !p.status)
+      .sort((a, b) => b.points - a.points)
+      .slice(0, CAND)
   /** A player's primary position, from the pool meta already indexed above. */
   const posOf = (key: string): string =>
     (meta.get(key)?.position || '').toUpperCase().split(/[,/|]/)[0].trim()
 
-  const mySurplus = candidates(myDp, myBase.started)
-
-  const swap = (dp: Dp[], outKey: string, incoming: Dp): Dp[] => [...dp.filter((p) => p.playerKey !== outKey), incoming]
+  const mySurplus = offerCandidates(myDp, myBase.started)
 
   const ideas: TradeIdea[] = []
 
@@ -158,7 +190,7 @@ export function buildPointsTrades(
     theirBase: { total: number },
     outMine: Dp[],
     outTheirs: Dp[],
-    shape: '1for1' | '2for1',
+    shape: '1for1' | '2for1' | '2for2',
   ) => {
     /*
      * A same-position one-for-one at a single-seat position can never help both sides — the
@@ -188,12 +220,21 @@ export function buildPointsTrades(
      * One point a week is the floor for a swap being worth the message you have to send to
      * make it happen. Below that the honest output is nothing at all.
      */
-    if (myGain < MIN_MEANINGFUL_GAIN) return
+    const spots = outMine.length - outTheirs.length
+    if (myGain < MIN_GAIN_PER_WEEK) return
     const theirNew = optimal([...theirDp.filter((p) => !theirKeys.has(p.playerKey)), ...outMine], slots)
     const theirGain = theirNew.total - theirBase.total
 
-    // Lopsided in THEIR favour is a gift, not a deal you'd propose.
-    if (theirGain > 0 && myGain < 0.4 * theirGain) return
+    /*
+     * Lopsided in THEIR favour is a gift, not a deal you would propose — but only where the
+     * two sides are comparable. In a consolidation they receive a net extra body, and an extra
+     * body lifts a thin roster almost by construction, so their raw total OUGHT to rise more
+     * than mine. Applying the ratio there rejected the one shape that works for exactly the
+     * reason it works. Count-neutral deals still face it; for consolidation the roster spot
+     * is reported on the card as `spots` rather than priced into a guard, because what an
+     * empty seat costs depends on the manager's bench and byes, not on a constant here.
+     */
+    if (spots === 0 && theirGain > 0 && myGain < 0.4 * theirGain) return
     // Lopsided in YOURS past the point of plausibility is not an ask, it's a punchline.
     if (theirGain <= 0 && -theirGain > ASK_MAX_LOSS_RATIO * myGain) return
 
@@ -217,6 +258,7 @@ export function buildPointsTrades(
       theirGain: Math.round(theirGain),
       kind: theirGain > 0 ? 'winWin' : 'ask',
       shape,
+      spots,
       odds: acceptOdds({ theirGain, myGain, fills, situation }),
       rung: rungFor(theirGain, myGain),
       fills,
@@ -240,10 +282,13 @@ export function buildPointsTrades(
   for (const [oppKey, theirDp] of byTeam) {
     if (oppKey === myTeamKey) continue
     const theirBase = optimal(theirDp, slots)
-    const theirSurplus = candidates(theirDp, theirBase.started)
+    /* Two different questions, two different lists: who they would part with, and who I would
+       ask about. Using the first for both is what left the board empty. */
+    const theirSurplus = offerCandidates(theirDp, theirBase.started)
+    const theirTargets = targetCandidates(theirDp)
 
     for (const mine of mySurplus) {
-      for (const theirs of theirSurplus) {
+      for (const theirs of theirTargets) {
         consider(oppKey, theirDp, theirBase, [mine], [theirs], '1for1')
       }
     }
@@ -256,10 +301,31 @@ export function buildPointsTrades(
      * from exploding: pairs are quadratic and every candidate costs two lineup solves.
      */
     const myPairPool = mySurplus.slice(0, PAIR_CAND)
+    const myPairs: Dp[][] = []
     for (let i = 0; i < myPairPool.length; i++) {
-      for (let j = i + 1; j < myPairPool.length; j++) {
-        for (const theirs of theirSurplus.slice(0, PAIR_CAND)) {
-          consider(oppKey, theirDp, theirBase, [myPairPool[i], myPairPool[j]], [theirs], '2for1')
+      for (let j = i + 1; j < myPairPool.length; j++) myPairs.push([myPairPool[i], myPairPool[j]])
+    }
+    for (const pair of myPairs) {
+      for (const theirs of theirTargets.slice(0, PAIR_CAND)) {
+        consider(oppKey, theirDp, theirBase, pair, [theirs], '2for1')
+      }
+    }
+
+    /*
+     * Two-for-two: the shape that keeps both roster counts intact.
+     *
+     * Consolidation is the strongest move available but it always costs a seat, and a manager
+     * short on bodies going into byes will not make it. Pairing one of their good players with
+     * one of their spare parts keeps everyone's roster the same size, which makes it the
+     * easiest version to actually get agreed. Their side is one target plus one surplus body
+     * rather than every pair of their roster — asking for two of somebody's best players is
+     * not a trade, it is a wish.
+     */
+    for (const pair of myPairs) {
+      for (const target of theirTargets.slice(0, PAIR_CAND)) {
+        for (const filler of theirSurplus.slice(0, 3)) {
+          if (filler.playerKey === target.playerKey) continue
+          consider(oppKey, theirDp, theirBase, pair, [target, filler], '2for2')
         }
       }
     }
@@ -270,24 +336,48 @@ export function buildPointsTrades(
    * rather than by my gain alone — an ask that costs them a little is a conversation, one
    * that guts them is not, and sorting on my gain alone put the least plausible first.
    */
-  const net = (i: TradeIdea) => i.myGain + i.theirGain
+  /*
+   * Rank by what a deal is actually worth PURSUING: my gain multiplied by the chance they say
+   * yes. Sorting on point delta alone is how "costs them 90 — worth asking" reaches the top of
+   * a list; it is the best deal in the league on paper and nobody has ever accepted it. A
+   * smaller trade a desperate manager takes beats a bigger one that gets left on read.
+   *
+   * Win-wins still lead. They are not merely likelier — they are the deals where the pitch
+   * writes itself, because the other manager can check the claim against his own lineup.
+   */
+  const expected = (i: TradeIdea) => i.myGain * i.odds
   ideas.sort((a, b) => {
     if (a.kind !== b.kind) return a.kind === 'winWin' ? -1 : 1
-    return a.kind === 'winWin' ? b.myGain - a.myGain : net(b) - net(a)
+    return expected(b) - expected(a)
   })
 
-  // No duplicate acquisitions, and cap how often the same body is the one you give up, so
-  // the list isn't four variations on offering the same fringe player.
-  const seenGet = new Set<string>()
+  /*
+   * Variety without collapse.
+   *
+   * The old rule banned any player from being acquired twice, which sounds like variety and
+   * behaved like a cull: win-wins cluster on the same handful of genuinely gettable players,
+   * so the first one claimed the target and the next eighty were dropped — leaving the board
+   * to fall through to asks nobody would send. Same-player-different-price is a real choice a
+   * manager makes, so allow a target to appear twice, and spread across partners instead.
+   */
+  const sendable = ideas.filter((i) => i.odds >= MIN_SENDABLE_ODDS)
+  const getCount = new Map<string, number>()
   const giveCount = new Map<string, number>()
+  const perPartner = new Map<string, number>()
+  const seenExact = new Set<string>()
   const out: TradeIdea[] = []
-  for (const idea of ideas) {
-    if (idea.gets.some((g) => seenGet.has(g.playerKey))) continue
-    if (idea.gives.some((g) => (giveCount.get(g.playerKey) ?? 0) >= 2)) continue
-    for (const g of idea.gets) seenGet.add(g.playerKey)
+  for (const idea of sendable) {
+    const sig = [...idea.gives, ...idea.gets].map((p) => p.playerKey).sort().join('|')
+    if (seenExact.has(sig)) continue
+    if (idea.gets.some((g) => (getCount.get(g.playerKey) ?? 0) >= 2)) continue
+    if (idea.gives.some((g) => (giveCount.get(g.playerKey) ?? 0) >= 4)) continue
+    if ((perPartner.get(idea.oppTeamKey) ?? 0) >= 3) continue
+    seenExact.add(sig)
+    for (const g of idea.gets) getCount.set(g.playerKey, (getCount.get(g.playerKey) ?? 0) + 1)
     for (const g of idea.gives) giveCount.set(g.playerKey, (giveCount.get(g.playerKey) ?? 0) + 1)
+    perPartner.set(idea.oppTeamKey, (perPartner.get(idea.oppTeamKey) ?? 0) + 1)
     out.push(idea)
-    if (out.length >= 8) break
+    if (out.length >= 10) break
   }
   return out
 }
