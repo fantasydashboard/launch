@@ -127,8 +127,22 @@ const WIRE_SORTS: { key: WireSort; label: string; hint: string }[] = [
 const seasonRankByKey = computed(() => {
   const m = new Map<string, number>()
   const rows = fbWire.value?.board[boardPos.value] ?? []
-  // The board arrives sorted by rest-of-season value, so position in that list IS the rank.
-  rows.forEach((r, i) => m.set(r.playerKey, i + 1))
+  /*
+   * The board arrives sorted by rest-of-season value, so position in that list IS the rank —
+   * on a per-position board. On the overall board it is not: index there is an overall rank,
+   * and it feeds `horizons`, which compares it against a POSITIONAL dynasty rank. Season 140th
+   * against dynasty TE12 is two different units on one subtraction, and it would have read as
+   * a colossal disagreement for every player outside the top thirty.
+   *
+   * So rank within the player's own position either way, and the comparison stays like for
+   * like no matter which pill is selected.
+   */
+  const seen: Record<string, number> = {}
+  rows.forEach((r) => {
+    const pos = r.position || '—'
+    seen[pos] = (seen[pos] ?? 0) + 1
+    m.set(r.playerKey, seen[pos])
+  })
   return m
 })
 /*
@@ -251,10 +265,19 @@ const boardOpen = ref(true)
 // roster_positions inside buildFootballWire, so a league with no K/DEF slot never sees them.
 const boardPositions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 const boardPos = ref('RB') // which position the Full Board shows (one at a time)
-// Positions that actually have players, in canonical order — drives the picker pills.
-const boardPositionsWithRows = computed(() =>
-  fbWire.value ? boardPositions.filter((p) => fbWire.value!.board[p]?.length) : [],
-)
+/*
+ * Picker pills, with the overall order first.
+ *
+ * ALL leads because it answers the question a waiver claim actually poses — of everything on
+ * this wire, what should I want — which the per-position pills could not. They answered "who
+ * is the best receiver available", one position at a time, and left the reader to hold four
+ * columns in their head to compare across them.
+ */
+const boardPositionsWithRows = computed(() => {
+  if (!fbWire.value) return []
+  const withRows = boardPositions.filter((p) => fbWire.value!.board[p]?.length)
+  return fbWire.value.board.ALL?.length ? ['ALL', ...withRows] : withRows
+})
 // Keep the selected pill on a position this league actually has — otherwise switching to a
 // league without the current selection leaves the board rendering nothing.
 watch(boardPositionsWithRows, (available) => {
@@ -499,10 +522,16 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
               <p v-else class="font-mono text-[10px] text-dark-textMuted">
                 Nothing available beats a body already in your lineup, so there's no cut to make this week.
               </p>
-            </div>
 
-              <!-- The wire's top, inside the same fold as the verdict about it, because the
-                   verdict IS about this list. -->
+              <!--
+                The wire's top, inside the same fold as the verdict about it, because the
+                verdict IS about this list.
+                
+                It was not. The </div> closing this fold sat immediately above, so the list
+                rendered as a sibling and showed whether the panel was open or shut — the
+                header promised "best available" behind a +, and the best available was already
+                spread down the page beneath it.
+              -->
               <div class="mt-4 border-t border-dark-border/40 pt-3">
             <div class="mb-1 flex flex-wrap items-baseline justify-between gap-2">
               <h2 class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
@@ -517,7 +546,19 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
               <template v-else-if="rosSource !== 'UFD'">{{ rosSource }}'s order, our points — drives this page</template>
               <template v-else>value over replacement (season)</template>
             </p>
-            <template v-for="r in sortedBest.slice(0, 15)" :key="'fbba-' + (r.player.playerKey ?? r.player.name)">
+            <template v-for="(r, i) in sortedBest.slice(0, 15)" :key="'fbba-' + (r.player.playerKey ?? r.player.name)">
+              <!--
+                Where the list stops being "best available" and starts being "everyone else".
+                Thirteen of the fifteen rows under that heading were below replacement — worse
+                than a body you could have for nothing — which is not a shortlist, it is the
+                wire in descending order wearing a shortlist's title. The header already says
+                how many clear the bar; this is where the reader can see it.
+              -->
+              <div v-if="r.vorRos < 0 && (i === 0 || sortedBest[i - 1].vorRos >= 0)"
+                   class="flex items-center gap-2 pt-3 pb-1">
+                <span class="font-mono text-[9px] uppercase tracking-widest text-dark-textMuted/60">below replacement</span>
+                <span class="h-px flex-1 bg-dark-border/40" />
+              </div>
               <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
                 <img v-if="r.player.headshot" :src="r.player.headshot" :alt="r.player.name" loading="lazy" @error="onLogoErr" class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
                 <span v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[10px] text-dark-textMuted">{{ r.player.position }}</span>
@@ -546,6 +587,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                 <span class="w-12 shrink-0 text-right font-mono text-sm font-semibold" :class="r.vorRos >= 0 ? 'text-dark-text' : 'text-dark-textMuted'">{{ r.vorRos >= 0 ? '+' : '' }}{{ round(r.vorRos) }}</span>
               </div>
             </template>
+              </div>
             </div>
           </section>
 
@@ -631,6 +673,9 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                   <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
                   <span class="min-w-0 flex-1 truncate">
                     {{ row.owned ? '★ ' : '' }}{{ row.name }}
+                    <!-- On a per-position board the position is the pill you pressed. On the
+                         overall board it is the whole point of the row, so say it there. -->
+                    <span v-if="boardPos === 'ALL'" class="ml-1 font-mono text-[10px] text-dark-textMuted/70">{{ row.position }}</span>
                     <!-- A season-long call still has to survive Sunday: don't cut a player who
                          is playing for one who is idle without seeing it. -->
                     <span v-if="row.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>

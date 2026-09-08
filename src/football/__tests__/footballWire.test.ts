@@ -73,3 +73,61 @@ describe('buildFootballWire', () => {
     expect((wire.board['WR'] ?? []).find((r) => r.name === 'Ghost FA')).toBeUndefined()
   })
 })
+
+/*
+ * One board across every position.
+ *
+ * The per-position pills answered "who is the best receiver available", one column at a time,
+ * and left the reader holding four of them in their head to compare across. The question a
+ * waiver claim actually poses is "of everything on this wire, what should I want" — and value
+ * over replacement is already the cross-position number, since it measures points above the
+ * last startable body at a player's OWN position. The overall order was computable all along.
+ */
+describe('the overall board', () => {
+  const build = () => buildFootballWire({
+    pool: [
+      { playerKey: 'qb1', name: 'My QB', position: 'QB', teamKey: 'me', proTeam: 'BUF' },
+      { playerKey: 'rb1', name: 'My RB', position: 'RB', teamKey: 'me', proTeam: 'DET' },
+      { playerKey: 'rb2', name: 'Their RB', position: 'RB', teamKey: 'them', proTeam: 'DET' },
+    ] as PointsPoolPlayer[],
+    vorByKey: {
+      qb1: vor('qb1', 'QB', 40),
+      rb1: vor('rb1', 'RB', 90),
+      rb2: vor('rb2', 'RB', 60),
+      'fa:Free RB': vor('fa:Free RB', 'RB', 20),
+      'fa:Free QB': vor('fa:Free QB', 'QB', 70),
+    },
+    freeAgents: [
+      { name: 'Free RB', position: 'RB', team: 'CHI' },
+      { name: 'Free QB', position: 'QB', team: 'GB' },
+    ] as AvailablePlayer[],
+    myTeamKey: 'me',
+    slots,
+    byeTeams: new Set<string>(),
+  })
+
+  it('ranks every position together, best first', () => {
+    const all = build().board.ALL
+    expect(all.map((r) => r.name)).toEqual(['My RB', 'Free QB', 'Their RB', 'My QB', 'Free RB'])
+  })
+
+  it('carries each row position, which the per-position boards never had to', () => {
+    const all = build().board.ALL
+    expect(all.find((r) => r.name === 'Free QB')?.position).toBe('QB')
+  })
+
+  it('keeps the per-position boards intact beside it', () => {
+    const w = build()
+    expect(w.board.QB.map((r) => r.name)).toEqual(['Free QB', 'My QB'])
+    expect(w.board.RB.map((r) => r.name)).toEqual(['My RB', 'Their RB', 'Free RB'])
+  })
+
+  it('tiers the overall board on its own, not by inheritance', () => {
+    const all = build().board.ALL
+    // Shared row objects carry tier state from the positional pass; the overall board must
+    // re-derive it, or a cliff among receivers shows up as a cliff among everybody.
+    const breaks = all.filter((r) => r.tierBreak).map((r) => r.tier)
+    expect(breaks).toEqual([...new Set(breaks)])
+    expect([...breaks].sort((a, b) => a - b)).toEqual(breaks)
+  })
+})

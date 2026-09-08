@@ -180,5 +180,38 @@ export function buildFootballWire(input: {
     board[pos] = entries
   }
 
+  /*
+   * One board across every position.
+   *
+   * Value over replacement is cross-position by construction — it is how many points a player
+   * is worth ABOVE the last startable body at his own position, which is the only honest way
+   * to put a quarterback and a tight end on the same axis. So an overall order is not a
+   * convenience view, it is the number this page already computes, finally shown whole.
+   *
+   * The per-position pills answered "who is the best receiver available". They could not
+   * answer "of everything on this wire, what should I want", which is the question you ask
+   * with one roster spot and a waiver claim. Positional rank hides that a free tight end at
+   * -3 is worth more to you than a free quarterback at -1 whose seat is already filled.
+   */
+  const all: BoardRow[] = Object.values(board).flat().sort((a, b) => b.vorRos - a.vorRos)
+  if (all.length) {
+    /* Re-tiered on its own, never inherited. A player's tier among ALL startable bodies is a
+       different fact from his tier among receivers, and the rows above are shared objects. */
+    const rows: BoardRow[] = all.map((r) => ({ ...r, tier: 0, tierBreak: undefined, tierDrop: undefined }))
+    const tierByKey = assignTiers(rows.map((e) => ({ playerKey: e.playerKey, value: e.vorRos })))
+    let prevTier = 0
+    let prevVor = 0
+    for (const row of rows) {
+      row.tier = tierByKey[row.playerKey] ?? 1
+      if (prevTier && row.tier !== prevTier) {
+        row.tierBreak = true
+        row.tierDrop = Math.max(0, prevVor - row.vorRos)
+      }
+      prevTier = row.tier
+      prevVor = row.vorRos
+    }
+    board.ALL = rows
+  }
+
   return { bestAvailable, upgrades, thisWeek, board }
 }
