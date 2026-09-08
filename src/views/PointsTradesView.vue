@@ -15,6 +15,7 @@ import { readAge, AGE_TONE } from '@/football/positionalAge'
 import { readHorizons } from '@/football/dynastyValues'
 import { buildPowerRankings, type PowerTeamInput } from '@/league/powerRankings'
 import { MIN_SENDABLE_ODDS, type TeamSituation } from '@/myteam/tradeStrategy'
+import { analyzePointsTrade, type TradeAsset } from '@/myteam/analyzePointsTrade'
 import SeasonPassGate from '@/components/SeasonPassGate.vue'
 import RankingPicker from '@/components/RankingPicker.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
@@ -329,6 +330,61 @@ const weakestSpot = computed(() => {
  * a player, so it cannot tell you what to actually offer. Picking a manager puts both rosters
  * side by side in one order, which is the form the conversation actually takes.
  */
+/*
+ * Judge a trade somebody actually sent you.
+ *
+ * Everything above proposes deals; nothing evaluated one that arrived. The category view has
+ * had this for a while and could not be reused — it is category-native to the bone — so this
+ * is the points equivalent, built on the same lineup model the League board ranks teams with,
+ * so the headline can be where you finish rather than a points delta.
+ */
+const anPartner = ref('')
+const anGive = ref<string[]>([])
+const anGet = ref<string[]>([])
+const anPick = ref('')
+const anOpen = ref(false)
+const anRosterReady = computed(() => !!myTeamKey.value && pool.value.length > 0)
+const anPartnerOptions = computed(() =>
+  Object.entries(teamNames.value)
+    .filter(([k]) => k !== myTeamKey.value)
+    .map(([key, name]) => ({ key, name: String(name) }))
+    .sort((a, b) => a.name.localeCompare(b.name)))
+
+const anMyRoster = computed(() =>
+  pool.value.filter((p) => p.teamKey === myTeamKey.value)
+    .map((p) => ({ key: p.playerKey, name: p.name, position: p.position }))
+    .sort((a, b) => a.name.localeCompare(b.name)))
+const anTheirRoster = computed(() =>
+  pool.value.filter((p) => p.teamKey === anPartner.value)
+    .map((p) => ({ key: p.playerKey, name: p.name, position: p.position }))
+    .sort((a, b) => a.name.localeCompare(b.name)))
+const toggle = (side: 'give' | 'get', key: string) => {
+  const r = side === 'give' ? anGive : anGet
+  r.value = r.value.includes(key) ? r.value.filter((k) => k !== key) : [...r.value, key]
+}
+watch(anPartner, () => { anGive.value = []; anGet.value = [] })
+
+const analysis = computed(() => {
+  if (!anPartner.value || !pool.value.length || !myTeamKey.value) return null
+  /* A pick can be named so the deal reads correctly, but nothing prices it — it rides along
+     as unpriced so the verdict says what it does not cover instead of quietly covering half. */
+  const gets: TradeAsset[] = [
+    ...anGet.value.map((k) => ({ playerKey: k })),
+    ...(anPick.value.trim() ? [{ playerKey: 'pick', unpriced: true, label: anPick.value.trim() }] : []),
+  ]
+  return analyzePointsTrade({
+    pool: pool.value, valueByKey: valueByKey.value, slots: rosterSlots.value,
+    teamNames: teamNames.value, myTeamKey: myTeamKey.value, partnerKey: anPartner.value,
+    gives: anGive.value.map((k) => ({ playerKey: k })), gets,
+    vorByKey: tradeVor.value,
+  })
+})
+const KLASS_STYLE: Record<string, { label: string; cls: string }> = {
+  winWin:    { label: 'both gain',   cls: 'bg-primary/15 text-primary' },
+  leverage:  { label: 'you gain more', cls: 'bg-[#e69a4a]/15 text-[#e69a4a]' },
+  fleece:    { label: 'lopsided',    cls: 'bg-[#e69a4a]/15 text-[#e69a4a]' },
+  badForYou: { label: 'bad for you', cls: 'bg-[#FF5C5C]/15 text-[#FF5C5C]' },
+}
 const comparePartner = ref('')
 const compareOptions = computed(() => {
   const ls = landscape.value
@@ -486,6 +542,84 @@ function fairness(myGain: number, theirGain: number): string {
       />
 
       <template v-else>
+      <!--
+        Judge a trade that arrived, rather than one we proposed. Headline is where you FINISH
+        and what your lineup looks like afterwards — a points delta is what every trade
+        calculator already prints and the least decision-relevant thing available.
+      -->
+      <section v-if="anRosterReady" class="mb-4 rounded-xl border border-dark-border bg-dark-card">
+        <button class="flex w-full items-center justify-between gap-3 p-4" @click="anOpen = !anOpen">
+          <span class="min-w-0 text-left">
+            <span class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+              Analyze a trade you were offered
+            </span>
+            <span class="mt-0.5 block font-mono text-[10px] text-dark-textMuted/70">
+              where you finish &middot; what it does to each lineup spot &middot; whether they'd take it
+            </span>
+          </span>
+          <span class="shrink-0 font-mono text-dark-textMuted">{{ anOpen ? '&minus;' : '+' }}</span>
+        </button>
+
+        <div v-if="anOpen" class="border-t border-dark-border/40 px-4 pb-4 pt-3">
+          <select v-model="anPartner"
+                  class="mb-3 rounded border border-dark-border bg-dark-card px-2 py-1 font-mono text-[11px] text-dark-text">
+            <option value="">choose the other team…</option>
+            <option v-for="t in anPartnerOptions" :key="t.key" :value="t.key">{{ t.name }}</option>
+          </select>
+
+          <div v-if="anPartner" class="grid gap-3 sm:grid-cols-2">
+            <div class="rounded-lg bg-dark-bg/50 p-2">
+              <p class="mb-1 font-mono text-[9px] uppercase tracking-widest text-[#FF5C5C]">you give</p>
+              <button v-for="p in anMyRoster" :key="'g' + p.key"
+                      class="mr-1 mb-1 rounded px-1.5 py-0.5 font-mono text-[10px] transition-colors"
+                      :class="anGive.includes(p.key) ? 'bg-[#FF5C5C]/20 text-[#FF5C5C]' : 'bg-dark-border/40 text-dark-textMuted hover:text-dark-text'"
+                      @click="toggle('give', p.key)">{{ p.name }}</button>
+            </div>
+            <div class="rounded-lg bg-dark-bg/50 p-2">
+              <p class="mb-1 font-mono text-[9px] uppercase tracking-widest text-primary">you get</p>
+              <button v-for="p in anTheirRoster" :key="'t' + p.key"
+                      class="mr-1 mb-1 rounded px-1.5 py-0.5 font-mono text-[10px] transition-colors"
+                      :class="anGet.includes(p.key) ? 'bg-primary/20 text-primary' : 'bg-dark-border/40 text-dark-textMuted hover:text-dark-text'"
+                      @click="toggle('get', p.key)">{{ p.name }}</button>
+              <input v-model="anPick" placeholder="+ a pick (named, not priced)"
+                     class="mt-2 w-full rounded border border-dark-border bg-dark-card px-2 py-1 font-mono text-[10px] text-dark-text" />
+            </div>
+          </div>
+
+          <div v-if="analysis" class="mt-3 rounded-lg border border-dark-border bg-dark-bg/50 p-3">
+            <div class="mb-2 flex flex-wrap items-center gap-2 font-mono text-[10px]">
+              <span class="rounded px-1.5 py-0.5 uppercase tracking-wide" :class="KLASS_STYLE[analysis.klass].cls">
+                {{ KLASS_STYLE[analysis.klass].label }}
+              </span>
+              <span class="text-dark-textMuted">{{ analysis.accept }} they accept</span>
+              <span class="text-dark-textMuted">this year {{ analysis.myGain >= 0 ? '+' : '' }}{{ round(analysis.myGain) }}</span>
+            </div>
+
+            <!-- The headline: where it leaves you, not what it is worth. -->
+            <p class="font-mono text-[11px] text-dark-text">
+              You
+              <span :class="analysis.myMove.after < analysis.myMove.before ? 'text-primary' : analysis.myMove.after > analysis.myMove.before ? 'text-[#FF5C5C]' : ''">
+                {{ ordinal(analysis.myMove.before) }} &rarr; {{ ordinal(analysis.myMove.after) }}
+              </span>
+              &middot; {{ analysis.theirMove.teamName }}
+              {{ ordinal(analysis.theirMove.before) }} &rarr; {{ ordinal(analysis.theirMove.after) }}
+            </p>
+
+            <p v-for="h in analysis.helps" :key="h" class="mt-1 font-mono text-[10px] text-[#7ee787]">&uarr; {{ h }}</p>
+            <p v-for="c in analysis.costs" :key="c" class="mt-1 font-mono text-[10px] text-[#e69a4a]">&darr; {{ c }}</p>
+
+            <p v-for="b in analysis.bystanders" :key="b.teamKey" class="mt-1 font-mono text-[10px] text-dark-textMuted">
+              {{ b.teamName }} {{ ordinal(b.before) }} &rarr; {{ ordinal(b.after) }} as a side effect
+            </p>
+
+            <p v-for="w in analysis.warnings" :key="w" class="mt-1 font-mono text-[10px] text-[#FF5C5C]">&middot; {{ w }}</p>
+          </div>
+          <p v-else-if="anPartner" class="mt-3 font-mono text-[10px] text-dark-textMuted">
+            Pick at least one player on either side.
+          </p>
+        </div>
+      </section>
+
       <!-- YOUR LEVERAGE -->
       <section v-if="landscape && (landscape.myStrong.length || landscape.myWeak.length)" class="mb-4 rounded-xl border border-dark-border bg-dark-card px-4 py-3">
         <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Your leverage</p>

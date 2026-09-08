@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-02",
+  "generatedAt": "2026-09-08",
   "season": "2026",
   "teams": 12,
   "rows": [
@@ -30,9 +30,9 @@
     {
       "name": "Mike Evans",
       "pos": "WR",
-      "adp": "6.02",
+      "adp": "6.03",
       "ours": "3.08",
-      "rounds": 2.5,
+      "rounds": 2.6,
       "flag": "value"
     }
   ]

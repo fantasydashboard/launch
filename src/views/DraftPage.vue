@@ -70,7 +70,10 @@
   </div>
 </div>
 </template>
-<script setup lang="ts">import { useRouter } from 'vue-router';const router = useRouter()</script>
+<script setup lang="ts">
+import { useRouter } from 'vue-router'
+const router = useRouter()
+</script>
 <style scoped>
 *{box-sizing:border-box}
 .pg{min-height:100vh;background:#05060a;color:#f7f7ff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif}
