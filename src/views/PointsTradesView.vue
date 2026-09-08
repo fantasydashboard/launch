@@ -350,14 +350,43 @@ const anPartnerOptions = computed(() =>
     .map(([key, name]) => ({ key, name: String(name) }))
     .sort((a, b) => a.name.localeCompare(b.name)))
 
-const anMyRoster = computed(() =>
-  pool.value.filter((p) => p.teamKey === myTeamKey.value)
-    .map((p) => ({ key: p.playerKey, name: p.name, position: p.position }))
-    .sort((a, b) => a.name.localeCompare(b.name)))
-const anTheirRoster = computed(() =>
-  pool.value.filter((p) => p.teamKey === anPartner.value)
-    .map((p) => ({ key: p.playerKey, name: p.name, position: p.position }))
-    .sort((a, b) => a.name.localeCompare(b.name)))
+/*
+ * Grouped by position, best first inside each group.
+ *
+ * One alphabetical run of forty names is the wrong index for the question being asked. Nobody
+ * scans a roster for the letter J — they scan it for "my running backs", and then for the one
+ * near the top of them. Sorting by projected points rather than by name inside each group puts
+ * the player you would actually be discussing at the front of his row.
+ */
+const AN_ORDER = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DST']
+const anGrouped = (teamKey: string) => {
+  const rows = pool.value
+    .filter((p) => p.teamKey === teamKey)
+    .map((p) => ({
+      key: p.playerKey,
+      name: p.name,
+      position: (p.position || '').toUpperCase().split(/[,/|]/)[0].trim() || '—',
+      points: valueByKey.value[p.playerKey]?.total ?? 0,
+    }))
+  const groups = new Map<string, typeof rows>()
+  for (const r of rows) {
+    if (!groups.has(r.position)) groups.set(r.position, [])
+    groups.get(r.position)!.push(r)
+  }
+  // Anything the league uses that is not in AN_ORDER still gets a group, after the known ones.
+  return [...groups.entries()]
+    .map(([position, players]) => ({
+      position,
+      players: players.sort((a, b) => b.points - a.points || a.name.localeCompare(b.name)),
+    }))
+    .sort((a, b) => {
+      const ia = AN_ORDER.indexOf(a.position)
+      const ib = AN_ORDER.indexOf(b.position)
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.position.localeCompare(b.position)
+    })
+}
+const anMyRoster = computed(() => anGrouped(myTeamKey.value))
+const anTheirRoster = computed(() => anGrouped(anPartner.value))
 const toggle = (side: 'give' | 'get', key: string) => {
   const r = side === 'give' ? anGive : anGet
   r.value = r.value.includes(key) ? r.value.filter((k) => k !== key) : [...r.value, key]
@@ -570,17 +599,23 @@ function fairness(myGain: number, theirGain: number): string {
           <div v-if="anPartner" class="grid gap-3 sm:grid-cols-2">
             <div class="rounded-lg bg-dark-bg/50 p-2">
               <p class="mb-1 font-mono text-[9px] uppercase tracking-widest text-[#FF5C5C]">you give</p>
-              <button v-for="p in anMyRoster" :key="'g' + p.key"
-                      class="mr-1 mb-1 rounded px-1.5 py-0.5 font-mono text-[10px] transition-colors"
-                      :class="anGive.includes(p.key) ? 'bg-[#FF5C5C]/20 text-[#FF5C5C]' : 'bg-dark-border/40 text-dark-textMuted hover:text-dark-text'"
-                      @click="toggle('give', p.key)">{{ p.name }}</button>
+              <div v-for="g in anMyRoster" :key="'gg' + g.position" class="mb-1.5">
+                <p class="mb-0.5 font-mono text-[9px] tracking-widest text-dark-textMuted/60">{{ g.position }}</p>
+                <button v-for="p in g.players" :key="'g' + p.key"
+                        class="mr-1 mb-1 rounded px-1.5 py-0.5 font-mono text-[10px] transition-colors"
+                        :class="anGive.includes(p.key) ? 'bg-[#FF5C5C]/20 text-[#FF5C5C]' : 'bg-dark-border/40 text-dark-textMuted hover:text-dark-text'"
+                        @click="toggle('give', p.key)">{{ p.name }}</button>
+              </div>
             </div>
             <div class="rounded-lg bg-dark-bg/50 p-2">
               <p class="mb-1 font-mono text-[9px] uppercase tracking-widest text-primary">you get</p>
-              <button v-for="p in anTheirRoster" :key="'t' + p.key"
-                      class="mr-1 mb-1 rounded px-1.5 py-0.5 font-mono text-[10px] transition-colors"
-                      :class="anGet.includes(p.key) ? 'bg-primary/20 text-primary' : 'bg-dark-border/40 text-dark-textMuted hover:text-dark-text'"
-                      @click="toggle('get', p.key)">{{ p.name }}</button>
+              <div v-for="g in anTheirRoster" :key="'tg' + g.position" class="mb-1.5">
+                <p class="mb-0.5 font-mono text-[9px] tracking-widest text-dark-textMuted/60">{{ g.position }}</p>
+                <button v-for="p in g.players" :key="'t' + p.key"
+                        class="mr-1 mb-1 rounded px-1.5 py-0.5 font-mono text-[10px] transition-colors"
+                        :class="anGet.includes(p.key) ? 'bg-primary/20 text-primary' : 'bg-dark-border/40 text-dark-textMuted hover:text-dark-text'"
+                        @click="toggle('get', p.key)">{{ p.name }}</button>
+              </div>
               <input v-model="anPick" placeholder="+ a pick (named, not priced)"
                      class="mt-2 w-full rounded border border-dark-border bg-dark-card px-2 py-1 font-mono text-[10px] text-dark-text" />
             </div>
