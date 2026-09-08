@@ -13,7 +13,7 @@ import SeasonPassGate from '@/components/SeasonPassGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const { hasFullAccess } = useFeatureAccess()
-const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes, weekSource } = useWeeklyBoard()
+const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes, weekSource, spectator } = useWeeklyBoard()
 
 /*
  * Header totals are summed from the ROUNDED row values, not rounded from the raw sum.
@@ -406,6 +406,23 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
         </div>
       </section>
 
+      <!--
+        No roster in this league. Sleeper lets you join one without taking a team, and the page
+        used to refuse to render anything at all — "Couldn't assemble this week's board" for a
+        league whose data had loaded fine. Say which half is missing and why, then get out of
+        the way of the half that never needed a team.
+      -->
+      <div v-if="spectator" class="mb-5 rounded-xl border border-dark-border bg-dark-bg/40 px-4 py-3">
+        <p class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+          Watching, not playing
+        </p>
+        <p class="mt-1 font-mono text-[11px] leading-relaxed text-dark-textSecondary">
+          You're in this league without a roster, so there's no lineup to set and no matchup of
+          your own. Everything below is about the league itself — where every startable player
+          ranks this week, and what each position is going for on the wire.
+        </p>
+      </div>
+
       <!-- A started player on a bye is points you forfeit outright — loudest thing on the page. -->
       <div v-if="board.byeStarters.length" class="mb-5 rounded-xl border border-[#FF5C5C]/40 bg-[#FF5C5C]/[0.06] px-4 py-3">
         <p class="font-display text-xs font-semibold uppercase tracking-wide text-[#FF5C5C]">
@@ -434,7 +451,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
       />
 
       <template v-else>
-      <section class="mb-5 rounded-xl border bg-dark-card"
+      <section v-if="!spectator" class="mb-5 rounded-xl border bg-dark-card"
                :class="board.moves.length ? 'border-primary/40' : 'border-dark-border'">
         <button class="flex w-full items-center justify-between gap-3 p-4" @click="lineupOpen = !lineupOpen">
           <span class="min-w-0 text-left">
@@ -478,7 +495,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
         </template>
       </section>
       <!-- 2. OPTIMAL LINEUP -->
-      <section class="mb-5 rounded-xl border border-dark-border bg-dark-bg/40 p-4">
+      <section v-if="!spectator" class="mb-5 rounded-xl border border-dark-border bg-dark-bg/40 p-4">
         <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
           Best lineup
           <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">

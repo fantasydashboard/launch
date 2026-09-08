@@ -30,6 +30,8 @@ export function useWeeklyBoard(): {
   myTeamLogo: ComputedRef<string>
   stakes: ComputedRef<Stakes | null>
   weekSource: ComputedRef<string>
+  /** True when the viewer is in this league without a roster — no lineup, no matchup. */
+  spectator: ComputedRef<boolean>
   outlook: ComputedRef<ReturnType<typeof useSeasonOutlook>['outlook']['value']>
 } {
   const leagueStore = useLeagueStore()
@@ -201,8 +203,24 @@ export function useWeeklyBoard(): {
     return out
   })
 
+  /*
+   * You can be in a Sleeper league without holding a roster — a commissioner, or somebody
+   * following along. sleeperMyTeamKey returns '' for them because no roster's owner_id
+   * matches, and everything personal on this page is correctly empty as a result.
+   */
+  const spectator = computed(() => !src.myTeamKey.value)
+
   const board = computed<WeeklyBoard | null>(() => {
-    if (!isFootball.value || !live.value || !src.myTeamKey.value || !Object.keys(effectiveVor.value).length) return null
+    /*
+     * A missing team is no longer a reason to render nothing.
+     *
+     * The guard treated an empty myTeamKey as a failure and the page said "Couldn't assemble
+     * this week's board" for a league whose data had loaded perfectly. Most of what is here
+     * never needed a team: the rankings, what each position costs on the wire and the
+     * streamers are facts about the LEAGUE. Only the lineup, the start/sit and the matchup are
+     * personal, and the builder already returns those empty rather than inventing them.
+     */
+    if (!isFootball.value || !live.value || !Object.keys(effectiveVor.value).length) return null
     return buildWeeklyBoard({
       pool: src.pool.value,
       vorByKey: effectiveVor.value,
@@ -256,7 +274,7 @@ export function useWeeklyBoard(): {
   return {
     board, live, currentWeek, hasCurrentLineup, loading,
     myTeamName: src.myTeamName, myTeamLogo: src.myTeamLogo,
-    stakes, outlook,
+    stakes, outlook, spectator,
     /** Whose weekly numbers are driving the page — 'UFD' unless a list is active. */
     weekSource: computed(() => (weekRankings.enabled.value ? weekRankings.sourceName.value : 'UFD')),
   }

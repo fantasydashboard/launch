@@ -568,3 +568,65 @@ describe('what the weekly board says out loud', () => {
     expect(breaks.length).toBe(1)
   })
 })
+
+/*
+ * Watching a league you are not playing in.
+ *
+ * Sleeper lets you join a league without taking a roster — a commissioner, a friend following
+ * along. sleeperMyTeamKey then returns '' because no roster's owner_id matches, and the page
+ * refused to render at all: "Couldn't assemble this week's board." for a league whose data had
+ * loaded perfectly.
+ *
+ * Most of this page never needed a team. The rankings, the wire's depth at each position and
+ * the streamers are facts about the league, not about you. Only the lineup, the start/sit and
+ * the matchup are personal, and those are simply absent rather than a reason to show nothing.
+ */
+describe('a spectator with no roster', () => {
+  const rows = [
+    { k: 'a_qb', pos: 'QB', p: 22, team: 'T1' },
+    { k: 'b_qb', pos: 'QB', p: 20, team: 'T2' },
+    { k: 'a_rb', pos: 'RB', p: 18, team: 'T1' },
+    { k: 'b_rb', pos: 'RB', p: 14, team: 'T2' },
+    { k: 'free_rb', pos: 'RB', p: 9, team: 'FA' },
+  ]
+  const build = () => buildWeeklyBoard({
+    pool: rows.filter((r) => r.team !== 'FA').map((r) => ({
+      playerKey: r.k, name: r.k, position: r.pos, teamKey: r.team, proTeam: 'DET',
+    })) as never,
+    vorByKey: Object.fromEntries(rows.map((r) => [r.k, {
+      playerKey: r.k, position: r.pos, pointsRos: r.p * 17, vorRos: r.p, pointsNextWeek: r.p,
+      vorWeek: r.p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+    }])) as never,
+    freeAgents: rows.filter((r) => r.team === 'FA')
+      .map((r) => ({ playerKey: r.k, name: r.k, position: r.pos, team: 'DET' })) as never,
+    opponentByTeam: { DET: { opp: 'CHI', home: true } },
+    slots: { QB: 1, RB: 1 },
+    myTeamKey: '',
+    currentStarters: [],
+  })
+
+  it('still ranks the league', () => {
+    const board = build()
+    expect(board.board.QB.map((r) => r.name)).toEqual(['a_qb', 'b_qb'])
+    expect(board.board.RB.length).toBe(3)
+  })
+
+  it('leaves the personal sections empty rather than inventing them', () => {
+    const board = build()
+    expect(board.starters).toEqual([])
+    expect(board.moves).toEqual([])
+    expect(board.matchup).toBeNull()
+    // Nobody is "me", so every rostered player belongs to somebody else.
+    expect(board.board.QB.every((r) => r.owner !== 'me')).toBe(true)
+  })
+
+  it('still reads the wire, which is a fact about the league not about you', () => {
+    const board = build()
+    const rb = board.scarcity.find((s) => s.position === 'RB')
+    expect(rb).toBeTruthy()
+    expect(rb!.bestFreeName).toBe('free_rb')
+    // With no roster of your own there is nothing to compare against, and it must not pretend.
+    expect(rb!.freeBeatsMine).toBe(false)
+    expect(rb!.myStarterName).toBe('')
+  })
+})
