@@ -11,6 +11,8 @@ import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
 import { seasonStakes, type Stakes } from '@/myteam/seasonStakes'
 import { useCustomRankings } from '@/composables/useCustomRankings'
 import { applyRankingOrder } from '@/draft/room/customRankings'
+import { getImpliedTeamTotals } from '@/services/gameLines'
+import { adjustQbForEnvironment, meanImplied, type ImpliedTotals } from '@/football/gameEnvironment'
 import type { SleeperRoster } from '@/types/sleeper'
 
 /**
@@ -108,14 +110,55 @@ export function useWeeklyBoard(): {
    */
   const weekRankings = useCustomRankings('week')
   const nameByKey = computed(() => {
-    const m = new Map<string, { name: string; position: string }>()
-    for (const p of src.pool.value) m.set(p.playerKey, { name: p.name, position: p.position ?? '' })
+    const m = new Map<string, { name: string; position: string; team: string }>()
+    for (const p of src.pool.value) m.set(p.playerKey, { name: p.name, position: p.position ?? '', team: p.proTeam ?? '' })
     for (const fa of src.freeAgents.value)
-      m.set(fa.playerKey ?? `fa:${fa.name}`, { name: fa.name, position: fa.position ?? '' })
+      m.set(fa.playerKey ?? `fa:${fa.name}`, { name: fa.name, position: fa.position ?? '', team: fa.team ?? '' })
     return m
   })
-  const effectiveVor = computed(() => {
+  /*
+   * This week's implied team totals, for the quarterback adjustment below.
+   *
+   * Loaded best-effort and independently of everything else: an empty map means no adjustment
+   * at all, which is the correct behaviour when the games are not priced yet rather than a
+   * reason to hold up the board.
+   */
+  const impliedTotals = ref<ImpliedTotals>({})
+  watch(live, async (isLive) => {
+    if (!isLive) return
+    impliedTotals.value = await getImpliedTeamTotals()
+  }, { immediate: true })
+
+  /*
+   * Quarterbacks only, scaled by how many points their own offence is expected to score.
+   *
+   * Against an analyst's weekly lists our ordering already matched at running back (0.95),
+   * receiver (0.91) and tight end (0.88); quarterback was the outlier at 0.79, and the misses
+   * ran one way — he was higher on passers in high-scoring games, we were higher on passers in
+   * low-scoring ones. Herbert at an implied 28.5 was his QB4 and our QB14; Bo Nix at 19.75 was
+   * our QB12 and his QB21. Applying the fitted adjustment lifts that correlation to 0.90.
+   *
+   * A quarterback's week is mostly a function of how much his offence scores. A receiver's is
+   * mostly target share, which the game total barely moves — hence the scope.
+   */
+  const environmentVor = computed(() => {
     const base = vorByKey.value
+    const implied = impliedTotals.value
+    const mean = meanImplied(implied)
+    if (!mean || !Object.keys(base).length) return base
+    const out: typeof base = {}
+    for (const [k, v] of Object.entries(base)) {
+      const meta = nameByKey.value.get(k)
+      const pos = (meta?.position ?? '').toUpperCase().split(/[,/|]/)[0].trim()
+      out[k] = pos === 'QB'
+        ? { ...v, pointsNextWeek: adjustQbForEnvironment(v.pointsNextWeek, meta?.team, implied, mean) }
+        : v
+    }
+    return out
+  })
+
+  const effectiveVor = computed(() => {
+    const base = environmentVor.value
     if (!weekRankings.enabled.value || !Object.keys(base).length) return base
     const named = Object.keys(base).map((k) => ({
       playerKey: k,
