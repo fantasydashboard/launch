@@ -11,6 +11,7 @@ import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { useFootballWire } from '@/composables/useFootballWire'
 import RankingPicker from '@/components/RankingPicker.vue'
+import { BOARD_DEPTH } from '@/football/footballWire'
 import { useDynastyValues } from '@/composables/useDynastyValues'
 import { readAge, AGE_TONE } from '@/football/positionalAge'
 import { readHorizons } from '@/football/dynastyValues'
@@ -648,8 +649,9 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                   </span>
                 </span>
               </div>
-              <!-- selected position only, top 25 by VOR -->
-              <template v-for="row in sortedBoard.slice(0, 25)" :key="'fbbd-' + row.playerKey">
+              <!-- Selected board, top BOARD_DEPTH by VOR. The same constant decides how deep
+                   tiering runs, so a cliff can never be cut below the last row shown. -->
+              <template v-for="row in sortedBoard.slice(0, BOARD_DEPTH)" :key="'fbbd-' + row.playerKey">
                 <!-- tier cliff: the drop-off is the decision, so name it rather than leaving a flat list -->
                 <!-- Where your opinion stops and ours starts. Without this, row 197 and row
                      205 look equally authoritative. -->

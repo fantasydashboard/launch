@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildFootballWire, type WireVorRow } from '../footballWire'
+import { buildFootballWire, BOARD_DEPTH } from '../footballWire'
 import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { AvailablePlayer } from '@/players/types'
 import type { PlayerVor } from '../footballVor'
@@ -103,7 +103,6 @@ describe('the overall board', () => {
     ] as AvailablePlayer[],
     myTeamKey: 'me',
     slots,
-    byeTeams: new Set<string>(),
   })
 
   it('ranks every position together, best first', () => {
@@ -129,5 +128,57 @@ describe('the overall board', () => {
     const breaks = all.filter((r) => r.tierBreak).map((r) => r.tier)
     expect(breaks).toEqual([...new Set(breaks)])
     expect([...breaks].sort((a, b) => a - b)).toEqual(breaks)
+  })
+})
+
+/*
+ * Tiers have to land where the reader is looking.
+ *
+ * The quarterback board drew one line — under Josh Allen — and then ran nineteen players
+ * spanning ninety points with no cliff at all. assignTiers was not misbehaving: it spends a
+ * fixed budget of cuts on the biggest gaps in whatever column it is handed, and a real
+ * position column runs far past the twenty-five rows the page shows, trailing through third
+ * quarterbacks to minus three hundred. Those tail gaps are the biggest ones, so they took
+ * every cut. On a realistic 42-deep column the seven largest gaps were 45, 40, 36, 35, 30, 25
+ * and 20 — six of the seven below the fold. The board was not under-tiered, it was tiered
+ * somewhere nobody looks.
+ */
+describe('tiers land on the rows that are displayed', () => {
+  const column = (vals: number[]) => {
+    const vorByKey: Record<string, PlayerVor> = {}
+    const pool: PointsPoolPlayer[] = []
+    vals.forEach((v, i) => {
+      const k = 'q' + i
+      pool.push({ playerKey: k, name: 'QB' + i, position: 'QB', teamKey: i === 0 ? 'me' : 'T' + i, proTeam: 'BUF' } as PointsPoolPlayer)
+      vorByKey[k] = vor(k, 'QB', v)
+    })
+    return buildFootballWire({
+      pool, vorByKey, freeAgents: [], myTeamKey: 'me',
+      slots: { QB: 1, RB: 2, FLEX: 1 },
+    }).board.QB
+  }
+
+  // A believable column: a clear QB1, a compressed startable middle, then a long decaying tail.
+  const REAL = [
+    65, 29, 24, 14, 12, 10, 7, 7, 3, 0, -1, -1, -10, -13, -13, -16, -18, -22, -22, -26,
+    -30, -34, -38, -42, -46, -50, -55, -60, -66, -73, -81, -90, -100, -112, -125, -140,
+    -160, -185, -215, -250, -290, -335,
+  ]
+
+  it('cuts more than one cliff into the part you can see', () => {
+    const rows = column(REAL)
+    const visibleBreaks = rows.slice(0, BOARD_DEPTH).filter((r) => r.tierBreak).length
+    expect(visibleBreaks).toBeGreaterThan(1)
+  })
+
+  it('draws no line past the fold, where a tier number could not be read anyway', () => {
+    const rows = column(REAL)
+    for (const r of rows.slice(BOARD_DEPTH)) expect(r.tierBreak).toBeUndefined()
+  })
+
+  it('keeps tier numbers ascending down the column', () => {
+    const seen = column(REAL).filter((r) => r.tierBreak).map((r) => r.tier)
+    expect(seen).toEqual([...new Set(seen)])
+    expect([...seen].sort((a, b) => a - b)).toEqual(seen)
   })
 })

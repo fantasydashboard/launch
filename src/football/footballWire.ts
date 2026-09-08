@@ -66,6 +66,48 @@ const BOARD_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 const normPos = (pos: string): string => (pos || '').toUpperCase().split(/[,/|]/)[0].trim()
 const faKey = (fa: { playerKey?: string; name: string }): string => fa.playerKey ?? `fa:${fa.name}`
 
+/**
+ * How many rows of a board the page shows, and therefore how many get tiered.
+ *
+ * One constant for both, because tiering a population the reader cannot see is what put every
+ * visible quarterback in a single tier.
+ */
+export const BOARD_DEPTH = 25
+
+/**
+ * Cut tiers over the displayed depth and mark the cliffs, in place.
+ *
+ * Same rule the draft board uses — tiers are the visible cliffs, not every gap over a
+ * threshold. A flat ranked column of forty receivers hides the only thing the reader is
+ * looking for: where the drop-off is.
+ */
+function tierInPlace(entries: BoardRow[]): void {
+  const shown = entries.slice(0, BOARD_DEPTH)
+  if (!shown.length) return
+  const tierByKey = assignTiers(shown.map((e) => ({ playerKey: e.playerKey, value: e.vorRos })))
+  let prevTier = 0
+  let prevVor = 0
+  let lastTier = 1
+  for (const row of shown) {
+    row.tier = tierByKey[row.playerKey] ?? 1
+    // Sorted descending, so the previous row IS the last row of the tier above.
+    if (prevTier && row.tier !== prevTier) {
+      row.tierBreak = true
+      row.tierDrop = Math.max(0, prevVor - row.vorRos)
+    }
+    prevTier = row.tier
+    prevVor = row.vorRos
+    lastTier = row.tier
+  }
+  // Past the fold: carry the last tier, draw no line. These rows are off the page, and a
+  // tier number on them would only matter if we ever showed them.
+  for (const row of entries.slice(BOARD_DEPTH)) {
+    row.tier = lastTier
+    row.tierBreak = undefined
+    row.tierDrop = undefined
+  }
+}
+
 export function buildFootballWire(input: {
   freeAgents: AvailablePlayer[]
   vorByKey: Record<string, PlayerVor>
@@ -143,6 +185,22 @@ export function buildFootballWire(input: {
   }
   upgrades.sort((a, b) => b.marginal - a.marginal)
 
+  /*
+   * Tier the rows a reader can SEE.
+   *
+   * assignTiers spends a fixed budget of cuts on the biggest gaps in whatever column it is
+   * given, and a position column in a real league runs far past what the page shows — third
+   * quarterbacks and handcuff backs trailing to minus three hundred. Those gaps are enormous
+   * and they are all in the tail, so they took every cut, and the twenty-five rows actually on
+   * screen came back as one undifferentiated tier. The quarterback board showed a single line
+   * under Josh Allen and then nineteen players spanning ninety points with no cliff drawn.
+   *
+   * Reproduced by adding a realistic tail to a fixture: five breaks, four of them at rows 26
+   * to 29. The board was not under-tiered, it was tiered somewhere the reader never looks.
+   *
+   * So tiering runs over the displayed depth, and everything past it inherits the last tier
+   * without drawing a line. The view imports this same constant, so the two cannot drift.
+   */
   // Full board: rostered + FA per position, VOR-ranked, owned/free flagged, tiered.
   const board: Record<string, BoardRow[]> = {}
   for (const pos of BOARD_POSITIONS.filter((p) => startable.has(p))) {
@@ -161,22 +219,7 @@ export function buildFootballWire(input: {
     if (!entries.length) continue
 
     entries.sort((a, b) => b.vorRos - a.vorRos)
-    /* Same cut rule the draft board uses — tiers are the visible cliffs, not every gap
-       over a threshold. A flat ranked column of 40 receivers hides the only thing the
-       reader is actually looking for: where the drop-off is. */
-    const tierByKey = assignTiers(entries.map((e) => ({ playerKey: e.playerKey, value: e.vorRos })))
-    let prevTier = 0
-    let prevVor = 0
-    for (const row of entries) {
-      row.tier = tierByKey[row.playerKey] ?? 1
-      // Sorted descending, so the previous row IS the last row of the tier above.
-      if (prevTier && row.tier !== prevTier) {
-        row.tierBreak = true
-        row.tierDrop = Math.max(0, prevVor - row.vorRos)
-      }
-      prevTier = row.tier
-      prevVor = row.vorRos
-    }
+    tierInPlace(entries)
     board[pos] = entries
   }
 
@@ -198,18 +241,7 @@ export function buildFootballWire(input: {
     /* Re-tiered on its own, never inherited. A player's tier among ALL startable bodies is a
        different fact from his tier among receivers, and the rows above are shared objects. */
     const rows: BoardRow[] = all.map((r) => ({ ...r, tier: 0, tierBreak: undefined, tierDrop: undefined }))
-    const tierByKey = assignTiers(rows.map((e) => ({ playerKey: e.playerKey, value: e.vorRos })))
-    let prevTier = 0
-    let prevVor = 0
-    for (const row of rows) {
-      row.tier = tierByKey[row.playerKey] ?? 1
-      if (prevTier && row.tier !== prevTier) {
-        row.tierBreak = true
-        row.tierDrop = Math.max(0, prevVor - row.vorRos)
-      }
-      prevTier = row.tier
-      prevVor = row.vorRos
-    }
+    tierInPlace(rows)
     board.ALL = rows
   }
 
