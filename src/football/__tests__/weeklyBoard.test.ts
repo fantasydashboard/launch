@@ -461,3 +461,110 @@ describe('tier labels down a weekly column', () => {
     expect(seen).toEqual([...seen].sort((a, b) => a - b)) // and strictly ascending
   })
 })
+
+/*
+ * Three reads the page had the data for and never stated.
+ */
+describe('what the weekly board says out loud', () => {
+  const mk = (rows: { k: string; pos: string; p: number; team: string }[]) => ({
+    pool: rows.filter((r) => r.team !== 'FA').map((r) => ({
+      playerKey: r.k, name: r.k, position: r.pos, teamKey: r.team, proTeam: 'DET',
+    })) as never,
+    vorByKey: Object.fromEntries(rows.map((r) => [r.k, {
+      playerKey: r.k, position: r.pos, pointsRos: r.p * 17, vorRos: r.p, pointsNextWeek: r.p,
+      vorWeek: r.p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+    }])) as never,
+    freeAgents: rows.filter((r) => r.team === 'FA')
+      // AvailablePlayer carries `team`, not `proTeam` — with the wrong field the row reads as
+      // a bye (no schedule entry for '') and drops out of the board entirely.
+      .map((r) => ({ playerKey: r.k, name: r.k, position: r.pos, team: 'DET' })) as never,
+    opponentByTeam: { DET: { opp: 'CHI', home: true } },
+  })
+
+  it('will not call a coin-flip a move', () => {
+    // My set lineup starts the worse of two flex bodies, by nine tenths of a point.
+    const rows = [
+      { k: 'qb1', pos: 'QB', p: 20, team: 'me' },
+      { k: 'rb1', pos: 'RB', p: 18, team: 'me' },
+      { k: 'rb2', pos: 'RB', p: 13.2, team: 'me' },
+      { k: 'rb3', pos: 'RB', p: 12.3, team: 'me' },
+    ]
+    const board = buildWeeklyBoard({
+      ...mk(rows), slots: { QB: 1, RB: 2 }, myTeamKey: 'me',
+      currentStarters: ['qb1', 'rb1', 'rb3'],
+    })
+    expect(board.moves.filter((m) => m.kind === 'swap')).toHaveLength(0)
+    // It is still surfaced — as the close call it is, not as something to act on.
+    expect(board.closeCalls.length).toBeGreaterThan(0)
+  })
+
+  it('still calls a real upgrade a move', () => {
+    const rows = [
+      { k: 'qb1', pos: 'QB', p: 20, team: 'me' },
+      { k: 'rb1', pos: 'RB', p: 18, team: 'me' },
+      { k: 'rb2', pos: 'RB', p: 17, team: 'me' },
+      { k: 'rb3', pos: 'RB', p: 6, team: 'me' },
+    ]
+    const board = buildWeeklyBoard({
+      ...mk(rows), slots: { QB: 1, RB: 2 }, myTeamKey: 'me',
+      currentStarters: ['qb1', 'rb1', 'rb3'],
+    })
+    expect(board.moves.some((m) => m.kind === 'swap' && m.gain >= 2)).toBe(true)
+  })
+
+  it('totals the seats instead of leaving nine rows of arithmetic', () => {
+    const rows = [
+      { k: 'me_qb', pos: 'QB', p: 19, team: 'me' },
+      { k: 'me_rb', pos: 'RB', p: 20, team: 'me' },
+      { k: 'op_qb', pos: 'QB', p: 21, team: 'opp' },
+      { k: 'op_rb', pos: 'RB', p: 15, team: 'opp' },
+    ]
+    const board = buildWeeklyBoard({
+      ...mk(rows), slots: { QB: 1, RB: 1 }, myTeamKey: 'me',
+      currentStarters: ['me_qb', 'me_rb'], oppTeamKey: 'opp', oppTeamName: 'Them',
+    })
+    expect(board.matchup?.seatsWon).toBe(1)
+    expect(board.matchup?.seatsLost).toBe(1)
+    // And it names the seat that is costing you, which is the whole point of the tally.
+    expect(board.matchup?.worstSlot).toBe('QB')
+    expect(board.matchup?.worstSlotEdge).toBeLessThan(0)
+  })
+
+  it('reads the wire to say what a position is worth', () => {
+    // Twelve-team-ish league: a startable QB is unowned while I start a worse one.
+    const rows = [
+      { k: 'me_qb', pos: 'QB', p: 19, team: 'me' },
+      { k: 'free_qb', pos: 'QB', p: 20, team: 'FA' },
+      { k: 'me_te', pos: 'TE', p: 11, team: 'me' },
+      { k: 'free_te', pos: 'TE', p: 4, team: 'FA' },
+    ]
+    for (let t = 0; t < 8; t++) {
+      rows.push({ k: `t${t}_qb`, pos: 'QB', p: 22 + t * 0.1, team: `T${t}` })
+      rows.push({ k: `t${t}_te`, pos: 'TE', p: 12 + t * 0.1, team: `T${t}` })
+    }
+    const board = buildWeeklyBoard({
+      ...mk(rows), slots: { QB: 1, TE: 1 }, myTeamKey: 'me', currentStarters: ['me_qb', 'me_te'],
+    })
+    const qb = board.scarcity.find((s) => s.position === 'QB')
+    expect(qb?.verdict).toBe('cheap')
+    expect(qb?.freeBeatsMine).toBe(true)
+    // Tight end's best free agent is far down the column — the opposite read.
+    expect(board.scarcity.find((s) => s.position === 'TE')?.verdict).toBe('scarce')
+  })
+
+  it('draws a tier line only where there is a real drop', () => {
+    // A compressed weekly column: forty flex bodies inside a few points, one true cliff.
+    const rows = [
+      ...Array.from({ length: 10 }, (_, i) => ({ k: `a${i}`, pos: 'RB', p: 20 - i * 0.3, team: 'me' })),
+      ...Array.from({ length: 10 }, (_, i) => ({ k: `b${i}`, pos: 'RB', p: 12 - i * 0.3, team: 'me' })),
+    ]
+    const board = buildWeeklyBoard({
+      ...mk(rows), slots: { RB: 2 }, myTeamKey: 'me', currentStarters: [],
+    })
+    const breaks = board.board.RB.filter((r) => r.tierBreak)
+    // Never a line captioned "-0 pts", which is a cliff claiming no drop at all.
+    for (const b of breaks) expect(b.tierDrop ?? 0).toBeGreaterThanOrEqual(2)
+    // And the one genuine cliff is found.
+    expect(breaks.length).toBe(1)
+  })
+})

@@ -39,6 +39,23 @@ const ME = '#5ec8e6'
 const OPP = '#e69a4a'
 const daysRemaining = computed(() => (7 - new Date().getDay()) % 7)
 const oppName = computed(() => board.value?.matchup?.opponentName ?? 'Opponent')
+
+/*
+ * Has the reading actually moved?
+ *
+ * The captures are daily snapshots of the PROJECTION, not of scoring, so in a week where
+ * nothing has kicked off they are all the same number and the chart draws a pair of flat lines
+ * across nine days to say what the scoreboard directly above it already says. Worse, the legend
+ * called the flat part "actual", which reads as games having been played.
+ *
+ * A percentage point of movement is the bar. Below that there is no trend to show and the two
+ * bars — which the panel already falls back to — say it better in a fifth of the height.
+ */
+const trendMoved = computed(() => {
+  const vals = trend.points.map((p) => p.my)
+  if (vals.length < 2) return false
+  return Math.max(...vals) - Math.min(...vals) >= 1
+})
 const trend = useWinProbTrend({
   leagueId: computed(() => leagueStore.activeLeagueId),
   week: currentWeek,
@@ -54,9 +71,20 @@ const path = computed(() => {
   const m = board.value?.matchup
   const st = stakes.value
   if (!m || !st) return ''
-  const lever = winPct.value >= 55
-    ? 'your starters carry it — just make sure none are on bye'
-    : 'the margin is in your flex spots and any start/sit you get wrong'
+  /*
+   * The lever has to be true of THIS week. "Make sure none are on bye" ran in week one, when
+   * no team has a bye and the sentence is dead copy; worse, it sat directly under a stakes
+   * line that had already used the word seeding, so the panel said the same thing twice and
+   * then gave advice that could not apply. Named the actual seat instead when one is losing.
+   */
+  const worst = m.seatsLost > 0 && m.worstSlot ? m.worstSlot : ''
+  const lever = board.value?.byeStarters.length
+    ? 'you have a starter on bye — that is a guaranteed zero, move him'
+    : worst
+      ? `your ${worst} seat is the one behind — everything else is close`
+      : winPct.value >= 55
+        ? 'your starters carry it'
+        : 'the margin is in your flex spots and any start/sit you get wrong'
   switch (st.mode) {
     case 'coast':
       return st.coastKind === 'eliminated'
@@ -65,7 +93,7 @@ const path = computed(() => {
     case 'must-win':
       return `Must-win — empty the tank: ${lever}.`
     case 'maximize':
-      return `Every win is seeding — push: ${lever}.`
+      return `Push: ${lever}.`
     case 'clinch':
       return winPct.value >= 55
         ? 'Comfortably in and favored — bank the win, no need to overspend.'
@@ -90,6 +118,13 @@ const round = (n: number) => Math.round(n)
    below the fold by three stacked lists nobody needed open at once. */
 const lineupOpen = ref(false)
 const boardOpen = ref(true)
+
+/* Split once, read twice. Only positions where the wire actually says something: a startable
+   body going unowned, or a column so bare that holding a good one is itself an asset. */
+const cheapPositions = computed(() =>
+  (board.value?.scarcity ?? []).filter((s) => s.verdict === 'cheap').slice(0, 3))
+const scarcePositions = computed(() =>
+  (board.value?.scarcity ?? []).filter((s) => s.verdict === 'scarce').slice(0, 3))
 const boardPos = ref('RB')
 const boardPositions = computed(() => board.value?.boardPositions ?? [])
 watch(boardPositions, (avail) => {
@@ -133,6 +168,15 @@ const posBadge = (r: { position: string; posRank: number }): string =>
  */
 const source = useActivePointsSource()
 const startable = computed(() => startableCounts(source.rosterSlots.value, source.leagueSize.value))
+/*
+ * One decimal, everywhere a start/sit gain is printed.
+ *
+ * The header rounded 0.9 up to "+1 pts on the table" while CLOSEST CALLS two panels down
+ * showed the same swap at "by 0.9". Rounding at the point of display, from an unrounded
+ * number, keeps the page telling one story about its own arithmetic.
+ */
+const gainLabel = (n: number) => (Math.round(n * 10) / 10).toFixed(1)
+
 function toneForFraction(f: number | null): string {
   if (f === null) return 'text-dark-textMuted/60'
   if (f <= 1 / 3) return 'text-[#7ee787]'
@@ -241,6 +285,22 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             ({{ board.matchup.oppByes.map((o) => o.name).join(' · ') }}) — your edge is bigger than the projection says.
           </p>
 
+          <!--
+            The tally. Nine duel rows were the most useful thing on this page and never added
+            up — the reader did the arithmetic. Winning six seats and losing the match is a
+            different week from winning three and losing it, and only the count says which.
+          -->
+          <p v-if="board.matchup.seatsWon + board.matchup.seatsLost > 0"
+             class="mb-2 font-mono text-[11px] text-dark-text">
+            <span class="text-primary">{{ board.matchup.seatsWon }} seat{{ board.matchup.seatsWon === 1 ? '' : 's' }} won</span>
+            <span class="text-dark-textMuted"> &middot; </span>
+            <span class="text-[#e69a4a]">{{ board.matchup.seatsLost }} lost</span>
+            <span v-if="board.matchup.seatsTied" class="text-dark-textMuted"> &middot; {{ board.matchup.seatsTied }} level</span>
+            <span v-if="board.matchup.worstSlot" class="text-dark-textMuted">
+              &middot; {{ board.matchup.worstSlot }} is the gap ({{ board.matchup.worstSlotEdge.toFixed(1) }})
+            </span>
+          </p>
+
           <p v-if="stakes" class="mb-1 font-mono text-[11px] text-dark-textSecondary">{{ stakes.reasoning }}</p>
           <p v-if="path" class="mb-3 text-sm text-dark-text">{{ path }}</p>
 
@@ -256,10 +316,12 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
           <div class="mb-3 rounded-lg bg-dark-bg/40 px-3 pt-2 pb-1">
             <div class="flex items-center justify-between">
               <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Win-probability trend</p>
-              <p v-if="trend.points.length >= 2" class="font-mono text-[9px] text-dark-textMuted">solid = actual · dotted = projected</p>
+              <!-- "actual" claimed these were played games. They are daily captures of the
+                   projection, which is a different thing and worth naming correctly. -->
+              <p v-if="trendMoved" class="font-mono text-[9px] text-dark-textMuted">solid = recorded · dotted = projected</p>
             </div>
             <MatchupWinProbChart
-              v-if="trend.points.length >= 2"
+              v-if="trendMoved"
               :points="trend.points"
               :projected="trend.projected"
               :me-name="myTeamName"
@@ -379,7 +441,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             <span v-if="board.moves.length" class="font-display text-xs font-semibold uppercase tracking-wide text-primary">
               ★ {{ board.moves.length }} start / sit move{{ board.moves.length > 1 ? 's' : '' }}
               <span class="font-mono text-[10px] normal-case text-dark-textMuted">
-                · +{{ board.moves.reduce((t, m) => t + m.gain, 0) }} pts on the table
+                · +{{ gainLabel(board.moves.reduce((t, m) => t + m.gain, 0)) }} pts on the table
               </span>
             </span>
             <span v-else-if="hasCurrentLineup" class="font-mono text-[11px] text-dark-textMuted">
@@ -409,7 +471,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               </span>
             </span>
             <span class="shrink-0 text-right">
-              <span class="font-mono text-sm font-bold text-primary">+{{ m.gain }}</span>
+              <span class="font-mono text-sm font-bold text-primary">+{{ gainLabel(m.gain) }}</span>
               <span class="block font-mono text-[9px] uppercase text-dark-textMuted">wk pts</span>
             </span>
           </div>
@@ -421,6 +483,14 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
           Best lineup
           <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">
             · week {{ currentWeek }} · pts/wk · rank among rostered players and free agents
+          </span>
+          <!-- The colour was doing real work with nothing on screen to read it by: Kyle Pitts
+               showing FLX83 in amber is the page saying tight end is the weak seat. -->
+          <span class="mt-0.5 block font-mono text-[9px] normal-case text-dark-textMuted/60">
+            rank colour: <span class="text-[#7ee787]">startable</span> &rarr;
+            <span class="text-dark-textMuted">last starter</span> &rarr;
+            <span class="text-[#d29922]">below</span> &rarr;
+            <span class="text-[#f85149]">replaceable</span>
           </span>
         </h2>
         <template v-for="s in board.starters" :key="'st-' + s.playerKey">
@@ -511,6 +581,31 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
         </button>
 
         <div v-if="boardOpen" class="mt-3">
+          <!--
+            The read the board already contained and never stated: the quarterback column
+            showed QB7 and QB8 sitting free while the reader started QB10. Deliberately NOT
+            phrased as "go add him" — a one-point weekly edge is inside the noise, and selling
+            it as a move is the error the start/sit floor exists to prevent. It is a fact about
+            what a position costs in this league, which is a trade decision, not a waiver one.
+          -->
+          <div v-if="cheapPositions.length || scarcePositions.length"
+               class="mb-3 rounded-lg bg-dark-bg/40 px-3 py-2 font-mono text-[10px] leading-relaxed">
+            <p v-if="cheapPositions.length" class="text-dark-textSecondary">
+              <span class="text-primary">Cheap here:</span>
+              <template v-for="(sc, i) in cheapPositions" :key="sc.position">
+                <span v-if="i"> &middot; </span>{{ sc.position }} ({{ sc.bestFreeName }} is
+                {{ sc.position }}{{ sc.bestFreeRank }} and unowned)</template>.
+              Don't pay a real asset for one.
+            </p>
+            <p v-if="scarcePositions.length" class="mt-1 text-dark-textSecondary">
+              <span class="text-[#e69a4a]">Bare here:</span>
+              <template v-for="(sc, i) in scarcePositions" :key="sc.position">
+                <span v-if="i"> &middot; </span>{{ sc.position }} (best free is
+                {{ sc.position }}{{ sc.bestFreeRank }})</template>.
+              A good one is worth more than his points say.
+            </p>
+          </div>
+
           <!--
             The control that says whose order this is. The import for it has sat in this file
             unused since the weekly-rankings feature was built — the picker was never actually

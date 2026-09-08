@@ -68,6 +68,25 @@ export interface WeeklyMove {
   gain: number // weekly points gained by making the swap
 }
 
+/**
+ * Below this, a start/sit is a coin-flip and calling it a move is dishonest.
+ *
+ * The page led with "1 START / SIT MOVE · +1 pts on the table" and two panels lower listed
+ * the same swap under CLOSEST CALLS — "near coin-flips" — at 0.9 points. Both cannot be true.
+ * A weekly projection does not resolve differences that small, so a sub-two-point edge is
+ * reported as the close call it is and never as something to act on. Bye moves are exempt:
+ * a starter on bye is a certain zero, which is not a projection question at all.
+ */
+export const MIN_MOVE_GAIN = 2
+
+/**
+ * Points of separation a tier break has to be worth before it earns a line on the page.
+ *
+ * Same figure as MIN_MOVE_GAIN and for the same reason: below two points a weekly projection
+ * is not separating anybody, so a line drawn there is decoration claiming to be information.
+ */
+export const MIN_TIER_DROP = 2
+
 export interface WeeklyStreamer {
   player: AvailablePlayer
   weekPoints: number
@@ -162,6 +181,47 @@ export interface WeeklyMatchup {
   oppByes: OppStarter[]
   /** Slot-by-slot, mine against theirs, in lineup order. */
   duels: SlotDuel[]
+  /**
+   * The seat-by-seat read, totalled.
+   *
+   * The duel rows are the most useful thing on the page and they never added up — nine rows
+   * of QB10-vs-QB4 left the reader doing the arithmetic. Winning six seats and losing the
+   * match is a different week from winning three and losing it, and only the tally says which.
+   */
+  seatsWon: number
+  seatsLost: number
+  seatsTied: number
+  /** The seat costing you the most. Null when you are not behind at any seat. */
+  worstSlot: string
+  worstSlotEdge: number
+}
+
+/**
+ * How cheap a position is in THIS league, read off who is still unowned.
+ *
+ * The board already carried the fact and never said it: the quarterback column showed QB7 and
+ * QB8 sitting free while the reader started QB10. That is not a "+1, go add Herbert" nudge —
+ * a one-point weekly edge is inside the noise, and selling it as a move is the error the
+ * start/sit floor exists to prevent. It is a structural read about the league: when the
+ * seventh-best starter at a position is unowned, the position is close to free, and nobody
+ * should be trading a real asset to get one.
+ *
+ * The inverse matters more. A position whose best free agent is thirtieth is genuinely scarce,
+ * and holding a good one there is worth more than any points total suggests.
+ */
+export interface WeeklyScarcity {
+  position: string
+  /** Weekly rank of the best free agent at this position. */
+  bestFreeRank: number
+  bestFreeName: string
+  bestFreePoints: number
+  /** Where the reader's own starter at that position ranks, for the comparison. */
+  myStarterRank: number
+  myStarterName: string
+  /** True when a free agent outranks the reader's own starter. */
+  freeBeatsMine: boolean
+  /** 'cheap' when the wire is stocked here, 'scarce' when it is bare. */
+  verdict: 'cheap' | 'scarce'
 }
 
 /** Who holds a player, from the point of view of the manager reading the page. */
@@ -211,6 +271,8 @@ export interface WeeklyBoard {
   board: Record<string, WeeklyBoardRow[]>
   /** Positions with rows, in canonical order, FLEX last. Drives the picker. */
   boardPositions: string[]
+  /** What the wire says each position is worth in this league. Empty when unknowable. */
+  scarcity: WeeklyScarcity[]
 }
 
 const SLOT_ORDER = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPER_FLEX', 'K', 'DEF']
@@ -352,21 +414,23 @@ export function buildWeeklyBoard(input: {
     .filter((k) => !startedSet.has(k))
     .map((k) => ({ key: k, name: meta.get(k)?.name ?? '—', pts: week(k), bye: byeOf(k) }))
     .sort((a, b) => a.pts - b.pts)
-  const moves: WeeklyMove[] = []
+  const rawMoves: WeeklyMove[] = []
   const n = Math.min(startThese.length, sitThese.length)
   for (let i = 0; i < n; i++) {
     const s = startThese[i]
     const d = sitThese[i]
-    moves.push({
+    rawMoves.push({
       kind: d.bye ? 'bye' : 'swap',
       slot: s.slot,
       startKey: s.playerKey,
       startName: s.name,
       sitKey: d.key,
       sitName: d.name,
-      gain: Math.round(s.weekPoints - d.pts),
+      gain: s.weekPoints - d.pts,
     })
   }
+  /* A bye is a certainty, so it always survives; a swap has to clear the coin-flip floor. */
+  const moves = rawMoves.filter((m) => m.kind === 'bye' || m.gain >= MIN_MOVE_GAIN)
 
   /* The weakest body you could reasonably cut: last on the bench by this week's points.
      Byes are skipped as drop candidates — a player on bye this week is not automatically
@@ -500,6 +564,20 @@ export function buildWeeklyBoard(input: {
       }
       const myPoints = starters.reduce((sum, s) => sum + s.weekPoints, 0)
       const margin = myPoints - oppPoints
+      /*
+       * Total the seats. A seat is only won or lost when both managers have somebody in it —
+       * an empty seat on either side is a hole, not a duel, and counting it as a win would
+       * flatter a lineup with a slot nobody filled.
+       *
+       * A seat within half a point is a tie. The projection does not separate two players that
+       * closely, and calling it a win invites the reader to trust a distinction that is noise.
+       */
+      const SEAT_TIE = 0.5
+      const contested = duels.filter((d) => d.mine && d.theirs)
+      const seatsWon = contested.filter((d) => d.edge > SEAT_TIE).length
+      const seatsLost = contested.filter((d) => d.edge < -SEAT_TIE).length
+      const worst = contested.filter((d) => d.edge < -SEAT_TIE)
+        .sort((a, b) => a.edge - b.edge)[0] ?? null
       matchup = {
         opponentName: oppTeamName || 'Opponent',
         opponentLogo: oppTeamLogo || '',
@@ -510,6 +588,11 @@ export function buildWeeklyBoard(input: {
         oppStarters,
         oppByes: oppStarters.filter((o) => o.bye),
         duels,
+        seatsWon,
+        seatsLost,
+        seatsTied: contested.length - seatsWon - seatsLost,
+        worstSlot: worst?.slot ?? '',
+        worstSlotEdge: worst?.edge ?? 0,
       }
     }
   }
@@ -589,13 +672,43 @@ export function buildWeeklyBoard(input: {
      * them everywhere else. Same symptom, entirely different cause.
      */
     for (const r of walk) { r.tierBreak = undefined; r.tierDrop = undefined }
+
+    /*
+     * A cliff has to be a cliff.
+     *
+     * assignTiers cuts on the biggest gaps in a column, which is right for a draft board where
+     * values run from 300 to 20. A weekly column is compressed — forty flex bodies inside
+     * fourteen points — so the "biggest" gaps are a point or less, and picking the top seven
+     * of them is picking noise. The board showed the result: five consecutive tiers of exactly
+     * one player at receiver, and a break on the flex column captioned "TIER 3 · -0 PTS",
+     * which is a cliff labelled no drop at all.
+     *
+     * So a break earns its line only if the drop is worth a reader's attention. Two points is
+     * roughly the difference between a good week and a bad one from the same player, and it is
+     * the same floor a start/sit has to clear to be called a move. Where nothing qualifies the
+     * column simply carries no tiers, which is the honest reading: these players are the same.
+     *
+     * Renumbered after the cull so the labels stay 1, 2, 3 down the page. Leaving assignTiers'
+     * numbers in place would print "TIER 1" then "TIER 6" and invite the reader to wonder what
+     * happened to the four in between.
+     */
+    let shown = 1
+    let first = true
     for (const r of walk) {
-      r.tier = byKey[r.playerKey] ?? 1
-      if (prevTier && r.tier > prevTier) {
+      const raw = byKey[r.playerKey] ?? 1
+      // The drop is the gap across the boundary — this row against the one directly above it,
+      // which is what "separation from the tier above" has always meant here.
+      const drop = prevPts - r.weekPoints
+      if (!first && raw > prevTier && drop >= MIN_TIER_DROP) {
+        shown += 1
+        r.tier = shown
         r.tierBreak = true
-        r.tierDrop = Math.max(0, prevPts - r.weekPoints)
+        r.tierDrop = drop
+      } else {
+        r.tier = shown
       }
-      prevTier = r.tier
+      first = false
+      prevTier = raw
       prevPts = r.weekPoints
     }
     return rows
@@ -614,5 +727,47 @@ export function buildWeeklyBoard(input: {
 
   const boardPositions = [...Object.keys(board).filter((k) => k !== 'FLEX'), ...(board.FLEX ? ['FLEX'] : [])]
 
-  return { starters, bench, moves, streamers, closeCalls, matchup, byeStarters, emptySlots, board, boardPositions }
+  /*
+   * Read the wire's depth off the board we just built, one position at a time.
+   *
+   * The line is the last starting seat in the league: teams times seats at that position. Ten
+   * teams starting one quarterback means QB10 is the worst starter anybody has, so a free QB7
+   * is not depth — it is a starter going unclaimed, and paying a real asset for one is a
+   * mistake. Above that line the wire is genuinely bare and a good one is worth holding.
+   *
+   * I first set this line at 0.6 of the seats and the reader's own league disproved it: ten
+   * teams, QB7 unowned, and the rule called the position scarce while the board plainly showed
+   * three startable quarterbacks free. The seat count is the honest boundary; a fraction of it
+   * was a number I picked.
+   *
+   * Flex-eligible positions get one extra seat rather than a share of every flex slot. Crude,
+   * and deliberately the conservative direction: it widens 'cheap' slightly at running back
+   * and receiver, where flex genuinely does add starting jobs.
+   */
+  const teamCount = new Set(pool.map((p) => p.teamKey)).size || 10
+  const scarcity: WeeklyScarcity[] = []
+  for (const pos of boardPositions) {
+    if (pos === 'FLEX') continue
+    const rows = board[pos] ?? []
+    if (!rows.length) continue
+    const seats = (slots[pos] ?? 0) + (flexPositions.has(pos) ? 1 : 0)
+    if (seats <= 0) continue
+    const cheapRank = Math.max(2, teamCount * seats)
+    const bestFree = rows.find((r) => r.owner === 'free' && !r.bye)
+    if (!bestFree) continue
+    const mine = rows.find((r) => r.owner === 'me' && !r.bye)
+    scarcity.push({
+      position: pos,
+      bestFreeRank: bestFree.posRank,
+      bestFreeName: bestFree.name,
+      bestFreePoints: bestFree.weekPoints,
+      myStarterRank: mine?.posRank ?? 0,
+      myStarterName: mine?.name ?? '',
+      freeBeatsMine: !!mine && bestFree.posRank < mine.posRank,
+      verdict: bestFree.posRank <= cheapRank ? 'cheap' : 'scarce',
+    })
+  }
+  scarcity.sort((a, b) => a.bestFreeRank - b.bestFreeRank)
+
+  return { starters, bench, moves, streamers, closeCalls, matchup, byeStarters, emptySlots, board, boardPositions, scarcity }
 }
