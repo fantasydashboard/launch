@@ -5,7 +5,7 @@ import { useCategoryStrength } from '@/composables/useCategoryStrength'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { usePowerTrajectory } from '@/composables/usePowerTrajectory'
-import { buildPowerRankings, RESUME_ALLPLAY_WEIGHT, type PowerTeamInput } from '@/league/powerRankings'
+import { buildPowerRankings, type PowerTeamInput } from '@/league/powerRankings'
 import { buildAllPlay, formatAllPlay } from '@/league/allPlay'
 import { buildLeagueStandings, BOARD_SORTS, type StakesTag, type BoardSort } from '@/league/leagueStandings'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
@@ -183,6 +183,8 @@ const boardSort = ref<BoardSort>('talent')
 /* Once the reader picks a sort, the default stops overriding them. */
 let sortTouched = false
 const pickSort = (key: BoardSort) => { sortTouched = true; boardSort.value = key }
+const boardHeading = computed(() =>
+  boardSort.value === 'talent' ? 'Rankings' : boardSort.value === 'allplay' ? 'All-play' : 'Standings')
 watch(allPlayReadable, (readable) => {
   if (readable && !sortTouched) boardSort.value = 'record'
 }, { immediate: true })
@@ -226,11 +228,13 @@ const gapNotes = (r: { executionDelta: number; scheduleDelta: number; managerles
  * broken column rather than as a tie. A rank that cannot separate anybody is not a reading,
  * so it is simply absent until it means something.
  */
-const crossRank = (r: { talentRank: number; resumeRank: number; recordRank: number }) => {
+const crossRank = (r: { talentRank: number; allPlayRank: number; recordRank: number }) => {
   if (boardSort.value !== 'talent') return { label: 'talent', n: r.talentRank }
-  // Sorted by talent: show the other side of the same question — what they have banked.
+  /* Sorted by talent, so show the other side of the same question. All-play once it exists —
+     it is the honest version of "how has the season actually gone" — and nothing before that,
+     when every record is level and the column would print the same rank ten times. */
   if (!allPlayReadable.value) return null
-  return { label: 'résumé', n: r.resumeRank }
+  return { label: 'all-play', n: r.allPlayRank }
 }
 
 // ── Strength bar: min-anchored (same pattern as PowerRankingsRedesignView) ──────
@@ -484,7 +488,10 @@ const sosBarColor = (sosRank: number, total: number) => {
       <!-- Section header row -->
       <div class="mb-2 flex items-start justify-between gap-3">
         <div>
-          <h2 class="font-display text-lg font-bold text-dark-text">Standings</h2>
+          <!-- The heading follows the toggle. It read "Standings" while the reader was
+               ranking by talent, so the page named the table one thing and sorted it by
+               another — the same disagreement the labels themselves had. -->
+          <h2 class="font-display text-lg font-bold text-dark-text">{{ boardHeading }}</h2>
           <template v-if="playoffOdds">
             <p class="font-mono text-xs text-dark-textMuted">
               rest-of-season playoff odds · top {{ playoffSpots }} make the bracket
@@ -560,7 +567,7 @@ const sosBarColor = (sosRank: number, total: number) => {
           <button
             v-for="sortOpt in BOARD_SORTS"
             :key="sortOpt.key"
-            v-show="sortOpt.key !== 'resume' || allPlayReadable"
+            v-show="sortOpt.key !== 'allplay' || allPlayReadable"
             class="rounded-md px-2.5 py-1 uppercase tracking-wider transition-colors"
             :class="boardSort === sortOpt.key ? 'font-bold text-dark-text' : 'text-dark-textMuted hover:text-dark-text'"
             :style="boardSort === sortOpt.key ? { backgroundColor: primaryTint(14) } : {}"
@@ -574,12 +581,12 @@ const sosBarColor = (sosRank: number, total: number) => {
           which is exactly the confusion the toggle was supposed to resolve.
         -->
         <span class="text-dark-textMuted/70">
-          <span :class="boardSort === 'record' ? 'text-dark-textSecondary' : ''">record = what you've banked</span>
+          <span :class="boardSort === 'record' ? 'text-dark-textSecondary' : ''">standings = what you've banked</span>
           <span class="text-dark-border/60"> &middot; </span>
-          <span :class="boardSort === 'talent' ? 'text-dark-textSecondary' : ''">talent = the roster you own from here</span>
-          <template v-if="boardSort === 'resume'">
+          <span :class="boardSort === 'talent' ? 'text-dark-textSecondary' : ''">rankings = the roster you own from here</span>
+          <template v-if="allPlayReadable">
             <span class="text-dark-border/60"> &middot; </span>
-            <span class="text-dark-textSecondary">résumé = the season you've had ({{ Math.round(RESUME_ALLPLAY_WEIGHT * 100) }}% all-play)</span>
+            <span :class="boardSort === 'allplay' ? 'text-dark-textSecondary' : ''">all-play = luck removed</span>
           </template>
         </span>
       </div>
@@ -663,7 +670,10 @@ const sosBarColor = (sosRank: number, total: number) => {
             {{ r.wins }}-{{ r.losses }}{{ r.ties ? '-' + r.ties : '' }}
             <!-- All-play sits beside the real record on purpose: the two disagreeing IS the
                  read. Hidden until a week has been scored so it can never print 0-0. -->
-            <span v-if="allPlayFor(r.teamKey)" class="hidden md:inline text-dark-textSecondary"
+            <!-- Was md:inline, so the one number that strips schedule luck out of a record
+                 disappeared on every laptop narrower than 768px. It is the reason to read this
+                 page at all once games are played; it earns a smaller breakpoint. -->
+            <span v-if="allPlayFor(r.teamKey)" class="hidden sm:inline text-dark-textSecondary"
                   :title="`Scored against every team every week: ${formatAllPlay(allPlayFor(r.teamKey)!)} over ${allPlay.weeksCounted} week${allPlay.weeksCounted === 1 ? '' : 's'}. Schedule luck removed.`">
               · {{ formatAllPlay(allPlayFor(r.teamKey)!) }} all-play
             </span>
