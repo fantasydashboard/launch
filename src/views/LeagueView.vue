@@ -172,7 +172,20 @@ const stakesMap = computed(() => {
 
 /* Default to Record. This page opens on "where do I sit", and the two other readings are a
    click away rather than a page away — which is the whole point of merging them. */
-const boardSort = ref<BoardSort>('record')
+/*
+ * Record is the right default once a game has been played, and a dead page before that.
+ *
+ * At 0-0 every team ties on record, so the standings rendered ten rows each numbered 1 — a
+ * ranked list that ranks nothing, above a toggle whose other option separates all ten. The
+ * default follows the data: talent until there is a record worth reading, then record.
+ */
+const boardSort = ref<BoardSort>('talent')
+/* Once the reader picks a sort, the default stops overriding them. */
+let sortTouched = false
+const pickSort = (key: BoardSort) => { sortTouched = true; boardSort.value = key }
+watch(allPlayReadable, (readable) => {
+  if (readable && !sortTouched) boardSort.value = 'record'
+}, { immediate: true })
 const calloutsOpen = ref(false)
 const standings = computed(() =>
   rankings.value
@@ -198,13 +211,27 @@ const gapNotes = (r: { executionDelta: number; scheduleDelta: number; managerles
       : { text: `schedule cost ${Math.abs(r.scheduleDelta)}`, cls: 'text-primary' })
   return out
 }
-/* The rank you are NOT sorted by, so switching never hides a reading. */
-const crossRank = (r: { talentRank: number; resumeRank: number; recordRank: number }) =>
-  boardSort.value === 'talent'
-    ? { label: 'résumé', n: r.resumeRank }
-    : boardSort.value === 'resume'
-      ? { label: 'talent', n: r.talentRank }
-      : { label: 'talent', n: r.talentRank }
+/*
+ * The rank you are NOT sorted by, so switching never hides a reading.
+ *
+ * Two things were wrong with it before a week has been scored.
+ *
+ * It labelled the talent view's second column "résumé" — a word whose own toggle is hidden
+ * until all-play is readable, so the page introduced a third vocabulary item for a concept
+ * the reader had no control over and no definition for. Record and talent were already two
+ * ideas competing for one reader's attention; résumé made it three.
+ *
+ * And every cross-rank collapses at 0-0. Record ranks all ten teams first because nobody has
+ * played, so the talent view printed "résumé 1st" ten times down the page, which reads as a
+ * broken column rather than as a tie. A rank that cannot separate anybody is not a reading,
+ * so it is simply absent until it means something.
+ */
+const crossRank = (r: { talentRank: number; resumeRank: number; recordRank: number }) => {
+  if (boardSort.value !== 'talent') return { label: 'talent', n: r.talentRank }
+  // Sorted by talent: show the other side of the same question — what they have banked.
+  if (!allPlayReadable.value) return null
+  return { label: 'résumé', n: r.resumeRank }
+}
 
 // ── Strength bar: min-anchored (same pattern as PowerRankingsRedesignView) ──────
 
@@ -537,14 +564,40 @@ const sosBarColor = (sosRank: number, total: number) => {
             class="rounded-md px-2.5 py-1 uppercase tracking-wider transition-colors"
             :class="boardSort === sortOpt.key ? 'font-bold text-dark-text' : 'text-dark-textMuted hover:text-dark-text'"
             :style="boardSort === sortOpt.key ? { backgroundColor: primaryTint(14) } : {}"
-            @click="boardSort = sortOpt.key"
+            @click="pickSort(sortOpt.key)"
           >{{ sortOpt.label }}</button>
         </div>
+        <!--
+          Both readings, always, rather than the hint for whichever button is pressed.
+          "Record" and "talent" are the same ten teams answering two different questions, and
+          showing one definition at a time asked the reader to hold the other in their head —
+          which is exactly the confusion the toggle was supposed to resolve.
+        -->
         <span class="text-dark-textMuted/70">
-          {{ BOARD_SORTS.find((o) => o.key === boardSort)?.hint }}<template
-            v-if="boardSort === 'resume'"> ({{ Math.round(RESUME_ALLPLAY_WEIGHT * 100) }}% all-play)</template>
+          <span :class="boardSort === 'record' ? 'text-dark-textSecondary' : ''">record = what you've banked</span>
+          <span class="text-dark-border/60"> &middot; </span>
+          <span :class="boardSort === 'talent' ? 'text-dark-textSecondary' : ''">talent = the roster you own from here</span>
+          <template v-if="boardSort === 'resume'">
+            <span class="text-dark-border/60"> &middot; </span>
+            <span class="text-dark-textSecondary">résumé = the season you've had ({{ Math.round(RESUME_ALLPLAY_WEIGHT * 100) }}% all-play)</span>
+          </template>
         </span>
       </div>
+
+      <!--
+        Ten rows all numbered 1 is a correct tie that reads as a broken column. Say which it
+        is, rather than leaving the reader to work out whether the page is wrong.
+      -->
+      <p v-if="standings.length && boardSort === 'record' && !allPlayReadable"
+         class="mb-2 font-mono text-[10px] text-dark-textMuted/70">
+        <!-- Not "alphabetical", which I wrote first and the screenshot disproved. recordRank
+             is winPct plus points-for, both zero at 0-0, so every team genuinely ties and the
+             rows fall through to the order they arrived in. -->
+        Nothing has been played, so all ten records are 0-0 — every team is tied for 1st and
+        this is not yet a ranking.
+        <button class="text-primary underline-offset-2 hover:underline" @click="pickSort('talent')">Rank by talent</button>
+        to separate them.
+      </p>
 
       <div v-if="!standings.length" class="py-10 text-center font-mono text-xs text-dark-textMuted">
         Loading standings…
@@ -614,8 +667,10 @@ const sosBarColor = (sosRank: number, total: number) => {
                   :title="`Scored against every team every week: ${formatAllPlay(allPlayFor(r.teamKey)!)} over ${allPlay.weeksCounted} week${allPlay.weeksCounted === 1 ? '' : 's'}. Schedule luck removed.`">
               · {{ formatAllPlay(allPlayFor(r.teamKey)!) }} all-play
             </span>
-            <span class="hidden sm:inline text-dark-border/60">·</span>
-            <span class="hidden sm:inline">{{ crossRank(r).label }} {{ ord(crossRank(r).n) }}</span>
+            <template v-if="crossRank(r)">
+              <span class="hidden sm:inline text-dark-border/60">·</span>
+              <span class="hidden sm:inline">{{ crossRank(r)!.label }} {{ ord(crossRank(r)!.n) }}</span>
+            </template>
             <span v-if="r.luck === 'sleeper'" class="hidden sm:inline text-primary" title="Due to rise">▲</span>
             <span v-else-if="r.luck === 'pretender'" class="hidden sm:inline text-[#e69a4a]" title="Due to fall">▼</span>
             <!-- Luck, split. Which half it is decides whether there is anything to do. -->
@@ -673,7 +728,11 @@ const sosBarColor = (sosRank: number, total: number) => {
       </div>
       <p class="mt-2 font-mono text-[10px] text-dark-textMuted">
         <template v-if="playoffOdds">proj = projected final record · % = playoff odds (rest-of-season sim)</template>
-        <template v-else>bar = roster talent · short bar near top = riding luck · long bar near bottom = due to climb</template>
+        <!-- Riding luck and being due to climb are both statements about results. Before a
+             game has been scored there are none, and the line described a mid-season read of
+             a week-one page. -->
+        <template v-else-if="allPlayReadable">bar = roster talent · short bar near top = riding luck · long bar near bottom = due to climb</template>
+        <template v-else>bar = roster talent, projected points per week · nothing has been played yet, so every record is level</template>
       </p>
 
       <!-- Hot / Cold callout (last 3 weeks) -->
