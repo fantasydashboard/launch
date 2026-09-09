@@ -42,6 +42,28 @@ export function reseatRos(
 }
 
 /**
+ * Re-seat the projected-points map the lineup solver runs on, from the same order.
+ *
+ * VOR alone is not enough. Trades solve optimal lineups off `valueByKey.total`, so re-seating
+ * only the VOR map would leave the engine ranking players by your list while adding up
+ * lineups on ours — the two-sources-of-truth split the picker exists to prevent. One order
+ * drives both, or the page argues with itself.
+ */
+export function reseatValues<T extends { total: number }>(
+  base: Record<string, T>,
+  rankByKey: Record<string, number>,
+): Record<string, T> {
+  if (!Object.keys(base).length || !Object.keys(rankByKey).length) return base
+  const reseated = applyRankingOrder(
+    Object.entries(base).map(([k, v]) => ({ playerKey: k, value: v.total })),
+    rankByKey,
+  )
+  const out: Record<string, T> = {}
+  for (const [k, v] of Object.entries(base)) out[k] = { ...v, total: reseated[k] ?? v.total }
+  return out
+}
+
+/**
  * The football Wire view-model: builds per-player VOR (via useFootballVor) and
  * assembles the best-available / upgrades / this-week / board model. Gated to
  * football; baseball callers never invoke it.

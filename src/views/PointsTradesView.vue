@@ -18,6 +18,8 @@ import { MIN_SENDABLE_ODDS, type TeamSituation } from '@/myteam/tradeStrategy'
 import { analyzePointsTrade, type TradeAsset } from '@/myteam/analyzePointsTrade'
 import SeasonPassGate from '@/components/SeasonPassGate.vue'
 import RankingPicker from '@/components/RankingPicker.vue'
+import { useCustomRankings } from '@/composables/useCustomRankings'
+import { reseatRos, reseatValues } from '@/composables/useFootballWire'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { startableCounts, startableFraction } from '@/trades/rosterSlots'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
@@ -64,7 +66,31 @@ const { vorByKey: fbVor } = useFootballVor({
   enabled: isFootball,
   weeklyHorizon: 0, // Trades uses only rest-of-season VOR — skip weekly/streamability fetches
 })
-const tradeVor = computed(() => (isFootball.value ? fbVor.value : undefined))
+/*
+ * Your rest-of-season list, driving the trade engine.
+ *
+ * The Wire has re-seated its board through an uploaded list for a while; Trades never did, so
+ * a list you trusted changed who the wire called good and left the trade suggestions arguing
+ * with it from the next tab over. Same fix, same helper.
+ *
+ * Both maps are re-seated from ONE order. The engine ranks and picks candidates off VOR, but
+ * solves optimal lineups off valueByKey.total — re-seating only one would have it choosing
+ * players by your numbers and scoring the result with ours.
+ */
+const rosRankings = useCustomRankings('ros')
+const namedPool = computed(() => pool.value.map((p) => ({ playerKey: p.playerKey, name: p.name })))
+const rosRankByKey = computed(() =>
+  rosRankings.enabled.value ? rosRankings.match(namedPool.value).rankByKey : {})
+
+const tradeVor = computed(() => {
+  if (!isFootball.value) return undefined
+  const rank = rosRankByKey.value
+  return Object.keys(rank).length ? reseatRos(fbVor.value, rank) : fbVor.value
+})
+const tradeValues = computed(() => {
+  const rank = rosRankByKey.value
+  return Object.keys(rank).length ? reseatValues(valueByKey.value, rank) : valueByKey.value
+})
 
 /*
  * Which horizon the ANALYSIS answers for.
@@ -131,7 +157,7 @@ const situations = computed<Record<string, TeamSituation>>(() => {
 
 const allIdeas = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return []
-  return buildPointsTrades(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value, teamNames.value, tradeVor.value, situations.value)
+  return buildPointsTrades(pool.value, tradeValues.value, myTeamKey.value, rosterSlots.value, teamNames.value, tradeVor.value, situations.value)
 })
 // Deals proposable as-is, and deals worth chasing — never mixed, so a one-sided ask is
 // never presented as something the other manager should happily accept.
@@ -239,7 +265,7 @@ const landscape = computed(() => {
      "strength to trade from" on this page while My Team called RB the biggest hole —
      the same roster, two answers. Baseball keeps the previous single-best-body basis. */
   return buildPointsTradeLandscape(
-    pool.value, valueByKey.value, fgByKey.value, myTeamKey.value, teamNames.value,
+    pool.value, tradeValues.value, fgByKey.value, myTeamKey.value, teamNames.value,
     leagueStore.activeSport, analysisVor.value,
     leagueStore.activeSport === 'football' ? rosterSlots.value : undefined,
   )
@@ -259,7 +285,7 @@ const landscape = computed(() => {
  */
 const teamModel = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
-  return buildPointsTeam(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value)
+  return buildPointsTeam(pool.value, tradeValues.value, myTeamKey.value, rosterSlots.value)
 })
 const rankBar = (rank: number, teams: number) => (teams <= 1 ? 100 : Math.round(((teams - rank + 1) / teams) * 100))
 
@@ -312,6 +338,24 @@ const ordinal = (n: number): string => {
   const v = n % 100
   return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`
 }
+/*
+ * When the leverage read and the deals below it point at different positions.
+ *
+ * The panel said "deal from WR to fix TE" while every card on the board sent a tight end, and
+ * a reader is right to stop at that. Both are correct: TE was the thinnest SEAT, and the tight
+ * end being offered was a second one riding the bench. Depth at a position and a spare body at
+ * a position are different facts. Naming the disagreement costs one line and saves the reader
+ * deciding which half of their own page to believe.
+ */
+const leverageMismatch = computed(() => {
+  const weak = landscape.value?.myWeak ?? []
+  const thin = weakestSpot.value ? [weakestSpot.value.replace(/\s*\(.*\)$/, '')] : []
+  const flagged = new Set([...weak, ...thin])
+  if (!flagged.size) return ''
+  const sent = new Set(ideas.value.flatMap((i) => i.gives.map((g) => g.position)))
+  return [...flagged].find((p) => sent.has(p)) ?? ''
+})
+
 const weakestSpot = computed(() => {
   const ls = landscape.value
   if (!ls || ls.myWeak.length) return ''
@@ -366,7 +410,7 @@ const anGrouped = (teamKey: string) => {
       key: p.playerKey,
       name: p.name,
       position: (p.position || '').toUpperCase().split(/[,/|]/)[0].trim() || '—',
-      points: valueByKey.value[p.playerKey]?.total ?? 0,
+      points: tradeValues.value[p.playerKey]?.total ?? 0,
     }))
   const groups = new Map<string, typeof rows>()
   for (const r of rows) {
@@ -402,7 +446,7 @@ const analysis = computed(() => {
     ...(anPick.value.trim() ? [{ playerKey: 'pick', unpriced: true, label: anPick.value.trim() }] : []),
   ]
   return analyzePointsTrade({
-    pool: pool.value, valueByKey: valueByKey.value, slots: rosterSlots.value,
+    pool: pool.value, valueByKey: tradeValues.value, slots: rosterSlots.value,
     teamNames: teamNames.value, myTeamKey: myTeamKey.value, partnerKey: anPartner.value,
     gives: anGive.value.map((k) => ({ playerKey: k })), gets,
     vorByKey: tradeVor.value,
@@ -433,7 +477,7 @@ const compare = computed(() => {
   if (!comparePartner.value || !myTeamKey.value || !pool.value.length) return null
   return buildRosterCompare({
     pool: pool.value,
-    valueByKey: valueByKey.value,
+    valueByKey: tradeValues.value,
     fgByKey: fgByKey.value,
     myTeamKey: myTeamKey.value,
     theirTeamKey: comparePartner.value,
@@ -467,7 +511,7 @@ const round = (n: number) => Math.round(n)
 // (same PlayerValue every points engine already reads) rather than plumbing a
 // second field through pointsTrades.ts.
 const perGameOf = (key: string): number => {
-  const v = valueByKey.value[key]
+  const v = tradeValues.value[key]
   return v && v.games > 0 ? v.total / v.games : 0
 }
 const tradePoints = (key: string, seasonTotal: number) => (isFootball.value ? perGameOf(key) : seasonTotal)
@@ -508,12 +552,15 @@ function fairness(myGain: number, theirGain: number): string {
           picker here at all: an uploaded list already drove this page through
           useDynastyValues, and nothing on screen said so or let you switch it.
 
-          Only offered in the dynasty view, because the season side of this page runs on our
-          own VOR straight from useFootballVor — no rest-of-season list is consulted, so a
-          picker there would be a control that changes nothing, which is the failure I have
-          spent this week removing.
+          It used to be offered ONLY in the dynasty view, on the correct grounds that the
+          season side ran on our own VOR straight from useFootballVor — no rest-of-season list
+          was consulted, so a picker there would have been a control that changes nothing.
+
+          That reason is gone: the season side now re-seats both the VOR it ranks by and the
+          projected points it solves lineups with, from whichever list you pick. So the control
+          is real in both views, and the Wire and this page finally agree about who is good.
         -->
-        <RankingPicker v-if="tradeView === 'dynasty'" kind="dynasty" />
+        <RankingPicker :kind="tradeView === 'dynasty' ? 'dynasty' : 'ros'" />
       </div>
     </header>
 
@@ -658,19 +705,35 @@ function fairness(myGain: number, theirGain: number): string {
       <!-- YOUR LEVERAGE -->
       <section v-if="landscape && (landscape.myStrong.length || landscape.myWeak.length)" class="mb-4 rounded-xl border border-dark-border bg-dark-card px-4 py-3">
         <p class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted">Your leverage</p>
-        <div class="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 font-mono text-[11px]">
-          <span class="w-14 shrink-0 text-dark-textMuted">trade from</span>
-          <span v-for="p in landscape.myStrong" :key="'s' + p" class="rounded bg-primary/10 px-1.5 py-0.5 text-primary">{{ p }}</span>
-          <span v-if="!landscape.myStrong.length" class="text-dark-textMuted/60">no clear surplus position</span>
-        </div>
-        <div class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 font-mono text-[11px]">
-          <span class="w-14 shrink-0 text-dark-textMuted">to fix</span>
-          <span v-for="p in landscape.myWeak" :key="'w' + p" class="rounded bg-[#FF5C5C]/10 px-1.5 py-0.5 text-[#FF5C5C]">{{ p }}</span>
-          <span v-if="!landscape.myWeak.length" class="text-dark-textMuted/60">
-            nothing bottom-third<template v-if="weakestSpot"> &middot; thinnest is <span class="text-dark-textSecondary">{{ weakestSpot }}</span></template>
-          </span>
-        </div>
-        <p class="mt-1.5 font-mono text-[9px] text-dark-textMuted">deal a body from a spot you're deep → land one where you're thin.</p>
+        <!--
+          One sentence, not a two-row label grid. The labels sat in a w-14 column too narrow to
+          hold "trade from", so it wrapped mid-phrase and the panel read "trade WR from to fix
+          nothing bottom-third" straight down the page.
+        -->
+        <p class="mt-1.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-1 font-mono text-[11px] text-dark-textMuted">
+          <span>Deal from</span>
+          <template v-if="landscape.myStrong.length">
+            <span v-for="p in landscape.myStrong" :key="'s' + p" class="rounded bg-primary/10 px-1.5 py-0.5 text-primary">{{ p }}</span>
+          </template>
+          <span v-else class="text-dark-textMuted/60">no clear surplus</span>
+          <span>&rarr; fix</span>
+          <template v-if="landscape.myWeak.length">
+            <span v-for="p in landscape.myWeak" :key="'w' + p" class="rounded bg-[#FF5C5C]/10 px-1.5 py-0.5 text-[#FF5C5C]">{{ p }}</span>
+          </template>
+          <span v-else-if="weakestSpot" class="text-dark-textSecondary">{{ weakestSpot }}</span>
+          <span v-else class="text-dark-textMuted/60">nothing urgent</span>
+        </p>
+        <!--
+          Say when this read and the deals below it disagree, rather than leaving the reader to
+          spot it. Depth at a position and a spare body at a position are different facts: a
+          team can be thinnest at tight end and still have a tight end worth dealing, which is
+          exactly what the live board showed and what read as a contradiction.
+        -->
+        <p v-if="leverageMismatch" class="mt-1.5 font-mono text-[9px] leading-relaxed text-dark-textMuted">
+          The deals below send a {{ leverageMismatch }} anyway — being thin at a spot and having a
+          spare body there are different things, and the lineup solve says the spare is spare.
+        </p>
+        <p v-else class="mt-1.5 font-mono text-[9px] text-dark-textMuted">deal a body from a spot you're deep &rarr; land one where you're thin.</p>
       </section>
 
       <!-- BEST DEALS -->

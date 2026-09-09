@@ -107,3 +107,69 @@ describe('the search can ask for a player, not just be offered one', () => {
     }
   })
 })
+
+/*
+ * A claim about their roster has to clear their roster.
+ *
+ * The board captioned a card "fills their TE hole — they're starting one below replacement"
+ * while offering them a replacement-level tight end, directly above its own verdict of 25%
+ * and a lineup solve saying they finish worse. Both halves were true — they had a hole, the
+ * body on offer did not fill it — and the sentence joining them was not.
+ */
+describe('the reason a card gives has to survive the card', () => {
+  const SLOTS = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1 }
+
+  /** Me: deep at RB, two tight ends. Them: a real hole at TE. */
+  const setup = (myTeVor: number) => {
+    const rows = [
+      { k: 'my_qb', pos: 'QB', p: 300, team: 'me', vor: 40 },
+      { k: 'my_rb1', pos: 'RB', p: 290, team: 'me', vor: 120 },
+      { k: 'my_rb2', pos: 'RB', p: 250, team: 'me', vor: 80 },
+      { k: 'my_rb3', pos: 'RB', p: 240, team: 'me', vor: 70 },
+      { k: 'my_wr1', pos: 'WR', p: 280, team: 'me', vor: 110 },
+      { k: 'my_wr2', pos: 'WR', p: 230, team: 'me', vor: 60 },
+      { k: 'my_te1', pos: 'TE', p: 200, team: 'me', vor: 60 },
+      // The body on offer. Its VOR is the whole experiment.
+      { k: 'my_te2', pos: 'TE', p: 140, team: 'me', vor: myTeVor },
+      { k: 'op_qb', pos: 'QB', p: 300, team: 'op', vor: 40 },
+      { k: 'op_rb1', pos: 'RB', p: 310, team: 'op', vor: 140 },
+      { k: 'op_rb2', pos: 'RB', p: 240, team: 'op', vor: 70 },
+      { k: 'op_wr1', pos: 'WR', p: 285, team: 'op', vor: 115 },
+      { k: 'op_wr2', pos: 'WR', p: 235, team: 'op', vor: 65 },
+      // Their tight end is below replacement — a genuine hole.
+      { k: 'op_te1', pos: 'TE', p: 100, team: 'op', vor: -20 },
+    ]
+    const pool = rows.map((r) => ({
+      playerKey: r.k, name: r.k, position: r.pos, teamKey: r.team, proTeam: 'X',
+    })) as never
+    const val = Object.fromEntries(rows.map((r) => [r.k, { total: r.p, games: 17, perStat: {}, weeklyCap: 999 }]))
+    const vor = Object.fromEntries(rows.map((r) => [r.k, { vorRos: r.vor }]))
+    return buildPointsTrades(pool, val as never, 'me', SLOTS, { me: 'Me', op: 'Them' }, vor, {})
+  }
+
+  it('does not claim a hole is filled by a body worse than what they start', () => {
+    // Below the starter he would replace (-20). Sending him fills nothing.
+    // A multi-player deal can fill a hole with its OTHER leg, so the assertion is about the
+    // tight end specifically, not about the card having no reason at all.
+    const ideas = setup(-35).filter((i) => i.gives.some((g) => g.playerKey === 'my_te2'))
+    expect(ideas.length).toBeGreaterThan(0)
+    for (const i of ideas) expect(i.fills?.position).not.toBe('TE')
+  })
+
+  it('still claims it for a marginal but real upgrade', () => {
+    /*
+     * The live board's case, which I first read as a bug and it is not: a replacement-level
+     * tight end into a team starting one BELOW replacement is a genuine upgrade, just a small
+     * one. The card was not lying. It was stating a true small benefit beside a true large
+     * cost and leaving the reader to notice the second one.
+     */
+    const ideas = setup(0).filter((i) => i.gives.some((g) => g.playerKey === 'my_te2'))
+    expect(ideas.some((i) => i.fills?.position === 'TE')).toBe(true)
+  })
+
+  it('still claims it when the body genuinely is an upgrade for them', () => {
+    const ideas = setup(45).filter((i) => i.gives.some((g) => g.playerKey === 'my_te2'))
+    expect(ideas.length).toBeGreaterThan(0)
+    expect(ideas.some((i) => i.fills?.position === 'TE')).toBe(true)
+  })
+})

@@ -240,8 +240,29 @@ export function buildPointsTrades(
 
     /* Which of their holes this lands in — the reason they would want it, if there is one. */
     const theirNeeds = needsByTeam.get(oppKey) ?? {}
+    /*
+     * "Fills their hole" has to be true of the player you are actually sending.
+     *
+     * This mapped my outgoing players to THEIR need at that position and stopped there,
+     * without once comparing the two. So a card offered a replacement-level tight end into a
+     * team's tight-end hole and captioned itself "fills their TE hole — they're starting one
+     * below replacement", directly above its own verdict of 25% and a lineup solve saying
+     * they come out worse. Both facts were true and the sentence joining them was not: they
+     * had a hole, and the body on offer did not fill it.
+     *
+     * A claim about their roster now has to clear their roster: the player has to beat the
+     * starter he would replace. Where he does not, the card says nothing about their needs,
+     * and acceptOdds stops handing out the hole-filling bonus for a deal that fills nothing.
+     */
     const fills = outMine
-      .map((p) => theirNeeds[posOf(p.playerKey)])
+      .map((p) => {
+        const need = theirNeeds[posOf(p.playerKey)]
+        if (!need) return null
+        const mine = vorByKey[p.playerKey]?.vorRos
+        // No VOR for this player is not evidence of an upgrade — say nothing rather than guess.
+        if (mine === undefined || mine <= need.worstStarterVor) return null
+        return need
+      })
       .filter(Boolean)
       .sort((a, b) => a!.worstStarterVor - b!.worstStarterVor)[0] ?? null
     const situation = situations[oppKey]
