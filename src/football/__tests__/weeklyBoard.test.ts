@@ -717,3 +717,63 @@ describe('tiers on a weekly position column', () => {
     }
   })
 })
+
+/*
+ * A ranking file's own tiers beat any we could infer.
+ *
+ * The analyst's weekly CSVs carry a Tier column — Burrow, Allen, Jackson, Herbert, Prescott
+ * and Hurts as tier 1, Caleb Williams starting tier 2 — and the parser has always read it:
+ * matchRankings returns tierByKey and the Draft Room has consumed it for a while. This board
+ * never asked. So it derived its own cliffs from our points while sitting directly under a
+ * header naming somebody else's order, and the tiers the reader uploaded were nowhere.
+ */
+describe('tiers declared by the ranking list', () => {
+  const build = (tierByKey?: Record<string, number>) => {
+    // Points deliberately smooth, so any tiers that appear cannot have been derived from them.
+    const vals = [22, 21.6, 21.2, 20.8, 20.4, 20, 19.6, 19.2, 18.8, 18.4]
+    const rows = vals.map((v, i) => ({ k: 'q' + i, p: v }))
+    return buildWeeklyBoard({
+      pool: rows.map((r) => ({
+        playerKey: r.k, name: r.k, position: 'QB', teamKey: 'T' + (Number(r.k.slice(1)) % 5), proTeam: 'DET',
+      })) as never,
+      vorByKey: Object.fromEntries(rows.map((r) => [r.k, {
+        playerKey: r.k, position: 'QB', pointsRos: r.p * 17, vorRos: r.p, pointsNextWeek: r.p,
+        vorWeek: r.p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+      }])) as never,
+      slots: { QB: 1 },
+      myTeamKey: 'T0',
+      currentStarters: [],
+      freeAgents: [],
+      opponentByTeam: { DET: { opp: 'CHI', home: true } },
+      tierByKey,
+    }).board.QB
+  }
+
+  it('draws the breaks the list declares, not the ones our points imply', () => {
+    // The live file's shape: six in tier 1, then tier 2.
+    const src = { q0: 1, q1: 1, q2: 1, q3: 1, q4: 1, q5: 1, q6: 2, q7: 2, q8: 3, q9: 3 }
+    const breaks = build(src).filter((r) => r.tierBreak)
+    expect(breaks.map((r) => r.name)).toEqual(['q6', 'q8'])
+    expect(breaks.map((r) => r.tier)).toEqual([2, 3])
+  })
+
+  it('finds nothing on those same smooth points without the list', () => {
+    // Proof the tiers above came from the file: our own rule sees no cliff in a flat column.
+    expect(build().filter((r) => r.tierBreak).length).toBe(0)
+  })
+
+  it('carries the last tier past the end of the list rather than inventing one', () => {
+    // A list covers thirty quarterbacks; the board carries a hundred. Beyond its reach the
+    // source has stopped having an opinion, and a line drawn there would misattribute one.
+    const src = { q0: 1, q1: 1, q2: 2, q3: 2 }
+    const rows = build(src)
+    expect(rows.filter((r) => r.tierBreak).map((r) => r.name)).toEqual(['q2'])
+    for (const r of rows.slice(4)) expect(r.tierBreak).toBeUndefined()
+  })
+
+  it('falls back to our own cliffs when the list declares only one tier', () => {
+    // One tier across everything covered is a list, not a tiering.
+    const flat = { q0: 1, q1: 1, q2: 1, q3: 1 }
+    expect(build(flat).filter((r) => r.tierBreak).length).toBe(0)
+  })
+})

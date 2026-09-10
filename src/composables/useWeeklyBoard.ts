@@ -30,6 +30,8 @@ export function useWeeklyBoard(): {
   myTeamLogo: ComputedRef<string>
   stakes: ComputedRef<Stakes | null>
   weekSource: ComputedRef<string>
+  /** True when the active weekly list declares its own tiers and the board is using them. */
+  sourceTiers: ComputedRef<boolean>
   /** True when the viewer is in this league without a roster — no lineup, no matchup. */
   spectator: ComputedRef<boolean>
   outlook: ComputedRef<ReturnType<typeof useSeasonOutlook>['outlook']['value']>
@@ -208,6 +210,25 @@ export function useWeeklyBoard(): {
    * following along. sleeperMyTeamKey returns '' for them because no roster's owner_id
    * matches, and everything personal on this page is correctly empty as a result.
    */
+  /*
+   * The tiers the active weekly list declares, when it declares any.
+   *
+   * The analyst files carry a Tier column and the parser has always read it — matchRankings
+   * returns tierByKey and the Draft Room has used it for a while. This board never asked,
+   * so it derived its own cliffs from our points while sitting under a header naming
+   * somebody else's order. Their tiering is the better answer: it is a judgement about who
+   * is interchangeable this week, from the person whose order the reader chose.
+   */
+  const weekTierByKey = computed<Record<string, number>>(() => {
+    if (!weekRankings.enabled.value || !weekRankings.hasOwnTiers.value) return {}
+    const named = Object.keys(environmentVor.value).map((k) => ({
+      playerKey: k,
+      name: nameByKey.value.get(k)?.name ?? '',
+      position: nameByKey.value.get(k)?.position ?? '',
+    }))
+    return weekRankings.match(named).tierByKey
+  })
+
   const spectator = computed(() => !src.myTeamKey.value)
 
   const board = computed<WeeklyBoard | null>(() => {
@@ -233,6 +254,7 @@ export function useWeeklyBoard(): {
       oppTeamName: oppSvc.opponent.value?.opponentName,
       oppTeamLogo: oppSvc.opponent.value?.opponentLogo,
       teamNames: src.teamNames.value,
+      tierByKey: weekTierByKey.value,
     })
   })
 
@@ -277,5 +299,6 @@ export function useWeeklyBoard(): {
     stakes, outlook, spectator,
     /** Whose weekly numbers are driving the page — 'UFD' unless a list is active. */
     weekSource: computed(() => (weekRankings.enabled.value ? weekRankings.sourceName.value : 'UFD')),
+    sourceTiers: computed(() => Object.keys(weekTierByKey.value).length > 0),
   }
 }

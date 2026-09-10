@@ -316,8 +316,20 @@ export function buildWeeklyBoard(input: {
   oppTeamLogo?: string
   /** pool teamKey -> display name, for badging whoever else holds a player. */
   teamNames?: Record<string, string>
+  /**
+   * The tiers the ACTIVE RANKING LIST declares, when it declares any.
+   *
+   * An analyst's weekly file carries a Tier column, and it is a better answer than anything
+   * we can derive: it is a judgement about which quarterbacks are interchangeable this week,
+   * made by the person whose order the reader chose to trust. Our own cliff-finding is a
+   * fallback for when nobody has said.
+   *
+   * Partial by nature — a list covers thirty quarterbacks and the board carries a hundred.
+   * Players the list never mentions keep no tier rather than being lumped into the last one.
+   */
+  tierByKey?: Record<string, number>
 }): WeeklyBoard {
-  const { pool, vorByKey, slots, myTeamKey, currentStarters, freeAgents, opponentByTeam, oppTeamKey, oppTeamName, oppTeamLogo, teamNames } = input
+  const { pool, vorByKey, slots, myTeamKey, currentStarters, freeAgents, opponentByTeam, oppTeamKey, oppTeamName, oppTeamLogo, teamNames, tierByKey } = input
   const week = (key: string): number => vorByKey[key]?.pointsNextWeek ?? 0
   const meta = new Map(pool.map((p) => [p.playerKey, p]))
   const teamOf = (key: string) => (meta.get(key)?.proTeam ?? '').toUpperCase()
@@ -663,7 +675,52 @@ export function buildWeeklyBoard(input: {
   /* Tiers are the visible cliffs, not every gap over a threshold — the same rule the draft
      board cuts on, so "tier" means one thing across the product. A flat column of forty
      receivers hides the only thing the reader is looking for: where the drop-off is. */
+  /**
+   * Tiers the source declared, rather than cliffs we inferred.
+   *
+   * Walks the column in order and starts a new tier wherever the list's own tier number
+   * changes. The drop is still measured in our points, because that is the only number on
+   * the row and the reader is entitled to know how big the cliff they are being shown is.
+   *
+   * Returns false when the list has nothing to say about this column, so the caller falls
+   * back to deriving them.
+   */
+  const tierFromSource = (rows: WeeklyBoardRow[], tiers: Record<string, number>): boolean => {
+    const walk = [...rows].sort((a, b) => b.weekPoints - a.weekPoints)
+    const covered = walk.filter((r) => typeof tiers[r.playerKey] === 'number')
+    // One tier across everything the list covers is not a tiering, it is a list.
+    if (covered.length < 2 || new Set(covered.map((r) => tiers[r.playerKey])).size < 2) return false
+
+    for (const r of walk) { r.tierBreak = undefined; r.tierDrop = undefined }
+    let shown = 1
+    let prevSourceTier: number | null = null
+    let prevPts = 0
+    let seen = false
+    for (const r of walk) {
+      const t = tiers[r.playerKey]
+      if (typeof t !== 'number') {
+        // Past the end of the list. Carry the last tier and draw no line — the source stopped
+        // having an opinion here, and inventing one under its name would misattribute it.
+        r.tier = shown
+        continue
+      }
+      if (seen && prevSourceTier !== null && t !== prevSourceTier) {
+        shown += 1
+        r.tier = shown
+        r.tierBreak = true
+        r.tierDrop = Math.max(0, prevPts - r.weekPoints)
+      } else {
+        r.tier = shown
+      }
+      seen = true
+      prevSourceTier = t
+      prevPts = r.weekPoints
+    }
+    return true
+  }
+
   const tierUp = (rows: WeeklyBoardRow[]): WeeklyBoardRow[] => {
+    if (tierByKey && tierFromSource(rows, tierByKey)) return rows
     /* Tier the rows that are displayed. The full column carries every free agent at the
        position — a hundred-odd bodies whose gaps would take every cut assignTiers has to
        spend, exactly as they did on the Wire's board. */

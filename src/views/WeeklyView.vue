@@ -13,7 +13,7 @@ import SeasonPassGate from '@/components/SeasonPassGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const { hasFullAccess } = useFeatureAccess()
-const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes, weekSource, spectator } = useWeeklyBoard()
+const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes, weekSource, spectator, sourceTiers } = useWeeklyBoard()
 
 /*
  * Header totals are summed from the ROUNDED row values, not rounded from the raw sum.
@@ -634,7 +634,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             <!-- weekSource was destructured in this file and never rendered, so a board being
                  driven by an uploaded list looked identical to one on our own numbers. -->
             <span v-if="weekSource !== 'UFD'" class="font-mono text-[10px] text-dark-textMuted/70">
-              {{ weekSource }}'s order &middot; our points
+              {{ weekSource }}'s order<template v-if="sourceTiers"> and tiers</template> &middot; our points
             </span>
           </div>
           <div class="mb-2 flex flex-wrap gap-1.5">
