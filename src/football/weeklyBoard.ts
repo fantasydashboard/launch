@@ -655,8 +655,24 @@ export function buildWeeklyBoard(input: {
        */
       let oppAssigned: Record<string, string[]>
       if (declared.size) {
+        /*
+         * A declared starter is seated whatever his injury tag says.
+         *
+         * assignSlots drops anyone flagged out, which is right for "who should I start" and
+         * wrong for "who did they start" — and this is the second question. A manager can
+         * start a questionable player, and once the game is played the points are banked no
+         * matter what the tag says. Leaving him out left a hole in their lineup exactly where
+         * A.J. Brown was: he resolved, he was declared, and the solver refused him.
+         *
+         * Cleared only on this pass. The filler below is still a guess about seats we could
+         * not read, and a guess should not stage an injured player.
+         */
         oppAssigned = assignSlots(
-          oppDepth.filter((d) => declared.has(d.playerKey)), slots, 0,
+          oppDepth
+            .filter((d) => declared.has(d.playerKey))
+            .map((d) => ({ ...d, status: '' })),
+          slots,
+          0,
         ).assignedByPos
         if (unresolved > 0) {
           const open: Record<string, number> = {}

@@ -985,3 +985,56 @@ describe('an opponent lineup we could only partly read', () => {
     expect(names).not.toContain('op_bench')
   })
 })
+
+/*
+ * They started him hurt, so he is in their lineup.
+ *
+ * assignSlots drops anyone flagged out. That is right for "who should I start" and wrong for
+ * "who did they start" — and the opponent's lineup is the second question. A.J. Brown carried
+ * an injury tag, was in their declared starters, resolved in the pool, and the solver still
+ * refused to seat him: their lineup came back a man short with a hole exactly where he was.
+ * Once a game is played the points are banked whatever the tag says.
+ */
+describe('a declared starter carrying an injury tag', () => {
+  const rows = [
+    { k: 'me_qb', pos: 'QB', p: 20, team: 'me', il: false },
+    { k: 'me_wr', pos: 'WR', p: 18, team: 'me', il: false },
+    { k: 'op_qb', pos: 'QB', p: 19, team: 'op', il: false },
+    { k: 'op_hurt', pos: 'WR', p: 16, team: 'op', il: true },   // started anyway
+    { k: 'op_bench', pos: 'WR', p: 21, team: 'op', il: false },
+  ]
+  const build = (oppStarterKeys?: string[]) => buildWeeklyBoard({
+    pool: rows.map((r) => ({
+      playerKey: r.k, name: r.k, position: r.pos, teamKey: r.team, proTeam: 'DET', onIL: r.il,
+    })) as never,
+    vorByKey: Object.fromEntries(rows.map((r) => [r.k, {
+      playerKey: r.k, position: r.pos, pointsRos: r.p * 17, vorRos: r.p, pointsNextWeek: r.p,
+      vorWeek: r.p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+    }])) as never,
+    slots: { QB: 1, WR: 1 },
+    myTeamKey: 'me',
+    currentStarters: [],
+    freeAgents: [],
+    opponentByTeam: { DET: { opp: 'CHI', home: true } },
+    oppTeamKey: 'op',
+    oppTeamName: 'Them',
+    oppStarterKeys,
+  })
+
+  it('seats him rather than leaving the hole', () => {
+    const board = build(['op_qb', 'op_hurt'])
+    expect(board.matchup!.oppStarters).toHaveLength(2)
+    expect(board.matchup!.oppStarters.find((o) => o.position === 'WR')?.name).toBe('op_hurt')
+  })
+
+  it('counts him in their score', () => {
+    expect(build(['op_qb', 'op_hurt']).matchup!.oppPoints).toBe(35)
+  })
+
+  it('still refuses to guess an injured player into a seat we could not read', () => {
+    // No declared lineup at all: this is our recommendation, and it should not stage someone
+    // flagged out. The bench body is healthy and takes the seat.
+    const board = build(undefined)
+    expect(board.matchup!.oppStarters.find((o) => o.position === 'WR')?.name).toBe('op_bench')
+  })
+})
