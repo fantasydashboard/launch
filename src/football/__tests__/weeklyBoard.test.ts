@@ -813,6 +813,8 @@ describe('a week in progress', () => {
       opponentByTeam: { DET: { opp: 'CHI', home: true } },
       oppTeamKey: 'op',
       oppTeamName: 'Them',
+      // Everyone here plays for DET, and these fixtures are about a game that HAS happened.
+      gameStates: { DET: 'post' as const },
       ...opts,
     })
 
@@ -859,5 +861,68 @@ describe('a week in progress', () => {
     // Your own receiver played and scored 2, so he is worth 2 — and the OTHER receiver, who
     // has not played, is now the better body. That is a real decision, unlike the opponent's.
     expect(mine?.weekPoints).toBe(12)
+  })
+})
+
+
+/*
+ * The regression that shipped, pinned.
+ *
+ * Sleeper lists every rostered player in `players_points` at 0.0 from the moment a week opens.
+ * Testing presence therefore marked whole rosters as having banked nothing: both teams in the
+ * matchup rendered 0 and ranked in the hundreds while every other team kept its projections.
+ * "Zero is a real score" was true, and I applied it to a payload where zero mostly means "has
+ * not played". Kickoff has to come from the schedule.
+ */
+describe('a zero before kickoff is not a score', () => {
+  const rows = [
+    { k: 'me_qb', pos: 'QB', p: 20, team: 'me', pro: 'DET' },
+    { k: 'me_wr', pos: 'WR', p: 18, team: 'me', pro: 'DET' },
+    { k: 'op_qb', pos: 'QB', p: 19, team: 'op', pro: 'KC' },
+    { k: 'op_wr', pos: 'WR', p: 17, team: 'op', pro: 'KC' },
+  ]
+  const build = (gameStates?: Record<string, 'pre' | 'in' | 'post'>) =>
+    buildWeeklyBoard({
+      pool: rows.map((r) => ({
+        playerKey: r.k, name: r.k, position: r.pos, teamKey: r.team, proTeam: r.pro,
+      })) as never,
+      vorByKey: Object.fromEntries(rows.map((r) => [r.k, {
+        playerKey: r.k, position: r.pos, pointsRos: r.p * 17, vorRos: r.p, pointsNextWeek: r.p,
+        vorWeek: r.p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+      }])) as never,
+      slots: { QB: 1, WR: 1 },
+      myTeamKey: 'me',
+      currentStarters: [],
+      freeAgents: [],
+      opponentByTeam: { DET: { opp: 'CHI', home: true }, KC: { opp: 'LV', home: false } },
+      oppTeamKey: 'op',
+      oppTeamName: 'Them',
+      // What Sleeper actually sends before anything has been played.
+      actualPoints: { me_qb: 0, me_wr: 0, op_qb: 0, op_wr: 0 },
+      gameStates,
+    })
+
+  it('keeps the projection when no game has kicked off', () => {
+    const board = build({ DET: 'pre', KC: 'pre' })
+    expect(board.starters.reduce((t, s) => t + s.weekPoints, 0)).toBe(38)
+    expect(board.matchup!.oppPoints).toBe(36)
+  })
+
+  it('keeps it when the schedule cannot be read at all', () => {
+    // An unreadable scoreboard must fall back to projections. Guessing the other way is what
+    // emptied the roster.
+    expect(build(undefined).starters.reduce((t, s) => t + s.weekPoints, 0)).toBe(38)
+    expect(build({}).starters.reduce((t, s) => t + s.weekPoints, 0)).toBe(38)
+  })
+
+  it('banks the zero once that game is actually over', () => {
+    // Now it means what it says: they played and scored nothing.
+    const board = build({ DET: 'post', KC: 'pre' })
+    expect(board.starters.reduce((t, s) => t + s.weekPoints, 0)).toBe(0)
+    expect(board.matchup!.oppPoints).toBe(36)
+  })
+
+  it('banks a game in progress too', () => {
+    expect(build({ DET: 'in', KC: 'pre' }).starters.reduce((t, s) => t + s.weekPoints, 0)).toBe(0)
   })
 })

@@ -11,7 +11,7 @@ import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
 import { seasonStakes, type Stakes } from '@/myteam/seasonStakes'
 import { useCustomRankings } from '@/composables/useCustomRankings'
 import { applyRankingOrder } from '@/draft/room/customRankings'
-import { getImpliedTeamTotals } from '@/services/gameLines'
+import { getImpliedTeamTotals, getGameStates, type GameState } from '@/services/gameLines'
 import { adjustQbForEnvironment, meanImplied, type ImpliedTotals } from '@/football/gameEnvironment'
 import type { SleeperRoster } from '@/types/sleeper'
 
@@ -128,9 +128,13 @@ export function useWeeklyBoard(): {
    * reason to hold up the board.
    */
   const impliedTotals = ref<ImpliedTotals>({})
+  /* Which games have kicked off, from the same scoreboard. Loaded beside the totals rather
+     than inside them so a failure in one never silently decides the other. */
+  const gameStates = ref<Record<string, GameState>>({})
   watch(live, async (isLive) => {
     if (!isLive) return
     impliedTotals.value = await getImpliedTeamTotals()
+    gameStates.value = await getGameStates()
   }, { immediate: true })
 
   /*
@@ -259,6 +263,7 @@ export function useWeeklyBoard(): {
          payload useThisWeekOpponent already fetches, so neither costs a request. */
       oppStarterKeys: oppSvc.opponent.value?.opponentStarters ?? [],
       actualPoints: oppSvc.opponent.value?.actualPoints ?? {},
+      gameStates: gameStates.value,
     })
   })
 

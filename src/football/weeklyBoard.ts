@@ -341,6 +341,11 @@ export function buildWeeklyBoard(input: {
    */
   actualPoints?: Record<string, number>
   /**
+   * NFL team -> whether their game has kicked off. Without it nothing is ever treated as
+   * banked, because presence in `actualPoints` does not mean a game has been played.
+   */
+  gameStates?: Record<string, 'pre' | 'in' | 'post'>
+  /**
    * The tiers the ACTIVE RANKING LIST declares, when it declares any.
    *
    * An analyst's weekly file carries a Tier column, and it is a better answer than anything
@@ -353,7 +358,7 @@ export function buildWeeklyBoard(input: {
    */
   tierByKey?: Record<string, number>
 }): WeeklyBoard {
-  const { pool, vorByKey, slots, myTeamKey, currentStarters, freeAgents, opponentByTeam, oppTeamKey, oppTeamName, oppTeamLogo, teamNames, tierByKey, oppStarterKeys, actualPoints } = input
+  const { pool, vorByKey, slots, myTeamKey, currentStarters, freeAgents, opponentByTeam, oppTeamKey, oppTeamName, oppTeamLogo, teamNames, tierByKey, oppStarterKeys, actualPoints, gameStates } = input
   /*
    * What a player is worth to this week's score.
    *
@@ -363,7 +368,24 @@ export function buildWeeklyBoard(input: {
    * than truthiness — a player who was held scoreless has banked nothing, and that is a fact
    * about him rather than missing data.
    */
-  const banked = (key: string): boolean => actualPoints ? key in actualPoints : false
+  /*
+   * Has this player's game actually happened?
+   *
+   * NOT "is he in the points map". Sleeper lists every rostered player in `players_points` at
+   * 0.0 from the moment a week opens, so presence marked whole rosters as having banked
+   * nothing — which is precisely what shipped: both teams in the matchup rendered 0, ranked in
+   * the hundreds, while every other team kept its projections. "Zero is a real score" was true
+   * and I applied it to a payload where zero mostly means "has not played".
+   *
+   * The kickoff has to come from the schedule. No game state means no banking: an unreadable
+   * scoreboard falls back to projections, which is merely the old behaviour, where guessing
+   * the other way empties a roster.
+   */
+  const banked = (key: string): boolean => {
+    if (!actualPoints || !(key in actualPoints) || !gameStates) return false
+    const st = gameStates[(meta.get(key)?.proTeam ?? '').toUpperCase()]
+    return st === 'in' || st === 'post'
+  }
   const week = (key: string): number =>
     banked(key) ? actualPoints![key] : (vorByKey[key]?.pointsNextWeek ?? 0)
   const meta = new Map(pool.map((p) => [p.playerKey, p]))

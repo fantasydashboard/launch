@@ -23,6 +23,14 @@ interface Cached { at: number; implied: ImpliedTotals }
 
 let memo: Cached | null = null
 
+/*
+ * Game state moves on a scale of minutes, not hours — a Thursday game finishing has to reach
+ * the page in this session, not six hours later — so it carries its own short TTL and is NOT
+ * cached to localStorage. A stale "final" is worse than a refetch.
+ */
+const STATE_TTL_MS = 2 * 60 * 1000
+let stateMemo: { at: number; states: Record<string, GameState> } | null = null
+
 /** Parse ESPN's `details` string — "CIN -3.5", or "EVEN" for a pick-em. */
 export function parseSpread(details: string): { team: string; spread: number } | null {
   const m = /([A-Z]{2,4})\s*([-+]?\d+(?:\.\d+)?)/.exec(details ?? '')
@@ -73,6 +81,57 @@ function readCache(): ImpliedTotals | null {
 }
 
 /** Implied team totals for this week, or an empty map when unavailable. */
+/** Whether a team's game this week has kicked off, and whether it is over. */
+export type GameState = 'pre' | 'in' | 'post'
+
+/**
+ * Per-team game state, off the same scoreboard payload the totals come from.
+ *
+ * This exists because "has he scored yet" cannot be answered from a points map. Sleeper lists
+ * EVERY rostered player in `players_points`, at 0.0, from the moment a week opens — so testing
+ * presence marks a whole roster as having banked nothing, which is what shipped: both teams in
+ * the matchup read 0, ranked in the hundreds, while every other team kept its projections.
+ *
+ * The scoreboard is the only honest source for it, and it is already being fetched.
+ */
+export function statesFromScoreboard(payload: any): Record<string, GameState> {
+  const out: Record<string, GameState> = {}
+  for (const event of payload?.events ?? []) {
+    const comp = event?.competitions?.[0]
+    const type = comp?.status?.type ?? event?.status?.type
+    const raw = String(type?.state ?? '').toLowerCase()
+    const state: GameState = raw === 'post' ? 'post' : raw === 'in' ? 'in' : 'pre'
+    for (const c of comp?.competitors ?? []) {
+      const abbr = c?.team?.abbreviation
+      if (abbr) out[String(abbr).toUpperCase()] = state
+    }
+  }
+  return out
+}
+
+/**
+ * This week's per-team game state. Empty when the scoreboard cannot be read.
+ *
+ * An unknown game is unknown, never "finished" — the caller must fall back to the projection,
+ * because guessing the other way silently zeroes a roster.
+ */
+export async function getGameStates(): Promise<Record<string, GameState>> {
+  if (stateMemo && Date.now() - stateMemo.at <= STATE_TTL_MS) return stateMemo.states
+  const ctl = new AbortController()
+  const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS)
+  try {
+    const res = await fetch(ENDPOINT, { signal: ctl.signal })
+    if (!res.ok) return {}
+    const states = statesFromScoreboard(await res.json())
+    stateMemo = { at: Date.now(), states }
+    return states
+  } catch {
+    return {}
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export async function getImpliedTeamTotals(): Promise<ImpliedTotals> {
   if (memo && Date.now() - memo.at <= TTL_MS) return memo.implied
   const cached = readCache()
