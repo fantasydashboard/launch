@@ -12,6 +12,7 @@ import { seasonStakes, type Stakes } from '@/myteam/seasonStakes'
 import { useCustomRankings } from '@/composables/useCustomRankings'
 import { applyRankingOrder } from '@/draft/room/customRankings'
 import { getImpliedTeamTotals, getGameStates, type GameState } from '@/services/gameLines'
+import { startingSlotOrder } from '@/trades/rosterSlots'
 import { adjustQbForEnvironment, meanImplied, type ImpliedTotals } from '@/football/gameEnvironment'
 import type { SleeperRoster } from '@/types/sleeper'
 
@@ -233,6 +234,15 @@ export function useWeeklyBoard(): {
     return weekRankings.match(named).tierByKey
   })
 
+  const starterSlots = computed(() =>
+    startingSlotOrder(
+      leagueStore.activePlatform ?? '',
+      leagueStore.activePlatform === 'sleeper'
+        ? { roster_positions: (leagueStore.currentLeague as any)?.roster_positions ?? [] }
+        : {},
+      leagueStore.activeSport,
+    ))
+
   const spectator = computed(() => !src.myTeamKey.value)
 
   const board = computed<WeeklyBoard | null>(() => {
@@ -264,6 +274,11 @@ export function useWeeklyBoard(): {
       oppStarterKeys: oppSvc.opponent.value?.opponentStarters ?? [],
       actualPoints: oppSvc.opponent.value?.actualPoints ?? {},
       gameStates: gameStates.value,
+      /* The league's own slot order, so a set lineup can be read positionally instead of
+         re-solved. Without it a receiver lands in the flex because that is where the solver
+         would have played him, not where his manager did. */
+      starterSlots: starterSlots.value,
+      myStarterKeys: oppSvc.opponent.value?.myStarters ?? [],
     })
   })
 

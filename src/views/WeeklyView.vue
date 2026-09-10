@@ -21,7 +21,12 @@ const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamL
  * reader who checks the arithmetic — exactly the reader worth having — finds the page
  * contradicting itself. The margin is derived the same way so it agrees with both totals.
  */
-const myTotal = computed(() => board.value?.starters.reduce((sum, s) => sum + Math.round(s.weekPoints), 0) ?? 0)
+/* The scoreboard totals the lineup that is playing, not the one we would recommend. Falls
+   back to the optimal where a platform publishes no set lineup. */
+const myTotal = computed(() => {
+  const rows = board.value?.matchup?.myLineup ?? board.value?.starters ?? []
+  return rows.reduce((sum, s) => sum + Math.round(s.weekPoints), 0)
+})
 const oppTotal = computed(() => Math.round(board.value?.matchup?.oppPoints ?? 0))
 const margin = computed(() => myTotal.value - oppTotal.value)
 /* Win% from the margin the page PRINTS, not the raw one. Deriving it from the unrounded

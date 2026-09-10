@@ -69,6 +69,55 @@ export const DEFAULT_NFL_SLOTS: Record<string, number> = {
   QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, K: 1, DEF: 1,
 }
 
+/**
+ * The league's starting slots IN ORDER, one entry per seat.
+ *
+ * parseRosterSlots aggregates to counts, which is right for solving a lineup and useless for
+ * reading one: platforms publish a set lineup as a positional array where the nth entry fills
+ * the nth starting slot. Without the order we had to re-solve which seat each player occupied,
+ * and the solver put a receiver in the flex because that is where it would have played him —
+ * not where his manager did.
+ *
+ * Bench and IR are excluded, so the result lines up index-for-index with the starters array.
+ */
+export function startingSlotOrder(
+  platform: 'yahoo' | 'espn' | 'sleeper' | string,
+  settings: any,
+  sport: string = 'baseball',
+): string[] {
+  const isFootball = sport === 'football'
+  const out: string[] = []
+  if (platform === 'sleeper' && Array.isArray(settings?.roster_positions)) {
+    for (const slot of settings.roster_positions as string[]) {
+      const raw = String(slot || '').trim()
+      if (!raw || NON_STARTING.has(raw)) continue
+      out.push(SLEEPER_NFL_FLEX_ALIASES[raw] ?? canonicalPosition(raw))
+    }
+  } else if (platform === 'yahoo' && Array.isArray(settings?.roster_positions)) {
+    for (const rp of settings.roster_positions) {
+      const node = rp?.roster_position ?? rp
+      const raw = String(node?.position ?? '').trim()
+      const pos = YAHOO_NFL_FLEX_ALIASES[raw] ?? canonicalPosition(raw)
+      const count = Number(node?.count ?? 0)
+      if (!pos || NON_STARTING.has(pos) || count <= 0) continue
+      for (let i = 0; i < count; i++) out.push(pos)
+    }
+  } else if (platform === 'espn' && settings?.rosterSettings?.lineupSlotCounts) {
+    const map = isFootball ? ESPN_NFL_SLOT_TO_POS : ESPN_SLOT_TO_POS
+    /* ESPN publishes counts keyed by slot id, so the only order available is the slot id
+       itself — which is the order ESPN itself renders a lineup in. */
+    const ids = Object.keys(settings.rosterSettings.lineupSlotCounts)
+      .sort((a, b) => Number(a) - Number(b))
+    for (const id of ids) {
+      const pos = map[id]
+      const n = Number(settings.rosterSettings.lineupSlotCounts[id])
+      if (!pos || NON_STARTING.has(pos) || !Number.isFinite(n) || n <= 0) continue
+      for (let i = 0; i < n; i++) out.push(pos)
+    }
+  }
+  return out
+}
+
 export function parseRosterSlots(
   platform: 'yahoo' | 'espn' | 'sleeper' | string,
   settings: any,

@@ -37,17 +37,17 @@ export interface ThisWeekOpponent {
 }
 
 /**
- * Sleeper marks an unfilled starting slot with the string "0".
+ * The set lineup, positionally — the nth entry fills the nth starting slot.
  *
- * `.filter(Boolean)` keeps it, because "0" is a truthy string — so it survived into the
- * starter list, matched no player, and disappeared downstream. That left a seat missing from
- * the opponent's lineup which is indistinguishable from OUR failing to resolve a real player,
- * and the two want opposite handling: a slot they left empty is worth zero and should read
- * that way, while a player we could not match is a bug we must not quietly stage as one.
+ * Emphatically NOT filtered. Sleeper marks an unfilled slot with the string "0", and dropping
+ * those entries shifts every player after them one seat up the lineup, which is a subtler
+ * version of the bug this whole line of work exists to fix. The sentinel is preserved and
+ * recognised where the seating happens, so an empty slot stays empty and everyone else stays
+ * where their manager put them.
  */
-const EMPTY_SLOT = new Set(['0', '', 'null', 'undefined'])
+export const EMPTY_SLOT = new Set(['0', '', 'null', 'undefined'])
 const liveStarters = (raw: unknown): string[] =>
-  (Array.isArray(raw) ? raw : []).map(String).filter((k) => !EMPTY_SLOT.has(k))
+  (Array.isArray(raw) ? raw : []).map(String)
 
 export function useThisWeekOpponent() {
   const opponent = ref<ThisWeekOpponent | null>(null)

@@ -1038,3 +1038,84 @@ describe('a declared starter carrying an injury tag', () => {
     expect(board.matchup!.oppStarters.find((o) => o.position === 'WR')?.name).toBe('op_bench')
   })
 })
+
+/*
+ * Where a manager put a player IS the lineup.
+ *
+ * A.J. Brown showed up in their flex. He was in their first receiver seat — the solver had put
+ * him where IT would have played him. A set lineup is published positionally: the nth starter
+ * fills the nth starting slot, and the league's own roster_positions carry that order, so
+ * there is nothing to solve and one way to get it wrong.
+ */
+describe('a set lineup is read, not solved', () => {
+  const SLOT_ORDER = ['QB', 'RB', 'WR', 'WR', 'FLEX']
+  const rows = [
+    { k: 'me_qb', pos: 'QB', p: 20, team: 'me' },
+    { k: 'me_rb', pos: 'RB', p: 15, team: 'me' },
+    { k: 'me_wr1', pos: 'WR', p: 14, team: 'me' },
+    { k: 'me_wr2', pos: 'WR', p: 13, team: 'me' },
+    { k: 'me_flex', pos: 'WR', p: 12, team: 'me' },
+    { k: 'op_qb', pos: 'QB', p: 19, team: 'op' },
+    { k: 'op_rb', pos: 'RB', p: 16, team: 'op' },
+    // Their WR1 played badly; the flex body outprojects him. Both facts, neither a reason
+    // to move him.
+    { k: 'op_wr1', pos: 'WR', p: 4, team: 'op' },
+    { k: 'op_wr2', pos: 'WR', p: 11, team: 'op' },
+    { k: 'op_flex', pos: 'WR', p: 18, team: 'op' },
+  ]
+  const build = (opts: Record<string, unknown> = {}) => buildWeeklyBoard({
+    pool: rows.map((r) => ({
+      playerKey: r.k, name: r.k, position: r.pos, teamKey: r.team, proTeam: 'DET',
+    })) as never,
+    vorByKey: Object.fromEntries(rows.map((r) => [r.k, {
+      playerKey: r.k, position: r.pos, pointsRos: r.p * 17, vorRos: r.p, pointsNextWeek: r.p,
+      vorWeek: r.p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+    }])) as never,
+    slots: { QB: 1, RB: 1, WR: 2, FLEX: 1 },
+    myTeamKey: 'me',
+    currentStarters: [],
+    freeAgents: [],
+    opponentByTeam: { DET: { opp: 'CHI', home: true } },
+    oppTeamKey: 'op',
+    oppTeamName: 'Them',
+    starterSlots: SLOT_ORDER,
+    ...opts,
+  })
+
+  it('puts their receiver in the receiver seat, not the flex', () => {
+    const board = build({ oppStarterKeys: ['op_qb', 'op_rb', 'op_wr1', 'op_wr2', 'op_flex'] })
+    const seatOf = (n: string) => board.matchup!.oppStarters.find((o) => o.name === n)?.slot
+    expect(seatOf('op_wr1')).toBe('WR')
+    expect(seatOf('op_wr2')).toBe('WR')
+    expect(seatOf('op_flex')).toBe('FLEX')
+  })
+
+  it('keeps an empty seat empty instead of shifting everyone up one', () => {
+    // Sleeper writes "0" for an unfilled slot. Dropping it would slide the flex body into a
+    // receiver seat — a quieter version of the same bug.
+    const board = build({ oppStarterKeys: ['op_qb', 'op_rb', 'op_wr1', '0', 'op_flex'] })
+    expect(board.matchup!.oppStarters.find((o) => o.name === 'op_flex')?.slot).toBe('FLEX')
+    expect(board.matchup!.oppStarters).toHaveLength(4)
+  })
+
+  it('reads your own lineup the same way, while the panel still recommends', () => {
+    const board = build({ myStarterKeys: ['me_qb', 'me_rb', 'me_wr1', 'me_wr2', 'me_flex'] })
+    expect(board.matchup!.myLineup.find((s) => s.name === 'me_flex')?.slot).toBe('FLEX')
+    // The optimiser's answer is untouched and still available for the Best Lineup panel.
+    expect(board.starters.length).toBe(5)
+  })
+
+  it('stops seating by index when the lineup does not match the seat count', () => {
+    /*
+     * Fewer entries than seats means we are looking at a different shape than we think, and
+     * index seating would put people in the wrong chairs — worse than not knowing. It drops
+     * back to the declared path, which still honours the two players they really started
+     * rather than discarding their decision and re-solving the whole lineup.
+     */
+    const board = build({ oppStarterKeys: ['op_qb', 'op_rb'] })
+    const names = board.matchup!.oppStarters.map((o) => o.name)
+    expect(names).toContain('op_qb')
+    expect(names).toContain('op_rb')
+    expect(names).not.toContain('op_flex')
+  })
+})

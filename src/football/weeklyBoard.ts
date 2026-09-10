@@ -210,6 +210,13 @@ export interface WeeklyMatchup {
   seatsWon: number
   seatsLost: number
   seatsTied: number
+  /**
+   * YOUR lineup as actually set, in real slot order — what the scoreboard totals.
+   *
+   * Distinct from `board.starters`, which is the optimiser's recommendation and belongs to the
+   * Best Lineup panel. A matchup is what is happening; the panel below it is what could.
+   */
+  myLineup: WeeklyStarter[]
   /** Points each side has already banked — the part of the score that cannot change. */
   myBanked: number
   oppBanked: number
@@ -298,6 +305,37 @@ export interface WeeklyBoard {
 }
 
 const SLOT_ORDER = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPER_FLEX', 'K', 'DEF']
+/** Platforms publish an unfilled starting slot as "0" (Sleeper) or an empty string. */
+const EMPTY_SEAT = new Set(['0', '', 'null', 'undefined'])
+
+/**
+ * Seat a published lineup by index: the nth starter fills the nth slot.
+ *
+ * Returns null when the slot order is unknown or the lineup does not line up with it, so the
+ * caller falls back to solving rather than seating people in the wrong chairs — a lineup read
+ * wrongly is worse than one read approximately.
+ */
+function seatPositionally(
+keys: string[],
+order: string[] | undefined,
+onRoster: Set<string>,
+): Record<string, string[]> | null {
+  if (!order?.length || !keys.length) return null
+  // A published lineup has exactly one entry per starting slot. Anything else means we are
+  // looking at a different shape than we think, and guessing would misattribute seats.
+  if (keys.length !== order.length) return null
+  const out: Record<string, string[]> = {}
+  let seated = 0
+  keys.forEach((k, i) => {
+    if (EMPTY_SEAT.has(k) || !onRoster.has(k)) return
+    const slot = order[i]
+    if (!slot) return
+    ;(out[slot] ??= []).push(k)
+    seated += 1
+  })
+  return seated ? out : null
+}
+
 /* Folds team defence before splitting: ESPN spells the position "D/ST" and this split
    exists for multi-eligible players, so the slash turned a defence into "D". */
 const normPosOf = (p: string) => canonicalPosition((p || '').split(/[,/|]/)[0])
@@ -346,6 +384,16 @@ export function buildWeeklyBoard(input: {
    */
   gameStates?: Record<string, 'pre' | 'in' | 'post'>
   /**
+   * The league's starting slots IN ORDER, one entry per seat — QB, RB, RB, WR, WR, TE, FLEX…
+   *
+   * A set lineup is published positionally: the nth starter fills the nth slot. Without this
+   * the seat had to be re-solved, and the solver put a receiver in the flex because that is
+   * where it would have played him rather than where his manager did.
+   */
+  starterSlots?: string[]
+  /** Your own set lineup, positionally. Same treatment as theirs. */
+  myStarterKeys?: string[]
+  /**
    * The tiers the ACTIVE RANKING LIST declares, when it declares any.
    *
    * An analyst's weekly file carries a Tier column, and it is a better answer than anything
@@ -358,7 +406,7 @@ export function buildWeeklyBoard(input: {
    */
   tierByKey?: Record<string, number>
 }): WeeklyBoard {
-  const { pool, vorByKey, slots, myTeamKey, currentStarters, freeAgents, opponentByTeam, oppTeamKey, oppTeamName, oppTeamLogo, teamNames, tierByKey, oppStarterKeys, actualPoints, gameStates } = input
+  const { pool, vorByKey, slots, myTeamKey, currentStarters, freeAgents, opponentByTeam, oppTeamKey, oppTeamName, oppTeamLogo, teamNames, tierByKey, oppStarterKeys, actualPoints, gameStates, starterSlots, myStarterKeys } = input
   /*
    * What a player is worth to this week's score.
    *
@@ -654,7 +702,17 @@ export function buildWeeklyBoard(input: {
        * roster. Deterministic, and the second pass runs only when a starter went unresolved.
        */
       let oppAssigned: Record<string, string[]>
-      if (declared.size) {
+      /*
+       * Read it positionally when we know the slot order — that IS the lineup.
+       *
+       * Sleeper's empty-slot sentinel is preserved upstream precisely so this index alignment
+       * holds; a seat they left unfilled stays unfilled rather than pulling everyone after it
+       * up one place.
+       */
+      const positional = seatPositionally(named, starterSlots, onOpp)
+      if (positional) {
+        oppAssigned = positional
+      } else if (declared.size) {
         /*
          * A declared starter is seated whatever his injury tag says.
          *
@@ -718,11 +776,49 @@ export function buildWeeklyBoard(input: {
          the nth body at a slot on one side faces the nth on the other — a league that starts
          two backs pits RB1 against RB1 and RB2 against RB2, which is the comparison a manager
          makes in their head anyway. */
+      /*
+       * Your side of the matchup is your REAL lineup too.
+       *
+       * `starters` is the optimiser's answer — the Best Lineup panel below, and the right
+       * thing there because your lineup is the one you can still change. It is the wrong thing
+       * here: a matchup is what is happening, not the best version of it available to either
+       * manager. Falls back to the optimal when the platform publishes no lineup, which is
+       * every platform but Sleeper today.
+       */
+      const mySeated = seatPositionally(
+        myStarterKeys ?? [],
+        starterSlots,
+        new Set(pool.filter((p) => p.teamKey === myTeamKey).map((p) => p.playerKey)),
+      )
+      const myLineup: WeeklyStarter[] = mySeated
+        ? Object.entries(mySeated).flatMap(([slot, keys]) => keys.map((k) => {
+            const from = starters.find((x) => x.playerKey === k)
+            if (from) return { ...from, slot }
+            const p = meta.get(k)
+            return {
+              slot,
+              playerKey: k,
+              name: p?.name ?? '—',
+              position: p?.position ?? '',
+              team: p?.proTeam,
+              headshot: p?.headshot,
+              weekPoints: week(k),
+              opponent: oppOf(k),
+              home: homeOf(k),
+              bye: byeOf(k),
+              opportunity: oppTag(k),
+              inCurrent: true,
+              ...ranksOf(k),
+            } as WeeklyStarter
+          }))
+          .sort((a, b) => slotIdx(a.slot) - slotIdx(b.slot) || b.weekPoints - a.weekPoints)
+        : starters
+
       const duels: SlotDuel[] = []
-      const slotOrder = [...new Set([...starters.map((x) => x.slot), ...oppStarters.map((x) => x.slot)])]
+      const slotOrder = [...new Set([...myLineup.map((x) => x.slot), ...oppStarters.map((x) => x.slot)])]
         .sort((a, b) => slotIdx(a) - slotIdx(b))
       for (const slot of slotOrder) {
-        const mineAt = starters.filter((x) => x.slot === slot)
+        const mineAt = myLineup.filter((x) => x.slot === slot)
         const theirsAt = oppStarters.filter((x) => x.slot === slot)
         for (let i = 0; i < Math.max(mineAt.length, theirsAt.length); i++) {
           const mine = mineAt[i] ?? null
@@ -735,7 +831,7 @@ export function buildWeeklyBoard(input: {
           })
         }
       }
-      const myPoints = starters.reduce((sum, s) => sum + s.weekPoints, 0)
+      const myPoints = myLineup.reduce((sum, s) => sum + s.weekPoints, 0)
       const margin = myPoints - oppPoints
       /*
        * Total the seats. A seat is only won or lost when both managers have somebody in it —
@@ -753,7 +849,7 @@ export function buildWeeklyBoard(input: {
         .sort((a, b) => a.edge - b.edge)[0] ?? null
       /* How much of each score is settled. A page reporting 144-125 in the middle of a week
          is stating two different kinds of number as one, and only this separates them. */
-      const myBanked = starters.reduce((sum, st) => sum + (banked(st.playerKey) ? st.weekPoints : 0), 0)
+      const myBanked = myLineup.reduce((sum, st) => sum + (banked(st.playerKey) ? st.weekPoints : 0), 0)
       const oppBanked = oppStarters.reduce((sum, o) => sum + (banked(o.playerKey) ? o.weekPoints : 0), 0)
       matchup = {
         opponentName: oppTeamName || 'Opponent',
@@ -772,6 +868,7 @@ export function buildWeeklyBoard(input: {
         worstSlotEdge: worst?.edge ?? 0,
         myBanked,
         oppBanked,
+        myLineup,
       }
     }
   }
