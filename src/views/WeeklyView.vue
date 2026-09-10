@@ -116,7 +116,19 @@ const round = (n: number) => Math.round(n)
 /* The lineup detail folds; the verdict does not. Collapsed by default because "is my lineup
    right" is answered by the header alone, and the rankings board underneath was being pushed
    below the fold by three stacked lists nobody needed open at once. */
+/*
+ * Closed when there is something to act on, open when there is not.
+ *
+ * The header carries the verdict — "1 start/sit move" or "your lineup is already optimal" —
+ * and when it is the latter there is nothing in that sentence inviting anyone to open it. So
+ * the one week you have no decision to make is the week your own lineup is hardest to look at.
+ * A move is a call to action and earns the fold; an optimal lineup is just the team, and the
+ * team is what the reader came to see.
+ */
 const lineupOpen = ref(false)
+watch(() => board.value?.moves.length, (n) => {
+  if (n === 0) lineupOpen.value = true
+}, { immediate: true })
 const boardOpen = ref(true)
 
 /* Split once, read twice. Only positions where the wire actually says something: a startable
