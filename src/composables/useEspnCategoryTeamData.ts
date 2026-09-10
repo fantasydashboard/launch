@@ -98,7 +98,17 @@ export function useEspnCategoryTeamData() {
       }
       supported.value = true
       // Roster-slot requirements for the positional dimension (defaults if absent).
-      rosterSlots.value = parseRosterSlots('espn', { rosterSettings: league.settings?.rosterSettings })
+      rosterSlots.value = parseRosterSlots(
+        'espn',
+        { rosterSettings: league.settings?.rosterSettings },
+        /* ESPN slot ids mean different positions in different sports and the argument was
+           never passed, so a football league was read through the baseball map: slot 0 is a
+           quarterback and came back a catcher, and FLEX, K and D/ST were absent from that
+           map entirely and silently dropped. A standard NFL lineup produced six baseball
+           slots — the exact six This Week reported empty above a bench holding the whole
+           roster, because no football player can fill a shortstop. */
+        leagueStore.activeSport,
+      )
       acquisition.value = parseEspnAcquisition(league.settings?.acquisitionSettings)
       acquisitionSettings.value = league.settings?.acquisitionSettings ?? null
       playoffTeamCount.value = Number(league.settings?.playoffTeamCount) || 0

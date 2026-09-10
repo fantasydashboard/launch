@@ -222,3 +222,44 @@ describe('startableCounts', () => {
     expect(startableFraction(5, 'K', startableCounts(slots, 10))).toBeNull()
   })
 })
+
+/*
+ * ESPN slot ids mean different positions in different sports, and the sport was never passed.
+ *
+ * parseRosterSlots takes `sport` with a default of 'baseball', and both ESPN composables call
+ * it with two arguments. So an ESPN FOOTBALL league had its lineup read through the baseball
+ * map: slot 0 is a quarterback and came back a catcher, slot 2 a running back and came back a
+ * second baseman, and every football-only slot — FLEX, K, D/ST — was absent from the map and
+ * silently dropped.
+ *
+ * The damage was exactly visible on the page. A standard ESPN football lineup produced six
+ * baseball slots, and This Week reported "You're leaving 6 starting slots empty" above a bench
+ * holding the entire roster: no football player can fill a shortstop. The Wire's board had no
+ * position pills at all, because the startable positions it derives were catchers and
+ * middle infielders.
+ */
+describe('ESPN football lineup slots', () => {
+  // A standard ESPN NFL roster: QB, 2 RB, 2 WR, TE, FLEX, D/ST, K, 7 bench, 1 IR.
+  const NFL = {
+    rosterSettings: {
+      lineupSlotCounts: {
+        '0': 1, '2': 2, '4': 2, '6': 1, '23': 1, '16': 1, '17': 1, '20': 7, '21': 1,
+      },
+    },
+  }
+
+  it('reads football slots when told the sport', () => {
+    expect(parseRosterSlots('espn', NFL, 'football')).toEqual({
+      QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, DEF: 1, K: 1,
+    })
+  })
+
+  it('produced six baseball slots without it — the six the page reported empty', () => {
+    // Pinning the old behaviour so the regression is unmistakable if the argument is ever
+    // dropped again: this is what a football roster looked like through the baseball map.
+    const wrong = parseRosterSlots('espn', NFL)
+    const total = Object.values(wrong).reduce((a, b) => a + b, 0)
+    expect(total).toBe(6)
+    expect(Object.keys(wrong)).not.toContain('QB')
+  })
+})
