@@ -112,6 +112,17 @@ export interface WeeklyStreamer {
   streamOf: number
   opportunity: OpportunityTag
   /**
+   * True when he would actually START for you this week, not merely sit on your bench.
+   *
+   * The whole point of a streamer and the one thing the card never said. A free quarterback
+   * projected two points above the one you are starting is the cheapest upgrade in fantasy
+   * football, and it was being reported as a number measured against a bench body he has
+   * nothing to do with.
+   */
+  startsForYou: boolean
+  /** The starter he would displace, when he displaces one. */
+  replacesName: string | null
+  /**
    * Rank THIS WEEK at his own position, and among everyone eligible for a flex slot, over
    * every player rostered in the league PLUS the free agents — because the waiver wire is
    * available weekly and a start/sit is decided against it.
@@ -571,12 +582,52 @@ export function buildWeeklyBoard(input: {
      the right cut, he is just idle. */
   const droppable = [...bench].filter((b) => !b.bye).sort((a, b) => a.weekPoints - b.weekPoints)[0] ?? null
 
+  /*
+   * What adding him would actually do to your STARTING lineup.
+   *
+   * `gain` used to be the streamer's points minus the weakest droppable body on your bench,
+   * which answers "who do I add and who do I cut" and not "does this help me win". For a free
+   * quarterback projected two points above the one you are starting, it reported the gap to a
+   * bench scrub instead — a large number describing nothing.
+   *
+   * Re-solving the lineup with him in and the drop out gives the real figure, and says whether
+   * he starts at all. Eight solves over a dozen bodies; cheap, and the only honest answer.
+   */
+  const myBase = Object.values(assigned).flat().reduce((sum, k) => sum + week(k), 0)
+  const streamerEffect = (faId: string, pts: number, positions: string[]) => {
+    const withHim: DepthPlayer[] = [
+      ...myDepth.filter((d) => d.playerKey !== droppable?.playerKey),
+      { playerKey: faId, teamKey: myTeamKey, eligiblePositions: positions, value: pts, status: '' },
+    ]
+    const next = assignSlots(withHim, slots, 0)
+    const started = Object.values(next.assignedByPos).flat()
+    const total = started.reduce((sum, k) => sum + (k === faId ? pts : week(k)), 0)
+    const startsForYou = started.includes(faId)
+    /* Who he pushed out: someone starting now who is not starting in the new lineup, and not
+       the body we dropped to make room for him. */
+    const nowStarting = new Set(started)
+    const displaced = Object.values(assigned).flat()
+      .find((k) => !nowStarting.has(k) && k !== droppable?.playerKey)
+    return {
+      gain: Math.max(0, total - myBase),
+      startsForYou,
+      replacesName: startsForYou && displaced ? (meta.get(displaced)?.name ?? null) : null,
+    }
+  }
+
+  /* Sorted so the ones who would START lead, biggest lineup gain first. A streamer who only
+     upgrades your bench is a different, much quieter kind of suggestion. */
   const streamers: WeeklyStreamer[] = freeAgents
     .map((fa) => ({ fa, v: vorByKey[faKey(fa)] }))
     .filter((x) => x.v && x.v.vorWeek > 0)
     .sort((a, b) => b.v!.vorWeek - a.v!.vorWeek)
     .slice(0, 8)
     .map(({ fa, v }) => {
+      const eff = streamerEffect(
+        faKey(fa),
+        v!.pointsNextWeek,
+        fa.position ? [canonicalPosition(fa.position)] : [],
+      )
       // Only a real upgrade counts: the streamer has to beat the body he would replace.
       const beatsDrop = droppable !== null && v!.pointsNextWeek > droppable.weekPoints
       return {
@@ -589,9 +640,13 @@ export function buildWeeklyBoard(input: {
         ...ranksOf(faKey(fa)),
         dropName: beatsDrop ? droppable!.name : null,
         dropKey: beatsDrop ? droppable!.playerKey : null,
-        gain: beatsDrop ? v!.pointsNextWeek - droppable!.weekPoints : 0,
+        gain: eff.gain,
+        startsForYou: eff.startsForYou,
+        replacesName: eff.replacesName,
       }
     })
+    .sort((a, b) =>
+      Number(b.startsForYou) - Number(a.startsForYou) || b.gain - a.gain || b.vorWeek - a.vorWeek)
 
   /*
    * Close calls: a started body whose best benched alternative for the same slot is within

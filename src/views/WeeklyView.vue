@@ -730,7 +730,11 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
 
       <!-- 4. STREAMERS -->
       <section v-if="board.streamers.length" class="rounded-xl border border-dark-border bg-dark-card p-4">
-        <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Streamers</h2>
+        <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide"
+            :class="board.streamers.some((r) => r.startsForYou) ? 'text-primary' : 'text-dark-textMuted'">
+          <template v-if="board.streamers.some((r) => r.startsForYou)">★ Free and better than someone you're starting</template>
+          <template v-else>Streamers</template>
+        </h2>
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
           one-week adds for week {{ currentWeek }} — the drop is the other half of the decision
         </p>
@@ -752,8 +756,13 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
                 <span :class="posTone({ position: r.player.position, posRank: r.posRank })">{{ posLabel({ position: r.player.position, posRank: r.posRank }) }}</span>
                 <span v-if="r.flexRank" :class="flexTone(r.flexRank)"> &middot; FLX{{ r.flexRank }}</span>
               </span>
-              <span v-if="r.dropName" class="block font-mono text-[9px] text-primary">
-                drop {{ r.dropName }} &middot; +{{ round(r.gain) }}
+              <!-- Say the thing the card exists to say: he would start, and over whom. The
+                   drop is the cost, not the point. -->
+              <span v-if="r.startsForYou" class="block font-mono text-[9px] text-primary">
+                starts over {{ r.replacesName ?? 'a bench body' }} &middot; +{{ gainLabel(r.gain) }}
+              </span>
+              <span v-else-if="r.dropName" class="block font-mono text-[9px] text-dark-textMuted/70">
+                bench depth &middot; drop {{ r.dropName }}
               </span>
               <span v-else class="block font-mono text-[9px] text-dark-textMuted/70">no upgrade</span>
             </span>

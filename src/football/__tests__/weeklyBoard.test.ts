@@ -1119,3 +1119,53 @@ describe('a set lineup is read, not solved', () => {
     expect(names).not.toContain('op_flex')
   })
 })
+
+/*
+ * A free quarterback better than the one you are starting.
+ *
+ * Herbert and Prescott were unowned and projected above the reader's starter, the board said
+ * so in its own "cheap here: QB" line, and nothing ever told him to start one. The streamer
+ * card carried a `gain` measured against the weakest droppable body on his BENCH — which
+ * answers "who do I add and who do I cut" rather than "does this help me win", and reports a
+ * large number describing nothing.
+ */
+describe('a streamer who would start for you', () => {
+  const rows = [
+    { k: 'my_qb', pos: 'QB', p: 19, team: 'me' },
+    { k: 'my_rb', pos: 'RB', p: 15, team: 'me' },
+    { k: 'my_scrub', pos: 'RB', p: 3, team: 'me' },   // the droppable body
+  ]
+  const build = () => buildWeeklyBoard({
+    pool: rows.map((r) => ({
+      playerKey: r.k, name: r.k, position: r.pos, teamKey: r.team, proTeam: 'DET',
+    })) as never,
+    vorByKey: {
+      ...Object.fromEntries(rows.map((r) => [r.k, {
+        playerKey: r.k, position: r.pos, pointsRos: r.p * 17, vorRos: r.p, pointsNextWeek: r.p,
+        vorWeek: r.p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+      }])),
+      'fa:Free QB': {
+        playerKey: 'fa:Free QB', position: 'QB', pointsRos: 357, vorRos: 21,
+        pointsNextWeek: 21, vorWeek: 6, streamWeeks: 0, streamOf: 0,
+        confidence: 'high', opportunity: '',
+      },
+    } as never,
+    slots: { QB: 1, RB: 1 },
+    myTeamKey: 'me',
+    currentStarters: [],
+    freeAgents: [{ name: 'Free QB', position: 'QB', team: 'GB' }] as never,
+    opponentByTeam: { DET: { opp: 'CHI', home: true }, GB: { opp: 'MIN', home: true } },
+  })
+
+  it('says he would start, and over whom', () => {
+    const s = build().streamers.find((x) => x.player.name === 'Free QB')!
+    expect(s.startsForYou).toBe(true)
+    expect(s.replacesName).toBe('my_qb')
+  })
+
+  it('counts the lineup gain, not the gap to a bench body', () => {
+    // 21 over the 19 he displaces is +2. Against the droppable scrub it would have read +18,
+    // a number describing a swap nobody is making.
+    expect(build().streamers.find((x) => x.player.name === 'Free QB')!.gain).toBeCloseTo(2, 5)
+  })
+})
