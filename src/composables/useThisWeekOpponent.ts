@@ -15,6 +15,25 @@ export interface ThisWeekOpponent {
   opponentName: string
   opponentLogo: string
   week: number
+  /**
+   * The lineup they actually SET, in slot order — not the one we would have chosen.
+   *
+   * The board used to solve their optimal lineup with assignSlots, which is a different
+   * question from the one being asked. You cannot change their lineup, so an idealised
+   * version of it misstates your own matchup; and once a game is final it rewrites history,
+   * quietly benching a player who already played badly and inflating their score. Empty when
+   * the platform does not publish it.
+   */
+  opponentStarters: string[]
+  /** Your own set lineup from the same payload, for the same reason. */
+  myStarters: string[]
+  /**
+   * Points each side's players have actually banked this week, keyed by pool playerKey.
+   *
+   * Sleeper carries this on the matchup rows already, so it costs no extra request. Empty
+   * before anything has been scored.
+   */
+  actualPoints: Record<string, number>
 }
 
 export function useThisWeekOpponent() {
@@ -71,11 +90,23 @@ export function useThisWeekOpponent() {
           (leagueStore.users ?? []) as any,
           leagueStore.currentLeague as any,
         )
+        /* Both sides' set lineups and banked points come off the rows already fetched
+           above — no extra request, and no optimiser standing in for a real decision. */
+        const points: Record<string, number> = {}
+        for (const row of [mine, oppRow]) {
+          for (const [pid, pts] of Object.entries(row?.players_points ?? {})) {
+            const n = Number(pts)
+            if (Number.isFinite(n)) points[pid] = n
+          }
+        }
         opponent.value = {
           opponentKey: oppKey,
           opponentName: names[oppKey] || `Team ${oppKey}`,
           opponentLogo: logos[oppKey] || '',
           week,
+          opponentStarters: (oppRow.starters ?? []).filter(Boolean).map(String),
+          myStarters: (mine.starters ?? []).filter(Boolean).map(String),
+          actualPoints: points,
         }
       } else if (leagueStore.activePlatform === 'espn') {
         const parts = String(leagueKey).split('_') // espn_{sport}_{id}_{season}
@@ -104,6 +135,12 @@ export function useThisWeekOpponent() {
           opponentName: oppTeam?.name || 'Opponent',
           opponentLogo: (oppTeam as any)?.logo || '',
           week,
+          /* ESPN publishes set lineups and live points on its matchup roster, which is a
+             separate fetch this composable does not make. Stated empty rather than omitted so
+             the gap is visible here rather than inferred from a missing key downstream. */
+          opponentStarters: [],
+          myStarters: [],
+          actualPoints: {},
         }
       } else {
         const myKey = leagueStore.yahooTeams?.find((t: any) => t.is_my_team)?.team_key ?? null
@@ -116,6 +153,11 @@ export function useThisWeekOpponent() {
         const opp = mine.teams.find((t: any) => t.team_key !== myKey)
         if (!opp) return
         opponent.value = {
+          // Yahoo's Fantasy API is not reachable at all (see lib/yahooStatus), so nothing
+          // here is exercised; empty rather than absent, for the same reason as ESPN above.
+          opponentStarters: [],
+          myStarters: [],
+          actualPoints: {},
           opponentKey: String(opp.team_key),
           opponentName: opp.name || 'Opponent',
           opponentLogo:

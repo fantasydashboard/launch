@@ -160,6 +160,8 @@ export function winPctFromMargin(margin: number): number {
 /** One of the opponent's projected starters. */
 export interface OppStarter {
   slot: string
+  /** Needed to ask whether his game is done — the row is otherwise identified only by name. */
+  playerKey: string
   name: string
   position: string
   team?: string
@@ -208,6 +210,9 @@ export interface WeeklyMatchup {
   seatsWon: number
   seatsLost: number
   seatsTied: number
+  /** Points each side has already banked — the part of the score that cannot change. */
+  myBanked: number
+  oppBanked: number
   /** The seat costing you the most. Null when you are not behind at any seat. */
   worstSlot: string
   worstSlotEdge: number
@@ -319,6 +324,23 @@ export function buildWeeklyBoard(input: {
   /** pool teamKey -> display name, for badging whoever else holds a player. */
   teamNames?: Record<string, string>
   /**
+   * The lineup the OPPONENT actually set, in slot order. Empty when unpublished.
+   *
+   * Their starters used to come from assignSlots — our optimiser answering a question nobody
+   * asked. You cannot change their lineup, so an idealised version of it misstates your own
+   * matchup, and once a game is final it rewrites history: a receiver who played on Thursday
+   * and scored badly was quietly benched for them and replaced by someone who had not played.
+   */
+  oppStarterKeys?: string[]
+  /**
+   * Points already BANKED this week, keyed by playerKey. Present only for players whose games
+   * have produced them.
+   *
+   * A projection is a claim about a game that has not happened. Once it has, the projection is
+   * the one number on the page that is definitely wrong, and this replaces it.
+   */
+  actualPoints?: Record<string, number>
+  /**
    * The tiers the ACTIVE RANKING LIST declares, when it declares any.
    *
    * An analyst's weekly file carries a Tier column, and it is a better answer than anything
@@ -331,8 +353,19 @@ export function buildWeeklyBoard(input: {
    */
   tierByKey?: Record<string, number>
 }): WeeklyBoard {
-  const { pool, vorByKey, slots, myTeamKey, currentStarters, freeAgents, opponentByTeam, oppTeamKey, oppTeamName, oppTeamLogo, teamNames, tierByKey } = input
-  const week = (key: string): number => vorByKey[key]?.pointsNextWeek ?? 0
+  const { pool, vorByKey, slots, myTeamKey, currentStarters, freeAgents, opponentByTeam, oppTeamKey, oppTeamName, oppTeamLogo, teamNames, tierByKey, oppStarterKeys, actualPoints } = input
+  /*
+   * What a player is worth to this week's score.
+   *
+   * Banked if his game has produced points, projected otherwise. A projection is a claim about
+   * a game that has not happened; once it has, the projection is the only number on the page
+   * that is definitely wrong. Zero is a real score, so the test is presence in the map rather
+   * than truthiness — a player who was held scoreless has banked nothing, and that is a fact
+   * about him rather than missing data.
+   */
+  const banked = (key: string): boolean => actualPoints ? key in actualPoints : false
+  const week = (key: string): number =>
+    banked(key) ? actualPoints![key] : (vorByKey[key]?.pointsNextWeek ?? 0)
   const meta = new Map(pool.map((p) => [p.playerKey, p]))
   const teamOf = (key: string) => (meta.get(key)?.proTeam ?? '').toUpperCase()
   // An empty map means the schedule is unknown (fetch failed / unsupported week),
@@ -551,7 +584,37 @@ export function buildWeeklyBoard(input: {
         status: p.onIL ? 'IL' : '',
       }))
     if (oppDepth.length) {
-      const oppAssigned = assignSlots(oppDepth, slots, 0).assignedByPos
+      /*
+       * Their real lineup where the platform publishes it; ours only as a fallback.
+       *
+       * assignSlots answers "what is the best they could do", which is a different question
+       * from "what did they do" — and only the second one is your opponent. Sleeper hands us
+       * the set lineup in slot order on a payload we already fetch, so where it exists the
+       * optimiser has nothing to add and one real way to mislead: after a Thursday game it
+       * would bench a receiver who had already played and replace him with someone who had
+       * not, inventing points nobody can score.
+       *
+       * Slot order is the league's own, taken from the same roster_positions that built
+       * `slots`, so the nth starter fills the nth seat.
+       */
+      const onOpp = new Set(oppDepth.map((d) => d.playerKey))
+      const declared = new Set((oppStarterKeys ?? []).filter((k) => onOpp.has(k)))
+      /*
+       * Seat them by eligibility, not by array index.
+       *
+       * The first version paired the nth declared starter with the nth seat, which assumes the
+       * platform's slot order matches ours. It need not: `slots` is aggregated by position and
+       * re-sorted canonically, so any league whose roster_positions run in a different order
+       * would have had its lineup silently transposed — a tight end shown in a flex seat, a
+       * duel drawn against the wrong opponent. Restricting assignSlots to exactly the players
+       * they started keeps the decision theirs and lets the solver do the only part it is
+       * actually good at: which legal seat each body occupies.
+       */
+      const oppAssigned = assignSlots(
+        declared.size ? oppDepth.filter((d) => declared.has(d.playerKey)) : oppDepth,
+        slots,
+        0,
+      ).assignedByPos
       let oppPoints = 0
       const oppStarters: OppStarter[] = []
       for (const [slot, keys] of Object.entries(oppAssigned)) {
@@ -560,6 +623,7 @@ export function buildWeeklyBoard(input: {
           const p = meta.get(k)
           oppStarters.push({
             slot,
+            playerKey: k,
             name: p?.name ?? '—',
             position: p?.position ?? '',
             team: p?.proTeam,
@@ -609,6 +673,10 @@ export function buildWeeklyBoard(input: {
       const seatsLost = contested.filter((d) => d.edge < -SEAT_TIE).length
       const worst = contested.filter((d) => d.edge < -SEAT_TIE)
         .sort((a, b) => a.edge - b.edge)[0] ?? null
+      /* How much of each score is settled. A page reporting 144-125 in the middle of a week
+         is stating two different kinds of number as one, and only this separates them. */
+      const myBanked = starters.reduce((sum, st) => sum + (banked(st.playerKey) ? st.weekPoints : 0), 0)
+      const oppBanked = oppStarters.reduce((sum, o) => sum + (banked(o.playerKey) ? o.weekPoints : 0), 0)
       matchup = {
         opponentName: oppTeamName || 'Opponent',
         opponentLogo: oppTeamLogo || '',
@@ -624,6 +692,8 @@ export function buildWeeklyBoard(input: {
         seatsTied: contested.length - seatsWon - seatsLost,
         worstSlot: worst?.slot ?? '',
         worstSlotEdge: worst?.edge ?? 0,
+        myBanked,
+        oppBanked,
       }
     }
   }

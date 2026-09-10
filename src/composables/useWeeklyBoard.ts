@@ -255,6 +255,10 @@ export function useWeeklyBoard(): {
       oppTeamLogo: oppSvc.opponent.value?.opponentLogo,
       teamNames: src.teamNames.value,
       tierByKey: weekTierByKey.value,
+      /* Their real decision, and the points already on the board — both off the matchup
+         payload useThisWeekOpponent already fetches, so neither costs a request. */
+      oppStarterKeys: oppSvc.opponent.value?.opponentStarters ?? [],
+      actualPoints: oppSvc.opponent.value?.actualPoints ?? {},
     })
   })
 

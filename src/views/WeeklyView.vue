@@ -39,6 +39,11 @@ const ME = '#5ec8e6'
 const OPP = '#e69a4a'
 const daysRemaining = computed(() => (7 - new Date().getDay()) % 7)
 const oppName = computed(() => board.value?.matchup?.opponentName ?? 'Opponent')
+/* Has anything been scored this week? Drives whether the page calls its totals projections. */
+const anyBanked = computed(() => {
+  const m = board.value?.matchup
+  return !!m && (m.myBanked > 0 || m.oppBanked > 0)
+})
 
 /*
  * Has the reading actually moved?
@@ -255,11 +260,19 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             </div>
           </div>
           <div class="shrink-0 text-center">
-            <div class="font-mono text-[10px] text-dark-textMuted">projected</div>
+            <!--
+              "Projected" stops being true the moment a game ends. Mid-week the two totals are
+              part banked and part forecast, and reporting them as one number states two
+              different kinds of thing as though they were the same.
+            -->
+            <div class="font-mono text-[10px] text-dark-textMuted">{{ anyBanked ? 'so far' : 'projected' }}</div>
             <div class="font-mono text-[11px] font-bold" :class="margin >= 0 ? 'text-primary' : 'text-[#FF5C5C]'">
               {{ margin >= 0 ? 'you +' : 'them +' }}{{ Math.abs(margin) }}
             </div>
             <div class="font-mono text-[10px] text-dark-textMuted">{{ winPct }}% to win</div>
+            <div v-if="anyBanked" class="font-mono text-[9px] text-dark-textMuted/70">
+              {{ round(board.matchup.myBanked) }}&ndash;{{ round(board.matchup.oppBanked) }} final &middot; rest projected
+            </div>
           </div>
           <div class="flex min-w-0 items-center justify-end gap-2 text-right">
             <div class="min-w-0">

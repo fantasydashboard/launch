@@ -777,3 +777,87 @@ describe('tiers declared by the ranking list', () => {
     expect(build(flat).filter((r) => r.tierBreak).length).toBe(0)
   })
 })
+
+/*
+ * A week that has started.
+ *
+ * One Thursday game had been played. The opponent had A.J. Brown in their first receiver seat;
+ * he scored badly, and the board — which solved THEIR lineup with assignSlots — quietly benched
+ * him for them and promoted someone who had not played yet. It showed the best week they could
+ * still have rather than the one they were having, and every number on the page was a
+ * projection for a game already in the books.
+ */
+describe('a week in progress', () => {
+  const rows = [
+    { k: 'me_qb', pos: 'QB', p: 20, team: 'me' },
+    { k: 'me_wr1', pos: 'WR', p: 18, team: 'me' },
+    { k: 'me_wr2', pos: 'WR', p: 12, team: 'me' },
+    // Theirs: the one who already played, plus a better-projected body on their bench.
+    { k: 'op_qb', pos: 'QB', p: 20, team: 'op' },
+    { k: 'op_played', pos: 'WR', p: 19, team: 'op' },
+    { k: 'op_bench', pos: 'WR', p: 17, team: 'op' },
+  ]
+  const build = (opts: { oppStarterKeys?: string[]; actualPoints?: Record<string, number> }) =>
+    buildWeeklyBoard({
+      pool: rows.map((r) => ({
+        playerKey: r.k, name: r.k, position: r.pos, teamKey: r.team, proTeam: 'DET',
+      })) as never,
+      vorByKey: Object.fromEntries(rows.map((r) => [r.k, {
+        playerKey: r.k, position: r.pos, pointsRos: r.p * 17, vorRos: r.p, pointsNextWeek: r.p,
+        vorWeek: r.p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+      }])) as never,
+      slots: { QB: 1, WR: 1 },
+      myTeamKey: 'me',
+      currentStarters: [],
+      freeAgents: [],
+      opponentByTeam: { DET: { opp: 'CHI', home: true } },
+      oppTeamKey: 'op',
+      oppTeamName: 'Them',
+      ...opts,
+    })
+
+  it('starts who they actually started, however it went', () => {
+    // He scored 3. Projected 19, and their bench body projects 17 — so the optimiser would
+    // drop him. He is in their lineup and cannot come out of it.
+    const board = build({
+      oppStarterKeys: ['op_qb', 'op_played'],
+      actualPoints: { op_played: 3 },
+    })
+    const wr = board.matchup!.oppStarters.find((o) => o.position === 'WR')
+    expect(wr?.name).toBe('op_played')
+  })
+
+  it('counts what he banked, not what he was going to do', () => {
+    const board = build({
+      oppStarterKeys: ['op_qb', 'op_played'],
+      actualPoints: { op_played: 3 },
+    })
+    // 20 projected at quarterback plus 3 banked at receiver, not 20 + 19.
+    expect(board.matchup!.oppPoints).toBe(23)
+  })
+
+  it('treats a scoreless game as a score, not as missing data', () => {
+    // Zero is a fact about a player who played. Falling back to his projection there would
+    // be the same error as the lineup rewrite, one row down.
+    const board = build({
+      oppStarterKeys: ['op_qb', 'op_played'],
+      actualPoints: { op_played: 0 },
+    })
+    expect(board.matchup!.oppPoints).toBe(20)
+  })
+
+  it('solves their lineup as before when the platform publishes none', () => {
+    const board = build({})
+    const wr = board.matchup!.oppStarters.find((o) => o.position === 'WR')
+    expect(wr?.name).toBe('op_played') // the optimiser's pick, on projection alone
+    expect(board.matchup!.oppPoints).toBe(39)
+  })
+
+  it('banks points on your own side too', () => {
+    const board = build({ actualPoints: { me_wr1: 2 } })
+    const mine = board.starters.find((s) => s.slot === 'WR')
+    // Your own receiver played and scored 2, so he is worth 2 — and the OTHER receiver, who
+    // has not played, is now the better body. That is a real decision, unlike the opponent's.
+    expect(mine?.weekPoints).toBe(12)
+  })
+})
