@@ -1,5 +1,6 @@
 import { computeReplacementDetail, computeReplacementLevels, type RepPlayer } from './footballReplacement'
 import type { OpportunityTag } from './footballOpportunity'
+import { canonicalPosition } from '@/trades/rosterSlots'
 
 export interface PlayerVor {
   playerKey: string
@@ -23,7 +24,9 @@ export interface FootballVorInput {
   opportunityByKey?: Record<string, OpportunityTag> // depth-chart/injury tag by key
 }
 
-const normPos = (pos: string): string => (pos || '').toUpperCase().split(/[,/|]/)[0].trim()
+/* Folds team defence before splitting: ESPN spells the position "D/ST" and this split
+   exists for multi-eligible players, so the slash turned a defence into "D". */
+const normPos = (pos: string): string => canonicalPosition((pos || '').split(/[,/|]/)[0])
 
 function repPlayers(points: Record<string, number>, positionByKey: Record<string, string>): RepPlayer[] {
   return Object.keys(points).map((k) => ({ playerKey: k, position: positionByKey[k] ?? '', points: points[k] }))

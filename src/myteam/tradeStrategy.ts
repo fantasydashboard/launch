@@ -16,7 +16,7 @@
  * else's motivation has to be traceable to a number on their roster or their record — "their
  * RB2 is below replacement and they are 1-4" — never a vibe about what a manager might want.
  */
-import { FLEX_ELIGIBILITY } from '@/trades/rosterSlots'
+import { FLEX_ELIGIBILITY, canonicalPosition } from '@/trades/rosterSlots'
 
 /** Where a team stands at one position, in the only terms that create urgency. */
 export interface PositionNeed {
@@ -117,7 +117,7 @@ export function readNeeds(
 
   const out: Record<string, PositionNeed> = {}
   for (const s of starters) {
-    const pos = (s.position || '').toUpperCase().split(/[,/|]/)[0].trim()
+    const pos = canonicalPosition((s.position || '').split(/[,/|]/)[0])
     if (!pos) continue
     const prev = out[pos]
     if (!prev || s.vor < prev.worstStarterVor) {

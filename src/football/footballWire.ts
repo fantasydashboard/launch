@@ -10,6 +10,7 @@ import { lineupMarginal } from './lineupMarginal'
 import type { PlayerVor } from './footballVor'
 import { startablePositions } from '@/trades/rosterSlots'
 import { assignTiers } from '@/draft/room/tierCliffs'
+import { canonicalPosition } from '@/trades/rosterSlots'
 
 /** A free agent joined to its VOR row (the Wire's currency). */
 export interface WireVorRow {
@@ -63,7 +64,9 @@ export interface FootballWire {
 }
 
 const BOARD_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
-const normPos = (pos: string): string => (pos || '').toUpperCase().split(/[,/|]/)[0].trim()
+/* Folds team defence before splitting: ESPN spells the position "D/ST" and this split
+   exists for multi-eligible players, so the slash turned a defence into "D". */
+const normPos = (pos: string): string => canonicalPosition((pos || '').split(/[,/|]/)[0])
 const faKey = (fa: { playerKey?: string; name: string }): string => fa.playerKey ?? `fa:${fa.name}`
 
 /**

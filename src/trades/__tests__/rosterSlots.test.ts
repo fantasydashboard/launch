@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { startableCounts, startableFraction, startablePositions, parseRosterSlots, FLEX_ELIGIBILITY, DEFAULT_SLOTS } from '../rosterSlots'
+import { startableCounts, startableFraction, startablePositions, parseRosterSlots, FLEX_ELIGIBILITY, DEFAULT_SLOTS, canonicalPosition } from '../rosterSlots'
 
 describe('parseRosterSlots', () => {
   it('parses Yahoo roster_positions, dropping bench/IL', () => {
@@ -261,5 +261,39 @@ describe('ESPN football lineup slots', () => {
     const total = Object.values(wrong).reduce((a, b) => a + b, 0)
     expect(total).toBe(6)
     expect(Object.keys(wrong)).not.toContain('QB')
+  })
+})
+
+/*
+ * ESPN spells team defence "D/ST"; its own lineup slot 16 parses to "DEF".
+ *
+ * So the slot and the only player who can fill it never matched, and the board showed an open
+ * DEF seat above a bench holding the Steelers. The second half is worse: every position
+ * normaliser in the codebase splits on "/" to handle multi-eligible players, so "D/ST" came
+ * out as "D" — which is why the bench row's rank read "D9". Fold before anything splits, or
+ * the slash eats the position.
+ */
+describe('team defence has one name', () => {
+  it('folds every spelling to DEF', () => {
+    for (const raw of ['D/ST', 'DST', 'd-st', 'DEF', 'Defense', ' D ']) {
+      expect(canonicalPosition(raw)).toBe('DEF')
+    }
+  })
+
+  it('leaves every other position alone', () => {
+    for (const raw of ['QB', 'rb', 'WR', 'TE', 'K', 'SS', '1B']) {
+      expect(canonicalPosition(raw)).toBe(raw.trim().toUpperCase())
+    }
+  })
+
+  it('lets an ESPN defence fill the ESPN DEF slot', () => {
+    // The two halves that never met: slot 16 from the lineup, "D/ST" from the player.
+    const slots = parseRosterSlots(
+      'espn',
+      { rosterSettings: { lineupSlotCounts: { '0': 1, '16': 1 } } },
+      'football',
+    )
+    expect(slots.DEF).toBe(1)
+    expect(canonicalPosition('D/ST')).toBe('DEF')
   })
 })

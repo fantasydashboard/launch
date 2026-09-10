@@ -12,6 +12,7 @@
 import { type PointsSide } from '@/myteam/pointsValue'
 import { weeklyRate, ZERO_VALUE, type PlayerValue, type ValueByKey } from '@/myteam/playerValue'
 import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
+import { canonicalPosition } from '@/trades/rosterSlots'
 import { injuryTier, injuryDiscount, type InjuryTier } from './injuryStatus'
 
 export interface PointsPoolPlayer {
@@ -83,10 +84,18 @@ const isPitcherSlot = (pos: string) => PITCHER_SLOTS.has(pos.toUpperCase())
 
 /** Split a comma/slash-delimited position string into eligible slots. */
 export function parseEligible(p: PointsPoolPlayer): string[] {
-  if (p.eligiblePositions?.length) return p.eligiblePositions
-  return String(p.position || '')
+  if (p.eligiblePositions?.length) return p.eligiblePositions.map(canonicalPosition)
+  /*
+   * Fold team defence BEFORE splitting. ESPN spells the position "D/ST", and this split is
+   * there to handle multi-eligible players — so the slash ate the position and a defence came
+   * out as "D", matching neither the DEF slot nor anything else on the page.
+   */
+  const raw = String(p.position || '')
+  const folded = canonicalPosition(raw)
+  if (folded === 'DEF') return ['DEF']
+  return raw
     .split(/[,/|]/)
-    .map((s) => s.trim().toUpperCase())
+    .map((s) => canonicalPosition(s))
     .filter(Boolean)
 }
 

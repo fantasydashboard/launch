@@ -3,7 +3,7 @@ import { parseEligible, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { PlayerVor } from './footballVor'
 import type { OpportunityTag } from './footballOpportunity'
 import type { AvailablePlayer } from '@/players/types'
-import { FLEX_ELIGIBILITY, startablePositions } from '@/trades/rosterSlots'
+import { FLEX_ELIGIBILITY, startablePositions, canonicalPosition } from '@/trades/rosterSlots'
 import { assignTiers } from '@/draft/room/tierCliffs'
 
 export interface WeeklyStarter {
@@ -293,7 +293,9 @@ export interface WeeklyBoard {
 }
 
 const SLOT_ORDER = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPER_FLEX', 'K', 'DEF']
-const normPosOf = (p: string) => (p || '').toUpperCase().split(/[,/|]/)[0].trim()
+/* Folds team defence before splitting: ESPN spells the position "D/ST" and this split
+   exists for multi-eligible players, so the slash turned a defence into "D". */
+const normPosOf = (p: string) => canonicalPosition((p || '').split(/[,/|]/)[0])
 const slotIdx = (s: string) => { const i = SLOT_ORDER.indexOf(s.toUpperCase()); return i < 0 ? SLOT_ORDER.length : i }
 const faKey = (fa: { playerKey?: string; name: string }): string => fa.playerKey ?? `fa:${fa.name}`
 

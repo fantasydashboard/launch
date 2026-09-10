@@ -1,3 +1,4 @@
+import { canonicalPosition } from '@/trades/rosterSlots'
 export type OpportunityTag = 'starter' | 'backup-elevated' | 'committee' | 'deep-bench' | ''
 
 export interface OppPlayer {
@@ -11,7 +12,9 @@ export interface OppPlayer {
 /** Sleeper injury statuses that mean the player will not play. */
 const OUT_STATUSES = new Set(['OUT', 'IR', 'PUP', 'SUSP', 'NA', 'DNR', 'DOUBTFUL'])
 const isOut = (s?: string | null): boolean => OUT_STATUSES.has(String(s ?? '').toUpperCase())
-const normPos = (pos: string): string => (pos || '').toUpperCase().split(/[,/|]/)[0].trim()
+/* Folds team defence before splitting: ESPN spells the position "D/ST" and this split
+   exists for multi-eligible players, so the slash turned a defence into "D". */
+const normPos = (pos: string): string => canonicalPosition((pos || '').split(/[,/|]/)[0])
 
 /**
  * Surface an opportunity tag per player from depth-chart order + team injuries.

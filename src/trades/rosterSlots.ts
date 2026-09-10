@@ -14,6 +14,25 @@ const ESPN_NFL_SLOT_TO_POS: Record<string, string> = {
   '7': 'SUPER_FLEX', '16': 'DEF', '17': 'K', '23': 'FLEX',
 }
 
+/**
+ * Team-defence spellings, folded to one canonical label.
+ *
+ * ESPN calls the position "D/ST" while its own lineup slot 16 parses to "DEF", so the slot and
+ * the player who fills it never matched: the board showed an open DEF seat above a bench
+ * holding the Steelers. Worse, every position normaliser in the codebase splits on "/" to
+ * handle multi-eligible players, so "D/ST" came out as "D" — which is why the row's rank read
+ * "D9". Fold before anything splits, or the slash eats the position.
+ *
+ * Sleeper says DEF, Yahoo says DEF, ESPN says D/ST. One word downstream.
+ */
+export const DEF_ALIASES = new Set(['D/ST', 'DST', 'D-ST', 'DEF', 'D', 'DEFENSE'])
+
+/** Canonical position label: folds team-defence spellings, leaves everything else alone. */
+export function canonicalPosition(raw: string): string {
+  const up = String(raw || '').trim().toUpperCase()
+  return DEF_ALIASES.has(up) ? 'DEF' : up
+}
+
 /** Sleeper NFL flex slot labels -> canonical bucket. Non-flex labels pass through. */
 const SLEEPER_NFL_FLEX_ALIASES: Record<string, string> = {
   WRRB_FLEX: 'FLEX', REC_FLEX: 'FLEX', FLEX: 'FLEX', SUPER_FLEX: 'SUPER_FLEX',

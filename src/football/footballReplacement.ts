@@ -1,4 +1,5 @@
 import { FLEX_ELIGIBILITY } from '@/trades/rosterSlots'
+import { canonicalPosition } from '@/trades/rosterSlots'
 
 /** A pool player reduced to what the replacement baseline needs. */
 export interface RepPlayer {
@@ -21,7 +22,9 @@ const DEDICATED = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 /** Flex slot keys, from the roster-slot parser. */
 const FLEX_SLOTS = ['FLEX', 'SUPER_FLEX']
 
-const normPos = (pos: string): string => (pos || '').toUpperCase().split(/[,/|]/)[0].trim()
+/* Folds team defence before splitting: ESPN spells the position "D/ST" and this split
+   exists for multi-eligible players, so the slash turned a defence into "D". */
+const normPos = (pos: string): string => canonicalPosition((pos || '').split(/[,/|]/)[0])
 
 /**
  * Standard value-based-drafting replacement level, calibrated to the league.

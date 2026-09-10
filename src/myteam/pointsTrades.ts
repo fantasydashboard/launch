@@ -14,6 +14,7 @@ import {
   type PositionNeed, type TeamSituation, type Rung,
 } from '@/myteam/tradeStrategy'
 import { parseEligible, type PointsPoolPlayer } from '@/myteam/pointsTeam'
+import { canonicalPosition } from '@/trades/rosterSlots'
 import { type ValueByKey } from '@/myteam/playerValue'
 
 export interface TradeSide {
@@ -177,7 +178,7 @@ export function buildPointsTrades(
       .slice(0, CAND)
   /** A player's primary position, from the pool meta already indexed above. */
   const posOf = (key: string): string =>
-    (meta.get(key)?.position || '').toUpperCase().split(/[,/|]/)[0].trim()
+    canonicalPosition((meta.get(key)?.position || '').split(/[,/|]/)[0])
 
   const mySurplus = offerCandidates(myDp, myBase.started)
 
