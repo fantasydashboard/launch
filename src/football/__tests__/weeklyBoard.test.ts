@@ -926,3 +926,62 @@ describe('a zero before kickoff is not a score', () => {
     expect(build({ DET: 'in', KC: 'pre' }).starters.reduce((t, s) => t + s.weekPoints, 0)).toBe(0)
   })
 })
+
+/*
+ * A starter we cannot resolve is our bug, not their empty seat.
+ *
+ * Sleeper marks an unfilled slot with the string "0", and `.filter(Boolean)` keeps it because
+ * "0" is truthy — so it reached the starter list, matched nobody, and vanished. That left the
+ * opponent a man short in a way indistinguishable from our failing to resolve a real player,
+ * and the two want opposite handling: a slot they left empty is worth zero and should read
+ * that way, while a player we could not match must not be quietly staged as one.
+ */
+describe('an opponent lineup we could only partly read', () => {
+  const rows = [
+    { k: 'me_qb', pos: 'QB', p: 20, team: 'me' },
+    { k: 'me_wr', pos: 'WR', p: 18, team: 'me' },
+    { k: 'op_qb', pos: 'QB', p: 19, team: 'op' },
+    { k: 'op_started', pos: 'WR', p: 4, team: 'op' },   // played badly, still in their lineup
+    { k: 'op_bench', pos: 'WR', p: 21, team: 'op' },    // the optimiser's temptation
+  ]
+  const build = (oppStarterKeys: string[]) => buildWeeklyBoard({
+    pool: rows.map((r) => ({
+      playerKey: r.k, name: r.k, position: r.pos, teamKey: r.team, proTeam: 'DET',
+    })) as never,
+    vorByKey: Object.fromEntries(rows.map((r) => [r.k, {
+      playerKey: r.k, position: r.pos, pointsRos: r.p * 17, vorRos: r.p, pointsNextWeek: r.p,
+      vorWeek: r.p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+    }])) as never,
+    slots: { QB: 1, WR: 1 },
+    myTeamKey: 'me',
+    currentStarters: [],
+    freeAgents: [],
+    opponentByTeam: { DET: { opp: 'CHI', home: true } },
+    oppTeamKey: 'op',
+    oppTeamName: 'Them',
+    oppStarterKeys,
+  })
+
+  it('keeps their man in his seat when every starter resolves', () => {
+    const wr = build(['op_qb', 'op_started']).matchup!.oppStarters.find((o) => o.position === 'WR')
+    expect(wr?.name).toBe('op_started')
+  })
+
+  it('fills the seat rather than leaving a hole when one does not resolve', () => {
+    // 'ghost' is a real player id we failed to match, not a "0" sentinel — those are stripped
+    // upstream. Understating them with our own bug is the worst direction to be wrong.
+    const board = build(['op_qb', 'op_started', 'ghost'])
+    expect(board.matchup!.oppStarters).toHaveLength(2)
+    // And their actual starter still keeps his seat; only the unaccounted one is filled.
+    expect(board.matchup!.oppStarters.find((o) => o.position === 'WR')?.name).toBe('op_started')
+  })
+
+  it('never lets the filler pass displace a declared starter', () => {
+    // The bench body outprojects him more than two to one. Sorting the declared to the front
+    // and trusting the solver does not hold — it optimises by value and ignores input order.
+    const board = build(['op_qb', 'op_started', 'ghost'])
+    const names = board.matchup!.oppStarters.map((o) => o.name)
+    expect(names).toContain('op_started')
+    expect(names).not.toContain('op_bench')
+  })
+})

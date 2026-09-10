@@ -620,7 +620,19 @@ export function buildWeeklyBoard(input: {
        * `slots`, so the nth starter fills the nth seat.
        */
       const onOpp = new Set(oppDepth.map((d) => d.playerKey))
-      const declared = new Set((oppStarterKeys ?? []).filter((k) => onOpp.has(k)))
+      const named = oppStarterKeys ?? []
+      const declared = new Set(named.filter((k) => onOpp.has(k)))
+      /*
+       * A starter we could not resolve is our bug, not their empty seat.
+       *
+       * Seating only the ones that matched leaves a hole indistinguishable from a slot they
+       * genuinely left unfilled — and it understates their score using our own failure, which
+       * is the worst direction to be wrong in a matchup. The platform's empty-slot sentinel is
+       * stripped upstream, so anything left here that does not resolve is a matching problem.
+       * Where that happens the remaining seats are filled from their bench, which is at worst
+       * the old optimiser behaviour on the part we could not read.
+       */
+      const unresolved = named.length - declared.size
       /*
        * Seat them by eligibility, not by array index.
        *
@@ -632,11 +644,39 @@ export function buildWeeklyBoard(input: {
        * they started keeps the decision theirs and lets the solver do the only part it is
        * actually good at: which legal seat each body occupies.
        */
-      const oppAssigned = assignSlots(
-        declared.size ? oppDepth.filter((d) => declared.has(d.playerKey)) : oppDepth,
-        slots,
-        0,
-      ).assignedByPos
+      /*
+       * Two passes, so their decision cannot be optimised away.
+       *
+       * Sorting the declared players to the front and hoping the solver prefers them does not
+       * work — assignSlots optimises by value and ignores input order, so a starter who scored
+       * badly would still lose his seat to a bench body, which is the whole bug. Seat the
+       * declared players alone first, then fill only the seats still open from the rest of the
+       * roster. Deterministic, and the second pass runs only when a starter went unresolved.
+       */
+      let oppAssigned: Record<string, string[]>
+      if (declared.size) {
+        oppAssigned = assignSlots(
+          oppDepth.filter((d) => declared.has(d.playerKey)), slots, 0,
+        ).assignedByPos
+        if (unresolved > 0) {
+          const open: Record<string, number> = {}
+          for (const [slot, n] of Object.entries(slots)) {
+            const taken = (oppAssigned[slot] ?? []).length
+            const spare = Number(n) - taken
+            if (spare > 0) open[slot] = spare
+          }
+          if (Object.keys(open).length) {
+            const filler = assignSlots(
+              oppDepth.filter((d) => !declared.has(d.playerKey)), open, 0,
+            ).assignedByPos
+            for (const [slot, keys] of Object.entries(filler)) {
+              oppAssigned[slot] = [...(oppAssigned[slot] ?? []), ...keys]
+            }
+          }
+        }
+      } else {
+        oppAssigned = assignSlots(oppDepth, slots, 0).assignedByPos
+      }
       let oppPoints = 0
       const oppStarters: OppStarter[] = []
       for (const [slot, keys] of Object.entries(oppAssigned)) {

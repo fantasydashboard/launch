@@ -36,6 +36,19 @@ export interface ThisWeekOpponent {
   actualPoints: Record<string, number>
 }
 
+/**
+ * Sleeper marks an unfilled starting slot with the string "0".
+ *
+ * `.filter(Boolean)` keeps it, because "0" is a truthy string — so it survived into the
+ * starter list, matched no player, and disappeared downstream. That left a seat missing from
+ * the opponent's lineup which is indistinguishable from OUR failing to resolve a real player,
+ * and the two want opposite handling: a slot they left empty is worth zero and should read
+ * that way, while a player we could not match is a bug we must not quietly stage as one.
+ */
+const EMPTY_SLOT = new Set(['0', '', 'null', 'undefined'])
+const liveStarters = (raw: unknown): string[] =>
+  (Array.isArray(raw) ? raw : []).map(String).filter((k) => !EMPTY_SLOT.has(k))
+
 export function useThisWeekOpponent() {
   const opponent = ref<ThisWeekOpponent | null>(null)
   const loading = ref(false)
@@ -104,8 +117,8 @@ export function useThisWeekOpponent() {
           opponentName: names[oppKey] || `Team ${oppKey}`,
           opponentLogo: logos[oppKey] || '',
           week,
-          opponentStarters: (oppRow.starters ?? []).filter(Boolean).map(String),
-          myStarters: (mine.starters ?? []).filter(Boolean).map(String),
+          opponentStarters: liveStarters(oppRow.starters),
+          myStarters: liveStarters(mine.starters),
           actualPoints: points,
         }
       } else if (leagueStore.activePlatform === 'espn') {
