@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildWeeklyBoard, winPctFromMargin } from '../weeklyBoard'
+import { buildWeeklyBoard, winPctFromMargin, TIER_DEPTH } from '../weeklyBoard'
 import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { PlayerVor } from '../footballVor'
 import type { AvailablePlayer } from '@/players/types'
@@ -563,7 +563,9 @@ describe('what the weekly board says out loud', () => {
     })
     const breaks = board.board.RB.filter((r) => r.tierBreak)
     // Never a line captioned "-0 pts", which is a cliff claiming no drop at all.
-    for (const b of breaks) expect(b.tierDrop ?? 0).toBeGreaterThanOrEqual(2)
+    // Never a line captioned "-0 pts". The bar is relative to the column now, so the
+    // assertion is on what a reader can see rather than on a points constant I picked.
+    for (const b of breaks) expect(Math.round(b.tierDrop ?? 0)).toBeGreaterThanOrEqual(1)
     // And the one genuine cliff is found.
     expect(breaks.length).toBe(1)
   })
@@ -628,5 +630,90 @@ describe('a spectator with no roster', () => {
     // With no roster of your own there is nothing to compare against, and it must not pretend.
     expect(rb!.freeBeatsMine).toBe(false)
     expect(rb!.myStarterName).toBe('')
+  })
+})
+
+
+/*
+ * Tiers have to actually appear.
+ *
+ * The first cure for one-man tiers was an absolute floor of two points, and it was a number
+ * taken off ROUNDED values in a screenshot — a real gap of 1.7 prints as "-2" and fails a
+ * >= 2 test. Nearly every tier on the weekly board vanished and the column went back to being
+ * the flat list tiers exist to break up. An absolute threshold could not have been right in
+ * any case: it has to hold for a quarterback column spanning fourteen points and a kicker
+ * column spanning four, in whatever scoring a league uses.
+ */
+describe('tiers on a weekly position column', () => {
+  const column = (vals: number[]) => {
+    const rows = vals.map((v, i) => ({ k: 'p' + i, p: v }))
+    return buildWeeklyBoard({
+      pool: rows.map((r) => ({
+        playerKey: r.k, name: r.k, position: 'RB', teamKey: 'T' + (Number(r.k.slice(1)) % 10), proTeam: 'DET',
+      })) as never,
+      vorByKey: Object.fromEntries(rows.map((r) => [r.k, {
+        playerKey: r.k, position: 'RB', pointsRos: r.p * 17, vorRos: r.p, pointsNextWeek: r.p,
+        vorWeek: r.p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+      }])) as never,
+      slots: { RB: 2, FLEX: 1 },
+      myTeamKey: 'T0',
+      currentStarters: [],
+      freeAgents: [],
+      opponentByTeam: { DET: { opp: 'CHI', home: true } },
+    }).board.RB
+  }
+
+  /** A live-shaped column: a top, a compressed middle, then a long flat free-agent tail. */
+  const withTail = (head: number[]) => {
+    const out = [...head]
+    for (let i = 0; i < 90; i++) out.push(Math.max(0.2, 2.3 - i * 0.025))
+    return out
+  }
+
+  const NORMAL = withTail([
+    23.8, 21.4, 20.3, 19.9, 19.6, 17.4, 17.1, 16.9, 16.7, 16.5, 16.2, 15.9, 15.7,
+    15.4, 15.1, 14.8, 14.6, 14.3, 14.0, 13.8, 13.5, 13.1, 12.6, 12.2, 11.7, 11.3,
+    10.8, 10.2, 9.7, 9.1, 8.6, 8.0, 7.4, 6.8, 6.1, 5.5, 4.9, 4.2, 3.6, 3.0, 2.4,
+  ])
+  // The live receiver column: every displayed gap around a point, one true cliff.
+  const FLAT = withTail([
+    21.2, 20.4, 19.8, 17.3, 17.0, 16.6, 16.4, 16.2, 16.0, 15.8, 15.5, 15.2, 14.9,
+    14.7, 14.5, 14.2, 14.0, 13.8, 13.5, 13.2, 12.9, 12.5, 12.1, 11.8, 11.4, 11.0,
+    10.6, 10.1, 9.6, 9.2, 8.7, 8.1, 7.5, 6.9, 6.2, 5.6, 5.0, 4.3, 3.7, 3.1, 2.5,
+  ])
+
+  it('draws tiers on an ordinary column', () => {
+    const breaks = column(NORMAL).filter((r) => r.tierBreak)
+    expect(breaks.length).toBeGreaterThan(1)
+  })
+
+  it('still draws one on a column that is genuinely flat', () => {
+    // Not zero. A compressed column with a single real cliff has a single real tier, and
+    // reporting none is the failure that started this.
+    expect(column(FLAT).filter((r) => r.tierBreak).length).toBeGreaterThan(0)
+  })
+
+  it('puts every tier where a reader can see it', () => {
+    for (const vals of [NORMAL, FLAT]) {
+      const rows = column(vals)
+      const shown = rows.slice(0, TIER_DEPTH)
+      expect(rows.filter((r) => r.tierBreak).length).toBe(shown.filter((r) => r.tierBreak).length)
+    }
+  })
+
+  it('never captions a cliff with no drop', () => {
+    for (const vals of [NORMAL, FLAT]) {
+      for (const b of column(vals).filter((r) => r.tierBreak)) {
+        expect(Math.round(b.tierDrop ?? 0)).toBeGreaterThanOrEqual(1)
+      }
+    }
+  })
+
+  it('keeps tier numbers ascending with no repeats', () => {
+    for (const vals of [NORMAL, FLAT]) {
+      const seen = column(vals).filter((r) => r.tierBreak).map((r) => r.tier)
+      expect(seen).toEqual([...new Set(seen)])
+      expect([...seen].sort((a, b) => a - b)).toEqual(seen)
+    }
   })
 })

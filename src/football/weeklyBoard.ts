@@ -80,12 +80,29 @@ export interface WeeklyMove {
 export const MIN_MOVE_GAIN = 2
 
 /**
- * Points of separation a tier break has to be worth before it earns a line on the page.
+ * How much bigger than a normal gap a drop has to be before it counts as a cliff.
  *
- * Same figure as MIN_MOVE_GAIN and for the same reason: below two points a weekly projection
- * is not separating anybody, so a line drawn there is decoration claiming to be information.
+ * This was an absolute two points, and that was a number I guessed off ROUNDED values in a
+ * screenshot: a real gap of 1.7 prints as "-2" and fails a >= 2 test, so nearly every tier on
+ * the weekly board disappeared and the column went back to being a flat list — the exact
+ * problem tiers exist to solve, reintroduced by the fix for the opposite problem.
+ *
+ * An absolute threshold cannot be right anyway. It has to hold for a quarterback column
+ * spanning fourteen points and a kicker column spanning four, in whatever scoring a league
+ * happens to use. So the test is relative: a cliff is a gap several times the typical gap in
+ * that same column. Nothing to re-tune per position, per sport or per scoring system.
+ *
+ * Three times the median, with a small absolute floor so a break can never print "-0 pts".
  */
-export const MIN_TIER_DROP = 2
+/** How many rows the view shows, and therefore how deep tiering runs. Kept in step with
+ *  WeeklyView's BOARD_LIMIT — tiering a population nobody sees is how the Wire lost its. */
+export const TIER_DEPTH = 30
+
+export const TIER_DROP_MULTIPLE = 3
+export const MIN_TIER_DROP_FLOOR = 0.75
+
+/** A drop worth this share of the column's whole spread is a cliff whatever the median says. */
+export const TIER_SPREAD_SHARE = 0.2
 
 export interface WeeklyStreamer {
   player: AvailablePlayer
@@ -647,7 +664,13 @@ export function buildWeeklyBoard(input: {
      board cuts on, so "tier" means one thing across the product. A flat column of forty
      receivers hides the only thing the reader is looking for: where the drop-off is. */
   const tierUp = (rows: WeeklyBoardRow[]): WeeklyBoardRow[] => {
-    const byKey = assignTiers(rows.map((r) => ({ playerKey: r.playerKey, value: r.weekPoints })))
+    /* Tier the rows that are displayed. The full column carries every free agent at the
+       position — a hundred-odd bodies whose gaps would take every cut assignTiers has to
+       spend, exactly as they did on the Wire's board. */
+    const byKey = assignTiers(
+      [...rows].sort((a, b) => b.weekPoints - a.weekPoints).slice(0, TIER_DEPTH)
+        .map((r) => ({ playerKey: r.playerKey, value: r.weekPoints })),
+    )
     let prevTier = 0
     let prevPts = 0
     /*
@@ -692,6 +715,37 @@ export function buildWeeklyBoard(input: {
      * numbers in place would print "TIER 1" then "TIER 6" and invite the reader to wonder what
      * happened to the four in between.
      */
+    /*
+     * The bar, measured from this column rather than assumed.
+     *
+     * Median gap among the rows a reader can actually see — the tail is excluded for the same
+     * reason it is excluded from tiering itself, and because a hundred backups separated by
+     * hundredths would drag the median to nothing and let every gap qualify.
+     */
+    const shownRows = walk.slice(0, TIER_DEPTH)
+    const gaps: number[] = []
+    for (let i = 1; i < shownRows.length; i++) {
+      gaps.push(shownRows[i - 1].weekPoints - shownRows[i].weekPoints)
+    }
+    const sortedGaps = [...gaps].sort((a, b) => a - b)
+    const medianGap = sortedGaps.length ? sortedGaps[Math.floor(sortedGaps.length / 2)] : 0
+    /*
+     * ...and a ceiling on that bar, because a short column has a noisy median.
+     *
+     * A five-man column with one huge cliff has its median dragged up by the sparse rows
+     * either side of it, so three times the median came out at twenty-one and rejected a
+     * nineteen-point drop — the most obvious cliff in the fixture, missed by the rule meant to
+     * find cliffs. A gap worth a fifth of the whole column's spread is a cliff whatever the
+     * median says, so it clears on that alone.
+     */
+    const spread = shownRows.length
+      ? shownRows[0].weekPoints - shownRows[shownRows.length - 1].weekPoints
+      : 0
+    const bar = Math.max(
+      MIN_TIER_DROP_FLOOR,
+      Math.min(TIER_DROP_MULTIPLE * medianGap, TIER_SPREAD_SHARE * spread),
+    )
+
     let shown = 1
     let first = true
     for (const r of walk) {
@@ -699,7 +753,7 @@ export function buildWeeklyBoard(input: {
       // The drop is the gap across the boundary — this row against the one directly above it,
       // which is what "separation from the tier above" has always meant here.
       const drop = prevPts - r.weekPoints
-      if (!first && raw > prevTier && drop >= MIN_TIER_DROP) {
+      if (!first && raw > prevTier && drop >= bar) {
         shown += 1
         r.tier = shown
         r.tierBreak = true
