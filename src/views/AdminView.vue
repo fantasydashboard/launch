@@ -76,6 +76,34 @@
 
       <!-- ══ METRICS TAB ══ -->
       <template v-if="adminTab === 'metrics'">
+      <!--
+        Yahoo access, checkable on demand.
+        OAuth and Fantasy API access are separate grants and only the first has ever worked.
+        Yahoo publishes no status page, ticket or support address, so the only way to learn
+        whether the entitlement has landed is to make a real call — which until now meant
+        pasting a snippet into a browser console every few weeks.
+      -->
+      <section class="section">
+        <div class="section-label">🔌 Yahoo Fantasy API access</div>
+        <div style="padding:12px 0;display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <button class="tf-btn" :disabled="yahooChecking" @click="checkYahooAccess()">
+              {{ yahooChecking ? 'Checking…' : 'Check now' }}
+            </button>
+            <span style="font-family:monospace;font-size:11px;opacity:.7;">
+              real call through the yahoo-api function — same path a league load takes
+            </span>
+          </div>
+          <div v-if="yahooCheck" style="display:flex;flex-direction:column;gap:6px;">
+            <div style="font-family:monospace;font-size:13px;"
+                 :style="{ color: yahooCheck.ok ? '#7ee787' : '#e69a4a' }">
+              HTTP {{ yahooCheck.status || '—' }} · {{ yahooVerdict }}
+            </div>
+            <pre style="font-family:monospace;font-size:10px;opacity:.6;white-space:pre-wrap;margin:0;max-height:140px;overflow:auto;">{{ yahooCheck.detail }}</pre>
+          </div>
+        </div>
+      </section>
+
       <section class="section">
         <div class="section-label">📊 Key Metrics
           <span class="filter-badge">{{ activeFilterLabel }}</span>
@@ -886,6 +914,60 @@ const sortDir = ref<'asc'|'desc'>('desc')
 const noPassPct = computed(() => {
   if (!kpis.value.totalUsers) return '0'
   return ((kpis.value.noPassUsers / kpis.value.totalUsers) * 100).toFixed(0)
+})
+
+/*
+ * Is Yahoo's Fantasy API entitlement live yet?
+ *
+ * OAuth and API ACCESS are two separate grants and only the first has ever worked: sign-in
+ * completes, tokens refresh, and every Fantasy call returns 403 "not authorized to perform
+ * this action" because sports.yahoo.com/developer/access never approved these credentials.
+ * Yahoo publishes no status page, ticket or support address, so the only way to learn the
+ * answer is to make the call — and until now that meant pasting a snippet into a console.
+ *
+ * Goes through the existing yahoo-api edge function, so it exercises exactly the path a real
+ * league load takes: stored token, refresh if needed, Fantasy endpoint. Nothing is mocked and
+ * no credential is handled here — the function reads the token server-side from its own row.
+ */
+const yahooCheck = ref<{ status: number; ok: boolean; detail: string } | null>(null)
+const yahooChecking = ref(false)
+async function checkYahooAccess() {
+  yahooChecking.value = true
+  yahooCheck.value = null
+  try {
+    const session = await supabase?.auth.getSession()
+    const token = session?.data?.session?.access_token
+    if (!token) throw new Error('Not signed in')
+    const base = (import.meta as any).env?.VITE_SUPABASE_URL ?? ''
+    const res = await fetch(`${base}/functions/v1/yahoo-api`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      // The cheapest authenticated Fantasy call there is: which games this user plays.
+      body: JSON.stringify({ endpoint: '/users;use_login=1/games?format=json' }),
+    })
+    const text = await res.text()
+    yahooCheck.value = {
+      status: res.status,
+      ok: res.ok,
+      detail: text.slice(0, 400),
+    }
+  } catch (e: any) {
+    yahooCheck.value = { status: 0, ok: false, detail: String(e?.message ?? e) }
+  } finally {
+    yahooChecking.value = false
+  }
+}
+/** What the result MEANS, so a 403 is not left as a number to interpret. */
+const yahooVerdict = computed(() => {
+  const r = yahooCheck.value
+  if (!r) return ''
+  if (r.ok) return 'APPROVED — flip YAHOO_API_AVAILABLE in src/lib/yahooStatus.ts and unwind the unavailable copy.'
+  if (r.status === 403 && /not authorized to perform this action/i.test(r.detail)) {
+    return 'Still not granted. Same 403 as before — the entitlement has not come through.'
+  }
+  if (r.status === 400) return 'No Yahoo token on this account. Reconnect Yahoo first; this tests nothing until then.'
+  if (r.status === 401) return 'Your session, not Yahoo. Sign in again.'
+  return 'Unexpected — read the detail below rather than assuming.'
 })
 
 // ── API call helper ───────────────────────────────────────────────────────────
