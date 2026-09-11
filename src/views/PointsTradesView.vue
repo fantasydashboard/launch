@@ -560,7 +560,15 @@ function fairness(myGain: number, theirGain: number): string {
           projected points it solves lineups with, from whichever list you pick. So the control
           is real in both views, and the Wire and this page finally agree about who is good.
         -->
-        <RankingPicker :kind="tradeView === 'dynasty' ? 'dynasty' : 'ros'" />
+        <!--
+          Both controls, because both orders are on screen.
+          The dynasty picker used to appear only in the dynasty view, yet the head-to-head
+          prints a DYN rank beside every player in the season view as well — numbers driven by
+          a list with no control to change it, which is the exact "whose ranking am I looking
+          at?" failure the picker exists to prevent.
+        -->
+        <RankingPicker kind="ros" />
+        <RankingPicker v-if="dynasty.ready.value" kind="dynasty" />
       </div>
     </header>
 
@@ -997,7 +1005,8 @@ function fairness(myGain: number, theirGain: number): string {
                 <span v-if="dynasty.ready.value" class="shrink-0 font-mono text-[9px]"
                       :class="GAP_CLS[h2hGap(b, row.position)] ?? 'text-dark-textMuted/70'"
                       :title="dynRow(b.playerKey) ? `${row.position}${b.posRank} this season vs ${row.position}${dynRow(b.playerKey)!.positionRank} in the dynasty market` : 'Not priced by the dynasty market'">
-                  {{ dynRow(b.playerKey) ? 'DYN ' + row.position + dynRow(b.playerKey)!.positionRank : 'DYN —' }}<template v-if="h2hGap(b, row.position)"> {{ h2hGap(b, row.position) === 'future' ? '▲' : '▼' }}</template>
+                  {{ dynRow(b.playerKey) ? 'DYN ' + row.position + dynRow(b.playerKey)!.positionRank : 'DYN —' }}<span
+                    v-if="dynRow(b.playerKey)?.overallRank" class="text-dark-textMuted/50">&middot;#{{ dynRow(b.playerKey)!.overallRank }}</span><template v-if="h2hGap(b, row.position)"> {{ h2hGap(b, row.position) === 'future' ? '▲' : '▼' }}</template>
                 </span>
                 <!-- Whether that age is early or late FOR HIS POSITION — the single fact a
                      dynasty trade turns on, and the one the board was withholding. -->
@@ -1026,7 +1035,8 @@ function fairness(myGain: number, theirGain: number): string {
                 <span v-if="dynasty.ready.value" class="shrink-0 font-mono text-[9px]"
                       :class="GAP_CLS[h2hGap(b, row.position)] ?? 'text-dark-textMuted/70'"
                       :title="dynRow(b.playerKey) ? `${row.position}${b.posRank} this season vs ${row.position}${dynRow(b.playerKey)!.positionRank} in the dynasty market` : 'Not priced by the dynasty market'">
-                  {{ dynRow(b.playerKey) ? 'DYN ' + row.position + dynRow(b.playerKey)!.positionRank : 'DYN —' }}<template v-if="h2hGap(b, row.position)"> {{ h2hGap(b, row.position) === 'future' ? '▲' : '▼' }}</template>
+                  {{ dynRow(b.playerKey) ? 'DYN ' + row.position + dynRow(b.playerKey)!.positionRank : 'DYN —' }}<span
+                    v-if="dynRow(b.playerKey)?.overallRank" class="text-dark-textMuted/50">&middot;#{{ dynRow(b.playerKey)!.overallRank }}</span><template v-if="h2hGap(b, row.position)"> {{ h2hGap(b, row.position) === 'future' ? '▲' : '▼' }}</template>
                 </span>
                 <!-- Whether that age is early or late FOR HIS POSITION — the single fact a
                      dynasty trade turns on, and the one the board was withholding. -->
@@ -1043,10 +1053,18 @@ function fairness(myGain: number, theirGain: number): string {
           </div>
         </div>
 
+        <!-- Each row prints four numbers and the legend named none of them. -->
         <p class="mt-3 font-mono text-[9px] leading-relaxed text-dark-textMuted">
+          <span class="text-dark-textSecondary">{{ isFootball ? 'RB1·#1' : 'OF1·#1' }}</span>
+          = rank at his position and overall in the league, this season ·
+          <template v-if="dynasty.ready.value">
+            <span class="text-dark-textSecondary">DYN {{ isFootball ? 'RB1·#12' : 'OF1·#12' }}</span>
+            = the same two in the dynasty market, then age ·
+          </template>
+          then {{ isFootball ? 'value over replacement, rest of season' : 'projected points, rest of season' }}
+          <br />
           you on the left, {{ comparePartnerName }} on the right ·
-          bright = starts for that roster, dim = depth ·
-          {{ isFootball ? 'value over replacement, rest of season' : 'projected points, rest of season' }}
+          bright = starts for that roster, dim = depth
         </p>
       </section>
       </template>
