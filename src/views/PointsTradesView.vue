@@ -1055,8 +1055,15 @@ function fairness(myGain: number, theirGain: number): string {
 
         <!-- Each row prints four numbers and the legend named none of them. -->
         <p class="mt-3 font-mono text-[9px] leading-relaxed text-dark-textMuted">
+          <!--
+            NOT "this season" unconditionally — I wrote that yesterday and it is wrong in the
+            dynasty view. This chart reads analysisVor, which reseatByDynasty re-seats when
+            that view is selected, so the first pair is already a dynasty rank there and the
+            DYN pair beside it restates the same number.
+          -->
           <span class="text-dark-textSecondary">{{ isFootball ? 'RB1·#1' : 'OF1·#1' }}</span>
-          = rank at his position and overall in the league, this season ·
+          = rank at his position and overall in the league,
+          {{ tradeView === 'dynasty' ? 'by long-term value' : 'this season' }} ·
           <template v-if="dynasty.ready.value">
             <span class="text-dark-textSecondary">DYN {{ isFootball ? 'RB1·#12' : 'OF1·#12' }}</span>
             = the same two in the dynasty market, then age ·
