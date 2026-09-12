@@ -5,6 +5,7 @@ import {
   matchRankings,
   applyRankingOrder,
   compareRankings,
+  inferRankingPosition,
   type ParsedRanking,
   type RankingComparison,
 } from '@/draft/room/customRankings'
@@ -211,7 +212,30 @@ export function useCustomRankings(kindInput: RankingKind | (() => RankingKind) =
     const extra = set.parts.flatMap((part) =>
       parseRankings(part.text).map((r) => ({ ...r, position: r.position || part.position })),
     )
-    return [...base, ...extra]
+    /*
+     * A part REPLACES its position in the base sheet — it does not merge with it.
+     *
+     * Parts used to be appended, and matchRankings marks a player used on his first match, so
+     * every row in a part was discarded as unmatched and the original sheet won every player
+     * it mentioned. Re-uploading a position file stored the new ranking, reported success, and
+     * changed nothing. Done twice, it changed nothing twice.
+     *
+     * Merely reversing the order is not enough: the two rank scales are not comparable. A
+     * part is ranked within its position and the base within its own sheet, so a base row left
+     * behind at rank 1 ties the part's rank 1 and can win the sort — which is how a tight end
+     * the new file never mentions ended up back at the top of it.
+     *
+     * So the specific statement wins outright. Someone uploading te.csv into a set that
+     * already covers tight ends is replacing that opinion, not adding to it, and a player the
+     * new file omits simply has no ranking from them — the same as anyone past its last row.
+     */
+    const covered = new Set(set.parts.map((p) => p.position.toUpperCase()))
+    const sheetPos = (inferRankingPosition(set.text) ?? '').toUpperCase()
+    const keptBase = base.filter((r) => {
+      const pos = (r.position || sheetPos).toUpperCase()
+      return !pos || !covered.has(pos)
+    })
+    return [...extra, ...keptBase]
   })
 
   /** Positions this set covers with a dedicated file, for the UI to show what is loaded. */
