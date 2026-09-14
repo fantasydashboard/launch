@@ -42,9 +42,22 @@ const winPct = computed(() => winPctFromMargin(margin.value))
 const leagueStore = useLeagueStore()
 const ME = '#5ec8e6'
 const OPP = '#e69a4a'
-const daysRemaining = computed(() => (7 - new Date().getDay()) % 7)
+/*
+ * Days left in the FANTASY week, which ends Monday night rather than Sunday.
+ *
+ * This counted to Sunday, so on a Monday it returned six and the chart drew a projected line
+ * running a week and a half past the end of the matchup — future dates on a week already
+ * over. And once every game is final there is nothing to project at all: a dotted line into
+ * next Saturday is the page still forecasting a result it already has.
+ */
+const daysRemaining = computed(() => {
+  if (decided.value) return 0
+  return (1 - new Date().getDay() + 7) % 7   // 0 on Monday, 1 on Sunday, 6 on Tuesday
+})
 const oppName = computed(() => board.value?.matchup?.opponentName ?? 'Opponent')
 /* Has anything been scored this week? Drives whether the page calls its totals projections. */
+/* Every starter on both sides has finished. Drives whether this page talks in forecasts. */
+const decided = computed(() => !!board.value?.matchup?.decided)
 const anyBanked = computed(() => {
   const m = board.value?.matchup
   return !!m && (m.myBanked > 0 || m.oppBanked > 0)
@@ -270,12 +283,18 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               part banked and part forecast, and reporting them as one number states two
               different kinds of thing as though they were the same.
             -->
-            <div class="font-mono text-[10px] text-dark-textMuted">{{ anyBanked ? 'so far' : 'projected' }}</div>
+            <div class="font-mono text-[10px] text-dark-textMuted">{{ decided ? 'final' : anyBanked ? 'so far' : 'projected' }}</div>
             <div class="font-mono text-[11px] font-bold" :class="margin >= 0 ? 'text-primary' : 'text-[#FF5C5C]'">
               {{ margin >= 0 ? 'you +' : 'them +' }}{{ Math.abs(margin) }}
             </div>
-            <div class="font-mono text-[10px] text-dark-textMuted">{{ winPct }}% to win</div>
-            <div v-if="anyBanked" class="font-mono text-[9px] text-dark-textMuted/70">
+            <!-- "74% to win" on a matchup already won reads as doubt about a result on the
+                 board. Once every game is final the page says who won. -->
+            <div class="font-mono text-[10px]" :class="decided ? (margin > 0 ? 'text-primary' : 'text-[#FF5C5C]') : 'text-dark-textMuted'">
+              {{ decided ? (margin > 0 ? 'you won' : margin < 0 ? 'you lost' : 'tied') : winPct + '% to win' }}
+            </div>
+            <!-- Only meaningful while part of the week is still to come. Saying "rest
+                 projected" when there is no rest was the same sentence contradicting itself. -->
+            <div v-if="anyBanked && !decided" class="font-mono text-[9px] text-dark-textMuted/70">
               {{ round(board.matchup.myBanked) }}&ndash;{{ round(board.matchup.oppBanked) }} final &middot; rest projected
             </div>
           </div>
@@ -331,8 +350,11 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             </span>
           </p>
 
-          <p v-if="stakes" class="mb-1 font-mono text-[11px] text-dark-textSecondary">{{ stakes.reasoning }}</p>
-          <p v-if="path" class="mb-3 text-sm text-dark-text">{{ path }}</p>
+                  <!-- seasonStakes speaks about the RECORD, which is still 0-0 until a week is
+               scored — true, and it read as nonsense above a 151-134 scoreboard. Held back
+               once the week's games are over and the sentence has stopped being the story. -->
+          <p v-if="stakes && !decided" class="mb-1 font-mono text-[11px] text-dark-textSecondary">{{ stakes.reasoning }}</p>
+          <p v-if="path && !decided" class="mb-3 text-sm text-dark-text">{{ path }}</p>
 
           <p v-if="board.emptySlots > 0" class="mb-3 rounded-lg bg-[#FF5C5C]/10 px-3 py-2 text-sm text-[#FF5C5C]">
             You're leaving {{ board.emptySlots }} starting slot{{ board.emptySlots > 1 ? 's' : '' }} empty —

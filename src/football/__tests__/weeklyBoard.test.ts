@@ -1169,3 +1169,66 @@ describe('a streamer who would start for you', () => {
     expect(build().streamers.find((x) => x.player.name === 'Free QB')!.gain).toBeCloseTo(2, 5)
   })
 })
+
+/*
+ * A week that is over.
+ *
+ * The page carried on forecasting one. It offered "1 start/sit move · +17.2 pts on the table"
+ * on a Sunday evening with the whole slate played — advice for a lineup nobody can change,
+ * priced off points already on the board. It said "74% to win" on a matchup the reader had
+ * already won, because nothing distinguished a projected margin from a final one. And the
+ * season read said "nothing played yet" above a 151-134 scoreboard.
+ */
+describe('a decided matchup', () => {
+  const rows = [
+    { k: 'me_qb', pos: 'QB', p: 20, team: 'me', pro: 'DET' },
+    { k: 'me_rb', pos: 'RB', p: 18, team: 'me', pro: 'DET' },
+    { k: 'me_bench', pos: 'RB', p: 25, team: 'me', pro: 'DET' },  // outscores the starter
+    { k: 'op_qb', pos: 'QB', p: 19, team: 'op', pro: 'KC' },
+    { k: 'op_rb', pos: 'RB', p: 10, team: 'op', pro: 'KC' },
+  ]
+  const build = (states: Record<string, 'pre' | 'in' | 'post'>) => buildWeeklyBoard({
+    pool: rows.map((r) => ({
+      playerKey: r.k, name: r.k, position: r.pos, teamKey: r.team, proTeam: r.pro,
+    })) as never,
+    vorByKey: Object.fromEntries(rows.map((r) => [r.k, {
+      playerKey: r.k, position: r.pos, pointsRos: r.p * 17, vorRos: r.p, pointsNextWeek: r.p,
+      vorWeek: r.p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+    }])) as never,
+    slots: { QB: 1, RB: 1 },
+    myTeamKey: 'me',
+    currentStarters: ['me_qb', 'me_rb'],
+    freeAgents: [],
+    opponentByTeam: { DET: { opp: 'CHI', home: true }, KC: { opp: 'LV', home: false } },
+    oppTeamKey: 'op',
+    oppTeamName: 'Them',
+    gameStates: states,
+  })
+
+  it('offers no start/sit move once the games have started', () => {
+    // Benching me_rb for me_bench is worth 7 points and completely un-actionable.
+    expect(build({ DET: 'post', KC: 'post' }).moves).toHaveLength(0)
+    expect(build({ DET: 'in', KC: 'pre' }).moves).toHaveLength(0)
+  })
+
+  it('still offers it while the games are ahead of us', () => {
+    expect(build({ DET: 'pre', KC: 'pre' }).moves.length).toBeGreaterThan(0)
+  })
+
+  it('calls the matchup decided only when every starter is final', () => {
+    expect(build({ DET: 'post', KC: 'post' }).matchup!.decided).toBe(true)
+    expect(build({ DET: 'post', KC: 'in' }).matchup!.decided).toBe(false)
+    expect(build({ DET: 'post', KC: 'pre' }).matchup!.decided).toBe(false)
+  })
+
+  it('stops hedging once it is decided', () => {
+    // Ahead and finished is 100, not 74.
+    expect(build({ DET: 'post', KC: 'post' }).matchup!.myWinPct).toBe(100)
+  })
+
+  it('still gives a probability while anything is unplayed', () => {
+    const pct = build({ DET: 'pre', KC: 'pre' }).matchup!.myWinPct
+    expect(pct).toBeGreaterThan(0)
+    expect(pct).toBeLessThan(100)
+  })
+})

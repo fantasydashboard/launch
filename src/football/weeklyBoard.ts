@@ -222,6 +222,14 @@ export interface WeeklyMatchup {
   seatsLost: number
   seatsTied: number
   /**
+   * True when every starter on both sides has finished playing.
+   *
+   * The margin is then a result, not a forecast — and a win probability computed from it is
+   * describing a game that is over. The page read "74% to win" on a matchup the reader had
+   * already won, because nothing distinguished a projected margin from a final one.
+   */
+  decided: boolean
+  /**
    * YOUR lineup as actually set, in real slot order — what the scoreboard totals.
    *
    * Distinct from `board.starters`, which is the optimiser's recommendation and belongs to the
@@ -440,6 +448,18 @@ export function buildWeeklyBoard(input: {
    * scoreboard falls back to projections, which is merely the old behaviour, where guessing
    * the other way empties a roster.
    */
+  /**
+   * Has this player's game started? Then nothing about him is a decision any more.
+   *
+   * Distinct from `banked`, which also needs a points entry. A player can be locked with no
+   * points recorded yet — mid-game, or scoreless — and he is just as un-startable either way.
+   */
+  const locked = (key: string): boolean => {
+    if (!gameStates) return false
+    const st = gameStates[(meta.get(key)?.proTeam ?? '').toUpperCase()]
+    return st === 'in' || st === 'post'
+  }
+
   const banked = (key: string): boolean => {
     if (!actualPoints || !(key in actualPoints) || !gameStates) return false
     const st = gameStates[(meta.get(key)?.proTeam ?? '').toUpperCase()]
@@ -574,8 +594,17 @@ export function buildWeeklyBoard(input: {
       gain: s.weekPoints - d.pts,
     })
   }
-  /* A bye is a certainty, so it always survives; a swap has to clear the coin-flip floor. */
-  const moves = rawMoves.filter((m) => m.kind === 'bye' || m.gain >= MIN_MOVE_GAIN)
+  /*
+   * A bye is a certainty, so it always survives; a swap has to clear the coin-flip floor.
+   *
+   * And neither survives kickoff. The page was offering "1 start/sit move · +17.2 pts on the
+   * table" on a Sunday evening with the whole slate played — advice for a lineup that could
+   * not be changed, priced off points already on the board. If either man's game has begun,
+   * there is no move.
+   */
+  const moves = rawMoves
+    .filter((m) => !locked(m.startKey) && !locked(m.sitKey))
+    .filter((m) => m.kind === 'bye' || m.gain >= MIN_MOVE_GAIN)
 
   /* The weakest body you could reasonably cut: last on the bench by this week's points.
      Byes are skipped as drop candidates — a player on bye this week is not automatically
@@ -904,6 +933,13 @@ export function buildWeeklyBoard(input: {
         .sort((a, b) => a.edge - b.edge)[0] ?? null
       /* How much of each score is settled. A page reporting 144-125 in the middle of a week
          is stating two different kinds of number as one, and only this separates them. */
+      /* Decided when nobody on either side can still score. `locked` covers in-progress games
+         too, so this only turns true once every one of them is final. */
+      const allDone = (keys: string[]) =>
+        keys.length > 0 && keys.every((k) => gameStates?.[(meta.get(k)?.proTeam ?? '').toUpperCase()] === 'post')
+      const decided = allDone(myLineup.map((s) => s.playerKey))
+        && allDone(oppStarters.map((o) => o.playerKey))
+
       const myBanked = myLineup.reduce((sum, st) => sum + (banked(st.playerKey) ? st.weekPoints : 0), 0)
       const oppBanked = oppStarters.reduce((sum, o) => sum + (banked(o.playerKey) ? o.weekPoints : 0), 0)
       matchup = {
@@ -912,7 +948,10 @@ export function buildWeeklyBoard(input: {
         myPoints,
         oppPoints,
         margin,
-        myWinPct: winPctFromMargin(margin),
+        /* Once it is over the odds are not odds. Anything short of 100 reads as doubt about a
+           result that is already on the board. */
+        myWinPct: decided ? (margin > 0 ? 100 : margin < 0 ? 0 : 50) : winPctFromMargin(margin),
+        decided,
         oppStarters,
         oppByes: oppStarters.filter((o) => o.bye),
         duels,
