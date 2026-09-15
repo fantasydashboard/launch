@@ -31,7 +31,17 @@ const oppTotal = computed(() => Math.round(board.value?.matchup?.oppPoints ?? 0)
 const margin = computed(() => myTotal.value - oppTotal.value)
 /* Win% from the margin the page PRINTS, not the raw one. Deriving it from the unrounded
    margin put "you +8" beside "60% to win" when eight points is 62%. */
-const winPct = computed(() => winPctFromMargin(margin.value))
+/*
+ * One source of truth for the odds.
+ *
+ * This ran winPctFromMargin locally and ignored what the board had already computed — so the
+ * scoreboard, which reads `decided` directly, said "you won" while the chart beside it plotted
+ * 65% for the same finished matchup. The board's figure already knows a decided week is 100 or
+ * 0; the local sigmoid never could, because a margin alone cannot tell you whether anyone is
+ * still playing. Falls back only when there is no matchup at all.
+ */
+const winPct = computed(() =>
+  board.value?.matchup ? board.value.matchup.myWinPct : winPctFromMargin(margin.value))
 
 /*
  * Win-probability trend. A daily capture keyed to league + week, so the line builds as the
