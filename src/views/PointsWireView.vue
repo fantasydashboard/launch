@@ -14,6 +14,7 @@ import RankingPicker from '@/components/RankingPicker.vue'
 import { BOARD_DEPTH } from '@/football/footballWire'
 import { getWeeklyUsage, type UsageByKey } from '@/services/playerUsage'
 import { buildWaiverTargets } from '@/football/waiverTargets'
+import { useCustomRankings } from '@/composables/useCustomRankings'
 import { getSeasonLines } from '@/services/playerUsage'
 import { getSeasonSchedule, REGULAR_SEASON_WEEKS, type SeasonSchedule } from '@/services/nflSchedule'
 import { buildAllowed } from '@/football/defenseAllowed'
@@ -167,6 +168,26 @@ const difficultySample = computed(() =>
 
 /* Easy schedules read green, hard ones amber — the same scale the rest of the page uses for
    "this helps you" and "this costs you". Absent stays neutral rather than scoring as hard. */
+/*
+ * Where the uploaded list runs out.
+ *
+ * With the list authoritative for its position, everyone past its last name is in OUR order —
+ * and row 20 and row 21 look identical unless the boundary is drawn. The dynasty board has
+ * said this for a while; the season board never did.
+ */
+const rosRankings = useCustomRankings('ros')
+const rosRankedKeys = computed(() => {
+  if (!rosRankings.enabled.value) return new Set<string>()
+  const named = pool.value.map((p) => ({ playerKey: p.playerKey, name: p.name, position: p.position }))
+  return new Set(Object.keys(rosRankings.match(named).rankByKey))
+})
+const lastRankedIndex = computed(() => {
+  if (!rosRankedKeys.value.size) return -1
+  let last = -1
+  visibleBoard.value.forEach((r, i) => { if (rosRankedKeys.value.has(r.playerKey)) last = i })
+  return last
+})
+
 const sosTone = (rank: number | null) =>
   rank === null ? 'text-dark-textMuted/40'
     : rank <= 8 ? 'text-[#7ee787]'
@@ -898,7 +919,17 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
               <!-- Selected board. Depth is independent of TIER_DEPTH now: cliffs are cut over
                    the top of the list where decisions happen, while the list itself can run as
                    deep as the reader wants for reference. -->
-              <template v-for="row in visibleBoard" :key="'fbbd-' + row.playerKey">
+              <template v-for="(row, i) in visibleBoard" :key="'fbbd-' + row.playerKey">
+                <!-- Where the uploaded list stops. Past it the order is ours, and row 20 and
+                     row 21 look identical unless the boundary is drawn. -->
+                <div v-if="wireSort === 'season' && lastRankedIndex >= 0 && i === lastRankedIndex + 1"
+                     class="flex items-center gap-2 py-1.5">
+                  <span class="h-px flex-1 bg-dark-border"></span>
+                  <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70">
+                    {{ rosSource }} ends &middot; UFD order below
+                  </span>
+                  <span class="h-px flex-1 bg-dark-border"></span>
+                </div>
                 <!-- tier cliff: the drop-off is the decision, so name it rather than leaving a flat list -->
                 <!-- Where your opinion stops and ours starts. Without this, row 197 and row
                      205 look equally authoritative. -->

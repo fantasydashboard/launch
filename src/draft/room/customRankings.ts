@@ -240,31 +240,87 @@ export function matchRankings(
  * value, but are pushed below the ranked group so an unranked player can't
  * outrank someone the analyst deliberately placed.
  */
+/**
+ * How many players a list must name at a position before omission counts as a verdict.
+ *
+ * Roughly a starting lineup's worth. Above it the author is ranking the position and a name
+ * they left out is a judgement; below it they are naming a handful they like, and everyone
+ * else is simply unaddressed.
+ */
+export const AUTHORITATIVE_LIST_SIZE = 8
+
 export function applyRankingOrder(
-  players: { playerKey: string; value: number }[],
+  players: { playerKey: string; value: number; position?: string }[],
   rankByKey: Record<string, number>,
 ): Record<string, number> {
   const out: Record<string, number> = {}
   const list = players ?? []
   if (!list.length) return out
-
-  // Start from our own values, then permute ONLY within the ranked group.
   for (const p of list) out[p.playerKey] = p.value
 
-  const ranked = list.filter((p) => typeof rankByKey[p.playerKey] === 'number')
-  if (!ranked.length) return out
+  /*
+   * Re-seat WITHIN A POSITION, and put the ranked above the unranked.
+   *
+   * Two earlier versions each got half of this right. The first pushed every unranked player
+   * below the last ranked one, which is correct for a full list and collapses on a positional
+   * one: upload "my top 40 RBs" and every quarterback in the league sinks beneath them,
+   * because the re-seating ran across the whole pool.
+   *
+   * The second — this one until now — permuted only inside the ranked group and left everyone
+   * else at their own value. That keeps a partial list safe and produces the bug the reader
+   * actually saw: their analyst's quarterback order was preserved exactly, and nine players
+   * the list never mentions were interleaved through it on our numbers. Kyler Murray, who is
+   * not on the list at all, led the board because our value for him was the highest.
+   *
+   * Grouping by position gets both. Inside a position where the list has an opinion, ranked
+   * players take the best value slots in the list's order and unranked players take the rest
+   * in their own — so nobody is flattened, nobody outranks a list the author put them behind,
+   * and a positional list never reaches across to a position it says nothing about.
+   *
+   * Without positions this falls back to one group, which is right for a full overall list.
+   *
+   * AND OMISSION ONLY MEANS SOMETHING IN A LIST BIG ENOUGH TO MEAN IT. Ranking twenty
+   * quarterbacks is a statement about the position, so a name left out is a judgement. Naming
+   * two free agents you like is a shortlist, and treating everyone else as worse would vault
+   * those two above a rostered back nobody was comparing them to. Below the threshold the
+   * ranked group is permuted in place, which is the old behaviour and correct for a shortlist.
+   */
+  const groups = new Map<string, typeof list>()
+  for (const p of list) {
+    const key = (p.position || '').toUpperCase().split(/[,/|]/)[0].trim() || '*'
+    const g = groups.get(key) ?? []
+    g.push(p)
+    groups.set(key, g)
+  }
 
-  // The value slots the ranked players already occupy, best first. Reassigning
-  // these in the analyst's order adopts their opinion of who is better without
-  // touching anyone they didn't rank.
-  //
-  // The previous version pushed every unranked player below the last ranked one,
-  // which is fine for a full overall list but collapses on a partial or
-  // positional one: upload "my top 40 RBs" and 35 unrelated players flatten onto
-  // a single value, destroying their order entirely.
-  const slots = ranked.map((p) => p.value).sort((a, b) => b - a)
-  const inAnalystOrder = [...ranked].sort((a, b) => rankByKey[a.playerKey] - rankByKey[b.playerKey])
-  inAnalystOrder.forEach((p, i) => { out[p.playerKey] = slots[i] ?? p.value })
+  for (const group of groups.values()) {
+    const ranked = group.filter((p) => typeof rankByKey[p.playerKey] === 'number')
+    if (!ranked.length) continue    // the list says nothing here; leave the position alone
+
+    if (ranked.length < AUTHORITATIVE_LIST_SIZE) {
+      /* A shortlist. Permute the named players within the slots they already held and leave
+         everyone else exactly where they were — omission here is not a verdict. */
+      const slots = ranked.map((p) => p.value).sort((a, b) => b - a)
+      ;[...ranked]
+        .sort((a, b) => rankByKey[a.playerKey] - rankByKey[b.playerKey])
+        .forEach((p, i) => { out[p.playerKey] = slots[i] ?? p.value })
+      continue
+    }
+
+    /* Every value slot this group occupies, best first. Reassigning them adopts the author's
+       opinion of the order without inventing any numbers of our own. */
+    const slots = group.map((p) => p.value).sort((a, b) => b - a)
+    const rankedInOrder = [...ranked].sort((a, b) => rankByKey[a.playerKey] - rankByKey[b.playerKey])
+    const unrankedByValue = group
+      .filter((p) => typeof rankByKey[p.playerKey] !== 'number')
+      .sort((a, b) => b.value - a.value)
+
+    /* Ranked first, then everyone the list is silent about — still in OUR order relative to
+       each other, which is what stops a partial list destroying the tail. */
+    ;[...rankedInOrder, ...unrankedByValue].forEach((p, i) => {
+      out[p.playerKey] = slots[i] ?? p.value
+    })
+  }
 
   return out
 }

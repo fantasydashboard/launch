@@ -29,8 +29,10 @@ export function reseatRos(
   rankByKey: Record<string, number>,
 ): Record<string, PlayerVor> {
   if (!Object.keys(base).length || !Object.keys(rankByKey).length) return base
+  /* Position goes through so the re-seat stays inside it: a receiver list must never reach
+     across and re-order the quarterbacks it says nothing about. */
   const reseated = applyRankingOrder(
-    Object.entries(base).map(([k, v]) => ({ playerKey: k, value: v.pointsRos })),
+    Object.entries(base).map(([k, v]) => ({ playerKey: k, value: v.pointsRos, position: v.position })),
     rankByKey,
   )
   const out: Record<string, PlayerVor> = {}

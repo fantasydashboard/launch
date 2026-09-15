@@ -403,3 +403,60 @@ describe('parseRankings — the source declares its own tiers', () => {
     expect(m.tierByKey.b).toBe(2)
   })
 })
+
+/*
+ * The board said "ranked by Late Round ROS" and was not.
+ *
+ * The analyst's quarterback order was preserved exactly — Allen, Lamar, Caleb Williams, Hurts,
+ * Maye, Burrow, Lawrence, Dart, Daniels, Purdy, Herbert — and nine players the list never
+ * mentions were interleaved through it on our own numbers. Kyler Murray led a list he is not
+ * on, because our value for him was the highest at the position.
+ */
+describe('a positional list is authoritative for its own position', () => {
+  const qbs = ['allen', 'lamar', 'caleb', 'hurts', 'maye', 'burrow', 'lawrence', 'dart', 'daniels']
+  const pool = [
+    // Ours rates the unranked quarterback best of all.
+    { playerKey: 'murray', value: 200, position: 'QB' },
+    ...qbs.map((k, i) => ({ playerKey: k, value: 190 - i * 5, position: 'QB' })),
+    { playerKey: 'darnold', value: 140, position: 'QB' },
+    // A different position the list is silent about.
+    { playerKey: 'rb1', value: 400, position: 'RB' },
+    { playerKey: 'rb2', value: 300, position: 'RB' },
+  ]
+  const rankByKey = Object.fromEntries(qbs.map((k, i) => [k, i + 1]))
+  const v = applyRankingOrder(pool, rankByKey)
+  const order = (pos: string) => pool
+    .filter((p) => p.position === pos)
+    .sort((a, b) => v[b.playerKey] - v[a.playerKey])
+    .map((p) => p.playerKey)
+
+  it('puts the list in its own order at the top', () => {
+    expect(order('QB').slice(0, qbs.length)).toEqual(qbs)
+  })
+
+  it('drops the players it never mentions below it', () => {
+    // Murray is our best quarterback and is not on the list. He goes below everyone who is.
+    expect(order('QB').slice(qbs.length)).toEqual(['murray', 'darnold'])
+  })
+
+  it('still keeps the unmentioned players in OUR order, not flattened together', () => {
+    /* Collapsing them onto one value was the original bug that made in-place permuting look
+       like the safe option. Below the list they keep their own ordering. */
+    expect(v.murray).toBeGreaterThan(v.darnold)
+  })
+
+  it('never reaches across into a position it says nothing about', () => {
+    // A quarterback list must not re-order running backs.
+    expect(v.rb1).toBe(400)
+    expect(v.rb2).toBe(300)
+  })
+
+  it('leaves a shortlist permuting in place, as before', () => {
+    /* Two names is a shortlist, not a ranking of the position — treating omission as a verdict
+       there would vault them above a rostered starter nobody was comparing them to. */
+    const short = applyRankingOrder(pool, { darnold: 1, murray: 2 })
+    expect(short.darnold).toBe(200)
+    expect(short.murray).toBe(140)
+    expect(short.allen).toBe(190)     // untouched
+  })
+})
