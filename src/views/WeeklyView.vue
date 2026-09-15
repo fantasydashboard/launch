@@ -115,7 +115,7 @@ const path = computed(() => {
   const lever = board.value?.byeStarters.length
     ? 'you have a starter on bye — that is a guaranteed zero, move him'
     : worst
-      ? `your ${worst} seat is the one behind — everything else is close`
+      ? `your ${worst} spot is the one behind — everything else is close`
       : winPct.value >= 55
         ? 'your starters carry it'
         : 'the margin is in your flex spots and any start/sit you get wrong'
@@ -334,7 +334,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
         <p class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
           The matchup
           <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">
-            · seat by seat vs {{ board.matchup.opponentName }}
+            · spot by spot vs {{ board.matchup.opponentName }}
           </span>
         </p>
 
@@ -352,12 +352,12 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
           -->
           <p v-if="board.matchup.seatsWon + board.matchup.seatsLost > 0"
              class="mb-2 font-mono text-[11px] text-dark-text">
-            <span class="text-primary">{{ board.matchup.seatsWon }} seat{{ board.matchup.seatsWon === 1 ? '' : 's' }} won</span>
+            <span class="text-primary">{{ board.matchup.seatsWon }} lineup spot{{ board.matchup.seatsWon === 1 ? '' : 's' }} won</span>
             <span class="text-dark-textMuted"> &middot; </span>
             <span class="text-[#e69a4a]">{{ board.matchup.seatsLost }} lost</span>
             <span v-if="board.matchup.seatsTied" class="text-dark-textMuted"> &middot; {{ board.matchup.seatsTied }} level</span>
             <span v-if="board.matchup.worstSlot" class="text-dark-textMuted">
-              &middot; {{ board.matchup.worstSlot }} is the gap ({{ board.matchup.worstSlotEdge.toFixed(1) }})
+              &middot; your {{ board.matchup.worstSlot }} spot is the gap ({{ board.matchup.worstSlotEdge.toFixed(1) }})
             </span>
           </p>
 
@@ -464,7 +464,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             </span>
           </div>
           <p class="mt-2 font-mono text-[9px] text-dark-textMuted">
-            brighter side wins the seat · rank is at that position among rostered players and free agents
+            brighter side wins the spot · rank is at that position among rostered players and free agents
           </p>
         </div>
       </section>
