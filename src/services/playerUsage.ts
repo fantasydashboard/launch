@@ -100,3 +100,72 @@ export async function getWeeklyUsage(season: number | string, week: number): Pro
     clearTimeout(timer)
   }
 }
+
+/**
+ * Every scoring line of the season so far, for the defence-allowed table.
+ *
+ * Distinct from `getWeeklyUsage`, which answers "what did he do last week" for one player.
+ * This answers "what has every defence given up", so it needs who a player faced — carried on
+ * the stats row as `opponent` — and it needs every week, not the latest one.
+ */
+export interface SeasonLine {
+  playerKey: string
+  team: string
+  opponent: string
+  position: string
+  points: number
+  week: number
+}
+
+export function linesFromStats(payload: unknown, week: number): SeasonLine[] {
+  const rows = Array.isArray(payload)
+    ? payload
+    : payload && typeof payload === 'object'
+      ? Object.values(payload as Record<string, unknown>)
+      : []
+  const out: SeasonLine[] = []
+  for (const raw of rows) {
+    const r = raw as Record<string, any>
+    const player = (r.player ?? {}) as Record<string, any>
+    const key = String(r.player_id ?? player.player_id ?? '').trim()
+    const team = String(r.team ?? '').toUpperCase()
+    const opponent = String(r.opponent ?? '').toUpperCase()
+    const position = String(player.position ?? r.position ?? '').toUpperCase()
+    if (!key || !team || !opponent || !position) continue
+    out.push({
+      playerKey: key, team, opponent, position,
+      points: Number((r.stats ?? {}).pts_half_ppr) || 0,
+      week,
+    })
+  }
+  return out
+}
+
+const seasonMemo = new Map<string, { at: number; lines: SeasonLine[] }>()
+
+/** Every completed week's lines, through `throughWeek`. Empty when unavailable. */
+export async function getSeasonLines(season: number | string, throughWeek: number): Promise<SeasonLine[]> {
+  if (!season || throughWeek < 1) return []
+  const cacheKey = `${season}:1-${throughWeek}`
+  const hit = seasonMemo.get(cacheKey)
+  if (hit && Date.now() - hit.at <= TTL_MS) return hit.lines
+
+  const lines: SeasonLine[] = []
+  for (let w = 1; w <= throughWeek; w++) {
+    const ctl = new AbortController()
+    const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS)
+    try {
+      const url = `${BASE}/${season}/${w}?season_type=regular`
+        + '&position[]=QB&position[]=RB&position[]=WR&position[]=TE'
+      const res = await fetch(url, { signal: ctl.signal })
+      if (res.ok) lines.push(...linesFromStats(await res.json(), w))
+    } catch {
+      /* One unreadable week is a smaller sample, not a failure — the rest still counts. */
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+  if (!lines.length) return []
+  seasonMemo.set(cacheKey, { at: Date.now(), lines })
+  return lines
+}

@@ -14,6 +14,10 @@ import RankingPicker from '@/components/RankingPicker.vue'
 import { BOARD_DEPTH } from '@/football/footballWire'
 import { getWeeklyUsage, type UsageByKey } from '@/services/playerUsage'
 import { buildWaiverTargets } from '@/football/waiverTargets'
+import { getSeasonLines } from '@/services/playerUsage'
+import { getSeasonSchedule, REGULAR_SEASON_WEEKS, type SeasonSchedule } from '@/services/nflSchedule'
+import { buildAllowed } from '@/football/defenseAllowed'
+import { buildDifficulty, type DifficultyRow } from '@/football/scheduleDifficulty'
 import { useDynastyValues } from '@/composables/useDynastyValues'
 import { readAge, AGE_TONE } from '@/football/positionalAge'
 import { readHorizons } from '@/football/dynastyValues'
@@ -83,6 +87,75 @@ const gainByKey = computed<Record<string, number>>(() => {
   }
   return out
 })
+/*
+ * Schedule difficulty, per position, plus season scoring average and the bye.
+ *
+ * A single strength-of-schedule number would be close to useless: defences are not uniformly
+ * good, so one team can be the easiest run of opponents in the league for backs and near the
+ * hardest for tight ends. The rank is therefore computed per position, from adjusted points
+ * allowed, and the same schedule produces a different answer in each column of the board.
+ *
+ * Two horizons because they disagree. Rest-of-season answers "should I hold him", next four
+ * answers "should I start or trade him now", and a player can have the easiest season ahead
+ * and a brutal month first.
+ */
+const seasonSchedule = ref<SeasonSchedule>({})
+const seasonLines = ref<Awaited<ReturnType<typeof getSeasonLines>>>([])
+const seasonYear = computed(() => new Date().getFullYear())
+
+watch([lastCompletedWeek, () => leagueStore.activeSport], async () => {
+  if (!isFootball.value) { seasonSchedule.value = {}; seasonLines.value = []; return }
+  seasonSchedule.value = await getSeasonSchedule(seasonYear.value)
+  if (lastCompletedWeek.value >= 1) {
+    seasonLines.value = await getSeasonLines(seasonYear.value, lastCompletedWeek.value)
+  }
+}, { immediate: true })
+
+const allowed = computed(() => buildAllowed(seasonLines.value.map((l) => ({
+  team: l.team, opponent: l.opponent, position: l.position, points: l.points,
+}))))
+
+/** Difficulty for the position currently on the board, keyed by NFL team. */
+const difficulty = computed<Record<string, DifficultyRow>>(() => {
+  const pos = boardPos.value === 'ALL' ? '' : boardPos.value
+  if (!pos || !Object.keys(seasonSchedule.value).length || !seasonLines.value.length) return {}
+  return buildDifficulty({
+    schedule: seasonSchedule.value,
+    allowed: allowed.value,
+    position: pos,
+    fromWeek: (leagueStore.currentWeek ?? 1),
+    throughWeek: REGULAR_SEASON_WEEKS,
+  })
+})
+
+/* Season scoring average per player — games actually played, so a bye or an injury week does
+   not quietly drag an average toward zero. */
+const ppgByKey = computed<Record<string, number>>(() => {
+  const acc = new Map<string, { total: number; games: number }>()
+  for (const l of seasonLines.value) {
+    const e = acc.get(l.playerKey) ?? { total: 0, games: 0 }
+    e.total += l.points
+    e.games += 1
+    acc.set(l.playerKey, e)
+  }
+  const out: Record<string, number> = {}
+  for (const [k, e] of acc) if (e.games) out[k] = e.total / e.games
+  return out
+})
+
+/** How many games of defensive data the difficulty columns rest on. Small means noisy. */
+const difficultySample = computed(() =>
+  Math.max(0, ...Object.values(difficulty.value).map((d) => d.sampleGames ?? 0)))
+
+/* Easy schedules read green, hard ones amber — the same scale the rest of the page uses for
+   "this helps you" and "this costs you". Absent stays neutral rather than scoring as hard. */
+const sosTone = (rank: number | null) =>
+  rank === null ? 'text-dark-textMuted/40'
+    : rank <= 8 ? 'text-[#7ee787]'
+    : rank <= 16 ? 'text-[#3fb950]'
+    : rank <= 24 ? 'text-dark-textMuted'
+    : 'text-[#e69a4a]'
+
 const NFL_LAST_WEEK = 17
 const weeksLeft = computed(() => Math.max(1, NFL_LAST_WEEK - (leagueStore.currentWeek ?? 1) + 1))
 const waiverTargets = computed(() => {
@@ -750,6 +823,22 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                   {{ pos }}
                 </button>
               </div>
+              <!--
+                Column headers, because four numbers arrived on every row with nothing naming
+                them. ROS and NEXT4 are 1-32 ranks of how easy the upcoming defences are AT
+                THIS POSITION — the same schedule reads differently for a back and a tight end,
+                which is the whole reason they are computed per position.
+              -->
+              <div v-if="boardPos !== 'ALL' && Object.keys(difficulty).length"
+                   class="mb-1 flex items-center gap-2 pr-1 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted/60">
+                <span class="min-w-0 flex-1"></span>
+                <span class="hidden w-10 shrink-0 text-right lg:block" title="Rest-of-season schedule rank at this position">ROS</span>
+                <span class="hidden w-10 shrink-0 text-right lg:block" title="Next four games">NEXT4</span>
+                <span class="hidden w-10 shrink-0 text-right sm:block" title="Points per game this season">PPG</span>
+                <span class="hidden w-8 shrink-0 text-right lg:block" title="Bye week">BYE</span>
+                <span class="w-10 shrink-0 text-right">VOR</span>
+              </div>
+
               <!-- legend: the board mixes three states and only one of them used to be visible -->
               <div class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted">
                 <span><span class="text-primary">★</span> yours</span>
@@ -865,6 +954,34 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                       {{ dynRow(row.playerKey)?.age ? Math.floor(dynRow(row.playerKey)!.age!) : '' }}
                     </span>
                   </template>
+                  <!--
+                    Schedule, scoring average and the bye. Hidden on narrow screens because
+                    four extra columns on a phone would squeeze the name to nothing — the
+                    thing everything else is an attribute of.
+                  -->
+                  <template v-if="boardPos !== 'ALL' && difficulty[row.team ?? '']">
+                    <span class="hidden w-10 shrink-0 text-right font-mono text-[10px] lg:block"
+                          :class="sosTone(difficulty[row.team!].ros)"
+                          :title="`Rest-of-season ${boardPos} schedule: 1 is the easiest run of defences in the league, 32 the hardest`">
+                      {{ difficulty[row.team!].ros ?? '—' }}
+                    </span>
+                    <span class="hidden w-10 shrink-0 text-right font-mono text-[10px] lg:block"
+                          :class="sosTone(difficulty[row.team!].next4)"
+                          :title="`Next four games at ${boardPos}, same 1-32 scale`">
+                      {{ difficulty[row.team!].next4 ?? '—' }}
+                    </span>
+                  </template>
+                  <span v-if="ppgByKey[row.playerKey] !== undefined"
+                        class="hidden w-10 shrink-0 text-right font-mono text-[10px] text-dark-textSecondary sm:block"
+                        title="Points per game this season, over games actually played">
+                    {{ ppgByKey[row.playerKey].toFixed(1) }}
+                  </span>
+                  <span v-else class="hidden w-10 shrink-0 sm:block" />
+                  <span v-if="difficulty[row.team ?? '']?.bye"
+                        class="hidden w-8 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/60 lg:block"
+                        title="Bye week">{{ difficulty[row.team!].bye }}</span>
+                  <span v-else class="hidden w-8 shrink-0 lg:block" />
+
                   <span v-if="row.unprojected" class="w-10 shrink-0 text-right font-mono text-[10px] italic text-dark-textMuted/50">no proj</span>
                   <span v-else class="w-10 shrink-0 text-right font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">{{ row.vorRos >= 0 ? '+' : '' }}{{ round(row.vorRos) }}</span>
                 </div>
@@ -889,6 +1006,14 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
               >
                 Show top {{ BOARD_DEPTH }}
               </button>
+              <!--
+                Two games is two games. A confident 1-to-32 rank over one week of defensive
+                data would be the most authoritative-looking thing on the page and the least
+                earned, so the sample is printed beside it rather than left to be assumed.
+              -->
+              <p v-if="difficultySample > 0 && difficultySample < 4" class="mt-2 font-mono text-[9px] text-[#e69a4a]">
+                ROS and NEXT4 rest on {{ difficultySample }} game{{ difficultySample === 1 ? '' : 's' }} of defensive data &mdash; treat them as a hint, not a ranking, until a few more weeks are in.
+              </p>
               <p v-if="(fbWire.board[boardPos]?.length ?? 0) > BOARD_DEPTH" class="mt-2 font-mono text-[9px] text-dark-textMuted">
                 showing {{ visibleBoard.length }} of {{ fbWire.board[boardPos].length }} {{ boardPos }}<template v-if="rosSource !== 'UFD'"> &middot; {{ rosSource }}'s order</template>
               </p>
