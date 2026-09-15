@@ -163,10 +163,89 @@ export default async function handler(req, res) {
         },
         charts: {
           signupsByDay: groupByDay(filteredProfiles.map(p => p.created_at)),
+          /* Paid on its own line. Plotted together with free signups, one $39 sale was the
+             same pixel as one free account — the number that matters hid inside the one that
+             does not. Individual subs and league passes both count: they are both money. */
+          paidByDay: groupByDay([
+            ...indSubs.filter(x => new Date(x.created_at) >= new Date(dateFilter)).map(x => x.created_at),
+            ...filteredPasses.map(x => x.created_at),
+          ]),
           passesByDay: groupByDay(filteredPasses.map(p => p.created_at)),
           passesByDayBreakdown,
         }
       })
+    }
+
+
+    /*
+     * Recent signups, as events rather than a count.
+     *
+     * The dashboard could tell you how many people signed up and never who, when, or what
+     * happened next — and "signed up but never connected a league" is a completely different
+     * problem from "connected one and did not pay". Those need separating before either can
+     * be acted on.
+     *
+     * Queried with a limit rather than folded into the `stats` action, which pulls every
+     * profile and filters in JS. That is survivable today and should not gain another reader.
+     */
+    if (action === 'signups') {
+      const limit = Math.min(Number(req.body?.limit) || 50, 200)
+
+      const { data: recent, error: rErr } = await admin
+        .from('profiles')
+        .select('id, email, created_at, subscription_tier, trial_started_at, trial_expires_at')
+        .order('created_at', { ascending: false })
+        .limit(limit)
+      if (rErr) return res.status(500).json({ error: 'signups query failed: ' + rErr.message })
+
+      const ids = (recent || []).map(r => r.id)
+
+      // Two follow-ups scoped to exactly these people, so the cost does not grow with the
+      // size of the user table.
+      const [{ data: subs }, { data: leagues }] = await Promise.all([
+        admin.from('individual_subscriptions')
+          .select('user_id, tier, status, created_at').in('user_id', ids.length ? ids : ['-']),
+        admin.from('user_leagues')
+          .select('user_id, platform, sport').in('user_id', ids.length ? ids : ['-']),
+      ])
+
+      const subByUser = new Map()
+      for (const sub of subs || []) {
+        if (sub.status === 'active' || sub.status === 'trialing') subByUser.set(sub.user_id, sub)
+      }
+      const leaguesByUser = new Map()
+      for (const l of leagues || []) {
+        const arr = leaguesByUser.get(l.user_id) || []
+        arr.push(l)
+        leaguesByUser.set(l.user_id, arr)
+      }
+
+      const now = Date.now()
+      const rows = (recent || []).map(p => {
+        const sub = subByUser.get(p.id) || null
+        const mine = leaguesByUser.get(p.id) || []
+        const trialLeft = p.trial_expires_at
+          ? Math.ceil((new Date(p.trial_expires_at).getTime() - now) / 86400000)
+          : null
+        /* One word for where this person actually is. Paid beats trial beats free, and a
+           lapsed trial is its own state — it is the one worth an email. */
+        const state = p.subscription_tier === 'admin' ? 'admin'
+          : sub ? 'paid'
+          : trialLeft !== null && trialLeft > 0 ? 'trial'
+          : trialLeft !== null ? 'trial_over'
+          : 'free'
+        return {
+          id: p.id,
+          email: p.email,
+          created_at: p.created_at,
+          state,
+          trial_days_left: trialLeft,
+          leagues: mine.length,
+          platforms: [...new Set(mine.map(l => l.platform).filter(Boolean))],
+        }
+      })
+
+      return res.status(200).json({ rows })
     }
 
     if (action === 'emails') {

@@ -7,6 +7,48 @@ const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
+
+/**
+ * Tell the admin a sale happened, the moment it happens.
+ *
+ * Paid signups are rare enough to be worth an individual message — the alternative is
+ * noticing on the dashboard some time later, which is not noticing. Free signups are frequent
+ * and belong in a digest instead; this deliberately only fires on money.
+ *
+ * Best-effort and never awaited into the critical path: a failed notification must not fail a
+ * webhook Stripe will then retry, because a retried checkout is a real risk and a missed email
+ * is an annoyance. Silent no-op when the key or recipient is unset.
+ */
+async function notifySale(plan: string, session: any): Promise<void> {
+  const key = Deno.env.get('RESEND_API_KEY')
+  const to = Deno.env.get('ADMIN_ALERT_EMAIL')
+  if (!key || !to) return
+  const email = session?.customer_details?.email ?? session?.customer_email ?? 'unknown'
+  const amount = typeof session?.amount_total === 'number'
+    ? `$${(session.amount_total / 100).toFixed(2)}`
+    : 'unknown amount'
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'UFD <alerts@ultimatefantasydashboard.com>',
+        to: [to],
+        subject: `New sale — ${amount} · ${email}`,
+        text: [
+          `${email} just bought ${plan}.`,
+          `Amount: ${amount}`,
+          `Session: ${session?.id ?? '—'}`,
+          '',
+          'https://ultimatefantasydashboard.com/admin',
+        ].join('\n'),
+      }),
+    })
+  } catch (e) {
+    console.warn('[webhook] sale notification failed, continuing:', e)
+  }
+}
+
 serve(async (req) => {
   const signature = req.headers.get('stripe-signature')
   if (!signature) return new Response('Missing stripe-signature header', { status: 400 })
@@ -32,6 +74,9 @@ serve(async (req) => {
 
     // ── Individual plan (monthly or annual) ──
     if (plan === 'individual_monthly' || plan === 'individual_annual') {
+      /* Fire and forget — see notifySale. The subscription must be granted whether or not
+         the email lands. */
+      notifySale(plan, session)
       return await handleIndividualCheckout(supabase, session, plan)
     }
 

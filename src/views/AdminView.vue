@@ -83,6 +83,38 @@
         whether the entitlement has landed is to make a real call — which until now meant
         pasting a snippet into a browser console every few weeks.
       -->
+      <!--
+        Recent signups, as events. The chart above counts them; this one says who, when, and
+        whether they got as far as connecting a league — which separates "signed up and
+        bounced" from "connected one and did not pay". Different problems, different fixes.
+      -->
+      <section class="section">
+        <div class="section-label">👥 Recent signups
+          <button class="tf-btn" style="margin-left:10px;" :disabled="signupsLoading" @click="loadSignups()">
+            {{ signupsLoading ? 'Loading…' : signups.length ? 'Refresh' : 'Load' }}
+          </button>
+        </div>
+        <div v-if="signups.length" style="padding:6px 0;">
+          <div v-for="u in signups" :key="u.id"
+               style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.055);font-size:13px;">
+            <span style="font-family:monospace;font-size:10px;font-weight:700;padding:3px 7px;border-radius:5px;letter-spacing:1px;"
+                  :style="SIGNUP_STATE[u.state]?.cls">{{ SIGNUP_STATE[u.state]?.label ?? u.state }}</span>
+            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ u.email }}</span>
+            <span v-if="u.leagues" style="font-family:monospace;font-size:11px;opacity:.7;">
+              {{ u.leagues }} league{{ u.leagues === 1 ? '' : 's' }}<template v-if="u.platforms.length"> · {{ u.platforms.join(', ') }}</template>
+            </span>
+            <!-- No league connected is the signal worth seeing: they never reached the product. -->
+            <span v-else style="font-family:monospace;font-size:11px;color:#e69a4a;">no league</span>
+            <span v-if="u.state === 'trial' && u.trial_days_left !== null"
+                  style="font-family:monospace;font-size:11px;color:#5ec8e6;">{{ u.trial_days_left }}d left</span>
+            <span style="font-family:monospace;font-size:11px;opacity:.55;width:72px;text-align:right;">{{ ago(u.created_at) }}</span>
+          </div>
+        </div>
+        <div v-else-if="!signupsLoading" style="padding:14px 0;font-family:monospace;font-size:12px;opacity:.6;">
+          Not loaded — it is a separate query, so it only runs when you ask.
+        </div>
+      </section>
+
       <section class="section">
         <div class="section-label">🔌 Yahoo Fantasy API access</div>
         <div style="padding:12px 0;display:flex;flex-direction:column;gap:10px;">
@@ -897,6 +929,31 @@ function downloadKpiCsv() {
   a.click()
 }
 const signupsByDay = ref<{date:string,count:number}[]>([])
+const paidByDay = ref<{date:string,count:number}[]>([])
+/* Recent signups as events. The chart says how many; this says who, when, and whether they
+   got far enough to connect a league — which is the difference between two problems. */
+const signups = ref<any[]>([])
+const signupsLoading = ref(false)
+async function loadSignups() {
+  signupsLoading.value = true
+  try {
+    const d = await callAdmin({ action: 'signups', limit: 50 })
+    signups.value = d.rows ?? []
+  } catch { signups.value = [] } finally { signupsLoading.value = false }
+}
+const SIGNUP_STATE: Record<string, { label: string; cls: string }> = {
+  paid:       { label: 'PAID',   cls: 'background:rgba(198,255,58,.16);color:#C6FF3A' },
+  trial:      { label: 'TRIAL',  cls: 'background:rgba(94,200,230,.16);color:#5ec8e6' },
+  trial_over: { label: 'LAPSED', cls: 'background:rgba(230,154,74,.16);color:#e69a4a' },
+  free:       { label: 'FREE',   cls: 'background:rgba(255,255,255,.07);color:#8A93A0' },
+  admin:      { label: 'ADMIN',  cls: 'background:rgba(255,255,255,.07);color:#8A93A0' },
+}
+const ago = (iso: string) => {
+  const m = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000))
+  if (m < 60) return `${m}m ago`
+  if (m < 1440) return `${Math.floor(m / 60)}h ago`
+  return `${Math.floor(m / 1440)}d ago`
+}
 const passesByDay = ref<{date:string,count:number}[]>([])
 const passesByDayBreakdown = ref<{
   date: string
@@ -1002,6 +1059,7 @@ async function loadStats() {
     })
     kpis.value = data.kpis
     signupsByDay.value = data.charts.signupsByDay
+    paidByDay.value = data.charts.paidByDay ?? []
     passesByDay.value = data.charts.passesByDay
     passesByDayBreakdown.value = data.charts.passesByDayBreakdown || []
   } catch (e: any) {
@@ -1112,7 +1170,12 @@ function downloadCampaignCsv() {
 // ── Chart data ────────────────────────────────────────────────────────────────
 const signupSeries = computed(() => {
   if (!signupsByDay.value.length) return []
-  return [{ name: 'New Users', data: signupsByDay.value.map(d => ({ x: d.date, y: d.count })) }]
+  /* Paid gets its own line. One $39 sale was previously the same pixel as one free account. */
+  const paid = new Map(paidByDay.value.map(d => [d.date, d.count]))
+  return [
+    { name: 'Signups', data: signupsByDay.value.map(d => ({ x: d.date, y: d.count })) },
+    { name: 'Paid', data: signupsByDay.value.map(d => ({ x: d.date, y: paid.get(d.date) ?? 0 })) },
+  ]
 })
 
 const passSeries = computed(() => {
