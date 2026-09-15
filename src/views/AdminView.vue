@@ -44,13 +44,33 @@
       <p style="color:#6b7280;font-size:14px;">Loading...</p>
     </div>
 
-    <!-- ── Access Denied — only show once auth is confirmed loaded ── -->
+    <!--
+      Access denied, but these are two different problems and the page said one thing for
+      both. No session means sign in; a session without the admin tier means wrong account.
+      The old copy sent someone who was simply signed out looking for a permissions issue,
+      with the debug line underneath doing the actual work of telling them apart.
+    -->
     <div v-else-if="!isAdmin" class="access-denied">
       <div class="ad-icon">🔒</div>
-      <h2>Admin Access Required</h2>
-      <p>This page is only accessible to administrators.</p>
-      <p style="font-size:12px;color:#374151;margin-top:8px">
-        isAdmin: {{ isAdmin }} · tier: {{ authStore.profile?.subscription_tier || 'not loaded' }}
+      <template v-if="!authStore.isAuthenticated">
+        <h2>You're not signed in</h2>
+        <p>This page needs an admin account. Sign in and come back.</p>
+        <button class="tf-btn" style="margin-top:14px;" @click="goSignIn()">Sign in</button>
+      </template>
+      <template v-else-if="!authStore.profile">
+        <h2>Signed in, but your profile hasn't loaded</h2>
+        <p>The session is valid and the profile fetch has not come back — usually a slow or
+           blocked network. Reloading normally fixes it.</p>
+        <button class="tf-btn" style="margin-top:14px;" @click="retryProfile()">Retry</button>
+      </template>
+      <template v-else>
+        <h2>Wrong account</h2>
+        <p>{{ authStore.user?.email }} is tier "{{ authStore.profile.subscription_tier }}", not admin.</p>
+      </template>
+      <p style="font-size:12px;color:#374151;margin-top:10px">
+        session: {{ authStore.isAuthenticated ? 'yes' : 'no' }} ·
+        profile: {{ authStore.profile ? 'loaded' : 'not loaded' }} ·
+        tier: {{ authStore.profile?.subscription_tier || '—' }}
       </p>
     </div>
 
@@ -1026,6 +1046,20 @@ const yahooVerdict = computed(() => {
   if (r.status === 401) return 'Your session, not Yahoo. Sign in again.'
   return 'Unexpected — read the detail below rather than assuming.'
 })
+
+/*
+ * Recover from the two failures the gate can now name.
+ *
+ * Signing in from here rather than sending someone to the landing page, and re-fetching a
+ * profile that never arrived, which is the case a reload would also fix but should not have
+ * to.
+ */
+function goSignIn() {
+  window.location.href = '/?signin=1&next=' + encodeURIComponent('/admin')
+}
+async function retryProfile() {
+  try { await authStore.fetchProfile() } catch { /* the gate keeps saying what it sees */ }
+}
 
 // ── API call helper ───────────────────────────────────────────────────────────
 async function callAdmin(body: object) {

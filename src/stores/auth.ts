@@ -388,6 +388,9 @@ export const useAuthStore = defineStore('auth', () => {
     
     // Actions
     initialize,
+    /* Exposed so a page that finds a valid session and no profile can ask again, rather
+       than telling the reader to reload and hope. */
+    fetchProfile,
     signUp,
     signIn,
     signInWithOAuth,
