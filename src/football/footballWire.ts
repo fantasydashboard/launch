@@ -46,6 +46,14 @@ export interface BoardRow {
    * waiver page, where availability is the first thing you need to know.
    */
   free: boolean
+  /**
+   * Who holds him, when it is not you and not nobody.
+   *
+   * `owned` and `free` between them could say "mine", "claimable" or "neither", and a waiver
+   * board needs the third case named: the week's best pickup going to the team you are
+   * chasing is a trade target, not a mystery.
+   */
+  ownerName?: string
   /** On bye this week. A rest-of-season decision still has to survive Sunday. */
   bye?: boolean
   /** Tier within this position, 1 = best. Same cut rule as the draft board. */
@@ -122,8 +130,10 @@ export function buildFootballWire(input: {
    * from missing data, the same rule zeroByeWeek follows.
    */
   playingTeams?: Set<string>
+  /** pool teamKey -> display name, so a rostered player can say who has him. */
+  teamNames?: Record<string, string>
 }): FootballWire {
-  const { freeAgents, vorByKey, pool, slots, myTeamKey, playingTeams } = input
+  const { freeAgents, vorByKey, pool, slots, myTeamKey, playingTeams, teamNames } = input
   const scheduleKnown = !!playingTeams && playingTeams.size > 0
   const onBye = (team?: string) => scheduleKnown && !playingTeams!.has(String(team ?? '').toUpperCase())
 
@@ -211,7 +221,7 @@ export function buildFootballWire(input: {
     for (const p of pool) {
       if (normPos(p.position) !== pos) continue
       const pv = vorByKey[p.playerKey]
-      entries.push({ playerKey: p.playerKey, name: p.name, position: pos, team: p.proTeam, headshot: p.headshot, vorRos: pv?.vorRos ?? 0, owned: p.teamKey === myTeamKey, unprojected: !pv, free: false, tier: 0, bye: onBye(p.proTeam) })
+      entries.push({ playerKey: p.playerKey, name: p.name, position: pos, team: p.proTeam, headshot: p.headshot, vorRos: pv?.vorRos ?? 0, owned: p.teamKey === myTeamKey, unprojected: !pv, free: false, tier: 0, bye: onBye(p.proTeam), ownerName: p.teamKey === myTeamKey ? '' : (teamNames?.[p.teamKey] ?? '') })
     }
     for (const fa of freeAgents) {
       if (normPos(fa.position) !== pos) continue

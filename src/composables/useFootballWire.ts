@@ -76,6 +76,8 @@ export function useFootballWire(inputs: {
   myTeamKey: Ref<string>
   season: Ref<string>
   enabled: Ref<boolean>
+  /** pool teamKey -> display name, so a rostered player can say who holds him. */
+  teamNames?: Ref<Record<string, string>>
 }): {
   wire: ComputedRef<FootballWire | null>
   loading: Ref<boolean>
@@ -155,6 +157,7 @@ export function useFootballWire(inputs: {
       slots: inputs.slots.value,
       myTeamKey: inputs.myTeamKey.value,
       playingTeams: playingTeams.value,
+      teamNames: inputs.teamNames?.value ?? {},
     })
   })
 

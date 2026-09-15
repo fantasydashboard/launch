@@ -12,6 +12,8 @@ import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { useFootballWire } from '@/composables/useFootballWire'
 import RankingPicker from '@/components/RankingPicker.vue'
 import { BOARD_DEPTH } from '@/football/footballWire'
+import { getWeeklyUsage, type UsageByKey } from '@/services/playerUsage'
+import { buildWaiverTargets } from '@/football/waiverTargets'
 import { useDynastyValues } from '@/composables/useDynastyValues'
 import { readAge, AGE_TONE } from '@/football/positionalAge'
 import { readHorizons } from '@/football/dynastyValues'
@@ -51,6 +53,56 @@ const fgByKey = source.fgByKey
 const rosterSlots = source.rosterSlots
 const myTeamKey = source.myTeamKey
 const leagueSize = source.leagueSize
+/* Needed so a rostered player on the board can say which team holds him. */
+const teamNames = source.teamNames
+
+/*
+ * The waiver board: whose role changed last week, and whether you can have him.
+ *
+ * Distinct from Best Available directly below it, which ranks free agents by rest-of-season
+ * value — "who is the best player nobody owns". A waiver claim asks something narrower: whose
+ * workload just changed. Those diverge constantly, and only the second is worth a bid.
+ *
+ * Snap share comes from Sleeper's stats for the completed week; the bid comes from what the
+ * pickup does to THIS lineup, which is the half a published FAAB range structurally cannot
+ * know.
+ */
+const usage = ref<UsageByKey>({})
+const lastCompletedWeek = computed(() => Math.max(0, (leagueStore.currentWeek ?? 1) - 1))
+watch([lastCompletedWeek, () => leagueStore.activeSport], async () => {
+  if (!isFootball.value || lastCompletedWeek.value < 1) { usage.value = {}; return }
+  usage.value = await getWeeklyUsage(new Date().getFullYear(), lastCompletedWeek.value)
+}, { immediate: true })
+
+/* What each add would do to your starting lineup, reusing the swap the Wire already solves. */
+const gainByKey = computed<Record<string, number>>(() => {
+  const out: Record<string, number> = {}
+  for (const u of fbWire.value?.upgrades ?? []) {
+    const k = u.add.player.playerKey ?? `fa:${u.add.player.name}`
+    out[k] = Math.max(out[k] ?? 0, u.marginal)
+  }
+  return out
+})
+const NFL_LAST_WEEK = 17
+const weeksLeft = computed(() => Math.max(1, NFL_LAST_WEEK - (leagueStore.currentWeek ?? 1) + 1))
+const waiverTargets = computed(() => {
+  if (!Object.keys(usage.value).length) return []
+  /* Every player the league can see, so a pickup that has already gone can still be named. */
+  const rows = Object.values(fbWire.value?.board ?? {}).flat()
+  const seen = new Set<string>()
+  const players = rows.filter((r) => (seen.has(r.playerKey) ? false : seen.add(r.playerKey)))
+  return buildWaiverTargets({
+    players: players.map((r) => ({
+      playerKey: r.playerKey, name: r.name, position: r.position, team: r.team,
+      headshot: r.headshot, vorRos: r.vorRos, owned: r.owned, free: r.free,
+      ownerName: r.ownerName,
+    })),
+    usage: usage.value,
+    gainByKey: gainByKey.value,
+    weeksLeft: weeksLeft.value,
+    limit: 10,
+  })
+})
 
 // Free agents minus anyone already rostered (the platform FA feed leaks rostered players).
 const freeAgents = computed(() => {
@@ -244,6 +296,7 @@ const { wire: fbWire, loading: fbLoading, rosSource } = useFootballWire({
   myTeamKey,
   season,
   enabled: isFootball,
+  teamNames,
 })
 /**
  * Your most droppable bodies: lowest value-over-replacement among players you own.
@@ -395,6 +448,70 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
             <span class="w-12 shrink-0 text-right font-mono text-sm text-dark-text">{{ round(isFootball ? r.perGame : r.points) }}</span>
           </div>
         </template>
+      </section>
+
+      <!--
+        The waiver board. Sits above Best Available because it answers the more urgent
+        question: Best Available ranks free agents by rest-of-season value — who is the best
+        player nobody owns — while this asks whose ROLE changed last week, which is what a
+        waiver claim is actually a bet on.
+
+        Taken players are kept and greyed rather than filtered out. The week's best pickup
+        going to the team you are chasing is a trade target, and a board that silently omits
+        him leaves the reader wondering whether we missed him.
+      -->
+      <section v-if="waiverTargets.length" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+        <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+          Waiver board
+          <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">
+            &middot; who took over in week {{ lastCompletedWeek }}
+          </span>
+        </h2>
+        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
+          snap share, not points &mdash; a big game on four touches does not repeat, a starter's workload does
+        </p>
+
+        <template v-for="t in waiverTargets" :key="'wt-' + t.playerKey">
+          <div class="flex items-center gap-3 border-b border-dark-border/40 py-2.5 last:border-0"
+               :class="t.availability === 'free' ? '' : 'opacity-45'">
+            <img v-if="t.headshot" :src="t.headshot" :alt="t.name" loading="lazy" @error="onLogoErr"
+                 class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover"
+                 :class="t.availability === 'free' ? '' : 'grayscale'" />
+            <span v-else class="h-8 w-8 shrink-0 rounded-full bg-dark-border" />
+            <img v-if="t.team" :src="teamLogo(t.team)" alt="" @error="onLogoErr"
+                 class="hidden h-3.5 w-3.5 shrink-0 object-contain sm:block" />
+
+            <span class="min-w-0 flex-1">
+              <span class="truncate text-sm font-semibold"
+                    :class="t.availability === 'free' ? 'text-dark-text' : 'text-dark-textMuted'">
+                {{ t.name }}
+                <span v-if="t.availability === 'mine'"
+                      class="ml-1 font-mono text-[9px] uppercase text-primary">yours</span>
+              </span>
+              <span class="block font-mono text-[10px] text-dark-textMuted">
+                {{ t.position }}<template v-if="t.snapShare !== null"> &middot; {{ Math.round(t.snapShare * 100) }}% snaps</template>
+                &middot; {{ t.touches }} touches &middot; {{ round(t.points) }} pts
+              </span>
+            </span>
+
+            <!-- The bid, and why. A bare percentage is what every published table already
+                 prints; the reason is what makes it this reader's number. -->
+            <span class="w-32 shrink-0 text-right">
+              <span v-if="t.availability === 'free' && t.bidPct > 0"
+                    class="block font-mono text-sm font-bold text-primary">bid {{ t.bidPct }}%</span>
+              <span v-else-if="t.availability === 'taken'"
+                    class="block font-mono text-[10px] text-[#e69a4a]">{{ t.ownerName || 'rostered' }}</span>
+              <span v-else class="block font-mono text-[10px] text-dark-textMuted/70">&mdash;</span>
+              <span class="block font-mono text-[9px] leading-tight text-dark-textMuted/70">{{ t.bidReason }}</span>
+            </span>
+          </div>
+        </template>
+
+        <p class="mt-3 font-mono text-[9px] leading-relaxed text-dark-textMuted">
+          Bid is a share of a season FAAB budget, from what he would add to <em>your</em> starting
+          lineup &mdash; so the same player is worth real money to one manager and nothing to another.
+          It is what he is worth to you, not what he will cost.
+        </p>
       </section>
 
       <!-- 2. BEST AVAILABLE — rest-of-season value -->
