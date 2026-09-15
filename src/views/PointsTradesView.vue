@@ -547,7 +547,9 @@ function fairness(myGain: number, theirGain: number): string {
         <span class="text-dark-textMuted/70">
           {{ TRADE_VIEWS.find((v) => v.key === tradeView)?.hint }}<template v-if="tradeView === 'dynasty'"> &middot; deal gains stay per-week, with the dynasty cost beside them</template>
         </span>
-        <!--
+      </div>
+
+      <!--
           Whose dynasty order the page is using, and the control to change it. There was no
           picker here at all: an uploaded list already drove this page through
           useDynastyValues, and nothing on screen said so or let you switch it.
@@ -567,6 +569,19 @@ function fairness(myGain: number, theirGain: number): string {
           a list with no control to change it, which is the exact "whose ranking am I looking
           at?" failure the picker exists to prevent.
         -->
+      <!--
+        The rest-of-season picker is NOT dynasty-conditional, and used to be.
+
+        It sat inside the `dynasty.ready` row above, so in a redraft league — or any league
+        where FantasyCalc had not answered yet — the whole row vanished and with it the only
+        control that says which list is driving this page. The page still re-seated itself
+        through whatever list was active; there was simply nothing on screen saying so or
+        letting you change it, which is the exact failure the picker exists to prevent.
+
+        The dynasty picker stays conditional, because in a redraft league it is a control over
+        an order nothing on the page reads.
+      -->
+      <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
         <RankingPicker kind="ros" />
         <RankingPicker v-if="dynasty.ready.value" kind="dynasty" />
       </div>
