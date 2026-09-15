@@ -1,4 +1,5 @@
 import type { TeamSchedule } from '@/football/scheduleDifficulty'
+import { normalizeProTeam } from './proTeam'
 
 /**
  * The season's fixtures, week by week, from ESPN's public scoreboard.
@@ -16,7 +17,8 @@ import type { TeamSchedule } from '@/football/scheduleDifficulty'
 export type SeasonSchedule = Record<string, TeamSchedule>
 
 const ENDPOINT = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard'
-const CACHE_KEY = 'ufd:nflSeasonSchedule'
+/* v2: keys were ESPN's spelling, which missed every Washington player. */
+const CACHE_KEY = 'ufd:nflSeasonSchedule:v2'
 const TTL_MS = 24 * 60 * 60 * 1000
 const TIMEOUT_MS = 12000
 export const REGULAR_SEASON_WEEKS = 18
@@ -29,7 +31,7 @@ export function addWeek(schedule: SeasonSchedule, week: number, payload: any): S
   for (const event of payload?.events ?? []) {
     const comp = event?.competitions?.[0]
     const sides = (comp?.competitors ?? [])
-      .map((c: any) => String(c?.team?.abbreviation ?? '').toUpperCase())
+      .map((c: any) => normalizeProTeam(c?.team?.abbreviation))
       .filter(Boolean)
     if (sides.length !== 2) continue
     const [a, b] = sides

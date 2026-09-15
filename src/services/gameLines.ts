@@ -1,3 +1,4 @@
+import { normalizeProTeam } from './proTeam'
 import { impliedFromLine, type ImpliedTotals } from '@/football/gameEnvironment'
 
 /**
@@ -49,8 +50,8 @@ export function impliedFromScoreboard(payload: any): ImpliedTotals {
 
     const teams: Record<string, string> = {}
     for (const c of comp.competitors ?? []) {
-      const abbr = c?.team?.abbreviation
-      if (abbr && c?.homeAway) teams[c.homeAway] = String(abbr).toUpperCase()
+      const abbr = normalizeProTeam(c?.team?.abbreviation)
+      if (abbr && c?.homeAway) teams[c.homeAway] = abbr
     }
     const home = teams.home
     const away = teams.away
@@ -102,8 +103,8 @@ export function statesFromScoreboard(payload: any): Record<string, GameState> {
     const raw = String(type?.state ?? '').toLowerCase()
     const state: GameState = raw === 'post' ? 'post' : raw === 'in' ? 'in' : 'pre'
     for (const c of comp?.competitors ?? []) {
-      const abbr = c?.team?.abbreviation
-      if (abbr) out[String(abbr).toUpperCase()] = state
+      const abbr = normalizeProTeam(c?.team?.abbreviation)
+      if (abbr) out[abbr] = state
     }
   }
   return out
