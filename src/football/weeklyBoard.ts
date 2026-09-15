@@ -18,6 +18,8 @@ export interface WeeklyStarter {
   home: boolean
   bye: boolean
   opportunity: OpportunityTag
+  /** Whether his game is ahead of us, on now, or done. */
+  play: PlayState
   inCurrent: boolean // manager already has him starting
   /**
    * Rank THIS WEEK at his own position, and among everyone eligible for a flex slot, over
@@ -171,6 +173,8 @@ export function winPctFromMargin(margin: number): number {
 /** One of the opponent's projected starters. */
 export interface OppStarter {
   slot: string
+  /** Whether his game is ahead of us, on now, or done. */
+  play: PlayState
   /** Needed to ask whether his game is done — the row is otherwise identified only by name. */
   playerKey: string
   name: string
@@ -194,6 +198,15 @@ export interface SlotDuel {
   theirs: OppStarter | null
   /** Mine minus theirs, in this week's points. */
   edge: number
+  /**
+   * Both players are done, so this spot is decided rather than projected.
+   *
+   * Until then "brighter side wins" is a forecast wearing the same clothes as a result, and
+   * the reader has no way to tell which rows are still in play.
+   */
+  settled: boolean
+  /** Who took it, once settled. Null while anything is still to come. */
+  wonBy: 'me' | 'them' | 'tie' | null
 }
 
 /** This week's fantasy matchup, projected off the same weekly points as the lineup. */
@@ -271,6 +284,15 @@ export interface WeeklyScarcity {
   /** 'cheap' when the wire is stocked here, 'scarce' when it is bare. */
   verdict: 'cheap' | 'scarce'
 }
+
+/**
+ * Where a player's game is, from the reader's point of view.
+ *
+ * The number beside a name means two completely different things depending on this, and the
+ * row had no way to say which: a 24 already scored looked exactly like a 24 still hoped for.
+ * 'pre' is a projection, 'final' is a result, and 'live' is the only one worth watching.
+ */
+export type PlayState = 'pre' | 'live' | 'final'
 
 /** Who holds a player, from the point of view of the manager reading the page. */
 export type WeeklyOwner = 'me' | 'opp' | 'free' | 'other'
@@ -460,6 +482,12 @@ export function buildWeeklyBoard(input: {
     return st === 'in' || st === 'post'
   }
 
+  /** pre / live / final for one player, from his team's game. Unknown reads as 'pre'. */
+  const playState = (key: string): PlayState => {
+    const st = gameStates?.[(meta.get(key)?.proTeam ?? '').toUpperCase()]
+    return st === 'post' ? 'final' : st === 'in' ? 'live' : 'pre'
+  }
+
   const banked = (key: string): boolean => {
     if (!actualPoints || !(key in actualPoints) || !gameStates) return false
     const st = gameStates[(meta.get(key)?.proTeam ?? '').toUpperCase()]
@@ -540,6 +568,7 @@ export function buildWeeklyBoard(input: {
       starters.push({
         slot,
         playerKey: key,
+        play: playState(key),
         name: p?.name ?? '—',
         position: p?.position ?? '',
         team: p?.proTeam,
@@ -844,6 +873,7 @@ export function buildWeeklyBoard(input: {
           oppStarters.push({
             slot,
             playerKey: k,
+            play: playState(k),
             name: p?.name ?? '—',
             position: p?.position ?? '',
             team: p?.proTeam,
@@ -882,6 +912,7 @@ export function buildWeeklyBoard(input: {
             return {
               slot,
               playerKey: k,
+              play: playState(k),
               name: p?.name ?? '—',
               position: p?.position ?? '',
               team: p?.proTeam,
@@ -907,11 +938,16 @@ export function buildWeeklyBoard(input: {
         for (let i = 0; i < Math.max(mineAt.length, theirsAt.length); i++) {
           const mine = mineAt[i] ?? null
           const theirs = theirsAt[i] ?? null
+          const edge = (mine?.weekPoints ?? 0) - (theirs?.weekPoints ?? 0)
+          /* Settled needs BOTH sides final — one man still playing can take the spot back. */
+          const settled = mine?.play === 'final' && theirs?.play === 'final'
           duels.push({
             slot,
             mine,
             theirs,
-            edge: (mine?.weekPoints ?? 0) - (theirs?.weekPoints ?? 0),
+            edge,
+            settled,
+            wonBy: settled ? (edge > 0 ? 'me' : edge < 0 ? 'them' : 'tie') : null,
           })
         }
       }

@@ -441,18 +441,34 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
                 <span v-if="d.mine && d.mine.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>
               </span>
               <span v-if="d.mine" class="shrink-0 font-mono text-[9px]" :class="posTone(d.mine)">{{ posBadge(d.mine) }}</span>
-              <span v-if="d.mine" class="w-7 shrink-0 text-right font-mono text-xs">{{ round(d.mine.weekPoints) }}</span>
+              <!-- A scored number and a hoped-for number looked identical. Final is solid,
+                   a game in progress pulses, and anything unplayed is dimmed as a forecast. -->
+              <span v-if="d.mine && d.mine.play === 'live'" class="live-dot shrink-0" title="Playing now"></span>
+              <span v-if="d.mine" class="w-7 shrink-0 text-right font-mono text-xs"
+                    :class="d.mine.play === 'pre' ? 'text-dark-textMuted/60 italic' : ''">{{ round(d.mine.weekPoints) }}</span>
             </span>
 
-            <!-- the seat, tinted toward whoever wins it -->
-            <span class="w-10 shrink-0 text-center font-mono text-[9px] uppercase"
+            <!--
+              The slot, and once both players are finished, the verdict.
+              Tint alone said "brighter side wins", which is a forecast wearing the same
+              clothes as a result. A settled spot gets a solid chip and an arrow pointing at
+              whoever actually took it; an unsettled one stays a tint.
+            -->
+            <span class="w-14 shrink-0 text-center font-mono text-[9px] uppercase"
                   :class="d.edge > 0 ? 'text-primary' : d.edge < 0 ? 'text-[#e69a4a]' : 'text-dark-textMuted'">
-              {{ d.slot }}
+              <span v-if="d.settled && d.wonBy !== 'tie'"
+                    class="inline-flex items-center gap-0.5 rounded px-1 py-0.5"
+                    :class="d.wonBy === 'me' ? 'bg-primary/20 text-primary' : 'bg-[#e69a4a]/20 text-[#e69a4a]'">
+                <span v-if="d.wonBy === 'me'">&#9664;</span>{{ d.slot }}<span v-if="d.wonBy === 'them'">&#9654;</span>
+              </span>
+              <template v-else>{{ d.slot }}</template>
             </span>
 
             <!-- theirs -->
             <span class="flex min-w-0 flex-1 items-center justify-end gap-1.5" :class="d.edge < 0 ? 'text-dark-text' : 'text-dark-textMuted'">
-              <span v-if="d.theirs" class="w-7 shrink-0 text-left font-mono text-xs">{{ round(d.theirs.weekPoints) }}</span>
+              <span v-if="d.theirs" class="w-7 shrink-0 text-left font-mono text-xs"
+                    :class="d.theirs.play === 'pre' ? 'text-dark-textMuted/60 italic' : ''">{{ round(d.theirs.weekPoints) }}</span>
+              <span v-if="d.theirs && d.theirs.play === 'live'" class="live-dot shrink-0" title="Playing now"></span>
               <span v-if="d.theirs" class="shrink-0 font-mono text-[9px]" :class="posTone(d.theirs)">{{ posBadge(d.theirs) }}</span>
               <span class="min-w-0 flex-1 truncate text-right text-[13px]">
                 {{ d.theirs ? d.theirs.name : '—' }}
@@ -464,7 +480,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             </span>
           </div>
           <p class="mt-2 font-mono text-[9px] text-dark-textMuted">
-            brighter side wins the spot · rank is at that position among rostered players and free agents
+<span class="live-dot mr-1 inline-block"></span> playing now · <span class="italic text-dark-textMuted/60">dimmed</span> = not yet played · a chip on the slot means that spot is final
           </p>
         </div>
       </section>
@@ -806,3 +822,30 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
     </template>
   </div>
 </template>
+
+<style scoped>
+/*
+ * The live marker. A game in progress is the only thing on this page that changes while you
+ * look at it, so it is the only thing that moves.
+ *
+ * prefers-reduced-motion drops the animation and keeps the dot — the state still has to be
+ * readable for anyone who has asked the OS to stop things moving.
+ */
+.live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-primary, #C6FF3A);
+  box-shadow: 0 0 0 0 rgba(198, 255, 58, .7);
+  animation: ufd-live 1.8s ease-out infinite;
+}
+@keyframes ufd-live {
+  0%   { box-shadow: 0 0 0 0 rgba(198, 255, 58, .55); }
+  70%  { box-shadow: 0 0 0 5px rgba(198, 255, 58, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(198, 255, 58, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-dot { animation: none; box-shadow: 0 0 0 2px rgba(198, 255, 58, .3); }
+}
+</style>

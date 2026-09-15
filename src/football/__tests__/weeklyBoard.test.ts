@@ -1232,3 +1232,72 @@ describe('a decided matchup', () => {
     expect(pct).toBeLessThan(100)
   })
 })
+
+/*
+ * A number on this page means two different things and the row could not say which.
+ *
+ * A 24 already scored looked exactly like a 24 still hoped for. Every player now carries the
+ * state of his own game, and a spot is only "settled" once BOTH men are finished — one still
+ * playing can take it back.
+ */
+describe('live, final and not yet played', () => {
+  const rows = [
+    { k: 'me_qb', pos: 'QB', p: 20, team: 'me', pro: 'DET' },
+    { k: 'me_rb', pos: 'RB', p: 18, team: 'me', pro: 'KC' },
+    { k: 'op_qb', pos: 'QB', p: 14, team: 'op', pro: 'DET' },
+    { k: 'op_rb', pos: 'RB', p: 25, team: 'op', pro: 'BUF' },
+  ]
+  const build = (states: Record<string, 'pre' | 'in' | 'post'>) => buildWeeklyBoard({
+    pool: rows.map((r) => ({
+      playerKey: r.k, name: r.k, position: r.pos, teamKey: r.team, proTeam: r.pro,
+    })) as never,
+    vorByKey: Object.fromEntries(rows.map((r) => [r.k, {
+      playerKey: r.k, position: r.pos, pointsRos: r.p * 17, vorRos: r.p, pointsNextWeek: r.p,
+      vorWeek: r.p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+    }])) as never,
+    slots: { QB: 1, RB: 1 },
+    myTeamKey: 'me',
+    currentStarters: [],
+    freeAgents: [],
+    opponentByTeam: { DET: { opp: 'CHI', home: true }, KC: { opp: 'LV', home: false }, BUF: { opp: 'MIA', home: true } },
+    oppTeamKey: 'op',
+    oppTeamName: 'Them',
+    gameStates: states,
+  })
+
+  it('marks each player by his own game, not the slate', () => {
+    const b = build({ DET: 'post', KC: 'in', BUF: 'pre' })
+    expect(b.starters.find((s) => s.playerKey === 'me_qb')!.play).toBe('final')
+    expect(b.starters.find((s) => s.playerKey === 'me_rb')!.play).toBe('live')
+    expect(b.matchup!.oppStarters.find((o) => o.playerKey === 'op_rb')!.play).toBe('pre')
+  })
+
+  it('settles a spot only when both men are done', () => {
+    const qb = (st: Record<string, 'pre' | 'in' | 'post'>) =>
+      build(st).matchup!.duels.find((d) => d.slot === 'QB')!
+    // Both are Lions, so one state decides the spot.
+    expect(qb({ DET: 'post', KC: 'post', BUF: 'post' }).settled).toBe(true)
+    expect(qb({ DET: 'in', KC: 'post', BUF: 'post' }).settled).toBe(false)
+    expect(qb({ DET: 'pre', KC: 'post', BUF: 'post' }).settled).toBe(false)
+  })
+
+  it('names who took a settled spot', () => {
+    const b = build({ DET: 'post', KC: 'post', BUF: 'post' })
+    expect(b.matchup!.duels.find((d) => d.slot === 'QB')!.wonBy).toBe('me')    // 20 v 14
+    expect(b.matchup!.duels.find((d) => d.slot === 'RB')!.wonBy).toBe('them')  // 18 v 25
+  })
+
+  it('claims no winner while anything is unplayed', () => {
+    for (const d of build({ DET: 'pre', KC: 'pre', BUF: 'pre' }).matchup!.duels) {
+      expect(d.settled).toBe(false)
+      expect(d.wonBy).toBeNull()
+    }
+  })
+
+  it('treats an unknown schedule as not yet played', () => {
+    // No game states at all: everything is a projection, nothing is settled.
+    const b = build({})
+    expect(b.starters.every((s) => s.play === 'pre')).toBe(true)
+    expect(b.matchup!.duels.every((d) => !d.settled)).toBe(true)
+  })
+})
