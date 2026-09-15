@@ -143,7 +143,17 @@ export function linesFromStats(payload: unknown, week: number): SeasonLine[] {
 
 const seasonMemo = new Map<string, { at: number; lines: SeasonLine[] }>()
 
-/** Every completed week's lines, through `throughWeek`. Empty when unavailable. */
+/**
+ * Every PLAYED week's lines, up to and including `throughWeek`. Empty when unavailable.
+ *
+ * Callers pass the current week, not the one before it. A league's `currentWeek` stays on a
+ * week until the next one opens, so "current minus one" skipped the week that had just
+ * finished — which on the Tuesday after week one meant no data at all, and every column that
+ * depends on this rendered blank.
+ *
+ * A week nobody has played yet returns rows that are all zero, and those are dropped here
+ * rather than allowed to drag a defensive average toward nothing.
+ */
 export async function getSeasonLines(season: number | string, throughWeek: number): Promise<SeasonLine[]> {
   if (!season || throughWeek < 1) return []
   const cacheKey = `${season}:1-${throughWeek}`
@@ -158,7 +168,12 @@ export async function getSeasonLines(season: number | string, throughWeek: numbe
       const url = `${BASE}/${season}/${w}?season_type=regular`
         + '&position[]=QB&position[]=RB&position[]=WR&position[]=TE'
       const res = await fetch(url, { signal: ctl.signal })
-      if (res.ok) lines.push(...linesFromStats(await res.json(), w))
+      if (res.ok) {
+        const week = linesFromStats(await res.json(), w)
+        /* An unplayed week comes back as rows of zeroes. Counting it would tell every defence
+           it allowed nothing, which is the most flattering possible lie about all 32 of them. */
+        if (week.some((l) => l.points > 0)) lines.push(...week)
+      }
     } catch {
       /* One unreadable week is a smaller sample, not a failure — the rest still counts. */
     } finally {

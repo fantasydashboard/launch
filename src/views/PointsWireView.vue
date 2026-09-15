@@ -71,8 +71,28 @@ const teamNames = source.teamNames
  * pickup does to THIS lineup, which is the half a published FAAB range structurally cannot
  * know.
  */
+/* Declared before anything that reads them: lastCompletedWeek derives from seasonLines, and
+   its watcher runs immediately — reading a ref that had not been initialised yet is a
+   dead-zone crash on page load, not a lint nit. */
+const seasonSchedule = ref<SeasonSchedule>({})
+const seasonLines = ref<Awaited<ReturnType<typeof getSeasonLines>>>([])
+const seasonYear = computed(() => new Date().getFullYear())
+
 const usage = ref<UsageByKey>({})
-const lastCompletedWeek = computed(() => Math.max(0, (leagueStore.currentWeek ?? 1) - 1))
+/*
+ * The most recent week that actually produced points.
+ *
+ * Not `currentWeek - 1`, which was the first guess and is wrong in the window that matters: a
+ * league stays on a week until the next opens, so on the Tuesday after week one that
+ * expression is zero and every column depending on it renders blank — exactly when the data
+ * has just arrived and is most wanted.
+ *
+ * Read off the lines instead, which drop unplayed weeks, so this is self-correcting and needs
+ * no guess about when a week ends.
+ */
+const lastCompletedWeek = computed(() =>
+  Math.max(0, ...seasonLines.value.map((l) => l.week)))
+
 watch([lastCompletedWeek, () => leagueStore.activeSport], async () => {
   if (!isFootball.value || lastCompletedWeek.value < 1) { usage.value = {}; return }
   usage.value = await getWeeklyUsage(new Date().getFullYear(), lastCompletedWeek.value)
@@ -99,16 +119,14 @@ const gainByKey = computed<Record<string, number>>(() => {
  * answers "should I start or trade him now", and a player can have the easiest season ahead
  * and a brutal month first.
  */
-const seasonSchedule = ref<SeasonSchedule>({})
-const seasonLines = ref<Awaited<ReturnType<typeof getSeasonLines>>>([])
-const seasonYear = computed(() => new Date().getFullYear())
 
-watch([lastCompletedWeek, () => leagueStore.activeSport], async () => {
+watch([() => leagueStore.currentWeek, () => leagueStore.activeSport], async () => {
   if (!isFootball.value) { seasonSchedule.value = {}; seasonLines.value = []; return }
   seasonSchedule.value = await getSeasonSchedule(seasonYear.value)
-  if (lastCompletedWeek.value >= 1) {
-    seasonLines.value = await getSeasonLines(seasonYear.value, lastCompletedWeek.value)
-  }
+  /* Through the CURRENT week, not the one before it — a league stays on a week until the next
+     opens, so week one's results are only reachable by asking for week one. Unplayed weeks
+     come back empty and are dropped by the fetch. */
+  seasonLines.value = await getSeasonLines(seasonYear.value, leagueStore.currentWeek ?? 1)
 }, { immediate: true })
 
 const allowed = computed(() => buildAllowed(seasonLines.value.map((l) => ({
