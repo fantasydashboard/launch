@@ -31,6 +31,28 @@ export function mergePoint(points: TrendPoint[], p: TrendPoint): TrendPoint[] {
  * tail. The first point equals the latest actual point so the dotted line picks
  * up exactly where the solid line ends.
  */
+/**
+ * The Tuesday that opens the fantasy week containing `today`.
+ *
+ * A fantasy week runs Tuesday to Monday: waivers clear Tuesday morning and the last game is
+ * Monday night. The trend was keyed only by league and week number, so captures taken before
+ * that Tuesday survived into the new week and the chart drew ten days — the previous
+ * weekend's tail, then Tue through Mon — which reads as a fortnight-long matchup.
+ */
+export function weekStart(today: Date): string {
+  const d = new Date(today)
+  // getDay(): Sun 0 ... Tue 2 ... Sat 6. Days back to the Tuesday on or before today.
+  const back = (d.getDay() - 2 + 7) % 7
+  d.setDate(d.getDate() - back)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+/** Drop anything captured before this fantasy week opened. */
+export function withinWeek(points: TrendPoint[], start: string): TrendPoint[] {
+  return points.filter((pt) => pt.date >= start)
+}
+
 export function projectedSegment(latest: TrendPoint | null, weekEndDate: string): TrendPoint[] {
   if (!latest || weekEndDate <= latest.date) return []
   return [latest, { date: weekEndDate, my: latest.my, opp: latest.opp }]

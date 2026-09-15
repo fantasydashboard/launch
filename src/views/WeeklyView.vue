@@ -43,7 +43,8 @@ const leagueStore = useLeagueStore()
 const ME = '#5ec8e6'
 const OPP = '#e69a4a'
 /*
- * Days left in the FANTASY week, which ends Monday night rather than Sunday.
+ * Days left in the FANTASY week, which runs Tuesday to Monday: waivers clear Tuesday morning
+ * and the last game is Monday night.
  *
  * This counted to Sunday, so on a Monday it returned six and the chart drew a projected line
  * running a week and a half past the end of the matchup — future dates on a week already

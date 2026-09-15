@@ -1,5 +1,5 @@
 import { ref, computed, reactive, watch, type Ref } from 'vue'
-import { mergePoint, projectedSegment, type TrendPoint } from '@/myteam/winProbTrend'
+import { mergePoint, projectedSegment, type TrendPoint, weekStart, withinWeek } from '@/myteam/winProbTrend'
 
 const ymd = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -40,7 +40,10 @@ export function useWinProbTrend(opts: {
   function capture() {
     if (!opts.ready.value || !opts.leagueId.value) return
     const today = new Date()
-    const merged = mergePoint(readStored(), {
+    /* A fantasy week runs Tuesday to Monday. Anything captured before this week's Tuesday
+       belongs to the last one, and keeping it drew a ten-day matchup. */
+    const start = weekStart(today)
+    const merged = mergePoint(withinWeek(readStored(), start), {
       date: ymd(today),
       my: Math.round(opts.my.value),
       opp: Math.round(opts.opp.value),
