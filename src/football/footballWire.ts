@@ -78,12 +78,27 @@ const normPos = (pos: string): string => canonicalPosition((pos || '').split(/[,
 const faKey = (fa: { playerKey?: string; name: string }): string => fa.playerKey ?? `fa:${fa.name}`
 
 /**
- * How many rows of a board the page shows, and therefore how many get tiered.
+ * How deep tier cliffs are cut.
  *
- * One constant for both, because tiering a population the reader cannot see is what put every
+ * NOT how many rows the page shows — those were one constant and had to stop being one. A
+ * board can run two hundred deep for reference, and assignTiers spends a fixed budget of cuts
+ * on the biggest gaps in whatever it is handed, so tiering across two hundred rows sends every
+ * cut into the tail and leaves the top undifferentiated. That is the exact bug that put every
  * visible quarterback in a single tier.
+ *
+ * Cliffs belong where decisions are made, which is the top of the board. Rows past this depth
+ * still render — they simply carry no tier line, because a cliff between the 140th and 141st
+ * running back is not a thing anyone acts on.
  */
-export const BOARD_DEPTH = 25
+export const TIER_DEPTH = 25
+
+/**
+ * How many rows the board renders before asking to be expanded.
+ *
+ * Deep enough to be useful without dumping two hundred rows on someone who wanted the top of
+ * the list; the surface offers the rest on request.
+ */
+export const BOARD_DEPTH = 50
 
 /**
  * Cut tiers over the displayed depth and mark the cliffs, in place.
@@ -93,7 +108,7 @@ export const BOARD_DEPTH = 25
  * looking for: where the drop-off is.
  */
 function tierInPlace(entries: BoardRow[]): void {
-  const shown = entries.slice(0, BOARD_DEPTH)
+  const shown = entries.slice(0, TIER_DEPTH)
   if (!shown.length) return
   const tierByKey = assignTiers(shown.map((e) => ({ playerKey: e.playerKey, value: e.vorRos })))
   let prevTier = 0
@@ -112,7 +127,7 @@ function tierInPlace(entries: BoardRow[]): void {
   }
   // Past the fold: carry the last tier, draw no line. These rows are off the page, and a
   // tier number on them would only matter if we ever showed them.
-  for (const row of entries.slice(BOARD_DEPTH)) {
+  for (const row of entries.slice(TIER_DEPTH)) {
     row.tier = lastTier
     row.tierBreak = undefined
     row.tierDrop = undefined
@@ -211,8 +226,8 @@ export function buildFootballWire(input: {
    * Reproduced by adding a realistic tail to a fixture: five breaks, four of them at rows 26
    * to 29. The board was not under-tiered, it was tiered somewhere the reader never looks.
    *
-   * So tiering runs over the displayed depth, and everything past it inherits the last tier
-   * without drawing a line. The view imports this same constant, so the two cannot drift.
+   * So tiering runs over TIER_DEPTH, and everything past it inherits the last tier without
+   * drawing a line.
    */
   // Full board: rostered + FA per position, VOR-ranked, owned/free flagged, tiered.
   const board: Record<string, BoardRow[]> = {}

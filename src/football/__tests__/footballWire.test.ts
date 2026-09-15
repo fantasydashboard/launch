@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildFootballWire, BOARD_DEPTH } from '../footballWire'
+import { buildFootballWire, TIER_DEPTH } from '../footballWire'
 import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { AvailablePlayer } from '@/players/types'
 import type { PlayerVor } from '../footballVor'
@@ -165,20 +165,63 @@ describe('tiers land on the rows that are displayed', () => {
     -160, -185, -215, -250, -290, -335,
   ]
 
-  it('cuts more than one cliff into the part you can see', () => {
+  it('cuts more than one cliff into the part where decisions happen', () => {
     const rows = column(REAL)
-    const visibleBreaks = rows.slice(0, BOARD_DEPTH).filter((r) => r.tierBreak).length
+    const visibleBreaks = rows.slice(0, TIER_DEPTH).filter((r) => r.tierBreak).length
     expect(visibleBreaks).toBeGreaterThan(1)
   })
 
   it('draws no line past the fold, where a tier number could not be read anyway', () => {
     const rows = column(REAL)
-    for (const r of rows.slice(BOARD_DEPTH)) expect(r.tierBreak).toBeUndefined()
+    for (const r of rows.slice(TIER_DEPTH)) expect(r.tierBreak).toBeUndefined()
   })
 
   it('keeps tier numbers ascending down the column', () => {
     const seen = column(REAL).filter((r) => r.tierBreak).map((r) => r.tier)
     expect(seen).toEqual([...new Set(seen)])
     expect([...seen].sort((a, b) => a - b)).toEqual(seen)
+  })
+})
+
+/*
+ * Depth of the list and depth of the tiering are two different numbers.
+ *
+ * They were one constant, so a board could not be made longer without sending every tier cut
+ * into the tail — the bug that once put every visible quarterback in a single tier. A column
+ * of 183 running backs truncated at 25 is fine for streaming and useless as a reference, and
+ * flatly wrong for someone who uploaded a 200-deep ranking of their own.
+ */
+describe('list depth and tier depth are independent', () => {
+  const deepColumn = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({ k: 'p' + i, v: 200 - i * 1.5 }))
+
+  const build = (n: number) => {
+    const rows = deepColumn(n)
+    const vorByKey: Record<string, PlayerVor> = {}
+    const pool: PointsPoolPlayer[] = []
+    rows.forEach((r, i) => {
+      pool.push({ playerKey: r.k, name: 'RB' + i, position: 'RB', teamKey: i === 0 ? 'me' : 'T' + i, proTeam: 'DET' } as PointsPoolPlayer)
+      vorByKey[r.k] = vor(r.k, 'RB', r.v)
+    })
+    return buildFootballWire({
+      pool, vorByKey, freeAgents: [], myTeamKey: 'me', slots: { RB: 2, FLEX: 1 },
+    }).board.RB
+  }
+
+  it('returns the whole column, however deep', () => {
+    // The builder never truncates — the surface decides how much to render.
+    expect(build(183)).toHaveLength(183)
+  })
+
+  it('still cuts every cliff into the top of it', () => {
+    const rows = build(183)
+    for (const r of rows.slice(TIER_DEPTH)) expect(r.tierBreak).toBeUndefined()
+  })
+
+  it('tiers the same way whether the column is short or long', () => {
+    // Adding 150 rows below the fold must not move a single cliff above it.
+    const short = build(TIER_DEPTH).filter((r) => r.tierBreak).map((r) => r.name)
+    const long = build(183).slice(0, TIER_DEPTH).filter((r) => r.tierBreak).map((r) => r.name)
+    expect(long).toEqual(short)
   })
 })

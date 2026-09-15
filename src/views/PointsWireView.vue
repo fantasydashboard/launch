@@ -274,6 +274,16 @@ const sortedBoard = computed(() => {
   if (wireSort.value === 'season' || !dynasty.ready.value) return rows
   return [...rows].sort((x, y) => byDynasty(x.playerKey, y.playerKey))
 })
+
+/*
+ * Full depth caps at 200 — a complete draft board's worth. Past that a column is padding: the
+ * 200th running back is not a player anyone is choosing between, and rendering nine hundred
+ * rows costs a scroll nobody wanted.
+ */
+const FULL_DEPTH = 200
+const visibleBoard = computed(() =>
+  sortedBoard.value.slice(0, boardExpanded.value ? FULL_DEPTH : BOARD_DEPTH))
+
 /* Position rank among players the market has priced, toned on the same scale as everything
    else on the page. Absent = "—", never a zero that would read as a verdict. */
 const dynTone = (r: { positionRank: number } | null) =>
@@ -318,7 +328,19 @@ const boardOpen = ref(true)
 // Canonical order only — which of these actually appear is decided by the league's own
 // roster_positions inside buildFootballWire, so a league with no K/DEF slot never sees them.
 const boardPositions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
-const boardPos = ref('RB') // which position the Full Board shows (one at a time)
+/*
+ * How much of the board is on screen.
+ *
+ * It was a flat 25, which is fine for "who should I stream" and useless as a reference —
+ * there are 183 running backs, and someone who uploaded their own 200-deep ranking could see
+ * a quarter of it. Expanding is a click, and the count is named on the button so nobody has
+ * to guess how much more there is.
+ */
+const boardPos = ref('RB')
+const boardExpanded = ref(false)
+/* A new position starts at the top again — carrying an expanded state across positions means
+   landing halfway down a list you did not ask to be deep in. */
+watch(boardPos, () => { boardExpanded.value = false })
 /*
  * Picker pills, with the overall order first.
  *
@@ -766,9 +788,10 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                   </span>
                 </span>
               </div>
-              <!-- Selected board, top BOARD_DEPTH by VOR. The same constant decides how deep
-                   tiering runs, so a cliff can never be cut below the last row shown. -->
-              <template v-for="row in sortedBoard.slice(0, BOARD_DEPTH)" :key="'fbbd-' + row.playerKey">
+              <!-- Selected board. Depth is independent of TIER_DEPTH now: cliffs are cut over
+                   the top of the list where decisions happen, while the list itself can run as
+                   deep as the reader wants for reference. -->
+              <template v-for="row in visibleBoard" :key="'fbbd-' + row.playerKey">
                 <!-- tier cliff: the drop-off is the decision, so name it rather than leaving a flat list -->
                 <!-- Where your opinion stops and ours starts. Without this, row 197 and row
                      205 look equally authoritative. -->
@@ -846,8 +869,28 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                   <span v-else class="w-10 shrink-0 text-right font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">{{ row.vorRos >= 0 ? '+' : '' }}{{ round(row.vorRos) }}</span>
                 </div>
               </template>
-              <p v-if="(fbWire.board[boardPos]?.length ?? 0) > 25" class="mt-2 font-mono text-[9px] text-dark-textMuted">
-                top 25 of {{ fbWire.board[boardPos].length }} {{ boardPos }} — the rest are deep below replacement
+              <!--
+                The way out of a truncated list. It was a flat 25 with a line claiming the rest
+                were below replacement — true for streaming, useless as a reference, and flatly
+                wrong for anyone who had uploaded their own 200-deep ranking and could see a
+                quarter of it. The count goes on the button so nobody has to guess.
+              -->
+              <button
+                v-if="!boardExpanded && sortedBoard.length > visibleBoard.length"
+                class="mt-3 w-full rounded-lg border border-dark-border bg-dark-bg/60 py-2 font-mono text-[11px] text-dark-textSecondary transition-colors hover:text-dark-text"
+                @click="boardExpanded = true"
+              >
+                Show all {{ Math.min(sortedBoard.length, FULL_DEPTH) }} {{ boardPos }}
+              </button>
+              <button
+                v-else-if="boardExpanded && sortedBoard.length > BOARD_DEPTH"
+                class="mt-3 w-full rounded-lg border border-dark-border bg-dark-bg/60 py-2 font-mono text-[11px] text-dark-textMuted transition-colors hover:text-dark-text"
+                @click="boardExpanded = false"
+              >
+                Show top {{ BOARD_DEPTH }}
+              </button>
+              <p v-if="(fbWire.board[boardPos]?.length ?? 0) > BOARD_DEPTH" class="mt-2 font-mono text-[9px] text-dark-textMuted">
+                showing {{ visibleBoard.length }} of {{ fbWire.board[boardPos].length }} {{ boardPos }}<template v-if="rosSource !== 'UFD'"> &middot; {{ rosSource }}'s order</template>
               </p>
             </div>
           </section>
