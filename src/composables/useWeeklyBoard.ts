@@ -12,6 +12,8 @@ import { seasonStakes, type Stakes } from '@/myteam/seasonStakes'
 import { useCustomRankings } from '@/composables/useCustomRankings'
 import { applyRankingOrder } from '@/draft/room/customRankings'
 import { getImpliedTeamTotals, getGameStates, type GameState } from '@/services/gameLines'
+import { getSeasonLines } from '@/services/playerUsage'
+import { buildAllowed, rankAllowed } from '@/football/defenseAllowed'
 import { startingSlotOrder } from '@/trades/rosterSlots'
 import { adjustQbForEnvironment, meanImplied, type ImpliedTotals } from '@/football/gameEnvironment'
 import type { SleeperRoster } from '@/types/sleeper'
@@ -136,6 +138,30 @@ export function useWeeklyBoard(): {
     if (!isLive) return
     impliedTotals.value = await getImpliedTeamTotals()
     gameStates.value = await getGameStates()
+  }, { immediate: true })
+
+  /*
+   * How each defence has actually held up, by position — the one difficulty number a start/sit
+   * needs and the board never had.
+   *
+   * The Wire has printed rest-of-season and next-four difficulty for a while off exactly this
+   * pipeline; This Week showed neither, nor the matchup directly in front of the player. Same
+   * source, same adjustment for the offences each defence has faced, so the two pages cannot
+   * disagree about who is a soft matchup.
+   *
+   * `currentWeek`, not `currentWeek - 1`: a league stays on a week until the next opens, so
+   * subtracting one skipped the week that had just finished, and on the Tuesday after week one
+   * left every column blank. getSeasonLines drops weeks nobody has played.
+   */
+  const matchupRankByPos = ref<Record<string, Record<string, number>>>({})
+  watch([live, () => leagueStore.currentWeek], async ([isLive, week]) => {
+    if (!isLive) return
+    const lines = await getSeasonLines(new Date().getFullYear(), Number(week ?? 1))
+    if (!lines.length) { matchupRankByPos.value = {}; return }
+    const allowed = buildAllowed(lines)
+    const out: Record<string, Record<string, number>> = {}
+    for (const pos of ['QB', 'RB', 'WR', 'TE']) out[pos] = rankAllowed(allowed, pos)
+    matchupRankByPos.value = out
   }, { immediate: true })
 
   /*
@@ -279,6 +305,7 @@ export function useWeeklyBoard(): {
          would have played him, not where his manager did. */
       starterSlots: starterSlots.value,
       myStarterKeys: oppSvc.opponent.value?.myStarters ?? [],
+      matchupRankByPos: matchupRankByPos.value,
     })
   })
 

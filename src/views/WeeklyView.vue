@@ -231,6 +231,26 @@ function toneForFraction(f: number | null): string {
   if (f <= 1.5) return 'text-[#d29922]'
   return 'text-[#f85149]'
 }
+/*
+ * Matchup tone, on the same scale The Wire uses for rest-of-season and next-four difficulty —
+ * deliberately identical, so a green 4 means the same thing on both pages.
+ *
+ * Rank 1 is the defence that gives up the MOST, which is the softest matchup and therefore the
+ * best news. Null is styled as absent rather than bad: a defence with no data yet is unknown,
+ * and colouring it red would be a verdict we never made.
+ */
+const matchupTone = (rank: number | null) =>
+  rank === null ? 'text-dark-textMuted/40'
+    : rank <= 8 ? 'text-[#7ee787]'
+    : rank <= 16 ? 'text-[#3fb950]'
+    : rank <= 24 ? 'text-dark-textMuted'
+    : 'text-[#e69a4a]'
+
+const matchupTitle = (row: { oppRank?: number | null; opponent?: string; position?: string }) =>
+  row.oppRank == null
+    ? 'No defensive data for this opponent yet'
+    : `${row.opponent || 'His opponent'} ranks ${row.oppRank} of 32 in points allowed to ${row.position}s — 1 gives up the most`
+
 const posTone = (r: { position: string; posRank: number }) =>
   toneForFraction(startableFraction(r.posRank, normPos(r.position), startable.value))
 /* A flex badge is measured against every body that could fill a flex seat, so the pool is
@@ -731,16 +751,31 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             <span><span class="text-[#4ade80]">●</span> free agent</span>
             <span><span class="text-dark-textMuted/50">●</span> rostered elsewhere</span>
           </p>
+          <p class="mb-1 flex items-center gap-2.5 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/60">
+            <span class="min-w-0 flex-1"></span>
+            <span class="w-8 shrink-0 text-right" title="How the defence he faces this week ranks against his position. 1 gives up the most.">MTCH</span>
+            <span class="w-10 shrink-0 text-right">PTS</span>
+          </p>
 
           <template v-for="(row, i) in boardRows" :key="'bw-' + row.playerKey">
             <!-- The cliff, named. A flat ranked column hides the drop-off, which is the
                  decision — same treatment as the draft board and The Wire. -->
+            <!--
+              A cliff and a split are different claims and must not look alike.
+
+              A cliff is a real drop. A split means the group above was too spread out to call
+              one tier, so it was cut at its widest seam — nothing actually separates them.
+              Drawing both as the same solid line is what made the old tiers read as arbitrary:
+              a 0.9 got a line while the 0.7 above it did not, and the page never said why.
+            -->
             <div v-if="row.tierBreak" class="flex items-center gap-2 py-1.5">
-              <span class="h-px flex-1 bg-dark-border"></span>
-              <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70">
-                tier {{ row.tier }} &middot; &minus;{{ round(row.tierDrop ?? 0) }} pts
+              <span class="h-px flex-1" :class="row.tierSplit ? 'bg-dark-border/50' : 'bg-dark-border'"></span>
+              <span class="font-mono text-[9px] uppercase tracking-wider"
+                    :class="row.tierSplit ? 'text-dark-textMuted/45' : 'text-dark-textMuted/70'">
+                <template v-if="row.tierSplit">tier {{ row.tier }} &middot; no cliff &middot; widest gap</template>
+                <template v-else>tier {{ row.tier }} &middot; &minus;{{ round(row.tierDrop ?? 0) }} pts</template>
               </span>
-              <span class="h-px flex-1 bg-dark-border"></span>
+              <span class="h-px flex-1" :class="row.tierSplit ? 'bg-dark-border/50' : 'bg-dark-border'"></span>
             </div>
             <div
               class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm last:border-0"
@@ -768,6 +803,12 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               <span class="shrink-0 font-mono text-[9px]" :class="boardPos === 'FLEX' ? flexTone(row.flexRank) : posTone(row)">
                 {{ boardPos === 'FLEX' ? 'FLX' + row.flexRank : posLabel(row) }}
               </span>
+              <!-- Who he plays this week, ranked. The Wire shows rest-of-season and next-four
+                   difficulty; this is the one a start/sit actually turns on. Em dash when the
+                   defence has no data yet — unknown, not hardest in the league. -->
+              <span class="w-8 shrink-0 text-right font-mono text-[10px]"
+                    :class="matchupTone(row.oppRank ?? null)"
+                    :title="matchupTitle(row)">{{ row.oppRank ?? '—' }}</span>
               <span class="w-10 shrink-0 text-right font-mono text-xs">{{ round(row.weekPoints) }}</span>
             </div>
           </template>

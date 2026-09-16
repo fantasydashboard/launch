@@ -1301,3 +1301,35 @@ describe('live, final and not yet played', () => {
     expect(b.matchup!.duels.every((d) => !d.settled)).toBe(true)
   })
 })
+
+describe('this week\'s matchup difficulty', () => {
+  const pool = [
+    { playerKey: 'a', name: 'a', position: 'WR', teamKey: 'me', proTeam: 'DET' },
+    { playerKey: 'b', name: 'b', position: 'WR', teamKey: 'me', proTeam: 'DET' },
+  ] as never
+  const vorByKey = Object.fromEntries([['a', 18], ['b', 12]].map(([k, p]) => [k, {
+    playerKey: k, position: 'WR', pointsRos: (p as number) * 17, vorRos: p, pointsNextWeek: p,
+    vorWeek: p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+  }])) as never
+  const run = (matchupRankByPos?: Record<string, Record<string, number>>) =>
+    buildWeeklyBoard({
+      pool, vorByKey, freeAgents: [], opponentByTeam: { DET: { opp: 'CHI', home: true } },
+      slots: { WR: 2 }, myTeamKey: 'me', currentStarters: [], matchupRankByPos,
+    }).board.WR
+
+  it('carries the rank of the defence he actually faces this week', () => {
+    // DET plays CHI, so a receiver's matchup is Chicago's rank against receivers.
+    expect(run({ WR: { CHI: 3 } })[0].oppRank).toBe(3)
+  })
+
+  it('reads the rank for HIS position, not another one', () => {
+    expect(run({ RB: { CHI: 3 } })[0].oppRank).toBeNull()
+  })
+
+  /* A defence with no data yet is unknown. Ranking it 32nd would print "hardest matchup in
+     the league" on no evidence — the same absent-is-not-zero rule as everywhere else. */
+  it('leaves the rank null rather than guessing when the defence has no data', () => {
+    expect(run({ WR: {} })[0].oppRank).toBeNull()
+    expect(run(undefined)[0].oppRank).toBeNull()
+  })
+})

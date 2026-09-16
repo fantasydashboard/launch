@@ -4,7 +4,6 @@ import type { PlayerVor } from './footballVor'
 import type { OpportunityTag } from './footballOpportunity'
 import type { AvailablePlayer } from '@/players/types'
 import { FLEX_ELIGIBILITY, startablePositions, canonicalPosition } from '@/trades/rosterSlots'
-import { assignTiers } from '@/draft/room/tierCliffs'
 
 export interface WeeklyStarter {
   slot: string
@@ -100,11 +99,66 @@ export const MIN_MOVE_GAIN = 2
  *  WeeklyView's BOARD_LIMIT — tiering a population nobody sees is how the Wire lost its. */
 export const TIER_DEPTH = 30
 
-export const TIER_DROP_MULTIPLE = 3
-export const MIN_TIER_DROP_FLOOR = 0.75
+/**
+ * What makes a tier line, in three rules a break must satisfy ALL of.
+ *
+ * The previous bar was max(0.75, min(3 x median, 0.2 x spread)). In a compressed weekly column
+ * the median gap is around 0.2, so three times it never reached the 0.75 floor and the rule
+ * collapsed to "any gap of 0.75 or more". That promoted noise to structure: at tight end a 0.9
+ * drew a line while the 0.7 directly above it did not, and nothing in a weekly projection can
+ * tell those two apart. Worse, a tier could end up WIDER than the gap that closed it —
+ * receiver tier 1 spanned 2.8 points and closed on 1.0, declaring the first and eighth
+ * receivers identical while splitting the eighth from a man one point below him.
+ */
+/** 1. Below a point is inside the projection's own precision, not a claim about players. */
+export const MIN_TIER_DROP_FLOOR = 1.0
+/** 2. And it has to stand out from the column's ordinary spacing. */
+export const TIER_DROP_MULTIPLE = 2
+/**
+ * 3. And no tier may be wider than this. One that is gets subdivided at its own widest gap,
+ * repeatedly, until none is — which is what stops a tier being wider than its own boundary.
+ *
+ * A line created this way is NOT a cliff. It says "too spread out to call one group", which is
+ * a weaker claim than "there is a drop here", so it is flagged separately and the view draws
+ * it differently. Dressing the two up identically is what made the old tiers read as arbitrary.
+ */
+export const MAX_TIER_SPREAD = 2.0
+/**
+ * ...but a split still needs somewhere honest to cut.
+ *
+ * Without this, a wide but perfectly smooth column gets cut at whichever 0.3 gap happens to be
+ * fractionally largest, and the line captions itself "-0 pts" — a cliff claiming no drop, the
+ * exact failure the older rule was written to stop. Two existing tests caught it.
+ *
+ * So a split must land on a gap that is both visible on the page and genuinely wider than the
+ * column's ordinary spacing. Where no gap qualifies, the tier simply stays wide, which is the
+ * honest reading: nothing separates these players.
+ */
+export const MIN_SPLIT_GAP = 0.5
 
-/** A drop worth this share of the column's whole spread is a cliff whatever the median says. */
-export const TIER_SPREAD_SHARE = 0.2
+/**
+ * Weekly injury discount, which this board applied nowhere.
+ *
+ * Sleeper's projection does not move for a designation and nothing here discounted one, so a
+ * Questionable player sat at full strength. Measured against a trusted analyst's week-2 board,
+ * that single omission accounted for nearly all our divergence at receiver (rank agreement
+ * 0.65 overall, 0.83 once Questionable players were set aside) and at tight end (0.78 -> 0.89).
+ *
+ * Deliberately harsher than the season-long DTD haircut in myteam/injuryStatus.ts, which is
+ * 0.9. Over a season a day-to-day player misses at most one game of a dozen; over ONE WEEK the
+ * question is whether he plays at all and whether he is limited if he does. Same tag, two
+ * horizons, two numbers. Roughly seven in ten Questionable players suit up, at something under
+ * full effectiveness.
+ *
+ * Never applied to banked points: those already happened.
+ */
+export const WEEKLY_INJURY_DISCOUNT: Record<string, number> = {
+  QUESTIONABLE: 0.65,
+  Q: 0.65,
+  GTD: 0.65,
+  DOUBTFUL: 0.25,
+  D: 0.25,
+}
 
 export interface WeeklyStreamer {
   player: AvailablePlayer
@@ -317,6 +371,16 @@ export interface WeeklyBoardRow {
   tierBreak?: boolean
   /** Points of separation from the tier above; only set on a tier's first row. */
   tierDrop?: number
+  /**
+   * True when this break exists because the tier above was too WIDE, not because anything
+   * dropped. A weaker claim than a cliff, and the view must say so rather than draw both alike.
+   */
+  tierSplit?: boolean
+  /**
+   * How his defence ranks against this position, 1 = gives up the most (the softest matchup).
+   * Null when we have no defensive data for that opponent yet — absent, never ranked last.
+   */
+  oppRank?: number | null
 }
 
 export interface WeeklyBoard {
@@ -403,6 +467,15 @@ export function buildWeeklyBoard(input: {
   /** pool teamKey -> display name, for badging whoever else holds a player. */
   teamNames?: Record<string, string>
   /**
+   * position -> pro team -> that defence's rank against the position, 1 = gives up the most.
+   *
+   * The Wire has shown rest-of-season and next-four difficulty for a while and this board
+   * never showed the one that matters most for a start/sit: who he is playing THIS week.
+   * Absent teams stay absent — a defence with no data yet is unknown, and ranking it 32nd
+   * would read as "hardest matchup in the league" on no evidence.
+   */
+  matchupRankByPos?: Record<string, Record<string, number>>
+  /**
    * The lineup the OPPONENT actually set, in slot order. Empty when unpublished.
    *
    * Their starters used to come from assignSlots — our optimiser answering a question nobody
@@ -447,6 +520,7 @@ export function buildWeeklyBoard(input: {
    */
   tierByKey?: Record<string, number>
 }): WeeklyBoard {
+  const { matchupRankByPos } = input
   const { pool, vorByKey, slots, myTeamKey, currentStarters, freeAgents, opponentByTeam, oppTeamKey, oppTeamName, oppTeamLogo, teamNames, tierByKey, oppStarterKeys, actualPoints, gameStates, starterSlots, myStarterKeys } = input
   /*
    * What a player is worth to this week's score.
@@ -493,8 +567,19 @@ export function buildWeeklyBoard(input: {
     const st = gameStates[(meta.get(key)?.proTeam ?? '').toUpperCase()]
     return st === 'in' || st === 'post'
   }
+  /*
+   * Every injury tag we can see, rostered players and free agents alike. Free agents carry it
+   * on `status`; pool players on `status` too, with `onIL` as the reserve-slot flag.
+   */
+  const tagByKey = new Map<string, string>()
+  for (const p of pool) if (p.status) tagByKey.set(p.playerKey, String(p.status).toUpperCase().trim())
+  for (const fa of freeAgents) if (fa.status) tagByKey.set(faKey(fa), String(fa.status).toUpperCase().trim())
+  const injuryFactor = (key: string): number =>
+    WEEKLY_INJURY_DISCOUNT[tagByKey.get(key) ?? ''] ?? 1
+
   const week = (key: string): number =>
-    banked(key) ? actualPoints![key] : (vorByKey[key]?.pointsNextWeek ?? 0)
+    // Banked points already happened; discounting them would be a claim about the past.
+    banked(key) ? actualPoints![key] : (vorByKey[key]?.pointsNextWeek ?? 0) * injuryFactor(key)
   const meta = new Map(pool.map((p) => [p.playerKey, p]))
   const teamOf = (key: string) => (meta.get(key)?.proTeam ?? '').toUpperCase()
   // An empty map means the schedule is unknown (fetch failed / unsupported week),
@@ -1031,6 +1116,10 @@ export function buildWeeklyBoard(input: {
     opponent: opponentByTeam[(team ?? '').toUpperCase()]?.opp ?? '',
     home: opponentByTeam[(team ?? '').toUpperCase()]?.home ?? false,
     tier: 0,
+    /* Undefined rather than 0 when unknown: a missing defence must not read as a matchup. */
+    oppRank: matchupRankByPos?.[normPosOf(position)]?.[
+      (opponentByTeam[(team ?? '').toUpperCase()]?.opp ?? '').toUpperCase()
+    ] ?? null,
   })
 
   const allRows: WeeklyBoardRow[] = []
@@ -1101,12 +1190,6 @@ export function buildWeeklyBoard(input: {
     /* Tier the rows that are displayed. The full column carries every free agent at the
        position — a hundred-odd bodies whose gaps would take every cut assignTiers has to
        spend, exactly as they did on the Wire's board. */
-    const byKey = assignTiers(
-      [...rows].sort((a, b) => b.weekPoints - a.weekPoints).slice(0, TIER_DEPTH)
-        .map((r) => ({ playerKey: r.playerKey, value: r.weekPoints })),
-    )
-    let prevTier = 0
-    let prevPts = 0
     /*
      * assignTiers sorts internally by value and hands back a strictly increasing tier, but
      * this loop walked the caller's array. Wherever players tie — and a weekly board ties
@@ -1163,42 +1246,54 @@ export function buildWeeklyBoard(input: {
     }
     const sortedGaps = [...gaps].sort((a, b) => a - b)
     const medianGap = sortedGaps.length ? sortedGaps[Math.floor(sortedGaps.length / 2)] : 0
+    const bar = Math.max(MIN_TIER_DROP_FLOOR, TIER_DROP_MULTIPLE * medianGap)
+
+    /* Rule 1 and 2: a genuine cliff is a drop that clears the bar. */
+    const cliffs = new Set<number>()
+    for (let i = 1; i < shownRows.length; i++) {
+      if (shownRows[i - 1].weekPoints - shownRows[i].weekPoints >= bar) cliffs.add(i)
+    }
     /*
-     * ...and a ceiling on that bar, because a short column has a noisy median.
-     *
-     * A five-man column with one huge cliff has its median dragged up by the sparse rows
-     * either side of it, so three times the median came out at twenty-one and rejected a
-     * nineteen-point drop — the most obvious cliff in the fixture, missed by the rule meant to
-     * find cliffs. A gap worth a fifth of the whole column's spread is a cliff whatever the
-     * median says, so it clears on that alone.
+     * Rule 3: any tier still spanning more than MAX_TIER_SPREAD is cut at its own widest gap,
+     * repeatedly, until none is. Bounded by the number of rows, so it always terminates.
      */
-    const spread = shownRows.length
-      ? shownRows[0].weekPoints - shownRows[shownRows.length - 1].weekPoints
-      : 0
-    const bar = Math.max(
-      MIN_TIER_DROP_FLOOR,
-      Math.min(TIER_DROP_MULTIPLE * medianGap, TIER_SPREAD_SHARE * spread),
-    )
+    const bounds = new Set(cliffs)
+    for (let guard = 0; guard < shownRows.length; guard++) {
+      const edges = [0, ...[...bounds].sort((a, b) => a - b), shownRows.length]
+      let cut = -1
+      for (let e = 0; e < edges.length - 1; e++) {
+        const a = edges[e]
+        const b = edges[e + 1]
+        if (b - a < 2) continue
+        if (shownRows[a].weekPoints - shownRows[b - 1].weekPoints <= MAX_TIER_SPREAD) continue
+        let widest = a + 1
+        let widestGap = shownRows[a].weekPoints - shownRows[a + 1].weekPoints
+        for (let i = a + 1; i < b; i++) {
+          const g = shownRows[i - 1].weekPoints - shownRows[i].weekPoints
+          if (g > widestGap) { widest = i; widestGap = g }
+        }
+        // Nowhere honest to cut: every gap in here is the column's ordinary spacing.
+        if (widestGap < MIN_SPLIT_GAP || widestGap <= medianGap) continue
+        cut = widest
+        break
+      }
+      if (cut < 0) break
+      bounds.add(cut)
+    }
 
     let shown = 1
-    let first = true
-    for (const r of walk) {
-      const raw = byKey[r.playerKey] ?? 1
-      // The drop is the gap across the boundary — this row against the one directly above it,
-      // which is what "separation from the tier above" has always meant here.
-      const drop = prevPts - r.weekPoints
-      if (!first && raw > prevTier && drop >= bar) {
+    walk.forEach((r, i) => {
+      if (i > 0 && bounds.has(i)) {
         shown += 1
         r.tier = shown
         r.tierBreak = true
-        r.tierDrop = drop
+        r.tierDrop = walk[i - 1].weekPoints - r.weekPoints
+        // Everything rule 3 added is a split, not a cliff.
+        if (!cliffs.has(i)) r.tierSplit = true
       } else {
         r.tier = shown
       }
-      first = false
-      prevTier = raw
-      prevPts = r.weekPoints
-    }
+    })
     return rows
   }
   const board: Record<string, WeeklyBoardRow[]> = {}
