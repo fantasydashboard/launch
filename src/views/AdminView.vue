@@ -1040,7 +1040,18 @@ const yahooVerdict = computed(() => {
   if (!r) return ''
   if (r.ok) return 'APPROVED — flip YAHOO_API_AVAILABLE in src/lib/yahooStatus.ts and unwind the unavailable copy.'
   if (r.status === 403 && /not authorized to perform this action/i.test(r.detail)) {
-    return 'Still not granted. Same 403 as before — the entitlement has not come through.'
+    /*
+     * This used to say "still not granted" flatly, which is a guess the response cannot
+     * support — and the wrong guess is expensive, because it tells you to stop chasing.
+     *
+     * An access token carries the app's permissions as of the moment it was ISSUED, and the
+     * refresh path reuses the same grant rather than re-asking. Every token we hold was minted
+     * while the app had no Fantasy entitlement, so the first 403 after Yahoo provisions us
+     * looks exactly like the hundred before it. Reconnecting is what distinguishes them.
+     */
+    return 'Still 403. If Yahoo has provisioned the app since you last connected, disconnect '
+      + 'and reconnect Yahoo first — your token was issued under the old grant and a refresh '
+      + 'reuses it. If a freshly reconnected account still 403s, the entitlement has not come through.'
   }
   if (r.status === 400) return 'No Yahoo token on this account. Reconnect Yahoo first; this tests nothing until then.'
   if (r.status === 401) return 'Your session, not Yahoo. Sign in again.'
