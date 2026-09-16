@@ -9,12 +9,22 @@ import type { AvailablePlayer } from '@/players/types'
 import type { SleeperRoster, SleeperUser, SleeperPlayer } from '@/types/sleeper'
 
 const FA_POSITIONS = new Set(['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
-const OUT_STATUSES = new Set(['OUT', 'IR', 'PUP', 'SUSP', 'NA', 'DNR'])
-
-function isOut(injury?: string | null): boolean {
-  const u = String(injury ?? '').toUpperCase()
-  return OUT_STATUSES.has(u)
-}
+/**
+ * `onIL` means HE SITS IN A RESERVE SLOT, and this used to compute it from the injury string.
+ *
+ * That is a different claim, and the difference broke trade analysis. injuryTier short-circuits
+ * on onIL before it reads the status at all, so deriving the flag from `injury_status` — with
+ * 'OUT' in the set — forced every Out-tagged player to the IL tier no matter what the tier
+ * function said. Brock Bowers was therefore halved and barred from the optimal lineup, and
+ * trading two bench bodies for him reported "+0 · your starting lineup does not improve".
+ *
+ * ESPN never had this: it reads `isEspnIL(p.lineupSlot)`, which is the slot the manager put him
+ * in. Sleeper publishes the same thing as `reserve` on the roster, and we were ignoring it in
+ * favour of guessing from the injury tag.
+ *
+ * Being in a reserve slot is a decision by his manager. Being tagged Out is a fact about the
+ * player. Only the first says he is unavailable for months.
+ */
 
 export function buildSleeperPool(
   rosters: SleeperRoster[],
@@ -22,6 +32,9 @@ export function buildSleeperPool(
 ): PointsPoolPlayer[] {
   const out: PointsPoolPlayer[] = []
   for (const r of rosters) {
+    /* The real IR slot, when the league has one. Empty set when it does not, which reads as
+       "nobody is on reserve" — correct — rather than falling back to guessing. */
+    const reserve = new Set([...(r.reserve ?? []), ...(r.taxi ?? [])])
     for (const pid of r.players ?? []) {
       const p = players[pid]
       if (!p) continue
@@ -33,7 +46,7 @@ export function buildSleeperPool(
         teamKey: String(r.roster_id),
         proTeam: p.team ?? '',
         headshot: `https://sleepercdn.com/content/nfl/players/thumb/${pid}.jpg`,
-        onIL: isOut(p.injury_status),
+        onIL: reserve.has(pid),
         status: p.injury_status ?? p.status ?? '',
       })
     }

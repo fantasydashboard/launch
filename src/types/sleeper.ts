@@ -35,6 +35,15 @@ export interface SleeperRoster {
   league_id: string
   players: string[]
   starters: string[]
+  /**
+   * The league's actual IR slot — player ids a manager has stashed on reserve.
+   *
+   * Distinct from an injury designation, which is a fact about the player rather than a
+   * decision by his manager. Absent on leagues with no IR slots configured.
+   */
+  reserve?: string[] | null
+  /** Devy/taxi squad, same shape. Not startable, and not the same thing as reserve. */
+  taxi?: string[] | null
   settings: {
     wins: number
     losses: number

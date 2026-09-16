@@ -73,3 +73,41 @@ describe('buildSleeperFreeAgents', () => {
     expect(k).toMatchObject({ position: 'K', team: 'DEN' })
   })
 })
+
+describe('onIL means a reserve slot, not an injury tag', () => {
+  /*
+   * The shipped bug. onIL was computed from injury_status with 'OUT' in the set, and
+   * injuryTier short-circuits on onIL before reading the status string — so an Out-tagged
+   * player was forced to the IL tier whatever the tier function decided. Brock Bowers was
+   * halved AND barred from the optimal lineup, and trading two bench bodies for him came back
+   * "+0 · your starting lineup does not improve" with no slot moves at all.
+   */
+  const inj = {
+    out: { player_id: 'out', full_name: 'Out This Week', position: 'TE', fantasy_positions: ['TE'], team: 'LV', injury_status: 'Out' },
+    ir: { player_id: 'ir', full_name: 'On Reserve', position: 'WR', fantasy_positions: ['WR'], team: 'KC', injury_status: 'IR' },
+    q: { player_id: 'q', full_name: 'Questionable Guy', position: 'RB', fantasy_positions: ['RB'], team: 'GB', injury_status: 'Questionable' },
+  } as any
+
+  it('does not flag an Out-tagged player who is on the active roster', () => {
+    const rs = [{ roster_id: 1, owner_id: 'u1', players: ['out'], starters: ['out'], reserve: [], settings: {} }] as any
+    expect(buildSleeperPool(rs, inj).find((p) => p.playerKey === 'out')!.onIL).toBe(false)
+  })
+
+  it('flags whoever the manager actually stashed on reserve', () => {
+    const rs = [{ roster_id: 1, owner_id: 'u1', players: ['out', 'ir'], starters: [], reserve: ['ir'], settings: {} }] as any
+    const pool = buildSleeperPool(rs, inj)
+    expect(pool.find((p) => p.playerKey === 'ir')!.onIL).toBe(true)
+    // Same roster, same league, different answer — which is the whole point.
+    expect(pool.find((p) => p.playerKey === 'out')!.onIL).toBe(false)
+  })
+
+  it('treats a league with no IR slots as nobody on reserve, not as a reason to guess', () => {
+    const rs = [{ roster_id: 1, owner_id: 'u1', players: ['out', 'ir', 'q'], starters: [], settings: {} }] as any
+    for (const p of buildSleeperPool(rs, inj)) expect(p.onIL).toBe(false)
+  })
+
+  it('still carries the raw status through, so the tier function can read it', () => {
+    const rs = [{ roster_id: 1, owner_id: 'u1', players: ['out'], starters: [], settings: {} }] as any
+    expect(buildSleeperPool(rs, inj).find((p) => p.playerKey === 'out')!.status).toBe('Out')
+  })
+})
