@@ -25,7 +25,7 @@ import { opposingStarterName, spQualityFactor, type PitcherQuality } from '@/tod
 import { buildTodayBoard, positionsOverlap, type ScoredPlay, type TodayBoard, type LineupValue } from '@/today/todayBoard'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { pointsDailyValue } from '@/today/pointsDailyValue'
-import { injuryTier } from '@/myteam/injuryStatus'
+import { injuryTier, missesNextGame } from '@/myteam/injuryStatus'
 import { useValueBaseline } from '@/composables/useValueBaseline'
 import { computeRosterValue, type ValuePoolPlayer } from '@/myteam/value'
 import { computeDropCandidates } from '@/myteam/dropCandidates'
@@ -589,7 +589,8 @@ export function useToday(): {
   // (still likely to play today). Reuses the Phase-2 injury tier. Only FAs carry a status here.
   const outFaKeys = computed(() => {
     const s = new Set<string>()
-    for (const fa of freeAgents.value) if (injuryTier(fa.status) === 'il') s.add(fa.playerKey)
+    /* A today board cares only whether he plays today, where out and il agree. */
+    for (const fa of freeAgents.value) if (missesNextGame(injuryTier(fa.status))) s.add(fa.playerKey)
     return s
   })
 

@@ -498,6 +498,9 @@ const upgradeDisplay = (s: Swap) => (isFootball.value ? s.add.perGame - s.dropPe
 // but still-active injured body (DTD / status-only IL) isn't captioned as merely "lowest projected".
 const injuryBadge = (injury: string) =>
   injury === 'il' ? { label: 'IL', cls: 'bg-[#FF5C5C]/15 text-[#FF5C5C]' }
+  /* Out for the next game, not the season — its own badge, because it now carries its own
+     meaning: he still holds his seat in every rest-of-season number on the page. */
+  : injury === 'out' ? { label: 'OUT', cls: 'bg-[#FF5C5C]/15 text-[#FF5C5C]' }
   : injury === 'dtd' ? { label: 'DTD', cls: 'bg-amber-500/15 text-amber-400' }
   : null
 const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none')

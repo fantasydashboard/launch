@@ -135,6 +135,9 @@ const tierColor = (tier: string) =>
 
 const injuryBadge = (injury: string) =>
   injury === 'il' ? { label: 'IL', cls: 'bg-[#FF5C5C]/15 text-[#FF5C5C]' }
+  /* Out for the next game, not the season — its own badge, because it now carries its own
+     meaning: he still holds his seat in every rest-of-season number on the page. */
+  : injury === 'out' ? { label: 'OUT', cls: 'bg-[#FF5C5C]/15 text-[#FF5C5C]' }
   : injury === 'dtd' ? { label: 'DTD', cls: 'bg-amber-500/15 text-amber-400' }
   : null
 
@@ -195,7 +198,7 @@ const roster = computed(() =>
 )
 
 const injuredCount = computed(() =>
-  (model.value?.rosterRows ?? []).filter((r) => r.injury === 'il' || r.injury === 'dtd').length,
+  (model.value?.rosterRows ?? []).filter((r) => r.injury !== 'healthy').length,
 )
 </script>
 

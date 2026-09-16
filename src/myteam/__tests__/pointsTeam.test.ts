@@ -131,9 +131,11 @@ describe('buildPointsTeam', () => {
   })
 
   it('excludes a status-only IL player (onIL false) from the optimal lineup, not just discounts them', () => {
-    // AceA is team A's only SP. Marking him OUT via status alone (onIL stays false) should EXCLUDE
+    // AceA is team A's only SP. Marking him IL via status alone (onIL stays false) should EXCLUDE
     // him from the lineup (SP slot empties) — removing his FULL value from strength, not just x0.5.
-    const outPool = pool.map((p) => (p.playerKey === 'AceA' ? { ...p, status: 'OUT' } : p))
+    // The code here used to be 'OUT', which no longer means a multi-week absence; the guard is
+    // about status-without-onIL, so it now uses a code that genuinely says months.
+    const outPool = pool.map((p) => (p.playerKey === 'AceA' ? { ...p, status: 'SIXTY_DAY_DL' } : p))
     const healthy = buildPointsTeam(pool, buildBaseballValue(fgByKey, weights), 'A', slots)
     const out = buildPointsTeam(outPool, buildBaseballValue(fgByKey, weights), 'A', slots)
     const strengthA = (m: ReturnType<typeof buildPointsTeam>) =>
@@ -142,6 +144,24 @@ describe('buildPointsTeam', () => {
     // Excluded → full ace value removed (a mere 0.5x discount would remove only half)
     expect(strengthA(healthy) - strengthA(out)).toBeCloseTo(aceHealthyPts, 3)
     expect(out.rosterRows.find((r) => r.player.playerKey === 'AceA')!.injury).toBe('il')
+  })
+
+  it('keeps an Out-for-the-next-game player in the rest-of-season lineup', () => {
+    /*
+     * The other half of the same distinction, on the season-long side. An ace tagged Out misses
+     * one start, not the season, so emptying his slot overstates the damage enormously — which
+     * is how a trade for an Out'd starter came to read as changing nothing at all.
+     */
+    const outPool = pool.map((p) => (p.playerKey === 'AceA' ? { ...p, status: 'OUT' } : p))
+    const healthy = buildPointsTeam(pool, buildBaseballValue(fgByKey, weights), 'A', slots)
+    const out = buildPointsTeam(outPool, buildBaseballValue(fgByKey, weights), 'A', slots)
+    const strengthA = (m: ReturnType<typeof buildPointsTeam>) =>
+      m.standings.find((s) => s.teamKey === 'A')!.startingPoints
+    const aceHealthyPts = healthy.rosterRows.find((r) => r.player.playerKey === 'AceA')!.points
+    const lost = strengthA(healthy) - strengthA(out)
+    expect(lost).toBeGreaterThan(0)              // still a haircut — he misses the next one
+    expect(lost).toBeLessThan(aceHealthyPts * 0.2) // but nothing like losing him outright
+    expect(out.rosterRows.find((r) => r.player.playerKey === 'AceA')!.injury).toBe('out')
   })
 
   it('groups an unmatched pitcher (null projection) by POSITION, not under hitters', () => {
