@@ -70,6 +70,33 @@ export interface PointsTradeAnalysis {
   warnings: string[]
   /** True when the deal includes something we cannot value, so nothing above is complete. */
   hasUnpricedAssets: boolean
+  /**
+   * Every player in the deal, with the two numbers that decide the verdict.
+   *
+   * "Your starting lineup does not improve" is unfalsifiable on its own: it names no seat and
+   * shows no arithmetic, so a reader who disagrees has nowhere to look and no way to tell a
+   * correct verdict from a broken one. A player can fail to move the lineup for three quite
+   * different reasons — he is worth less than the man he would replace, he is worth nothing to
+   * us because we have no projection for him, or he is barred from the lineup as unavailable —
+   * and those call for three different responses from the reader.
+   */
+  assets: AssetNote[]
+}
+
+export interface AssetNote {
+  playerKey: string
+  name: string
+  position: string
+  side: 'in' | 'out'
+  /** Rest-of-season projected points as the lineup solver sees them, after any injury haircut. */
+  points: number
+  /** Did he hold a starting seat before the trade? After it? */
+  startedBefore: boolean
+  startedAfter: boolean
+  /** Set when he is excluded from lineups entirely rather than merely outranked. */
+  unavailable: boolean
+  /** Set when we have no projection for him at all, which is not the same as a low one. */
+  unprojected: boolean
 }
 
 /** A player moving, or a pick we can name but not price. */
@@ -201,9 +228,59 @@ export function analyzePointsTrade(input: {
         : -theirGain <= myGain * 0.5 ? 'leverage'
           : 'fleece'
 
+  /*
+   * Why the verdict is what it is, per player.
+   *
+   * Read off the SAME model the headline came from, so the two cannot disagree. Deriving this
+   * separately — recomputing points, re-deciding who starts — would produce an explanation of
+   * a lineup the verdict was not based on, which is worse than no explanation at all.
+   */
+  const startersOf = (m: PointsTeamModel, teamKey: string): Set<string> =>
+    new Set(Object.values(m.assignedByTeam?.[teamKey] ?? {}).flat())
+  const beforeMine = startersOf(before, myTeamKey)
+  const afterMine = startersOf(after, myTeamKey)
+  const beforeTheirs = startersOf(before, partnerKey)
+  const afterTheirs = startersOf(after, partnerKey)
+
+  const noteFor = (a: TradeAsset, side: 'in' | 'out'): AssetNote | null => {
+    if (a.unpriced) return null
+    const row = after.rosterRows.find((r) => r.player.playerKey === a.playerKey)
+      ?? before.rosterRows.find((r) => r.player.playerKey === a.playerKey)
+    const p = pool.find((x) => x.playerKey === a.playerKey)
+    return {
+      playerKey: a.playerKey,
+      name: p?.name ?? row?.player.name ?? a.label ?? a.playerKey,
+      position: p?.position ?? row?.player.position ?? '',
+      side,
+      points: row?.points ?? 0,
+      // Incoming players are judged on MY lineup; outgoing on the one they left.
+      startedBefore: side === 'in' ? beforeTheirs.has(a.playerKey) : beforeMine.has(a.playerKey),
+      startedAfter: side === 'in' ? afterMine.has(a.playerKey) : afterTheirs.has(a.playerKey),
+      unavailable: row?.injury === 'il',
+      unprojected: !(valueByKey[a.playerKey]?.total > 0),
+    }
+  }
+  const assets = [
+    ...gets.map((a) => noteFor(a, 'in')),
+    ...gives.map((a) => noteFor(a, 'out')),
+  ].filter((n): n is AssetNote => n !== null)
+
+  /*
+   * A player we cannot price is not a player worth nothing, and the verdict above cannot tell
+   * the difference. Say so rather than letting a missing projection read as a judgement.
+   */
+  const blind = assets.filter((a) => a.side === 'in' && a.unprojected)
+  if (blind.length) {
+    warnings.push(`No projection for ${blind.map((a) => a.name).join(', ')} — they count as zero above, which is a gap in our data rather than a read on the player.`)
+  }
+  const barred = assets.filter((a) => a.side === 'in' && a.unavailable)
+  if (barred.length) {
+    warnings.push(`${barred.map((a) => a.name).join(', ')} sits on reserve, so nothing above credits him with a lineup spot.`)
+  }
+
   return {
     myGain, theirGain, myMove, theirMove, bystanders, slotMoves,
-    klass, accept, helps, costs, warnings, hasUnpricedAssets,
+    klass, accept, helps, costs, warnings, hasUnpricedAssets, assets,
   }
 }
 

@@ -74,3 +74,46 @@ describe('two bench bodies for an elite TE', () => {
     expect(a.myGain).toBe(0)
   })
 })
+
+describe('the verdict shows its arithmetic', () => {
+  const run = (mut: (p: any) => any = (p) => p) => analyzePointsTrade({
+    pool: pool.map(mut), valueByKey, slots,
+    teamNames: { A: 'Mine', B: 'Theirs', C: 'Bystander' },
+    myTeamKey: 'A', partnerKey: 'B',
+    gives: [{ playerKey: 'hubbard' }, { playerKey: 'diggs' }],
+    gets: [{ playerKey: 'bowers' }],
+  })!
+
+  it('says which incoming player takes a seat and which outgoing one was on the bench', () => {
+    const a = run()
+    const inc = a.assets.find((x) => x.playerKey === 'bowers')!
+    expect(inc.side).toBe('in')
+    expect(inc.startedAfter).toBe(true)
+    expect(inc.points).toBeGreaterThan(0)
+    for (const k of ['hubbard', 'diggs']) {
+      expect(a.assets.find((x) => x.playerKey === k)!.startedBefore).toBe(false)
+    }
+  })
+
+  /*
+   * A missing projection is a gap in our data, not a read on the player. Letting it read as
+   * "worth zero" is how a verdict becomes confidently wrong, so it is called out by name.
+   */
+  it('separates "no projection" from "projected low"', () => {
+    const a = analyzePointsTrade({
+      pool, valueByKey: { ...valueByKey, bowers: undefined as any }, slots,
+      teamNames: { A: 'Mine', B: 'Theirs', C: 'Bystander' },
+      myTeamKey: 'A', partnerKey: 'B',
+      gives: [{ playerKey: 'hubbard' }], gets: [{ playerKey: 'bowers' }],
+    })!
+    expect(a.assets.find((x) => x.playerKey === 'bowers')!.unprojected).toBe(true)
+    expect(a.warnings.join(' ')).toMatch(/No projection/)
+  })
+
+  it('names a reserve-slot player as barred rather than merely outranked', () => {
+    const a = run((p) => (p.playerKey === 'bowers' ? { ...p, onIL: true } : p))
+    const inc = a.assets.find((x) => x.playerKey === 'bowers')!
+    expect(inc.unavailable).toBe(true)
+    expect(a.warnings.join(' ')).toMatch(/reserve/)
+  })
+})

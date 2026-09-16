@@ -73,6 +73,14 @@ export interface PointsTeamModel {
   teams: number
   standings: TeamStanding[]
   myStanding: TeamStanding | null
+  /**
+   * team -> slot -> the playerKeys actually seated there.
+   *
+   * Exposed so a consumer can say WHO starts rather than only how many points a lineup makes.
+   * The trade analyzer needs it to explain its own verdict from the same solve the verdict came
+   * from; recomputing who starts would risk explaining a lineup the number was not based on.
+   */
+  assignedByTeam: Record<string, Record<string, string[]>>
 }
 
 // Pitcher lineup slots — ranked as ONE staff unit, not per-opening. Ranking each
@@ -308,5 +316,8 @@ export function buildPointsTeam(
     pitching = { rank, teams, points: myStaff, arms }
   }
 
-  return { rosterRows, slotRanks, pitching, myLineupRank, teams, standings, myStanding }
+  return {
+    rosterRows, slotRanks, pitching, myLineupRank, teams, standings, myStanding,
+    assignedByTeam: Object.fromEntries(assignedByTeam),
+  }
 }

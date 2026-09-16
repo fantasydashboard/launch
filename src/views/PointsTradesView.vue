@@ -718,6 +718,34 @@ function fairness(myGain: number, theirGain: number): string {
             </p>
 
             <p v-for="w in analysis.warnings" :key="w" class="mt-1 font-mono text-[10px] text-[#FF5C5C]">&middot; {{ w }}</p>
+
+            <!--
+              The arithmetic behind the verdict, per player.
+
+              "Your starting lineup does not improve" names no seat and shows no number, so a
+              reader who disagrees has nowhere to look — and no way to tell a correct verdict
+              from a broken one. A player can fail to move the lineup because he is worth less
+              than the man he would replace, because we have no projection for him, or because
+              he is barred from lineups entirely, and those are three different situations.
+            -->
+            <div v-if="analysis.assets.length" class="mt-3 border-t border-dark-border pt-2">
+              <p class="font-mono text-[9px] uppercase tracking-widest text-dark-textMuted/70">the math</p>
+              <p v-for="a in analysis.assets" :key="a.side + a.playerKey"
+                 class="mt-1 flex flex-wrap items-baseline gap-x-2 font-mono text-[10px]">
+                <span :class="a.side === 'in' ? 'text-primary' : 'text-[#FF5C5C]'">{{ a.side === 'in' ? '+' : '−' }}</span>
+                <span class="text-dark-text">{{ a.name }}</span>
+                <span class="text-dark-textMuted/70">{{ a.position }}</span>
+                <span v-if="a.unprojected" class="text-[#e69a4a]">no projection — counts as 0</span>
+                <span v-else class="text-dark-textMuted">{{ a.points.toFixed(1) }} pts rest of season</span>
+                <span v-if="a.unavailable" class="text-[#FF5C5C]">on reserve · never seated</span>
+                <span v-else-if="a.side === 'in'" :class="a.startedAfter ? 'text-primary' : 'text-dark-textMuted/70'">
+                  {{ a.startedAfter ? 'starts for you' : "doesn't crack your lineup" }}
+                </span>
+                <span v-else :class="a.startedBefore ? 'text-[#e69a4a]' : 'text-dark-textMuted/70'">
+                  {{ a.startedBefore ? 'was starting for you' : 'was on your bench' }}
+                </span>
+              </p>
+            </div>
           </div>
           <p v-else-if="anPartner" class="mt-3 font-mono text-[10px] text-dark-textMuted">
             Pick at least one player on either side.
