@@ -55,12 +55,35 @@ export function parseRankings(text: string): ParsedRanking[] {
   const isNum = (v: string) => /^\d+(\.\d+)?$/.test(v.replace(/[$,]/g, ''))
   const num = (v: string) => Number(v.replace(/[$,]/g, ''))
 
-  const splitRow = (line: string): string[] => {
-    if (line.includes('\t')) return line.split('\t').map((c) => c.trim()).filter(Boolean)
-    if (line.includes(',')) return line.split(',').map((c) => c.trim().replace(/^"|"$/g, '')).filter(Boolean)
-    if (/\s{2,}/.test(line)) return line.split(/\s{2,}/).map((c) => c.trim()).filter(Boolean)
+  /*
+   * Two splits, because the two consumers want opposite things from a blank cell.
+   *
+   * Shape-sniffing a headerless file wants them gone: "1,,Josh Allen" should read as a rank
+   * and a name, not a mystery second field. But a header-driven parse addresses cells BY
+   * INDEX, and dropping a blank shifts every column after it left — so a player with no team
+   * listed silently takes his tier as his team, and the tier disappears. That is how a defence
+   * block with no per-player team column lost its tiers entirely.
+   */
+  const splitRowKeepingBlanks = (line: string): string[] => {
+    if (line.includes('\t')) return line.split('\t').map((c) => c.trim())
+    if (line.includes(',')) {
+      // Honour quoted fields, so a name containing a comma survives.
+      const out: string[] = []
+      let cur = ''
+      let inQ = false
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i]
+        if (c === '"') {
+          if (inQ && line[i + 1] === '"') { cur += '"'; i++ } else inQ = !inQ
+        } else if (c === ',' && !inQ) { out.push(cur.trim()); cur = '' } else cur += c
+      }
+      out.push(cur.trim())
+      return out
+    }
+    if (/\s{2,}/.test(line)) return line.split(/\s{2,}/).map((c) => c.trim())
     return [line.trim()]
   }
+  const splitRow = (line: string): string[] => splitRowKeepingBlanks(line).filter(Boolean)
 
   /**
    * Column positions read off a header row. A ranking file's own tier column is
@@ -82,7 +105,7 @@ export function parseRankings(text: string): ParsedRanking[] {
     if (!seenAnyRow && !startsWithNumber && !cells.some(isNum) && HEADER_WORDS.test(line)) {
       seenAnyRow = true
       col = {}
-      cells.forEach((c, i) => {
+      splitRowKeepingBlanks(line).forEach((c, i) => {
         const h = c.toLowerCase()
         if (col!.rank === undefined && /^(overall|rank|rk|#)$/.test(h)) col!.rank = i
         else if (col!.name === undefined && /^(player|name)$/.test(h)) col!.name = i
@@ -95,8 +118,11 @@ export function parseRankings(text: string): ParsedRanking[] {
     }
     seenAnyRow = true
 
-    // Header-driven parse when the file told us its columns.
-    if (col && col.name !== undefined && cells.length > col.name) {
+    // Header-driven parse when the file told us its columns. Indices only line up against a
+    // row that still has its blanks, so re-split rather than reuse the compacted cells.
+    const indexed = col && col.name !== undefined ? splitRowKeepingBlanks(line) : cells
+    if (col && col.name !== undefined && indexed.length > col.name) {
+      const cells = indexed
       const name = (cells[col.name] ?? '').replace(/\s+/g, ' ').trim()
       if (!name || !/[a-z]/i.test(name)) continue
       const rawRank = col.rank !== undefined ? cells[col.rank] : undefined
@@ -491,4 +517,117 @@ export function inferRankingPosition(text: string): string | null {
     }
   }
   return null
+}
+
+/**
+ * Split a one-file-covers-every-position sheet into one list per position.
+ *
+ * WHAT THIS HANDLES. Weekly rankings are published two ways. The long form is one row per
+ * player with a Position column, which parseRankings already reads. The wide form puts each
+ * position in its own block of columns side by side — `QB Rank, QB Player, … , RB Rank, RB
+ * Player, …` — with every block restarting at rank 1 and shorter blocks padded with blanks.
+ *
+ * WHY IT CANNOT JUST BE PARSED. Fed a wide sheet, parseRankings does not fail; it returns
+ * confident nonsense. It locks onto the first Rank/Player pair it finds, reads only that block,
+ * and silently discards the other six — then, because it drops empty cells before matching
+ * columns to headers, the surviving rows get whatever position happens to land in the position
+ * slot. Josh Allen comes back an RB. Wrong beats empty here, because empty prompts a question
+ * and wrong gets trusted.
+ *
+ * WHY PARTS RATHER THAN ONE LIST. Each block's rank 1 is first AT THAT POSITION, not first
+ * overall, so concatenating them produces seven players tied at rank 1 and an order that means
+ * nothing. `RankingSet.parts` already exists for exactly this — it is what separate per-position
+ * uploads use — so a wide sheet becomes the same thing it would have been as seven files.
+ *
+ * FLEX IS DELIBERATELY SKIPPED. Every player in a FLEX block already appears in his own
+ * position block, so keeping it would give the same player two different ranks and let the
+ * flex copy outrank the real one. The flex ORDER is genuinely useful information, but it is a
+ * cross-position statement and nothing downstream can hold one yet.
+ */
+
+/** Position blocks we understand. FLEX is recognised so it can be skipped knowingly. */
+const WIDE_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DST', 'D/ST', 'FLEX', 'SUPERFLEX', 'SFLX']
+/** Duplicates of other blocks — recognised, never emitted. See the note above. */
+const WIDE_DERIVED = new Set(['FLEX', 'SUPERFLEX', 'SFLX'])
+
+/** Split one CSV line, honouring quoted fields. Blank cells are PRESERVED — they carry alignment. */
+export function splitCsvLine(line: string): string[] {
+  const out: string[] = []
+  let cur = ''
+  let inQ = false
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i]
+    if (c === '"') {
+      if (inQ && line[i + 1] === '"') { cur += '"'; i++ } else inQ = !inQ
+    } else if ((c === ',' || c === '\t') && !inQ) {
+      out.push(cur.trim()); cur = ''
+    } else cur += c
+  }
+  out.push(cur.trim())
+  return out
+}
+
+export interface WideSplit {
+  parts: { position: string; text: string }[]
+  /** Blocks we recognised and chose not to emit, so the UI can say so rather than stay silent. */
+  skipped: string[]
+}
+
+/**
+ * Returns the per-position lists, or null when this is not a wide sheet.
+ *
+ * Null means "use the normal path" — never a silent empty result, which would look like a file
+ * that parsed to nothing.
+ */
+export function splitWideRankings(text: string): WideSplit | null {
+  if (!text || typeof text !== 'string') return null
+  const lines = text.split(/\r?\n/).filter((l) => l.trim())
+  if (lines.length < 2) return null
+
+  const header = splitCsvLine(lines[0].replace(/﻿/g, ''))
+  /* A wide header prefixes every column with its position: "QB Rank", "RB Player". */
+  const known = new Set(WIDE_POSITIONS)
+  const blocks = new Map<string, Record<string, number>>()
+  header.forEach((h, i) => {
+    const m = /^([A-Za-z/]{1,9})\s+(.+)$/.exec(h.trim())
+    if (!m) return
+    const pos = m[1].toUpperCase()
+    if (!known.has(pos)) return
+    const field = m[2].trim().toLowerCase()
+    const b = blocks.get(pos) ?? {}
+    if (!(field in b)) b[field] = i
+    blocks.set(pos, b)
+  })
+
+  /* Two or more blocks is what makes it wide. One block is an ordinary single-position file
+     with a chatty header, and the normal parser handles that better than this does. */
+  if (blocks.size < 2) return null
+
+  const parts: { position: string; text: string }[] = []
+  const skipped: string[] = []
+  for (const [pos, cols] of blocks) {
+    if (WIDE_DERIVED.has(pos)) { skipped.push(pos); continue }
+    /* A team defence block names the TEAM rather than a player — there is no person to name. */
+    const nameCol = cols.player ?? (pos === 'DEF' || pos === 'DST' || pos === 'D/ST' ? cols.team : undefined)
+    if (nameCol === undefined) { skipped.push(pos); continue }
+
+    const rows: string[] = ['Rank,Player,Team,Tier']
+    let n = 0
+    for (const line of lines.slice(1)) {
+      const cells = splitCsvLine(line)
+      const name = (cells[nameCol] ?? '').trim()
+      /* Blocks are padded to the longest one, so a short list trails blanks. Those are the end
+         of that position's opinion, not players worth a row. */
+      if (!name) continue
+      n++
+      const rank = (cols.rank !== undefined ? cells[cols.rank] : '') || String(n)
+      // For a defence the name IS the team, so do not repeat it into the team column.
+      const team = nameCol === cols.team ? '' : (cols.team !== undefined ? cells[cols.team] ?? '' : '')
+      const tier = cols.tier !== undefined ? cells[cols.tier] ?? '' : ''
+      rows.push([rank, `"${name.replace(/"/g, '""')}"`, team, tier].join(','))
+    }
+    if (rows.length > 1) parts.push({ position: pos === 'D/ST' || pos === 'DST' ? 'DEF' : pos, text: rows.join('\n') })
+  }
+
+  return parts.length ? { parts, skipped } : null
 }

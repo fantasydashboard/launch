@@ -2,6 +2,7 @@ import { computed, ref, type Ref } from 'vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import {
   parseRankings,
+  splitWideRankings,
   matchRankings,
   applyRankingOrder,
   compareRankings,
@@ -329,6 +330,26 @@ export function useCustomRankings(kindInput: RankingKind | (() => RankingKind) =
   ): Promise<number> {
     const text = await file.text()
     const label = name?.trim() || file.name.replace(/\.[^.]+$/, '')
+
+    /*
+     * A sheet that covers every position in one file becomes the same thing seven files would
+     * have been: one part per position, each ranked within itself.
+     *
+     * Not optional politeness — fed to the ordinary parser, a wide sheet does not fail. It
+     * locks onto the first Rank/Player pair, reads that block alone, discards the rest, and
+     * hands back rows with positions taken from whatever column happened to line up. Josh
+     * Allen comes back an RB. An upload that reports success and quietly means something else
+     * is worse than one that refuses.
+     */
+    const wide = splitWideRankings(text)
+    if (wide) {
+      const id = replaceId ?? addSet(label, '', forKind).id
+      if (replaceId) replaceSet(replaceId, '', label)
+      for (const part of wide.parts) addPart(id, part.position, part.text)
+      setActive(id, forKind)
+      return wide.parts.reduce((n, p) => n + parseRankings(p.text).length, 0)
+    }
+
     if (replaceId) replaceSet(replaceId, text, label)
     else {
       const set = addSet(label, text, forKind)
