@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-16",
+  "generatedAt": "2026-09-17",
   "season": "2026",
   "teams": 12,
   "rows": [
@@ -7,8 +7,8 @@
       "name": "Jeremiyah Love",
       "pos": "RB",
       "adp": "3.02",
-      "ours": "4.08",
-      "rounds": -1.5,
+      "ours": "4.07",
+      "rounds": -1.4,
       "flag": "fade"
     },
     {
@@ -31,8 +31,8 @@
       "name": "Mike Evans",
       "pos": "WR",
       "adp": "6.02",
-      "ours": "3.07",
-      "rounds": 2.6,
+      "ours": "3.08",
+      "rounds": 2.5,
       "flag": "value"
     }
   ]

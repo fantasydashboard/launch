@@ -2,6 +2,8 @@ import { computed, ref, watch, type Ref } from 'vue'
 import { sleeperService } from '@/services/sleeper'
 import { useLeagueStore } from '@/stores/league'
 import { fetchSeasonProjectionStats, fetchWeekProjectionStats } from '@/services/footballProjections'
+import { getSeasonLines } from '@/services/playerUsage'
+import { buildRosPoints } from '@/football/rosBlend'
 import {
   buildFootballProjectionsByKey,
   type ProjPlayer,
@@ -99,8 +101,26 @@ export function useFootballVor(inputs: {
       }
       const opportunityByKey = tagOpportunity(oppPlayers)
       const seasonProj = buildFootballProjectionsByKey(projPlayers.value, seasonStats, meta, scoring)
+      const projectedByKey: Record<string, number> = {}
+      for (const [k, v] of Object.entries(seasonProj)) projectedByKey[k] = v.points
+
+      /*
+       * Update the forecast with the season so far, rather than shipping it untouched.
+       *
+       * Sleeper's season projection does not converge — the same number in week fourteen as in
+       * week one — so a rest-of-season board built on it alone cannot learn. It was also a
+       * FULL-season figure serving as a REST-of-season one, counting games already played as
+       * points still to win. buildRosPoints fixes both: it shrinks toward the forecast rather
+       * than chasing a two-game sample, and returns what is left rather than the whole year.
+       *
+       * A failed fetch leaves `lines` empty, which returns the prior scaled to the games that
+       * remain — strictly better than what we had, and never worse.
+       */
+      let lines: Awaited<ReturnType<typeof getSeasonLines>> = []
+      try { lines = await getSeasonLines(season, currentWeek) } catch { /* prior alone */ }
+      const ros = buildRosPoints({ seasonProjection: projectedByKey, lines, currentWeek })
       const points: Record<string, number> = {}
-      for (const [k, v] of Object.entries(seasonProj)) points[k] = v.points
+      for (const [k, v] of Object.entries(ros)) points[k] = v.pointsRos
 
       const horizon = inputs.weeklyHorizon ?? WEEKLY_HORIZON
       const weeks = Array.from({ length: horizon }, (_, i) => currentWeek + i)

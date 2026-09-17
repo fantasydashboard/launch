@@ -1,6 +1,8 @@
 import { ref, watch, type Ref } from 'vue'
 import { sleeperService } from '@/services/sleeper'
 import { fetchSeasonProjectionStats } from '@/services/footballProjections'
+import { getSeasonLines } from '@/services/playerUsage'
+import { buildRosPoints } from '@/football/rosBlend'
 import {
   buildFootballProjectionsByKey,
   type ProjPlayer,
@@ -39,12 +41,37 @@ export function useFootballProjections(inputs: {
       for (const [id, pl] of Object.entries(playersMap)) {
         sleeperMeta[id] = { name: (pl as any)?.full_name || '', position: (pl as any)?.position || '' }
       }
-      projByKey.value = buildFootballProjectionsByKey(
+      const built = buildFootballProjectionsByKey(
         inputs.players.value,
         summed,
         sleeperMeta,
         inputs.scoring.value,
       )
+
+      /*
+       * Update the forecast with the season so far, here rather than in each consumer.
+       *
+       * useFootballVor blends its own copy, and leaving this one raw would put `vorRos` and
+       * `valueByKey.total` on different scales AND different beliefs — the trade engine would
+       * rank candidates by an updated number and then solve lineups with a stale full-season
+       * one, which is precisely the "choosing players by your numbers and scoring the result
+       * with ours" failure the trades page warns about.
+       *
+       * getSeasonLines is memoised for half a day, so the second caller costs nothing.
+       */
+      const currentWeek = Number(state.week) || 1
+      let lines: Awaited<ReturnType<typeof getSeasonLines>> = []
+      try { lines = await getSeasonLines(season, currentWeek) } catch { /* prior alone */ }
+      const ros = buildRosPoints({
+        seasonProjection: Object.fromEntries(Object.entries(built).map(([k, v]) => [k, v.points])),
+        lines,
+        currentWeek,
+      })
+      for (const [k, v] of Object.entries(built)) {
+        const r = ros[k]
+        if (r) v.points = r.pointsRos
+      }
+      projByKey.value = built
     } catch (e) {
       console.error('[useFootballProjections] load failed', e)
       projByKey.value = {}
