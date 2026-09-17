@@ -227,19 +227,30 @@ export default async function handler(req, res) {
         const trialLeft = p.trial_expires_at
           ? Math.ceil((new Date(p.trial_expires_at).getTime() - now) / 86400000)
           : null
-        /* One word for where this person actually is. Paid beats trial beats free, and a
-           lapsed trial is its own state — it is the one worth an email. */
+        /*
+         * One word for what this person can ACTUALLY do — which is paid, or not.
+         *
+         * This used to report 'trial' whenever trial_expires_at was in the future, and
+         * showed a countdown beside it. The trial has been retired since the 2026 season:
+         * useFeatureAccess computes hasFullAccess from isPaid alone and effectiveTier
+         * deliberately refuses to return 'trial'. The timestamp is still written for signup
+         * analytics, so the badge was reading a column that no longer means anything and
+         * labelling gated users as entitled — the exact confidently-wrong status this
+         * codebase keeps having to unpick.
+         *
+         * `trial_started_at` is still reported, because when someone first opened the app is
+         * a real fact worth having. It is just not an entitlement.
+         */
         const state = p.subscription_tier === 'admin' ? 'admin'
           : sub ? 'paid'
-          : trialLeft !== null && trialLeft > 0 ? 'trial'
-          : trialLeft !== null ? 'trial_over'
           : 'free'
         return {
           id: p.id,
           email: p.email,
           created_at: p.created_at,
           state,
-          trial_days_left: trialLeft,
+          /* Retained for analytics only — see the note above. Never an access signal. */
+          first_seen_at: p.trial_started_at || null,
           leagues: mine.length,
           platforms: [...new Set(mine.map(l => l.platform).filter(Boolean))],
         }

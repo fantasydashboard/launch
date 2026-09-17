@@ -499,11 +499,14 @@
           </div>
         </header>
 
-        <!-- Menu Header Bar - Fixed at top when scrolled -->
+        <!-- Menu Header Bar - Fixed at top when scrolled.
+             No trial banner exists any more, so nothing sits above this. The offset was
+             still reserving 33px for one, leaving a dead gap under the header for anyone
+             inside the retired trial window. -->
         <nav 
           class="z-40 overflow-visible transition-all duration-300"
           :class="isScrolled ? 'fixed left-0 right-0' : 'relative'"
-          :style="{ background: '#12161F', height: '56px', top: isScrolled ? (((isOnActiveTrial || isTrialExpired) && !isPaid) ? '33px' : '0') : 'auto' }"
+          :style="{ background: '#12161F', height: '56px', top: isScrolled ? '0' : 'auto' }"
         >
           <!-- Logo Container (desktop) — only when scrolled, since Tier 1 (with the logo) has scrolled away -->
           <div
@@ -1292,7 +1295,7 @@ watch(() => route.path, () => {
   }
 })
 // ─────────────────────────────────────────────────────────────────────────
-const { isOnActiveTrial, isTrialExpired, trialDaysRemaining, isPaid, hasRealIndividualAccess } = useFeatureAccess()
+const { isPaid, hasRealIndividualAccess } = useFeatureAccess()
 
 // Belt-and-suspenders: also hide banner if profile tier already says individual,
 // even before isPaid reactive ref catches up

@@ -125,8 +125,11 @@
             </span>
             <!-- No league connected is the signal worth seeing: they never reached the product. -->
             <span v-else style="font-family:monospace;font-size:11px;color:#e69a4a;">no league</span>
-            <span v-if="u.state === 'trial' && u.trial_days_left !== null"
-                  style="font-family:monospace;font-size:11px;color:#5ec8e6;">{{ u.trial_days_left }}d left</span>
+            <!-- No countdown: the trial was retired and granted nobody anything. Showing
+                 "7d left" beside a gated user was reporting an entitlement that does not
+                 exist. What is worth seeing is whether they ever connected a league. -->
+            <span v-if="!u.leagues"
+                  style="font-family:monospace;font-size:11px;color:#e69a4a;">never connected</span>
             <span style="font-family:monospace;font-size:11px;opacity:.55;width:72px;text-align:right;">{{ ago(u.created_at) }}</span>
           </div>
         </div>
@@ -963,8 +966,9 @@ async function loadSignups() {
 }
 const SIGNUP_STATE: Record<string, { label: string; cls: string }> = {
   paid:       { label: 'PAID',   cls: 'background:rgba(198,255,58,.16);color:#C6FF3A' },
-  trial:      { label: 'TRIAL',  cls: 'background:rgba(94,200,230,.16);color:#5ec8e6' },
-  trial_over: { label: 'LAPSED', cls: 'background:rgba(230,154,74,.16);color:#e69a4a' },
+  /* 'trial' and 'trial_over' are gone: the trial grants no access, so neither was ever a
+     statement about what the user could do. Kept out of the map rather than relabelled, so a
+     stale row renders as nothing instead of as a tier. */
   free:       { label: 'FREE',   cls: 'background:rgba(255,255,255,.07);color:#8A93A0' },
   admin:      { label: 'ADMIN',  cls: 'background:rgba(255,255,255,.07);color:#8A93A0' },
 }

@@ -86,30 +86,22 @@ export function useFeatureAccess() {
         hasRealIndividualAccess.value = true
       }
 
-      // ── Trial check ───────────────────────────────────────────────────────
-      // Auto-start trial if profile has no trial_started_at yet
-      if (!profile?.trial_started_at && supabase) {
-        await supabase.rpc('start_trial_if_new')
-        // Reload profile to get the new trial dates
-        await authStore.loadProfile?.()
-
-        // Send welcome email immediately (fire and forget)
-        try {
-          const session = await supabase.auth.getSession()
-          if (session.data.session) {
-            fetch('/api/admin/send-trial-emails', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${session.data.session.access_token}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ welcome_only: true })
-            }).catch(() => {}) // non-critical — cron will catch up
-          }
-        } catch (e) {
-          // non-critical — cron will catch up
-        }
-      }
+      /*
+       * UFD does not start a trial, and must not.
+       *
+       * This used to call start_trial_if_new() on first sign-in and fire a welcome email
+       * claiming "7 days of full access — no credit card required". Neither was true here:
+       * hasFullAccess below reads isPaid alone, and effectiveTier deliberately refuses to
+       * return 'trial'. Every new signup was being promised access we then gated.
+       *
+       * Worse, the write was destructive across products. The League Beat shares this
+       * database AND this column, and its trial is REAL — its hasFullAccess is
+       * `isPaid || isOnActiveTrial`. So UFD stamping trial_started_at burned a trial the
+       * user never received here and could no longer claim there.
+       *
+       * Nothing is lost for analytics: profiles.created_at already records when someone
+       * signed up, and the admin signups query reads it.
+       */
 
       const expiresAt = profile?.trial_expires_at
         ? new Date(profile.trial_expires_at)
