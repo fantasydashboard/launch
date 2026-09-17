@@ -1333,3 +1333,53 @@ describe('this week\'s matchup difficulty', () => {
     expect(run(undefined)[0].oppRank).toBeNull()
   })
 })
+
+describe('a player who is not playing', () => {
+  const rows = (tag: string) => {
+    const pool = [
+      { playerKey: 'hurt', name: 'hurt', position: 'WR', teamKey: 'me', proTeam: 'DET', status: tag },
+      { playerKey: 'fit', name: 'fit', position: 'WR', teamKey: 'me', proTeam: 'DET' },
+    ] as never
+    const vorByKey = Object.fromEntries([['hurt', 18], ['fit', 12]].map(([k, p]) => [k, {
+      playerKey: k, position: 'WR', pointsRos: (p as number) * 17, vorRos: p, pointsNextWeek: p,
+      vorWeek: p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+    }])) as never
+    return buildWeeklyBoard({
+      pool, vorByKey, freeAgents: [], opponentByTeam: { DET: { opp: 'CHI', home: true } },
+      slots: { WR: 2 }, myTeamKey: 'me', currentStarters: [],
+    }).board.WR
+  }
+
+  /*
+   * Sleeper projects a ruled-out player at his full weekly figure — Brock Bowers carried 11.9
+   * while officially Out — and nothing here contradicted it, so the board ranked a man who is
+   * definitely not playing above men who are.
+   */
+  it('projects a ruled-out player at nought, not at full strength', () => {
+    const b = rows('Out')
+    const hurt = b.find((r) => r.playerKey === 'hurt')!
+    expect(hurt.weekPoints).toBe(0)
+    expect(hurt.ruledOut).toBe(true)
+    // ...and therefore sorts below the healthy man he used to outrank.
+    expect(b[0].playerKey).toBe('fit')
+  })
+
+  it('treats IR, PUP and a suspension the same way', () => {
+    for (const tag of ['IR', 'PUP', 'SUSP', 'NA']) {
+      expect(rows(tag).find((r) => r.playerKey === 'hurt')!.weekPoints).toBe(0)
+    }
+  })
+
+  /* Questionable is a discount, not a zero — he probably plays. */
+  it('discounts a questionable player without benching him', () => {
+    const hurt = rows('Questionable').find((r) => r.playerKey === 'hurt')!
+    expect(hurt.weekPoints).toBeGreaterThan(0)
+    expect(hurt.weekPoints).toBeLessThan(18)
+    expect(hurt.ruledOut).toBe(false)
+  })
+
+  it('carries the tag so a cut number can explain itself', () => {
+    expect(rows('Questionable').find((r) => r.playerKey === 'hurt')!.injuryTag).toBe('QUESTIONABLE')
+    expect(rows('Out').find((r) => r.playerKey === 'fit')!.injuryTag).toBe('')
+  })
+})

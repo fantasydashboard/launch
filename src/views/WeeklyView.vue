@@ -787,6 +787,12 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               <span class="min-w-0 flex-1 truncate">
                 <span v-if="OWNER_GLYPH[row.owner]">{{ OWNER_GLYPH[row.owner] }} </span>{{ row.name }}
                 <span v-if="row.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>
+                <!-- A cut projection has to say why. A zero with no badge reads as missing
+                     data; a discounted number with no badge reads as a bug. -->
+                <span v-else-if="row.ruledOut" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]"
+                      :title="`Ruled ${row.injuryTag?.toLowerCase()} — projected at zero`">{{ row.injuryTag }}</span>
+                <span v-else-if="row.injuryTag" class="ml-1 font-mono text-[9px] uppercase text-[#d29922]"
+                      :title="`${row.injuryTag} — projection discounted for the chance he does not play`">{{ row.injuryTag.slice(0, 1) }}</span>
               </span>
               <!-- The opponent gets their crest beside their name; every other manager stays a
                    name in muted type, so the team you are playing is the only one with a face. -->

@@ -158,7 +158,31 @@ export const WEEKLY_INJURY_DISCOUNT: Record<string, number> = {
   GTD: 0.65,
   DOUBTFUL: 0.25,
   D: 0.25,
+  /*
+   * Ruled out is not a discount, it is a zero.
+   *
+   * The first version of this map covered only the doubtful cases, which left the certain one
+   * untouched: Sleeper projects a player who has been ruled OUT at his full weekly figure —
+   * Brock Bowers carried 11.9 while officially Out — and nothing here contradicted it. So the
+   * board ranked a man who is definitely not playing above men who are.
+   *
+   * Zero rather than a small number, because this is the one injury state we are not guessing
+   * about. He is flagged on the row so the nought reads as a reason and not a glitch.
+   */
+  OUT: 0,
+  O: 0,
+  IR: 0,
+  PUP: 0,
+  NFI: 0,
+  SUSP: 0,
+  SUS: 0,
+  NA: 0,
+  DNR: 0,
+  COV: 0,
 }
+
+/** Injury tags that mean he is not playing at all, for badging the row. */
+export const RULED_OUT = new Set(['OUT', 'O', 'IR', 'PUP', 'NFI', 'SUSP', 'SUS', 'NA', 'DNR', 'COV'])
 
 export interface WeeklyStreamer {
   player: AvailablePlayer
@@ -381,6 +405,15 @@ export interface WeeklyBoardRow {
    * Null when we have no defensive data for that opponent yet — absent, never ranked last.
    */
   oppRank?: number | null
+  /**
+   * The platform's injury tag, normalised, when there is one. Empty for a healthy player.
+   *
+   * Carried so the view can explain a discounted or zeroed projection. A number that has been
+   * cut without saying why reads as a bug, and a zero with no badge reads as missing data.
+   */
+  injuryTag?: string
+  /** True when that tag means he is not playing at all, so the row shows nought for a reason. */
+  ruledOut?: boolean
 }
 
 export interface WeeklyBoard {
@@ -1116,6 +1149,8 @@ export function buildWeeklyBoard(input: {
     opponent: opponentByTeam[(team ?? '').toUpperCase()]?.opp ?? '',
     home: opponentByTeam[(team ?? '').toUpperCase()]?.home ?? false,
     tier: 0,
+    injuryTag: tagByKey.get(key) ?? '',
+    ruledOut: RULED_OUT.has(tagByKey.get(key) ?? ''),
     /* Undefined rather than 0 when unknown: a missing defence must not read as a matchup. */
     oppRank: matchupRankByPos?.[normPosOf(position)]?.[
       (opponentByTeam[(team ?? '').toUpperCase()]?.opp ?? '').toUpperCase()
