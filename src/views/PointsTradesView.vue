@@ -21,6 +21,7 @@ import RankingPicker from '@/components/RankingPicker.vue'
 import { useCustomRankings } from '@/composables/useCustomRankings'
 import { reseatRos, reseatValues } from '@/composables/useFootballWire'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import { leagueRankTone, leagueRankBar, leagueRankWidth, leagueRankLabel } from '@/lib/leagueRankTone'
 import { startableCounts, startableFraction } from '@/trades/rosterSlots'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
@@ -287,7 +288,7 @@ const teamModel = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
   return buildPointsTeam(pool.value, tradeValues.value, myTeamKey.value, rosterSlots.value)
 })
-const rankBar = (rank: number, teams: number) => (teams <= 1 ? 100 : Math.round(((teams - rank + 1) / teams) * 100))
+const rankBar = (rank: number, teams: number) => leagueRankWidth(rank, teams)
 
 /**
  * Colour a positional rank by where it sits in the STARTABLE pool rather than by the raw
@@ -324,8 +325,12 @@ const rankTone = (posRank: number, position: string) =>
   toneForFraction(startableFraction(posRank, position, startable.value))
 /* The slot spine ranks you against the other teams at that seat, so the fraction is rank over
    league size — a different measurement, deliberately shown on the same scale. */
-const slotTone = (rank: number, teams: number) => toneForFraction(teams > 0 ? rank / teams : null)
-const slotBar = (rank: number, teams: number) => barForFraction(teams > 0 ? rank / teams : null)
+/* Even fifths of the league, shared with My Team so the same slot cannot be green on one page
+   and neutral on the other. The old call fed rank/teams to a scale built for a startable-pool
+   fraction, whose amber and red bands only trigger above 1 — unreachable here, so sixth of ten
+   came out green and last of ten looked the same as seventh. */
+const slotTone = (rank: number, teams: number) => leagueRankTone(rank, teams)
+const slotBar = (rank: number, teams: number) => leagueRankBar(rank, teams)
 
 /* The slot spine carries only a player key, so images come from the pool the page already
    has rather than being threaded through buildPointsTeam. */
@@ -607,7 +612,8 @@ function fairness(myGain: number, theirGain: number): string {
           <div v-for="(sl, i) in teamModel.slotRanks" :key="'slot-' + i" class="flex items-center gap-3">
             <span class="w-10 shrink-0 font-mono text-xs text-dark-textMuted">{{ sl.slot }}</span>
             <span class="w-12 shrink-0 text-right font-mono text-sm font-semibold"
-                  :class="sl.starterKey ? slotTone(sl.rank, sl.teams) : 'text-dark-textMuted/50'">
+                  :class="sl.starterKey ? slotTone(sl.rank, sl.teams) : 'text-dark-textMuted/50'"
+                  :title="sl.starterKey ? leagueRankLabel(sl.rank, sl.teams) : ''">
               {{ sl.starterKey ? ordinal(sl.rank) : '—' }}
             </span>
             <img v-if="sl.starterKey && headshotOf(sl.starterKey)" :src="headshotOf(sl.starterKey)" :alt="sl.starterName" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />

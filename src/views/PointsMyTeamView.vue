@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
+import { leagueRankTone, leagueRankBar, leagueRankWidth, leagueRankLabel } from '@/lib/leagueRankTone'
 import { useRoute } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
@@ -142,21 +143,11 @@ const injuryBadge = (injury: string) =>
   : null
 
 // Slot-spine rank coloring (green good, red weak).
-function rankClass(rank: number, teams: number): string {
-  if (teams <= 1) return 'text-dark-text'
-  const f = rank / teams
-  if (f <= 0.34) return 'text-primary'
-  if (f >= 0.75) return 'text-[#FF5C5C]'
-  return 'text-dark-text'
-}
-function barClass(rank: number, teams: number): string {
-  if (teams <= 1) return 'bg-dark-textMuted/40'
-  const f = rank / teams
-  if (f <= 0.34) return 'bg-primary'
-  if (f >= 0.75) return 'bg-[#FF5C5C]/70'
-  return 'bg-dark-textMuted/50'
-}
-const rankBar = (rank: number, teams: number) => (teams <= 1 ? 100 : Math.round(((teams - rank + 1) / teams) * 100))
+/* Shared with the trades page, which drew this same panel on a different scale — so a slot
+   could read green here and neutral there, or the reverse. One rule, five even fifths. */
+const rankClass = (rank: number, teams: number) => leagueRankTone(rank, teams)
+const barClass = (rank: number, teams: number) => leagueRankBar(rank, teams)
+const rankBar = (rank: number, teams: number) => leagueRankWidth(rank, teams)
 const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none')
 
 // ── ?ptsaudit dev panel ──────────────────────────────────────────────────────
@@ -275,7 +266,8 @@ const injuredCount = computed(() =>
           <div v-for="(s, i) in model.slotRanks" :key="i" class="flex items-center gap-3">
             <span class="w-10 shrink-0 font-mono text-xs text-dark-textMuted">{{ s.slot }}</span>
             <span class="w-12 shrink-0 text-right font-mono text-sm font-semibold"
-              :class="s.starterKey ? rankClass(s.rank, s.teams) : 'text-dark-textMuted/50'">
+              :class="s.starterKey ? rankClass(s.rank, s.teams) : 'text-dark-textMuted/50'"
+              :title="s.starterKey ? leagueRankLabel(s.rank, s.teams) : ''">
               {{ s.starterKey ? ord(s.rank) : '—' }}
             </span>
             <span class="w-40 shrink-0 truncate text-sm"
