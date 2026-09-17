@@ -182,6 +182,33 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       profile.value = data
+
+      /*
+       * Tag a brand-new OAuth account with the product that created it.
+       *
+       * signUp() carries `product` in its metadata, but signInWithOAuth cannot — the provider
+       * owns that payload — so a Google signup would arrive untagged and stay NULL forever.
+       *
+       * Strictly bounded to accounts created in the last few minutes, and only ever fills a
+       * NULL. Stamping any untagged profile on sight would be worse than leaving it blank:
+       * The League Beat shares this table, so a user of theirs opening this app would be
+       * relabelled as ours and quietly corrupt both products' numbers.
+       */
+      /* Read through a local shape: the generated Database type resolves this table to
+         `never`, a pre-existing defect, and inheriting it here would add type noise without
+         adding safety. */
+      const row = data as unknown as { product?: string | null; created_at?: string } | null
+      if (row && !row.product && row.created_at) {
+        const ageMs = Date.now() - new Date(row.created_at).getTime()
+        if (ageMs >= 0 && ageMs < 5 * 60 * 1000) {
+          const { error: tagErr } = await supabase
+            .from('profiles')
+            .update({ product: 'ufd' } as never)
+            .eq('id', user.value.id)
+            .is('product', null)
+          if (!tagErr) profile.value = { ...(data as object), product: 'ufd' } as typeof profile.value
+        }
+      }
     } catch (err) {
       console.error('Error fetching profile:', err)
     }
@@ -197,6 +224,8 @@ export const useAuthStore = defineStore('auth', () => {
         email: user.value.email!,
         full_name: user.value.user_metadata?.full_name || null,
         avatar_url: user.value.user_metadata?.avatar_url || null,
+        // Same reason as the trigger: this row is being created BY this product.
+        product: 'ufd',
         subscription_tier: 'free' as const
       }
 
@@ -229,7 +258,21 @@ export const useAuthStore = defineStore('auth', () => {
         password,
         options: {
           data: {
-            full_name: fullName
+            full_name: fullName,
+            /*
+             * Which product this account came from.
+             *
+             * Ultimate Fantasy Dashboard and its sibling share one Supabase project, one profiles
+             * table and one auth schema, and until now nothing recorded which site created
+             * an account. That made every signup and conversion number a blend of two
+             * businesses, and — worse — let one product consume the other's trial, because
+             * both read the same profiles.trial_expires_at while disagreeing about whether
+             * it grants access.
+             *
+             * handle_new_user() copies this onto profiles.product. Accounts created before
+             * this shipped stay NULL: unknown, which is the truth, rather than assumed ours.
+             */
+            product: 'ufd'
           }
         }
       })

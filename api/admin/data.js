@@ -191,11 +191,23 @@ export default async function handler(req, res) {
     if (action === 'signups') {
       const limit = Math.min(Number(req.body?.limit) || 50, 200)
 
-      const { data: recent, error: rErr } = await admin
+      /*
+       * Scoped to one product, because two of them share this table.
+       *
+       * The League Beat runs on the same Supabase project and the same profiles table, so
+       * every figure this endpoint returned was a blend of two businesses and neither could
+       * be measured. `product` is stamped at signup from 2026-09-17; anything older is NULL
+       * and genuinely unattributable, which is why 'all' stays available and is the only
+       * honest way to read historic numbers.
+       */
+      const product = ['ufd', 'tlb', 'all'].includes(req.body?.product) ? req.body.product : 'ufd'
+      let q = admin
         .from('profiles')
-        .select('id, email, created_at, subscription_tier, trial_started_at, trial_expires_at')
+        .select('id, email, created_at, subscription_tier, trial_started_at, product')
         .order('created_at', { ascending: false })
         .limit(limit)
+      if (product !== 'all') q = q.eq('product', product)
+      const { data: recent, error: rErr } = await q
       if (rErr) return res.status(500).json({ error: 'signups query failed: ' + rErr.message })
 
       const ids = (recent || []).map(r => r.id)
@@ -251,6 +263,7 @@ export default async function handler(req, res) {
           state,
           /* Retained for analytics only — see the note above. Never an access signal. */
           first_seen_at: p.trial_started_at || null,
+          product: p.product || null,
           leagues: mine.length,
           platforms: [...new Set(mine.map(l => l.platform).filter(Boolean))],
         }

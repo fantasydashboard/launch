@@ -113,6 +113,15 @@
           <button class="tf-btn" style="margin-left:10px;" :disabled="signupsLoading" @click="loadSignups()">
             {{ signupsLoading ? 'Loading…' : signups.length ? 'Refresh' : 'Load' }}
           </button>
+          <!-- The League Beat shares this database, so an unscoped list blends two
+               businesses. Anything before 2026-09-17 has no origin recorded and only
+               appears under "all". -->
+          <select v-model="signupProduct" @change="loadSignups()"
+                  style="margin-left:8px;background:#12161f;color:#c6d0dc;border:1px solid #1e2130;border-radius:6px;font-family:monospace;font-size:11px;padding:3px 6px;">
+            <option value="ufd">UFD</option>
+            <option value="tlb">League Beat</option>
+            <option value="all">all (incl. untagged)</option>
+          </select>
         </div>
         <div v-if="signups.length" style="padding:6px 0;">
           <div v-for="u in signups" :key="u.id"
@@ -951,6 +960,9 @@ function downloadKpiCsv() {
   a.download = `ufd_${kpiDetail.value.type}_${new Date().toISOString().slice(0,10)}.csv`
   a.click()
 }
+/* Which product's signups to show. Defaults to ours; 'all' is the only honest reading of
+   anything created before 2026-09-17, when nothing recorded the origin. */
+const signupProduct = ref<'ufd' | 'tlb' | 'all'>('ufd')
 const signupsByDay = ref<{date:string,count:number}[]>([])
 const paidByDay = ref<{date:string,count:number}[]>([])
 /* Recent signups as events. The chart says how many; this says who, when, and whether they
@@ -960,7 +972,7 @@ const signupsLoading = ref(false)
 async function loadSignups() {
   signupsLoading.value = true
   try {
-    const d = await callAdmin({ action: 'signups', limit: 50 })
+    const d = await callAdmin({ action: 'signups', limit: 50, product: signupProduct.value })
     signups.value = d.rows ?? []
   } catch { signups.value = [] } finally { signupsLoading.value = false }
 }
