@@ -401,6 +401,16 @@ export interface WeeklyBoardRow {
    */
   tierSplit?: boolean
   /**
+   * True when the line came from an uploaded list rather than from our own points.
+   *
+   * It matters because the two can disagree, and the caption has to be able to say so. A
+   * source tier printed "-0 PTS" wherever the list drew a break our projection sees no gap at
+   * — the same cliff-with-no-drop nonsense the derived path was fixed for, surviving here
+   * because this path never ran through that rule. The disagreement is worth reporting; a
+   * nought dressed as a measurement is not.
+   */
+  tierSource?: boolean
+  /**
    * How his defence ranks against this position, 1 = gives up the most (the softest matchup).
    * Null when we have no defensive data for that opponent yet — absent, never ranked last.
    */
@@ -1209,7 +1219,15 @@ export function buildWeeklyBoard(input: {
         shown += 1
         r.tier = shown
         r.tierBreak = true
-        r.tierDrop = Math.max(0, prevPts - r.weekPoints)
+        r.tierSource = true
+        /*
+         * Measured on the numbers the page actually PRINTS, so "20 then 20" can never sit
+         * beside a claimed drop — the same self-consistency rule the draft room follows.
+         * Undefined when there is no visible gap: the view then names whose break it is
+         * rather than printing a nought dressed as a measurement.
+         */
+        const drop = Math.round(prevPts) - Math.round(r.weekPoints)
+        r.tierDrop = drop > 0 ? drop : undefined
       } else {
         r.tier = shown
       }

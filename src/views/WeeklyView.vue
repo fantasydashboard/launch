@@ -769,10 +769,11 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               a 0.9 got a line while the 0.7 above it did not, and the page never said why.
             -->
             <div v-if="row.tierBreak" class="flex items-center gap-2 py-1.5">
-              <span class="h-px flex-1" :class="row.tierSplit ? 'bg-dark-border/50' : 'bg-dark-border'"></span>
+              <span class="h-px flex-1" :class="(row.tierSplit || (row.tierSource && row.tierDrop == null)) ? 'bg-dark-border/50' : 'bg-dark-border'"></span>
               <span class="font-mono text-[9px] uppercase tracking-wider"
-                    :class="row.tierSplit ? 'text-dark-textMuted/45' : 'text-dark-textMuted/70'">
-                <template v-if="row.tierSplit">tier {{ row.tier }} &middot; no cliff &middot; widest gap</template>
+                    :class="(row.tierSplit || (row.tierSource && row.tierDrop == null)) ? 'text-dark-textMuted/45' : 'text-dark-textMuted/70'">
+                <template v-if="row.tierSource && row.tierDrop == null">tier {{ row.tier }} &middot; {{ weekSource }}'s break &middot; no gap in our points</template>
+                <template v-else-if="row.tierSplit">tier {{ row.tier }} &middot; no cliff &middot; widest gap</template>
                 <template v-else>tier {{ row.tier }} &middot; &minus;{{ round(row.tierDrop ?? 0) }} pts</template>
               </span>
               <span class="h-px flex-1" :class="row.tierSplit ? 'bg-dark-border/50' : 'bg-dark-border'"></span>

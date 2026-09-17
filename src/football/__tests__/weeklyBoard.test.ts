@@ -1383,3 +1383,44 @@ describe('a player who is not playing', () => {
     expect(rows('Out').find((r) => r.playerKey === 'fit')!.injuryTag).toBe('')
   })
 })
+
+describe('a tier line that came from an uploaded list', () => {
+  const build = (tiers: Record<string, number>) => {
+    // Four quarterbacks the list splits into two tiers, with no gap in OUR points at the seam.
+    const vals = [20.4, 20.2, 20.0, 19.9]
+    const pool = vals.map((_, i) => ({
+      playerKey: `q${i}`, name: `q${i}`, position: 'QB', teamKey: 'me', proTeam: 'DET',
+    })) as never
+    const vorByKey = Object.fromEntries(vals.map((p, i) => [`q${i}`, {
+      playerKey: `q${i}`, position: 'QB', pointsRos: p * 17, vorRos: p, pointsNextWeek: p,
+      vorWeek: p, streamWeeks: 0, streamOf: 0, confidence: 'high', opportunity: '',
+    }])) as never
+    return buildWeeklyBoard({
+      pool, vorByKey, freeAgents: [], opponentByTeam: { DET: { opp: 'CHI', home: true } },
+      slots: { QB: 1 }, myTeamKey: 'me', currentStarters: [], tierByKey: tiers,
+    }).board.QB
+  }
+
+  /*
+   * The bug: a source tier printed "-0 PTS" wherever the list drew a break our projection sees
+   * no gap at. That is the same cliff-with-no-drop nonsense the derived path was fixed for,
+   * surviving here because this path never went through that rule.
+   */
+  it('does not claim a drop where the printed numbers show none', () => {
+    const b = build({ q0: 1, q1: 1, q2: 2, q3: 2 })
+    const brk = b.find((r) => r.tierBreak)!
+    expect(brk.name).toBe('q2')
+    expect(brk.tierSource).toBe(true)
+    expect(brk.tierDrop).toBeUndefined()      // 20.2 and 20.0 both print as 20
+  })
+
+  it('still reports a drop the reader can see on the page', () => {
+    const b = build({ q0: 1, q1: 2, q2: 2, q3: 2 })
+    // No break at q1 either — 20.4 and 20.2 both print 20. The rule is about what is visible.
+    expect(b.find((r) => r.tierBreak)!.tierDrop).toBeUndefined()
+  })
+
+  it('keeps the line itself, because the list is what the reader asked to see', () => {
+    expect(build({ q0: 1, q1: 1, q2: 2, q3: 2 }).filter((r) => r.tierBreak)).toHaveLength(1)
+  })
+})
