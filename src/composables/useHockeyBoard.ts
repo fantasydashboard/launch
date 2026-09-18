@@ -23,7 +23,26 @@ import {
  */
 
 const PROJECTIONS_URL = '/api/hockey-projections'
-const ESPN_LEAGUE = 'https://lm-api-reads.fantasy.espn.com/apis/v3/games/fhl/seasons'
+
+/**
+ * Every league read goes through the ESPN service, which goes through the Supabase proxy.
+ *
+ * This was a direct browser fetch to lm-api-reads, and that works for a PUBLIC league and
+ * returns 401 for a private one — which is most leagues. The proxy is the only path that
+ * carries espn_s2 and SWID, so it is the only path a private league survives. The
+ * projections endpoint stays a plain fetch because it is ours and needs no credentials.
+ */
+async function espnViews(leagueId: string, season: number, views: string[]): Promise<any> {
+  const { espnService } = await import('@/services/espn')
+  const { useAuthStore } = await import('@/stores/auth')
+  const { usePlatformsStore } = await import('@/stores/platforms')
+  const authStore = useAuthStore()
+  const platformsStore = usePlatformsStore()
+  if (authStore.user?.id) await espnService.initialize(authStore.user.id)
+  const creds = platformsStore.getEspnCredentials()
+  if (creds) espnService.setCredentials(creds.espn_s2, creds.swid)
+  return espnService.getRawLeagueViews('hockey', leagueId, season, views)
+}
 
 export function useHockeyBoard() {
   const leagueStore = useLeagueStore()
@@ -92,21 +111,20 @@ export function useHockeyBoard() {
     loading.value = true
     problem.value = ''
     try {
-      const [projRes, settingsRes] = await Promise.all([
+      const [projRes, settings] = await Promise.all([
         fetch(`${PROJECTIONS_URL}?season=${season.value}`),
-        fetch(`${ESPN_LEAGUE}/${season.value}/segments/0/leagues/${leagueId.value}?view=mSettings`),
+        espnViews(leagueId.value, season.value, ['mSettings']).catch(() => null),
       ])
 
       if (!projRes.ok) {
         problem.value = `Could not load projections (${projRes.status}).`
         return
       }
-      if (!settingsRes.ok) {
-        /* A private league needs ESPN cookies, which this direct call does not carry. Saying
-           so beats a generic failure, because the fix is different from a retry. */
-        problem.value = settingsRes.status === 401 || settingsRes.status === 403
-          ? 'ESPN would not share this league\'s settings. Private leagues need the ESPN connection set up first.'
-          : `Could not load league settings (${settingsRes.status}).`
+      if (!settings?.settings) {
+        /* The proxy carries the cookies, so reaching here means we do not have them — a
+           private league whose ESPN connection was never set up. Saying which beats a generic
+           failure, because the fix is different from a retry. */
+        problem.value = 'ESPN would not share this league\'s settings. A private league needs the ESPN connection set up first — connect ESPN, then reload.'
         return
       }
 
@@ -120,7 +138,7 @@ export function useHockeyBoard() {
       projections.value = parsed
       namesByKey.value = names
 
-      const r = rulesFromEspnSettings(await settingsRes.json(), leagueId.value, season.value)
+      const r = rulesFromEspnSettings(settings, leagueId.value, season.value)
       const why = rulesProblem(r)
       if (why) { problem.value = why; rules.value = null; return }
       rules.value = r
@@ -165,17 +183,17 @@ export function useHockeyBoard() {
   async function syncDraft() {
     if (!leagueId.value) return
     try {
-      const res = await fetch(
-        `${ESPN_LEAGUE}/${season.value}/segments/0/leagues/${leagueId.value}?view=mDraftDetail`,
-      )
-      if (!res.ok) {
-        liveError.value = res.status === 401 || res.status === 403
-          ? 'ESPN would not share this draft. A private league needs the ESPN connection set up first.'
-          : `Could not read the draft (${res.status}).`
+      const payload = await espnViews(leagueId.value, season.value, ['mDraftDetail'])
+      const next = parseDraftDetail(payload)
+      if (!next.picks.length) {
+        /* An empty schedule is not an empty draft — ESPN publishes all 176 rows before the
+           first pick. No rows means we did not really read the league. Keeping the last good
+           state rather than emptying the board on one bad poll. */
+        liveError.value = 'ESPN returned no draft for this league yet.'
         return
       }
       liveError.value = ''
-      liveState.value = parseDraftDetail(await res.json())
+      liveState.value = next
       lastSyncedAt.value = Date.now()
     } catch (e: any) {
       liveError.value = `Could not read the draft: ${e?.message ?? e}`
@@ -211,10 +229,7 @@ export function useHockeyBoard() {
   async function loadTeamNames() {
     if (!leagueId.value || Object.keys(teamNames.value).length) return
     try {
-      const res = await fetch(
-        `${ESPN_LEAGUE}/${season.value}/segments/0/leagues/${leagueId.value}?view=mTeam`,
-      )
-      if (res.ok) teamNames.value = teamNamesFromEspn(await res.json())
+      teamNames.value = teamNamesFromEspn(await espnViews(leagueId.value, season.value, ['mTeam']))
     } catch { /* names are a nicety; the board works without them */ }
   }
 

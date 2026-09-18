@@ -657,6 +657,29 @@ export class EspnFantasyService {
   /**
    * Fetch basic league information
    */
+  /**
+   * The raw league payload for a set of views, straight through the proxy.
+   *
+   * WHY THIS EXISTS RATHER THAN ANOTHER TYPED GETTER. The typed getters each normalise their
+   * payload into a shape tuned to one caller, and a caller that needs a field they drop has
+   * no way to reach it. The hockey draft board needs two of those: the full scoringItems
+   * list, and the DRAFT SCHEDULE — every pick including the ones nobody has made yet, which
+   * getDraft discards because it was written for finished drafts.
+   *
+   * THE POINT IS THE PROXY, NOT THE CONVENIENCE. Calling ESPN from the browser works for a
+   * public league and fails with a 401 for a private one, and most leagues are private. This
+   * route carries espn_s2 and SWID server-side, which is the only reason a private league
+   * works at all.
+   */
+  async getRawLeagueViews(
+    sport: Sport,
+    leagueId: string | number,
+    season: number,
+    views: string[],
+  ): Promise<any> {
+    return this.apiRequest(sport, leagueId, season, views)
+  }
+
   async getLeague(sport: Sport, leagueId: string | number, season: number): Promise<EspnLeague | null> {
     const cacheKey = `espn_league_${sport}_${leagueId}_${season}`
     const cached = cache.get<EspnLeague>('espn_league', cacheKey)
