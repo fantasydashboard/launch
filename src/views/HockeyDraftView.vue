@@ -13,14 +13,34 @@
  * can rank above forwards who outscore him. Both numbers are on every row so the
  * disagreement is visible rather than something to take on faith.
  */
-import { computed, ref, watchEffect } from 'vue'
+import { computed, onUnmounted, ref, watchEffect } from 'vue'
 import { useHockeyBoard } from '@/composables/useHockeyBoard'
 
 const {
   loading, problem, rules, rows, replacement, unnamedScoredStatIds,
   mode, categoryKeys, perCategoryByKey,
   drafted, take, undo, reset, load,
+  live, liveError, liveState, lastSyncedAt, myTeamId, teamNames, clock, goLive, goMock, syncDraft,
 } = useHockeyBoard()
+
+const teamOptions = computed(() =>
+  Object.entries(teamNames.value).map(([id, name]) => ({ id: Number(id), name })),
+)
+const onTheClockName = computed(() => {
+  const id = clock.value.onTheClockTeamId
+  return id === null ? '' : (teamNames.value[id] ?? `Team ${id}`)
+})
+/* A relative timestamp has to be driven by a clock, not by the value it describes, or it
+   reads "0s ago" until the next poll regardless of how long that takes. */
+const nowTick = ref(Date.now())
+const ticker = setInterval(() => { nowTick.value = Date.now() }, 1000)
+onUnmounted(() => clearInterval(ticker))
+
+const syncedAgo = computed(() => {
+  if (!lastSyncedAt.value) return ''
+  const s = Math.round((nowTick.value - lastSyncedAt.value) / 1000)
+  return s < 5 ? 'just now' : `${s}s ago`
+})
 
 const isCategories = computed(() => mode.value === 'categories')
 
@@ -86,7 +106,9 @@ const POS_TONE: Record<string, string> = {
     <header class="mb-4">
       <h1 class="font-display text-2xl font-bold text-dark-text">Hockey draft board</h1>
       <p class="font-mono text-xs text-dark-textMuted">
-        Ranked by value over replacement &middot; a mock board, nothing is synced to your draft
+        Ranked by value over replacement &middot;
+        <span v-if="live">following your ESPN draft</span>
+        <span v-else>a mock board, nothing is synced to your draft</span>
       </p>
       <p v-if="rules" class="mt-1 font-mono text-[11px] text-dark-textMuted/70">
         {{ rules.name }} &middot; {{ rules.teams }} teams &middot; {{ rules.scoringType }}
@@ -129,14 +151,70 @@ const POS_TONE: Record<string, string> = {
         points. A column everybody is level in is worth nothing here however big its numbers.
       </p>
 
+      <!--
+        MOCK OR LIVE, CHOSEN DELIBERATELY. Live is never switched on for the user: a board
+        that began following a real draft on its own would look exactly like a mock one right
+        up to the moment it removed a player nobody in this room had taken.
+      -->
+      <div class="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-dark-border bg-dark-card p-2.5">
+        <div class="flex rounded-lg border border-dark-border">
+          <button class="rounded-l-lg px-2.5 py-1 font-mono text-[11px] transition-colors"
+                  :class="!live ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+                  @click="goMock()">mock</button>
+          <button class="rounded-r-lg px-2.5 py-1 font-mono text-[11px] transition-colors"
+                  :class="live ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+                  @click="goLive()">live</button>
+        </div>
+
+        <template v-if="live">
+          <select v-model.number="myTeamId"
+                  class="rounded-lg border border-dark-border bg-dark-bg px-2 py-1 font-mono text-[11px] text-dark-text">
+            <option :value="null">which team is yours?</option>
+            <option v-for="t in teamOptions" :key="t.id" :value="t.id">{{ t.name }}</option>
+          </select>
+          <span class="flex-1"></span>
+          <span class="font-mono text-[10px] text-dark-textMuted/70">
+            synced {{ syncedAgo }}
+          </span>
+          <button class="rounded-lg border border-dark-border px-2 py-1 font-mono text-[10px] text-dark-textMuted hover:text-dark-text"
+                  @click="syncDraft()">refresh</button>
+        </template>
+        <template v-else>
+          <span class="font-mono text-[11px] text-dark-textMuted">Take players by hand to re-price the board.</span>
+        </template>
+      </div>
+
+      <p v-if="live && liveError"
+         class="mb-3 rounded-lg border border-[#FF5C5C]/30 bg-[#FF5C5C]/5 px-3 py-2 font-mono text-[11px] text-[#FF5C5C]">
+        {{ liveError }}
+      </p>
+
+      <!-- The draft clock. picksUntilMine is the number a drafter actually plans against. -->
+      <div v-if="live && liveState && liveState.picks.length"
+           class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 font-mono text-[11px]">
+        <span v-if="liveState.complete" class="text-dark-textMuted">Draft complete &middot; {{ drafted.size }} players off the board.</span>
+        <template v-else>
+          <span class="text-dark-text">
+            Pick {{ clock.nextOverall }} &middot; <span class="text-primary">{{ onTheClockName }}</span> on the clock
+          </span>
+          <span v-if="clock.picksUntilMine === 0" class="font-semibold text-primary">You're up.</span>
+          <span v-else-if="clock.picksUntilMine !== null" class="text-dark-textMuted">
+            {{ clock.picksUntilMine }} pick{{ clock.picksUntilMine === 1 ? '' : 's' }} until yours
+            (#{{ clock.myNextOverall }}<span v-if="clock.myFollowingOverall">, then #{{ clock.myFollowingOverall }}</span>)
+          </span>
+          <span v-else-if="myTeamId === null" class="text-dark-textMuted">Pick your team to see when you're up.</span>
+          <span class="text-dark-textMuted/60">{{ drafted.size }} of {{ liveState.picks.length }} gone</span>
+        </template>
+      </div>
+
       <div class="mb-3 flex flex-wrap items-center gap-2">
         <button v-for="p in POSITIONS" :key="p"
                 class="rounded-lg border px-2.5 py-1 font-mono text-[11px] uppercase transition-colors"
                 :class="filter === p ? 'border-primary text-primary' : 'border-dark-border text-dark-textMuted hover:text-dark-text'"
                 @click="filter = p">{{ p }}</button>
         <span class="flex-1"></span>
-        <span class="font-mono text-[11px] text-dark-textMuted">{{ takenList.length }} taken</span>
-        <button v-if="takenList.length" class="rounded-lg border border-dark-border px-2.5 py-1 font-mono text-[11px] text-dark-textMuted hover:text-dark-text"
+        <span class="font-mono text-[11px] text-dark-textMuted">{{ drafted.size }} taken</span>
+        <button v-if="!live && takenList.length" class="rounded-lg border border-dark-border px-2.5 py-1 font-mono text-[11px] text-dark-textMuted hover:text-dark-text"
                 @click="reset()">reset</button>
       </div>
 
@@ -158,8 +236,9 @@ const POS_TONE: Record<string, string> = {
         </span>
         <span class="w-14 shrink-0 text-right font-mono text-xs font-semibold text-dark-text">{{ shown2(r.value) }}</span>
         <span class="w-14 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ shown2(r.projected) }}</span>
-        <button class="w-14 shrink-0 rounded border border-dark-border px-1.5 py-0.5 font-mono text-[10px] text-dark-textMuted hover:border-primary hover:text-primary"
+        <button v-if="!live" class="w-14 shrink-0 rounded border border-dark-border px-1.5 py-0.5 font-mono text-[10px] text-dark-textMuted hover:border-primary hover:text-primary"
                 @click="take(r.playerKey)">take</button>
+        <span v-else class="w-14 shrink-0"></span>
       </div>
 
       <p v-if="rows.length > LIMIT" class="mt-2 font-mono text-[10px] text-dark-textMuted">
@@ -178,7 +257,7 @@ const POS_TONE: Record<string, string> = {
         </p>
       </div>
 
-      <div v-if="takenList.length" class="mt-4">
+      <div v-if="!live && takenList.length" class="mt-4">
         <p class="font-mono text-[9px] uppercase tracking-widest text-dark-textMuted/70">taken</p>
         <div class="mt-1 flex flex-wrap gap-1.5">
           <button v-for="t in takenList" :key="t.key"

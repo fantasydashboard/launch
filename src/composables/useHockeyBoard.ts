@@ -1,8 +1,11 @@
-import { computed, ref, watch } from 'vue'
+import { computed, onScopeDispose, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { buildHockeyBoard, type HockeyBoardResult } from '@/hockey/hockeyBoard'
 import { rulesFromEspnSettings, rulesProblem, type HockeyLeagueRules } from '@/hockey/hockeyLeague'
 import type { HockeyProjection } from '@/hockey/hockeyValue'
+import {
+  parseDraftDetail, draftClock, teamNamesFromEspn, type HockeyDraftState,
+} from '@/hockey/hockeyDraftSync'
 
 /**
  * A hockey draft board for the active ESPN league.
@@ -31,8 +34,29 @@ export function useHockeyBoard() {
   const rules = ref<HockeyLeagueRules | null>(null)
   const result = ref<HockeyBoardResult | null>(null)
 
-  /** Players taken so far. Local to this session — a mock draft, not a synced one. */
-  const drafted = ref<Set<string>>(new Set())
+  /** Players taken by hand, in mock mode. */
+  const mockDrafted = ref<Set<string>>(new Set())
+
+  /* ── live draft ─────────────────────────────────────────────────────────────────────
+     Off by default and never turned on for the user. A board that started polling ESPN on
+     its own would look identical to a mock board right up until it removed a player nobody
+     in THIS room had taken. */
+  const live = ref(false)
+  const liveState = ref<HockeyDraftState | null>(null)
+  const liveError = ref('')
+  const lastSyncedAt = ref(0)
+  const myTeamId = ref<number | null>(null)
+  const teamNames = ref<Record<number, string>>({})
+  let timer: ReturnType<typeof setInterval> | null = null
+
+  /**
+   * Who is off the board.
+   *
+   * In live mode the draft is the authority and hand-taken players are ignored, because two
+   * sources of truth for "is this player gone" is how a board ends up recommending somebody
+   * who was taken four picks ago.
+   */
+  const drafted = computed(() => (live.value && liveState.value ? liveState.value.drafted : mockDrafted.value))
 
   const projections = ref<Record<string, HockeyProjection>>({})
   const namesByKey = ref<Record<string, string>>({})
@@ -123,16 +147,81 @@ export function useHockeyBoard() {
     { deep: true, immediate: true },
   )
 
+  /* No-ops in live mode rather than silent writes to a set nothing reads — the surface hides
+     these controls there, and this is the second line of defence. */
   function take(playerKey: string) {
-    if (!playerKey) return
-    drafted.value = new Set([...drafted.value, playerKey])
+    if (!playerKey || live.value) return
+    mockDrafted.value = new Set([...mockDrafted.value, playerKey])
   }
   function undo(playerKey: string) {
-    const next = new Set(drafted.value)
+    if (live.value) return
+    const next = new Set(mockDrafted.value)
     next.delete(playerKey)
-    drafted.value = next
+    mockDrafted.value = next
   }
-  function reset() { drafted.value = new Set() }
+  function reset() { if (!live.value) mockDrafted.value = new Set() }
+
+  /** One read of the draft feed. Never writes: ESPN's pick endpoints are not ours to call. */
+  async function syncDraft() {
+    if (!leagueId.value) return
+    try {
+      const res = await fetch(
+        `${ESPN_LEAGUE}/${season.value}/segments/0/leagues/${leagueId.value}?view=mDraftDetail`,
+      )
+      if (!res.ok) {
+        liveError.value = res.status === 401 || res.status === 403
+          ? 'ESPN would not share this draft. A private league needs the ESPN connection set up first.'
+          : `Could not read the draft (${res.status}).`
+        return
+      }
+      liveError.value = ''
+      liveState.value = parseDraftDetail(await res.json())
+      lastSyncedAt.value = Date.now()
+    } catch (e: any) {
+      liveError.value = `Could not read the draft: ${e?.message ?? e}`
+    }
+  }
+
+  function stopPolling() {
+    if (timer) { clearInterval(timer); timer = null }
+  }
+
+  /*
+   * Eight seconds. A pick clock is measured in minutes, so this is comfortably inside the
+   * window where a drafter sees a pick land before it matters, and it is 450 requests an hour
+   * against an endpoint that answers in 40KB — small enough not to be rude, frequent enough
+   * to be worth having.
+   */
+  const POLL_MS = 8000
+
+  async function goLive() {
+    live.value = true
+    await Promise.all([syncDraft(), loadTeamNames()])
+    stopPolling()
+    timer = setInterval(syncDraft, POLL_MS)
+  }
+
+  function goMock() {
+    live.value = false
+    stopPolling()
+    liveState.value = null
+    liveError.value = ''
+  }
+
+  async function loadTeamNames() {
+    if (!leagueId.value || Object.keys(teamNames.value).length) return
+    try {
+      const res = await fetch(
+        `${ESPN_LEAGUE}/${season.value}/segments/0/leagues/${leagueId.value}?view=mTeam`,
+      )
+      if (res.ok) teamNames.value = teamNamesFromEspn(await res.json())
+    } catch { /* names are a nicety; the board works without them */ }
+  }
+
+  /* A draft that has finished has nothing left to poll. */
+  watch(() => liveState.value?.complete, (done) => { if (done) stopPolling() })
+
+  onScopeDispose(stopPolling)
 
   watch([isHockey, isEspn, leagueId], () => { if (isHockey.value && isEspn.value && leagueId.value) load() }, { immediate: true })
 
@@ -147,5 +236,9 @@ export function useHockeyBoard() {
     categoryKeys: computed(() => result.value?.categoryKeys ?? []),
     perCategoryByKey: computed(() => result.value?.perCategoryByKey ?? {}),
     load, take, undo, reset,
+    // live draft
+    live, liveError, liveState, lastSyncedAt, myTeamId, teamNames,
+    goLive, goMock, syncDraft,
+    clock: computed(() => draftClock(liveState.value ?? { inProgress: false, complete: false, picks: [], drafted: new Set() }, myTeamId.value)),
   }
 }
