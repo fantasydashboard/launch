@@ -149,12 +149,22 @@ export function buildHockeyValue(input: HockeyValueInput): HockeyValueResult {
       seasonTotal += points
     }
 
-    /* Games the projection covers, from the feed when it is there. A goalie is measured in
-       STARTS rather than appearances — an appearance in relief is not a fantasy start, and
-       counting it would make a backup look like a timeshare. */
+    /*
+     * Games the projection covers.
+     *
+     * This used to read a stat called GS and fall back to GP, on the belief that id 34 was
+     * games started — a goalie is worth what he starts, not what he appears in, so starts
+     * were the better measure. Id 34 is not starts: it equals games played for all 398
+     * skaters, and is zero for fifteen goalies who are projected 37 to 52 appearances. Read
+     * as starts it would have called three starting goalies unstartable.
+     *
+     * DEC — wins plus losses plus overtime losses, an identity that holds for 57 of 58
+     * goalies — is the verified stand-in, and it is what a goalie actually accrues counting
+     * stats in. It falls back to appearances where ESPN did not project a record.
+     */
     const isGoalie = proj.position === 'G'
     const projectedGames = isGoalie
-      ? (proj.stats.GS || proj.stats.GP || 0)
+      ? (proj.stats.DEC || proj.stats.GP || 0)
       : (proj.stats.GP || 0)
 
     const played = Math.max(0, gamesPlayed[key] ?? 0)

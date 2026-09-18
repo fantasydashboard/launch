@@ -54,7 +54,10 @@ const SPORT_CONFIGS: Record<Sport, SportConfig> = {
     color: '#3b82f6', // Blue
     colorRgb: '59, 130, 246',
     logo: '/logos/UFD_Hockey.png',
-    available: false // Coming soon
+    /* On as of the 2026-27 season: ESPN projections, league scoring and the draft board are
+       live. Yahoo hockey waits on the API entitlement, and the board says so rather than
+       failing silently for a Yahoo league. */
+    available: true
   }
 }
 

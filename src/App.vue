@@ -1338,6 +1338,12 @@ const tabs = computed(() => [
   ...(leagueStore.activeSport === 'football' && leagueStore.activePlatform === 'sleeper'
     ? [{ name: 'Draft Room', path: '/draft-room' }]
     : []),
+  /* Hockey's board is a separate tab rather than the same one, because it is a different
+     thing: the Sleeper room follows a live draft, and this one prices a pool you draft
+     against by hand. Calling both "Draft Room" would promise a sync that does not exist. */
+  ...(leagueStore.activeSport === 'hockey' && leagueStore.activePlatform === 'espn'
+    ? [{ name: 'Draft Board', path: '/hockey/draft' }]
+    : []),
   /* My Team is retired for football. Of its five blocks, four already existed elsewhere in
      better form — the VOR ledger on The Wire's board, the luck read on Power Rankings, the
      hole diagnosis on Trades, and "set this week's lineup" was a signpost. The fifth, your

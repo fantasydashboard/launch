@@ -1,7 +1,8 @@
 import type { AvailablePlayerRow } from '@/draft/room/board'
 import { buildHockeyValue, type HockeyProjection } from './hockeyValue'
 import { buildHockeyVor } from './hockeyVor'
-import type { HockeyLeagueRules } from './hockeyLeague'
+import { buildHockeyCategoryValue } from './hockeyCategoryValue'
+import { isCategoryLeague, type HockeyLeagueRules } from './hockeyLeague'
 
 /**
  * A draft board for a hockey league: projections in, ranked rows out.
@@ -36,10 +37,45 @@ export interface HockeyBoardResult {
   replacement: Record<string, number>
   /** Scored stat ids we could not name — every total is short by whatever they were worth. */
   unnamedScoredStatIds: number[]
+  /** How the board was priced, because the two are read differently. */
+  mode: 'points' | 'categories'
+  /** The columns a category board ranks on. Empty for a points board. */
+  categoryKeys: string[]
+  /** playerKey -> category key -> z-score. Empty for a points board. */
+  perCategoryByKey: Record<string, Record<string, number>>
 }
 
-export function buildHockeyBoard(input: HockeyBoardInput): HockeyBoardResult {
-  const { projections, rules, namesByKey, teamsByKey = {}, drafted, gamesPlayed } = input
+/**
+ * The quantity each player is ranked on, before replacement level is subtracted.
+ *
+ * TWO CURRENCIES, ONE PIPELINE. A points league produces projected points; a category league
+ * produces summed z-scores. Both are "more is better, and the gaps mean something", which is
+ * everything the replacement engine downstream requires — so the split ends here and nothing
+ * below this function knows which kind of league it is looking at.
+ */
+function rankingQuantity(
+  input: HockeyBoardInput,
+): { points: Record<string, number>; perCategoryByKey: Record<string, Record<string, number>> } {
+  const { projections, rules, gamesPlayed } = input
+
+  if (isCategoryLeague(rules.scoringType) && rules.categories.length) {
+    const cat = buildHockeyCategoryValue({
+      projections,
+      categories: rules.categories,
+      draftablePlayers: rules.teams * rules.rosterSize || undefined,
+    })
+    /*
+     * NO ZERO FLOOR HERE, unlike the points branch below.
+     *
+     * A z-score is negative for every below-average player, and that is close to half the
+     * league — dropping them would empty the board by the middle rounds. The points branch
+     * filters on `> 0` because there a zero means "we scored him and got nothing", which is
+     * the signature of a player with no projection. A category board detects that case
+     * differently: a player with no stats contributes to no column and is simply absent from
+     * the totals, so the filter is unnecessary as well as wrong.
+     */
+    return { points: cat.totalByKey, perCategoryByKey: cat.perCategoryByKey }
+  }
 
   const { valueByKey } = buildHockeyValue({
     projections,
@@ -49,7 +85,6 @@ export function buildHockeyBoard(input: HockeyBoardInput): HockeyBoardResult {
   })
 
   const points: Record<string, number> = {}
-  const positionByKey: Record<string, string> = {}
   for (const [key, v] of Object.entries(valueByKey)) {
     /*
      * No projection is no opinion.
@@ -60,6 +95,17 @@ export function buildHockeyBoard(input: HockeyBoardInput): HockeyBoardResult {
      */
     if (!(v.total > 0)) continue
     points[key] = v.total
+  }
+  return { points, perCategoryByKey: {} }
+}
+
+export function buildHockeyBoard(input: HockeyBoardInput): HockeyBoardResult {
+  const { projections, rules, namesByKey, teamsByKey = {}, drafted } = input
+
+  const { points, perCategoryByKey } = rankingQuantity(input)
+
+  const positionByKey: Record<string, string> = {}
+  for (const key of Object.keys(points)) {
     positionByKey[key] = projections[key]?.position ?? ''
   }
 
@@ -92,5 +138,13 @@ export function buildHockeyBoard(input: HockeyBoardInput): HockeyBoardResult {
   }
   rows.sort((a, b) => b.value - a.value)
 
-  return { rows, replacement, unnamedScoredStatIds: rules.unnamedScoredStatIds }
+  const categoryMode = isCategoryLeague(rules.scoringType) && rules.categories.length > 0
+  return {
+    rows,
+    replacement,
+    unnamedScoredStatIds: rules.unnamedScoredStatIds,
+    mode: categoryMode ? 'categories' : 'points',
+    categoryKeys: categoryMode ? rules.categories.map((c) => c.key) : [],
+    perCategoryByKey,
+  }
 }

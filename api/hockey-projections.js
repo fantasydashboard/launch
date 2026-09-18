@@ -31,13 +31,27 @@ const STAT_FILTER = JSON.stringify({
   },
 })
 
-/* Kept in step with src/hockey/hockeyPositions.ts. Ids outside this map are dropped rather
-   than passed through: fifteen of them carry real projections that nothing in the data
-   identifies, and shipping an unnamed number invites somebody to score it as if they knew
-   what it was. */
+/* Kept in step with src/hockey/hockeyPositions.ts — that file carries the derivation for
+   every line, and this is a copy because a Vercel function cannot import from src.
+   Ids outside this map are dropped rather than passed through, so an id ESPN adds next
+   season arrives as a visible absence instead of an unlabelled number somebody scores as
+   if they knew what it was.
+
+   THIS LIST WAS HALF THIS LENGTH AND THAT WAS A REAL COST, NOT A COSMETIC ONE. The test
+   league pays for hits, blocked shots, power-play points, short-handed points and overtime
+   losses — five stats this endpoint used to drop on the floor. Every total it served was
+   short by all five, and a blocked shot at half a point is worth about 60 points a season
+   to a defenceman, which is most of the gap between a good one and a replaceable one. */
 const STAT_BY_ID = {
-  13: 'G', 14: 'A', 16: 'PTS', 29: 'SOG', 30: 'GP',
-  1: 'W', 2: 'L', 3: 'SA', 4: 'GA', 6: 'SV', 7: 'SHO', 10: 'GAA', 11: 'SVPCT', 34: 'GS',
+  // skaters
+  13: 'G', 14: 'A', 15: 'PLUSMINUS', 16: 'PTS', 17: 'PIM',
+  18: 'PPG', 19: 'PPA', 20: 'SHG', 21: 'SHA',
+  26: 'TOI', 27: 'TOIG', 29: 'SOG', 30: 'GP',
+  31: 'HITS', 32: 'BLK', 33: 'DPTS',
+  35: 'STG', 36: 'STA', 37: 'STP', 38: 'PPP', 39: 'SHP',
+  // goalies
+  0: 'DEC', 1: 'W', 2: 'L', 3: 'SA', 4: 'GA', 6: 'SV', 7: 'SHO',
+  8: 'TOI', 9: 'OTL', 10: 'GAA', 11: 'SVPCT', 12: 'WINPCT', 34: 'GP2',
 }
 const POSITION_BY_ID = { 1: 'C', 2: 'LW', 3: 'RW', 4: 'D', 5: 'G' }
 

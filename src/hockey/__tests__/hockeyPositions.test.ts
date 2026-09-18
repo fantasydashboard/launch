@@ -65,15 +65,48 @@ describe('hockey stat identifiers', () => {
     expect(HOCKEY_STAT_BY_ID[16]).toBe('PTS')   // 53 G + 80 A = 133
     expect(HOCKEY_STAT_BY_ID[6]).toBe('SV')     // 1046 SA - 121 GA = 925
     expect(HOCKEY_STAT_BY_ID[4]).toBe('GA')     // the only negative weight in the league
-    expect(HOCKEY_STAT_BY_ID[34]).toBe('GS')    // games started, what streaming turns on
   })
 
-  /* The honest part: ids with real projections whose identity the data does not reveal. */
+  /*
+   * The ids this map used to give up on, and the identity that cracked each.
+   *
+   * Every number quoted is from the 456-player projection feed, and the point of testing
+   * them is that these are the FIVE STATS THE TEST LEAGUE PAYS FOR AND WE USED TO DROP —
+   * hits, blocks, power-play points, short-handed points and overtime losses. A regression
+   * here is not cosmetic; it silently shortens every total on the board.
+   */
+  it('carries the stats that only identify as a set', () => {
+    expect(HOCKEY_STAT_BY_ID[31]).toBe('HITS')  // top 5 are Trenin, Sherwood, Cuylle, Kolesar
+    expect(HOCKEY_STAT_BY_ID[32]).toBe('BLK')   // top 5 are all defencemen; D avg 124 vs F 41
+    expect(HOCKEY_STAT_BY_ID[38]).toBe('PPP')   // 18 + 19, and 16x commoner than 39
+    expect(HOCKEY_STAT_BY_ID[39]).toBe('SHP')   // 20 + 21
+    expect(HOCKEY_STAT_BY_ID[9]).toBe('OTL')    // the third term of W + L + OTL = decisions
+    expect(HOCKEY_STAT_BY_ID[15]).toBe('PLUSMINUS')  // the only id that goes negative
+    expect(HOCKEY_STAT_BY_ID[17]).toBe('PIM')   // top 5 are the league's most-penalised
+  })
+
+  /*
+   * Id 34 is NOT games started, which this map asserted for a while.
+   *
+   * It equals games played for all 398 skaters — a skater does not start — and reads zero
+   * for fifteen goalies projected 37 to 52 appearances. Pinned so nobody reinstates it.
+   */
+  it('does not call id 34 games started', () => {
+    expect(HOCKEY_STAT_BY_ID[34]).not.toBe('GS')
+    expect(HOCKEY_STAT_BY_ID[0]).toBe('DEC')    // the verified alternative
+  })
+
+  /*
+   * The gap machinery outlives the gap.
+   *
+   * This set is empty now that every id in the feed has a derivation. The test that it
+   * contains nothing which is also in the map is what keeps it honest when ESPN adds a stat
+   * next season and somebody lists the id here.
+   */
   it('keeps unidentified stats out of the map rather than guessing at them', () => {
     for (const id of HOCKEY_STAT_UNVERIFIED) {
       expect(HOCKEY_STAT_BY_ID[id]).toBeUndefined()
     }
-    expect(HOCKEY_STAT_UNVERIFIED.size).toBeGreaterThan(0)
   })
 
   it('knows which categories run backwards', () => {

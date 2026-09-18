@@ -6,7 +6,9 @@ import type { HockeyProjection } from '../hockeyValue'
 const RULES: HockeyLeagueRules = {
   leagueId: 'x', season: 2027, name: 'test', teams: 8, scoringType: 'H2H_POINTS',
   weights: { G: 2, A: 1, SOG: 0.1, W: 4, SHO: 3, SV: 0.2, GA: -2 },
+  categories: [],
   slots: { F: 9, D: 5, G: 2, UTIL: 1 },
+  rosterSize: 20,
   unnamedScoredStatIds: [9, 31, 32],
 }
 
@@ -20,7 +22,7 @@ function pool(): Record<string, HockeyProjection> {
     out[`d${i}`] = { playerKey: `d${i}`, position: 'D', stats: { G: 20 - i * 0.15, A: 45 - i * 0.35, SOG: 200, GP: 82 } }
   }
   for (let i = 0; i < 40; i++) {
-    out[`g${i}`] = { playerKey: `g${i}`, position: 'G', stats: { W: 35 - i * 0.5, SHO: 5, SV: 1600 - i * 15, GA: 150 + i, GS: 60 } }
+    out[`g${i}`] = { playerKey: `g${i}`, position: 'G', stats: { W: 35 - i * 0.5, SHO: 5, SV: 1600 - i * 15, GA: 150 + i, DEC: 60 } }
   }
   return out
 }
@@ -95,5 +97,62 @@ describe('a hockey draft board', () => {
     const after = build({ gamesPlayed: { f0: 41 } }).rows.find((r) => r.playerKey === 'f0')!
     expect(after.projected!).toBeLessThan(before.projected!)
     expect(after.projected!).toBeCloseTo(before.projected! / 2, 4)
+  })
+})
+
+describe('a category league gets a board too', () => {
+  const CAT_RULES: HockeyLeagueRules = {
+    ...RULES,
+    scoringType: 'H2H_CATEGORY',
+    weights: {},              // a category league publishes none, by design
+    categories: [
+      { key: 'G', statId: 13, reverse: false },
+      { key: 'A', statId: 14, reverse: false },
+      { key: 'SOG', statId: 29, reverse: false },
+      { key: 'W', statId: 1, reverse: false },
+      { key: 'SV', statId: 6, reverse: false },
+      { key: 'GA', statId: 4, reverse: true },
+    ],
+  }
+  const catBoard = () =>
+    buildHockeyBoard({ projections: pool(), rules: CAT_RULES, namesByKey: names })
+
+  /* The board used to refuse outright: no weights meant nothing could be priced, and a
+     category league has no weights to publish. */
+  it('builds where it used to refuse', () => {
+    const b = catBoard()
+    expect(b.rows.length).toBeGreaterThan(0)
+    expect(b.mode).toBe('categories')
+  })
+
+  it('says which columns it ranked on', () => {
+    expect(catBoard().categoryKeys).toEqual(['G', 'A', 'SOG', 'W', 'SV', 'GA'])
+  })
+
+  it('carries the per-column breakdown so a row can explain itself', () => {
+    const b = catBoard()
+    const top = b.rows[0]
+    expect(Object.keys(b.perCategoryByKey[top.playerKey]).length).toBeGreaterThan(0)
+  })
+
+  /*
+   * NO ZERO FLOOR IN CATEGORY MODE. Half a z-scored field is negative by construction, and
+   * the points-league filter that drops anyone at or below nought would empty this board by
+   * the middle rounds.
+   */
+  it('keeps the below-average half of the field on the board', () => {
+    const b = catBoard()
+    expect(b.rows.length).toBe(Object.keys(pool()).length)
+    expect(b.rows.some((r) => (r.projected ?? 0) < 0)).toBe(true)
+  })
+
+  it('still ranks by value over replacement, not by raw z-score', () => {
+    const b = catBoard()
+    const byProjected = [...b.rows].sort((a, b2) => (b2.projected ?? 0) - (a.projected ?? 0))
+    expect(b.rows.map((r) => r.playerKey)).not.toEqual(byProjected.map((r) => r.playerKey))
+  })
+
+  it('reports points mode for the points league', () => {
+    expect(buildHockeyBoard({ projections: pool(), rules: RULES, namesByKey: names }).mode).toBe('points')
   })
 })

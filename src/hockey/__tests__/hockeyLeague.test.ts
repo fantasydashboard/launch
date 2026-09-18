@@ -14,8 +14,13 @@ const REAL = {
         { statId: 1, points: 4 }, { statId: 4, points: -2 }, { statId: 6, points: 0.2 },
         { statId: 7, points: 3 }, { statId: 13, points: 2 }, { statId: 14, points: 1 },
         { statId: 29, points: 0.1 },
-        // scored but unnameable
+        /* These five were the league's "we cannot name it" set, and every total the board
+           served was short by all of them. Blocked shots alone are half a point apiece and a
+           defenceman puts up 124 of them. */
         { statId: 9, points: 1 }, { statId: 31, points: 0.1 }, { statId: 32, points: 0.5 },
+        { statId: 38, points: 0.5 }, { statId: 39, points: 0.5 },
+        // an id ESPN does not publish, standing in for one it adds next season
+        { statId: 997, points: 0.5 },
         // listed and worth nothing — the league does not score these
         { statId: 2, points: 0 }, { statId: 15, points: 0 }, { statId: 23, points: 0 },
       ],
@@ -34,15 +39,19 @@ describe('reading a hockey league\'s own rules', () => {
   })
 
   it('reads the weights, including the negative one', () => {
-    expect(r.weights).toEqual({ W: 4, GA: -2, SV: 0.2, SHO: 3, G: 2, A: 1, SOG: 0.1 })
+    expect(r.weights).toEqual({
+      W: 4, GA: -2, SV: 0.2, SHO: 3, G: 2, A: 1, SOG: 0.1,
+      OTL: 1, HITS: 0.1, BLK: 0.5, PPP: 0.5, SHP: 0.5,
+    })
     expect(r.weights.GA).toBeLessThan(0)
   })
 
   /* A league lists every stat it COULD score and sets most to nought. Keeping those would
      make an eight-stat league look like a twenty-one-stat one. */
   it('drops stats the league lists but does not pay for', () => {
-    expect(Object.keys(r.weights)).toHaveLength(7)
-    expect(r.weights.L).toBeUndefined()   // statId 2, listed at zero
+    expect(Object.keys(r.weights)).toHaveLength(12)
+    expect(r.weights.L).toBeUndefined()          // statId 2, listed at zero
+    expect(r.weights.PLUSMINUS).toBeUndefined()  // statId 15, listed at zero
   })
 
   it('carries the starting slots and nothing else', () => {
@@ -53,12 +62,24 @@ describe('reading a hockey league\'s own rules', () => {
 
   /* The gap travels with the thing that caused it, rather than being recomputed later. */
   it('reports the scored stats it cannot name', () => {
-    expect(r.unnamedScoredStatIds).toEqual([9, 31, 32])
+    expect(r.unnamedScoredStatIds).toEqual([997])
   })
 
   it('does not count a zero-weight unnameable stat as a gap', () => {
-    const { unnamed } = weightsFromScoringItems([{ statId: 31, points: 0 }])
+    const { unnamed } = weightsFromScoringItems([{ statId: 997, points: 0 }])
     expect(unnamed).toEqual([])
+  })
+
+  /* Roster capacity, not lineup openings: bench and IR count here because they are seats the
+     draft fills, and the draftable pool is as deep as the seats. */
+  it('counts every roster seat, bench and IR included', () => {
+    expect(r.rosterSize).toBe(25)
+  })
+
+  /* A points league lists every stat it could score. Reading that list as a category list
+     would report twenty-one categories the league is not decided in. */
+  it('reports no categories for a points league', () => {
+    expect(r.categories).toEqual([])
   })
 })
 
@@ -105,5 +126,52 @@ describe('league shape', () => {
     expect(isCategoryLeague('H2H_CATEGORY')).toBe(true)
     expect(isCategoryLeague('ROTO')).toBe(true)
     expect(isCategoryLeague('')).toBe(false)
+  })
+})
+
+describe('a category league is asked a different question', () => {
+  /* Category leagues publish no points, so the weight check that guards a points league
+     would refuse every one of them. This is the bug that kept the board from ever building
+     for a category league. */
+  const CATEGORY = {
+    settings: {
+      name: 'Nine Cat', size: 10,
+      scoringSettings: {
+        scoringType: 'H2H_CATEGORY',
+        scoringItems: [
+          { statId: 13 }, { statId: 14 }, { statId: 38 }, { statId: 29 },
+          { statId: 31 }, { statId: 32 }, { statId: 1 }, { statId: 11 },
+          { statId: 10, isReverseItem: true },
+        ],
+      },
+      rosterSettings: { lineupSlotCounts: { '3': 9, '4': 4, '5': 2, '7': 5, '8': 2 } },
+    },
+  }
+  const r = rulesFromEspnSettings(CATEGORY, 'cat', 2027)!
+
+  it('reads the columns the league is decided in', () => {
+    expect(r.categories.map((c) => c.key)).toEqual(
+      ['G', 'A', 'PPP', 'SOG', 'HITS', 'BLK', 'W', 'SVPCT', 'GAA'],
+    )
+  })
+
+  it('takes the reverse column from the league\'s own flag', () => {
+    expect(r.categories.find((c) => c.key === 'GAA')!.reverse).toBe(true)
+    expect(r.categories.find((c) => c.key === 'G')!.reverse).toBe(false)
+  })
+
+  it('builds a board despite publishing no weights', () => {
+    expect(r.weights).toEqual({})
+    expect(rulesProblem(r)).toBe('')
+  })
+
+  it('still refuses a category league that named no categories', () => {
+    expect(rulesProblem({ ...r, categories: [] })).toContain('categories')
+  })
+
+  it('knows a category league from a points one', () => {
+    expect(isCategoryLeague(r.scoringType)).toBe(true)
+    expect(isCategoryLeague('H2H_POINTS')).toBe(false)
+    expect(isCategoryLeague('ROTO')).toBe(true)
   })
 })

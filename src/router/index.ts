@@ -184,6 +184,14 @@ const router = createRouter({
       component: () => import('@/views/VorAuditView.vue')
     },
     {
+      /* Hockey's board is its own route rather than a mode of /draft-room, because that room
+         is Sleeper-draft machinery end to end — polling, pick sync, the clock — and hockey
+         has none of that. Sharing the route would mean gating half a view on a sport. */
+      path: '/hockey/draft',
+      name: 'hockey-draft',
+      component: () => import('@/views/HockeyDraftView.vue')
+    },
+    {
       path: '/draft-room',
       name: 'draft-room',
       component: () => import('@/views/DraftRoomView.vue')

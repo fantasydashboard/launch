@@ -1,4 +1,5 @@
 import { HOCKEY_STAT_BY_ID, startingSlotsFromEspn } from './hockeyPositions'
+import { categoriesFromScoringItems, type HockeyCategory } from './hockeyCategoryValue'
 
 /**
  * Read a hockey league's own rules out of ESPN's settings blob.
@@ -23,8 +24,18 @@ export interface HockeyLeagueRules {
   scoringType: string
   /** Unified stat key -> points per unit. Empty when the league published none. */
   weights: Record<string, number>
+  /**
+   * The columns a CATEGORY league is decided in. Empty for a points league.
+   *
+   * Populated for every league so the shape is stable, but only meaningful — and only read —
+   * when `scoringType` says categories. A points league lists every stat it could score and
+   * zeroes most, so reading this for one would report twenty-one categories it does not have.
+   */
+  categories: HockeyCategory[]
   /** Starting openings only: { F: 9, D: 5, G: 2, UTIL: 1 }. Bench and IR excluded. */
   slots: Record<string, number>
+  /** Roster size per team, for sizing the draftable pool. Zero when ESPN did not say. */
+  rosterSize: number
   /**
    * Stat ids the league PAYS for that we cannot name.
    *
@@ -72,7 +83,17 @@ export function rulesFromEspnSettings(
   const s = payload?.settings
   if (!s) return null
   const sc = s.scoringSettings ?? {}
+  const scoringType = String(sc.scoringType ?? '')
   const { weights, unnamed } = weightsFromScoringItems(sc.scoringItems)
+  const cats = categoriesFromScoringItems(sc.scoringItems)
+
+  /* Every seat on the roster, bench and IR included — this is capacity, not lineup, and it
+     is what decides how deep the draft goes. */
+  const rosterSize = Object.values(
+    (s.rosterSettings?.lineupSlotCounts ?? {}) as Record<string, number>,
+  ).reduce((a, b) => a + (Number(b) || 0), 0)
+
+  const isCategory = isCategoryLeague(scoringType)
   return {
     leagueId: String(leagueId),
     season,
@@ -81,10 +102,16 @@ export function rulesFromEspnSettings(
        whole board off a league size nobody is playing, so zero is returned instead and the
        caller can refuse to build a board at all. */
     teams: Number(s.size) || 0,
-    scoringType: String(sc.scoringType ?? ''),
+    scoringType,
     weights,
+    categories: isCategory ? cats.categories : [],
     slots: startingSlotsFromEspn(s.rosterSettings?.lineupSlotCounts),
-    unnamedScoredStatIds: unnamed,
+    rosterSize,
+    /* Whichever read applies to THIS league. A points league's gap is the stats it pays for
+       and we cannot name; a category league's is the columns it is decided in and we cannot
+       name. Reporting the points-league gap for a category league would always come back
+       empty, because a category league sets no points. */
+    unnamedScoredStatIds: isCategory ? cats.unnamed : unnamed,
   }
 }
 
@@ -97,9 +124,19 @@ export function rulesFromEspnSettings(
 export function rulesProblem(rules: HockeyLeagueRules | null): string {
   if (!rules) return 'ESPN returned no settings for this league.'
   if (!rules.teams) return 'The league did not report how many teams are in it, and every replacement level depends on that.'
-  if (!Object.keys(rules.weights).length) {
+
+  /* A category league is asked a different question. It publishes no weights by design —
+     there is no exchange rate in a league you win column by column — so checking for weights
+     here would refuse to build a board for every category league in existence, which is
+     exactly what it used to do. */
+  if (isCategoryLeague(rules.scoringType)) {
+    if (!rules.categories.length) {
+      return 'The league did not publish which categories it is decided in, so there is nothing to rank against.'
+    }
+  } else if (!Object.keys(rules.weights).length) {
     return 'The league published no scoring weights, so nothing can be priced. We will not substitute a default set — a board built on invented rules looks exactly like a real one.'
   }
+
   if (!Object.keys(rules.slots).length) return 'The league reported no starting lineup slots.'
   return ''
 }

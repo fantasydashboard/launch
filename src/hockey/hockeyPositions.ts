@@ -70,44 +70,94 @@ export const NON_STARTING_SLOTS = new Set(['BENCH', 'IR'])
 /**
  * ESPN stat id -> unified key.
  *
- * The CONFIRMED block was verified two ways: arithmetic identities in the projection payload
- * (goals + assists = points; shots against - goals against = saves), and a real league's
- * `scoringItems`, which assigns a points value to the same ids. Both agree.
+ * EVERY ENTRY WAS DERIVED FROM DATA, AND THE DERIVATION IS ON THE LINE. Two kinds of
+ * evidence: arithmetic identities that held across the whole 456-player projection set, and
+ * a rank check — sorting the pool by an id and seeing whether the names at the top are the
+ * players who actually lead that category. An identity alone fixes a stat's ARITHMETIC but
+ * not its NAME; the rank check is what supplies the name. Both are quoted below.
  *
- * The UNVERIFIED block is the honest part. These ids carry non-zero projections and some
- * carry league scoring weights, but nothing in the data identifies WHICH stat each one is —
- * MacKinnon's 31 is 62 and his 32 is 42, and hits, blocks, power-play points and
- * short-handed points are all plausible for both. They are deliberately left out of the map
- * rather than guessed at: a mislabelled stat does not crash, it produces a ranking that is
- * quietly wrong, which is worse.
+ * This map was half this size and carried a companion list of fifteen ids marked "we cannot
+ * name these". That list is now empty, and the note explaining why it existed is worth
+ * keeping: the reason those ids looked unidentifiable was that they were being read one at a
+ * time. Read as a SET they solve immediately, because the ids come in closed algebraic
+ * families — a 2x2 of goals and assists crossed with power play and short handed, summing
+ * two different ways to the same total. No single column identifies itself; the grid does.
  */
 export const HOCKEY_STAT_BY_ID: Record<number, string> = {
   // ── skaters ──
   13: 'G',        // goals    — league scores it 2.0; MacKinnon 53
   14: 'A',        // assists  — league scores it 1.0; MacKinnon 80
-  16: 'PTS',      // points   — 53 + 80 = 133 exactly
+  15: 'PLUSMINUS',// the ONLY id that goes negative: range -38 to +53, MacKinnon top
+  16: 'PTS',      // points   — 13 + 14 = 16 for 396 of 398 skaters
+  17: 'PIM',      // penalty minutes — top 5 are Zadorov, Wilson, Greer, Olivier, D'Astous
+  18: 'PPG',      // power-play goals   — forwards 5.4 avg, D 1.6
+  19: 'PPA',      // power-play assists — forwards 8.5, D 6.8
+  20: 'SHG',      // short-handed goals   — 155 league-wide, max 4
+  21: 'SHA',      // short-handed assists — 156 league-wide, max 4
+  26: 'TOI',      // time on ice, seconds — 26 / 30 = 27 for 396 of 398
+  27: 'TOIG',     // time on ice per game, seconds — ~1086 is 18:06
   29: 'SOG',      // shots    — league scores it 0.1; MacKinnon 367
   30: 'GP',       // games played — 82 for a full season
+  31: 'HITS',     // top 5 Trenin, Sherwood, Cuylle, Kolesar, McBain; F and D both ~80 avg
+  32: 'BLK',      // top 5 ALL defencemen; D average 124 against forwards' 41
+  33: 'DPTS',     // points by a defenceman — nonzero for 115 D and zero for all 283 forwards
+  35: 'STG',      // special-teams goals   — 18 + 20
+  36: 'STA',      // special-teams assists — 19 + 21
+  37: 'STP',      // special-teams points  — 35 + 36, and also 38 + 39
+  38: 'PPP',      // power-play points   — 18 + 19; 4,885 league-wide
+  39: 'SHP',      // short-handed points — 20 + 21;   311 league-wide, which is what fixes
+                  //   the orientation: power play outnumbers short handed 16 to 1
 
   // ── goalies ──
+  0: 'DEC',       // decisions — 1 + 2 + 9 for 57 of 58 goalies
   1: 'W',         // wins     — league scores it 4.0
   2: 'L',         // losses
   3: 'SA',        // shots against
   4: 'GA',        // goals against — league scores it -2.0, the only negative
   6: 'SV',        // saves    — 1046 SA - 121 GA = 925 exactly; league scores it 0.2
   7: 'SHO',       // shutouts — league scores it 3.0
+  8: 'TOI',       // time on ice, seconds — 8 / 0 is 59.3 minutes, one full game per decision
+  9: 'OTL',       // overtime losses — the third term of the decisions identity above
   10: 'GAA',      // goals-against average — 121 / (TOI/3600) = 3.48
-  11: 'SVPCT',    // save percentage — 925 / 1046 = 0.884
-  34: 'GS',       // games started — the number streaming actually turns on
+  11: 'SVPCT',    // save percentage — 6 / 3 for 57 of 57
+  12: 'WINPCT',   // 1 / 0 for 56 of 57
+  /*
+   * 34 IS NOT GAMES STARTED, WHICH IS WHAT THIS MAP USED TO CLAIM.
+   *
+   * For all 398 skaters it equals games played exactly, and a skater does not "start". For
+   * goalies it is zero for fifteen of them — including Lindgren, Demko and Stolarz, who are
+   * projected 37, 52 and 43 appearances — so read as starts it would call three starting
+   * goalies unstartable. Where it is nonzero it sits just under games played, so it is
+   * plausibly starts with a lot of gaps, but "plausibly" is not a basis for pricing a
+   * position. Goalie volume comes from GP, and DEC above is the verified alternative.
+   */
+  34: 'GP2',
 }
 
 /**
  * Stat ids that appear with projections and scoring weights but that we cannot yet NAME.
  *
- * Exported so a caller can tell "we have no value for this" apart from "this stat is zero",
- * and so the gap is visible in code rather than remembered by whoever wrote it.
+ * EMPTY, AND KEPT. Every id in the feed now has a derivation beside it in the map above.
+ * The export stays because the machinery that reports the gap is worth more than the gap
+ * being currently zero: ESPN adds stats between seasons, and the first new id to arrive
+ * should surface as "we cannot name this" rather than be silently dropped.
  */
-export const HOCKEY_STAT_UNVERIFIED = new Set([9, 15, 17, 18, 19, 20, 21, 23, 31, 32, 35, 36, 37, 38, 39])
+export const HOCKEY_STAT_UNVERIFIED = new Set<number>([])
+
+/**
+ * Stats that are a RATE or a ROLLUP of other stats in the same payload.
+ *
+ * These are real and correctly named, but they must never be summed alongside their own
+ * components. PTS is goals plus assists; PPP is power-play goals plus power-play assists;
+ * STP is those two totals again from the other direction. A league is free to score any of
+ * them — that is its business, and applying a weight the league set is not double counting.
+ * What this set exists to prevent is US adding them together on our own initiative, in a
+ * category league where the categories are inferred rather than priced.
+ */
+export const HOCKEY_DERIVED_STATS = new Set([
+  'PTS', 'DPTS', 'STG', 'STA', 'STP', 'PPP', 'SHP',
+  'TOI', 'TOIG', 'GAA', 'SVPCT', 'WINPCT', 'DEC', 'GP2',
+])
 
 /**
  * Categories that are better when LOWER, for H2H category leagues.
