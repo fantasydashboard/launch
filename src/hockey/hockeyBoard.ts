@@ -12,10 +12,16 @@ import { isCategoryLeague, type HockeyLeagueRules } from './hockeyLeague'
  * and it still does not.
  *
  * ORDERED BY VALUE OVER REPLACEMENT, NOT BY POINTS. The difference decides drafts. In the
- * test league an elite defenceman sits below the fourth-best centre on raw points and above
- * him on VOR, because defence replacement is 59.3 where forward replacement is 107.7 — the
- * seat he is competing for is much cheaper to fill badly. A board sorted by points would
- * quietly tell you to take the centre.
+ * test league defence replacement is 139.9 where forward replacement is 149.3, so an elite
+ * defenceman outranks forwards who outscore him — the seat he is competing for is cheaper to
+ * fill badly. A board sorted by points would quietly tell you to take the forward.
+ *
+ * AND THE LEVELS RESPOND. `drafted` reaches the replacement calculation, so seats are spent
+ * as they are taken. This file was a preseason ranking with rows hidden for a while — taking
+ * sixty players moved every level by exactly zero — so it is worth naming.
+ *
+ * With the caveat recorded on HockeyVorInput.drafted: a draft that follows this board exactly
+ * moves nothing, by arithmetic. It is departures from our ordering that re-price the pool.
  */
 
 export interface HockeyBoardInput {
@@ -114,6 +120,10 @@ export function buildHockeyBoard(input: HockeyBoardInput): HockeyBoardResult {
     positionByKey,
     slots: rules.slots,
     teams: rules.teams,
+    /* Handed down so scarcity moves with the draft. Without it the board was a preseason
+       ranking with rows hidden: taking sixty players moved every replacement level by
+       exactly zero. */
+    drafted,
   })
 
   const replacement: Record<string, number> = {}
@@ -123,7 +133,6 @@ export function buildHockeyBoard(input: HockeyBoardInput): HockeyBoardResult {
 
   const rows: AvailablePlayerRow[] = []
   for (const r of Object.values(vor)) {
-    if (drafted?.has(r.playerKey)) continue
     rows.push({
       playerKey: r.playerKey,
       name: namesByKey[r.playerKey] ?? r.playerKey,

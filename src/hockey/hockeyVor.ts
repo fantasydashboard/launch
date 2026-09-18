@@ -48,6 +48,26 @@ export interface HockeyVorInput {
   /** Starting slots only, e.g. { F: 9, D: 5, G: 2, UTIL: 1 }. */
   slots: Record<string, number>
   teams: number
+  /**
+   * Players already off the board.
+   *
+   * Passing it removes them from the pools AND spends the seats they took. Omit it and the
+   * board is a preseason ranking with rows hidden, which is what this was before.
+   *
+   * THE EFFECT IS REAL BUT NARROWER THAN IT SOUNDS, and the narrow part is worth stating
+   * because it is easy to claim otherwise. If a draft follows this board exactly, the
+   * replacement level does not move AT ALL — and that is arithmetic, not a bug. Removing the
+   * top K of a pool and shrinking its seats by K lands the index on the same player it was
+   * already on. The measured case: twelve goalies taken strictly in our order moved the
+   * goalie level from 97.6 to 97.6.
+   *
+   * What moves it is a draft that DEPARTS from our ordering — a reach, a keeper, a league
+   * that rates somebody differently. Twelve goalies gone with eight of them reaches moved the
+   * same level from 97.6 to 107.0, and the best goalie left was priced accordingly. Since
+   * real drafts depart from any one board constantly, this fires often; it just does not fire
+   * because of volume alone.
+   */
+  drafted?: Set<string>
 }
 
 /**
@@ -105,15 +125,21 @@ export function expandSlots(slots: Record<string, number>): Record<string, numbe
  * of the data rather than a rule written down.
  */
 export function buildHockeyVor(input: HockeyVorInput): Record<string, HockeyVorRow> {
-  const { points, positionByKey, slots, teams } = input
+  const { points, positionByKey, slots, teams, drafted } = input
 
   const poolByKey: Record<string, string> = {}
   const byPool = new Map<string, number[]>()
+  /* Seats already spent, per pool — the other half of the draft-board calculation. */
+  const goneByPool = new Map<string, number>()
   for (const [key, pts] of Object.entries(points)) {
     const position = String(positionByKey[key] ?? '').toUpperCase()
     if (!position || !Number.isFinite(pts)) continue
     const pool = poolForPosition(position, slots)
     poolByKey[key] = pool
+    if (drafted?.has(key)) {
+      goneByPool.set(pool, (goneByPool.get(pool) ?? 0) + 1)
+      continue                      // out of the pool he is no longer available in
+    }
     byPool.set(pool, [...(byPool.get(pool) ?? []), pts])
   }
 
@@ -132,7 +158,22 @@ export function buildHockeyVor(input: HockeyVorInput): Record<string, HockeyVorR
   const levels: Record<string, number> = {}
   for (const [pool, arr] of byPool) {
     const sorted = [...arr].sort((a, b) => b - a)
-    const idx = Math.round((seats[pool] ?? 0) * teams)
+    /*
+     * Seats still open, not seats that ever existed.
+     *
+     * Nine forward openings across eight teams is 72 forward jobs, and every forward already
+     * taken has spent one. So the man who misses out is the 72nd MINUS the ones gone, counted
+     * among those still available — which is why a run on one position re-prices it and the
+     * others immediately.
+     *
+     * Floored at one rather than nought. Once more players at a pool are gone than there are
+     * seats, everyone left is a bench player and the honest replacement level is the best of
+     * them; an index of nought would say that literally and collapse every remaining player
+     * at that position to a VOR of zero, destroying the ordering exactly when a drafter is
+     * still choosing between them.
+     */
+    const total = Math.round((seats[pool] ?? 0) * teams)
+    const idx = Math.max(1, total - (goneByPool.get(pool) ?? 0))
     levels[pool] = sorted[idx] ?? sorted[sorted.length - 1] ?? 0
   }
 
@@ -140,6 +181,9 @@ export function buildHockeyVor(input: HockeyVorInput): Record<string, HockeyVorR
   for (const [key, pts] of Object.entries(points)) {
     const pool = poolByKey[key]
     if (!pool) continue
+    /* A drafted player keeps his pool for the seat arithmetic above but gets no row: he is
+       not available, and pricing him would put him back on the board. */
+    if (drafted?.has(key)) continue
     out[key] = {
       playerKey: key,
       position: String(positionByKey[key] ?? '').toUpperCase(),

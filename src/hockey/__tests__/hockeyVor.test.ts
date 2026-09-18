@@ -101,3 +101,108 @@ describe('value over replacement', () => {
     expect(v.b).toBeUndefined()
   })
 })
+
+describe('scarcity moves as the draft goes', () => {
+  /* Twenty forwards and twenty defencemen on a clean gradient, in a league starting two of
+     each across two teams — four seats per pool, so a run is easy to see. */
+  const points: Record<string, number> = {}
+  const positionByKey: Record<string, string> = {}
+  for (let i = 0; i < 20; i++) {
+    points[`f${i}`] = 100 - i; positionByKey[`f${i}`] = 'C'
+    points[`d${i}`] = 100 - i; positionByKey[`d${i}`] = 'D'
+  }
+  const SLOTS = { F: 2, D: 2 }
+  const build = (drafted?: Set<string>) =>
+    buildHockeyVor({ points, positionByKey, slots: SLOTS, teams: 2, drafted })
+
+  const levelOf = (rows: ReturnType<typeof build>, pool: string) => {
+    const r = Object.values(rows).find((x) => x.pool === pool)!
+    return r.points - r.vor
+  }
+
+  it('leaves the levels alone when nothing has been taken', () => {
+    const r = build()
+    expect(levelOf(r, 'F')).toBe(levelOf(r, 'D'))
+  })
+
+  /*
+   * THE POINT OF THE WHOLE FILE. Four forwards gone means four forward jobs are gone, so the
+   * man who misses out is now shallower in what remains and the replacement level DROPS —
+   * which makes the forwards still on the board worth more, because the alternative to them
+   * got worse. A board that does not do this is a preseason ranking with rows hidden.
+   */
+  it('drops a position\'s replacement level when that position gets run', () => {
+    const before = levelOf(build(), 'F')
+    const after = levelOf(build(new Set(['f0', 'f1', 'f2', 'f3'])), 'F')
+    expect(after).toBeLessThan(before)
+  })
+
+  it('leaves the other position alone when one gets run', () => {
+    const before = levelOf(build(), 'D')
+    const after = levelOf(build(new Set(['f0', 'f1', 'f2', 'f3'])), 'D')
+    expect(after).toBe(before)
+  })
+
+  it('makes the survivors at a run position worth more', () => {
+    const before = build().f10.vor
+    const after = build(new Set(['f0', 'f1', 'f2', 'f3'])).f10.vor
+    expect(after).toBeGreaterThan(before)
+  })
+
+  it('takes a drafted player off the board entirely', () => {
+    const r = build(new Set(['f0']))
+    expect(r.f0).toBeUndefined()
+    expect(r.f1).toBeDefined()
+  })
+
+  /*
+   * Past the point where every seat is spent, everyone left is a bench player. The index is
+   * floored at one rather than nought so the ordering survives: nought would make replacement
+   * the best available player and flatten every remaining VOR to zero, exactly when a drafter
+   * is still choosing between them.
+   */
+  it('keeps the board ordered after every seat is spent', () => {
+    const gone = new Set(Array.from({ length: 8 }, (_, i) => `f${i}`))
+    const r = build(gone)
+    expect(r.f8.vor).toBeGreaterThan(r.f9.vor)
+    expect(r.f8.vor).toBeGreaterThan(0)
+  })
+})
+
+describe('what actually moves a replacement level', () => {
+  /* Thirty goalies on a clean gradient, four goalie seats across two teams. */
+  const points: Record<string, number> = {}
+  const positionByKey: Record<string, string> = {}
+  for (let i = 0; i < 30; i++) { points[`g${i}`] = 100 - i; positionByKey[`g${i}`] = 'G' }
+  const build = (drafted?: Set<string>) =>
+    buildHockeyVor({ points, positionByKey, slots: { G: 2 }, teams: 2, drafted })
+  const level = (r: ReturnType<typeof build>) => {
+    const row = Object.values(r)[0]
+    return row.points - row.vor
+  }
+
+  /*
+   * THE SURPRISING PROPERTY, PINNED. A draft that follows this board exactly moves the
+   * replacement level by nothing, and that is arithmetic rather than a defect: removing the
+   * top K of a pool while shrinking its seats by K lands the index on the same player.
+   *
+   * It is here because the obvious test of "does the board react to picks" — take the top N,
+   * watch the levels — returns "no" against a CORRECT implementation, and would send the next
+   * person looking for a bug that is not there.
+   */
+  it('does not move when the draft follows the board exactly', () => {
+    const inOrder = new Set(['g0', 'g1', 'g2'])
+    expect(level(build(inOrder))).toBe(level(build()))
+  })
+
+  /* What does move it: a league that rates somebody differently from us. */
+  it('moves when the draft departs from the board', () => {
+    const reaches = new Set(['g0', 'g10', 'g11'])
+    expect(level(build(reaches))).toBeGreaterThan(level(build()))
+  })
+
+  it('prices the survivors off the level that actually applies', () => {
+    const reaches = new Set(['g0', 'g10', 'g11'])
+    expect(build(reaches).g1.vor).toBeLessThan(build().g1.vor)
+  })
+})

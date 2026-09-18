@@ -149,8 +149,10 @@ export function useHockeyBoard() {
     }
   }
 
-  /* Rebuilt whenever a player is taken, which is what makes this a draft board rather than a
-     ranking — replacement level moves as the pool empties. */
+  /* Rebuilt whenever a player is taken. The rebuild is only half of what makes this a draft
+     board rather than a ranking; the other half is that `drafted` reaches the replacement
+     calculation, which for a while it did not — this comment claimed the levels moved and
+     they did not budge. */
   watch(
     [rules, projections, drafted],
     () => {
