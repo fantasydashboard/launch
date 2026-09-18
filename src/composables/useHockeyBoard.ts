@@ -77,6 +77,14 @@ export function useHockeyBoard() {
    */
   const drafted = computed(() => (live.value && liveState.value ? liveState.value.drafted : mockDrafted.value))
 
+  /**
+   * Columns this manager is conceding. Category leagues only.
+   *
+   * Local to the session and to this manager — it is a statement about the team you are
+   * building, not about the league, so it is never written anywhere shared.
+   */
+  const punted = ref<Set<string>>(new Set())
+
   const projections = ref<Record<string, HockeyProjection>>({})
   const namesByKey = ref<Record<string, string>>({})
 
@@ -154,7 +162,7 @@ export function useHockeyBoard() {
      calculation, which for a while it did not — this comment claimed the levels moved and
      they did not budge. */
   watch(
-    [rules, projections, drafted],
+    [rules, projections, drafted, punted],
     () => {
       if (!rules.value || !Object.keys(projections.value).length) { result.value = null; return }
       result.value = buildHockeyBoard({
@@ -162,6 +170,7 @@ export function useHockeyBoard() {
         rules: rules.value,
         namesByKey: namesByKey.value,
         drafted: drafted.value,
+        punted: punted.value,
       })
     },
     { deep: true, immediate: true },
@@ -180,6 +189,15 @@ export function useHockeyBoard() {
     mockDrafted.value = next
   }
   function reset() { if (!live.value) mockDrafted.value = new Set() }
+
+  /** Concede a column, or take it back. Re-prices the whole board either way. */
+  function togglePunt(key: string) {
+    const next = new Set(punted.value)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    punted.value = next
+  }
+  function clearPunts() { punted.value = new Set() }
 
   /** One read of the draft feed. Never writes: ESPN's pick endpoints are not ours to call. */
   async function syncDraft() {
@@ -251,6 +269,8 @@ export function useHockeyBoard() {
        column means a different thing in each, so the surface has to know which it is. */
     mode: computed(() => result.value?.mode ?? 'points'),
     categoryKeys: computed(() => result.value?.categoryKeys ?? []),
+    contestedKeys: computed(() => result.value?.contestedKeys ?? []),
+    punted, togglePunt, clearPunts,
     perCategoryByKey: computed(() => result.value?.perCategoryByKey ?? {}),
     load, take, undo, reset,
     // live draft

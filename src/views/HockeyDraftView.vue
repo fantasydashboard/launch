@@ -18,7 +18,8 @@ import { useHockeyBoard } from '@/composables/useHockeyBoard'
 
 const {
   loading, problem, rules, rows, replacement, unnamedScoredStatIds,
-  mode, categoryKeys, perCategoryByKey,
+  mode, categoryKeys, contestedKeys, perCategoryByKey,
+  punted, togglePunt, clearPunts,
   drafted, take, undo, reset, load,
   live, liveError, liveState, lastSyncedAt, myTeamId, teamNames, clock, goLive, goMock, syncDraft,
 } = useHockeyBoard()
@@ -60,6 +61,11 @@ const valueHint = 'Value over replacement — what he\'s worth above the last st
 const shown2 = (n: number | undefined) =>
   isCategories.value ? (n ?? 0).toFixed(2) : String(Math.round(n ?? 0))
 
+/* Only the contested columns belong in a player's one-line reason: a punted column is one
+   this manager has stopped caring about, and showing "GAA +2.1" beside a goalie you are not
+   contesting wins with is an argument for a pick you have decided against. */
+const isContested = (key: string) => contestedKeys.value.includes(key)
+
 /* A signed number, so a best column that happens to be negative reads "-0.3" rather than
    "+-0.3". It happens: a player can lead his own profile in a column he is still below
    average in, which is exactly the case worth showing honestly. */
@@ -69,7 +75,7 @@ const signed = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(1)}`
 function edge(playerKey: string): string {
   const per = perCategoryByKey.value[playerKey]
   if (!per) return ''
-  const sorted = Object.entries(per).sort((a, b) => b[1] - a[1])
+  const sorted = Object.entries(per).filter(([k]) => isContested(k)).sort((a, b) => b[1] - a[1])
   if (!sorted.length) return ''
   const [bestKey, bestZ] = sorted[0]
   const [worstKey, worstZ] = sorted[sorted.length - 1]
@@ -145,11 +151,42 @@ const POS_TONE: Record<string, string> = {
         a reader who assumes these are points will read a 6.2 as a bad season rather than as
         an excellent one.
       -->
-      <p v-if="isCategories" class="mb-3 rounded-lg border border-dark-border bg-dark-card px-3 py-2 font-mono text-[11px] text-dark-textMuted">
-        Category league. Players are measured in standard deviations across
-        {{ categoryKeys.length }} columns &mdash; {{ categoryKeys.join(', ') }} &mdash; not in
-        points. A column everybody is level in is worth nothing here however big its numbers.
-      </p>
+      <!--
+        PUNT CONTROLS. You win a week by taking more columns than your opponent, not by being
+        good at all of them, so conceding two on purpose is a plan rather than a surrender —
+        and it changes what every player is worth to YOU. A goalie is a first-round pick or an
+        afterthought depending on whether you are contesting wins. Clicking a column off
+        re-prices the entire board, including the pool the other columns are measured against.
+      -->
+      <div v-if="isCategories" class="mb-3 rounded-xl border border-dark-border bg-dark-card p-3">
+        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <p class="font-mono text-[9px] uppercase tracking-widest text-dark-textMuted/70">categories you're contesting</p>
+          <button v-if="punted.size"
+                  class="font-mono text-[10px] text-dark-textMuted underline decoration-dotted hover:text-dark-text"
+                  @click="clearPunts()">contest everything</button>
+        </div>
+        <div class="mt-2 flex flex-wrap gap-1.5">
+          <button v-for="k in categoryKeys" :key="k"
+                  class="rounded-lg border px-2 py-1 font-mono text-[11px] transition-colors"
+                  :class="punted.has(k)
+                    ? 'border-dark-border text-dark-textMuted/40 line-through'
+                    : 'border-primary/40 text-primary'"
+                  :title="punted.has(k) ? `Punting ${k} — click to contest it again` : `Contesting ${k} — click to punt it`"
+                  @click="togglePunt(k)">{{ k }}</button>
+        </div>
+        <p class="mt-2 font-mono text-[10px] leading-relaxed text-dark-textMuted">
+          <template v-if="punted.size">
+            Punting {{ [...punted].join(', ') }}. Everyone below is priced on the
+            {{ contestedKeys.length }} you're still contesting &mdash; a player who was only
+            valuable in a column you've conceded is worth nothing to you now.
+          </template>
+          <template v-else>
+            Measured in standard deviations across all {{ categoryKeys.length }} columns, not in
+            points. A column everybody is level in is worth nothing however big its numbers.
+            Click one off to punt it.
+          </template>
+        </p>
+      </div>
 
       <!--
         MOCK OR LIVE, CHOSEN DELIBERATELY. Live is never switched on for the user: a board

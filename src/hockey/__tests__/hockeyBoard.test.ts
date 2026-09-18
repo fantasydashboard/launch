@@ -156,3 +156,65 @@ describe('a category league gets a board too', () => {
     expect(buildHockeyBoard({ projections: pool(), rules: RULES, namesByKey: names }).mode).toBe('points')
   })
 })
+
+describe('punting a category', () => {
+  const CATS = [
+    { key: 'G', statId: 13, reverse: false },
+    { key: 'A', statId: 14, reverse: false },
+    { key: 'SOG', statId: 29, reverse: false },
+    { key: 'W', statId: 1, reverse: false },
+    { key: 'SV', statId: 6, reverse: false },
+    { key: 'GA', statId: 4, reverse: true },
+  ]
+  const CAT_RULES: HockeyLeagueRules = {
+    ...RULES, scoringType: 'H2H_CATEGORY', weights: {}, categories: CATS,
+  }
+  const build = (punted?: Set<string>) =>
+    buildHockeyBoard({ projections: pool(), rules: CAT_RULES, namesByKey: names, punted })
+
+  it('prices only the columns still being contested', () => {
+    expect(build().contestedKeys).toEqual(['G', 'A', 'SOG', 'W', 'SV', 'GA'])
+    expect(build(new Set(['W', 'SV', 'GA'])).contestedKeys).toEqual(['G', 'A', 'SOG'])
+  })
+
+  it('still reports every column the league is decided in', () => {
+    // The punt is this manager's; the league is unchanged, and the toggles need the full list.
+    expect(build(new Set(['W'])).categoryKeys).toHaveLength(6)
+  })
+
+  /*
+   * THE POINT. Concede every column a goalie contributes to and goalies stop being worth
+   * anything to you — which is the correct answer, not a degenerate one. They stay ON the
+   * board, because two goalie slots still have to be filled; they just stop competing for
+   * picks against skaters who help you win something.
+   */
+  it('collapses a position whose every column is punted', () => {
+    const normal = build()
+    const punted = build(new Set(['W', 'SV', 'GA']))
+    const bestGoalieNormal = normal.rows.findIndex((r) => r.position === 'G')
+    const bestGoaliePunted = punted.rows.findIndex((r) => r.position === 'G')
+    expect(bestGoaliePunted).toBeGreaterThan(bestGoalieNormal)
+    expect(punted.rows.some((r) => r.position === 'G')).toBe(true)
+  })
+
+  it('re-prices the skaters too, not just the punted position', () => {
+    const before = build().rows.find((r) => r.position === 'D')!
+    const after = build(new Set(['SOG'])).rows.find((r) => r.playerKey === before.playerKey)!
+    expect(after.projected).not.toBeCloseTo(before.projected!, 6)
+  })
+
+  /* Punting everything is an empty filter, not a strategy. It would price the league at
+     nothing and hand back a board in arbitrary order, which still looks like a board. */
+  it('refuses a punt of every column', () => {
+    const all = new Set(CATS.map((c) => c.key))
+    expect(build(all).contestedKeys).toEqual(build().contestedKeys)
+  })
+
+  it('ignores punts in a points league', () => {
+    const b = buildHockeyBoard({
+      projections: pool(), rules: RULES, namesByKey: names, punted: new Set(['G']),
+    })
+    expect(b.mode).toBe('points')
+    expect(b.contestedKeys).toEqual([])
+  })
+})

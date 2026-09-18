@@ -35,6 +35,20 @@ export interface HockeyBoardInput {
   drafted?: Set<string>
   /** Games each player has already played, for an in-season board. */
   gamesPlayed?: Record<string, number>
+  /**
+   * Categories this manager is NOT contesting. Category leagues only.
+   *
+   * PUNTING IS THE ONE STRATEGY A CATEGORY BOARD CANNOT IGNORE. You win a week by taking
+   * more columns than your opponent, not by being good at all of them, so conceding two on
+   * purpose to dominate the rest is a coherent plan rather than a concession — and it changes
+   * what every player is worth to YOU. A goalie is a first-round pick or an afterthought
+   * depending on whether you are contesting wins.
+   *
+   * Punted columns are dropped before anything is standardised, not scored and then ignored.
+   * That matters: it also moves the mean and spread of every remaining column, because the
+   * draftable pool those are measured over is itself chosen on contested value.
+   */
+  punted?: Set<string>
 }
 
 export interface HockeyBoardResult {
@@ -45,10 +59,28 @@ export interface HockeyBoardResult {
   unnamedScoredStatIds: number[]
   /** How the board was priced, because the two are read differently. */
   mode: 'points' | 'categories'
-  /** The columns a category board ranks on. Empty for a points board. */
+  /** Every column the league is decided in. Empty for a points board. */
   categoryKeys: string[]
+  /** The columns actually priced — the league's, less anything punted. */
+  contestedKeys: string[]
   /** playerKey -> category key -> z-score. Empty for a points board. */
   perCategoryByKey: Record<string, Record<string, number>>
+}
+
+/**
+ * The columns actually being contested.
+ *
+ * A punt of EVERYTHING is refused — it would price the whole league at nothing and produce a
+ * board in arbitrary order, which looks like a board. Punting every column is not a strategy,
+ * it is an empty filter, so the league's own categories stand.
+ */
+export function contestedCategories(
+  rules: HockeyLeagueRules,
+  punted: Set<string> | undefined,
+): HockeyLeagueRules['categories'] {
+  if (!punted?.size) return rules.categories
+  const kept = rules.categories.filter((c) => !punted.has(c.key))
+  return kept.length ? kept : rules.categories
 }
 
 /**
@@ -62,12 +94,12 @@ export interface HockeyBoardResult {
 function rankingQuantity(
   input: HockeyBoardInput,
 ): { points: Record<string, number>; perCategoryByKey: Record<string, Record<string, number>> } {
-  const { projections, rules, gamesPlayed } = input
+  const { projections, rules, gamesPlayed, punted } = input
 
   if (isCategoryLeague(rules.scoringType) && rules.categories.length) {
     const cat = buildHockeyCategoryValue({
       projections,
-      categories: rules.categories,
+      categories: contestedCategories(rules, punted),
       draftablePlayers: rules.teams * rules.rosterSize || undefined,
     })
     /*
@@ -154,6 +186,7 @@ export function buildHockeyBoard(input: HockeyBoardInput): HockeyBoardResult {
     unnamedScoredStatIds: rules.unnamedScoredStatIds,
     mode: categoryMode ? 'categories' : 'points',
     categoryKeys: categoryMode ? rules.categories.map((c) => c.key) : [],
+    contestedKeys: categoryMode ? contestedCategories(rules, input.punted).map((c) => c.key) : [],
     perCategoryByKey,
   }
 }
