@@ -1,0 +1,105 @@
+import { HOCKEY_STAT_BY_ID, startingSlotsFromEspn } from './hockeyPositions'
+
+/**
+ * Read a hockey league's own rules out of ESPN's settings blob.
+ *
+ * Everything downstream is priced with these: the value engine multiplies raw stats by these
+ * weights, and the replacement engine counts these seats. Reading them wrongly does not
+ * break anything visibly — it produces a board ranked on rules nobody plays by, which is the
+ * failure this file exists to prevent.
+ *
+ * WHAT IS DELIBERATELY NOT DONE HERE. No default scoring is supplied. A league that returns
+ * no scoring items gets an empty weight map and therefore no values, rather than a plausible
+ * set of numbers borrowed from somewhere else. A board built on invented rules looks exactly
+ * like a board built on real ones, and there is no way for a reader to tell.
+ */
+
+export interface HockeyLeagueRules {
+  leagueId: string
+  season: number
+  name: string
+  teams: number
+  /** H2H_POINTS, H2H_CATEGORY, ROTO — the shape of the league. */
+  scoringType: string
+  /** Unified stat key -> points per unit. Empty when the league published none. */
+  weights: Record<string, number>
+  /** Starting openings only: { F: 9, D: 5, G: 2, UTIL: 1 }. Bench and IR excluded. */
+  slots: Record<string, number>
+  /**
+   * Stat ids the league PAYS for that we cannot name.
+   *
+   * Every total is short by whatever these were worth. Carried on the rules rather than
+   * computed later so the gap travels with the thing that caused it.
+   */
+  unnamedScoredStatIds: number[]
+}
+
+/** True when the league scores by category rather than by points. */
+export function isCategoryLeague(scoringType: string): boolean {
+  const t = String(scoringType || '').toUpperCase()
+  return t.includes('CATEGORY') || t.includes('ROTO')
+}
+
+/**
+ * Turn ESPN's `scoringItems` into a weight map.
+ *
+ * Zero-weight items are dropped rather than stored. A league lists every stat it COULD score
+ * and sets most to nought, so keeping them would make an eight-stat league look like a
+ * twenty-one-stat one, and `unnamedScoredStatIds` would report gaps that cost nothing.
+ */
+export function weightsFromScoringItems(
+  items: { statId?: number; points?: number }[] | undefined,
+): { weights: Record<string, number>; unnamed: number[] } {
+  const weights: Record<string, number> = {}
+  const unnamed: number[] = []
+  for (const it of items ?? []) {
+    const id = Number(it?.statId)
+    const pts = Number(it?.points)
+    if (!Number.isFinite(id) || !Number.isFinite(pts) || pts === 0) continue
+    const key = HOCKEY_STAT_BY_ID[id]
+    if (key) weights[key] = pts
+    else unnamed.push(id)
+  }
+  return { weights, unnamed: [...new Set(unnamed)].sort((a, b) => a - b) }
+}
+
+/** Parse the `?view=mSettings` response for a hockey league. */
+export function rulesFromEspnSettings(
+  payload: any,
+  leagueId: string,
+  season: number,
+): HockeyLeagueRules | null {
+  const s = payload?.settings
+  if (!s) return null
+  const sc = s.scoringSettings ?? {}
+  const { weights, unnamed } = weightsFromScoringItems(sc.scoringItems)
+  return {
+    leagueId: String(leagueId),
+    season,
+    name: String(s.name ?? ''),
+    /* Team count decides every replacement level. Falling back to a guess would price the
+       whole board off a league size nobody is playing, so zero is returned instead and the
+       caller can refuse to build a board at all. */
+    teams: Number(s.size) || 0,
+    scoringType: String(sc.scoringType ?? ''),
+    weights,
+    slots: startingSlotsFromEspn(s.rosterSettings?.lineupSlotCounts),
+    unnamedScoredStatIds: unnamed,
+  }
+}
+
+/**
+ * Can we build an honest board from these rules?
+ *
+ * Three ways the answer is no, and each returns the reason rather than a boolean, because
+ * "we cannot rank your league" is only useful with the because attached.
+ */
+export function rulesProblem(rules: HockeyLeagueRules | null): string {
+  if (!rules) return 'ESPN returned no settings for this league.'
+  if (!rules.teams) return 'The league did not report how many teams are in it, and every replacement level depends on that.'
+  if (!Object.keys(rules.weights).length) {
+    return 'The league published no scoring weights, so nothing can be priced. We will not substitute a default set — a board built on invented rules looks exactly like a real one.'
+  }
+  if (!Object.keys(rules.slots).length) return 'The league reported no starting lineup slots.'
+  return ''
+}
