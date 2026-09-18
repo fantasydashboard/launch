@@ -25,7 +25,7 @@ export interface Database {
           sleeper_user_id: string | null
           /* Which app created the account: 'ufd' | 'tlb'. NULL for anything created before
              2026-09-17, when neither product recorded it — unknown, never assume. */
-          product: string | null
+          product: 'ufd' | 'tlb' | null
           subscription_tier: SubscriptionTier
           subscription_status: SubscriptionStatus | null
           stripe_customer_id: string | null
@@ -40,7 +40,7 @@ export interface Database {
           full_name?: string | null
           avatar_url?: string | null
           sleeper_user_id?: string | null
-          product?: string | null
+          product?: 'ufd' | 'tlb' | null
           subscription_tier?: SubscriptionTier
           subscription_status?: SubscriptionStatus | null
           stripe_customer_id?: string | null
@@ -55,7 +55,7 @@ export interface Database {
           full_name?: string | null
           avatar_url?: string | null
           sleeper_user_id?: string | null
-          product?: string | null
+          product?: 'ufd' | 'tlb' | null
           subscription_tier?: SubscriptionTier
           subscription_status?: SubscriptionStatus | null
           stripe_customer_id?: string | null

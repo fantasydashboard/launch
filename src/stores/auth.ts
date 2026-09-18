@@ -224,8 +224,18 @@ export const useAuthStore = defineStore('auth', () => {
         email: user.value.email!,
         full_name: user.value.user_metadata?.full_name || null,
         avatar_url: user.value.user_metadata?.avatar_url || null,
-        // Same reason as the trigger: this row is being created BY this product.
-        product: 'ufd',
+        /*
+         * Only when this account is genuinely new.
+         *
+         * This is the fallback for a MISSING profile row, not for a new signup — the trigger
+         * normally creates it. So it also fires when an established user's row has gone
+         * astray, and an unconditional tag there would relabel a The League Beat
+         * user as ours the first time they opened this app. Same five-minute bound as the
+         * OAuth hook, for the same reason: absent is not ours.
+         */
+        product: (Date.now() - new Date(user.value.created_at ?? 0).getTime()) < 5 * 60 * 1000
+          ? 'ufd'
+          : null,
         subscription_tier: 'free' as const
       }
 
