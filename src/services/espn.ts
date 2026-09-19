@@ -2922,24 +2922,55 @@ export class EspnFantasyService {
     league: EspnLeague
     error?: string
   } | null> {
-    const currentYear = new Date().getFullYear()
-    const currentMonth = new Date().getMonth() + 1 // 1-12
-    
-    // Determine seasons to try based on time of year
-    // For sports that haven't started their new season yet, check previous year first
-    const seasonsToTry = season ? [season] : [currentYear, currentYear - 1, currentYear - 2]
-    
     const sports: Sport[] = ['football', 'baseball', 'basketball', 'hockey']
-    
-    console.log(`[ESPN] Detecting sport for league ${leagueId}, trying seasons: ${seasonsToTry.join(', ')}...`)
+
+    /*
+     * WHICH SEASON IS "NOW" DEPENDS ON THE SPORT, and getting this wrong made two of our four
+     * sports impossible to add at all.
+     *
+     * This probe used to try [thisYear, thisYear-1, thisYear-2] for every sport. Football and
+     * baseball are named for the year they START, so that is right for them. Basketball and
+     * hockey are named for the year they END — the 2026-27 NHL season is ESPN season 2027 —
+     * so a league created for the upcoming season was never asked for. Verified against a
+     * real league: id 1454426929 answers "Not Found" at season 2026 and returns its name at
+     * 2027.
+     *
+     * The symptom gave nothing away. Every sport was tried, every one missed, and the user
+     * was told to double-check a league id that was correct all along.
+     */
+    const SEASON_NAMED_FOR_END_YEAR: Record<Sport, boolean> = {
+      football: false, baseball: false, basketball: true, hockey: true,
+    }
+    const now = new Date()
+    const currentSeasonFor = (sport: Sport): number => {
+      const year = now.getFullYear()
+      if (!SEASON_NAMED_FOR_END_YEAR[sport]) return year
+      /* From about July the upcoming season is the one that ends NEXT year; before that we
+         are still inside the season ending this year. Drafts happen weeks before opening
+         night, so the league exists well before October. */
+      return now.getMonth() >= 6 ? year + 1 : year
+    }
+
+    /* Ordered so that every sport's most likely season is tried before any sport's second
+       choice — otherwise a league that also existed two years ago in another sport could win
+       the race against the right answer. */
+    const attempts: Array<{ sport: Sport; season: number }> = []
+    for (let back = 0; back < 3; back++) {
+      for (const sport of sports) {
+        attempts.push({ sport, season: (season ?? currentSeasonFor(sport)) - back })
+      }
+      if (season) break        // an explicit season is an instruction, not a starting point
+    }
+
+    console.log(`[ESPN] Detecting sport for league ${leagueId}, trying: ${attempts.slice(0, 4).map(a => `${a.sport} ${a.season}`).join(', ')}...`)
     
     let lastError: string = ''
     let authErrorCount = 0
     let totalAttempts = 0
     let proxyErrorCount = 0
     
-    for (const targetSeason of seasonsToTry) {
-      for (const sport of sports) {
+    {
+      for (const { sport, season: targetSeason } of attempts) {
         totalAttempts++
         try {
           console.log(`[ESPN] Trying ${sport} ${targetSeason}...`)
@@ -3032,11 +3063,29 @@ export class EspnFantasyService {
    * This gets the full league history regardless of when the user joined
    * Uses parallel batching for speed
    */
+  /**
+   * The season ESPN calls "now" for a given sport.
+   *
+   * Football and baseball are named for the year they START; basketball and hockey for the
+   * year they END, so the 2026-27 NHL season is ESPN season 2027. Every place in this file
+   * that reached for `new Date().getFullYear()` was therefore off by one for half our sports
+   * — which is why a hockey league that exists could not be found, and why its current season
+   * would have been missing from its own history even once it was.
+   */
+  static currentSeasonForSport(sport: Sport, now: Date = new Date()): number {
+    const endYearSports: Record<string, boolean> = { basketball: true, hockey: true }
+    const year = now.getFullYear()
+    if (!endYearSports[sport]) return year
+    /* From about July the upcoming season is the one ending next year; before that we are
+       still inside the season ending this year. */
+    return now.getMonth() >= 6 ? year + 1 : year
+  }
+
   async discoverAllSeasons(sport: Sport, leagueId: string | number): Promise<Array<{
     season: number
     league: EspnLeague
   }>> {
-    const currentYear = new Date().getFullYear()
+    const currentYear = EspnFantasyService.currentSeasonForSport(sport)
     const seasons: Array<{ season: number; league: EspnLeague }> = []
     
     // ESPN fantasy started around 2003-2004 for football, later for other sports
@@ -3103,7 +3152,7 @@ export class EspnFantasyService {
     }
     
     const { sport, league } = detected
-    const currentYear = new Date().getFullYear()
+    const currentYear = EspnFantasyService.currentSeasonForSport(sport)
     
     // If private and we don't have credentials, return minimal info
     if (!league.isPublic && !this.hasCredentials()) {
