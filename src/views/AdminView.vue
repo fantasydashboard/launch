@@ -154,6 +154,16 @@
             <button class="tf-btn" :disabled="yahooChecking" @click="checkYahooAccess()">
               {{ yahooChecking ? 'Checking…' : 'Check now' }}
             </button>
+            <!--
+              The verdict has been telling people to disconnect and reconnect since it was
+              written, and nothing in the app could do it — disconnectPlatform existed in the
+              store and was called from nowhere. A refresh reuses the ORIGINAL grant, so a
+              token minted before Yahoo provisioned the app stays unprovisioned however many
+              times it is refreshed. This is the only way to find out.
+            -->
+            <button class="tf-btn" :disabled="yahooReconnecting" @click="reconnectYahoo()">
+              {{ yahooReconnecting ? 'Disconnecting…' : 'Disconnect + reconnect' }}
+            </button>
             <span style="font-family:monospace;font-size:11px;opacity:.7;">
               real call through the yahoo-api function — same path a league load takes
             </span>
@@ -1024,6 +1034,32 @@ const noPassPct = computed(() => {
  */
 const yahooCheck = ref<{ status: number; ok: boolean; detail: string } | null>(null)
 const yahooChecking = ref(false)
+/**
+ * Throw the stored Yahoo token away and start consent again.
+ *
+ * A refresh token carries the grant it was issued under. If Yahoo provisioned the app after
+ * the last connection, every refresh re-mints a token under the OLD grant and the Fantasy
+ * call keeps returning 403 — indistinguishable from never having been provisioned at all.
+ * Deleting the row forces a fresh authorisation, which is the only way to tell those apart.
+ *
+ * Revoking UFD in Yahoo's own connected-apps settings first makes it stricter still: without
+ * that, Yahoo may skip the consent screen and reissue against the same grant.
+ */
+const yahooReconnecting = ref(false)
+async function reconnectYahoo() {
+  yahooReconnecting.value = true
+  try {
+    const { usePlatformsStore } = await import('@/stores/platforms')
+    const platforms = usePlatformsStore()
+    await platforms.disconnectPlatform('yahoo')
+    const base = (import.meta as any).env?.VITE_SUPABASE_URL ?? ''
+    window.location.href = `${base}/functions/v1/yahoo-auth`
+  } catch (e: any) {
+    yahooCheck.value = { status: 0, ok: false, detail: `Disconnect failed: ${e?.message ?? e}` }
+    yahooReconnecting.value = false
+  }
+}
+
 async function checkYahooAccess() {
   yahooChecking.value = true
   yahooCheck.value = null
