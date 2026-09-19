@@ -297,3 +297,32 @@ describe('team defence has one name', () => {
     expect(canonicalPosition('D/ST')).toBe('DEF')
   })
 })
+
+describe('ESPN hockey lineup slots', () => {
+  /* Dallas Pro H2H Points: 9 F, 5 D, 2 G, 1 UTIL, 5 bench, 1 IR — its real lineupSlotCounts. */
+  const DALLAS = { rosterSettings: { lineupSlotCounts: {
+    '3': 9, '4': 5, '5': 2, '6': 1, '7': 5, '8': 1,
+  } } }
+
+  /*
+   * READ THROUGH THE BASEBALL MAP THIS BECAME NINE THIRD BASEMEN. Slot 3 is a forward in
+   * hockey and third base in baseball; 4 is a defenceman and a shortstop; 5 is a goalie and
+   * an outfielder. My Team, Trades and the Matchup all showed twenty-three empty baseball
+   * slots above a bench holding the whole roster, because no hockey player fills a shortstop.
+   */
+  it('reads hockey slots as hockey', () => {
+    expect(parseRosterSlots('espn', DALLAS, 'hockey')).toEqual({ F: 9, D: 5, G: 2, UTIL: 1 })
+  })
+
+  it('leaves bench and IR out of the starting requirement', () => {
+    const slots = parseRosterSlots('espn', DALLAS, 'hockey')
+    expect(slots.BENCH).toBeUndefined()
+    expect(slots.IR).toBeUndefined()
+  })
+
+  it('does not disturb the other sports', () => {
+    expect(parseRosterSlots('espn', DALLAS, 'baseball').F).toBeUndefined()
+    expect(parseRosterSlots('espn', { rosterSettings: { lineupSlotCounts: { '0': 1, '2': 2 } } }, 'football'))
+      .toEqual({ QB: 1, RB: 2 })
+  })
+})

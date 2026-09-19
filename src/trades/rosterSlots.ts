@@ -1,5 +1,5 @@
 /** Slots that don't require a started player — excluded from need/surplus math. */
-const NON_STARTING = new Set(['BN', 'BE', 'IL', 'NA', 'IR', 'DL', 'TAXI'])
+const NON_STARTING = new Set(['BN', 'BE', 'IL', 'NA', 'IR', 'DL', 'TAXI', 'BENCH'])
 
 /** ESPN MLB lineup slot id -> position label. Bench(16)/IL(17) intentionally absent. */
 const ESPN_SLOT_TO_POS: Record<string, string> = {
@@ -12,6 +12,23 @@ const ESPN_SLOT_TO_POS: Record<string, string> = {
 const ESPN_NFL_SLOT_TO_POS: Record<string, string> = {
   '0': 'QB', '2': 'RB', '3': 'RB/WR', '4': 'WR', '5': 'WR/TE', '6': 'TE',
   '7': 'SUPER_FLEX', '16': 'DEF', '17': 'K', '23': 'FLEX',
+}
+
+/**
+ * ESPN NHL lineup slot id -> position label. Bench(7)/IR(8) intentionally absent.
+ *
+ * THE THIRD TIME THIS MAP HAS BEEN MISSING AND THE SECOND TIME IT SHIPPED. Football was read
+ * through the baseball map until somebody noticed a quarterback coming back a catcher.
+ * Hockey then did it again: a ten-team league starting nine forwards, five defencemen, two
+ * goalies and a utility came back as nine THIRD BASEMEN, five shortstops and two outfielders,
+ * and My Team, Trades and the Matchup all reported twenty-three empty baseball slots above a
+ * bench holding the entire roster — because no hockey player can fill a shortstop.
+ *
+ * Derived in src/hockey/hockeyPositions.ts from the share of each position carrying each
+ * eligibleSlots entry across the whole projection pool. Every cell there was 100% or 0%.
+ */
+const ESPN_NHL_SLOT_TO_POS: Record<string, string> = {
+  '0': 'C', '1': 'LW', '2': 'RW', '3': 'F', '4': 'D', '5': 'G', '6': 'UTIL',
 }
 
 /**
@@ -124,7 +141,12 @@ export function parseRosterSlots(
   sport: string = 'baseball',
 ): Record<string, number> {
   const isFootball = sport === 'football'
-  const espnMap = isFootball ? ESPN_NFL_SLOT_TO_POS : ESPN_SLOT_TO_POS
+  const isHockey = sport === 'hockey'
+  /* Baseball is the default because it was the only sport when this was written, not because
+     it is a sensible fallback — an unmapped sport gets a lineup of catchers and shortstops. */
+  const espnMap = isFootball ? ESPN_NFL_SLOT_TO_POS
+    : isHockey ? ESPN_NHL_SLOT_TO_POS
+    : ESPN_SLOT_TO_POS
   const out: Record<string, number> = {}
 
   if (platform === 'yahoo' && Array.isArray(settings?.roster_positions)) {
@@ -154,14 +176,23 @@ export function parseRosterSlots(
 
   // Baseball only: fold granular outfield slots into one OF pool. Managers think in "OF",
   // and an OF-eligible player fills any of LF/CF/RF — keeping them separate manufactured
-  // phantom holes. Football has no such slots, so skip it there.
-  if (!isFootball) {
+  // phantom holes.
+  //
+  // This tested `!isFootball`, which was the same thing while there were two sports and
+  // stopped being so the moment there were three — hockey would have run baseball's outfield
+  // folding. Naming the sport it applies to rather than the one it does not is what keeps
+  // that from happening again at basketball.
+  if (!isFootball && !isHockey) {
     for (const g of ['LF', 'CF', 'RF']) {
       if (out[g]) { out['OF'] = (out['OF'] ?? 0) + out[g]; delete out[g] }
     }
   }
 
   if (Object.keys(out).length) return out
+  /* No hockey default: a league we could not read is not a league we should invent a lineup
+     for, and the two existing defaults are both guesses that happen to predate anyone
+     noticing. Returning nothing lets the caller say so. */
+  if (isHockey) return {}
   return isFootball ? { ...DEFAULT_NFL_SLOTS } : { ...DEFAULT_SLOTS }
 }
 

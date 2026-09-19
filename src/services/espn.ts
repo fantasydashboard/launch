@@ -138,15 +138,33 @@ const PRO_TEAMS: Record<number, string> = {
 }
 
 // NHL Pro team IDs to abbreviations (ESPN proTeamId mapping for hockey)
+/**
+ * ESPN proTeamId -> NHL abbreviation, GENERATED FROM ESPN'S OWN TABLE.
+ *
+ * The previous map was written alphabetically — ANA 1, ARI 2, BOS 3 — and 29 of its 34
+ * entries were wrong. ESPN's ids are not alphabetical: 1 is Boston, 8 is Los Angeles, 28 is
+ * Winnipeg. Every roster row rendered a plausible NHL team beside the wrong player, which is
+ * why Neal Pionk appeared on Vancouver and Anze Kopitar on Colorado.
+ *
+ *   curl 'https://lm-api-reads.fantasy.espn.com/apis/v3/games/fhl/seasons/2027
+ *         ?view=proTeamSchedules_wl'  ->  settings.proTeams[].id / .abbrev
+ */
+/**
+ * ESPN NHL lineup slot id -> label. Derived in src/hockey/hockeyPositions.ts from the share
+ * of each position carrying each eligibleSlots entry across the whole projection pool.
+ * Bench and IR use the spellings INACTIVE_SLOTS already checks for, or every benched player
+ * would read as a starter.
+ */
+const HOCKEY_LINEUP_SLOTS: Record<number, string> = {
+  0: 'C', 1: 'LW', 2: 'RW', 3: 'F', 4: 'D', 5: 'G', 6: 'UTIL', 7: 'BE', 8: 'IR',
+}
+
 const NHL_TEAMS: Record<number, string> = {
-  0: 'FA',
-  1: 'ANA', 2: 'ARI', 3: 'BOS', 4: 'BUF', 5: 'CGY',
-  6: 'CAR', 7: 'CHI', 8: 'COL', 9: 'CBJ', 10: 'DAL',
-  11: 'DET', 12: 'EDM', 13: 'FLA', 14: 'LAK', 15: 'MIN',
-  16: 'MTL', 17: 'NSH', 18: 'NJD', 19: 'NYI', 20: 'NYR',
-  21: 'OTT', 22: 'PHI', 23: 'PIT', 24: 'STL', 25: 'SJS',
-  26: 'TBL', 27: 'TOR', 28: 'VAN', 29: 'WSH', 30: 'WPG',
-  31: 'VGK', 32: 'SEA', 33: 'UTA'
+  0: 'FA', 1: 'BOS', 2: 'BUF', 3: 'CGY', 4: 'CHI', 5: 'DET', 6: 'EDM',
+  7: 'CAR', 8: 'LA', 9: 'DAL', 10: 'MTL', 11: 'NJ', 12: 'NYI', 13: 'NYR',
+  14: 'OTT', 15: 'PHI', 16: 'PIT', 17: 'COL', 18: 'SJ', 19: 'STL', 20: 'TB',
+  21: 'TOR', 22: 'VAN', 23: 'WSH', 25: 'ANA', 26: 'FLA', 27: 'NSH',
+  28: 'WPG', 29: 'CBJ', 30: 'MIN', 37: 'VGK', 124292: 'SEA', 129764: 'UTA'
 }
 
 // NBA Pro team IDs to abbreviations (ESPN proTeamId mapping for basketball)
@@ -3504,7 +3522,13 @@ export class EspnFantasyService {
 
     // Active vs bench, and the player's multi-position eligibility (mirrors the
     // draft path). Used by Lineup Leaks to compare like-for-like at each slot.
-    const slotMapping = sport === 'baseball' ? BASEBALL_LINEUP_SLOTS : LINEUP_SLOTS
+    /* Hockey fell through to LINEUP_SLOTS, which is football's: slot 3 is a forward here and
+       "RB/WR" there, slot 4 a defenceman and "WR". Every hockey roster row on The Wire was
+       labelled with a football position, and eligiblePositions below is built from the same
+       map, so the eligibility was football's too. */
+    const slotMapping = sport === 'baseball' ? BASEBALL_LINEUP_SLOTS
+      : sport === 'hockey' ? HOCKEY_LINEUP_SLOTS
+      : LINEUP_SLOTS
     const INACTIVE_SLOTS = new Set(['BE', 'Bench', 'IR', 'IL', 'IL+', 'NA', 'DL'])
     const slotName = slotMapping[entry.lineupSlotId] || ''
     const started = entry.lineupSlotId !== undefined && entry.lineupSlotId !== null && !INACTIVE_SLOTS.has(slotName)
@@ -3812,7 +3836,13 @@ export class EspnFantasyService {
     
     // Inactive/bench slot names across all sports
     const INACTIVE_SLOTS = new Set(['BE', 'Bench', 'IR', 'IL', 'IL+', 'NA', 'DL'])
-    const slotMapping = sport === 'baseball' ? BASEBALL_LINEUP_SLOTS : LINEUP_SLOTS
+    /* Hockey fell through to LINEUP_SLOTS, which is football's: slot 3 is a forward here and
+       "RB/WR" there, slot 4 a defenceman and "WR". Every hockey roster row on The Wire was
+       labelled with a football position, and eligiblePositions below is built from the same
+       map, so the eligibility was football's too. */
+    const slotMapping = sport === 'baseball' ? BASEBALL_LINEUP_SLOTS
+      : sport === 'hockey' ? HOCKEY_LINEUP_SLOTS
+      : LINEUP_SLOTS
     
     let total = 0
     for (const entry of entries) {
@@ -3847,7 +3877,13 @@ export class EspnFantasyService {
         if (player.id) {
           // Get eligible positions from eligibleSlots array
           const eligibleSlots = player.eligibleSlots || []
-          const slotMapping = sport === 'baseball' ? BASEBALL_LINEUP_SLOTS : LINEUP_SLOTS
+          /* Hockey fell through to LINEUP_SLOTS, which is football's: slot 3 is a forward here and
+       "RB/WR" there, slot 4 a defenceman and "WR". Every hockey roster row on The Wire was
+       labelled with a football position, and eligiblePositions below is built from the same
+       map, so the eligibility was football's too. */
+    const slotMapping = sport === 'baseball' ? BASEBALL_LINEUP_SLOTS
+      : sport === 'hockey' ? HOCKEY_LINEUP_SLOTS
+      : LINEUP_SLOTS
           
           // Convert slot IDs to position names, filtering out bench/IR/utility slots for the main eligibility list
           const excludedSlots = ['BE', 'IR', 'IL', 'IL+', 'NA', 'UTIL', 'FLEX', 'OP', 'Rookie']
@@ -3908,7 +3944,13 @@ export class EspnFantasyService {
         
         // Also check for eligibleSlots in the nested player object
         if (pick.player.eligibleSlots && pick.player.eligibleSlots.length > 0) {
-          const slotMapping = sport === 'baseball' ? BASEBALL_LINEUP_SLOTS : LINEUP_SLOTS
+          /* Hockey fell through to LINEUP_SLOTS, which is football's: slot 3 is a forward here and
+       "RB/WR" there, slot 4 a defenceman and "WR". Every hockey roster row on The Wire was
+       labelled with a football position, and eligiblePositions below is built from the same
+       map, so the eligibility was football's too. */
+    const slotMapping = sport === 'baseball' ? BASEBALL_LINEUP_SLOTS
+      : sport === 'hockey' ? HOCKEY_LINEUP_SLOTS
+      : LINEUP_SLOTS
           const excludedSlots = ['BE', 'IR', 'IL', 'IL+', 'NA', 'UTIL', 'FLEX', 'OP', 'Rookie']
           const positions = pick.player.eligibleSlots
             .map((slotId: number) => slotMapping[slotId])
