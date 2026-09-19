@@ -338,6 +338,20 @@ export function useHockeyBoard() {
     } catch { /* names are a nicety; the board works without them */ }
   }
 
+  /** Your players, from whichever source knows: the live draft, or the order you marked. */
+  function myPlayerKeys(): string[] {
+    if (live.value && liveState.value) {
+      if (myTeamId.value === null) return []
+      return liveState.value.picks
+        .filter((p) => p.teamId === myTeamId.value && p.playerKey)
+        .map((p) => p.playerKey as string)
+    }
+    const pos = draftPosition(mockOrder.value.length, rules.value?.teams ?? 0, mySlot.value,
+      rules.value?.rosterSize || 0, draftKind.value)
+    const mine = new Set(pos.myPicks)
+    return mockOrder.value.filter((_, i) => mine.has(i + 1))
+  }
+
   /* A draft that has finished has nothing left to poll. */
   watch(() => liveState.value?.complete, (done) => { if (done) stopPolling() })
 
@@ -367,22 +381,20 @@ export function useHockeyBoard() {
       rules.value?.rosterSize || 0,
       draftKind.value,
     )),
-    /** The picks that landed on your seat, as player keys. */
-    myPlayers: computed(() => {
-      const pos = draftPosition(mockOrder.value.length, rules.value?.teams ?? 0, mySlot.value,
-        rules.value?.rosterSize || 0, draftKind.value)
-      const mine = new Set(pos.myPicks)
-      return mockOrder.value.filter((_, i) => mine.has(i + 1))
-    }),
+    /**
+     * The picks that landed on your seat, as player keys.
+     *
+     * BOTH MODES, ONE ANSWER. Marking picks yourself gives it by position in the order;
+     * a finished ESPN draft gives it by team id. The roster panel should not care which —
+     * it was only wired to the manual path, so selecting your team on a completed draft
+     * showed the board and nothing about your own team.
+     */
+    myPlayers: computed(() => myPlayerKeys()),
     // live draft
     live, liveError, liveState, lastSyncedAt, myTeamId, teamNames,
     goLive, goMock, syncDraft,
     roster: computed(() => {
-      const pos = draftPosition(mockOrder.value.length, rules.value?.teams ?? 0, mySlot.value,
-        rules.value?.rosterSize || 0, draftKind.value)
-      const mine = new Set(pos.myPicks)
-      const players = mockOrder.value
-        .filter((_, i) => mine.has(i + 1))
+      const players = myPlayerKeys()
         .map((k) => ({ playerKey: k, position: projections.value[k]?.position ?? '' }))
       return {
         ...fillRoster(players, rules.value?.slots ?? {}),

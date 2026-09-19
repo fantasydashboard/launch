@@ -141,7 +141,8 @@ const POS_TONE: Record<string, string> = {
       <h1 class="font-display text-2xl font-bold text-dark-text">Hockey draft board</h1>
       <p class="font-mono text-xs text-dark-textMuted">
         Ranked by value over replacement &middot;
-        <span v-if="live">following your ESPN draft</span>
+        <span v-if="live && liveState?.complete">draft complete &mdash; best available</span>
+        <span v-else-if="live">following your ESPN draft</span>
         <span v-else>a mock board, nothing is synced to your draft</span>
       </p>
       <p v-if="rules" class="mt-1 font-mono text-[11px] text-dark-textMuted/70">
@@ -284,7 +285,10 @@ const POS_TONE: Record<string, string> = {
       <!-- The draft clock. picksUntilMine is the number a drafter actually plans against. -->
       <div v-if="live && liveState && liveState.picks.length"
            class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 font-mono text-[11px]">
-        <span v-if="liveState.complete" class="text-dark-textMuted">Draft complete &middot; {{ drafted.size }} players off the board.</span>
+        <span v-if="liveState.complete" class="text-dark-textMuted">
+          Draft complete &middot; {{ drafted.size }} players off the board. Everyone below is a
+          free agent, priced against what is left rather than against a full pool.
+        </span>
         <template v-else>
           <span class="text-dark-text">
             Pick {{ clock.nextOverall }} &middot; <span class="text-primary">{{ onTheClockName }}</span> on the clock
@@ -337,7 +341,8 @@ const POS_TONE: Record<string, string> = {
       </div>
 
       <!-- Your roster: what is seated, what is open, what would actually help. -->
-      <div v-if="!live && mySlot !== null && rules" class="mb-3 rounded-xl border border-dark-border bg-dark-card p-3">
+      <div v-if="rules && (( !live && mySlot !== null) || (live && myTeamId !== null))"
+           class="mb-3 rounded-xl border border-dark-border bg-dark-card p-3">
         <div class="flex flex-wrap items-baseline gap-x-3">
           <p class="font-mono text-[9px] uppercase tracking-widest text-dark-textMuted/70">your roster</p>
           <p v-if="roster.needs.length" class="font-mono text-[10px] text-dark-textMuted">
