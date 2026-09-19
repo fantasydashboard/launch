@@ -1,21 +1,23 @@
 import { describe, it, expect } from 'vitest'
-import { pickOwners, draftPosition, fillRoster, positionsStillNeeded } from '../hockeyDraftPlan'
+import {
+  pickOwners, draftPosition, fillRoster, positionsStillNeeded, slotsBeforeMyPick,
+} from '../hockeyDraftPlan'
 
 describe('who owns each pick', () => {
   it('snakes, reversing every other round', () => {
-    expect(pickOwners(4, 3)).toEqual([0, 1, 2, 3, 3, 2, 1, 0, 0, 1, 2, 3])
+    expect(pickOwners(4, 3)).toEqual([1, 2, 3, 4, 4, 3, 2, 1, 1, 2, 3, 4])
   })
 
   it('runs straight through when the league is linear', () => {
-    expect(pickOwners(4, 2, 'linear')).toEqual([0, 1, 2, 3, 0, 1, 2, 3])
+    expect(pickOwners(4, 2, 'linear')).toEqual([1, 2, 3, 4, 1, 2, 3, 4])
   })
 
   /* The turn is the reason this is computed rather than eyeballed: slot 0 picks 1st and 8th
      in a four-team snake, back to back. */
   it('gives the wrap slot two picks in a row', () => {
     const owners = pickOwners(4, 2)
-    expect(owners[3]).toBe(3)
-    expect(owners[4]).toBe(3)
+    expect(owners[3]).toBe(4)
+    expect(owners[4]).toBe(4)
   })
 
   it('returns nothing for a league with no teams or no rounds', () => {
@@ -27,24 +29,25 @@ describe('who owns each pick', () => {
 describe('where the draft stands', () => {
   const TEAMS = 10
   const ROUNDS = 22
-  const at = (taken: number, slot: number | null = 8) =>
+  /* Slot 9 — the ninth pick — one-based, matching pickOrder and the grid. */
+  const at = (taken: number, slot: number | null = 9) =>
     draftPosition(taken, TEAMS, slot, ROUNDS)
 
   it('starts on pick one, round one', () => {
     const d = at(0)
     expect(d.pick).toBe(1)
     expect(d.round).toBe(1)
-    expect(d.onTheClockSlot).toBe(0)
+    expect(d.onTheClockSlot).toBe(1)
   })
 
   /*
-   * THE NUMBER A DRAFTER PLANS AGAINST. Slot 8 (the ninth pick) is eight picks away at the
-   * start — which is how far down their own list they should be willing to look.
+   * THE NUMBER A DRAFTER PLANS AGAINST. Slot 9 is eight picks away at the start — which is
+   * how far down their own list they should be willing to look.
    */
   it('counts the picks before your turn', () => {
     expect(at(0).picksUntilMine).toBe(8)
     expect(at(8).picksUntilMine).toBe(0)     // you are on the clock
-    expect(at(8).onTheClockSlot).toBe(8)
+    expect(at(8).onTheClockSlot).toBe(9)
   })
 
   it('knows your next two picks, which is what a turn is planned around', () => {
@@ -67,7 +70,7 @@ describe('where the draft stands', () => {
     const d = at(5, null)
     expect(d.picksUntilMine).toBeNull()
     expect(d.myPicks).toEqual([])
-    expect(d.onTheClockSlot).toBe(5)         // the clock still works
+    expect(d.onTheClockSlot).toBe(6)         // the clock still works
   })
 
   it('knows when the draft is finished', () => {
@@ -75,6 +78,39 @@ describe('where the draft stands', () => {
     expect(d.complete).toBe(true)
     expect(d.onTheClockSlot).toBeNull()
     expect(d.picksUntilMine).toBeNull()
+  })
+})
+
+describe('the pieces agree with each other', () => {
+  /*
+   * Three routes to the same snake — the owners array, the clock, and the sequence the
+   * survival simulation walks. They all delegate to pickOrder now, and this is the test that
+   * says so: before, two of them were a local reimplementation, and a disagreement between
+   * them would have shown up as a survival model quietly measuring to the wrong pick.
+   */
+  const TEAMS = 10, ROUNDS = 22, ME = 9
+
+  it('puts the same seat on the clock however you ask', () => {
+    const owners = pickOwners(TEAMS, ROUNDS)
+    for (const taken of [0, 1, 9, 10, 19, 20, 111]) {
+      expect(draftPosition(taken, TEAMS, ME, ROUNDS).onTheClockSlot).toBe(owners[taken])
+    }
+  })
+
+  it('walks exactly the picks the clock says are in the way', () => {
+    for (const taken of [0, 5, 12, 40]) {
+      const pos = draftPosition(taken, TEAMS, ME, ROUNDS)
+      expect(slotsBeforeMyPick(taken, TEAMS, ME, ROUNDS)).toHaveLength(pos.picksUntilMine!)
+    }
+  })
+
+  it('walks nothing when the pick on the clock is yours', () => {
+    expect(slotsBeforeMyPick(8, TEAMS, ME, ROUNDS)).toEqual([])
+    expect(draftPosition(8, TEAMS, ME, ROUNDS).picksUntilMine).toBe(0)
+  })
+
+  it('walks nothing once your picks are gone', () => {
+    expect(slotsBeforeMyPick(TEAMS * ROUNDS, TEAMS, ME, ROUNDS)).toEqual([])
   })
 })
 

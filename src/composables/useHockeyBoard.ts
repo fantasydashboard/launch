@@ -7,8 +7,9 @@ import {
   parseDraftDetail, draftClock, teamNamesFromEspn, type HockeyDraftState,
 } from '@/hockey/hockeyDraftSync'
 import {
-  draftPosition, fillRoster, positionsStillNeeded, pickOwners, type DraftKind,
+  draftPosition, fillRoster, positionsStillNeeded, slotsBeforeMyPick, type DraftKind,
 } from '@/hockey/hockeyDraftPlan'
+import { buildDraftGrid, type GridPick } from '@/draft/room/draftGrid'
 import { buildHockeyVona } from '@/hockey/hockeyVona'
 
 /**
@@ -67,8 +68,9 @@ export function useHockeyBoard() {
   const mockOrder = ref<string[]>([])
   const mockDrafted = computed(() => new Set(mockOrder.value))
 
-  /* Your seat in the order, zero-based. Null until set — the clock works without it, and
-     everything about YOUR draft stays silent rather than guessing a slot. */
+  /* Your seat in the order, ONE-based to match pickOrder and the grid. Null until set — the
+     clock works without it, and everything about YOUR draft stays silent rather than
+     guessing a slot. */
   const mySlot = ref<number | null>(null)
   const draftKind = ref<DraftKind>('snake')
 
@@ -423,14 +425,37 @@ export function useHockeyBoard() {
       if (pos.myNextPick === null) {
         return { survival: {}, vona: {}, expectedBest: {}, picksSimulated: 0 }
       }
-      /* The seats actually picking between the clock and my turn, in order. */
-      const owners = pickOwners(r.teams, r.rosterSize || 0, draftKind.value)
-      const upcomingSlots = owners.slice(mockOrder.value.length, pos.myNextPick - 1)
+      const upcomingSlots = slotsBeforeMyPick(
+        mockOrder.value.length, r.teams, mySlot.value, r.rosterSize || 0, draftKind.value,
+      )
       return buildHockeyVona({
         rows: result.value?.rows ?? [],
         upcomingSlots,
         teams: r.teams,
       })
+    }),
+    /*
+     * THE BOARD AS EVERYONE PICTURES IT: rounds down, teams across.
+     *
+     * Reusing the football room's grid rather than laying one out here — a column has to stay
+     * the same team all the way down, and building rows in pick order instead puts a snake
+     * round under the wrong names. That module already solved it and says so.
+     */
+    grid: computed(() => {
+      const r = rules.value
+      if (!r?.teams || !mockOrder.value.length) return []
+      const picks: GridPick[] = mockOrder.value.map((key, i) => ({
+        overallPick: i + 1,
+        playerKey: key,
+        playerName: namesByKey.value[key] ?? key,
+        position: projections.value[key]?.position ?? '',
+        slot: 0,   // the grid seats by overall pick; this is only carried for callers
+      }))
+      return buildDraftGrid(
+        { type: draftKind.value, teams: r.teams, rounds: r.rosterSize || 0 },
+        picks,
+        { mySlot: mySlot.value, currentOverallPick: mockOrder.value.length + 1 },
+      )
     }),
     clock: computed(() => draftClock(liveState.value ?? { inProgress: false, complete: false, picks: [], drafted: new Set() }, myTeamId.value)),
   }

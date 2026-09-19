@@ -1,4 +1,5 @@
 import { HOCKEY_SLOT_ACCEPTS } from './hockeyPositions'
+import { slotAtPick, nextPickFor, slotsBetween, type DraftShape } from '@/draft/room/pickOrder'
 
 /**
  * A draft you run yourself, with the clock and the roster derived from the picks you mark.
@@ -17,33 +18,41 @@ import { HOCKEY_SLOT_ACCEPTS } from './hockeyPositions'
  *
  * SNAKE IS ASSUMED because it is ESPN's default and what nearly every league runs. It is a
  * parameter rather than a constant so a linear league is a value and not a rewrite.
+ *
+ * THE SLOT ARITHMETIC IS NOT LOCAL. It was — this file grew its own snake maths before
+ * anybody checked, and the football draft room already had `pickOrder`, sport-agnostic and
+ * with a header saying it "lives alone and is tested hard" precisely because an off-by-one
+ * there silently poisons every number downstream. Two implementations of the same snake is
+ * one more than anybody should maintain, so this delegates.
+ *
+ * SLOTS ARE ONE-BASED, matching pickOrder and the draft grid. They were zero-based here,
+ * which is how a "seat 9" in one module met a "seat 9" in another and meant a different
+ * chair.
  */
 
 export type DraftKind = 'snake' | 'linear'
 
+const shapeOf = (teams: number, rounds: number, kind: DraftKind): DraftShape =>
+  ({ type: kind, teams, rounds })
+
 /**
- * Which team owns each pick, as a zero-based slot index.
+ * Which team owns each pick, as a one-based slot number.
  *
- * Snake reverses every other round: in a ten-team league slot 0 picks 1st and 20th, and the
+ * Snake reverses every other round: in a ten-team league slot 1 picks 1st and 20th, and the
  * two-pick turn at the wrap is the whole reason a drafter needs this computed rather than
  * guessed. Returns one entry per pick in the draft.
  */
 export function pickOwners(teams: number, rounds: number, kind: DraftKind = 'snake'): number[] {
-  const out: number[] = []
-  if (teams <= 0 || rounds <= 0) return out
-  for (let r = 0; r < rounds; r++) {
-    const order = Array.from({ length: teams }, (_, i) => i)
-    if (kind === 'snake' && r % 2 === 1) order.reverse()
-    out.push(...order)
-  }
-  return out
+  if (teams <= 0 || rounds <= 0) return []
+  const shape = shapeOf(teams, rounds, kind)
+  return Array.from({ length: teams * rounds }, (_, i) => slotAtPick(shape, i + 1))
 }
 
 export interface DraftPosition {
   /** One-based overall pick currently on the clock. */
   pick: number
   round: number
-  /** Zero-based slot on the clock, or null once the draft is done. */
+  /** One-based slot on the clock, or null once the draft is done. */
   onTheClockSlot: number | null
   /** Picks that must happen before yours. Zero means you are up. Null when you have none left. */
   picksUntilMine: number | null
@@ -69,26 +78,30 @@ export function draftPosition(
   rounds: number,
   kind: DraftKind = 'snake',
 ): DraftPosition {
-  const owners = pickOwners(teams, rounds, kind)
   const empty: DraftPosition = {
     pick: takenCount + 1, round: 0, onTheClockSlot: null, picksUntilMine: null,
     myNextPick: null, myFollowingPick: null, myPicks: [], complete: false,
   }
-  if (!owners.length) return empty
+  if (teams <= 0 || rounds <= 0) return empty
 
-  const complete = takenCount >= owners.length
-  const idx = Math.min(takenCount, owners.length - 1)
+  const shape = shapeOf(teams, rounds, kind)
+  const total = teams * rounds
+  const complete = takenCount >= total
+  const current = Math.min(takenCount + 1, total)
 
-  /* Every pick this slot owns, one-based, so a drafter can see the whole shape of their
-     draft rather than only the next turn. */
-  const myPicks = mySlot === null ? []
-    : owners.map((o, i) => (o === mySlot ? i + 1 : 0)).filter(Boolean)
+  /* Every pick this slot owns, so a drafter can see the whole shape of their draft rather
+     than only the next turn. */
+  const myPicks: number[] = []
+  if (mySlot !== null) {
+    let p = nextPickFor(shape, mySlot, 0)
+    while (p !== null) { myPicks.push(p); p = nextPickFor(shape, mySlot, p) }
+  }
   const upcoming = myPicks.filter((p) => p > takenCount)
 
   return {
-    pick: Math.min(takenCount + 1, owners.length),
-    round: Math.floor(idx / teams) + 1,
-    onTheClockSlot: complete ? null : owners[takenCount],
+    pick: current,
+    round: Math.ceil(current / teams),
+    onTheClockSlot: complete ? null : slotAtPick(shape, takenCount + 1),
     /* Counted from the current pick, so "0" means the pick on the clock is yours. */
     picksUntilMine: upcoming.length ? upcoming[0] - takenCount - 1 : null,
     myNextPick: upcoming[0] ?? null,
@@ -96,6 +109,29 @@ export function draftPosition(
     myPicks,
     complete,
   }
+}
+
+/**
+ * The seats picking between the clock and your next turn, in order.
+ *
+ * This is the sequence the survival simulation walks, and it was being sliced out of a
+ * materialised owners array at the call site. Delegated for the same reason as the rest: one
+ * snake, tested once.
+ */
+export function slotsBeforeMyPick(
+  takenCount: number,
+  teams: number,
+  mySlot: number | null,
+  rounds: number,
+  kind: DraftKind = 'snake',
+): number[] {
+  if (mySlot === null || teams <= 0 || rounds <= 0) return []
+  const shape = shapeOf(teams, rounds, kind)
+  const next = nextPickFor(shape, mySlot, takenCount)
+  if (next === null) return []
+  /* From the pick on the clock up to but excluding mine. slotsBetween is exclusive at both
+     ends, so it is anchored one before the current pick. */
+  return slotsBetween(shape, takenCount, next)
 }
 
 export interface RosterSlotFill {

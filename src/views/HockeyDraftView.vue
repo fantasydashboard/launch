@@ -26,8 +26,15 @@ const {
   punted, togglePunt, clearPunts,
   drafted, take, undo, undoLast, reset, load,
   live, liveError, liveState, lastSyncedAt, myTeamId, teamNames, clock, goLive, goMock, syncDraft,
-  mockOrder, mySlot, draftKind, position, myPlayers, roster, vona,
+  mockOrder, mySlot, draftKind, position, myPlayers, roster, vona, grid,
 } = useHockeyBoard()
+
+/* The grid is long — 22 rounds — and most of it is empty early on. Collapsed by default so
+   the board stays the thing you look at, with the rounds that have happened shown first. */
+const showGrid = ref(false)
+const gridRows = computed(() =>
+  showGrid.value ? grid.value : grid.value.filter((r) => r.cells.some((c) => c.pick)).slice(-3),
+)
 
 /*
  * TWO QUESTIONS, AND THEY GIVE DIFFERENT ANSWERS.
@@ -49,9 +56,10 @@ const hasVona = computed(() => vona.value.picksSimulated > 0)
 const survivalOf = (key: string) => vona.value.survival[key]
 const vonaOf = (key: string) => vona.value.vona[key]
 
-/* Draft seats are one-based to a human and zero-based to the order array. */
+/* One-based throughout now, matching pickOrder and the grid. They were zero-based here,
+   which is how a "seat 9" in one module met a "seat 9" in another and meant a different chair. */
 const slotOptions = computed(() =>
-  Array.from({ length: rules.value?.teams ?? 0 }, (_, i) => ({ value: i, label: `Pick ${i + 1}` })),
+  Array.from({ length: rules.value?.teams ?? 0 }, (_, i) => ({ value: i + 1, label: `Pick ${i + 1}` })),
 )
 const nameOf = (key: string) => nameCache.get(key) ?? key
 
@@ -356,7 +364,7 @@ const POS_TONE: Record<string, string> = {
           <span class="text-dark-text">
             Pick {{ position.pick }} &middot; round {{ position.round }}
             <span v-if="position.onTheClockSlot !== null" class="text-dark-textMuted">
-              &middot; seat {{ position.onTheClockSlot + 1 }} on the clock
+              &middot; seat {{ position.onTheClockSlot }} on the clock
             </span>
           </span>
           <span v-if="position.picksUntilMine === 0" class="font-semibold text-primary">You're up.</span>
@@ -487,6 +495,48 @@ const POS_TONE: Record<string, string> = {
       <p v-if="rows.length > LIMIT" class="mt-2 font-mono text-[10px] text-dark-textMuted">
         showing {{ shown.length }} of {{ rows.length }}
       </p>
+
+      <!--
+        THE BOARD AS EVERYONE PICTURES IT. A column is a team and stays that team all the way
+        down; snake rounds fill right to left, which is what the pick numbers show.
+      -->
+      <div v-if="!live && grid.length && mockOrder.length" class="mt-5 rounded-xl border border-dark-border bg-dark-card p-3">
+        <div class="mb-2 flex items-baseline gap-3">
+          <p class="font-mono text-[9px] uppercase tracking-widest text-dark-textMuted/70">the board</p>
+          <button class="font-mono text-[10px] text-dark-textMuted underline decoration-dotted hover:text-dark-text"
+                  @click="showGrid = !showGrid">{{ showGrid ? 'show recent rounds' : `show all ${grid.length} rounds` }}</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full border-separate border-spacing-0.5 font-mono text-[9px]">
+            <thead>
+              <tr>
+                <th class="w-6"></th>
+                <th v-for="n in (rules?.teams ?? 0)" :key="n"
+                    class="px-1 pb-1 text-center font-normal"
+                    :class="n === mySlot ? 'text-primary' : 'text-dark-textMuted/50'">{{ n }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in gridRows" :key="row.round">
+                <td class="pr-1 text-right text-dark-textMuted/40">{{ row.round }}</td>
+                <td v-for="c in row.cells" :key="c.overallPick"
+                    class="min-w-[58px] max-w-[78px] truncate rounded px-1 py-1 align-top"
+                    :class="[
+                      c.pick ? 'bg-white/[0.04]' : 'bg-transparent',
+                      c.isMine ? 'ring-1 ring-primary/40' : '',
+                      c.isCurrent ? 'ring-1 ring-[#e69a4a]/70' : '',
+                    ]">
+                  <template v-if="c.pick">
+                    <span class="block truncate text-dark-text">{{ c.pick.playerName }}</span>
+                    <span class="block" :class="POS_TONE[c.pick.position]">{{ c.pick.position }}</span>
+                  </template>
+                  <span v-else class="text-dark-textMuted/25">{{ c.overallPick }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <!-- Replacement is the reason the order is what it is, so it belongs on the page. -->
       <div v-if="Object.keys(replacement).length" class="mt-5 rounded-xl border border-dark-border bg-dark-card p-3">
