@@ -1,4 +1,4 @@
-import { computed, onMounted, watch, type Ref } from 'vue'
+import { computed, onMounted, watch, type Ref, type ComputedRef } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { usePowerTrajectory } from './usePowerTrajectory'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
@@ -16,7 +16,7 @@ export function useSeasonOutlook(inputs: {
   rosterSlots: Ref<Record<string, number>>
   myTeamKey: Ref<string>
   teamMeta: Ref<Record<string, OutlookTeamMeta>>
-}): { outlook: Ref<SeasonOutlook | null> } {
+}): { outlook: ComputedRef<SeasonOutlook | null> } {
   const leagueStore = useLeagueStore()
   const trajectory = usePowerTrajectory()
 

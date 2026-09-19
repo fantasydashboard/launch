@@ -319,7 +319,8 @@ export function useWeeklyBoard(): {
     fgByKey: src.fgByKey,
     sport: computed(() => leagueStore.activeSport),
     season,
-  })
+    leagueId: computed(() => String(leagueStore.activeLeagueId ?? '')),
+})
   const { outlook } = useSeasonOutlook({
     pool: src.pool,
     valueByKey,

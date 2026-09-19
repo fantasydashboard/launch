@@ -53,7 +53,7 @@ const myTeamLogo = source.myTeamLogo
 const teamLogos = source.teamLogos
 
 const season = computed(() => '')
-const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
+const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season, leagueId: computed(() => String(leagueStore.activeLeagueId ?? '')) })
 
 // Football VOR (shared engine). Replacement is calibrated on rostered players here
 // (empty free-agent list) — cross-team ranking is unaffected; Trades stays self-contained.

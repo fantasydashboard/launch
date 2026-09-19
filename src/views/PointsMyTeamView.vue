@@ -39,7 +39,7 @@ const leagueSize = source.leagueSize
 
 // Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
 const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
-const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
+const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season, leagueId: computed(() => String(leagueStore.activeLeagueId ?? '')) })
 
 // Football VOR (shared engine) — orders/tiers/values the roster. Rostered-only calibration
 // (empty free agents), ROS only (no weekly fetches). Undefined for baseball.

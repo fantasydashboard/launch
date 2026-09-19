@@ -9,6 +9,7 @@ import { usePointsValue } from '@/composables/usePointsValue'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
+import { nhlTeamLogo } from '@/players/nhlTeamLogo'
 import { useFootballWire } from '@/composables/useFootballWire'
 import RankingPicker from '@/components/RankingPicker.vue'
 import { BOARD_DEPTH } from '@/football/footballWire'
@@ -30,7 +31,12 @@ const leagueStore = useLeagueStore()
    anyone who had not signed in — the Draft Room was honouring the wall on its own. */
 const { hasFullAccess } = useFeatureAccess()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
-const teamLogo = (abbr?: string) => (isFootball.value ? nflTeamLogo(abbr) : mlbTeamLogo(abbr))
+const isHockey = computed(() => leagueStore.activeSport === 'hockey')
+/* Three sports now, so the binary had to go: hockey was falling through to the MLB map and
+   asking the CDN for a baseball logo named COL or DAL. Some of those exist, which is worse
+   than none — a hockey board would have shown the Rockies beside Nathan MacKinnon. */
+const teamLogo = (abbr?: string) =>
+  isFootball.value ? nflTeamLogo(abbr) : isHockey.value ? nhlTeamLogo(abbr) : mlbTeamLogo(abbr)
 
 const source = useActivePointsSource()
 const scoring = useLeagueScoring()
@@ -232,6 +238,7 @@ const { valueByKey, valueOf, loading: valueLoading } = usePointsValue({
   sport: computed(() => leagueStore.activeSport),
   season,
   freeAgents,
+  leagueId: computed(() => String(leagueStore.activeLeagueId ?? '')),
 })
 
 // Football Wire runs off the VOR engine (separate from the baseball wire brain above).

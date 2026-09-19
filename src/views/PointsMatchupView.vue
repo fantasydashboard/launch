@@ -52,7 +52,7 @@ const loading = source.loading
 // Precomputed player value for Season Outlook and buildPointsMatchup (baseball from FG,
 // football from Sleeper).
 const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
-const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season })
+const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season, leagueId: computed(() => String(leagueStore.activeLeagueId ?? '')) })
 
 const myTeamKey = source.myTeamKey
 const myTeamName = source.myTeamName
