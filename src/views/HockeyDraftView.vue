@@ -52,6 +52,26 @@ function takeTop() {
 /** Highlight a row that fills a hole rather than adding to a surplus. */
 const fillsNeed = (pos: string) => roster.value.needs.includes(pos)
 
+/*
+ * Injury is FLAGGED AND NOT DISCOUNTED, and the label has to carry that without a paragraph.
+ * ESPN's projection already accounts for the missed games — Makar is projected 78 of 82,
+ * Bedard 64 — so the number beside the flag is already the injured player's number. Charging
+ * the injury again would be double counting; saying nothing left him sixth on the board with
+ * no mark on him at all.
+ */
+const INJURY_LABEL: Record<string, string> = {
+  OUT: 'OUT', INJURY_RESERVE: 'IR', DAY_TO_DAY: 'DTD', SUSPENSION: 'SUSP',
+}
+const injuryTag = (s: string | null | undefined) => (s ? INJURY_LABEL[s] ?? s : '')
+
+/* Rounds of disagreement with the room, shown only past a full round — a badge on every row
+   carries as much information as a badge on none. */
+const marketTag = (r: any) => {
+  if (!r?.marketFlag) return ''
+  const n = Math.abs(r.marketRounds ?? 0)
+  return `${r.marketFlag === 'value' ? '+' : '-'}${n < 10 ? n.toFixed(1) : Math.round(n)}r`
+}
+
 const teamOptions = computed(() =>
   Object.entries(teamNames.value).map(([id, name]) => ({ id: Number(id), name })),
 )
@@ -384,6 +404,7 @@ const POS_TONE: Record<string, string> = {
         <span class="w-7"></span><span class="w-8">pos</span><span class="flex-1">player</span>
         <span class="w-14 text-right" :title="valueHint">vor</span>
         <span class="w-14 text-right" :title="ownHint">{{ ownLabel }}</span>
+        <span class="w-12 text-right" title="ESPN's average draft position — where the room takes him">adp</span>
         <span class="w-14"></span>
       </p>
 
@@ -395,11 +416,20 @@ const POS_TONE: Record<string, string> = {
               :title="'Fills a starting slot you still have open'">{{ !live && mySlot !== null && fillsNeed(r.position) ? '•' : '' }}</span>
         <span class="min-w-0 flex-1 truncate">
           <span class="text-dark-text">{{ r.name }}</span>
+          <span v-if="injuryTag(r.injuryStatus)"
+                class="ml-1.5 rounded px-1 font-mono text-[9px] font-bold"
+                :class="r.injuryStatus === 'DAY_TO_DAY' ? 'bg-[#e69a4a]/20 text-[#e69a4a]' : 'bg-[#FF5C5C]/20 text-[#FF5C5C]'"
+                :title="'Listed ' + r.injuryStatus + ' — the projection already accounts for the games he is expected to miss'">{{ injuryTag(r.injuryStatus) }}</span>
+          <span v-if="marketTag(r)"
+                class="ml-1.5 font-mono text-[10px]"
+                :class="r.marketFlag === 'value' ? 'text-[#7ee787]' : 'text-dark-textMuted/70'"
+                :title="r.marketFlag === 'value' ? 'We rank him this many rounds ahead of where the room drafts him' : 'The room drafts him this many rounds ahead of where we rank him'">{{ marketTag(r) }}</span>
           <span v-if="isCategories && edge(r.playerKey)"
                 class="ml-2 font-mono text-[10px] text-dark-textMuted/70">{{ edge(r.playerKey) }}</span>
         </span>
         <span class="w-14 shrink-0 text-right font-mono text-xs font-semibold text-dark-text">{{ shown2(r.value) }}</span>
         <span class="w-14 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ shown2(r.projected) }}</span>
+        <span class="w-12 shrink-0 text-right font-mono text-[11px] text-dark-textMuted/60">{{ r.adp ? Math.round(r.adp) : '—' }}</span>
         <button v-if="!live" class="w-14 shrink-0 rounded border border-dark-border px-1.5 py-0.5 font-mono text-[10px] text-dark-textMuted hover:border-primary hover:text-primary"
                 @click="take(r.playerKey)">take</button>
         <span v-else class="w-14 shrink-0"></span>

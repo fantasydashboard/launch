@@ -53,7 +53,44 @@ export interface HockeyProjection {
   position: string
   /** Unified stat key -> projected season total. */
   stats: Record<string, number>
+  /**
+   * ESPN's average draft position — what the ROOM thinks, as opposed to what we think.
+   *
+   * Null when ESPN published none. Never defaulted to a number: an absent price is not a
+   * late one, and filling it in would make an unknown player look like a known bad one.
+   */
+  adp?: number | null
+  auctionValue?: number | null
+  percentOwned?: number | null
+  /**
+   * OUT, DAY_TO_DAY, INJURY_RESERVE, SUSPENSION — never ACTIVE, which says nothing.
+   *
+   * FLAGGED, NOT DISCOUNTED. ESPN's projection already accounts for expected missed games:
+   * Makar is projected 78 of 82, Bedard 64, Merzlikins 39. A discount here would charge the
+   * same injury twice. The drafter is told; the number is left alone.
+   */
+  injuryStatus?: string | null
 }
+
+/*
+ * AN ADP IS ONLY A PRICE IF THE ROOM ACTUALLY DRAFTS HIM.
+ *
+ * ESPN gives EVERY projected player an averageDraftPosition, and 218 of 456 of them sit in a
+ * tight band at 227-232 — which is one past the end of a standard ten-team, twenty-three-round
+ * draft. That is a placeholder for "undrafted", not a price. Every one of those players is
+ * owned in under 10% of leagues.
+ *
+ * Read as real, the placeholder manufactured enormous fake disagreements: the board reported
+ * Anthony Stolarz as thirty-two rounds of value because we ranked him 40th and "the market"
+ * ranked him 230th, when the market had simply never priced him. A signal that fires hardest
+ * on the players nobody wants is worse than no signal.
+ *
+ * Ownership is the gate rather than the band, because it is a statement about the world
+ * instead of an artefact detector: below 10% he goes undrafted in nine leagues out of ten, so
+ * an average taken over the few where he went is not a price. Players owned 50%+ span ADP 1.8
+ * to 218.5 — real, and untouched.
+ */
+export const ADP_MIN_OWNERSHIP = 10
 
 /** Read ESPN's projection rows into the shape this engine consumes. */
 export function projectionsFromEspn(rows: unknown[]): Record<string, HockeyProjection> {
@@ -72,7 +109,16 @@ export function projectionsFromEspn(rows: unknown[]): Record<string, HockeyProje
       (s: any) => s?.statSourceId === 1 && s?.statSplitTypeId === 0,
     )
     if (!split) continue
-    out[key] = { playerKey: key, position, stats: statsFromEspn(split.stats) }
+    const own = (p.ownership ?? {}) as Record<string, any>
+    out[key] = {
+      playerKey: key, position, stats: statsFromEspn(split.stats),
+      adp: Number.isFinite(own.averageDraftPosition)
+        && Number(own.percentOwned) >= ADP_MIN_OWNERSHIP
+        ? Number(own.averageDraftPosition) : null,
+      auctionValue: Number.isFinite(own.auctionValueAverage) ? Number(own.auctionValueAverage) : null,
+      percentOwned: Number.isFinite(own.percentOwned) ? Number(own.percentOwned) : null,
+      injuryStatus: p.injuryStatus && p.injuryStatus !== 'ACTIVE' ? String(p.injuryStatus) : null,
+    }
   }
   return out
 }

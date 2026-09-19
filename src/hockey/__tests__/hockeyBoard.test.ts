@@ -218,3 +218,69 @@ describe('punting a category', () => {
     expect(b.contestedKeys).toEqual([])
   })
 })
+
+describe('the market, and the injured', () => {
+  const withMarket = () => {
+    const proj = pool()
+    /* Ranked exactly opposite to our board, so the disagreement is unmissable. */
+    const keys = Object.keys(proj)
+    keys.forEach((k, i) => {
+      proj[k] = { ...proj[k], adp: keys.length - i }
+    })
+    proj.f0 = { ...proj.f0, injuryStatus: 'OUT' }
+    proj.f1 = { ...proj.f1, injuryStatus: 'DAY_TO_DAY' }
+    return buildHockeyBoard({ projections: proj, rules: RULES, namesByKey: names })
+  }
+
+  it('carries ADP onto the row', () => {
+    expect(withMarket().rows[0].adp).toBeGreaterThan(0)
+  })
+
+  /*
+   * FLAGGED, NEVER DISCOUNTED. ESPN's projection already accounts for the games a hurt player
+   * is expected to miss — Makar 78 of 82, Bedard 64 — so a discount here would charge the
+   * same injury twice. The flag travels; the number does not move.
+   */
+  it('flags an injury without touching the value', () => {
+    const clean = buildHockeyBoard({ projections: pool(), rules: RULES, namesByKey: names })
+    const flagged = withMarket()
+    const row = flagged.rows.find((r) => r.playerKey === 'f0')!
+    const same = clean.rows.find((r) => r.playerKey === 'f0')!
+    expect(row.injuryStatus).toBe('OUT')
+    expect(row.value).toBeCloseTo(same.value, 6)
+    expect(row.projected).toBeCloseTo(same.projected!, 6)
+  })
+
+  it('says nothing about a player with no designation', () => {
+    expect(withMarket().rows.find((r) => r.playerKey === 'f5')!.injuryStatus).toBeNull()
+  })
+
+  /* Our best player is the market's worst in this fixture, so he must read as value. */
+  it('flags where we disagree with the room by a full round', () => {
+    const top = withMarket().rows[0]
+    expect(top.marketFlag).toBe('value')
+    expect(top.marketRounds).toBeGreaterThan(1)
+  })
+
+  /*
+   * A badge on every row carries as much information as a badge on none.
+   *
+   * The ADP here is taken from the board's OWN ordering, which is the only way to express
+   * "the room agrees with us". Numbering the fixture in key order does not: pool() is built
+   * position by position while the board interleaves them by value, so key order is a
+   * genuinely different ranking and flagged almost every row.
+   */
+  it('stays silent when we and the room roughly agree', () => {
+    const first = buildHockeyBoard({ projections: pool(), rules: RULES, namesByKey: names })
+    const proj = pool()
+    first.rows.forEach((r, i) => { proj[r.playerKey] = { ...proj[r.playerKey], adp: i + 1 } })
+    const b = buildHockeyBoard({ projections: proj, rules: RULES, namesByKey: names })
+    expect(b.rows.filter((r) => r.marketFlag).length).toBe(0)
+  })
+
+  it('reads no disagreement for a player the market never priced', () => {
+    const b = buildHockeyBoard({ projections: pool(), rules: RULES, namesByKey: names })
+    expect(b.rows[0].marketFlag).toBe('')
+    expect(b.rows[0].adp).toBeNull()
+  })
+})

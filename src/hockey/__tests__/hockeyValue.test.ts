@@ -174,3 +174,51 @@ describe('roles', () => {
     expect(roleOf('')).toBe('')
   })
 })
+
+describe('ESPN prices only the players it actually drafts', () => {
+  const row = (id: string, own: number, adp: number) => ({
+    player: {
+      id, defaultPositionId: 1, ownership: { averageDraftPosition: adp, percentOwned: own },
+      stats: [{ statSourceId: 1, statSplitTypeId: 0, stats: MACKINNON }],
+    },
+  })
+
+  /*
+   * ESPN gives EVERY projected player an ADP, and 218 of 456 sit in a tight band at 227-232 —
+   * one past the end of a standard ten-team, twenty-three-round draft. That is a placeholder
+   * for "undrafted", and every player in it is owned in under 10% of leagues.
+   *
+   * Read as a real price it manufactured the biggest signals on the least wanted players:
+   * Anthony Stolarz showed as thirty-two ROUNDS of value because we ranked him 40th and the
+   * "market" ranked him 230th, when the market had never priced him at all.
+   */
+  it('drops the placeholder ADP of a player nobody drafts', () => {
+    expect(projectionsFromEspn([row('x', 3, 230.4)]).x.adp).toBeNull()
+  })
+
+  it('keeps the price of a player the room actually takes', () => {
+    expect(projectionsFromEspn([row('y', 99.8, 1.77)]).y.adp).toBeCloseTo(1.77, 5)
+  })
+
+  /* The gate is ownership, not the band: a genuinely late pick in a deep league is a real
+     price and must survive. */
+  it('keeps a late but real price', () => {
+    expect(projectionsFromEspn([row('z', 55, 218.5)]).z.adp).toBeCloseTo(218.5, 5)
+  })
+
+  it('carries ownership and the injury designation through', () => {
+    const r = { player: { id: 'i', defaultPositionId: 4, injuryStatus: 'OUT',
+      ownership: { averageDraftPosition: 10.3, percentOwned: 99.8 },
+      stats: [{ statSourceId: 1, statSplitTypeId: 0, stats: MACKINNON }] } }
+    const p = projectionsFromEspn([r]).i
+    expect(p.injuryStatus).toBe('OUT')
+    expect(p.percentOwned).toBe(99.8)
+  })
+
+  /* ACTIVE is the overwhelming majority and says nothing. */
+  it('does not treat ACTIVE as a designation', () => {
+    const r = { player: { id: 'a', defaultPositionId: 1, injuryStatus: 'ACTIVE',
+      stats: [{ statSourceId: 1, statSplitTypeId: 0, stats: MACKINNON }] } }
+    expect(projectionsFromEspn([r]).a.injuryStatus).toBeNull()
+  })
+})

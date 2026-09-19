@@ -221,7 +221,11 @@ export function useHockeyBoard() {
       const parsed: Record<string, HockeyProjection> = {}
       const names: Record<string, string> = {}
       for (const p of proj?.players ?? []) {
-        parsed[p.playerKey] = { playerKey: p.playerKey, position: p.position, stats: p.stats ?? {} }
+        parsed[p.playerKey] = {
+          playerKey: p.playerKey, position: p.position, stats: p.stats ?? {},
+          adp: p.adp ?? null, auctionValue: p.auctionValue ?? null,
+          percentOwned: p.percentOwned ?? null, injuryStatus: p.injuryStatus ?? null,
+        }
         names[p.playerKey] = p.name
       }
       projections.value = parsed

@@ -3,6 +3,7 @@ import { buildHockeyValue, type HockeyProjection } from './hockeyValue'
 import { buildHockeyVor } from './hockeyVor'
 import { buildHockeyCategoryValue } from './hockeyCategoryValue'
 import { isCategoryLeague, type HockeyLeagueRules } from './hockeyLeague'
+import { marketDisagreement } from '@/draft/room/marketDisagreement'
 
 /**
  * A draft board for a hockey league: projections in, ranked rows out.
@@ -51,8 +52,16 @@ export interface HockeyBoardInput {
   punted?: Set<string>
 }
 
+/** A board row, plus the two things hockey adds: the market's price and an injury flag. */
+export interface HockeyBoardRow extends AvailablePlayerRow {
+  adp?: number | null
+  /** Rounds of disagreement with ADP. Positive means we rank him higher than the room. */
+  marketRounds?: number
+  marketFlag?: 'value' | 'fade' | ''
+}
+
 export interface HockeyBoardResult {
-  rows: AvailablePlayerRow[]
+  rows: HockeyBoardRow[]
   /** Replacement level per pool, so a surface can explain WHY a player ranks where he does. */
   replacement: Record<string, number>
   /** Scored stat ids we could not name — every total is short by whatever they were worth. */
@@ -163,7 +172,7 @@ export function buildHockeyBoard(input: HockeyBoardInput): HockeyBoardResult {
     if (replacement[r.pool] === undefined) replacement[r.pool] = r.points - r.vor
   }
 
-  const rows: AvailablePlayerRow[] = []
+  const rows: HockeyBoardRow[] = []
   for (const r of Object.values(vor)) {
     rows.push({
       playerKey: r.playerKey,
@@ -175,9 +184,37 @@ export function buildHockeyBoard(input: HockeyBoardInput): HockeyBoardResult {
          custom ranking list re-seats the order. */
       value: r.vor,
       projected: r.points,
+      adp: projections[r.playerKey]?.adp ?? null,
+      /* Flagged, never discounted: the projection already accounts for missed games. */
+      injuryStatus: projections[r.playerKey]?.injuryStatus ?? null,
     })
   }
   rows.sort((a, b) => b.value - a.value)
+
+  /*
+   * WHERE WE AND THE ROOM DISAGREE.
+   *
+   * Measured in ROUNDS, which is the unit a drafter already thinks in and scales itself to
+   * league size without a tuning constant. A badge on every row carries as much information
+   * as a badge on none, so the threshold is a full round and most players get nothing.
+   *
+   * Our rank is by VOR and ESPN's is by ADP, so this is the board arguing with the market
+   * about the same player rather than two different lists side by side. Reusing the football
+   * room's module verbatim — it never knew what sport it was looking at.
+   */
+  const adpOrder = [...rows]
+    .filter((r) => typeof r.adp === 'number')
+    .sort((a, b) => (a.adp as number) - (b.adp as number))
+  const adpRankByKey = new Map(adpOrder.map((r, i) => [r.playerKey, i + 1]))
+  rows.forEach((r, i) => {
+    const read = marketDisagreement({
+      projRank: i + 1,
+      adpRank: adpRankByKey.get(r.playerKey),
+      teams: rules.teams,
+    })
+    r.marketRounds = read.rounds
+    r.marketFlag = read.flag
+  })
 
   const categoryMode = isCategoryLeague(rules.scoringType) && rules.categories.length > 0
   return {

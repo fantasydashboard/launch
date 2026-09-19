@@ -55,6 +55,26 @@ const STAT_BY_ID = {
 }
 const POSITION_BY_ID = { 1: 'C', 2: 'LW', 3: 'RW', 4: 'D', 5: 'G' }
 
+/*
+ * AN ADP IS ONLY A PRICE IF THE ROOM ACTUALLY DRAFTS HIM.
+ *
+ * ESPN gives EVERY projected player an averageDraftPosition, and 218 of 456 of them sit in a
+ * tight band at 227-232 — which is one past the end of a standard ten-team, twenty-three-round
+ * draft. That is a placeholder for "undrafted", not a price. Every one of those players is
+ * owned in under 10% of leagues.
+ *
+ * Read as real, the placeholder manufactured enormous fake disagreements: the board reported
+ * Anthony Stolarz as thirty-two rounds of value because we ranked him 40th and "the market"
+ * ranked him 230th, when the market had simply never priced him. A signal that fires hardest
+ * on the players nobody wants is worse than no signal.
+ *
+ * Ownership is the gate rather than the band, because it is a statement about the world
+ * instead of an artefact detector: below 10% he goes undrafted in nine leagues out of ten, so
+ * an average taken over the few where he went is not a price. Players owned 50%+ span ADP 1.8
+ * to 218.5 — real, and untouched.
+ */
+const ADP_MIN_OWNERSHIP = 10
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   if (req.method === 'OPTIONS') return res.status(200).end()
@@ -91,12 +111,35 @@ export default async function handler(req, res) {
       }
       if (!Object.keys(stats).length) continue
 
+      /*
+       * THE MARKET AND THE INJURY, WHICH THIS USED TO THROW AWAY.
+       *
+       * ESPN publishes an average draft position for every projected player — 456 of 456,
+       * MacKinnon at 1.77 — plus an auction value, ownership, and an injury designation. This
+       * endpoint carried name, position, team and stats and dropped the rest, which left the
+       * board unable to say anything about what the ROOM thinks, and unable to flag a player
+       * who is not playing. Cale Makar sat sixth with no mark on him while listed OUT.
+       *
+       * No injury DISCOUNT is applied anywhere downstream, and that is deliberate: ESPN's
+       * projection already accounts for it. Makar is projected 78 games rather than 82,
+       * Bedard 64, Merzlikins 39. Discounting a projection that has already been discounted
+       * would charge the same injury twice.
+       */
+      const own = p.ownership || {}
       players.push({
         playerKey: String(p.id),
         name: p.fullName || `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim(),
         position,
         proTeamId: p.proTeamId ?? null,
         stats,
+        adp: Number.isFinite(own.averageDraftPosition)
+          && Number(own.percentOwned) >= ADP_MIN_OWNERSHIP
+          ? own.averageDraftPosition : null,
+        auctionValue: Number.isFinite(own.auctionValueAverage) ? own.auctionValueAverage : null,
+        percentOwned: Number.isFinite(own.percentOwned) ? own.percentOwned : null,
+        /* ACTIVE is the overwhelming majority and says nothing; null keeps the payload honest
+           about which players carry a designation at all. */
+        injuryStatus: p.injuryStatus && p.injuryStatus !== 'ACTIVE' ? p.injuryStatus : null,
       })
     }
 
