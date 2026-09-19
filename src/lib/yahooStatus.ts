@@ -21,16 +21,17 @@ export const YAHOO_API_AVAILABLE = false
 /**
  * What we tell people, everywhere.
  *
- * The previous wording said Yahoo "changed their API access" and called the outage
- * "temporary". Neither survives contact with the facts: nothing changed at Yahoo's end that
- * we know of — we asked for an entitlement and were never granted one — and after five weeks
- * with no status mechanism and no reply, "temporarily" promises a return we cannot promise.
- * Better to be plainly uncertain than confidently wrong.
+ * NO VENDOR NARRATIVE. This used to say our approval was "still pending, with no date we can
+ * promise" and badge the tile "Awaiting Yahoo approval". Both were true and neither was the
+ * reader's problem: somebody choosing where to put their league does not need to know which
+ * of our suppliers has not replied to us, and a product that explains its blockers sounds
+ * like it is making excuses for them.
+ *
+ * What a reader needs is what they can do, which is use ESPN or Sleeper. The reason lives in
+ * the admin panel and in yahoo-api's logs, where somebody can act on it.
  */
 export const YAHOO_UNAVAILABLE_MESSAGE =
-  "Yahoo Fantasy leagues can't be loaded right now. Yahoo requires separate approval to use " +
-  'their Fantasy API and ours is still pending, with no date we can promise. Your ESPN and ' +
-  'Sleeper leagues are unaffected.'
+  "Yahoo leagues aren't supported yet. Your ESPN and Sleeper leagues work normally."
 
 /** Short form, for a badge or a tile where the full sentence will not fit. */
-export const YAHOO_UNAVAILABLE_SHORT = 'Awaiting Yahoo approval'
+export const YAHOO_UNAVAILABLE_SHORT = 'Not supported yet'

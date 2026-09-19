@@ -63,7 +63,7 @@
                     </span>
                   </div>
                   <div class="text-xs text-dark-textMuted">
-                    <template v-if="!YAHOO_API_AVAILABLE">Yahoo hasn't granted API access yet — ESPN and Sleeper work normally</template>
+                    <template v-if="!YAHOO_API_AVAILABLE">Not supported yet — ESPN and Sleeper work normally</template>
                     <template v-else>{{ platformsStore.isYahooConnected ? 'Select from your Yahoo leagues' : 'Sign in with Yahoo to connect' }}</template>
                   </div>
                 </div>
