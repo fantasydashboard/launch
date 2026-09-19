@@ -29,9 +29,14 @@ export const YAHOO_API_AVAILABLE = false
  *
  * What a reader needs is what they can do, which is use ESPN or Sleeper. The reason lives in
  * the admin panel and in yahoo-api's logs, where somebody can act on it.
+ *
+ * "Down" rather than "not supported yet" is a deliberate call by the owner. Worth knowing
+ * what it trades: down implies something that once worked and will again, and this connection
+ * has never worked — we were never entitled. If it turns out Yahoo never approves, this
+ * wording has quietly promised a return, and the honest replacement then is "not supported".
  */
 export const YAHOO_UNAVAILABLE_MESSAGE =
-  "Yahoo leagues aren't supported yet. Your ESPN and Sleeper leagues work normally."
+  'The Yahoo connection is down. Your ESPN and Sleeper leagues work normally.'
 
 /** Short form, for a badge or a tile where the full sentence will not fit. */
-export const YAHOO_UNAVAILABLE_SHORT = 'Not supported yet'
+export const YAHOO_UNAVAILABLE_SHORT = 'Connection down'
