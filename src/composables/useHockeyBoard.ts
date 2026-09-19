@@ -99,7 +99,18 @@ export function useHockeyBoard() {
    * from the league's own record when there is one, because a league carried over from last
    * year would otherwise be asked for a season it does not have.
    */
+  /* The season a retry actually succeeded at, so every later fetch uses the same one. */
+  const resolvedSeason = ref(0)
+
+  /** Saved season first, then the season this sport is really in. */
+  function seasonsToTry(): number[] {
+    const now = new Date()
+    const sportCurrent = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear()
+    return [...new Set([season.value, sportCurrent])]
+  }
+
   const season = computed(() => {
+    if (resolvedSeason.value) return resolvedSeason.value
     const saved = leagueStore.allLeagues?.find((l: any) => String(l.league_id) === leagueId.value)
     const fromLeague = Number((saved as any)?.season)
     if (Number.isFinite(fromLeague) && fromLeague > 2000) return fromLeague
@@ -108,7 +119,53 @@ export function useHockeyBoard() {
     return now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear()
   })
 
+  /**
+   * The league's settings, with the REASON when there are none.
+   *
+   * This used to be `.catch(() => null)` followed by a single sentence blaming a private
+   * league. The proxy throws precise errors — 404, 403, 401 are three different problems with
+   * three different fixes — and collapsing them into one guess produced the same failure this
+   * codebase hit in the league-id lookup: a confident message pointing at the wrong cause.
+   * A 404 told the user to connect ESPN, which would not have helped.
+   *
+   * The 404 retry is here because a league row can carry a season written before we knew that
+   * hockey names a season for the year it ENDS. Rather than make the reader fix stale data,
+   * ask again for the season the sport is actually in.
+   */
+  async function loadSettings(): Promise<{ settings: any; why: string }> {
+    const attempt = async (yr: number) => espnViews(leagueId.value, yr, ['mSettings'])
+
+    let lastError = ''
+    for (const yr of seasonsToTry()) {
+      try {
+        const payload = await attempt(yr)
+        if (payload?.settings) {
+          if (yr !== season.value) resolvedSeason.value = yr
+          return { settings: payload, why: '' }
+        }
+        lastError = `ESPN returned no settings for season ${yr}.`
+      } catch (e: any) {
+        const msg = String(e?.message ?? e)
+        lastError = msg
+        /* Private and auth failures will not improve by asking for a different year, and
+           retrying would bury the one message that names the actual fix. */
+        if (msg.includes('403') || msg.includes('private')) {
+          return { settings: null, why: 'This ESPN league is private. Connect ESPN on the Platforms page so we can read it, then reload.' }
+        }
+        if (msg.includes('401')) {
+          return { settings: null, why: 'Your session expired. Sign out and back in, then reload.' }
+        }
+      }
+    }
+    return {
+      settings: null,
+      why: `ESPN has no hockey league ${leagueId.value} in season ${seasonsToTry().join(' or ')}. `
+         + `Check the league id, or that it is a hockey league. (${lastError})`,
+    }
+  }
+
   async function load() {
+    resolvedSeason.value = 0
     if (!isHockey.value) { problem.value = 'This board is for hockey leagues.'; return }
     if (!isEspn.value) {
       problem.value = 'Hockey currently reads ESPN leagues. Yahoo is waiting on API access.'
@@ -119,20 +176,18 @@ export function useHockeyBoard() {
     loading.value = true
     problem.value = ''
     try {
-      const [projRes, settings] = await Promise.all([
+      const [projRes, settingsResult] = await Promise.all([
         fetch(`${PROJECTIONS_URL}?season=${season.value}`),
-        espnViews(leagueId.value, season.value, ['mSettings']).catch(() => null),
+        loadSettings(),
       ])
 
       if (!projRes.ok) {
         problem.value = `Could not load projections (${projRes.status}).`
         return
       }
+      const { settings, why: settingsProblem } = settingsResult
       if (!settings?.settings) {
-        /* The proxy carries the cookies, so reaching here means we do not have them — a
-           private league whose ESPN connection was never set up. Saying which beats a generic
-           failure, because the fix is different from a retry. */
-        problem.value = 'ESPN would not share this league\'s settings. A private league needs the ESPN connection set up first — connect ESPN, then reload.'
+        problem.value = settingsProblem
         return
       }
 
