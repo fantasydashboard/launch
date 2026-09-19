@@ -1,4 +1,4 @@
-import { HOCKEY_STAT_BY_ID, startingSlotsFromEspn } from './hockeyPositions'
+import { HOCKEY_STAT_BY_ID, hockeySlot, startingSlotsFromEspn } from './hockeyPositions'
 import { categoriesFromScoringItems, type HockeyCategory } from './hockeyCategoryValue'
 
 /**
@@ -87,11 +87,19 @@ export function rulesFromEspnSettings(
   const { weights, unnamed } = weightsFromScoringItems(sc.scoringItems)
   const cats = categoriesFromScoringItems(sc.scoringItems)
 
-  /* Every seat on the roster, bench and IR included — this is capacity, not lineup, and it
-     is what decides how deep the draft goes. */
-  const rosterSize = Object.values(
+  /*
+   * Seats the draft actually fills: the lineup plus the bench, and NOT injured reserve.
+   *
+   * This counted every slot including IR and came out one too many — 23 for a league whose
+   * draft is 22 rounds, which ESPN's own 220-pick schedule confirms at 10 teams. Nobody
+   * drafts into IR; it is a holding place for players already on the roster. The extra round
+   * would have invented a pick at the end of every drafter's list.
+   */
+  const rosterSize = Object.entries(
     (s.rosterSettings?.lineupSlotCounts ?? {}) as Record<string, number>,
-  ).reduce((a, b) => a + (Number(b) || 0), 0)
+  ).reduce((sum, [slotId, n]) => (
+    hockeySlot(Number(slotId)) === 'IR' ? sum : sum + (Number(n) || 0)
+  ), 0)
 
   const isCategory = isCategoryLeague(scoringType)
   return {

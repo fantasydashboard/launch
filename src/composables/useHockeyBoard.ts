@@ -6,6 +6,9 @@ import type { HockeyProjection } from '@/hockey/hockeyValue'
 import {
   parseDraftDetail, draftClock, teamNamesFromEspn, type HockeyDraftState,
 } from '@/hockey/hockeyDraftSync'
+import {
+  draftPosition, fillRoster, positionsStillNeeded, type DraftKind,
+} from '@/hockey/hockeyDraftPlan'
 
 /**
  * A hockey draft board for the active ESPN league.
@@ -53,8 +56,20 @@ export function useHockeyBoard() {
   const rules = ref<HockeyLeagueRules | null>(null)
   const result = ref<HockeyBoardResult | null>(null)
 
-  /** Players taken by hand, in mock mode. */
-  const mockDrafted = ref<Set<string>>(new Set())
+  /**
+   * Players taken by hand, IN PICK ORDER.
+   *
+   * An array rather than a set, because order is the whole input to the local draft: pick
+   * number, whose turn it is and which of the picks were yours all come out of the sequence.
+   * A set threw that away and left the board unable to say anything except who was gone.
+   */
+  const mockOrder = ref<string[]>([])
+  const mockDrafted = computed(() => new Set(mockOrder.value))
+
+  /* Your seat in the order, zero-based. Null until set — the clock works without it, and
+     everything about YOUR draft stays silent rather than guessing a slot. */
+  const mySlot = ref<number | null>(null)
+  const draftKind = ref<DraftKind>('snake')
 
   /* ── live draft ─────────────────────────────────────────────────────────────────────
      Off by default and never turned on for the user. A board that started polling ESPN on
@@ -246,15 +261,19 @@ export function useHockeyBoard() {
      these controls there, and this is the second line of defence. */
   function take(playerKey: string) {
     if (!playerKey || live.value) return
-    mockDrafted.value = new Set([...mockDrafted.value, playerKey])
+    if (mockOrder.value.includes(playerKey)) return
+    mockOrder.value = [...mockOrder.value, playerKey]
   }
   function undo(playerKey: string) {
     if (live.value) return
-    const next = new Set(mockDrafted.value)
-    next.delete(playerKey)
-    mockDrafted.value = next
+    mockOrder.value = mockOrder.value.filter((k) => k !== playerKey)
   }
-  function reset() { if (!live.value) mockDrafted.value = new Set() }
+  /** Undo the last pick, which is the one a misclick actually needs. */
+  function undoLast() {
+    if (live.value) return
+    mockOrder.value = mockOrder.value.slice(0, -1)
+  }
+  function reset() { if (!live.value) mockOrder.value = [] }
 
   /** Concede a column, or take it back. Re-prices the whole board either way. */
   function togglePunt(key: string) {
@@ -338,10 +357,38 @@ export function useHockeyBoard() {
     contestedKeys: computed(() => result.value?.contestedKeys ?? []),
     punted, togglePunt, clearPunts,
     perCategoryByKey: computed(() => result.value?.perCategoryByKey ?? {}),
-    load, take, undo, reset,
+    load, take, undo, undoLast, reset,
+    // the local draft: everything below is derived from the order picks were marked in
+    mockOrder, mySlot, draftKind,
+    position: computed(() => draftPosition(
+      mockOrder.value.length,
+      rules.value?.teams ?? 0,
+      mySlot.value,
+      rules.value?.rosterSize || 0,
+      draftKind.value,
+    )),
+    /** The picks that landed on your seat, as player keys. */
+    myPlayers: computed(() => {
+      const pos = draftPosition(mockOrder.value.length, rules.value?.teams ?? 0, mySlot.value,
+        rules.value?.rosterSize || 0, draftKind.value)
+      const mine = new Set(pos.myPicks)
+      return mockOrder.value.filter((_, i) => mine.has(i + 1))
+    }),
     // live draft
     live, liveError, liveState, lastSyncedAt, myTeamId, teamNames,
     goLive, goMock, syncDraft,
+    roster: computed(() => {
+      const pos = draftPosition(mockOrder.value.length, rules.value?.teams ?? 0, mySlot.value,
+        rules.value?.rosterSize || 0, draftKind.value)
+      const mine = new Set(pos.myPicks)
+      const players = mockOrder.value
+        .filter((_, i) => mine.has(i + 1))
+        .map((k) => ({ playerKey: k, position: projections.value[k]?.position ?? '' }))
+      return {
+        ...fillRoster(players, rules.value?.slots ?? {}),
+        needs: positionsStillNeeded(players, rules.value?.slots ?? {}),
+      }
+    }),
     clock: computed(() => draftClock(liveState.value ?? { inProgress: false, complete: false, picks: [], drafted: new Set() }, myTeamId.value)),
   }
 }

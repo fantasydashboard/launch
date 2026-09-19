@@ -2,10 +2,14 @@
 /**
  * The hockey draft board.
  *
- * A MOCK BOARD, AND IT SAYS SO. Nothing here syncs with ESPN's draft room — taking a player
- * marks him gone locally so the board re-prices without him. That is the honest description
- * of what it does, and the header says it rather than letting a reader assume their real
- * draft is being tracked.
+ * YOU MARK THE PICKS, AND EVERYTHING ELSE IS DERIVED. ESPN does not publish an in-progress
+ * draft — measured against a live one, mDraftDetail returned inProgress:true with all 220
+ * picks empty, every roster came back with zero players, and the draft-room feed that does
+ * carry picks answered 401 because it belongs to a league member's session. So a board that
+ * waits to be told what happened waits until the draft is over.
+ *
+ * Marking a pick therefore drives the whole surface: the board re-prices, the clock advances,
+ * your roster fills, and the needs list updates. One input, no feed to go stale.
  *
  * The one number worth understanding is the left-hand column. Players are ordered by value
  * over REPLACEMENT, not by projected points, and in hockey those disagree constantly: a
@@ -20,9 +24,33 @@ const {
   loading, problem, rules, rows, replacement, unnamedScoredStatIds,
   mode, categoryKeys, contestedKeys, perCategoryByKey,
   punted, togglePunt, clearPunts,
-  drafted, take, undo, reset, load,
+  drafted, take, undo, undoLast, reset, load,
   live, liveError, liveState, lastSyncedAt, myTeamId, teamNames, clock, goLive, goMock, syncDraft,
+  mockOrder, mySlot, draftKind, position, myPlayers, roster,
 } = useHockeyBoard()
+
+/* Draft seats are one-based to a human and zero-based to the order array. */
+const slotOptions = computed(() =>
+  Array.from({ length: rules.value?.teams ?? 0 }, (_, i) => ({ value: i, label: `Pick ${i + 1}` })),
+)
+const nameOf = (key: string) => nameCache.get(key) ?? key
+
+/* Type a few letters, press Enter, the top match comes off the board. A draft moves faster
+   than a scroll-and-click, and the whole point of marking picks by hand is that it has to
+   keep up with the room. */
+const query = ref('')
+const matches = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  if (!q) return []
+  return rows.value.filter((r) => r.name.toLowerCase().includes(q)).slice(0, 6)
+})
+function takeTop() {
+  const first = matches.value[0]
+  if (first) { take(first.playerKey); query.value = '' }
+}
+
+/** Highlight a row that fills a hole rather than adding to a surplus. */
+const fillsNeed = (pos: string) => roster.value.needs.includes(pos)
 
 const teamOptions = computed(() =>
   Object.entries(teamNames.value).map(([id, name]) => ({ id: Number(id), name })),
@@ -197,11 +225,23 @@ const POS_TONE: Record<string, string> = {
         <div class="flex rounded-lg border border-dark-border">
           <button class="rounded-l-lg px-2.5 py-1 font-mono text-[11px] transition-colors"
                   :class="!live ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
-                  @click="goMock()">mock</button>
+                  @click="goMock()">I'll mark picks</button>
           <button class="rounded-r-lg px-2.5 py-1 font-mono text-[11px] transition-colors"
                   :class="live ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
-                  @click="goLive()">live</button>
+                  title="ESPN does not publish an in-progress draft — this only fills in once the draft is over"
+                  @click="goLive()">follow ESPN</button>
         </div>
+
+        <select v-if="!live" v-model.number="mySlot"
+                class="rounded-lg border border-dark-border bg-dark-bg px-2 py-1 font-mono text-[11px] text-dark-text">
+          <option :value="null">which pick is yours?</option>
+          <option v-for="o in slotOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
+        </select>
+        <select v-if="!live" v-model="draftKind"
+                class="rounded-lg border border-dark-border bg-dark-bg px-2 py-1 font-mono text-[11px] text-dark-textMuted">
+          <option value="snake">snake</option>
+          <option value="linear">linear</option>
+        </select>
 
         <template v-if="live">
           <select v-model.number="myTeamId"
@@ -217,9 +257,24 @@ const POS_TONE: Record<string, string> = {
                   @click="syncDraft()">refresh</button>
         </template>
         <template v-else>
-          <span class="font-mono text-[11px] text-dark-textMuted">Take players by hand to re-price the board.</span>
+          <span class="flex-1"></span>
+          <button v-if="mockOrder.length"
+                  class="rounded-lg border border-dark-border px-2 py-1 font-mono text-[10px] text-dark-textMuted hover:text-dark-text"
+                  @click="undoLast()">undo last</button>
         </template>
       </div>
+
+      <!--
+        SAID PLAINLY, BECAUSE THE FAILURE IS INVISIBLE OTHERWISE. A live draft returns
+        inProgress:true with every pick empty, so this tab looks like it is working and simply
+        never removes anybody. That is worse than an error.
+      -->
+      <p v-if="live"
+         class="mb-3 rounded-lg border border-[#e69a4a]/30 bg-[#e69a4a]/5 px-3 py-2 font-mono text-[11px] text-[#e69a4a]">
+        ESPN does not publish picks while a draft is running &mdash; its API reports the draft
+        in progress with every pick empty. This tab will fill in once the draft is over. During
+        one, use &ldquo;I'll mark picks&rdquo;.
+      </p>
 
       <p v-if="live && liveError"
          class="mb-3 rounded-lg border border-[#FF5C5C]/30 bg-[#FF5C5C]/5 px-3 py-2 font-mono text-[11px] text-[#FF5C5C]">
@@ -244,6 +299,71 @@ const POS_TONE: Record<string, string> = {
         </template>
       </div>
 
+      <!-- The clock, derived from the picks marked. No feed involved. -->
+      <div v-if="!live && rules?.teams"
+           class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 font-mono text-[11px]">
+        <span v-if="position.complete" class="text-dark-textMuted">Draft complete &middot; {{ mockOrder.length }} picks marked.</span>
+        <template v-else>
+          <span class="text-dark-text">
+            Pick {{ position.pick }} &middot; round {{ position.round }}
+            <span v-if="position.onTheClockSlot !== null" class="text-dark-textMuted">
+              &middot; seat {{ position.onTheClockSlot + 1 }} on the clock
+            </span>
+          </span>
+          <span v-if="position.picksUntilMine === 0" class="font-semibold text-primary">You're up.</span>
+          <span v-else-if="position.picksUntilMine !== null" class="text-dark-textMuted">
+            {{ position.picksUntilMine }} until yours (#{{ position.myNextPick }}<span
+              v-if="position.myFollowingPick">, then #{{ position.myFollowingPick }}</span>)
+          </span>
+          <span v-else-if="mySlot === null" class="text-dark-textMuted">Set your pick to see when you're up.</span>
+        </template>
+      </div>
+
+      <!-- Type, Enter, gone. A draft room moves faster than scroll-and-click. -->
+      <div v-if="!live" class="relative mb-3">
+        <input v-model="query" placeholder="mark a pick — type a name, press Enter"
+               class="w-full rounded-lg border border-dark-border bg-dark-bg px-3 py-2 font-mono text-xs text-dark-text placeholder:text-dark-textMuted/60 focus:border-primary focus:outline-none"
+               @keydown.enter.prevent="takeTop()" @keydown.esc="query = ''">
+        <div v-if="matches.length" class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-dark-border bg-dark-card shadow-xl">
+          <button v-for="(m, i) in matches" :key="m.playerKey"
+                  class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-white/5"
+                  :class="i === 0 ? 'bg-white/5' : ''"
+                  @click="take(m.playerKey); query = ''">
+            <span class="w-8 font-mono text-[10px]" :class="POS_TONE[m.position]">{{ m.position }}</span>
+            <span class="flex-1 truncate text-dark-text">{{ m.name }}</span>
+            <span class="font-mono text-[10px] text-dark-textMuted">{{ shown2(m.value) }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Your roster: what is seated, what is open, what would actually help. -->
+      <div v-if="!live && mySlot !== null && rules" class="mb-3 rounded-xl border border-dark-border bg-dark-card p-3">
+        <div class="flex flex-wrap items-baseline gap-x-3">
+          <p class="font-mono text-[9px] uppercase tracking-widest text-dark-textMuted/70">your roster</p>
+          <p v-if="roster.needs.length" class="font-mono text-[10px] text-dark-textMuted">
+            still need <span class="text-primary">{{ roster.needs.join(', ') }}</span>
+          </p>
+          <p v-else-if="myPlayers.length" class="font-mono text-[10px] text-dark-textMuted">
+            every starting slot filled &mdash; best available from here
+          </p>
+        </div>
+        <div class="mt-2 flex flex-wrap gap-x-5 gap-y-1">
+          <div v-for="sl in roster.slots" :key="sl.slot" class="font-mono text-[11px]">
+            <span class="text-dark-textMuted/70">{{ sl.slot }}</span>
+            <span class="ml-1.5" :class="sl.open > 0 ? 'text-dark-text' : 'text-dark-textMuted/50'">
+              {{ sl.filled.length }}/{{ sl.filled.length + sl.open }}
+            </span>
+          </div>
+          <div v-if="roster.bench.length" class="font-mono text-[11px] text-dark-textMuted/60">
+            bench {{ roster.bench.length }}
+          </div>
+        </div>
+        <div v-if="myPlayers.length" class="mt-2 flex flex-wrap gap-1.5">
+          <span v-for="k in myPlayers" :key="k"
+                class="rounded border border-primary/30 px-2 py-0.5 font-mono text-[10px] text-primary/90">{{ nameOf(k) }}</span>
+        </div>
+      </div>
+
       <div class="mb-3 flex flex-wrap items-center gap-2">
         <button v-for="p in POSITIONS" :key="p"
                 class="rounded-lg border px-2.5 py-1 font-mono text-[11px] uppercase transition-colors"
@@ -266,6 +386,8 @@ const POS_TONE: Record<string, string> = {
            class="flex items-center gap-3 border-b border-dark-border/40 py-2 text-sm last:border-0">
         <span class="w-7 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/60">{{ i + 1 }}</span>
         <span class="w-8 shrink-0 font-mono text-[10px]" :class="POS_TONE[r.position]">{{ r.position }}</span>
+        <span class="w-2 shrink-0 font-mono text-[10px] text-primary"
+              :title="'Fills a starting slot you still have open'">{{ !live && mySlot !== null && fillsNeed(r.position) ? '•' : '' }}</span>
         <span class="min-w-0 flex-1 truncate">
           <span class="text-dark-text">{{ r.name }}</span>
           <span v-if="isCategories && edge(r.playerKey)"

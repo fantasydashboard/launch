@@ -70,10 +70,14 @@ describe('reading a hockey league\'s own rules', () => {
     expect(unnamed).toEqual([])
   })
 
-  /* Roster capacity, not lineup openings: bench and IR count here because they are seats the
-     draft fills, and the draftable pool is as deep as the seats. */
-  it('counts every roster seat, bench and IR included', () => {
-    expect(r.rosterSize).toBe(25)
+  /*
+   * Seats the DRAFT fills: lineup plus bench, never IR. The fixture is 9 F, 5 D, 2 G, 1 UTIL,
+   * 5 bench and 3 IR — 25 slots but a 22-round draft. Counting IR invented a round at the end
+   * of every drafter's list, and ESPN's own pick schedule is what caught it: 220 picks across
+   * 10 teams is 22, not 23.
+   */
+  it('counts the seats the draft fills, and not injured reserve', () => {
+    expect(r.rosterSize).toBe(22)
   })
 
   /* A points league lists every stat it could score. Reading that list as a category list
