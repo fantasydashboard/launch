@@ -90,17 +90,51 @@ export function useHockeyBoard() {
 
   const isHockey = computed(() => leagueStore.activeSport === 'hockey')
   const isEspn = computed(() => leagueStore.activePlatform === 'espn')
-  const leagueId = computed(() => String(leagueStore.activeLeagueId ?? ''))
+
+  /**
+   * Parse an ESPN league key: `espn_{sport}_{leagueId}_{season}`.
+   *
+   * THE ACTIVE LEAGUE ID IS NOT A LEAGUE ID. It is a composite key, and this file read it as
+   * though it were the bare ESPN number — so every request went out for a league called
+   * "espn_hockey_106222043_2027" and ESPN answered 400. Six other composables in this
+   * codebase already parse this format; this one invented its own reading of the same field
+   * and was wrong.
+   *
+   * The key also CARRIES THE SEASON, which is better than deriving one: it is what the league
+   * was actually saved under, so there is no guessing about whether hockey names a season for
+   * the year it starts or ends.
+   */
+  function parseEspnKey(key: string): { leagueId: string; season: number } | null {
+    const parts = String(key || '').split('_')
+    if (parts.length < 4 || parts[0] !== 'espn') return null
+    const season = parseInt(parts[3], 10)
+    return { leagueId: parts[2], season: Number.isFinite(season) ? season : 0 }
+  }
+
+  const activeKey = computed(() => String(leagueStore.activeLeagueId ?? ''))
+  /* A bare id is still honoured: not every stored league is guaranteed to use the composite
+     form, and falling back costs nothing. */
+  const leagueId = computed(() => parseEspnKey(activeKey.value)?.leagueId || activeKey.value)
+
+  /** The season a retry actually succeeded at, so every later fetch uses the same one. */
+  const resolvedSeason = ref(0)
 
   /**
    * The season ESPN names this one by.
    *
-   * An NHL season is labelled for the year it ENDS, so 2026-27 is season 2027. Deriving it
-   * from the league's own record when there is one, because a league carried over from last
-   * year would otherwise be asked for a season it does not have.
+   * The league key first, because that is what the league was saved under. Failing that, an
+   * NHL season is labelled for the year it ENDS, so 2026-27 is season 2027.
    */
-  /* The season a retry actually succeeded at, so every later fetch uses the same one. */
-  const resolvedSeason = ref(0)
+  const season = computed(() => {
+    if (resolvedSeason.value) return resolvedSeason.value
+    const fromKey = parseEspnKey(activeKey.value)?.season
+    if (fromKey && fromKey > 2000) return fromKey
+    const saved = leagueStore.allLeagues?.find((l: any) => String(l.league_id) === activeKey.value)
+    const fromLeague = Number((saved as any)?.season)
+    if (Number.isFinite(fromLeague) && fromLeague > 2000) return fromLeague
+    const now = new Date()
+    return now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear()
+  })
 
   /** Saved season first, then the season this sport is really in. */
   function seasonsToTry(): number[] {
@@ -109,29 +143,6 @@ export function useHockeyBoard() {
     return [...new Set([season.value, sportCurrent])]
   }
 
-  const season = computed(() => {
-    if (resolvedSeason.value) return resolvedSeason.value
-    const saved = leagueStore.allLeagues?.find((l: any) => String(l.league_id) === leagueId.value)
-    const fromLeague = Number((saved as any)?.season)
-    if (Number.isFinite(fromLeague) && fromLeague > 2000) return fromLeague
-    const now = new Date()
-    // Before July the current season is still the one that ends this year.
-    return now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear()
-  })
-
-  /**
-   * The league's settings, with the REASON when there are none.
-   *
-   * This used to be `.catch(() => null)` followed by a single sentence blaming a private
-   * league. The proxy throws precise errors — 404, 403, 401 are three different problems with
-   * three different fixes — and collapsing them into one guess produced the same failure this
-   * codebase hit in the league-id lookup: a confident message pointing at the wrong cause.
-   * A 404 told the user to connect ESPN, which would not have helped.
-   *
-   * The 404 retry is here because a league row can carry a season written before we knew that
-   * hockey names a season for the year it ENDS. Rather than make the reader fix stale data,
-   * ask again for the season the sport is actually in.
-   */
   async function loadSettings(): Promise<{ settings: any; why: string }> {
     const attempt = async (yr: number) => espnViews(leagueId.value, yr, ['mSettings'])
 
