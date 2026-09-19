@@ -26,8 +26,28 @@ const {
   punted, togglePunt, clearPunts,
   drafted, take, undo, undoLast, reset, load,
   live, liveError, liveState, lastSyncedAt, myTeamId, teamNames, clock, goLive, goMock, syncDraft,
-  mockOrder, mySlot, draftKind, position, myPlayers, roster,
+  mockOrder, mySlot, draftKind, position, myPlayers, roster, vona,
 } = useHockeyBoard()
+
+/*
+ * TWO QUESTIONS, AND THEY GIVE DIFFERENT ANSWERS.
+ *
+ * "Value" ranks by value over replacement — who is best. "Cost of waiting" ranks by VONA —
+ * how much you lose by passing, measured against whoever is expected to survive to your next
+ * pick. The best player available is often one nobody else wants for two more rounds, and
+ * taking him spends a pick you could have spent on the man who will certainly be gone.
+ */
+const SORTS = [
+  { key: 'value', label: 'value', hint: 'Value over replacement — who is best' },
+  { key: 'vona', label: 'cost of waiting', hint: 'What you lose by passing, against who survives to your next pick' },
+] as const
+const sortBy = ref<'value' | 'vona'>('value')
+/* The simulation needs a seat and picks still to come. On the clock there is nothing between
+   now and your turn, so the column stays empty rather than showing zeros that look like a
+   reading. */
+const hasVona = computed(() => vona.value.picksSimulated > 0)
+const survivalOf = (key: string) => vona.value.survival[key]
+const vonaOf = (key: string) => vona.value.vona[key]
 
 /* Draft seats are one-based to a human and zero-based to the order array. */
 const slotOptions = computed(() =>
@@ -135,10 +155,15 @@ const POSITIONS = ['ALL', 'C', 'LW', 'RW', 'D', 'G'] as const
 const filter = ref<(typeof POSITIONS)[number]>('ALL')
 const LIMIT = 60
 
-const shown = computed(() =>
-  (filter.value === 'ALL' ? rows.value : rows.value.filter((r) => r.position === filter.value))
-    .slice(0, LIMIT),
-)
+const shown = computed(() => {
+  const base = filter.value === 'ALL'
+    ? rows.value
+    : rows.value.filter((r) => r.position === filter.value)
+  const ordered = sortBy.value === 'vona' && hasVona.value
+    ? [...base].sort((a, b) => (vonaOf(b.playerKey) ?? -1e9) - (vonaOf(a.playerKey) ?? -1e9))
+    : base
+  return ordered.slice(0, LIMIT)
+})
 /* Names, not ESPN's numeric ids. The chips are how you undo a misclick, and "4233563 x" is
    not something anybody can undo with confidence. Kept as a map built from every row we have
    ever seen, because a player drops off `rows` the moment he is taken. */
@@ -394,6 +419,12 @@ const POS_TONE: Record<string, string> = {
                 class="rounded-lg border px-2.5 py-1 font-mono text-[11px] uppercase transition-colors"
                 :class="filter === p ? 'border-primary text-primary' : 'border-dark-border text-dark-textMuted hover:text-dark-text'"
                 @click="filter = p">{{ p }}</button>
+        <span v-if="hasVona" class="ml-2 flex rounded-lg border border-dark-border">
+          <button v-for="sopt in SORTS" :key="sopt.key"
+                  class="px-2 py-1 font-mono text-[10px] transition-colors first:rounded-l-lg last:rounded-r-lg"
+                  :class="sortBy === sopt.key ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+                  :title="sopt.hint" @click="sortBy = sopt.key">{{ sopt.label }}</button>
+        </span>
         <span class="flex-1"></span>
         <span class="font-mono text-[11px] text-dark-textMuted">{{ drafted.size }} taken</span>
         <button v-if="!live && takenList.length" class="rounded-lg border border-dark-border px-2.5 py-1 font-mono text-[11px] text-dark-textMuted hover:text-dark-text"
@@ -405,6 +436,10 @@ const POS_TONE: Record<string, string> = {
         <span class="w-14 text-right" :title="valueHint">vor</span>
         <span class="w-14 text-right" :title="ownHint">{{ ownLabel }}</span>
         <span class="w-12 text-right" title="ESPN's average draft position — where the room takes him">adp</span>
+        <span v-if="hasVona" class="w-12 text-right"
+              title="Chance he is still there at your next pick, from simulating the picks in between">lasts</span>
+        <span v-if="hasVona" class="w-12 text-right"
+              title="What passing on him costs, against whoever is expected to survive at his position">wait</span>
         <span class="w-14"></span>
       </p>
 
@@ -430,6 +465,20 @@ const POS_TONE: Record<string, string> = {
         <span class="w-14 shrink-0 text-right font-mono text-xs font-semibold text-dark-text">{{ shown2(r.value) }}</span>
         <span class="w-14 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ shown2(r.projected) }}</span>
         <span class="w-12 shrink-0 text-right font-mono text-[11px] text-dark-textMuted/60">{{ r.adp ? Math.round(r.adp) : '—' }}</span>
+        <template v-if="hasVona">
+          <!-- Tone by how safe he is: red means he will not be there, and that is the whole
+               reason to take him now rather than the best name on the board. -->
+          <span class="w-12 shrink-0 text-right font-mono text-[11px]"
+                :class="survivalOf(r.playerKey) === undefined ? 'text-dark-textMuted/40'
+                  : survivalOf(r.playerKey) < 0.35 ? 'text-[#FF5C5C]'
+                  : survivalOf(r.playerKey) < 0.7 ? 'text-[#e69a4a]' : 'text-dark-textMuted/60'">
+            {{ survivalOf(r.playerKey) === undefined ? '—' : Math.round(survivalOf(r.playerKey) * 100) + '%' }}
+          </span>
+          <span class="w-12 shrink-0 text-right font-mono text-[11px] font-semibold"
+                :class="(vonaOf(r.playerKey) ?? 0) > 0 ? 'text-dark-text' : 'text-dark-textMuted/40'">
+            {{ vonaOf(r.playerKey) === undefined ? '—' : shown2(vonaOf(r.playerKey)) }}
+          </span>
+        </template>
         <button v-if="!live" class="w-14 shrink-0 rounded border border-dark-border px-1.5 py-0.5 font-mono text-[10px] text-dark-textMuted hover:border-primary hover:text-primary"
                 @click="take(r.playerKey)">take</button>
         <span v-else class="w-14 shrink-0"></span>

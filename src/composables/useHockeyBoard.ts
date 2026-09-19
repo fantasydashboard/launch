@@ -7,8 +7,9 @@ import {
   parseDraftDetail, draftClock, teamNamesFromEspn, type HockeyDraftState,
 } from '@/hockey/hockeyDraftSync'
 import {
-  draftPosition, fillRoster, positionsStillNeeded, type DraftKind,
+  draftPosition, fillRoster, positionsStillNeeded, pickOwners, type DraftKind,
 } from '@/hockey/hockeyDraftPlan'
+import { buildHockeyVona } from '@/hockey/hockeyVona'
 
 /**
  * A hockey draft board for the active ESPN league.
@@ -404,6 +405,32 @@ export function useHockeyBoard() {
         ...fillRoster(players, rules.value?.slots ?? {}),
         needs: positionsStillNeeded(players, rules.value?.slots ?? {}),
       }
+    }),
+    /*
+     * SURVIVAL AND VONA — what waiting actually costs.
+     *
+     * Only computed with a seat set and picks still to come: the whole quantity is "between
+     * now and MY next turn", and without a seat there is no next turn to measure to. Five
+     * hundred runs keeps it under a frame on a full board.
+     */
+    vona: computed(() => {
+      const r = rules.value
+      if (!r?.teams || mySlot.value === null) {
+        return { survival: {}, vona: {}, expectedBest: {}, picksSimulated: 0 }
+      }
+      const pos = draftPosition(mockOrder.value.length, r.teams, mySlot.value,
+        r.rosterSize || 0, draftKind.value)
+      if (pos.myNextPick === null) {
+        return { survival: {}, vona: {}, expectedBest: {}, picksSimulated: 0 }
+      }
+      /* The seats actually picking between the clock and my turn, in order. */
+      const owners = pickOwners(r.teams, r.rosterSize || 0, draftKind.value)
+      const upcomingSlots = owners.slice(mockOrder.value.length, pos.myNextPick - 1)
+      return buildHockeyVona({
+        rows: result.value?.rows ?? [],
+        upcomingSlots,
+        teams: r.teams,
+      })
     }),
     clock: computed(() => draftClock(liveState.value ?? { inProgress: false, complete: false, picks: [], drafted: new Set() }, myTeamId.value)),
   }
