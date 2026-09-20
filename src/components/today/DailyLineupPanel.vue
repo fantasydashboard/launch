@@ -46,6 +46,18 @@ const gain = computed(() => optimalTotal.value - currentTotal.value)
 const dead = computed(() => rows.value.filter((r) => !r.playsToday))
 
 /*
+ * Injured men sitting in STARTING slots.
+ *
+ * Two fifteen-day-IL pitchers were in the lineup reading like any other row, with the tag
+ * rendered in the same muted grey as a team abbreviation. Whether ESPN really has them there
+ * or we misread the slot, a starter who cannot play is the same cost as one with no game and
+ * belongs in the same warning rather than in the small print.
+ */
+const HURT = /^(IL|DL|DAY_TO_DAY|FIFTEEN|TEN_DAY|SIXTY|OUT|SUSPEN)/i
+const injuredStarters = computed(() =>
+  rows.value.filter((r) => r.playsToday && r.status && HURT.test(r.status)))
+
+/*
  * CAN WE ACTUALLY RANK THESE PLAYERS TONIGHT?
  *
  * A category league has no scoring weights, so the per-game value every row is sorted by
@@ -96,6 +108,12 @@ const canValue = computed(() =>
       &mdash; {{ dead.map((d) => d.name).join(', ') }}
     </p>
 
+    <p v-if="injuredStarters.length"
+       class="mb-3 rounded-lg border border-[#e69a4a]/30 bg-[#e69a4a]/5 px-3 py-2 font-mono text-[11px] text-[#e69a4a]">
+      {{ injuredStarters.length }} injured {{ injuredStarters.length === 1 ? 'player is' : 'players are' }}
+      in your starting lineup &mdash; {{ injuredStarters.map((r) => r.name).join(', ') }}
+    </p>
+
     <p v-if="!rows.length" class="py-6 text-center font-mono text-xs text-dark-textMuted">
       <template v-if="mode === 'current'">
         We can't read your set lineup from the platform &mdash; switch to optimal for our pick.
@@ -118,7 +136,8 @@ const canValue = computed(() =>
             &middot; <img :src="logo(r.team)" alt="" @error="onLogoErr" class="h-3 w-3 object-contain" />{{ r.team }}
           </template>
           <span v-if="!r.playsToday" class="text-[#FF5C5C]">&middot; no game</span>
-          <span v-else-if="r.status && r.status !== 'ACTIVE'" class="text-[#e69a4a]">&middot; {{ r.status }}</span>
+          <span v-else-if="r.status && r.status !== 'ACTIVE'"
+                class="rounded bg-[#e69a4a]/15 px-1 font-bold text-[#e69a4a]">{{ r.status }}</span>
         </span>
       </span>
       <span v-if="canValue" class="w-16 shrink-0 text-right font-mono text-sm"

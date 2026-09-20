@@ -15,6 +15,7 @@
  */
 import { computed, ref } from 'vue'
 import { useLeagueStore } from '@/stores/league'
+import { wordsFor } from '@/lib/sportWords'
 import { teamLogoFor } from '@/players/teamLogo'
 import type { RankedRow } from '@/composables/useDailyLineup'
 
@@ -25,7 +26,29 @@ const props = defineProps<{
 }>()
 
 const leagueStore = useLeagueStore()
+const words = computed(() => wordsFor(leagueStore.activeSport))
 const logo = (abbr?: string) => teamLogoFor(leagueStore.activeSport, abbr)
+
+/*
+ * TWO LISTS, BECAUSE THEY ARE NOT THE SAME QUESTION.
+ *
+ * Ranked together, the top forty was forty starting pitchers and no hitters — arithmetically
+ * right and useless. A pitcher projects around twenty points tonight and a hitter around
+ * three; they are not competing for the same seat and nobody chooses between them. Football
+ * can mix positions because a quarterback, a back and a receiver score on one scale and do
+ * compete, through flex. Baseball's do not.
+ *
+ * Sides are the scarce SCHEDULED position against the everyday body, which is the same split
+ * the roster panel already makes: pitchers and hitters, goalies and skaters.
+ */
+const SCARCE: Record<string, string[]> = {
+  baseball: ['SP', 'RP', 'P'], hockey: ['G'], basketball: ['C'],
+}
+const isScarce = (position: string) => {
+  const list = SCARCE[leagueStore.activeSport] ?? SCARCE.baseball
+  return (position || '').toUpperCase().split(/[,/|]/).some((t) => list.includes(t.trim()))
+}
+const side = ref<'skaters' | 'goalies'>('skaters')
 const one = (n: number) => n.toFixed(1)
 function onLogoErr(e: Event) { (e.target as HTMLImageElement).style.display = 'none' }
 
@@ -42,7 +65,7 @@ const LIMIT = 40
  */
 const positions = computed(() => {
   const seen = new Set<string>()
-  for (const r of props.rows) {
+  for (const r of bySide.value) {
     for (const p of (r.position || '').split(/[,/|]/)) {
       const t = p.trim().toUpperCase()
       if (t) seen.add(t)
@@ -58,11 +81,13 @@ const positions = computed(() => {
 })
 
 const filter = ref('ALL')
+const bySide = computed(() =>
+  props.rows.filter((r) => (side.value === 'goalies') === isScarce(r.position)))
 const shown = computed(() => {
   const f = filter.value
   const list = f === 'ALL'
-    ? props.rows
-    : props.rows.filter((r) => (r.position || '').toUpperCase().split(/[,/|]/).map((t) => t.trim()).includes(f))
+    ? bySide.value
+    : bySide.value.filter((r) => (r.position || '').toUpperCase().split(/[,/|]/).map((t) => t.trim()).includes(f))
   return list.slice(0, LIMIT)
 })
 
@@ -84,6 +109,15 @@ const OWNER_TONE: Record<string, string> = {
     <p class="mb-3 font-mono text-[10px] text-dark-textMuted/60">
       only players with a game &mdash; a star on a dark night is not a low-ranked play, he is no play at all
     </p>
+
+    <div class="mb-3 flex rounded-lg border border-dark-border" style="width:fit-content">
+      <button class="rounded-l-lg px-3 py-1 font-mono text-[11px] capitalize transition-colors"
+              :class="side === 'skaters' ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+              @click="side = 'skaters'; filter = 'ALL'">{{ words.skaters }}</button>
+      <button class="rounded-r-lg px-3 py-1 font-mono text-[11px] capitalize transition-colors"
+              :class="side === 'goalies' ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+              @click="side = 'goalies'; filter = 'ALL'">{{ words.goalies }}</button>
+    </div>
 
     <div class="mb-3 flex flex-wrap items-center gap-1.5">
       <button v-for="p in positions" :key="p"
@@ -124,8 +158,8 @@ const OWNER_TONE: Record<string, string> = {
       <span class="w-14 shrink-0 text-right font-mono text-sm font-semibold text-dark-text">{{ one(r.today) }}</span>
     </div>
 
-    <p v-if="rows.length > LIMIT" class="mt-2 font-mono text-[10px] text-dark-textMuted">
-      showing {{ shown.length }} of {{ rows.length }} playing tonight
+    <p v-if="bySide.length > LIMIT" class="mt-2 font-mono text-[10px] text-dark-textMuted">
+      showing {{ shown.length }} of {{ bySide.length }} {{ words[side] }} playing tonight
     </p>
   </section>
 </template>

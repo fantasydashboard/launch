@@ -158,8 +158,8 @@ function budgetTagText(p: ScoredPlay): string | null {
       <!-- 1. WHERE THE WEEK STANDS -->
       <TodayMatchupHeader
         :snapshot="thisWeek.snapshot.value"
-        :my-team-name="teamSource.myTeamName.value"
-        :my-team-logo="teamSource.myTeamLogo.value"
+        :my-team-name="daily.myTeamName.value || teamSource.myTeamName.value"
+        :my-team-logo="daily.myTeamLogo.value || teamSource.myTeamLogo.value"
         :is-category="isCategoryLeague" />
 
       <!-- Dark night is a real answer, and it belongs inside the page rather than instead of it. -->
@@ -175,8 +175,14 @@ function budgetTagText(p: ScoredPlay): string | null {
         :value-label="isPoints ? 'projected points' : 'category value'" />
 
       <!-- ── TONIGHT'S RANKINGS ──────────────────────────────────────────── -->
-      <DailyRankingsPanel :rows="daily.rankings.value"
+      <DailyRankingsPanel v-if="daily.canValue.value"
+                          :rows="daily.rankings.value"
                           :slot-order="Object.keys(teamSource.rosterSlots.value ?? {})" />
+      <!-- Absent with a reason. A panel that simply disappears reads as a page still loading. -->
+      <p v-else class="mt-5 rounded-xl border border-dark-border bg-dark-bg/40 px-4 py-6 text-center font-mono text-[11px] text-dark-textMuted">
+        Tonight's rankings need category value, which isn't wired in yet &mdash; ranking this
+        league on points would be the wrong maths, confidently presented.
+      </p>
     </template>
   </div>
 </template>

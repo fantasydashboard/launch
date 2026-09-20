@@ -98,6 +98,12 @@ export function useDailyLineup() {
     freeAgents: computed(() =>
       isCategory.value ? (catSource.freeAgents.value ?? []) : (pointsSource.freeAgents?.value ?? [])),
     teamNames: pointsSource.teamNames,
+    /* Wired for pool, slots and team key and forgotten here, so a category league kept the
+       "My Team" placeholder — the same miss as the load() one. */
+    myTeamName: computed(() => (isCategory.value
+      ? (catSource.standings.value?.find((r: any) => `espn_${r.team?.teamId}` === catSource.myTeamId.value)?.team?.name ?? '')
+      : pointsSource.myTeamName.value)),
+    myTeamLogo: computed(() => (isCategory.value ? '' : pointsSource.myTeamLogo.value)),
     loading: computed(() => (isCategory.value ? catSource.loading.value : pointsSource.loading.value)),
     load: () => { if (isCategory.value) catSource.load(); else pointsSource.load() },
     loadFreeAgents: () => { if (!isCategory.value) pointsSource.loadFreeAgents?.() },
@@ -273,6 +279,17 @@ export function useDailyLineup() {
    * that only shows what is taken cannot tell you that.
    */
   const rankings = computed<RankedRow[]>(() => {
+    /*
+     * A CATEGORY LEAGUE GETS NO LIST AT ALL, rather than a list built on the wrong maths.
+     *
+     * This ranked 537 players to one decimal on a page whose lineup panel, eight inches
+     * above, said "we can't rank these yet" — the same data contradicting itself. And it was
+     * not merely mistaken: rostered players score zero without weights, so only free agents
+     * (matched by name through another path) surfaced, and the panel became a free-agent
+     * list wearing the title "tonight's rankings".
+     */
+    if (isCategory.value) return []
+
     const mineKey = source.myTeamKey.value
     const out: RankedRow[] = []
 
@@ -320,6 +337,10 @@ export function useDailyLineup() {
   return {
     rows, current, lineup, bench, deadSeats, upgrades, rankings,
     loading, gamesTonight, playsToday, load,
+    myTeamName: source.myTeamName,
+    myTeamLogo: source.myTeamLogo,
+    /** False when the league publishes nothing we can price players with. */
+    canValue: computed(() => !isCategory.value),
   }
 }
 
