@@ -90,6 +90,9 @@ const dead = computed(() => rows.value.filter((r) => !r.playsToday))
     <div v-for="r in rows" :key="mode + r.playerKey"
          class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
       <span class="w-10 shrink-0 font-mono text-[10px] uppercase text-dark-textMuted">{{ slotOf(r) }}</span>
+      <img v-if="r.headshot" :src="r.headshot" :alt="r.name" loading="lazy" @error="onLogoErr"
+           class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
+      <span v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[9px] text-dark-textMuted">{{ r.position }}</span>
       <span class="min-w-0 flex-1">
         <span class="block truncate text-sm font-semibold"
               :class="r.playsToday ? 'text-dark-text' : 'text-dark-textMuted/50'">{{ r.name }}</span>

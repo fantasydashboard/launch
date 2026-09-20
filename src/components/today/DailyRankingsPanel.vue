@@ -18,7 +18,11 @@ import { useLeagueStore } from '@/stores/league'
 import { teamLogoFor } from '@/players/teamLogo'
 import type { RankedRow } from '@/composables/useDailyLineup'
 
-const props = defineProps<{ rows: RankedRow[] }>()
+const props = defineProps<{
+  rows: RankedRow[]
+  /** The league's own slot order, so the filters read the way its lineup page does. */
+  slotOrder?: string[]
+}>()
 
 const leagueStore = useLeagueStore()
 const logo = (abbr?: string) => teamLogoFor(leagueStore.activeSport, abbr)
@@ -27,8 +31,15 @@ function onLogoErr(e: Event) { (e.target as HTMLImageElement).style.display = 'n
 
 const LIMIT = 40
 
-/* Position filters, taken from what is actually on the board rather than a hardcoded list —
-   a hockey league gets C/LW/RW/D/G and a baseball one its own, with no sport branch here. */
+/*
+ * Position filters in the LEAGUE'S OWN ORDER, not the alphabet.
+ *
+ * Sorted alphabetically a baseball league opened on 1B, 2B, 3B, C, CF, CI, DH... which is not
+ * an order any manager thinks in and buries the catcher between third base and centre field.
+ * The league already publishes the order it lists its own lineup in; anything it does not
+ * name falls to the end rather than being dropped, because a multi-eligible player can carry
+ * a position the slots never mention.
+ */
 const positions = computed(() => {
   const seen = new Set<string>()
   for (const r of props.rows) {
@@ -37,7 +48,13 @@ const positions = computed(() => {
       if (t) seen.add(t)
     }
   }
-  return ['ALL', ...[...seen].sort()]
+  const order = (props.slotOrder ?? []).map((s) => s.toUpperCase())
+  const rank = (p: string) => {
+    const i = order.indexOf(p)
+    return i === -1 ? order.length + 1 : i
+  }
+  const sorted = [...seen].sort((a, b) => (rank(a) - rank(b)) || a.localeCompare(b))
+  return ['ALL', ...sorted]
 })
 
 const filter = ref('ALL')
@@ -84,6 +101,9 @@ const OWNER_TONE: Record<string, string> = {
     <div v-for="(r, i) in shown" :key="r.playerKey"
          class="flex items-center gap-3 border-b border-dark-border/40 py-2 text-sm last:border-0">
       <span class="w-7 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/50">{{ i + 1 }}</span>
+      <img v-if="r.headshot" :src="r.headshot" :alt="r.name" loading="lazy" @error="onLogoErr"
+           class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
+      <span v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[9px] text-dark-textMuted">{{ r.position }}</span>
       <span class="min-w-0 flex-1">
         <span class="block truncate">
           <span v-if="r.owner === 'mine'" class="text-primary">&#9733;</span>

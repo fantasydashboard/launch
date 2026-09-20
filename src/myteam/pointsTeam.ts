@@ -25,6 +25,8 @@ export interface PointsPoolPlayer {
   headshot?: string
   onIL?: boolean
   status?: string // raw platform injury status ('IL10' / 'DTD' / 'DAY_TO_DAY' / '' …)
+  /** The slot the PLATFORM has him in right now — what is set, not what we advise. */
+  lineupSlot?: string
 }
 
 export type Tier = 'CORE' | 'SOLID' | 'FRINGE'

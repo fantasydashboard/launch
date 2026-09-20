@@ -31,6 +31,7 @@ export type BenchReason = 'no-game' | 'outscored' | 'injured'
 export interface RankedRow {
   playerKey: string
   name: string
+  headshot?: string
   position: string
   team: string
   today: number
@@ -42,6 +43,7 @@ export interface RankedRow {
 export interface DailyRow {
   playerKey: string
   name: string
+  headshot?: string
   position: string
   team: string
   /** Projected points TONIGHT. Zero when he does not play. */
@@ -103,6 +105,7 @@ export function useDailyLineup() {
       return {
         playerKey: p.playerKey,
         name: p.name,
+        headshot: p.headshot,
         position: p.position,
         team: p.proTeam ?? '',
         perGame,
@@ -111,7 +114,7 @@ export function useDailyLineup() {
         status: p.status ?? '',
         slot: null,
         /* From the platform's own lineup, not ours — this is what is set, not what we advise. */
-        startedSlot: (p as any).lineupSlot && !/^(BE|Bench|IR|IL|NA|DL)$/i.test(String((p as any).lineupSlot))
+        startedSlot: p.lineupSlot && !/^(BE|Bench|IR|IL|NA|DL)$/i.test(String((p as any).lineupSlot))
           ? String((p as any).lineupSlot)
           : null,
         benchReason: null,
@@ -230,7 +233,7 @@ export function useDailyLineup() {
       const perGame = v && v.games > 0 ? v.total / v.games : 0
       if (!perGame || !playsToday(p.proTeam ?? '')) continue
       out.push({
-        playerKey: p.playerKey, name: p.name, position: p.position,
+        playerKey: p.playerKey, name: p.name, headshot: p.headshot, position: p.position,
         team: p.proTeam ?? '', today: perGame, status: p.status ?? '',
         owner: p.teamKey === mineKey ? 'mine' : 'rostered',
         ownerName: p.teamKey === mineKey ? 'you' : (source.teamNames.value?.[p.teamKey] ?? ''),
@@ -243,7 +246,8 @@ export function useDailyLineup() {
       const perGame = v && v.games > 0 ? v.total / v.games : 0
       if (!perGame) continue
       out.push({
-        playerKey: fa.playerKey ?? `fa:${fa.name}`, name: fa.name, position: fa.position,
+        playerKey: fa.playerKey ?? `fa:${fa.name}`, name: fa.name,
+        headshot: (fa as any).headshot, position: fa.position,
         team: fa.team ?? '', today: perGame, status: fa.status ?? '',
         owner: 'free', ownerName: '',
       })

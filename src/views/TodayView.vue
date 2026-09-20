@@ -175,7 +175,8 @@ function budgetTagText(p: ScoredPlay): string | null {
         :value-label="isPoints ? 'projected points' : 'category value'" />
 
       <!-- ── TONIGHT'S RANKINGS ──────────────────────────────────────────── -->
-      <DailyRankingsPanel :rows="daily.rankings.value" />
+      <DailyRankingsPanel :rows="daily.rankings.value"
+                          :slot-order="Object.keys(teamSource.rosterSlots.value ?? {})" />
     </template>
   </div>
 </template>

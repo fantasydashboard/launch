@@ -58,6 +58,9 @@ export function mapRostersToPool(teams: EspnTeamRosterLike[], sport?: Sport): Po
       headshot: sport ? espnHeadshotUrl(p.playerId, sport) : undefined,
       proTeam: p.proTeam || undefined,
       onIL: isEspnIL(p.lineupSlot),
+      /* The slot the platform ACTUALLY has him in. Present on the roster entry all along and
+         dropped here, which is why the daily page could not show a manager his own lineup. */
+      lineupSlot: p.lineupSlot || undefined,
       status: p.injuryStatus && p.injuryStatus !== 'ACTIVE' ? p.injuryStatus : '',
     })),
   )
