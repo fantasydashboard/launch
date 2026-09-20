@@ -17,6 +17,8 @@ import { dailyCandidates } from '@/myteam/yourMove/dailyCandidates'
 import { projectGames } from '@/myteam/yourMove/projectRemainingWeek'
 import type { BenchPlayer } from '@/myteam/yourMove/generators/startSitGenerator'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
+import { getNhlSchedule } from '@/services/nhlSchedule'
+import { useHockeyValue } from '@/composables/useHockeyValue'
 import { buildPlayerMatchers, type FGProjection } from '@/services/projectionService'
 import { findOpenSlots, type LineupSlot, type OpenSlot } from '@/today/openSlots'
 import { scoreToday } from '@/today/scoreToday'
@@ -422,7 +424,49 @@ export function useToday(): {
   )
 
   // ── platform / sport scope ──────────────────────────────────────────────────
+  /*
+   * THE SPORTS THAT PLAY EVERY DAY.
+   *
+   * This was `isBaseball`, which was accurate rather than principled — baseball was the only
+   * daily sport in the codebase. What actually makes this board apply is that a roster plays
+   * on a SCHEDULE rather than once a week: the question "who do I start tonight" only exists
+   * where tonight is different from tomorrow. Hockey qualifies, basketball will.
+   *
+   * Football never does, and it has its own weekly surface for exactly that reason.
+   */
+  const DAILY_SPORTS = new Set(['baseball', 'hockey'])
+  const isDaily = computed(() => DAILY_SPORTS.has(leagueStore.activeSport))
+  /* Kept for the baseball-only branches below — probable starters, FanGraphs matching and the
+     opposing-pitcher adjustment are real baseball concepts with no hockey equivalent. */
   const isBaseball = computed(() => leagueStore.activeSport === 'baseball')
+  const isHockey = computed(() => leagueStore.activeSport === 'hockey')
+
+  /*
+   * Hockey's own value engine, on the same terms as baseball's.
+   *
+   * pointsDailyValue was already sport-agnostic — it takes a `valueOf` and divides a total by
+   * the games behind it, which is a per-game projection in any sport. What it needed was a
+   * hockey `valueOf` to be handed instead of FanGraphs'.
+   */
+  const hockeyLeagueId = computed(() => {
+    const parts = String(leagueStore.activeLeagueId ?? '').split('_')
+    return parts.length >= 4 && parts[0] === 'espn' ? parts[2] : String(leagueStore.activeLeagueId ?? '')
+  })
+  const hockeySeason = computed(() => {
+    const parts = String(leagueStore.activeLeagueId ?? '').split('_')
+    const fromKey = parts.length >= 4 ? parseInt(parts[3], 10) : NaN
+    if (Number.isFinite(fromKey) && fromKey > 2000) return fromKey
+    const now = new Date()
+    return now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear()
+  })
+  const hockeyValue = useHockeyValue({
+    leagueId: hockeyLeagueId,
+    season: hockeySeason,
+    enabled: isHockey,
+    /* From the season's own elapsed fraction, which the store already tracks, rather than a
+       week counter the store does not have. 26 weeks is the NHL regular season. */
+    weeksLeft: computed(() => Math.max(1, Math.round(26 * (1 - (seasonFraction.value ?? 0))))),
+  })
   const platformSupported = computed(
     () => leagueStore.activePlatform === 'espn' || leagueStore.activePlatform === 'yahoo',
   )
@@ -503,6 +547,12 @@ export function useToday(): {
   // league scoring weights), independent of addDelta's category-shaped deltas.
   function baseValue(candidate: MoveCandidate): number {
     if (isPointsLeague.value) {
+      if (isHockey.value) {
+        return pointsDailyValue(
+          candidate.player.name, candidate.player.team, candidate.player.position,
+          hockeyValue.valueOf.value,
+        )
+      }
       const matchFG = matchFGRef.value
       if (!matchFG) return 0
       return pointsDailyValue(candidate.player.name, candidate.player.team, candidate.player.position, baseballValueOfWith(matchFG))
@@ -686,7 +736,7 @@ export function useToday(): {
   // is still the EMPTY placeholder, which would make findOpenSlots flag every
   // started player as an 'off-day' false positive.
   const vm = computed<TodayBoard>(() => {
-    if (!isBaseball.value || !platformSupported.value) return EMPTY_BOARD
+    if (!isDaily.value || !platformSupported.value) return EMPTY_BOARD
     if (!scheduleLoaded.value) return EMPTY_BOARD
     if (!Object.keys(schedule.value.gamesByTeam).length) return EMPTY_BOARD
     return { ...board.value, sitAlerts: sitAlerts.value }
@@ -701,7 +751,7 @@ export function useToday(): {
   // gate every trigger on isBaseball (the broadened points triggers otherwise fetch full rosters
   // for football/hockey/etc. leagues that render an empty board anyway).
   function maybeLoadEspn() {
-    if (!isBaseball.value) return
+    if (!isDaily.value) return
     if (leagueStore.activePlatform === 'espn') {
       espn.load() // self-bails unless H2H_CATEGORY
       espnPoints.load() // self-bails unless points
@@ -738,7 +788,7 @@ export function useToday(): {
   async function load() {
     loading.value = true
     try {
-      if (!isBaseball.value || !platformSupported.value) {
+      if (!isDaily.value || !platformSupported.value) {
         error.value = 'no-games'
         return
       }
@@ -757,7 +807,13 @@ export function useToday(): {
         }
       }
       const today = ymd(new Date())
-      schedule.value = await getWeekSchedule(today, today)
+      /* Each sport's own slate. Reading MLB's for a hockey league is not a near-miss — NHL
+         and MLB share ten team abbreviations, so it returns plausible counts for the wrong
+         fixtures, which is how the Matchup came to tell a hockey manager he out-gamed his
+         opponent by five. */
+      schedule.value = leagueStore.activeSport === 'hockey'
+        ? await getNhlSchedule(today, today)
+        : await getWeekSchedule(today, today)
       error.value = Object.keys(schedule.value.gamesByTeam).length ? null : 'no-games'
     } catch {
       schedule.value = { ...EMPTY_SCHEDULE }
@@ -787,7 +843,7 @@ export function useToday(): {
   // empty copy rendered in the gap. Keeping this false until the roster/FAs land holds the
   // "Reading today's slate…" affordance up, so a fast navigate-away can't miss late data.
   const dataReady = computed(() => {
-    if (!isBaseball.value || !platformSupported.value) return true // resolves to no-games
+    if (!isDaily.value || !platformSupported.value) return true // resolves to no-games
     if (!scheduleLoaded.value) return false
     if (!Object.keys(schedule.value.gamesByTeam).length) return true // no games → resolved
     return boardInputsReady.value && pointsScoringReady.value
