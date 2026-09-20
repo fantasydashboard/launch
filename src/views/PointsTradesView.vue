@@ -23,14 +23,13 @@ import { reseatRos, reseatValues } from '@/composables/useFootballWire'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { leagueRankTone, leagueRankBar, leagueRankWidth, leagueRankLabel } from '@/lib/leagueRankTone'
 import { startableCounts, startableFraction } from '@/trades/rosterSlots'
-import { mlbTeamLogo } from '@/players/mlbTeamLogo'
-import { nflTeamLogo } from '@/players/nflTeamLogo'
+import { teamLogoFor } from '@/players/teamLogo'
 import type { AvailablePlayer } from '@/players/types'
 
 const leagueStore = useLeagueStore()
 const { hasFullAccess } = useFeatureAccess()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
-const teamLogo = (abbr?: string) => (isFootball.value ? nflTeamLogo(abbr) : mlbTeamLogo(abbr))
+const teamLogo = (abbr?: string) => teamLogoFor(leagueStore.activeSport, abbr)
 
 const source = useActivePointsSource()
 const scoring = useLeagueScoring()

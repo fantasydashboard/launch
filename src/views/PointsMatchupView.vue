@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
+import { wordsFor } from '@/lib/sportWords'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { useThisWeekOpponent } from '@/composables/useThisWeekOpponent'
@@ -43,6 +44,8 @@ watch(() => leagueStore.activeLeagueId, loadAll)
 // Weekly NFL matchup isn't built yet; when there's no matchup for a football league, point users
 // at the surfaces that already work instead of the generic "no matchup found" baseball copy.
 const isFootball = computed(() => leagueStore.activeSport === 'football')
+const isHockey = computed(() => leagueStore.activeSport === 'hockey')
+const words = computed(() => wordsFor(leagueStore.activeSport))
 
 const pool = source.pool
 const fgByKey = source.fgByKey
@@ -284,12 +287,19 @@ const trend = useWinProbTrend({
       </section>
 
       <!--
-        The volume lever is baseball-only: it counts hitter-games and two-start arms from the
-        MLB schedule. In football every roster plays exactly once, so there is no volume edge
-        to win — and worse, NFL and MLB share team codes (DET, CHI, SF, MIN, HOU), so this
-        block was reporting real baseball game counts for NFL players.
+        The volume lever is BASEBALL-ONLY, and the reason is the schedule rather than the
+        vocabulary. It counts hitter-games and two-start arms out of the MLB schedule, joined
+        on team abbreviation.
+        In football every roster plays exactly once, so there is no volume edge to win — and
+        NFL and MLB share team codes (DET, CHI, SF, MIN, HOU), so this block reported real
+        baseball game counts for NFL players until it was hidden.
+        HOCKEY HAS THE SAME COLLISION AND MORE OF IT: DET, CHI, COL, TOR, STL, PIT, PHI, BOS,
+        WSH and MIN are all both. A hockey league was reading "you out-game them by 5 this
+        week" off baseball's schedule. Volume is a real edge in hockey — three or four games a
+        week against one or two decides categories — so this comes back when there is an NHL
+        schedule to count, and stays hidden rather than translated until then.
       -->
-      <div v-if="volMatchup && !isFootball" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+      <div v-if="volMatchup && !isFootball && !isHockey" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
         <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
           The volume edge <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">· {{ cadence === 'daily' ? 'today' : 'this week' }}</span>
         </h2>
@@ -297,7 +307,7 @@ const trend = useWinProbTrend({
 
         <div class="grid grid-cols-2 gap-3 text-sm">
           <div class="rounded-lg bg-dark-bg/60 p-3">
-            <div class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Hitter-games {{ cadence === 'daily' ? 'today' : 'this week' }}</div>
+            <div class="font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">{{ words.volumeLabel }} {{ cadence === 'daily' ? 'today' : 'this week' }}</div>
             <div class="mt-1 flex items-baseline gap-2">
               <span class="text-xl font-semibold" :style="{ color: volMatchup.gamesDiff >= 0 ? ME : OPP }">{{ volMatchup.my.hitterGames }}</span>
               <span class="text-dark-textMuted">vs {{ volMatchup.opp.hitterGames }}</span>
@@ -337,8 +347,8 @@ const trend = useWinProbTrend({
           <router-link to="/the-wire" class="text-primary hover:underline">see who's available → The Wire</router-link>
         </template>
         <template v-else>
-          Need more bites at the apple this week?
-          <router-link to="/players" class="text-primary hover:underline">stream a bat or a two-start arm → The Wire</router-link>
+          Need more {{ words.volumeIdiom }} this week?
+          <router-link to="/players" class="text-primary hover:underline">stream a {{ words.skater }} or a two-start {{ words.goalie }} → The Wire</router-link>
         </template>
       </div>
     </template>

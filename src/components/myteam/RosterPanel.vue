@@ -4,8 +4,12 @@ import type { RosterPlayer } from '@/composables/useMyRoster'
 import type { PlayerContribution } from '@/myteam/types'
 import type { DropAnalysis } from '@/myteam/dropCandidates'
 import { valueTier } from '@/myteam/value'
-import { mlbTeamLogo } from '@/players/mlbTeamLogo'
+import { teamLogoFor } from '@/players/teamLogo'
+import { useLeagueStore } from '@/stores/league'
+import { wordsFor } from '@/lib/sportWords'
 import ValueBadge from '@/components/trades/ValueBadge.vue'
+
+const leagueStore = useLeagueStore()
 
 const props = defineProps<{
   players: RosterPlayer[]
@@ -116,7 +120,7 @@ const sections = computed<RosterSection[]>(() => {
       topChip,
       roleValue,
       crossValue: contrib?.crossPercentile ?? 0,
-      proLogo: mlbTeamLogo(player.team),
+      proLogo: teamLogoFor(leagueStore.activeSport, player.team),
       tier: valueTier(roleValue),
       dropReason: dropReasonByKey.value.get(player.playerKey) ?? null,
       isWeakLink: weakLink !== null && player.playerKey === weakLink,
@@ -131,17 +135,27 @@ const sections = computed<RosterSection[]>(() => {
   const roleFor = (r: RosterRow): 'hitter' | 'pitcher' => {
     const fromEngine = roleByKey.get(r.player.playerKey)
     if (fromEngine) return fromEngine
+    /* The scarce scheduled position: pitchers in baseball, goalies in hockey. Same split,
+       same meaning, different letters — and the letters matter, because a goalie landing in
+       a section headed "Hitters" is the product telling a reader it does not know the sport. */
+    const SCARCE: Record<string, string[]> = {
+      baseball: ['SP', 'RP', 'P'], hockey: ['G'], basketball: ['C'],
+    }
+    const scarce = SCARCE[leagueStore.activeSport] ?? SCARCE.baseball
     const isPitcher = String(r.player.position || '')
       .split(/[,/|]/)
-      .some((t) => ['SP', 'RP', 'P'].includes(t.trim().toUpperCase()))
+      .some((t) => scarce.includes(t.trim().toUpperCase()))
     return isPitcher ? 'pitcher' : 'hitter'
   }
   const split = (role: 'hitter' | 'pitcher') =>
     rows.filter((r) => roleFor(r) === role).sort((a, b) => b.roleValue - a.roleValue)
-  return [
-    { role: 'hitter', label: 'Hitters', rows: split('hitter') },
-    { role: 'pitcher', label: 'Pitchers', rows: split('pitcher') },
-  ].filter((s) => s.rows.length > 0)
+  const w = wordsFor(leagueStore.activeSport)
+  const title = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+  const built: RosterSection[] = [
+    { role: 'hitter', label: title(w.skaters), rows: split('hitter') },
+    { role: 'pitcher', label: title(w.goalies), rows: split('pitcher') },
+  ]
+  return built.filter((s) => s.rows.length > 0)
 })
 
 // The MLB team logo is decorative — hide it on a broken load.

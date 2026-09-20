@@ -1788,7 +1788,10 @@ export class EspnFantasyService {
           eligiblePositions: [
             ...new Set(
               ((player.eligibleSlots as number[]) || [])
-                .map((id) => (sport === 'baseball' ? BASEBALL_LINEUP_SLOTS : LINEUP_SLOTS)[id])
+                /* The free-agent path had its own copy of the same binary, so The Wire kept
+                   labelling defencemen "WR" after the roster path was fixed. */
+                .map((id) => (sport === 'baseball' ? BASEBALL_LINEUP_SLOTS
+                  : sport === 'hockey' ? HOCKEY_LINEUP_SLOTS : LINEUP_SLOTS)[id])
                 .filter(
                   (pos): pos is string =>
                     !!pos && !['BE', 'Bench', 'IR', 'IL', 'IL+', 'NA', 'DL', 'UTIL', 'FLEX', 'OP', 'Rookie'].includes(pos),

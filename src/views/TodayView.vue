@@ -3,9 +3,11 @@ import { computed, onMounted, reactive, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useToday } from '@/composables/useToday'
 import type { ScoredPlay } from '@/today/todayBoard'
-import { mlbTeamLogo } from '@/players/mlbTeamLogo'
+import { teamLogoFor } from '@/players/teamLogo'
+import { wordsFor } from '@/lib/sportWords'
 
 const leagueStore = useLeagueStore()
+const words = computed(() => wordsFor(leagueStore.activeSport))
 const { vm, loading, error, load, isPoints, budget } = useToday()
 
 // Today is a daily-optimizer built for baseball's game-by-game slate. Football is weekly, not
@@ -121,7 +123,7 @@ function budgetTagText(p: ScoredPlay): string | null {
         No daily board for football — head to My Team or The Wire.
       </template>
       <template v-else-if="noGames">
-        No MLB games today — the board lights up when games resume.
+        No {{ words.league }} games today — the board lights up when games resume.
       </template>
       <template v-else>
         You're set for today — lineup's optimal.
@@ -144,7 +146,7 @@ function budgetTagText(p: ScoredPlay): string | null {
                 <div class="flex items-center gap-2">
                   <span class="truncate text-base font-semibold text-dark-text">{{ board.hero.name }}</span>
                   <span class="flex shrink-0 items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
-                    {{ board.hero.position }} · <img :src="mlbTeamLogo(board.hero.team)" alt="" loading="lazy" @error="onLogoErr" class="h-3 w-3 object-contain" /> {{ board.hero.team }}
+                    {{ board.hero.position }} · <img :src="teamLogoFor(leagueStore.activeSport, board.hero.team)" alt="" loading="lazy" @error="onLogoErr" class="h-3 w-3 object-contain" /> {{ board.hero.team }}
                   </span>
                 </div>
                 <div class="mt-1 font-mono text-xs text-dark-textMuted">{{ board.hero.detail }}</div>
@@ -211,7 +213,7 @@ function budgetTagText(p: ScoredPlay): string | null {
                   >→ Wire</router-link>
                 </div>
                 <div class="flex items-center gap-1 font-mono text-[10px] text-dark-textMuted">
-                  {{ slot.fill.position }} · <img :src="mlbTeamLogo(slot.fill.team)" alt="" loading="lazy" @error="onLogoErr" class="h-3 w-3 object-contain" /> {{ slot.fill.team }}
+                  {{ slot.fill.position }} · <img :src="teamLogoFor(leagueStore.activeSport, slot.fill.team)" alt="" loading="lazy" @error="onLogoErr" class="h-3 w-3 object-contain" /> {{ slot.fill.team }}
                 </div>
               </div>
             </div>
@@ -242,7 +244,7 @@ function budgetTagText(p: ScoredPlay): string | null {
                 <div class="flex items-center gap-2">
                   <span class="truncate text-sm font-semibold text-dark-text">{{ p.name }}</span>
                   <span class="flex shrink-0 items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
-                    {{ p.position }} · <img :src="mlbTeamLogo(p.team)" alt="" loading="lazy" @error="onLogoErr" class="h-3 w-3 object-contain" /> {{ p.team }}
+                    {{ p.position }} · <img :src="teamLogoFor(leagueStore.activeSport, p.team)" alt="" loading="lazy" @error="onLogoErr" class="h-3 w-3 object-contain" /> {{ p.team }}
                   </span>
                   <span v-for="c in p.helpsCats" :key="c"
                     class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-primary">{{ c }}</span>
@@ -295,7 +297,7 @@ function budgetTagText(p: ScoredPlay): string | null {
                 <div class="flex items-center gap-2">
                   <span class="truncate text-sm font-semibold text-dark-text">{{ p.name }}</span>
                   <span class="flex shrink-0 items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
-                    {{ p.position }} · <img :src="mlbTeamLogo(p.team)" alt="" loading="lazy" @error="onLogoErr" class="h-3 w-3 object-contain" /> {{ p.team }}
+                    {{ p.position }} · <img :src="teamLogoFor(leagueStore.activeSport, p.team)" alt="" loading="lazy" @error="onLogoErr" class="h-3 w-3 object-contain" /> {{ p.team }}
                   </span>
                   <span v-for="c in p.helpsCats" :key="c"
                     class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-primary">{{ c }}</span>

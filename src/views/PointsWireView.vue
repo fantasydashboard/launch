@@ -10,6 +10,7 @@ import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { nhlTeamLogo } from '@/players/nhlTeamLogo'
+import { wordsFor } from '@/lib/sportWords'
 import { useFootballWire } from '@/composables/useFootballWire'
 import RankingPicker from '@/components/RankingPicker.vue'
 import { BOARD_DEPTH } from '@/football/footballWire'
@@ -32,6 +33,8 @@ const leagueStore = useLeagueStore()
 const { hasFullAccess } = useFeatureAccess()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
 const isHockey = computed(() => leagueStore.activeSport === 'hockey')
+const words = computed(() => wordsFor(leagueStore.activeSport))
+const titleCase = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
 /* Three sports now, so the binary had to go: hockey was falling through to the MLB map and
    asking the CDN for a baseball logo named COL or DAL. Some of those exist, which is worse
    than none — a hockey board would have shown the Rockies beside Nathan MacKinnon. */
@@ -558,7 +561,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
            meaningless for football's weekly schedule, so hidden there) -->
       <section v-if="!isFootball && (wire.twoStart.length || wire.hotBats.length)" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Stream this week</h2>
-        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">two-start arms and full-slate bats — the volume native apps don't flag</p>
+        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">two-start {{ words.goalies }} and full-slate {{ words.skaters }} — the volume native apps don't flag</p>
 
         <div v-if="wire.twoStart.length" class="mb-2 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Two-start arms</div>
         <template v-for="r in wire.twoStart" :key="'ts-' + r.player.playerKey">
@@ -576,7 +579,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
           </div>
         </template>
 
-        <div v-if="wire.hotBats.length" class="mb-2 mt-4 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Full-slate bats</div>
+        <div v-if="wire.hotBats.length" class="mb-2 mt-4 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Full-slate {{ words.skaters }}</div>
         <template v-for="r in wire.hotBats" :key="'hb-' + r.player.playerKey">
           <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
             <img v-if="r.player.headshot" :src="r.player.headshot" :alt="r.player.name" loading="lazy" class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
@@ -663,7 +666,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
         <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
           Best available <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">· projected rest-of-season points</span>
         </h2>
-        <template v-for="group in [{ label: 'Hitters', rows: wire.topHitters }, { label: 'Pitchers', rows: wire.topPitchers }]" :key="group.label">
+        <template v-for="group in [{ label: titleCase(words.skaters), rows: wire.topHitters }, { label: titleCase(words.goalies), rows: wire.topPitchers }]" :key="group.label">
           <div v-if="group.rows.length" class="mb-1 mt-3 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">{{ group.label }}</div>
           <template v-for="r in group.rows" :key="'ba-' + r.player.playerKey">
             <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">

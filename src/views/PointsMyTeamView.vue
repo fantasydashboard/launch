@@ -9,8 +9,7 @@ import { buildPointsTeam } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
 import { useFootballVor } from '@/composables/useFootballVor'
-import { mlbTeamLogo } from '@/players/mlbTeamLogo'
-import { nflTeamLogo } from '@/players/nflTeamLogo'
+import { teamLogoFor } from '@/players/teamLogo'
 import type { AvailablePlayer } from '@/players/types'
 
 const route = useRoute()
@@ -18,7 +17,7 @@ const leagueStore = useLeagueStore()
 const showAudit = computed(() => route.query.ptsaudit != null)
 
 const isFootball = computed(() => leagueStore.activeSport === 'football')
-const teamLogo = (abbr?: string) => (isFootball.value ? nflTeamLogo(abbr) : mlbTeamLogo(abbr))
+const teamLogo = (abbr?: string) => teamLogoFor(leagueStore.activeSport, abbr)
 
 const source = useActivePointsSource()
 const scoring = useLeagueScoring()

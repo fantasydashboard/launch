@@ -20,7 +20,7 @@ import LeagueLandscape from '@/components/trades/LeagueLandscape.vue'
 import { useLeagueLandscape } from '@/composables/useLeagueLandscape'
 import { buildEngine } from '@/trades/engine'
 import { analyzeTrade } from '@/trades/analyzeTrade'
-import { mlbTeamLogo } from '@/players/mlbTeamLogo'
+import { teamLogoFor } from '@/players/teamLogo'
 import Avatar from '@/components/trades/Avatar.vue'
 import ValueBadge from '@/components/trades/ValueBadge.vue'
 import TimingTag from '@/components/trades/TimingTag.vue'
@@ -307,7 +307,7 @@ const analysis = computed(() => {
 function pinfo(key: string) {
   const p = pool.value.find((x) => x.playerKey === key)
   const t = engine.value?.timingByKey.get(key)
-  return { name: p?.name ?? '', pos: p?.position ?? '', headshot: p?.headshot, proLogo: mlbTeamLogo(p?.proTeam), value: valOf(key), timing: t?.dir ?? undefined, timingConfirmed: t?.luckConfirmed ?? false }
+  return { name: p?.name ?? '', pos: p?.position ?? '', headshot: p?.headshot, proLogo: teamLogoFor(leagueStore.activeSport, p?.proTeam), value: valOf(key), timing: t?.dir ?? undefined, timingConfirmed: t?.luckConfirmed ?? false }
 }
 const toggleGive = (key: string) => { const i = anGive.value.indexOf(key); if (i >= 0) anGive.value.splice(i, 1); else anGive.value.push(key) }
 const toggleGet = (key: string) => { const i = anGet.value.indexOf(key); if (i >= 0) anGet.value.splice(i, 1); else anGet.value.push(key) }
