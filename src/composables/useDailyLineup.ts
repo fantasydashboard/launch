@@ -234,6 +234,10 @@ export function useDailyLineup() {
 
   function load() {
     source.load()
+    /* The rankings mix free agents in with rostered players, and that pool is a separate
+       fetch — without it the board silently shows only what is already taken, which is the
+       half of the answer a manager cannot act on. */
+    source.loadFreeAgents?.()
     value.load()
     loadSchedule()
   }

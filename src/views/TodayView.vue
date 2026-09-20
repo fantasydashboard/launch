@@ -37,6 +37,11 @@ const isCategoryLeague = computed(() => !isPoints.value)
 /* Category specs drive the column strip; a points league passes none and gets the score. */
 onMounted(() => {
   thisWeek.load((categories.value ?? []).map((c) => ({ statId: c.statId, label: c.label })))
+  /* These composables do not self-load. Without this the roster is empty, so the lineup and
+     rankings render nothing and the header falls back to "My Team" — which is exactly what
+     shipped. */
+  teamSource.load()
+  daily.load()
 })
 
 // Today is a daily-optimizer built for baseball's game-by-game slate. Football is weekly, not
