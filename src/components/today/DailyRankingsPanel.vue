@@ -24,6 +24,17 @@ const props = defineProps<{
   rows: RankedRow[]
   /** The league's own slot order, so the filters read the way its lineup page does. */
   slotOrder?: string[]
+  /** Where tonight is cheap and where it is bare — the read above the list. */
+  scarcity?: { cheap: { pos: string; name: string }[]; bare: string[] }
+  /**
+   * This week's opponent, by team name.
+   *
+   * Matched on the NAME rather than a key because the rankings carry the owner's display
+   * name and nothing else. It is the marker football uses, and it earns its place: a player
+   * on your opponent's bench is a different proposition from one on a third team's — taking
+   * him helps you twice.
+   */
+  oppName?: string
 }>()
 
 const leagueStore = useLeagueStore()
@@ -114,6 +125,12 @@ const shown = computed(() => {
 const OWNER_TONE: Record<string, string> = {
   mine: 'text-primary', free: 'text-[#7ee787]', rostered: 'text-dark-textMuted/60',
 }
+/** Fourth state: the man you are actually playing this week. */
+const isOpp = (r: RankedRow) =>
+  !!props.oppName && r.owner === 'rostered' && r.ownerName === props.oppName
+
+const hasScarcity = computed(() =>
+  !!(props.scarcity?.cheap.length || props.scarcity?.bare.length))
 </script>
 
 <template>
@@ -127,6 +144,31 @@ const OWNER_TONE: Record<string, string> = {
     <p class="mb-3 font-mono text-[10px] text-dark-textMuted/60">
       only players with a game &mdash; a star on a dark night is not a low-ranked play, he is no play at all
     </p>
+
+    <!--
+      WHERE TONIGHT IS CHEAP AND WHERE IT IS BARE. The ranked list answers "who is best";
+      this answers "is this position worth an add at all", which is the question that decides
+      whether you spend a real asset. Absent entirely when neither read is true — an empty
+      box that says "nothing is cheap tonight" is noise.
+    -->
+    <div v-if="hasScarcity"
+         class="mb-3 rounded-lg border border-dark-border/60 bg-dark-card/40 px-3 py-2">
+      <p v-if="scarcity?.cheap.length" class="font-mono text-[11px] text-[#7ee787]">
+        Cheap here:
+        <span class="text-dark-textMuted">
+          <template v-for="(c, i) in scarcity.cheap" :key="c.pos">
+            <span v-if="i"> &middot; </span>{{ c.pos }} ({{ c.name }} is free)
+          </template>
+          &mdash; don't pay a real asset for one.
+        </span>
+      </p>
+      <p v-if="scarcity?.bare.length" class="font-mono text-[11px] text-[#e69a4a]">
+        Bare here:
+        <span class="text-dark-textMuted">
+          {{ scarcity.bare.join(' · ') }} &mdash; a good one is worth more than his number says.
+        </span>
+      </p>
+    </div>
 
     <div class="mb-3 flex rounded-lg border border-dark-border" style="width:fit-content">
       <button class="rounded-l-lg px-3 py-1 font-mono text-[11px] capitalize transition-colors"
@@ -145,6 +187,8 @@ const OWNER_TONE: Record<string, string> = {
       <span class="flex-1"></span>
       <span class="font-mono text-[10px] text-dark-textMuted/60">
         <span class="text-primary">&#9733; yours</span> &middot;
+        <span v-if="oppName" class="text-[#e69a4a]">&#9670; your opponent</span>
+        <span v-if="oppName"> &middot; </span>
         <span class="text-[#7ee787]">free agent</span> &middot;
         <span class="text-dark-textMuted/60">rostered</span>
       </span>
@@ -168,6 +212,7 @@ const OWNER_TONE: Record<string, string> = {
       <span class="min-w-0 flex-1">
         <span class="block truncate">
           <span v-if="r.owner === 'mine'" class="text-primary">&#9733;</span>
+          <span v-else-if="isOpp(r)" class="text-[#e69a4a]">&#9670;</span>
           <span :class="r.owner === 'mine' ? 'font-semibold text-dark-text' : 'text-dark-text'">{{ r.name }}</span>
           <!-- Anyone OUT is already filtered from this board, so every tag here is a
                day-to-day: amber, not red. -->

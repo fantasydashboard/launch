@@ -6,6 +6,7 @@ import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
 import { getNhlSchedule } from '@/services/nhlSchedule'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
+import { useDailyCategoryValue } from '@/composables/useDailyCategoryValue'
 import { getLeagueType } from '@/config/sports'
 
 /**
@@ -93,6 +94,19 @@ export interface DailyRow {
   /** The slot the league ACTUALLY has him in right now, or null when he is benched. */
   startedSlot: string | null
   benchReason: BenchReason | null
+  /**
+   * Where he ranks tonight among everyone at his position who has a game, e.g. 3 for the
+   * third-best catcher on the slate.
+   *
+   * A BARE NUMBER SAYS NOTHING. The panel printed "2.8" beside a catcher and nothing else,
+   * and no reader alive knows whether 2.8 is a good night for a catcher. Football prints
+   * "20" next to "RB3 · FLX4" and that second chip is doing most of the work — it converts a
+   * quantity into a judgement. Null when he has no game, because a man who is not playing
+   * has no rank tonight; he is not ranked last, he is not ranked.
+   */
+  posRank: number | null
+  /** How many players share that position pool tonight, so the rank has a denominator. */
+  posCount: number | null
 }
 
 const ymd = (d: Date) => {
@@ -142,7 +156,7 @@ export function useDailyLineup() {
     load: () => { if (isCategory.value) catSource.load(); else pointsSource.load() },
     loadFreeAgents: () => { if (!isCategory.value) pointsSource.loadFreeAgents?.() },
   }
-  const value = usePointsValue({
+  const pointsValue = usePointsValue({
     pool: pointsSource.pool,
     fgByKey: source.fgByKey,
     sport: computed(() => leagueStore.activeSport),
@@ -150,18 +164,61 @@ export function useDailyLineup() {
     leagueId: computed(() => String(leagueStore.activeLeagueId ?? '')),
   })
 
+  /*
+   * A CATEGORY LEAGUE NEEDS A DIFFERENT NUMBER, NOT A MISSING ONE.
+   *
+   * usePointsValue turns stats into points using the league's scoring weights. A category
+   * league assigns no weights, so it returned zero for everybody — and the page rendered that
+   * honestly as "we can't rank these yet". The fix is a second value source measured in
+   * standard deviations rather than points; both publish the same {total, games} shape, so
+   * everything below this line is unchanged by the swap.
+   */
+  const categoryValue = useDailyCategoryValue({
+    pool: computed(() => catSource.pool.value ?? []),
+    freeAgents: computed(() => (catSource.freeAgents.value ?? []) as any),
+    categories: computed(() => catSource.categories.value ?? []),
+    cats: computed(() => catSource.cats.value ?? []),
+    fgByKey: catSource.fgByKey,
+    enabled: isCategory,
+  })
+
+  const value = {
+    valueByKey: computed(() =>
+      isCategory.value ? categoryValue.valueByKey.value : pointsValue.valueByKey.value),
+  }
+
+  /** Whether the numbers on this page mean anything yet — false is a real answer, not 0.0. */
+  const canValue = computed(() =>
+    isCategory.value ? categoryValue.ready.value : true)
+
   const schedule = ref<WeekSchedule>({ ...EMPTY })
+  /*
+   * The rest of the scoring period, which is a different question from tonight.
+   *
+   * Tonight decides the lineup; the WEEK decides whether you are winning. A win probability
+   * measured over one evening swings wildly and means nothing — a manager whose pitchers all
+   * go tomorrow is not losing — so the matchup header is measured over every day left.
+   */
+  const weekSchedule = ref<WeekSchedule>({ ...EMPTY })
   const scheduleLoading = ref(false)
 
   async function loadSchedule() {
     scheduleLoading.value = true
     try {
-      const today = ymd(new Date())
-      schedule.value = leagueStore.activeSport === 'hockey'
-        ? await getNhlSchedule(today, today)
-        : await getWeekSchedule(today, today)
+      const now = new Date()
+      const today = ymd(now)
+      /* Through the coming Sunday, which is where a standard fantasy week ends. On Sunday
+         itself that is today, and the two ranges collapse to the same day — correctly. */
+      const end = new Date(now)
+      end.setDate(now.getDate() + ((7 - now.getDay()) % 7))
+      const isHockey = leagueStore.activeSport === 'hockey'
+      const fetch = isHockey ? getNhlSchedule : getWeekSchedule
+      const [day, week] = await Promise.all([fetch(today, today), fetch(today, ymd(end))])
+      schedule.value = day
+      weekSchedule.value = week
     } catch {
       schedule.value = { ...EMPTY }
+      weekSchedule.value = { ...EMPTY }
     } finally {
       scheduleLoading.value = false
     }
@@ -169,6 +226,47 @@ export function useDailyLineup() {
   watch(() => [leagueStore.activeSport, leagueStore.activeLeagueId], loadSchedule, { immediate: true })
 
   const playsToday = (team: string) => (schedule.value.gamesByTeam[String(team || '').toUpperCase()] ?? 0) > 0
+
+  /** His headline position — the one the league lists him under, and the pool he is ranked in. */
+  const primaryPosition = (position: string) =>
+    (position || '').split(/[,/|]/)[0]?.trim().toUpperCase() ?? ''
+
+  /**
+   * Tonight's positional rank for every player with a game.
+   *
+   * RANKED AGAINST THE WHOLE SLATE, not against my roster. "Third-best catcher I happen to
+   * own" is a fact about my team; "third-best catcher playing tonight" is a fact about the
+   * decision, and only the second tells a manager whether to go looking on the wire. Free
+   * agents are therefore in the pool, exactly as they are in the rankings panel below.
+   *
+   * By PRIMARY position, because that is the pool the rankings panel's own filters use and
+   * two surfaces on one page disagreeing about what position a man plays is worse than
+   * either being slightly coarse.
+   */
+  const posRankByKey = computed(() => {
+    const byPos = new Map<string, { key: string; today: number }[]>()
+    const add = (key: string, position: string, team: string, status: string) => {
+      const v = value.valueByKey.value[key]
+      const perGame = v && v.games > 0 ? v.total / v.games : 0
+      const avail = availability(status)
+      if (!perGame || avail === 'out' || !playsToday(team)) return
+      const pos = primaryPosition(position)
+      if (!pos) return
+      const today = perGame * (avail === 'doubtful' ? DOUBTFUL_DISCOUNT : 1)
+      byPos.set(pos, [...(byPos.get(pos) ?? []), { key, today }])
+    }
+    for (const p of source.pool.value) add(p.playerKey, p.position, p.proTeam ?? '', p.status ?? '')
+    for (const fa of source.freeAgents.value ?? []) {
+      add(fa.playerKey ?? `fa:${fa.name}`, fa.position ?? '', fa.team ?? '', fa.status ?? '')
+    }
+
+    const rank = new Map<string, { rank: number; count: number }>()
+    for (const [, list] of byPos) {
+      list.sort((a, b) => b.today - a.today)
+      list.forEach((r, i) => rank.set(r.key, { rank: i + 1, count: list.length }))
+    }
+    return rank
+  })
 
   /** Anyone on my roster, with tonight's projection attached. */
   const myPlayers = computed<DailyRow[]>(() => {
@@ -196,6 +294,10 @@ export function useDailyLineup() {
           ? String((p as any).lineupSlot)
           : null,
         benchReason: null,
+        /* Null rather than last: a man with no game tonight is not the worst play at his
+           position, he is not a play at that position at all. */
+        posRank: plays ? (posRankByKey.value.get(p.playerKey)?.rank ?? null) : null,
+        posCount: plays ? (posRankByKey.value.get(p.playerKey)?.count ?? null) : null,
       }
     })
   })
@@ -289,6 +391,73 @@ export function useDailyLineup() {
    */
   const deadSeats = computed(() => lineup.value.filter((r) => !r.playsToday))
 
+  /**
+   * NEAR COIN-FLIPS — the calls where our own projection barely separates the two.
+   *
+   * Football has this section and it is the most honest thing on that page: it names the
+   * decisions where we do NOT have a real opinion, which is the opposite of what a
+   * recommendation engine is tempted to do. It matters more daily than weekly, because the
+   * same decision comes back every night and a manager who knows a call is a coin-flip stops
+   * spending twenty minutes on it.
+   *
+   * Drawn from real alternatives only: the bench player has to be able to fill the seat, and
+   * both have to be playing. A "close call" between a starter and somebody ineligible for his
+   * slot is not a call at all.
+   */
+  const closestCalls = computed(() => {
+    const CLOSE = 1.5
+    const out: { slot: string; start: DailyRow; over: DailyRow; by: number }[] = []
+    const candidates = bench.value.filter((b) => b.playsToday && b.today > 0)
+    for (const seat of lineup.value) {
+      if (!seat.playsToday) continue
+      const rival = candidates
+        .filter((b) => positionsFit(b.position, seat.slot ?? ''))
+        .sort((a, b) => b.today - a.today)[0]
+      if (!rival) continue
+      const by = seat.today - rival.today
+      /* Only when WE are ahead and barely. A bench player who is genuinely better is not a
+         close call, he is an upgrade, and he already has his own louder section. */
+      if (by < 0 || by > CLOSE) continue
+      out.push({ slot: seat.slot ?? '', start: seat, over: rival, by })
+    }
+    return out.sort((a, b) => a.by - b.by).slice(0, 4)
+  })
+
+  /**
+   * WHERE TONIGHT IS CHEAP AND WHERE IT IS BARE.
+   *
+   * Football's "Cheap here / Bare here" read, which answers a question the ranked list cannot:
+   * not "who is the best free agent" but "is this position worth spending an add on at all".
+   * A position whose best unowned body is nearly as good as a startable one is cheap and
+   * should never cost a real asset; one whose best unowned body is far below is bare, and a
+   * decent player there is worth more than his projection says.
+   */
+  const scarcity = computed(() => {
+    const byPos = new Map<string, { best: number; bestFree: number; freeName: string }>()
+    for (const r of rankings.value) {
+      const pos = primaryPosition(r.position)
+      if (!pos) continue
+      const cur = byPos.get(pos) ?? { best: 0, bestFree: 0, freeName: '' }
+      if (r.today > cur.best) cur.best = r.today
+      if (r.owner === 'free' && r.today > cur.bestFree) {
+        cur.bestFree = r.today
+        cur.freeName = r.name
+      }
+      byPos.set(pos, cur)
+    }
+    const cheap: { pos: string; name: string }[] = []
+    const bare: string[] = []
+    for (const [pos, v] of byPos) {
+      /* Needs a real top end to measure against — a position where nobody is any good tonight
+         is not "cheap", it is a position with no games. */
+      if (v.best <= 0) continue
+      const share = v.bestFree / v.best
+      if (share >= 0.75 && v.freeName) cheap.push({ pos, name: v.freeName })
+      else if (share <= 0.4) bare.push(pos)
+    }
+    return { cheap: cheap.slice(0, 3), bare: bare.slice(0, 3) }
+  })
+
   /** A bench player who would outscore a starter tonight — the actual move to make. */
   const upgrades = computed(() => {
     const out: { sit: DailyRow; start: DailyRow; gain: number }[] = []
@@ -317,15 +486,14 @@ export function useDailyLineup() {
    */
   const rankings = computed<RankedRow[]>(() => {
     /*
-     * A CATEGORY LEAGUE GETS NO LIST AT ALL, rather than a list built on the wrong maths.
-     *
-     * This ranked 537 players to one decimal on a page whose lineup panel, eight inches
-     * above, said "we can't rank these yet" — the same data contradicting itself. And it was
-     * not merely mistaken: rostered players score zero without weights, so only free agents
-     * (matched by name through another path) surfaced, and the panel became a free-agent
-     * list wearing the title "tonight's rankings".
+     * A category league used to get no list at all, rather than a list built on the wrong
+     * maths — this once ranked 537 players to one decimal on a page whose lineup panel, eight
+     * inches above, said "we can't rank these yet". Now that the values are real the list is
+     * real too, but the guard stays in a weaker form: until the projection universe has
+     * loaded, every category value is zero and a board of zeroes is the same lie in a
+     * quieter voice.
      */
-    if (isCategory.value) return []
+    if (!canValue.value) return []
 
     const mineKey = source.myTeamKey.value
     const out: RankedRow[] = []
@@ -351,7 +519,16 @@ export function useDailyLineup() {
     for (const fa of source.freeAgents.value ?? []) {
       const faAvail = availability(fa.status)
       if (faAvail === 'out' || !playsToday(fa.team ?? '')) continue
-      const v = value.valueOf.value({ name: fa.name, position: fa.position, team: fa.team })
+      /*
+       * Two ways to price a free agent, because the two league types know him differently.
+       * A category league already scored him by key — he was standardised alongside the
+       * rostered players, which is the only way his z-scores are comparable to theirs. A
+       * points league has to match him by name, because his projection lives in a feed the
+       * roster pool never touched.
+       */
+      const v = isCategory.value
+        ? (value.valueByKey.value[fa.playerKey ?? ''] ?? null)
+        : pointsValue.valueOf.value({ name: fa.name, position: fa.position, team: fa.team })
       const perGame = v && v.games > 0 ? v.total / v.games : 0
       if (!perGame) continue
       out.push({
@@ -367,7 +544,10 @@ export function useDailyLineup() {
     return out.sort((a, b) => b.today - a.today)
   })
 
-  const loading = computed(() => source.loading.value || value.loading.value || scheduleLoading.value)
+  const loading = computed(() =>
+    source.loading.value
+    || (isCategory.value ? !categoryValue.ready.value : pointsValue.loading.value)
+    || scheduleLoading.value)
   const gamesTonight = computed(() => Object.keys(schedule.value.gamesByTeam).length > 0)
 
   function load() {
@@ -376,17 +556,33 @@ export function useDailyLineup() {
        fetch — without it the board silently shows only what is already taken, which is the
        half of the answer a manager cannot act on. */
     source.loadFreeAgents()
-    value.load()
+    pointsValue.load()
+    /* The category engine standardises against the whole projected universe, which is a
+       separate fetch — and one that shipped unrequested once already on this page. */
+    categoryValue.load()
     loadSchedule()
   }
 
   return {
     rows, current, lineup, bench, deadSeats, upgrades, rankings,
+    closestCalls, scarcity,
     loading, gamesTonight, playsToday, load,
     myTeamName: source.myTeamName,
     myTeamLogo: source.myTeamLogo,
+    isCategory,
+    /* The matchup header and the seat-by-seat panel are built from exactly these, and they
+       are exposed rather than re-fetched so the two sections cannot end up describing
+       different matchups on the same screen. */
+    pool: source.pool,
+    valueByKey: value.valueByKey,
+    myTeamKey: source.myTeamKey,
+    rosterSlots: source.rosterSlots,
+    schedule,
+    weekSchedule,
     /** False when the league publishes nothing we can price players with. */
-    canValue: computed(() => !isCategory.value),
+    canValue,
+    /** Points, or standard deviations — the panels say which so a number is never bare. */
+    valueLabel: computed(() => (isCategory.value ? 'category value' : 'projected points')),
   }
 }
 

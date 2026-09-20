@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useToday } from '@/composables/useToday'
-import type { ScoredPlay } from '@/today/todayBoard'
-import { teamLogoFor } from '@/players/teamLogo'
 import { wordsFor } from '@/lib/sportWords'
 import { useDailyLineup } from '@/composables/useDailyLineup'
 import DailyLineupPanel from '@/components/today/DailyLineupPanel.vue'
 import DailyRankingsPanel from '@/components/today/DailyRankingsPanel.vue'
 import TodayMatchupHeader from '@/components/today/TodayMatchupHeader.vue'
+import TodayMatchupSpots from '@/components/today/TodayMatchupSpots.vue'
+import { useDailyMatchup } from '@/composables/useDailyMatchup'
 import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 
@@ -24,7 +24,7 @@ const words = computed(() => wordsFor(leagueStore.activeSport))
  */
 const daily = useDailyLineup()
 
-const { vm, loading, error, load, isPoints, budget, categories } = useToday()
+const { vm, loading, error, load, isPoints, categories } = useToday()
 /*
  * THE MATCHUP BELONGS ON THIS PAGE, NOT ITS OWN TAB. The reason to care who you are playing
  * is that it changes what you do tonight — comfortably ahead you conserve moves, behind in
@@ -34,6 +34,26 @@ const { vm, loading, error, load, isPoints, budget, categories } = useToday()
 const thisWeek = useThisWeekMatchup()
 const teamSource = useActivePointsSource()
 const isCategoryLeague = computed(() => !isPoints.value)
+
+/*
+ * The scoreboard and the seat-by-seat both come from here, off ONE opponent fetch. The header
+ * used to show a dash and "win chance unavailable" because the only matchup source on this
+ * page counted category columns — a shape a points league does not have — while
+ * buildPointsMatchup, which computes exactly the missing number, went uncalled.
+ */
+const matchup = useDailyMatchup({
+  pool: daily.pool,
+  valueByKey: daily.valueByKey,
+  myTeamKey: daily.myTeamKey,
+  myTeamName: daily.myTeamName,
+  myTeamLogo: daily.myTeamLogo,
+  rosterSlots: daily.rosterSlots,
+  current: daily.current,
+  todaySchedule: daily.schedule,
+  weekSchedule: daily.weekSchedule,
+  playsToday: daily.playsToday,
+  isCategory: daily.isCategory,
+})
 /* Category specs drive the column strip; a points league passes none and gets the score. */
 onMounted(() => {
   thisWeek.load((categories.value ?? []).map((c) => ({ statId: c.statId, label: c.label })))
@@ -42,6 +62,7 @@ onMounted(() => {
      shipped. */
   teamSource.load()
   daily.load()
+  matchup.load()
 })
 
 // Today is a daily-optimizer built for baseball's game-by-game slate. Football is weekly, not
@@ -56,19 +77,6 @@ const today = computed(() =>
   new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
 )
 
-const bar = (bucket: number) => '▓'.repeat(bucket) + '░'.repeat(6 - bucket)
-
-const scoreBar = (score: number) => bar(Math.round((Math.max(0, Math.min(100, score)) / 100) * 6))
-
-const moveBar = (p: ScoredPlay) => scoreBar(p.barPct ?? p.score)
-const scoreText = (p: ScoredPlay) => (isPoints.value ? `${Math.round(p.score)} pts` : String(p.score))
-
-function dropLabel(play: ScoredPlay): string | null {
-  if (play.noCleanDrop) return 'no clean drop — you’d be cutting into value'
-  if (play.drop) return `drop ${play.drop.name} (${play.drop.reason})`
-  return null
-}
-
 const board = computed(() => vm.value)
 const hasNothing = computed(
   () =>
@@ -80,44 +88,7 @@ const hasNothing = computed(
 // nothing to change" — keep the two apart so the copy doesn't imply a lineup is optimized
 // on a day nobody plays.
 const noGames = computed(() => error.value === 'no-games')
-const showEmpty = computed(() => noGames.value || (!loading.value && hasNothing.value))
 const showFailed = computed(() => error.value === 'failed')
-
-function fillLabel(play: ScoredPlay): string {
-  return play.kind === 'startSit' ? `(free) start ${play.name} from your bench` : `add ${play.name}`
-}
-
-// Team-logo <img> load failure → hide the broken image (mirrors PointsWireView.vue's onLogoErr).
-const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none')
-// Headshot <img> load failure → fall back to the neutral placeholder circle by swapping which
-// element renders, mirroring the v-if/v-else pattern used elsewhere for a missing headshot.
-// Keyed by playerKey (not object identity) so the flag survives the board's re-computation.
-const brokenHeadshots = reactive(new Set<string>())
-function onHeadshotErr(playerKey: string) {
-  brokenHeadshots.add(playerKey)
-}
-function hasHeadshot(play: ScoredPlay): boolean {
-  return !!play.headshot && !brokenHeadshots.has(play.playerKey)
-}
-
-function reasonLabel(reason: string): string {
-  if (reason === 'off-day') return 'off today'
-  if (reason === 'injured') return 'injured'
-  return 'empty'
-}
-
-const budgetBanner = computed(() => {
-  const b = budget.value
-  if (b.kind === 'count') return `${b.remaining} of ${b.limit} adds left ${b.period === 'week' ? 'this week' : 'this season'}`
-  if (b.kind === 'faab') return b.budget != null ? `$${b.remaining} of $${b.budget} FAAB left` : `$${b.remaining} FAAB left`
-  return null
-})
-function budgetTagText(p: ScoredPlay): string | null {
-  if (p.budgetTag === 'worth-add') return '✓ worth an add'
-  if (p.budgetTag === 'worth-bid') return 'worth a bid'
-  if (p.budgetTag === 'save-add') return budget.value.kind === 'faab' ? 'no FAAB budget left' : 'save your add'
-  return null
-}
 </script>
 
 <template>
@@ -157,10 +128,17 @@ function budgetTagText(p: ScoredPlay): string | null {
     <template v-else>
       <!-- 1. WHERE THE WEEK STANDS -->
       <TodayMatchupHeader
+        :daily="matchup.snapshot.value"
         :snapshot="thisWeek.snapshot.value"
         :my-team-name="daily.myTeamName.value || teamSource.myTeamName.value"
         :my-team-logo="daily.myTeamLogo.value || teamSource.myTeamLogo.value"
         :is-category="isCategoryLeague" />
+
+      <!-- 1b. SEAT BY SEAT — the section football leans on, asked about tonight. -->
+      <TodayMatchupSpots v-if="matchup.snapshot.value"
+                         :spots="matchup.snapshot.value.spots"
+                         :opp-name="matchup.snapshot.value.opp.name"
+                         :my-name="matchup.snapshot.value.me.name" />
 
       <!-- Dark night is a real answer, and it belongs inside the page rather than instead of it. -->
       <p v-if="noGames"
@@ -172,16 +150,43 @@ function budgetTagText(p: ScoredPlay): string | null {
       <DailyLineupPanel
         :current="daily.current.value" :optimal="daily.lineup.value"
         :bench="daily.bench.value"
-        :value-label="isPoints ? 'projected points' : 'category value'" />
+        :value-label="daily.valueLabel.value"
+        :can-value="daily.canValue.value" />
 
       <!-- ── TONIGHT'S RANKINGS ──────────────────────────────────────────── -->
+      <!-- 2b. CLOSEST CALLS — the decisions where we do NOT have a real opinion, which is
+           worth more daily than weekly because the same call returns every night. -->
+      <section v-if="daily.closestCalls.value.length"
+               class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+        <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+          Closest calls
+          <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">
+            &middot; near coin-flips &mdash; the projection barely separates these
+          </span>
+        </h2>
+        <div v-for="c in daily.closestCalls.value" :key="c.slot + c.start.playerKey"
+             class="flex items-center gap-3 border-b border-dark-border/40 py-2 text-sm last:border-0">
+          <span class="w-10 shrink-0 font-mono text-[10px] uppercase text-dark-textMuted">{{ c.slot }}</span>
+          <span class="min-w-0 flex-1 truncate">
+            <span class="font-semibold text-dark-text">{{ c.start.name }}</span>
+            <span class="font-mono text-[11px] text-dark-textMuted"> {{ c.start.today.toFixed(1) }}</span>
+            <span class="text-dark-textMuted"> over </span>
+            <span class="text-dark-text">{{ c.over.name }}</span>
+            <span class="font-mono text-[11px] text-dark-textMuted"> {{ c.over.today.toFixed(1) }}</span>
+          </span>
+          <span class="shrink-0 font-mono text-[11px] text-dark-textMuted">by {{ c.by.toFixed(1) }}</span>
+        </div>
+      </section>
+
       <DailyRankingsPanel v-if="daily.canValue.value"
                           :rows="daily.rankings.value"
+                          :scarcity="daily.scarcity.value"
+                          :opp-name="matchup.snapshot.value?.opp.name"
                           :slot-order="Object.keys(teamSource.rosterSlots.value ?? {})" />
-      <!-- Absent with a reason. A panel that simply disappears reads as a page still loading. -->
+      <!-- Absent with a reason. A panel that simply disappears reads as a page still loading,
+           and a board of zeroes reads as a ranking — so say which of the two this is. -->
       <p v-else class="mt-5 rounded-xl border border-dark-border bg-dark-bg/40 px-4 py-6 text-center font-mono text-[11px] text-dark-textMuted">
-        Tonight's rankings need category value, which isn't wired in yet &mdash; ranking this
-        league on points would be the wrong maths, confidently presented.
+        Still reading the projection universe tonight's category values are measured against.
       </p>
     </template>
   </div>
