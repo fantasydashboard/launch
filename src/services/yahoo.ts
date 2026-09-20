@@ -227,16 +227,11 @@ export class YahooFantasyService {
     // Get access token from localStorage (Supabase getSession can hang)
     let accessToken: string | null = null
     
-    try {
-      const storageKey = 'sb-ergxtydfgffqgkddclvr-auth-token'
-      const stored = localStorage.getItem(storageKey)
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        accessToken = parsed?.access_token
-      }
-    } catch (e) {
-      console.error('[Yahoo] Failed to get session from localStorage:', e)
-    }
+    /* Was localStorage only — no expiry check and no fallback, so a stale token was sent as
+       readily as a live one and a missing one threw instead of refreshing. The project ref
+       was hardcoded here too, which would have broken silently on any other project. */
+    const { freshAccessToken } = await import('@/lib/authSession')
+    accessToken = await freshAccessToken()
     
     if (!accessToken) {
       throw new Error('Not authenticated - no session found')

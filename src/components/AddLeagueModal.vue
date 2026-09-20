@@ -2000,15 +2000,10 @@ async function loginToEspn() {
   espnLoginSuccess.value = false
   try {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
-    let accessToken = ''
-    try {
-      const keys = Object.keys(localStorage)
-      const authKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
-      if (authKey) {
-        const parsed = JSON.parse(localStorage.getItem(authKey) || '{}')
-        accessToken = parsed?.access_token || ''
-      }
-    } catch {}
+    /* Same stale-token bug as the two proxies: read whatever was on disk, never checked
+       whether it had expired. */
+    const { freshAccessToken } = await import('@/lib/authSession')
+    const accessToken = (await freshAccessToken()) ?? ''
     const resp = await fetch(`${supabaseUrl}/functions/v1/espn-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },

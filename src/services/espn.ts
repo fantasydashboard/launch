@@ -534,43 +534,20 @@ export class EspnFantasyService {
     historical: boolean = false,
     fantasyFilter?: object
   ): Promise<any> {
-    // Get access token - try multiple methods
-    let accessToken: string | null = null
-    
-    // Method 1: Try localStorage (fast)
-    try {
-      const keys = Object.keys(localStorage)
-      const authKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
-      
-      if (authKey) {
-        const stored = localStorage.getItem(authKey)
-        if (stored) {
-          const parsed = JSON.parse(stored)
-          accessToken = parsed?.access_token
-          if (accessToken) {
-            console.log('[ESPN] Got token from localStorage')
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[ESPN] localStorage access failed:', e)
-    }
-    
-    // Method 2: Try Supabase client (slower but more reliable)
-    if (!accessToken) {
-      try {
-        const { supabase } = await import('@/lib/supabase')
-        if (supabase) {
-          const { data: { session } } = await supabase.auth.getSession()
-          accessToken = session?.access_token || null
-          if (accessToken) {
-            console.log('[ESPN] Got token from Supabase client')
-          }
-        }
-      } catch (e) {
-        console.warn('[ESPN] Supabase getSession failed:', e)
-      }
-    }
+    /*
+     * A token that is actually still valid.
+     *
+     * This read `access_token` straight out of localStorage and sent whatever was there. A
+     * Supabase token lives about an hour, so after an hour on one tab every ESPN call came
+     * back 401 — which is why "sign out and back in" was the fix that worked. It was not
+     * repairing a session, it was replacing a stale string nobody was inspecting.
+     *
+     * freshAccessToken checks the clock and falls through to the client, which REFRESHES
+     * rather than merely reporting. Same helper the Yahoo proxy and the ESPN login form now
+     * use; all three had reimplemented it without the expiry check.
+     */
+    const { freshAccessToken } = await import('@/lib/authSession')
+    const accessToken = await freshAccessToken()
     
     if (!accessToken) {
       console.error('[ESPN] No access token found')

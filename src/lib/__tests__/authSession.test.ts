@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { authStorageKey, parseStoredSession } from '../authSession'
+import { authStorageKey, parseStoredSession, readStoredSession } from '../authSession'
 
 const NOW = Date.UTC(2026, 7, 3, 20, 21, 44) // 2026-08-03T20:21:44Z
 const sec = (ms: number) => Math.floor(ms / 1000)
@@ -77,5 +77,58 @@ describe('parseStoredSession', () => {
   it('accepts a session with no expiry field rather than discarding it', () => {
     const r = parseStoredSession(stored({ expires_at: undefined }), NOW)
     expect(r.reason).toBe('ok')
+  })
+})
+
+describe('the expired-token bug these call sites all had', () => {
+  /*
+   * THE BUG, IN ONE ASSERTION. A Supabase access token lives about an hour. Three call sites
+   * — the ESPN proxy, the Yahoo proxy and the ESPN login form — read `access_token` out of
+   * localStorage and sent whatever was there, never looking at expires_at. After an hour on
+   * one tab every call came back 401.
+   *
+   * That is why "sign out and back in" was the fix that worked: it was not repairing a
+   * session, it was replacing a stale string nobody was inspecting. And it only bites after
+   * an hour of continuous use, which is exactly the session where somebody is doing real
+   * work.
+   *
+   * readStoredSession already refused anything expired. All three had reimplemented it
+   * without that check rather than calling it.
+   */
+  const NOW = 1_800_000_000_000                    // a fixed "now", in ms
+  const key = 'sb-ergxtydfgffqgkddclvr-auth-token'
+  const url = 'https://ergxtydfgffqgkddclvr.supabase.co'
+  const store = (expiresAtSeconds: number) => ({
+    getItem: () => JSON.stringify({ access_token: 'tok', expires_at: expiresAtSeconds }),
+  })
+
+  it('refuses a token that has already expired', () => {
+    const past = Math.floor(NOW / 1000) - 60
+    expect(readStoredSession(url, store(past), NOW).reason).toBe('expired')
+    expect(readStoredSession(url, store(past), NOW).session).toBeNull()
+  })
+
+  it('accepts one that is still live', () => {
+    const future = Math.floor(NOW / 1000) + 600
+    const r = readStoredSession(url, store(future), NOW)
+    expect(r.reason).toBe('ok')
+    expect(r.session?.access_token).toBe('tok')
+  })
+
+  /* A token expiring this second is not worth racing — the request still has to fly. */
+  it('refuses one lapsing right now', () => {
+    const edge = Math.floor(NOW / 1000)
+    expect(readStoredSession(url, store(edge), NOW).reason).toBe('expired')
+  })
+
+  it('reports a missing store rather than throwing in the auth path', () => {
+    expect(readStoredSession(url, undefined, NOW).reason).toBe('missing')
+    expect(readStoredSession(url, { getItem: () => { throw new Error('blocked') } }, NOW).reason).toBe('missing')
+  })
+
+  /* The Yahoo reader hardcoded this project's ref, which would have broken silently
+     anywhere else. The key is derived from the URL. */
+  it('derives the storage key from the project URL', () => {
+    expect(authStorageKey(url)).toBe(key)
   })
 })

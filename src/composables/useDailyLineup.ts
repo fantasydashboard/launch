@@ -27,6 +27,18 @@ const EMPTY: WeekSchedule = { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTe
 
 export type BenchReason = 'no-game' | 'outscored' | 'injured'
 
+/** A row on tonight's ranked board: anyone with a game, rostered or not. */
+export interface RankedRow {
+  playerKey: string
+  name: string
+  position: string
+  team: string
+  today: number
+  status: string
+  owner: 'mine' | 'rostered' | 'free'
+  ownerName: string
+}
+
 export interface DailyRow {
   playerKey: string
   name: string
@@ -173,6 +185,50 @@ export function useDailyLineup() {
     return out.sort((a, b) => b.gain - a.gain)
   })
 
+  /**
+   * TONIGHT'S RANKINGS — everybody with a game, wherever they are rostered.
+   *
+   * The same list football puts at the foot of its weekly page, asking the daily question
+   * instead: not "who is good" but "who scores tonight". That difference reorders it heavily.
+   * A star on a dark night is absent from this list entirely rather than ranked low, because
+   * ranking him low implies he is a worse play than the man above him, and he is not a play
+   * at all.
+   *
+   * Free agents are folded in beside rostered players for the same reason the draft board
+   * mixes them: on any given night the best available body is frequently unowned, and a list
+   * that only shows what is taken cannot tell you that.
+   */
+  const rankings = computed<RankedRow[]>(() => {
+    const mineKey = source.myTeamKey.value
+    const out: RankedRow[] = []
+
+    for (const p of source.pool.value) {
+      const v = value.valueByKey.value[p.playerKey]
+      const perGame = v && v.games > 0 ? v.total / v.games : 0
+      if (!perGame || !playsToday(p.proTeam ?? '')) continue
+      out.push({
+        playerKey: p.playerKey, name: p.name, position: p.position,
+        team: p.proTeam ?? '', today: perGame, status: p.status ?? '',
+        owner: p.teamKey === mineKey ? 'mine' : 'rostered',
+        ownerName: p.teamKey === mineKey ? 'you' : (source.teamNames.value?.[p.teamKey] ?? ''),
+      })
+    }
+
+    for (const fa of source.freeAgents.value ?? []) {
+      if (!playsToday(fa.team ?? '')) continue
+      const v = value.valueOf.value({ name: fa.name, position: fa.position, team: fa.team })
+      const perGame = v && v.games > 0 ? v.total / v.games : 0
+      if (!perGame) continue
+      out.push({
+        playerKey: fa.playerKey ?? `fa:${fa.name}`, name: fa.name, position: fa.position,
+        team: fa.team ?? '', today: perGame, status: fa.status ?? '',
+        owner: 'free', ownerName: '',
+      })
+    }
+
+    return out.sort((a, b) => b.today - a.today)
+  })
+
   const loading = computed(() => source.loading.value || value.loading.value || scheduleLoading.value)
   const gamesTonight = computed(() => Object.keys(schedule.value.gamesByTeam).length > 0)
 
@@ -182,7 +238,7 @@ export function useDailyLineup() {
     loadSchedule()
   }
 
-  return { rows, lineup, bench, deadSeats, upgrades, loading, gamesTonight, playsToday, load }
+  return { rows, lineup, bench, deadSeats, upgrades, rankings, loading, gamesTonight, playsToday, load }
 }
 
 /** Whether a player's position list can fill a given slot, flex slots included. */

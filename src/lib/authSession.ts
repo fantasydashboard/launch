@@ -98,3 +98,39 @@ export function readStoredSession(
   }
   return parseStoredSession(raw, nowMs)
 }
+
+/**
+ * An access token that is actually still valid.
+ *
+ * WHY THIS HAD TO EXIST. Three call sites — the ESPN proxy, the Yahoo proxy and the ESPN
+ * login form — each read `access_token` straight out of localStorage and sent whatever was
+ * there. A Supabase token lives about an hour; the client refreshes it in the background, but
+ * a reader that never checks the clock will happily send a string that expired forty minutes
+ * ago, and every call comes back 401.
+ *
+ * That is why "sign out and back in" was the fix that worked. It was not repairing a session
+ * — it was replacing a stale string nobody was inspecting. And it only bites after an hour on
+ * one tab, which is precisely the session where somebody is doing real work.
+ *
+ * readStoredSession above already refuses anything expired. All three sites had reimplemented
+ * it, badly, rather than calling it.
+ *
+ * Falls through to the Supabase client when the cached copy is stale, because getSession()
+ * refreshes rather than merely reporting — so the slow path does not just detect the problem,
+ * it fixes it.
+ */
+export async function freshAccessToken(): Promise<string | null> {
+  const url = (import.meta as any).env?.VITE_SUPABASE_URL ?? ''
+
+  const stored = readStoredSession(url, typeof localStorage === 'undefined' ? undefined : localStorage)
+  if (stored.reason === 'ok' && stored.session?.access_token) return stored.session.access_token
+
+  try {
+    const { supabase } = await import('@/lib/supabase')
+    if (!supabase) return null
+    const { data } = await supabase.auth.getSession()
+    return data?.session?.access_token ?? null
+  } catch {
+    return null
+  }
+}
