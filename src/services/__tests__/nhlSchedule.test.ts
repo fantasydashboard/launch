@@ -1,13 +1,19 @@
 import { describe, it, expect } from 'vitest'
 import { parseNhlSchedule, nhlAbbrVariants } from '../nhlSchedule'
 
+/*
+ * `gameType: 2` on every fixture, because the live endpoint puts it on every fixture. These
+ * were written without it, which made them agree with a parser that counted preseason as
+ * real — a fixture missing a field the source always sends will vouch for a bug rather than
+ * catch it.
+ */
 const payload = {
   gameWeek: [
     { date: '2026-10-08', games: [
-      { homeTeam: { abbrev: 'BOS' }, awayTeam: { abbrev: 'UTA' } },
-      { homeTeam: { abbrev: 'LAK' }, awayTeam: { abbrev: 'SJS' } },
+      { gameType: 2, homeTeam: { abbrev: 'BOS' }, awayTeam: { abbrev: 'UTA' } },
+      { gameType: 2, homeTeam: { abbrev: 'LAK' }, awayTeam: { abbrev: 'SJS' } },
     ] },
-    { date: '2026-10-09', games: [{ homeTeam: { abbrev: 'NYR' }, awayTeam: { abbrev: 'BOS' } }] },
+    { date: '2026-10-09', games: [{ gameType: 2, homeTeam: { abbrev: 'NYR' }, awayTeam: { abbrev: 'BOS' } }] },
   ],
 }
 
@@ -67,5 +73,47 @@ describe('the NHL slate', () => {
   it('survives a payload with no week in it', () => {
     expect(parseNhlSchedule({}, '2026-10-08', '2026-10-08').gamesByTeam).toEqual({})
     expect(parseNhlSchedule(null, '2026-10-08', '2026-10-08').gamesByTeam).toEqual({})
+  })
+})
+
+/**
+ * Preseason. Verified against api-web.nhle.com on 2026-09-20, when every fixture in the
+ * returned week carried `gameType: 1` and the parser counted all of them.
+ */
+describe('parseNhlSchedule game types', () => {
+  const day = (date: string, games: unknown[]) => ({ gameWeek: [{ date, games }] })
+  const g = (gameType: number, away: string, home: string) => ({
+    gameType, awayTeam: { abbrev: away }, homeTeam: { abbrev: home },
+  })
+
+  it('does not count preseason as a game', () => {
+    const out = parseNhlSchedule(day('2026-09-20', [g(1, 'NYI', 'NJD')]), '2026-09-20', '2026-09-20')
+    expect(out.gamesByTeam.NYI).toBeUndefined()
+    expect(out.gamesByTeam.NJD).toBeUndefined()
+  })
+
+  it('counts regular season and playoffs', () => {
+    const reg = parseNhlSchedule(day('2026-10-06', [g(2, 'COL', 'VGK')]), '2026-10-06', '2026-10-06')
+    expect(reg.gamesByTeam.COL).toBe(1)
+    const post = parseNhlSchedule(day('2027-04-20', [g(3, 'COL', 'VGK')]), '2027-04-20', '2027-04-20')
+    expect(post.gamesByTeam.VGK).toBe(1)
+  })
+
+  /* Absent is not "counts" — an unlabelled fixture is not assumed to be a real one. */
+  it('drops a game with no gameType rather than assuming it counts', () => {
+    const out = parseNhlSchedule(
+      day('2026-10-06', [{ awayTeam: { abbrev: 'COL' }, homeTeam: { abbrev: 'VGK' } }]),
+      '2026-10-06', '2026-10-06',
+    )
+    expect(out.gamesByTeam.COL).toBeUndefined()
+  })
+
+  it('counts only the real games on a mixed day', () => {
+    const out = parseNhlSchedule(
+      day('2026-10-01', [g(1, 'BOS', 'MTL'), g(2, 'COL', 'VGK')]),
+      '2026-10-01', '2026-10-01',
+    )
+    expect(out.gamesByTeam.BOS).toBeUndefined()
+    expect(out.gamesByTeam.COL).toBe(1)
   })
 })

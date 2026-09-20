@@ -52,7 +52,17 @@ export function nhlAbbrVariants(abbr: string): string[] {
  * days ahead; the NHL does not publish starting goalies on any schedule endpoint, and a
  * guessed starter is worse than an absent one — it would put a backup in a lineup on a night
  * he never dressed. Goalie starts belong to a separate source, if one ever proves reliable.
+ *
+ * PRESEASON GAMES ARE NOT GAMES. Verified against the live endpoint on 2026-09-20: every one
+ * of that week's 58 fixtures came back `gameType: 1`, and this counted all of them. A hockey
+ * Today page would have reported seven games on a night the regular season had not begun,
+ * ranked players by a per-game rate they cannot earn, and marked a correctly-benched star as
+ * a seat with no game — all of it confidently wrong in the same direction. The first
+ * `gameType: 2` fixture of 2026-27 is 2026-10-04.
  */
+/** NHL game types: 1 preseason, 2 regular season, 3 playoffs. Fantasy counts the last two. */
+const COUNTING_GAME_TYPES = new Set([2, 3])
+
 export function parseNhlSchedule(data: unknown, from: string, to: string): WeekSchedule {
   const out: WeekSchedule = { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
   const week = (data as any)?.gameWeek
@@ -65,6 +75,9 @@ export function parseNhlSchedule(data: unknown, from: string, to: string): WeekS
     if (!date || date < from || date > to) continue
 
     for (const game of day?.games ?? []) {
+      /* Absent is not "counts": a payload with no gameType is not assumed to be a real game,
+         for the same reason an unnamed stat id is not assumed to be zero. */
+      if (!COUNTING_GAME_TYPES.has(Number(game?.gameType))) continue
       const home = String(game?.homeTeam?.abbrev ?? '').toUpperCase()
       const away = String(game?.awayTeam?.abbrev ?? '').toUpperCase()
       if (!home || !away) continue
