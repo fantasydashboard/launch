@@ -168,12 +168,25 @@ export function useDailyLineup() {
    * and the gap between the two IS the decision.
    */
   const current = computed(() => {
+    /*
+     * ESPN's own slot labels are finer than the league's slot COUNTS: it writes LF, CF and RF
+     * where the league publishes OF, so indexOf came back -1 for most rows and the sort did
+     * nothing — the lineup rendered in roster order with a corner infielder wedged between
+     * six pitchers. Anything the league does not name sorts after what it does, in its own
+     * alphabetical order, rather than falling to a single -1 bucket where ties are arbitrary.
+     */
     const order = Object.keys(source.rosterSlots.value)
+    const rank = (slot: string) => {
+      const i = order.indexOf(slot)
+      return i === -1 ? order.length : i
+    }
     return rows.value
       .filter((r) => r.startedSlot)
       .sort((a, b) => {
-        const d = order.indexOf(a.startedSlot!) - order.indexOf(b.startedSlot!)
-        return d !== 0 ? d : b.today - a.today
+        const d = rank(a.startedSlot!) - rank(b.startedSlot!)
+        if (d !== 0) return d
+        const s = (a.startedSlot ?? '').localeCompare(b.startedSlot ?? '')
+        return s !== 0 ? s : b.today - a.today
       })
   })
 
