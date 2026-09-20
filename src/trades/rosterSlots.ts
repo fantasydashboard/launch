@@ -62,7 +62,7 @@ const YAHOO_NFL_FLEX_ALIASES: Record<string, string> = {
 
 /** A flex slot -> the concrete eligible sub-positions that may fill it. */
 export const FLEX_ELIGIBILITY: Record<string, string[]> = {
-  UTIL: ['C', '1B', '2B', '3B', 'SS', 'OF', 'LF', 'CF', 'RF', 'DH'],
+  UTIL: ['C', '1B', '2B', '3B', 'SS', 'OF', 'LF', 'CF', 'RF', 'DH', 'LW', 'RW', 'D'],
   DH: ['C', '1B', '2B', '3B', 'SS', 'OF', 'LF', 'CF', 'RF', 'DH'],
   IF: ['1B', '2B', '3B', 'SS'],
   MI: ['2B', 'SS'],
@@ -74,6 +74,19 @@ export const FLEX_ELIGIBILITY: Record<string, string[]> = {
   // Football flex slots (keys don't collide with the baseball entries above).
   FLEX: ['RB', 'WR', 'TE'],
   SUPER_FLEX: ['QB', 'RB', 'WR', 'TE'],
+  /*
+   * Hockey. F is the forward slot — any of the three forward positions.
+   *
+   * UTIL is the one key that genuinely collides: it means "any hitter" in baseball and "any
+   * skater" in hockey. The lists merge rather than branch because the two vocabularies are
+   * disjoint apart from C, which is utility-eligible in BOTH sports — there are no
+   * defencemen in baseball and no shortstops in hockey, so neither sport can match the
+   * other's entries. LW, RW and D are appended to UTIL below for that reason.
+   *
+   * Basketball will not get this luxury: its F and C mean different things again, and it
+   * will need the sport passed in rather than another merge.
+   */
+  F: ['C', 'LW', 'RW'],
 }
 
 /** Standard 12-team mixed-league baseball roster when settings are unavailable. */

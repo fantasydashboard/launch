@@ -5,9 +5,20 @@ import { useToday } from '@/composables/useToday'
 import type { ScoredPlay } from '@/today/todayBoard'
 import { teamLogoFor } from '@/players/teamLogo'
 import { wordsFor } from '@/lib/sportWords'
+import { useDailyLineup } from '@/composables/useDailyLineup'
+import DailyLineupPanel from '@/components/today/DailyLineupPanel.vue'
 
 const leagueStore = useLeagueStore()
 const words = computed(() => wordsFor(leagueStore.activeSport))
+
+/*
+ * YOUR LINEUP, WHICH IS THE QUESTION THIS PAGE EXISTS FOR.
+ *
+ * Today was built around MOVES — streams, adds, sit alerts — which is the second thing a
+ * manager wants. The first is "who do I start tonight out of what I already have", and the
+ * page never answered it. This sits above the move board for that reason.
+ */
+const daily = useDailyLineup()
 const { vm, loading, error, load, isPoints, budget } = useToday()
 
 // Today is a daily-optimizer built for baseball's game-by-game slate. Football is weekly, not
@@ -118,7 +129,13 @@ function budgetTagText(p: ScoredPlay): string | null {
     </div>
 
     <!-- ── EMPTY — distinguish "no games at all" from "games, but nothing to do" ── -->
-    <div v-else-if="showEmpty" class="py-16 text-center text-dark-textMuted">
+    <!--
+      The empty state fires when there are no MOVES to make, which is not the same as having
+      nothing to show: a manager whose lineup is already optimal still wants to see it, and
+      still wants to know a seat is dead. So it only takes over the page when there is no
+      lineup either.
+    -->
+    <div v-else-if="showEmpty && !daily.lineup.value.length" class="py-16 text-center text-dark-textMuted">
       <template v-if="isFootball">
         No daily board for football — head to My Team or The Wire.
       </template>
@@ -130,7 +147,24 @@ function budgetTagText(p: ScoredPlay): string | null {
       </template>
     </div>
 
+    <template v-else-if="showEmpty">
+      <p class="mb-5 rounded-xl border border-dark-border bg-dark-card px-4 py-3 font-mono text-[11px] text-dark-textMuted">
+        Nothing to stream tonight &mdash; your lineup is the whole decision.
+      </p>
+      <DailyLineupPanel
+        :lineup="daily.lineup.value" :bench="daily.bench.value"
+        :dead-seats="daily.deadSeats.value" :upgrades="daily.upgrades.value" />
+    </template>
+
     <template v-else>
+      <!-- ── YOUR LINEUP TONIGHT ─────────────────────────────────────────── -->
+      <DailyLineupPanel
+        v-if="daily.lineup.value.length || daily.bench.value.length"
+        :lineup="daily.lineup.value"
+        :bench="daily.bench.value"
+        :dead-seats="daily.deadSeats.value"
+        :upgrades="daily.upgrades.value" />
+
       <!-- ── HERO: TODAY'S BEST PLAY ─────────────────────────────────────── -->
       <section v-if="board.hero" class="mb-8">
         <h2 class="font-display text-lg font-bold text-dark-text">★ Today's best play</h2>

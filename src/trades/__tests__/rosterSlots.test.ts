@@ -326,3 +326,31 @@ describe('ESPN hockey lineup slots', () => {
       .toEqual({ QB: 1, RB: 2 })
   })
 })
+
+describe('hockey slot eligibility', () => {
+  /*
+   * A forward slot takes any of the three forward positions, and UTIL takes any skater.
+   * Without these a hockey roster could not fill the two slots it starts most of its team
+   * through — the board would report nine open forward seats above a full bench.
+   */
+  it('lets any forward fill the forward slot', () => {
+    for (const pos of ['C', 'LW', 'RW']) expect(FLEX_ELIGIBILITY.F).toContain(pos)
+  })
+
+  it('lets any skater fill utility, including a defenceman', () => {
+    for (const pos of ['C', 'LW', 'RW', 'D']) expect(FLEX_ELIGIBILITY.UTIL).toContain(pos)
+  })
+
+  /* A goalie is not a skater. Utility taking one would field a second goalie in a skater
+     seat, which no league allows. */
+  it('never lets a goalie into utility or the forward slot', () => {
+    expect(FLEX_ELIGIBILITY.UTIL).not.toContain('G')
+    expect(FLEX_ELIGIBILITY.F).not.toContain('G')
+  })
+
+  /* The merge is only safe because the vocabularies are disjoint apart from C, which is
+     utility-eligible in both sports. Baseball must be untouched by it. */
+  it('leaves baseball utility working', () => {
+    for (const pos of ['1B', '2B', 'SS', 'OF', 'DH']) expect(FLEX_ELIGIBILITY.UTIL).toContain(pos)
+  })
+})
