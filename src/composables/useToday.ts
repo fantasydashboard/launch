@@ -72,6 +72,8 @@ export function useToday(): {
   load: () => Promise<void>
   isPoints: ComputedRef<boolean>
   budget: ComputedRef<AddBudget>
+  /** The columns a category league is decided in, with labels — the matchup header reads these. */
+  categories: ComputedRef<{ statId: string; label: string }[]>
 } {
   const leagueStore = useLeagueStore()
   const seasonFraction = computed(() => leagueStore.seasonFractionComplete)
@@ -850,5 +852,5 @@ export function useToday(): {
   })
   const isLoading = computed(() => !dataReady.value)
 
-  return { vm, loading: isLoading, error, load, isPoints: isPointsLeague, budget: addBudget }
+  return { vm, loading: isLoading, error, load, isPoints: isPointsLeague, budget: addBudget, categories }
 }

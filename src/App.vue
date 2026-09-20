@@ -1350,14 +1350,35 @@ const tabs = computed(() => [
      lineup ranked against the league, moved to Trades, where the weakest seat is the thing
      you are trading FOR. Category and baseball leagues keep the tab: their Wire and Trades
      are a different shape and do not absorb it. */
-  ...(leagueStore.activeSport === 'football' ? [] : [{ name: 'My Team', path: '/my-team' }]),
-  /* Football folds the matchup into This Week — the opponent belongs beside the lineup it is
-     measured against, and two tabs for one Sunday decision meant one of them was always the
-     wrong place to look. Baseball and category leagues keep the tab: there the matchup is a
-     genuinely separate, multi-day read (volume, two-start arms, category races). */
-  ...(leagueStore.activeSport === 'football'
-    ? []
-    : [{ name: isRotoLeague.value ? 'Roto Race' : 'Matchup', path: '/matchup' }]),
+  /*
+   * MY TEAM AND MATCHUP ARE GONE FOR EVERY SPORT NOW, not just football.
+   *
+   * They were two tabs answering halves of one question. "Who am I playing" only matters
+   * because it changes what you do tonight, and "what do I do tonight" cannot be judged
+   * without it — so a reader bounced between them to make one decision. Today carries the
+   * matchup header, the category column strip where the league is decided that way, the
+   * lineup, the moves and tonight's rankings, in the order football's weekly page already
+   * uses.
+   *
+   * The routes stay live. Anyone with /my-team or /matchup bookmarked still gets the page;
+   * it is only off the tab bar.
+   */
+  /*
+   * The matchup is folded into the daily/weekly page for EVERY sport now.
+   *
+   * Football did this first: the opponent belongs beside the lineup it is measured against,
+   * and two tabs for one decision meant one of them was always the wrong place to look. The
+   * argument for keeping it separate in the daily sports was that the matchup is a
+   * multi-day read — but that is an argument for putting it ON the daily page, where the
+   * decisions it informs are made, not beside it.
+   *
+   * Roto is the exception and keeps its own tab: there is no opponent and no week, so
+   * "Roto Race" is a standings view rather than a matchup, and folding a season-long table
+   * into a page about tonight would be a category error.
+   */
+  ...(isRotoLeague.value
+    ? [{ name: 'Roto Race', path: '/matchup' }]
+    : []),
   { name: 'The Wire', path: '/players' },
   { name: 'Trades', path: '/trades' },
   /* Power Rankings folded into League. The two were the same ten rows sorted differently —
@@ -1377,7 +1398,9 @@ const tabs = computed(() => [
 
 // Section tabs (Tier 2 nav) — exclude the tools, which live in Tier 1
 /* Where the logo goes: the first section tab for this sport. */
-const homePath = computed(() => (leagueStore.activeSport === 'football' ? '/this-week' : '/my-team'))
+/* Today, not My Team — the tab it used to land on is no longer in the bar, and a home link
+   that opens a page nobody can navigate back to is its own small trap. */
+const homePath = computed(() => (leagueStore.activeSport === 'football' ? '/this-week' : '/today'))
 const sectionTabs = computed(() => tabs.value.filter((t: any) => !t.isTool))
 // Tool tabs (Tier 1 utility bar). The League Beat link sits beside these in the template.
 const toolTabs = computed(() => tabs.value.filter((t: any) => (t as any).isTool))

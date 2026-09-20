@@ -7,6 +7,10 @@ import { teamLogoFor } from '@/players/teamLogo'
 import { wordsFor } from '@/lib/sportWords'
 import { useDailyLineup } from '@/composables/useDailyLineup'
 import DailyLineupPanel from '@/components/today/DailyLineupPanel.vue'
+import DailyRankingsPanel from '@/components/today/DailyRankingsPanel.vue'
+import TodayMatchupHeader from '@/components/today/TodayMatchupHeader.vue'
+import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
+import { useActivePointsSource } from '@/composables/useActivePointsSource'
 
 const leagueStore = useLeagueStore()
 const words = computed(() => wordsFor(leagueStore.activeSport))
@@ -19,7 +23,21 @@ const words = computed(() => wordsFor(leagueStore.activeSport))
  * page never answered it. This sits above the move board for that reason.
  */
 const daily = useDailyLineup()
-const { vm, loading, error, load, isPoints, budget } = useToday()
+
+const { vm, loading, error, load, isPoints, budget, categories } = useToday()
+/*
+ * THE MATCHUP BELONGS ON THIS PAGE, NOT ITS OWN TAB. The reason to care who you are playing
+ * is that it changes what you do tonight — comfortably ahead you conserve moves, behind in
+ * two categories you stream for them. Split across two tabs, the second page was answering a
+ * question the first one asked.
+ */
+const thisWeek = useThisWeekMatchup()
+const teamSource = useActivePointsSource()
+const isCategoryLeague = computed(() => !isPoints.value)
+/* Category specs drive the column strip; a points league passes none and gets the score. */
+onMounted(() => {
+  thisWeek.load((categories.value ?? []).map((c) => ({ statId: c.statId, label: c.label })))
+})
 
 // Today is a daily-optimizer built for baseball's game-by-game slate. Football is weekly, not
 // daily, so the nav hides this tab for football leagues — but a direct nav to /today should still
@@ -148,15 +166,32 @@ function budgetTagText(p: ScoredPlay): string | null {
     </div>
 
     <template v-else-if="showEmpty">
+      <!-- ── WHERE THE WEEK STANDS ───────────────────────────────────────── -->
+      <TodayMatchupHeader
+        :snapshot="thisWeek.snapshot.value"
+        :my-team-name="teamSource.myTeamName.value"
+        :my-team-logo="teamSource.myTeamLogo.value"
+        :is-category="isCategoryLeague" />
+
       <p class="mb-5 rounded-xl border border-dark-border bg-dark-card px-4 py-3 font-mono text-[11px] text-dark-textMuted">
         Nothing to stream tonight &mdash; your lineup is the whole decision.
       </p>
       <DailyLineupPanel
         :lineup="daily.lineup.value" :bench="daily.bench.value"
         :dead-seats="daily.deadSeats.value" :upgrades="daily.upgrades.value" />
+
+      <!-- ── TONIGHT'S RANKINGS ──────────────────────────────────────────── -->
+      <DailyRankingsPanel :rows="daily.rankings.value" />
     </template>
 
     <template v-else>
+      <!-- ── WHERE THE WEEK STANDS ───────────────────────────────────────── -->
+      <TodayMatchupHeader
+        :snapshot="thisWeek.snapshot.value"
+        :my-team-name="teamSource.myTeamName.value"
+        :my-team-logo="teamSource.myTeamLogo.value"
+        :is-category="isCategoryLeague" />
+
       <!-- ── YOUR LINEUP TONIGHT ─────────────────────────────────────────── -->
       <DailyLineupPanel
         v-if="daily.lineup.value.length || daily.bench.value.length"
@@ -354,6 +389,9 @@ function budgetTagText(p: ScoredPlay): string | null {
           </div>
         </div>
       </section>
+
+      <!-- ── TONIGHT'S RANKINGS ──────────────────────────────────────────── -->
+      <DailyRankingsPanel :rows="daily.rankings.value" />
     </template>
   </div>
 </template>
