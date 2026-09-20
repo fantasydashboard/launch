@@ -29,6 +29,40 @@ const EMPTY: WeekSchedule = { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTe
 
 export type BenchReason = 'no-game' | 'outscored' | 'injured'
 
+/**
+ * Is he available TONIGHT, as opposed to merely employed by a team with a game?
+ *
+ * `playsToday` answers a question about the SCHEDULE, and the rankings treated it as an
+ * answer about the PLAYER. So Shohei Ohtani on the fifteen-day list came through at full
+ * value and ranked first among hitters, on a page whose own subtitle says a man who is not
+ * playing "is no play at all". Seven of the top twenty-three were on the injured list.
+ *
+ * Three states, because collapsing them is what made the warning ignorable:
+ *   OUT      — a stint, a suspension, the sixty-day list. He is not playing. Worth nothing.
+ *   DOUBTFUL — day-to-day and its cousins. He usually plays; discounted, not removed.
+ *   OK       — everything else, including a blank status.
+ */
+export type Availability = 'out' | 'doubtful' | 'ok'
+
+/* Matched on the whole token, not a prefix: "DTD" must not be swallowed by a rule meant for
+   "DL", and DAY_TO_DAY must not match the day-count lists. */
+const OUT_STATUS = /^(OUT|IR|IL\d*|IL|DL|TEN_DAY_DL|FIFTEEN_DAY_DL|SIXTY_DAY_DL|SUSPENSION|NA|PUP|NFI)$/i
+const DOUBTFUL_STATUS = /^(DAY_TO_DAY|DTD|DOUBTFUL|QUESTIONABLE|GTD)$/i
+
+export function availability(status: string | undefined | null): Availability {
+  const s = String(status ?? '').trim().toUpperCase()
+  if (!s || s === 'ACTIVE') return 'ok'
+  if (OUT_STATUS.test(s)) return 'out'
+  if (DOUBTFUL_STATUS.test(s)) return 'doubtful'
+  /* An unrecognised designation is a designation: something is wrong with him and we do not
+     know what. Treated as doubtful rather than fine, because the cost of starting a man who
+     cannot play is larger than the cost of ranking a healthy one slightly low. */
+  return 'doubtful'
+}
+
+/** What a day-to-day player is worth: he usually plays, but not always. */
+export const DOUBTFUL_DISCOUNT = 0.6
+
 /** A row on tonight's ranked board: anyone with a game, rostered or not. */
 export interface RankedRow {
   playerKey: string
@@ -142,7 +176,10 @@ export function useDailyLineup() {
     return mine.map((p) => {
       const v = value.valueByKey.value[p.playerKey]
       const perGame = v && v.games > 0 ? v.total / v.games : 0
-      const plays = playsToday(p.proTeam ?? '')
+      const avail = availability(p.status)
+      /* His team having a game is not the same as him having one. */
+      const plays = playsToday(p.proTeam ?? '') && avail !== 'out'
+      const factor = avail === 'doubtful' ? DOUBTFUL_DISCOUNT : 1
       return {
         playerKey: p.playerKey,
         name: p.name,
@@ -150,7 +187,7 @@ export function useDailyLineup() {
         position: p.position,
         team: p.proTeam ?? '',
         perGame,
-        today: plays ? perGame : 0,
+        today: plays ? perGame * factor : 0,
         playsToday: plays,
         status: p.status ?? '',
         slot: null,
@@ -194,8 +231,8 @@ export function useDailyLineup() {
     return myPlayers.value.map((r) => {
       const slot = slotOf.get(r.playerKey) ?? null
       const benchReason: BenchReason | null = slot ? null
+        : availability(r.status) === 'out' ? 'injured'
         : !r.playsToday ? 'no-game'
-        : r.status && r.status !== 'ACTIVE' ? 'injured'
         : 'outscored'
       return { ...r, slot, benchReason }
     })
@@ -296,24 +333,33 @@ export function useDailyLineup() {
     for (const p of source.pool.value) {
       const v = value.valueByKey.value[p.playerKey]
       const perGame = v && v.games > 0 ? v.total / v.games : 0
-      if (!perGame || !playsToday(p.proTeam ?? '')) continue
+      const avail = availability(p.status)
+      /* Out is out: he is absent from the board entirely, for the same reason a man on a dark
+         night is. Ranking him low would say he is a worse play than the name above him, when
+         he is not a play. */
+      if (!perGame || avail === 'out' || !playsToday(p.proTeam ?? '')) continue
       out.push({
         playerKey: p.playerKey, name: p.name, headshot: p.headshot, position: p.position,
-        team: p.proTeam ?? '', today: perGame, status: p.status ?? '',
+        team: p.proTeam ?? '',
+        today: perGame * (avail === 'doubtful' ? DOUBTFUL_DISCOUNT : 1),
+        status: p.status ?? '',
         owner: p.teamKey === mineKey ? 'mine' : 'rostered',
         ownerName: p.teamKey === mineKey ? 'you' : (source.teamNames.value?.[p.teamKey] ?? ''),
       })
     }
 
     for (const fa of source.freeAgents.value ?? []) {
-      if (!playsToday(fa.team ?? '')) continue
+      const faAvail = availability(fa.status)
+      if (faAvail === 'out' || !playsToday(fa.team ?? '')) continue
       const v = value.valueOf.value({ name: fa.name, position: fa.position, team: fa.team })
       const perGame = v && v.games > 0 ? v.total / v.games : 0
       if (!perGame) continue
       out.push({
         playerKey: fa.playerKey ?? `fa:${fa.name}`, name: fa.name,
         headshot: (fa as any).headshot, position: fa.position,
-        team: fa.team ?? '', today: perGame, status: fa.status ?? '',
+        team: fa.team ?? '',
+        today: perGame * (faAvail === 'doubtful' ? DOUBTFUL_DISCOUNT : 1),
+        status: fa.status ?? '',
         owner: 'free', ownerName: '',
       })
     }

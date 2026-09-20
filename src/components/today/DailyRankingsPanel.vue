@@ -16,8 +16,9 @@
 import { computed, ref } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { wordsFor } from '@/lib/sportWords'
+import { assignTiers } from '@/draft/room/tierCliffs'
 import { teamLogoFor } from '@/players/teamLogo'
-import type { RankedRow } from '@/composables/useDailyLineup'
+import { availability, type RankedRow } from '@/composables/useDailyLineup'
 
 const props = defineProps<{
   rows: RankedRow[]
@@ -80,6 +81,23 @@ const positions = computed(() => {
   return ['ALL', ...sorted]
 })
 
+/*
+ * TIERS, BECAUSE A FLAT COLUMN OF HITTERS SAYS NOTHING.
+ *
+ * The top twenty-four hitters spanned 5.0 to 3.7 — twenty-four names inside 1.3 points, with
+ * five-way ties at 3.9 and again at 3.8. Ranked one to twenty-four that reads as an ordering
+ * when it is really a statement that they are the same player, and the rank number is doing
+ * work the numbers do not support.
+ *
+ * Football's board draws tier lines for exactly this reason and I ported the list without the
+ * thing that makes it readable. Same function it uses.
+ */
+const tiers = computed(() => assignTiers(shown.value.map((r) => ({ playerKey: r.playerKey, value: r.today }))))
+const tierOf = (key: string) => tiers.value[key] ?? 1
+/** True on the first row of a new tier, which is where the divider is drawn. */
+const startsTier = (i: number) => i > 0 && tierOf(shown.value[i].playerKey) !== tierOf(shown.value[i - 1].playerKey)
+const tierDrop = (i: number) => (shown.value[i - 1]?.today ?? 0) - (shown.value[i]?.today ?? 0)
+
 const filter = ref('ALL')
 const bySide = computed(() =>
   props.rows.filter((r) => (side.value === 'goalies') === isScarce(r.position)))
@@ -132,8 +150,17 @@ const OWNER_TONE: Record<string, string> = {
       </span>
     </div>
 
-    <div v-for="(r, i) in shown" :key="r.playerKey"
-         class="flex items-center gap-3 border-b border-dark-border/40 py-2 text-sm last:border-0">
+    <template v-for="(r, i) in shown" :key="r.playerKey">
+      <!-- A tier line, with the drop that earned it — the caption is the evidence. -->
+      <div v-if="startsTier(i)" class="flex items-center gap-3 py-2">
+        <span class="h-px flex-1 bg-gradient-to-r from-transparent to-[#e69a4a]/50"></span>
+        <span class="font-mono text-[9px] uppercase tracking-widest text-[#e69a4a]/80">
+          tier {{ tierOf(r.playerKey) }} &middot; &minus;{{ tierDrop(i).toFixed(1) }}
+        </span>
+        <span class="h-px flex-1 bg-gradient-to-l from-transparent to-[#e69a4a]/50"></span>
+      </div>
+
+    <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 text-sm last:border-0">
       <span class="w-7 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/50">{{ i + 1 }}</span>
       <img v-if="r.headshot" :src="r.headshot" :alt="r.name" loading="lazy" @error="onLogoErr"
            class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
@@ -142,8 +169,11 @@ const OWNER_TONE: Record<string, string> = {
         <span class="block truncate">
           <span v-if="r.owner === 'mine'" class="text-primary">&#9733;</span>
           <span :class="r.owner === 'mine' ? 'font-semibold text-dark-text' : 'text-dark-text'">{{ r.name }}</span>
+          <!-- Anyone OUT is already filtered from this board, so every tag here is a
+               day-to-day: amber, not red. -->
           <span v-if="r.status && r.status !== 'ACTIVE'"
-                class="ml-1 rounded bg-[#FF5C5C]/15 px-1 font-mono text-[9px] uppercase text-[#FF5C5C]">{{ r.status }}</span>
+                class="ml-1 rounded px-1 font-mono text-[9px] uppercase"
+                :class="availability(r.status) === 'out' ? 'bg-[#FF5C5C]/15 text-[#FF5C5C]' : 'bg-[#e69a4a]/15 text-[#e69a4a]'">{{ r.status }}</span>
         </span>
         <span class="flex items-center gap-1 text-xs text-dark-textMuted">
           {{ r.position }}
@@ -157,6 +187,7 @@ const OWNER_TONE: Record<string, string> = {
       </span>
       <span class="w-14 shrink-0 text-right font-mono text-sm font-semibold text-dark-text">{{ one(r.today) }}</span>
     </div>
+    </template>
 
     <p v-if="bySide.length > LIMIT" class="mt-2 font-mono text-[10px] text-dark-textMuted">
       showing {{ shown.length }} of {{ bySide.length }} {{ words[side] }} playing tonight

@@ -15,7 +15,7 @@
 import { computed, ref } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { teamLogoFor } from '@/players/teamLogo'
-import type { DailyRow } from '@/composables/useDailyLineup'
+import { availability, type DailyRow } from '@/composables/useDailyLineup'
 
 const props = defineProps<{
   current: DailyRow[]
@@ -46,16 +46,22 @@ const gain = computed(() => optimalTotal.value - currentTotal.value)
 const dead = computed(() => rows.value.filter((r) => !r.playsToday))
 
 /*
- * Injured men sitting in STARTING slots.
+ * Starters who CANNOT PLAY, which is not the same as starters who are carrying something.
  *
- * Two fifteen-day-IL pitchers were in the lineup reading like any other row, with the tag
- * rendered in the same muted grey as a team abbreviation. Whether ESPN really has them there
- * or we misread the slot, a starter who cannot play is the same cost as one with no game and
- * belongs in the same warning rather than in the small print.
+ * The first version warned on any designation, so a day-to-day outfielder who will almost
+ * certainly play appeared in the same red banner as two pitchers on the fifteen-day list.
+ * Treating "might be rested" and "out for a fortnight" identically is how a warning becomes
+ * background noise and the real one gets skimmed past.
+ *
+ * Day-to-day is now a quiet amber tag on his own row and nothing more.
  */
-const HURT = /^(IL|DL|DAY_TO_DAY|FIFTEEN|TEN_DAY|SIXTY|OUT|SUSPEN)/i
 const injuredStarters = computed(() =>
-  rows.value.filter((r) => r.playsToday && r.status && HURT.test(r.status)))
+  rows.value.filter((r) => availability(r.status) === 'out'))
+
+const tagTone = (status: string | undefined) =>
+  availability(status) === 'out'
+    ? 'bg-[#FF5C5C]/15 text-[#FF5C5C]'
+    : 'bg-[#e69a4a]/15 text-[#e69a4a]'
 
 /*
  * CAN WE ACTUALLY RANK THESE PLAYERS TONIGHT?
@@ -109,9 +115,10 @@ const canValue = computed(() =>
     </p>
 
     <p v-if="injuredStarters.length"
-       class="mb-3 rounded-lg border border-[#e69a4a]/30 bg-[#e69a4a]/5 px-3 py-2 font-mono text-[11px] text-[#e69a4a]">
-      {{ injuredStarters.length }} injured {{ injuredStarters.length === 1 ? 'player is' : 'players are' }}
-      in your starting lineup &mdash; {{ injuredStarters.map((r) => r.name).join(', ') }}
+       class="mb-3 rounded-lg border border-[#FF5C5C]/30 bg-[#FF5C5C]/5 px-3 py-2 font-mono text-[11px] text-[#FF5C5C]">
+      {{ injuredStarters.length }} {{ injuredStarters.length === 1 ? 'player' : 'players' }}
+      in your starting lineup {{ injuredStarters.length === 1 ? 'is' : 'are' }} out &mdash;
+      {{ injuredStarters.map((r) => r.name).join(', ') }}
     </p>
 
     <p v-if="!rows.length" class="py-6 text-center font-mono text-xs text-dark-textMuted">
@@ -137,7 +144,7 @@ const canValue = computed(() =>
           </template>
           <span v-if="!r.playsToday" class="text-[#FF5C5C]">&middot; no game</span>
           <span v-else-if="r.status && r.status !== 'ACTIVE'"
-                class="rounded bg-[#e69a4a]/15 px-1 font-bold text-[#e69a4a]">{{ r.status }}</span>
+                class="rounded px-1 font-bold" :class="tagTone(r.status)">{{ r.status }}</span>
         </span>
       </span>
       <span v-if="canValue" class="w-16 shrink-0 text-right font-mono text-sm"
