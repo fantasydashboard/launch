@@ -1,99 +1,95 @@
 <script setup lang="ts">
 /**
- * Tonight's lineup, in the shape football's weekly board already uses.
+ * Your lineup tonight — what you are starting, and what we would start.
+ *
+ * THE TOGGLE IS THE POINT. A page that only shows the optimal tells a manager what to do
+ * without showing what he is doing, and the gap between the two IS the decision. Set beside
+ * each other, the question answers itself: if the two lists match there is nothing to do
+ * tonight, and if they do not, the difference is exactly the move.
  *
  * WHAT IS DIFFERENT FROM FOOTBALL, AND WHY IT HAS TO BE. Football ranks a roster once a week
- * and every starter has a game. In a daily sport the roster is the same and the SLATE is not,
- * so the loudest thing on this page is not who is best — it is which of your seats is filled
- * by somebody who is not playing tonight. That is points forfeited outright, it is the most
- * common way to lose a night, and no native app says a word about it.
- *
- * So the order is: dead seats first, then the lineup, then the swap that fixes it, then the
- * bench. A manager who reads only the first block has still got the value.
+ * and every starter has a game. Here the roster is the same and the SLATE is not, so the most
+ * expensive thing on the page is a seat filled by somebody who is not playing tonight — the
+ * most common way to lose a night, and something no native lineup screen mentions.
  */
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { teamLogoFor } from '@/players/teamLogo'
 import type { DailyRow } from '@/composables/useDailyLineup'
 
 const props = defineProps<{
-  lineup: DailyRow[]
+  current: DailyRow[]
+  optimal: DailyRow[]
   bench: DailyRow[]
-  deadSeats: DailyRow[]
-  upgrades: { sit: DailyRow; start: DailyRow; gain: number }[]
+  /** Points leagues show points; category leagues show category value. */
+  valueLabel?: string
 }>()
 
 const leagueStore = useLeagueStore()
 const logo = (abbr?: string) => teamLogoFor(leagueStore.activeSport, abbr)
-const round = (n: number) => Math.round(n)
 const one = (n: number) => n.toFixed(1)
 function onLogoErr(e: Event) { (e.target as HTMLImageElement).style.display = 'none' }
 
-const tonightTotal = computed(() => props.lineup.reduce((s, r) => s + r.today, 0))
+const mode = ref<'current' | 'optimal'>('current')
+const rows = computed(() => (mode.value === 'optimal' ? props.optimal : props.current))
+const slotOf = (r: DailyRow) => (mode.value === 'optimal' ? r.slot : r.startedSlot)
 
-/* A benched player is sat for one of three reasons and they are not equally interesting. No
-   game is a fact about the schedule, injured is a fact about him, outscored is our opinion —
-   and only the last is a judgement a manager might want to overrule. */
-const BENCH_LABEL: Record<string, string> = {
-  'no-game': 'no game', injured: 'injured', outscored: 'outscored',
-}
+const total = computed(() => rows.value.reduce((s, r) => s + r.today, 0))
+const optimalTotal = computed(() => props.optimal.reduce((s, r) => s + r.today, 0))
+const currentTotal = computed(() => props.current.reduce((s, r) => s + r.today, 0))
+
+/* The number that decides whether the toggle is worth touching. Rounded to a tenth because a
+   gap of 0.04 is not a reason to change a lineup and printing it as "+0.0" says nothing. */
+const gain = computed(() => optimalTotal.value - currentTotal.value)
+
+/** Seats filled by somebody with no game — points forfeited outright. */
+const dead = computed(() => rows.value.filter((r) => !r.playsToday))
 </script>
 
 <template>
-  <!--
-    DEAD SEATS FIRST. A started player with no game tonight is the single most expensive thing
-    on this page and the one a native lineup screen will never tell you.
-  -->
-  <section v-if="deadSeats.length"
-           class="mb-5 rounded-xl border border-[#FF5C5C]/40 bg-[#FF5C5C]/5 p-4">
-    <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-[#FF5C5C]">
-      {{ deadSeats.length }} {{ deadSeats.length === 1 ? 'seat' : 'seats' }} with no game tonight
-    </h2>
-    <p class="mb-3 font-mono text-[11px] text-dark-textMuted">
-      these are points you forfeit outright &mdash; a body with a game scores more than a star without one
-    </p>
-    <div v-for="r in deadSeats" :key="'dead-' + r.playerKey"
-         class="flex items-center gap-3 border-b border-dark-border/30 py-1.5 last:border-0">
-      <span class="w-10 shrink-0 font-mono text-[10px] uppercase text-dark-textMuted">{{ r.slot }}</span>
-      <span class="min-w-0 flex-1 truncate text-sm text-dark-text">{{ r.name }}</span>
-      <span class="font-mono text-[10px] text-dark-textMuted">{{ r.position }} &middot; {{ r.team }}</span>
+  <section class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+    <div class="mb-3 flex flex-wrap items-center gap-3">
+      <div class="flex rounded-lg border border-dark-border">
+        <button class="rounded-l-lg px-3 py-1 font-mono text-[11px] transition-colors"
+                :class="mode === 'current' ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+                @click="mode = 'current'">your lineup</button>
+        <button class="rounded-r-lg px-3 py-1 font-mono text-[11px] transition-colors"
+                :class="mode === 'optimal' ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+                @click="mode = 'optimal'">optimal</button>
+      </div>
+      <span class="font-mono text-[11px] text-dark-textMuted">
+        {{ one(total) }} {{ valueLabel || 'projected' }}
+      </span>
+      <span class="flex-1"></span>
+      <!-- The whole reason to look: what the optimal is worth over what is set. -->
+      <span v-if="gain >= 0.1" class="font-mono text-[11px] text-primary">
+        optimal is +{{ one(gain) }}
+      </span>
+      <span v-else-if="current.length" class="font-mono text-[11px] text-dark-textMuted">
+        your lineup is optimal
+      </span>
     </div>
-  </section>
 
-  <!-- THE SWAP THAT FIXES IT. A recommendation with the number it is worth attached. -->
-  <section v-if="upgrades.length" class="mb-5 rounded-xl border border-primary/40 bg-dark-bg/40 p-4">
-    <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
-      Moves to make
-      <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">
-        &middot; a bench body who outscores a starter tonight
-      </span>
-    </h2>
-    <div v-for="(u, i) in upgrades.slice(0, 5)" :key="'up-' + i"
-         class="flex items-center gap-2 border-b border-dark-border/40 py-2 text-sm last:border-0">
-      <span class="w-10 shrink-0 font-mono text-[10px] uppercase text-dark-textMuted">{{ u.sit.slot }}</span>
-      <span class="min-w-0 flex-1">
-        <span class="text-dark-text">start <b class="font-semibold">{{ u.start.name }}</b></span>
-        <span class="text-dark-textMuted"> over {{ u.sit.name }}</span>
-        <span v-if="!u.sit.playsToday" class="ml-1 font-mono text-[10px] text-[#FF5C5C]">(no game)</span>
-      </span>
-      <span class="shrink-0 font-mono text-sm font-semibold text-primary">+{{ one(u.gain) }}</span>
-    </div>
-  </section>
-
-  <!-- TONIGHT'S LINEUP -->
-  <section class="mb-5 rounded-xl border border-dark-border bg-dark-bg/40 p-4">
-    <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
-      Best lineup tonight
-      <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">
-        &middot; {{ one(tonightTotal) }} projected &middot; per-game rate on a night he plays
-      </span>
-    </h2>
-    <p v-if="!lineup.length" class="py-4 text-center font-mono text-xs text-dark-textMuted">
-      No lineup slots to fill — the league published none.
+    <!--
+      Loudest thing on the page when it happens: a started player with no game tonight is
+      points forfeited outright, and the native lineup screen will never tell you.
+    -->
+    <p v-if="dead.length"
+       class="mb-3 rounded-lg border border-[#FF5C5C]/30 bg-[#FF5C5C]/5 px-3 py-2 font-mono text-[11px] text-[#FF5C5C]">
+      {{ dead.length }} {{ dead.length === 1 ? 'seat has' : 'seats have' }} no game tonight
+      &mdash; {{ dead.map((d) => d.name).join(', ') }}
     </p>
-    <div v-for="r in lineup" :key="'ln-' + r.playerKey"
+
+    <p v-if="!rows.length" class="py-6 text-center font-mono text-xs text-dark-textMuted">
+      <template v-if="mode === 'current'">
+        We can't read your set lineup from the platform &mdash; switch to optimal for our pick.
+      </template>
+      <template v-else>No lineup slots to fill &mdash; the league published none.</template>
+    </p>
+
+    <div v-for="r in rows" :key="mode + r.playerKey"
          class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
-      <span class="w-10 shrink-0 font-mono text-[10px] uppercase text-dark-textMuted">{{ r.slot }}</span>
+      <span class="w-10 shrink-0 font-mono text-[10px] uppercase text-dark-textMuted">{{ slotOf(r) }}</span>
       <span class="min-w-0 flex-1">
         <span class="block truncate text-sm font-semibold"
               :class="r.playsToday ? 'text-dark-text' : 'text-dark-textMuted/50'">{{ r.name }}</span>
@@ -103,32 +99,26 @@ const BENCH_LABEL: Record<string, string> = {
             &middot; <img :src="logo(r.team)" alt="" @error="onLogoErr" class="h-3 w-3 object-contain" />{{ r.team }}
           </template>
           <span v-if="!r.playsToday" class="text-[#FF5C5C]">&middot; no game</span>
+          <span v-else-if="r.status && r.status !== 'ACTIVE'" class="text-[#e69a4a]">&middot; {{ r.status }}</span>
         </span>
       </span>
       <span class="w-16 shrink-0 text-right font-mono text-sm"
             :class="r.playsToday ? 'text-dark-text' : 'text-dark-textMuted/40'">{{ one(r.today) }}</span>
     </div>
-  </section>
 
-  <!-- BENCH, with the reason each man is on it. -->
-  <section v-if="bench.length" class="rounded-xl border border-dark-border bg-dark-bg/40 p-4">
-    <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
-      Bench
-      <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">
-        &middot; {{ bench.filter((b) => b.playsToday).length }} of {{ bench.length }} have a game
-      </span>
-    </h2>
-    <div v-for="r in bench" :key="'bn-' + r.playerKey"
-         class="flex items-center gap-3 border-b border-dark-border/30 py-1.5 text-sm last:border-0">
-      <span class="min-w-0 flex-1 truncate"
-            :class="r.playsToday ? 'text-dark-text' : 'text-dark-textMuted/50'">{{ r.name }}</span>
-      <span class="font-mono text-[10px] text-dark-textMuted/70">{{ r.position }} &middot; {{ r.team }}</span>
-      <span class="w-20 shrink-0 text-right font-mono text-[10px]"
-            :class="r.benchReason === 'no-game' ? 'text-dark-textMuted/40' : 'text-dark-textMuted'">
-        {{ BENCH_LABEL[r.benchReason ?? ''] ?? '' }}
-      </span>
-      <span class="w-12 shrink-0 text-right font-mono text-xs"
-            :class="r.playsToday ? 'text-dark-textMuted' : 'text-dark-textMuted/30'">{{ one(r.today) }}</span>
-    </div>
+    <!-- Bench, collapsed to one line each: it is a reference list, not a decision. -->
+    <details v-if="bench.length" class="mt-3 border-t border-dark-border/50 pt-3">
+      <summary class="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-dark-textMuted/70">
+        bench &middot; {{ bench.filter((b) => b.playsToday).length }} of {{ bench.length }} have a game
+      </summary>
+      <div v-for="r in bench" :key="'bn-' + r.playerKey"
+           class="mt-1.5 flex items-center gap-3 text-sm">
+        <span class="min-w-0 flex-1 truncate"
+              :class="r.playsToday ? 'text-dark-text' : 'text-dark-textMuted/50'">{{ r.name }}</span>
+        <span class="font-mono text-[10px] text-dark-textMuted/70">{{ r.position }} &middot; {{ r.team }}</span>
+        <span class="w-12 shrink-0 text-right font-mono text-xs"
+              :class="r.playsToday ? 'text-dark-textMuted' : 'text-dark-textMuted/30'">{{ one(r.today) }}</span>
+      </div>
+    </details>
   </section>
 </template>

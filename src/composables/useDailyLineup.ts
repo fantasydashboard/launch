@@ -50,8 +50,10 @@ export interface DailyRow {
   perGame: number
   playsToday: boolean
   status: string
-  /** The slot he fills in the optimal lineup, or null when he is benched. */
+  /** The slot he fills in the optimal lineup, or null when he is benched there. */
   slot: string | null
+  /** The slot the league ACTUALLY has him in right now, or null when he is benched. */
+  startedSlot: string | null
   benchReason: BenchReason | null
 }
 
@@ -108,6 +110,10 @@ export function useDailyLineup() {
         playsToday: plays,
         status: p.status ?? '',
         slot: null,
+        /* From the platform's own lineup, not ours — this is what is set, not what we advise. */
+        startedSlot: (p as any).lineupSlot && !/^(BE|Bench|IR|IL|NA|DL)$/i.test(String((p as any).lineupSlot))
+          ? String((p as any).lineupSlot)
+          : null,
         benchReason: null,
       }
     })
@@ -149,6 +155,23 @@ export function useDailyLineup() {
         : 'outscored'
       return { ...r, slot, benchReason }
     })
+  })
+
+  /**
+   * WHAT YOU ARE ACTUALLY STARTING, as the league has it set right now.
+   *
+   * Shown beside the optimal so the toggle is a comparison rather than a claim. A page that
+   * only shows the optimal is telling a manager what to do without showing what he is doing,
+   * and the gap between the two IS the decision.
+   */
+  const current = computed(() => {
+    const order = Object.keys(source.rosterSlots.value)
+    return rows.value
+      .filter((r) => r.startedSlot)
+      .sort((a, b) => {
+        const d = order.indexOf(a.startedSlot!) - order.indexOf(b.startedSlot!)
+        return d !== 0 ? d : b.today - a.today
+      })
   })
 
   /** In slot order, so the lineup reads the way the league's own lineup page does. */
@@ -242,7 +265,10 @@ export function useDailyLineup() {
     loadSchedule()
   }
 
-  return { rows, lineup, bench, deadSeats, upgrades, rankings, loading, gamesTonight, playsToday, load }
+  return {
+    rows, current, lineup, bench, deadSeats, upgrades, rankings,
+    loading, gamesTonight, playsToday, load,
+  }
 }
 
 /** Whether a player's position list can fill a given slot, flex slots included. */

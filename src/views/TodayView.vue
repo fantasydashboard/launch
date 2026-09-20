@@ -126,14 +126,10 @@ function budgetTagText(p: ScoredPlay): string | null {
       <h1 class="font-display text-2xl font-bold text-dark-text">Today</h1>
       <p class="font-mono text-xs text-dark-textMuted">{{ today }}</p>
       <p class="mt-1 font-mono text-xs text-dark-textMuted">
-        <template v-if="isFootball">Weekly, not daily — football lives on My Team, The Wire, and Matchup.</template>
-        <template v-else>Stream an arm, plug your holes — win the day.</template>
+        <template v-if="isFootball">Weekly, not daily &mdash; football lives on This Week.</template>
+        <template v-else>Set your lineup. Start the right players.</template>
       </p>
     </header>
-
-    <p v-if="budgetBanner" class="mb-4 font-mono text-[11px] uppercase tracking-wider text-dark-textMuted">
-      {{ budgetBanner }}
-    </p>
 
     <!-- ── LOADING ─────────────────────────────────────────────────────────── -->
     <!-- `loading` now reflects the full board inputs (schedule + roster + free agents),
@@ -151,249 +147,32 @@ function budgetTagText(p: ScoredPlay): string | null {
       Couldn't load today's slate. Try refreshing.
     </div>
 
-    <!-- ── EMPTY — distinguish "no games at all" from "games, but nothing to do" ── -->
     <!--
-      The empty state fires when there are no MOVES to make, which is not the same as having
-      nothing to show: a manager whose lineup is already optimal still wants to see it, and
-      still wants to know a seat is dead. So it only takes over the page when there is no
-      lineup either.
+      ONE SHAPE, EVERY DAILY LEAGUE. Points or categories, baseball or hockey, the page is the
+      same three things in the same order: where the week stands, what you are starting
+      against what you should start, and who is worth starting tonight. The old page branched
+      into different layouts depending on whether there were moves to make, so two managers on
+      the same morning saw structurally different products.
     -->
-    <div v-else-if="showEmpty && !daily.lineup.value.length" class="py-16 text-center text-dark-textMuted">
-      <template v-if="isFootball">
-        No daily board for football — head to My Team or The Wire.
-      </template>
-      <template v-else-if="noGames">
-        No {{ words.league }} games today — the board lights up when games resume.
-      </template>
-      <template v-else>
-        You're set for today — lineup's optimal.
-      </template>
-    </div>
-
-    <template v-else-if="showEmpty">
-      <!-- ── WHERE THE WEEK STANDS ───────────────────────────────────────── -->
-      <TodayMatchupHeader
-        :snapshot="thisWeek.snapshot.value"
-        :my-team-name="teamSource.myTeamName.value"
-        :my-team-logo="teamSource.myTeamLogo.value"
-        :is-category="isCategoryLeague" />
-
-      <p class="mb-5 rounded-xl border border-dark-border bg-dark-card px-4 py-3 font-mono text-[11px] text-dark-textMuted">
-        Nothing to stream tonight &mdash; your lineup is the whole decision.
-      </p>
-      <DailyLineupPanel
-        :lineup="daily.lineup.value" :bench="daily.bench.value"
-        :dead-seats="daily.deadSeats.value" :upgrades="daily.upgrades.value" />
-
-      <!-- ── TONIGHT'S RANKINGS ──────────────────────────────────────────── -->
-      <DailyRankingsPanel :rows="daily.rankings.value" />
-    </template>
-
     <template v-else>
-      <!-- ── WHERE THE WEEK STANDS ───────────────────────────────────────── -->
+      <!-- 1. WHERE THE WEEK STANDS -->
       <TodayMatchupHeader
         :snapshot="thisWeek.snapshot.value"
         :my-team-name="teamSource.myTeamName.value"
         :my-team-logo="teamSource.myTeamLogo.value"
         :is-category="isCategoryLeague" />
 
-      <!-- ── YOUR LINEUP TONIGHT ─────────────────────────────────────────── -->
+      <!-- Dark night is a real answer, and it belongs inside the page rather than instead of it. -->
+      <p v-if="noGames"
+         class="mb-5 rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-center font-mono text-[11px] text-dark-textMuted">
+        No {{ words.league }} games today &mdash; the board lights up when games resume.
+      </p>
+
+      <!-- 2. YOUR LINEUP, AND THE ONE WE'D SET -->
       <DailyLineupPanel
-        v-if="daily.lineup.value.length || daily.bench.value.length"
-        :lineup="daily.lineup.value"
+        :current="daily.current.value" :optimal="daily.lineup.value"
         :bench="daily.bench.value"
-        :dead-seats="daily.deadSeats.value"
-        :upgrades="daily.upgrades.value" />
-
-      <!-- ── HERO: TODAY'S BEST PLAY ─────────────────────────────────────── -->
-      <section v-if="board.hero" class="mb-8">
-        <h2 class="font-display text-lg font-bold text-dark-text">★ Today's best play</h2>
-        <p class="mb-3 font-mono text-xs text-dark-textMuted">The single highest-value move on the board.</p>
-
-        <div class="rounded-xl border border-dark-border bg-dark-card px-4 py-4">
-          <div class="flex items-start justify-between gap-3">
-            <div class="flex min-w-0 items-start gap-3">
-              <img v-if="hasHeadshot(board.hero)" :src="board.hero.headshot" :alt="board.hero.name" loading="lazy"
-                class="h-10 w-10 shrink-0 rounded-full bg-dark-border object-cover" @error="onHeadshotErr(board.hero.playerKey)" />
-              <span v-else class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[10px] text-dark-textMuted">{{ board.hero.position }}</span>
-              <div class="min-w-0">
-                <div class="flex items-center gap-2">
-                  <span class="truncate text-base font-semibold text-dark-text">{{ board.hero.name }}</span>
-                  <span class="flex shrink-0 items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
-                    {{ board.hero.position }} · <img :src="teamLogoFor(leagueStore.activeSport, board.hero.team)" alt="" loading="lazy" @error="onLogoErr" class="h-3 w-3 object-contain" /> {{ board.hero.team }}
-                  </span>
-                </div>
-                <div class="mt-1 font-mono text-xs text-dark-textMuted">{{ board.hero.detail }}</div>
-                <div class="mt-2 flex flex-wrap items-center gap-2 font-mono text-sm text-primary">
-                  <span>{{ moveBar(board.hero) }}</span>
-                  <span v-for="c in board.hero.helpsCats" :key="c"
-                    class="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-primary">{{ c }}</span>
-                </div>
-                <p v-if="dropLabel(board.hero)" class="mt-2 font-mono text-[11px] text-dark-textMuted">
-                  → add {{ board.hero.name }} · {{ dropLabel(board.hero) }}
-                  <span v-if="budgetTagText(board.hero)" class="ml-2 font-mono text-[10px]"
-                    :class="board.hero.budgetTag === 'save-add' ? 'text-dark-textMuted' : 'text-primary'">{{ budgetTagText(board.hero) }}</span>
-                </p>
-                <p v-else-if="board.hero.oneDay" class="mt-2 font-mono text-[10px] text-dark-textMuted">
-                  one-day stream · drop tomorrow
-                </p>
-              </div>
-            </div>
-            <div class="shrink-0 text-right">
-              <div class="font-display text-2xl font-bold text-primary tabular-nums">{{ scoreText(board.hero) }}</div>
-              <router-link
-                v-if="board.hero.kind !== 'startSit'"
-                to="/players"
-                class="mt-1 inline-block font-mono text-[10px] text-dark-textMuted underline-offset-2 hover:text-dark-text hover:underline"
-              >→ Wire</router-link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── YOUR OPEN SLOTS ─────────────────────────────────────────────── -->
-      <section v-if="board.openSlots.length" class="mb-8">
-        <h2 class="font-display text-lg font-bold text-dark-text">Your open slots</h2>
-        <p class="mb-3 font-mono text-xs text-dark-textMuted">Holes in today's active lineup.</p>
-
-        <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
-          <div v-for="slot in board.openSlots" :key="slot.slot" class="px-4 py-3">
-            <div class="flex items-center gap-3">
-              <span class="w-14 shrink-0 font-mono text-sm font-semibold text-dark-text">{{ slot.slot }}</span>
-              <span class="shrink-0 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
-                {{ reasonLabel(slot.reason) }}
-              </span>
-              <span v-if="slot.vacating" class="min-w-0 flex-1 truncate font-mono text-[10px] text-dark-textMuted">
-                was {{ slot.vacating.name }}
-              </span>
-            </div>
-
-            <div v-if="slot.fill" class="mt-2 flex items-start gap-2 pl-[4.5rem]">
-              <img v-if="hasHeadshot(slot.fill)" :src="slot.fill.headshot" :alt="slot.fill.name" loading="lazy"
-                class="mt-0.5 h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" @error="onHeadshotErr(slot.fill.playerKey)" />
-              <span v-else class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[8px] text-dark-textMuted">{{ slot.fill.position }}</span>
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center justify-between gap-3">
-                  <div class="min-w-0">
-                    <span class="truncate text-sm text-primary">{{ fillLabel(slot.fill) }}</span>
-                    <span v-if="slot.fill.kind !== 'startSit'" class="ml-2 font-mono text-xs text-dark-textMuted">
-                      {{ moveBar(slot.fill) }}
-                    </span>
-                  </div>
-                  <router-link
-                    v-if="slot.fill.kind !== 'startSit'"
-                    to="/players"
-                    class="shrink-0 font-mono text-[10px] text-dark-textMuted underline-offset-2 hover:text-dark-text hover:underline"
-                  >→ Wire</router-link>
-                </div>
-                <div class="flex items-center gap-1 font-mono text-[10px] text-dark-textMuted">
-                  {{ slot.fill.position }} · <img :src="teamLogoFor(leagueStore.activeSport, slot.fill.team)" alt="" loading="lazy" @error="onLogoErr" class="h-3 w-3 object-contain" /> {{ slot.fill.team }}
-                </div>
-              </div>
-            </div>
-            <div v-else class="mt-2 pl-[4.5rem] font-mono text-[10px] text-dark-textMuted">
-              nothing available to fill this today
-            </div>
-            <p v-if="slot.fill && slot.fill.kind !== 'startSit' && dropLabel(slot.fill)" class="mt-1 pl-[4.5rem] font-mono text-[11px] text-dark-textMuted">
-              · {{ dropLabel(slot.fill) }}
-              <span v-if="budgetTagText(slot.fill)" class="ml-2 font-mono text-[10px]"
-                :class="slot.fill.budgetTag === 'save-add' ? 'text-dark-textMuted' : 'text-primary'">{{ budgetTagText(slot.fill) }}</span>
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── STREAMING ────────────────────────────────────────────────────── -->
-      <section v-if="board.streamers.length" class="mb-8">
-        <h2 class="font-display text-lg font-bold text-dark-text">Streaming</h2>
-        <p class="mb-3 font-mono text-xs text-dark-textMuted">Best arms on the wire today.</p>
-
-        <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
-          <div v-for="p in board.streamers" :key="p.playerKey" class="px-4 py-3">
-            <div class="flex items-center gap-3">
-              <img v-if="hasHeadshot(p)" :src="p.headshot" :alt="p.name" loading="lazy"
-                class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" @error="onHeadshotErr(p.playerKey)" />
-              <span v-else class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[9px] text-dark-textMuted">{{ p.position }}</span>
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2">
-                  <span class="truncate text-sm font-semibold text-dark-text">{{ p.name }}</span>
-                  <span class="flex shrink-0 items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
-                    {{ p.position }} · <img :src="teamLogoFor(leagueStore.activeSport, p.team)" alt="" loading="lazy" @error="onLogoErr" class="h-3 w-3 object-contain" /> {{ p.team }}
-                  </span>
-                  <span v-for="c in p.helpsCats" :key="c"
-                    class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-primary">{{ c }}</span>
-                </div>
-                <div class="mt-0.5 font-mono text-[10px] text-dark-textMuted">{{ p.detail }}</div>
-              </div>
-              <span class="shrink-0 font-mono text-sm text-primary">{{ moveBar(p) }}</span>
-              <span class="shrink-0 font-mono text-sm font-bold text-primary tabular-nums">{{ scoreText(p) }}</span>
-              <router-link to="/players"
-                class="shrink-0 font-mono text-[10px] text-dark-textMuted underline-offset-2 hover:text-dark-text hover:underline">→ Wire</router-link>
-            </div>
-            <p v-if="dropLabel(p)" class="mt-1.5 font-mono text-[11px] text-dark-textMuted">
-              → add {{ p.name }} · {{ dropLabel(p) }}
-              <span v-if="budgetTagText(p)" class="ml-2 font-mono text-[10px]"
-                :class="p.budgetTag === 'save-add' ? 'text-dark-textMuted' : 'text-primary'">{{ budgetTagText(p) }}</span>
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── UPGRADE TODAY ───────────────────────────────────────────────── -->
-      <section v-if="board.upgrades.length || board.sitAlerts.length" class="mb-8">
-        <h2 class="font-display text-lg font-bold text-dark-text">Upgrade today</h2>
-        <p class="mb-3 font-mono text-xs text-dark-textMuted">Better plays than what's already in your lineup.</p>
-
-        <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
-          <div v-for="p in board.sitAlerts" :key="'sit-' + p.playerKey" class="px-4 py-3 flex items-center gap-3">
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
-                <span class="truncate text-sm font-semibold text-dark-text">{{ p.name }}</span>
-                <span class="shrink-0 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
-                  {{ p.team }} · {{ p.position }}
-                </span>
-                <span
-                  class="shrink-0 font-mono text-[9px] uppercase tracking-wider"
-                  :style="{ color: '#e0625a' }"
-                >sit alert</span>
-              </div>
-              <div class="mt-0.5 font-mono text-[10px]" :style="{ color: '#e0625a' }">{{ p.detail }}</div>
-            </div>
-            <span class="shrink-0 font-mono text-sm" :style="{ color: '#e0625a' }">{{ bar(p.bucket) }}</span>
-          </div>
-
-          <div v-for="p in board.upgrades" :key="'up-' + p.playerKey" class="px-4 py-3">
-            <div class="flex items-center gap-3">
-              <img v-if="hasHeadshot(p)" :src="p.headshot" :alt="p.name" loading="lazy"
-                class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" @error="onHeadshotErr(p.playerKey)" />
-              <span v-else class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[9px] text-dark-textMuted">{{ p.position }}</span>
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2">
-                  <span class="truncate text-sm font-semibold text-dark-text">{{ p.name }}</span>
-                  <span class="flex shrink-0 items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">
-                    {{ p.position }} · <img :src="teamLogoFor(leagueStore.activeSport, p.team)" alt="" loading="lazy" @error="onLogoErr" class="h-3 w-3 object-contain" /> {{ p.team }}
-                  </span>
-                  <span v-for="c in p.helpsCats" :key="c"
-                    class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-primary">{{ c }}</span>
-                </div>
-                <div class="mt-0.5 font-mono text-[10px] text-dark-textMuted">{{ p.detail }}</div>
-              </div>
-              <span class="shrink-0 font-mono text-sm text-primary">{{ moveBar(p) }}</span>
-              <span class="shrink-0 font-mono text-sm font-bold text-primary tabular-nums">{{ scoreText(p) }}</span>
-              <router-link
-                v-if="p.kind !== 'startSit'"
-                to="/players"
-                class="shrink-0 font-mono text-[10px] text-dark-textMuted underline-offset-2 hover:text-dark-text hover:underline"
-              >→ Wire</router-link>
-            </div>
-            <p v-if="dropLabel(p)" class="mt-1.5 font-mono text-[11px] text-dark-textMuted">
-              → add {{ p.name }} · {{ dropLabel(p) }}
-              <span v-if="budgetTagText(p)" class="ml-2 font-mono text-[10px]"
-                :class="p.budgetTag === 'save-add' ? 'text-dark-textMuted' : 'text-primary'">{{ budgetTagText(p) }}</span>
-            </p>
-          </div>
-        </div>
-      </section>
+        :value-label="isPoints ? 'projected points' : 'category value'" />
 
       <!-- ── TONIGHT'S RANKINGS ──────────────────────────────────────────── -->
       <DailyRankingsPanel :rows="daily.rankings.value" />
