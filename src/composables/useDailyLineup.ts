@@ -5,6 +5,8 @@ import { usePointsValue } from '@/composables/usePointsValue'
 import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
 import { getNhlSchedule } from '@/services/nhlSchedule'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
+import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
+import { getLeagueType } from '@/config/sports'
 
 /**
  * Who to start tonight, out of the players you already have.
@@ -66,9 +68,42 @@ const ymd = (d: Date) => {
 
 export function useDailyLineup() {
   const leagueStore = useLeagueStore()
-  const source = useActivePointsSource()
+
+  /*
+   * A CATEGORY LEAGUE HAS A DIFFERENT SOURCE, and using the wrong one is not a degraded
+   * result — it is nothing at all. useEspnPointsTeamData sets `supported = false` the moment
+   * it sees H2H_CATEGORY or ROTO and returns an empty pool, empty slots and no team name,
+   * which is exactly what the page showed: "My Team", 0.0, "the league published none".
+   * Both sources publish the same three things this composable needs — pool, rosterSlots and
+   * my team key — so the choice is a swap rather than a second implementation.
+   */
+  const isCategory = computed(() => {
+    /* SleeperLeague's type has no scoring_type, and the store's currentLeague is typed as
+       that shape even when it holds an ESPN league — the same cast the other callers use. */
+    const live = (leagueStore.currentLeague as any)?.scoring_type
+    const saved = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
+    return getLeagueType(live ?? (saved as any)?.scoring_type) !== 'points'
+  })
+
+  const pointsSource = useActivePointsSource()
+  const catSource = useEspnCategoryTeamData()
+
+  const source = {
+    pool: computed(() => (isCategory.value ? catSource.pool.value : pointsSource.pool.value)),
+    fgByKey: pointsSource.fgByKey,
+    rosterSlots: computed(() =>
+      isCategory.value ? catSource.rosterSlots.value : pointsSource.rosterSlots.value),
+    myTeamKey: computed(() =>
+      isCategory.value ? (catSource.myTeamId.value ?? '') : pointsSource.myTeamKey.value),
+    freeAgents: computed(() =>
+      isCategory.value ? (catSource.freeAgents.value ?? []) : (pointsSource.freeAgents?.value ?? [])),
+    teamNames: pointsSource.teamNames,
+    loading: computed(() => (isCategory.value ? catSource.loading.value : pointsSource.loading.value)),
+    load: () => { if (isCategory.value) catSource.load(); else pointsSource.load() },
+    loadFreeAgents: () => { if (!isCategory.value) pointsSource.loadFreeAgents?.() },
+  }
   const value = usePointsValue({
-    pool: source.pool,
+    pool: pointsSource.pool,
     fgByKey: source.fgByKey,
     sport: computed(() => leagueStore.activeSport),
     season: computed(() => String(leagueStore.currentSeason ?? new Date().getFullYear())),
@@ -277,7 +312,7 @@ export function useDailyLineup() {
     /* The rankings mix free agents in with rostered players, and that pool is a separate
        fetch — without it the board silently shows only what is already taken, which is the
        half of the answer a manager cannot act on. */
-    source.loadFreeAgents?.()
+    source.loadFreeAgents()
     value.load()
     loadSchedule()
   }

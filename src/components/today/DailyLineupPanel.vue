@@ -44,6 +44,19 @@ const gain = computed(() => optimalTotal.value - currentTotal.value)
 
 /** Seats filled by somebody with no game — points forfeited outright. */
 const dead = computed(() => rows.value.filter((r) => !r.playsToday))
+
+/*
+ * CAN WE ACTUALLY RANK THESE PLAYERS TONIGHT?
+ *
+ * A category league has no scoring weights, so the per-game value every row is sorted by
+ * comes back zero for everybody. An "optimal" built on all-zero values is not an optimal —
+ * it is the slot filler breaking ties in whatever order the roster arrived, presented as a
+ * recommendation. Your own lineup is still worth showing; our version of it is not, until
+ * category value is wired in.
+ */
+const canValue = computed(() =>
+  [...props.current, ...props.optimal, ...props.bench].some((r) => r.today > 0),
+)
 </script>
 
 <template>
@@ -53,19 +66,22 @@ const dead = computed(() => rows.value.filter((r) => !r.playsToday))
         <button class="rounded-l-lg px-3 py-1 font-mono text-[11px] transition-colors"
                 :class="mode === 'current' ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
                 @click="mode = 'current'">your lineup</button>
-        <button class="rounded-r-lg px-3 py-1 font-mono text-[11px] transition-colors"
+        <button v-if="canValue" class="rounded-r-lg px-3 py-1 font-mono text-[11px] transition-colors"
                 :class="mode === 'optimal' ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
                 @click="mode = 'optimal'">optimal</button>
       </div>
-      <span class="font-mono text-[11px] text-dark-textMuted">
+      <span v-if="canValue" class="font-mono text-[11px] text-dark-textMuted">
         {{ one(total) }} {{ valueLabel || 'projected' }}
+      </span>
+      <span v-else class="font-mono text-[11px] text-dark-textMuted/70">
+        we can't rank these yet &mdash; category value isn't wired in
       </span>
       <span class="flex-1"></span>
       <!-- The whole reason to look: what the optimal is worth over what is set. -->
-      <span v-if="gain >= 0.1" class="font-mono text-[11px] text-primary">
+      <span v-if="canValue && gain >= 0.1" class="font-mono text-[11px] text-primary">
         optimal is +{{ one(gain) }}
       </span>
-      <span v-else-if="current.length" class="font-mono text-[11px] text-dark-textMuted">
+      <span v-else-if="canValue && current.length" class="font-mono text-[11px] text-dark-textMuted">
         your lineup is optimal
       </span>
     </div>
@@ -105,7 +121,7 @@ const dead = computed(() => rows.value.filter((r) => !r.playsToday))
           <span v-else-if="r.status && r.status !== 'ACTIVE'" class="text-[#e69a4a]">&middot; {{ r.status }}</span>
         </span>
       </span>
-      <span class="w-16 shrink-0 text-right font-mono text-sm"
+      <span v-if="canValue" class="w-16 shrink-0 text-right font-mono text-sm"
             :class="r.playsToday ? 'text-dark-text' : 'text-dark-textMuted/40'">{{ one(r.today) }}</span>
     </div>
 
