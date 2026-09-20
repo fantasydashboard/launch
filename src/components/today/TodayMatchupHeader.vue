@@ -35,14 +35,33 @@ const band = computed(() => {
   return { win: s.winPct, tie: s.tiePct, loss: s.lossPct }
 })
 
-/* Won / losing / level, so the strip can be read at a glance rather than decoded. */
+/*
+ * Safe / tossup / loss, which is what CatStatus actually is.
+ *
+ * This was keyed on winning/losing/tied — words that read correctly and match nothing, so
+ * every column fell through to the muted default and the strip lost the one thing it exists
+ * to show. The tossups are the ones worth a manager's night, so they are the highlighted
+ * state rather than the neutral one.
+ */
 const CAT_TONE: Record<string, string> = {
-  winning: 'text-[#7ee787]', losing: 'text-[#FF5C5C]', tied: 'text-dark-textMuted',
+  safe: 'text-[#7ee787]', tossup: 'text-[#e69a4a]', loss: 'text-[#FF5C5C]',
 }
 const tone = (c: { status: string }) => CAT_TONE[c.status] ?? 'text-dark-textMuted'
 
+/*
+ * Did anything actually get computed? A 100% tie with nothing projected either way is the
+ * signature of a matchup that was never read, not of a dead heat.
+ */
+const hasRealOdds = computed(() => {
+  const s = props.snapshot
+  if (!s) return false
+  if (s.tiePct >= 100 && !s.projWins && !s.projLosses) return false
+  return s.winPct > 0 || s.lossPct > 0 || s.projWins > 0 || s.projLosses > 0
+})
+
+/** The columns still winnable tonight — the only ones a lineup change can move. */
 const contested = computed(() =>
-  (props.snapshot?.categories ?? []).filter((c) => c.status !== 'winning' && c.status !== 'losing'),
+  (props.snapshot?.categories ?? []).filter((c) => c.status === 'tossup'),
 )
 </script>
 
@@ -61,17 +80,26 @@ const contested = computed(() =>
       </div>
 
       <div class="shrink-0 text-center">
-        <p class="font-mono text-lg font-bold"
+        <!--
+          A PROBABILITY WE DID NOT COMPUTE IS NOT A PROBABILITY. The snapshot returns 0% win
+          and 100% tie when it could not read the matchup — most often a points league, whose
+          win chance comes from a projected-points margin this category-shaped composable
+          never calculates. Rendered as-is that reads "you cannot win", which is a confident
+          claim about somebody's week drawn from nothing at all.
+        -->
+        <p v-if="!hasRealOdds" class="font-mono text-sm text-dark-textMuted">&mdash;</p>
+        <p v-else class="font-mono text-lg font-bold"
            :class="snapshot.winPct >= 50 ? 'text-primary' : 'text-[#e69a4a]'">{{ snapshot.winPct }}%</p>
         <p class="font-mono text-[10px] text-dark-textMuted">
-          <template v-if="isCategory">
+          <template v-if="!hasRealOdds">win chance unavailable</template>
+          <template v-else-if="isCategory">
             proj {{ snapshot.projWins }}&ndash;{{ snapshot.projLosses }}<span
               v-if="snapshot.projTies">&ndash;{{ snapshot.projTies }}</span>
           </template>
           <template v-else>to win</template>
         </p>
         <!-- A tie is a real outcome here and was being folded into a loss. -->
-        <p v-if="band && band.tie >= 5" class="font-mono text-[9px] text-dark-textMuted/60">
+        <p v-if="hasRealOdds && band && band.tie >= 5" class="font-mono text-[9px] text-dark-textMuted/60">
           {{ band.tie }}% tie
         </p>
       </div>
