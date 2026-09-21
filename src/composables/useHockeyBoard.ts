@@ -14,7 +14,7 @@ import { buildHockeyVona } from '@/hockey/hockeyVona'
 import { createLedgerEngine } from '@/hockey/categoryLedger'
 import { buildCategoryMarginal } from '@/hockey/categoryMarginal'
 import { suggestPunts } from '@/hockey/puntAdvisor'
-import { slotAtPick } from '@/draft/room/pickOrder'
+import { picksByTeamFromOrder } from '@/hockey/picksByTeam'
 
 /**
  * A hockey draft board for the active ESPN league.
@@ -393,14 +393,10 @@ export function useHockeyBoard() {
       }
       return out
     }
-    const shape = { teams, kind: draftKind.value } as any
-    mockOrder.value.forEach((key, i) => {
-      if (!key) return
-      const slot = slotAtPick(shape, i + 1)
-      const id = String(slot)
-      out[id] = [...(out[id] ?? []), key]
-    })
-    return out
+    /* The seat a hand-marked pick belongs to, which in a snake is not `i % teams`. The
+       inline version here passed `{ kind }` to a helper whose field is `type`, so every
+       snake draft was silently seated as linear. */
+    return picksByTeamFromOrder(mockOrder.value, teams, draftKind.value)
   })
 
   /** Which entry in picksByTeam is mine. */
