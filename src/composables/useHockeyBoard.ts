@@ -149,9 +149,16 @@ export function useHockeyBoard() {
       && next?.season === override.value?.season) return
     override.value = next
     resolvedSeason.value = 0
-    goMock()
     mockOrder.value = []
+    if (!next) { goMock(); load(); return }
+    /*
+     * "Track it" means track it. Loading the league and then sitting in mock mode is the
+     * gesture doing half of what it says — the board filled with the right league and never
+     * polled, which reads as a draft where nothing is happening rather than as a board that
+     * was never listening.
+     */
     load()
+    goLive()
   }
 
   const activeKey = computed(() => String(leagueStore.activeLeagueId ?? ''))
