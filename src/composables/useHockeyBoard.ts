@@ -11,6 +11,10 @@ import {
 } from '@/hockey/hockeyDraftPlan'
 import { buildDraftGrid, type GridPick } from '@/draft/room/draftGrid'
 import { buildHockeyVona } from '@/hockey/hockeyVona'
+import { createLedgerEngine } from '@/hockey/categoryLedger'
+import { buildCategoryMarginal } from '@/hockey/categoryMarginal'
+import { suggestPunts } from '@/hockey/puntAdvisor'
+import { slotAtPick } from '@/draft/room/pickOrder'
 
 /**
  * A hockey draft board for the active ESPN league.
@@ -366,8 +370,120 @@ export function useHockeyBoard() {
 
   watch([isHockey, isEspn, leagueId], () => { if (isHockey.value && isEspn.value && leagueId.value) load() }, { immediate: true })
 
+  /**
+   * Every team's picks, by team id — the input the column ledger is built from.
+   *
+   * BOTH MODES, ONE ANSWER, for the same reason myPlayers needs one. A live ESPN draft labels
+   * each pick with the team that made it; a draft being marked by hand knows only the ORDER,
+   * so the seat is recovered from the pick number. Getting this from one source and not the
+   * other would leave the ledger blank in whichever mode was forgotten, and a blank ledger
+   * looks exactly like a league with nothing decided yet.
+   */
+  const picksByTeam = computed<Record<string, string[]>>(() => {
+    const teams = rules.value?.teams ?? 0
+    if (!teams) return {}
+    const out: Record<string, string[]> = {}
+    for (let i = 1; i <= teams; i++) out[String(i)] = []
+
+    if (live.value && liveState.value) {
+      for (const p of liveState.value.picks) {
+        if (!p.playerKey) continue
+        const id = String(p.teamId)
+        out[id] = [...(out[id] ?? []), p.playerKey]
+      }
+      return out
+    }
+    const shape = { teams, kind: draftKind.value } as any
+    mockOrder.value.forEach((key, i) => {
+      if (!key) return
+      const slot = slotAtPick(shape, i + 1)
+      const id = String(slot)
+      out[id] = [...(out[id] ?? []), key]
+    })
+    return out
+  })
+
+  /** Which entry in picksByTeam is mine. */
+  const myLedgerTeamId = computed(() => {
+    if (live.value && liveState.value && myTeamId.value !== null) return String(myTeamId.value)
+    return mySlot.value !== null ? String(mySlot.value) : ''
+  })
+
+  const isCategoryBoard = computed(() =>
+    (result.value?.mode ?? 'points') === 'categories' && !!rules.value?.categories.length)
+
+  /* The engines only exist for a category league; a points board reads its own number. */
+  const ledgerInput = computed(() => {
+    const r = rules.value
+    if (!isCategoryBoard.value || !r || !myLedgerTeamId.value) return null
+    if (!Object.keys(projections.value).length) return null
+    return {
+      projections: projections.value,
+      categories: r.categories,
+      picksByTeam: picksByTeam.value,
+      myTeamId: myLedgerTeamId.value,
+      rosterSize: r.rosterSize || 0,
+      slots: r.slots,
+      punted: punted.value,
+    }
+  })
+
+  /** Where I project to finish in every column — the scoreboard the format is played on. */
+  const ledger = computed(() =>
+    (ledgerInput.value ? createLedgerEngine(ledgerInput.value).ledger : []))
+
+  /**
+   * The board re-priced for THIS roster.
+   *
+   * Held back until a few picks are in. With an empty roster there is nothing to re-price
+   * against — every team is the same pile of replacement bodies — so the raw category board
+   * is both the honest answer and the better one. Switching at pick one would dress noise up
+   * as personalisation.
+   */
+  const MARGINAL_FROM = 2
+  const marginal = computed(() => {
+    const input = ledgerInput.value
+    if (!input) return []
+    if ((input.picksByTeam[input.myTeamId] ?? []).length < MARGINAL_FROM) return []
+    const available = (result.value?.rows ?? []).map((r) => r.playerKey)
+    if (!available.length) return []
+    return buildCategoryMarginal({ ...input, candidates: available, limit: 120 })
+  })
+
+  /** playerKey -> what he adds to my columns, for the board to sort and label by. */
+  const marginalByKey = computed(() => {
+    const m = new Map<string, number>()
+    for (const r of marginal.value) m.set(r.playerKey, r.gain)
+    return m
+  })
+
+  /** Columns worth conceding, each with the simulated argument for it. */
+  const puntAdvice = computed(() => {
+    const input = ledgerInput.value
+    const r = rules.value
+    if (!input || !r) return []
+    const taken = (input.picksByTeam[input.myTeamId] ?? []).length
+    const remaining = Math.max(0, (r.rosterSize || 0) - taken)
+    if (!remaining) return []
+    const available = (result.value?.rows ?? []).map((row) => row.playerKey)
+    if (!available.length) return []
+    return suggestPunts({
+      ...input,
+      candidates: available,
+      picksRemaining: Math.min(remaining, 12),
+      poolSize: 40,
+      /* The room's own ADP, so the simulated board drains the way this league drafts. */
+      marketOrder: [...(result.value?.rows ?? [])]
+        .filter((row) => row.adp != null)
+        .sort((a, b) => (a.adp as number) - (b.adp as number))
+        .map((row) => row.playerKey),
+    })
+  })
+
   return {
     loading, problem, rules, result, drafted,
+    ledger, marginal, marginalByKey, puntAdvice, picksByTeam,
+    isCategoryBoard,
     rows: computed(() => result.value?.rows ?? []),
     replacement: computed(() => result.value?.replacement ?? {}),
     unnamedScoredStatIds: computed(() => result.value?.unnamedScoredStatIds ?? []),

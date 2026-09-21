@@ -19,10 +19,12 @@
  */
 import { computed, onUnmounted, ref, watchEffect } from 'vue'
 import { useHockeyBoard } from '@/composables/useHockeyBoard'
+import CategoryLedgerPanel from '@/components/draft/CategoryLedgerPanel.vue'
 
 const {
   loading, problem, rules, rows, replacement, unnamedScoredStatIds,
   mode, categoryKeys, contestedKeys, perCategoryByKey,
+  ledger, marginalByKey, puntAdvice,
   punted, togglePunt, clearPunts,
   drafted, take, undo, undoLast, reset, load,
   live, liveError, liveState, lastSyncedAt, myTeamId, teamNames, clock, goLive, goMock, syncDraft,
@@ -46,9 +48,24 @@ const gridRows = computed(() =>
  */
 const SORTS = [
   { key: 'value', label: 'value', hint: 'Value over replacement — who is best' },
+  { key: 'forMe', label: 'for my team', hint: 'What he adds to the columns YOU are contesting — re-priced after every pick you make' },
   { key: 'vona', label: 'cost of waiting', hint: 'What you lose by passing, against who survives to your next pick' },
 ] as const
-const sortBy = ref<'value' | 'vona'>('value')
+const sortBy = ref<'value' | 'forMe' | 'vona'>('value')
+
+/*
+ * "For my team" is the sort a category draft is actually won on, and it only exists once
+ * there is a team to price against — with an empty roster every column is the same pile of
+ * replacement bodies and the re-priced board would be noise dressed as personalisation.
+ */
+const hasMarginal = computed(() => marginalByKey.value.size > 0)
+const marginalOf = (key: string) => marginalByKey.value.get(key)
+
+/* Switch to it the moment it becomes real, because leaving a drafter on the generic board
+   when a better one exists is the whole failure this feature was built to prevent. */
+watchEffect(() => {
+  if (hasMarginal.value && sortBy.value === 'value') sortBy.value = 'forMe'
+})
 /* The simulation needs a seat and picks still to come. On the clock there is nothing between
    now and your turn, so the column stays empty rather than showing zeros that look like a
    reading. */
@@ -169,7 +186,9 @@ const shown = computed(() => {
     : rows.value.filter((r) => r.position === filter.value)
   const ordered = sortBy.value === 'vona' && hasVona.value
     ? [...base].sort((a, b) => (vonaOf(b.playerKey) ?? -1e9) - (vonaOf(a.playerKey) ?? -1e9))
-    : base
+    : sortBy.value === 'forMe' && hasMarginal.value
+      ? [...base].sort((a, b) => (marginalOf(b.playerKey) ?? -1e9) - (marginalOf(a.playerKey) ?? -1e9))
+      : base
   return ordered.slice(0, LIMIT)
 })
 /* Names, not ESPN's numeric ids. The chips are how you undo a misclick, and "4233563 x" is
@@ -422,13 +441,23 @@ const POS_TONE: Record<string, string> = {
         </div>
       </div>
 
+      <!--
+        THE SCOREBOARD THE FORMAT IS PLAYED ON, above the board rather than beside it.
+        In a category league the question on the clock is not "who is best left" but "which
+        column am I losing" — so the answer to that has to be read before the list, not after.
+      -->
+      <CategoryLedgerPanel v-if="ledger.length" class="mb-4"
+                           :ledger="ledger" :punted="punted" :advice="puntAdvice"
+                           @toggle="togglePunt" />
+
       <div class="mb-3 flex flex-wrap items-center gap-2">
         <button v-for="p in POSITIONS" :key="p"
                 class="rounded-lg border px-2.5 py-1 font-mono text-[11px] uppercase transition-colors"
                 :class="filter === p ? 'border-primary text-primary' : 'border-dark-border text-dark-textMuted hover:text-dark-text'"
                 @click="filter = p">{{ p }}</button>
-        <span v-if="hasVona" class="ml-2 flex rounded-lg border border-dark-border">
+        <span v-if="hasVona || hasMarginal" class="ml-2 flex rounded-lg border border-dark-border">
           <button v-for="sopt in SORTS" :key="sopt.key"
+                  v-show="sopt.key !== 'vona' ? (sopt.key !== 'forMe' || hasMarginal) : hasVona"
                   class="px-2 py-1 font-mono text-[10px] transition-colors first:rounded-l-lg last:rounded-r-lg"
                   :class="sortBy === sopt.key ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
                   :title="sopt.hint" @click="sortBy = sopt.key">{{ sopt.label }}</button>
