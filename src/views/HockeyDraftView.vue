@@ -20,11 +20,12 @@
 import { computed, onUnmounted, ref, watchEffect } from 'vue'
 import { useHockeyBoard } from '@/composables/useHockeyBoard'
 import CategoryLedgerPanel from '@/components/draft/CategoryLedgerPanel.vue'
+import { parseEspnLeagueUrl } from '@/hockey/espnLeagueUrl'
 
 const {
   loading, problem, rules, rows, replacement, unnamedScoredStatIds,
   mode, categoryKeys, contestedKeys, perCategoryByKey,
-  ledger, marginalByKey, puntAdvice,
+  ledger, marginalByKey, puntAdvice, override, setLeagueOverride,
   punted, togglePunt, clearPunts,
   drafted, take, undo, undoLast, reset, load,
   live, liveError, liveState, lastSyncedAt, myTeamId, teamNames, clock, goLive, goMock, syncDraft,
@@ -34,6 +35,39 @@ const {
 /* The grid is long — 22 rounds — and most of it is empty early on. Collapsed by default so
    the board stays the thing you look at, with the rounds that have happened shown first. */
 const showGrid = ref(false)
+
+/*
+ * POINT THE BOARD AT ANY LEAGUE YOU CAN SEE, INCLUDING A MOCK.
+ *
+ * ESPN answers league reads for a practice draft with no credentials and reflects our origin
+ * in its CORS headers, so a mock is the one way to rehearse this board before the night that
+ * counts. The season is required rather than guessed: hockey is named for the year the season
+ * ENDS, and a wrong guess renders as an empty league rather than as an error.
+ */
+const urlInput = ref('')
+const urlError = ref('')
+function applyUrl() {
+  urlError.value = ''
+  const ref_ = parseEspnLeagueUrl(urlInput.value)
+  if (!ref_) {
+    urlError.value = "That doesn't look like an ESPN league URL — paste the address bar from your draft room."
+    return
+  }
+  if (ref_.sport && ref_.sport !== 'hockey') {
+    urlError.value = `That's an ESPN ${ref_.sport} league. This board is hockey.`
+    return
+  }
+  if (!ref_.season) {
+    urlError.value = 'That URL has no seasonId. Add &seasonId=2027, or paste the full address from the draft room.'
+    return
+  }
+  setLeagueOverride({ leagueId: ref_.leagueId, season: ref_.season })
+}
+function clearUrl() {
+  urlInput.value = ''
+  urlError.value = ''
+  setLeagueOverride(null)
+}
 const gridRows = computed(() =>
   showGrid.value ? grid.value : grid.value.filter((r) => r.cells.some((c) => c.pick)).slice(-3),
 )
@@ -439,6 +473,30 @@ const POS_TONE: Record<string, string> = {
           <span v-for="k in myPlayers" :key="k"
                 class="rounded border border-primary/30 px-2 py-0.5 font-mono text-[10px] text-primary/90">{{ nameOf(k) }}</span>
         </div>
+      </div>
+
+      <!-- Rehearse against a mock, or point at any league you can see. -->
+      <div class="mb-4 rounded-xl border border-dark-border bg-dark-card/60 p-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <input v-model="urlInput" type="text" spellcheck="false"
+                 placeholder="Paste an ESPN league or mock-draft URL"
+                 class="min-w-0 flex-1 rounded-lg border border-dark-border bg-dark-bg px-3 py-1.5 font-mono text-[11px] text-dark-text placeholder:text-dark-textMuted/50 focus:border-primary focus:outline-none"
+                 @keyup.enter="applyUrl" />
+          <button type="button"
+                  class="rounded-lg border border-primary/50 px-3 py-1.5 font-mono text-[11px] text-primary transition-colors hover:bg-primary/10"
+                  @click="applyUrl">track it</button>
+          <button v-if="override" type="button"
+                  class="rounded-lg border border-dark-border px-3 py-1.5 font-mono text-[11px] text-dark-textMuted transition-colors hover:text-dark-text"
+                  @click="clearUrl">back to my league</button>
+        </div>
+        <p v-if="urlError" class="mt-1.5 font-mono text-[10px] text-[#FF5C5C]">{{ urlError }}</p>
+        <p v-else-if="override" class="mt-1.5 font-mono text-[10px] text-primary/80">
+          tracking league {{ override.leagueId }} &middot; {{ override.season }}
+          <span class="text-dark-textMuted"> &mdash; picks sync when you go live</span>
+        </p>
+        <p v-else class="mt-1.5 font-mono text-[10px] text-dark-textMuted/60">
+          a practice draft works &mdash; ESPN publishes mocks without a login
+        </p>
       </div>
 
       <!--

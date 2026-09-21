@@ -133,10 +133,32 @@ export function useHockeyBoard() {
     return { leagueId: parts[2], season: Number.isFinite(season) ? season : 0 }
   }
 
+  /**
+   * A league pointed at directly, instead of the one connected to the account.
+   *
+   * ESPN answers league reads for a MOCK DRAFT with no credentials at all and reflects our
+   * origin in its CORS headers, which makes a practice draft the one way to exercise this
+   * board end to end before the night that counts. Verified against a live mock on
+   * 2026-09-20: 200 on `mSettings` and `mDraftDetail`, 220 pick rows published before a
+   * single pick was made. Connecting a throwaway league to see it would be the wrong trade,
+   * so the URL is enough.
+   */
+  const override = ref<{ leagueId: string; season: number } | null>(null)
+  function setLeagueOverride(next: { leagueId: string; season: number } | null) {
+    if (next?.leagueId === override.value?.leagueId
+      && next?.season === override.value?.season) return
+    override.value = next
+    resolvedSeason.value = 0
+    goMock()
+    mockOrder.value = []
+    load()
+  }
+
   const activeKey = computed(() => String(leagueStore.activeLeagueId ?? ''))
   /* A bare id is still honoured: not every stored league is guaranteed to use the composite
      form, and falling back costs nothing. */
-  const leagueId = computed(() => parseEspnKey(activeKey.value)?.leagueId || activeKey.value)
+  const leagueId = computed(() =>
+    override.value?.leagueId || parseEspnKey(activeKey.value)?.leagueId || activeKey.value)
 
   /** The season a retry actually succeeded at, so every later fetch uses the same one. */
   const resolvedSeason = ref(0)
@@ -148,6 +170,7 @@ export function useHockeyBoard() {
    * NHL season is labelled for the year it ENDS, so 2026-27 is season 2027.
    */
   const season = computed(() => {
+    if (override.value?.season) return override.value.season
     if (resolvedSeason.value) return resolvedSeason.value
     const fromKey = parseEspnKey(activeKey.value)?.season
     if (fromKey && fromKey > 2000) return fromKey
@@ -368,7 +391,12 @@ export function useHockeyBoard() {
 
   onScopeDispose(stopPolling)
 
-  watch([isHockey, isEspn, leagueId], () => { if (isHockey.value && isEspn.value && leagueId.value) load() }, { immediate: true })
+  /* An explicit league is its own permission to load: the sport/platform gates exist to stop
+     a board firing for somebody's football league, and a pasted hockey URL is not that. */
+  watch([isHockey, isEspn, leagueId], () => {
+    if (!leagueId.value) return
+    if (override.value || (isHockey.value && isEspn.value)) load()
+  }, { immediate: true })
 
   /**
    * Every team's picks, by team id — the input the column ledger is built from.
@@ -479,7 +507,7 @@ export function useHockeyBoard() {
   return {
     loading, problem, rules, result, drafted,
     ledger, marginal, marginalByKey, puntAdvice, picksByTeam,
-    isCategoryBoard,
+    isCategoryBoard, override, setLeagueOverride,
     rows: computed(() => result.value?.rows ?? []),
     replacement: computed(() => result.value?.replacement ?? {}),
     unnamedScoredStatIds: computed(() => result.value?.unnamedScoredStatIds ?? []),
