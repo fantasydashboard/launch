@@ -492,10 +492,14 @@ const POS_TONE: Record<string, string> = {
         <p v-if="urlError" class="mt-1.5 font-mono text-[10px] text-[#FF5C5C]">{{ urlError }}</p>
         <p v-else-if="override" class="mt-1.5 font-mono text-[10px] text-primary/80">
           tracking league {{ override.leagueId }} &middot; {{ override.season }}
-          <span class="text-dark-textMuted"> &mdash; picks sync when you go live</span>
+          <!-- Said plainly, because the banner above says ESPN publishes nothing mid-draft
+               and a promise here that picks "sync when you go live" contradicts it on the
+               same screen. Settings and the board load; the picks do not. -->
+          <span class="text-dark-textMuted"> &mdash; settings and board loaded; ESPN won't
+            publish picks until the draft ends, so mark them yourself as they go</span>
         </p>
         <p v-else class="mt-1.5 font-mono text-[10px] text-dark-textMuted/60">
-          a practice draft works &mdash; ESPN publishes mocks without a login
+          a practice draft works for the board &mdash; ESPN reads without a login
         </p>
       </div>
 
