@@ -1,14 +1,18 @@
 import { ref, watch, type Ref } from 'vue'
 import { sleeperService } from '@/services/sleeper'
-import { fetchSeasonProjectionStats } from '@/services/footballProjections'
+import { fetchSeasonProjectionStats, fetchWeekProjectionStats } from '@/services/footballProjections'
 import { getSeasonLines } from '@/services/playerUsage'
 import { buildRosPoints } from '@/football/rosBlend'
 import {
   buildFootballProjectionsByKey,
+  resolveSleeperIds,
   type ProjPlayer,
   type FootballProjection,
   type SleeperPlayerMeta,
 } from '@/football/buildFootballProjections'
+import { byeWeekByPlayer } from '@/football/footballBye'
+import { byeWeeks } from '@/football/scheduleDifficulty'
+import { getSeasonSchedule, REGULAR_SEASON_WEEKS } from '@/services/nflSchedule'
 
 /**
  * The football fgByKey analog. Given the active league's players, its scoring settings,
@@ -38,8 +42,10 @@ export function useFootballProjections(inputs: {
         sleeperService.getPlayers(),
       ])
       const sleeperMeta: Record<string, SleeperPlayerMeta> = {}
+      const teamById: Record<string, string> = {}
       for (const [id, pl] of Object.entries(playersMap)) {
         sleeperMeta[id] = { name: (pl as any)?.full_name || '', position: (pl as any)?.position || '' }
+        teamById[id] = ((pl as any)?.team || '').toUpperCase()
       }
       const built = buildFootballProjectionsByKey(
         inputs.players.value,
@@ -62,10 +68,45 @@ export function useFootballProjections(inputs: {
       const currentWeek = Number(state.week) || 1
       let lines: Awaited<ReturnType<typeof getSeasonLines>> = []
       try { lines = await getSeasonLines(season, currentWeek) } catch { /* prior alone */ }
+
+      /*
+       * The bye, so a rest-of-season total counts the games he PLAYS rather than the weeks that
+       * pass. Two players of equal quality are not equally valuable when one still owes you a
+       * week off — which is a trade question as much as a ranking one. An unreadable schedule
+       * leaves the map empty and the blend unchanged.
+       */
+      let byeWeekByKey: Record<string, number | null> = {}
+      try {
+        const idByKey = resolveSleeperIds(inputs.players.value, sleeperMeta)
+        const proTeamByKey = Object.fromEntries(
+          Object.entries(idByKey).map(([key, id]) => [key, teamById[id] ?? '']),
+        )
+        const schedule = await getSeasonSchedule(Number(season))
+        byeWeekByKey = byeWeekByPlayer(byeWeeks(schedule, REGULAR_SEASON_WEEKS), proTeamByKey)
+      } catch { /* no schedule, no adjustment */ }
+
+      /*
+       * A second opinion that updates. Everything feeding the blend above descends from a
+       * preseason forecast frozen in August, so the only thing that could move a player was his
+       * own box scores. Sleeper's projection for the UPCOMING week already reflects the depth
+       * chart, the injury and the role, and rosBlend averages its rate in. A failed fetch leaves
+       * the map empty, which changes nothing.
+       */
+      let forwardRateByKey: Record<string, number> = {}
+      try {
+        const wkStats = await fetchWeekProjectionStats(season, currentWeek)
+        const wkProj = buildFootballProjectionsByKey(
+          inputs.players.value, wkStats, sleeperMeta, inputs.scoring.value,
+        )
+        for (const [k, v] of Object.entries(wkProj)) forwardRateByKey[k] = v.points
+      } catch { /* no forward week, no second opinion */ }
+
       const ros = buildRosPoints({
         seasonProjection: Object.fromEntries(Object.entries(built).map(([k, v]) => [k, v.points])),
         lines,
         currentWeek,
+        byeWeekByKey,
+        forwardRateByKey,
       })
       for (const [k, v] of Object.entries(built)) {
         const r = ros[k]

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   normalizeNflName,
   buildFootballProjectionsByKey,
+  resolveSleeperIds,
   type ProjPlayer,
   type SleeperPlayerMeta,
 } from '../buildFootballProjections'
@@ -51,5 +52,39 @@ describe('buildFootballProjectionsByKey', () => {
   it('omits players with no projection match', () => {
     const players: ProjPlayer[] = [{ key: 'ghost', name: 'Nobody Here', position: 'WR' }]
     expect(Object.keys(buildFootballProjectionsByKey(players, summed, meta, scoring))).toEqual([])
+  })
+})
+
+/*
+ * The same match `buildFootballProjectionsByKey` performs, exposed on its own.
+ *
+ * Anything that needs a league player's NFL facts — his pro team, for the bye that decides how
+ * many games he still plays — has to run the identical join, and a second copy of the rules
+ * would drift from this one and quietly mismatch a handful of players.
+ */
+describe('resolveSleeperIds', () => {
+  const meta: Record<string, SleeperPlayerMeta> = {
+    '111': { name: 'Jahmyr Gibbs', position: 'RB' },
+    '222': { name: "Ja'Marr Chase", position: 'WR' },
+  }
+
+  it('prefers the sleeper id a player already carries', () => {
+    const out = resolveSleeperIds([{ key: 'k1', name: 'whoever', position: 'RB', sleeperId: '111' }], meta)
+    expect(out.k1).toBe('111')
+  })
+
+  it('falls back to normalized name and position', () => {
+    const out = resolveSleeperIds([{ key: 'k2', name: 'JaMarr Chase', position: 'wr' }], meta)
+    expect(out.k2).toBe('222')
+  })
+
+  it('omits a player it cannot match, rather than guessing', () => {
+    const out = resolveSleeperIds([{ key: 'k3', name: 'Nobody At All', position: 'TE' }], meta)
+    expect(out.k3).toBeUndefined()
+  })
+
+  it('does not match across positions', () => {
+    const out = resolveSleeperIds([{ key: 'k4', name: 'Jahmyr Gibbs', position: 'WR' }], meta)
+    expect(out.k4).toBeUndefined()
   })
 })

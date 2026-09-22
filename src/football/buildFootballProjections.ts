@@ -36,21 +36,45 @@ export function normalizeNflName(name: string): string {
  * name + position against the Sleeper player-meta map. Unmatched players are omitted
  * (consumers treat an absent key as 0, same as MLB unmatched).
  */
+/**
+ * League player key -> Sleeper player id, by the one join both callers must agree on.
+ *
+ * Sleeper players carry the id already; ESPN and Yahoo players are matched on normalized name
+ * plus position. Unmatched players are simply absent — the same rule the projection build
+ * follows, because "we could not identify him" is not "he projects to nothing".
+ *
+ * Exposed separately because a player's OTHER NFL facts are wanted too: his pro team, which
+ * carries the bye that decides how many games he still plays. Two copies of this join would
+ * eventually disagree about a handful of players, and the disagreement would be invisible.
+ */
+export function resolveSleeperIds(
+  players: ProjPlayer[],
+  sleeperMeta: Record<string, SleeperPlayerMeta>,
+): Record<string, string> {
+  const nameIndex = new Map<string, string>()
+  for (const [id, meta] of Object.entries(sleeperMeta)) {
+    if (!meta) continue
+    nameIndex.set(`${normalizeNflName(meta.name)}|${(meta.position || '').toUpperCase()}`, id)
+  }
+  const out: Record<string, string> = {}
+  for (const p of players) {
+    const id =
+      p.sleeperId ?? nameIndex.get(`${normalizeNflName(p.name)}|${(p.position || '').toUpperCase()}`)
+    if (id) out[p.key] = id
+  }
+  return out
+}
+
 export function buildFootballProjectionsByKey(
   players: ProjPlayer[],
   summedStats: WeekProjections,
   sleeperMeta: Record<string, SleeperPlayerMeta>,
   scoring: Record<string, number>,
 ): Record<string, FootballProjection> {
-  const nameIndex = new Map<string, string>()
-  for (const [id, meta] of Object.entries(sleeperMeta)) {
-    if (!meta) continue
-    nameIndex.set(`${normalizeNflName(meta.name)}|${(meta.position || '').toUpperCase()}`, id)
-  }
+  const idByKey = resolveSleeperIds(players, sleeperMeta)
   const out: Record<string, FootballProjection> = {}
   for (const p of players) {
-    const sleeperId =
-      p.sleeperId ?? nameIndex.get(`${normalizeNflName(p.name)}|${(p.position || '').toUpperCase()}`)
+    const sleeperId = idByKey[p.key]
     if (!sleeperId) continue
     const stats = summedStats[sleeperId]
     if (!stats) continue

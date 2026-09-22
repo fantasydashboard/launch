@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { playingTeams, zeroByeWeek, opponentMap } from '../footballBye'
+import { playingTeams, zeroByeWeek, opponentMap, byeWeekByPlayer } from '../footballBye'
 
 describe('playingTeams', () => {
   it('collects home + away team codes from schedule games', () => {
@@ -63,5 +63,33 @@ describe('opponentMap', () => {
   it('tolerates missing fields', () => {
     expect(Object.keys(opponentMap([{ metadata: {} }] as any))).toEqual([])
     expect(Object.keys(opponentMap(null as any))).toEqual([])
+  })
+})
+
+/*
+ * Rest-of-season value multiplies a per-game rate by the games a player still PLAYS, so the
+ * blend needs each player's bye — which arrives as a per-TEAM fact and has to be joined onto
+ * players. An unknown team must stay unknown: docking a free agent a game because his pro team
+ * is blank would be a verdict drawn from our own missing data.
+ */
+describe('byeWeekByPlayer', () => {
+  const byeByTeam = { DET: 6, BUF: 9, SF: null }
+
+  it('joins a team bye onto every player on that team', () => {
+    const out = byeWeekByPlayer(byeByTeam, { a: 'DET', b: 'DET', c: 'BUF' })
+    expect(out.a).toBe(6)
+    expect(out.b).toBe(6)
+    expect(out.c).toBe(9)
+  })
+
+  it('reports null, never a guess, when the bye is unknown', () => {
+    const out = byeWeekByPlayer(byeByTeam, { onSf: 'SF', noTeam: '', unseen: 'MIA' })
+    expect(out.onSf).toBeNull()
+    expect(out.noTeam).toBeNull()
+    expect(out.unseen).toBeNull()
+  })
+
+  it('matches teams case-insensitively', () => {
+    expect(byeWeekByPlayer(byeByTeam, { a: 'det' }).a).toBe(6)
   })
 })

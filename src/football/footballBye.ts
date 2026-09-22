@@ -46,3 +46,24 @@ export function opponentMap(games: any[]): Record<string, { opp: string; home: b
   }
   return out
 }
+
+/**
+ * Each player's bye week, joined from a per-team bye map.
+ *
+ * The blend needs games remaining, not weeks remaining, and a bye is a fact about a TEAM that
+ * has to be attached to players before anything can use it. Null means unknown — a player with
+ * no pro team on file, or a team the schedule never resolved — and unknown must never become a
+ * silent deduction. `byeWeeks` (scheduleDifficulty) produces the input map.
+ */
+export function byeWeekByPlayer(
+  byeByTeam: Record<string, number | null>,
+  proTeamByKey: Record<string, string>,
+): Record<string, number | null> {
+  const upper: Record<string, number | null> = {}
+  for (const [team, week] of Object.entries(byeByTeam ?? {})) upper[team.toUpperCase()] = week
+  const out: Record<string, number | null> = {}
+  for (const [key, team] of Object.entries(proTeamByKey ?? {})) {
+    out[key] = upper[(team ?? '').toUpperCase()] ?? null
+  }
+  return out
+}

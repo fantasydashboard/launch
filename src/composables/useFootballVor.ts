@@ -12,7 +12,9 @@ import {
 import { defaultWeights } from '@/myteam/pointsScoring'
 import { buildFootballVor, buildFootballVorAudit, type PlayerVor, type VorAudit } from '@/football/footballVor'
 import { tagOpportunity, type OppPlayer } from '@/football/footballOpportunity'
-import { playingTeams, zeroByeWeek } from '@/football/footballBye'
+import { playingTeams, zeroByeWeek, byeWeekByPlayer } from '@/football/footballBye'
+import { byeWeeks } from '@/football/scheduleDifficulty'
+import { getSeasonSchedule, REGULAR_SEASON_WEEKS } from '@/services/nflSchedule'
 import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { AvailablePlayer } from '@/players/types'
 
@@ -118,7 +120,34 @@ export function useFootballVor(inputs: {
        */
       let lines: Awaited<ReturnType<typeof getSeasonLines>> = []
       try { lines = await getSeasonLines(season, currentWeek) } catch { /* prior alone */ }
-      const ros = buildRosPoints({ seasonProjection: projectedByKey, lines, currentWeek })
+
+      /* Games remaining, not weeks remaining — a player whose bye is still ahead plays one
+         fewer of them. An unreadable schedule yields an empty map, which the blend treats as
+         "unknown" and leaves every player exactly where he was. */
+      let byeByKey: Record<string, number | null> = {}
+      try {
+        const schedule = await getSeasonSchedule(Number(season))
+        byeByKey = byeWeekByPlayer(byeWeeks(schedule, REGULAR_SEASON_WEEKS), proTeamByKey.value)
+      } catch { /* no schedule, no adjustment */ }
+
+      /*
+       * A second opinion that updates. Everything feeding the blend above descends from a
+       * preseason forecast frozen in August, so the only thing that could move a player was his
+       * own box scores. Sleeper's projection for the UPCOMING week already reflects the depth
+       * chart, the injury and the role, and rosBlend averages its rate in. A failed fetch leaves
+       * the map empty, which changes nothing.
+       */
+      let forwardRateByKey: Record<string, number> = {}
+      try {
+        const wkStats = await fetchWeekProjectionStats(season, currentWeek)
+        const wkProj = buildFootballProjectionsByKey(projPlayers.value, wkStats, meta, scoring)
+        for (const [k, v] of Object.entries(wkProj)) forwardRateByKey[k] = v.points
+      } catch { /* no forward week, no second opinion */ }
+
+      const ros = buildRosPoints({
+        seasonProjection: projectedByKey, lines, currentWeek,
+        byeWeekByKey: byeByKey, forwardRateByKey,
+      })
       const points: Record<string, number> = {}
       for (const [k, v] of Object.entries(ros)) points[k] = v.pointsRos
 
