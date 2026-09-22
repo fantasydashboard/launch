@@ -72,6 +72,27 @@ export interface FootballWire {
 }
 
 const BOARD_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+
+/**
+ * Who belongs on the OVERALL board. Kickers and team defences do not.
+ *
+ * The overall list ranks on value over replacement, which is precisely what lets a quarterback
+ * and a tight end share one axis. It does that favour for skill positions and not for
+ * specialists. Every kicker in the league projects within a point or two of every other, so the
+ * whole position lands at a value of about zero — and on this board zero is not "no opinion",
+ * it is "exactly replacement level", which drops the entire position into the middle of the
+ * list above real players carrying negative value.
+ *
+ * Defences were worse. Sleeper files them with no full_name, so not one of them matches a
+ * projection; all thirty-two arrive unprojected, get scored zero for want of anything better,
+ * and sort into the same middle band. A live ESPN league showed sixteen consecutive rows of
+ * "no proj" sitting above startable players.
+ *
+ * They keep their own columns, where the comparison is the one actually being made — this
+ * kicker against that kicker — and the overall list answers the question it was built for:
+ * of everything on this wire, what should I want with one roster spot.
+ */
+const OVERALL_POSITIONS = new Set(['QB', 'RB', 'WR', 'TE'])
 /* Folds team defence before splitting: ESPN spells the position "D/ST" and this split
    exists for multi-eligible players, so the slash turned a defence into "D". */
 const normPos = (pos: string): string => canonicalPosition((pos || '').split(/[,/|]/)[0])
@@ -242,7 +263,10 @@ export function buildFootballWire(input: {
    * with one roster spot and a waiver claim. Positional rank hides that a free tight end at
    * -3 is worth more to you than a free quarterback at -1 whose seat is already filled.
    */
-  const all: BoardRow[] = Object.values(board).flat().sort((a, b) => b.vorRos - a.vorRos)
+  const all: BoardRow[] = Object.entries(board)
+    .filter(([pos]) => OVERALL_POSITIONS.has(pos))
+    .flatMap(([, rows]) => rows)
+    .sort((a, b) => b.vorRos - a.vorRos)
   if (all.length) {
     /* Re-tiered on its own, never inherited. A player's tier among ALL startable bodies is a
        different fact from his tier among receivers, and the rows above are shared objects. */

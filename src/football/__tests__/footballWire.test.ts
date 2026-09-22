@@ -236,3 +236,62 @@ describe('list depth and tier depth are independent', () => {
     expect(long).toEqual(short)
   })
 })
+
+/*
+ * Kickers and team defences belong to their own column and nowhere else.
+ *
+ * The overall board ranks on value over replacement, which is what lets a quarterback and a
+ * tight end share an axis. It does not do the same favour for a kicker: every kicker in the
+ * league projects within a point or two of every other, so they all land at a value of roughly
+ * zero — which on this board reads as "exactly replacement level" and drops the entire position
+ * into the middle of the list, above real players with negative value.
+ *
+ * Defences were worse. Sleeper files them with no full_name at all, so none of them matched a
+ * projection and all thirty-two arrived unprojected, were scored zero for want of anything
+ * better, and sorted into that same middle band. Sixteen consecutive rows of "no proj" sat
+ * above startable players.
+ *
+ * They are still ranked inside their own position, where the comparison is the one a manager
+ * is actually making: this kicker against that kicker.
+ */
+describe('the overall board is skill positions only', () => {
+  const withSpecialists = () => buildFootballWire({
+    pool: [
+      { playerKey: 'qb1', name: 'My QB', position: 'QB', teamKey: 'me', proTeam: 'BUF' },
+      { playerKey: 'rb1', name: 'My RB', position: 'RB', teamKey: 'me', proTeam: 'DET' },
+      { playerKey: 'k1', name: 'A Kicker', position: 'K', teamKey: 'me', proTeam: 'DET' },
+      { playerKey: 'd1', name: 'Rams D/ST', position: 'D/ST', teamKey: 'me', proTeam: 'LAR' },
+    ] as PointsPoolPlayer[],
+    vorByKey: {
+      qb1: vor('qb1', 'QB', 40),
+      rb1: vor('rb1', 'RB', -12),   // a real player BELOW replacement
+      k1: vor('k1', 'K', 0),
+      d1: vor('d1', 'DEF', 0),
+    },
+    freeAgents: [],
+    myTeamKey: 'me',
+    slots: { QB: 1, RB: 2, FLEX: 1, K: 1, DEF: 1 },
+    weeksLeft: WEEKS_LEFT,
+  }).board
+
+  it('leaves kickers and defences out of the overall list', () => {
+    const names = (withSpecialists().ALL ?? []).map((r) => r.name)
+    expect(names).toContain('My QB')
+    expect(names).toContain('My RB')
+    expect(names).not.toContain('A Kicker')
+    expect(names).not.toContain('Rams D/ST')
+  })
+
+  it('still ranks them in their own column', () => {
+    const board = withSpecialists()
+    expect((board.K ?? []).map((r) => r.name)).toEqual(['A Kicker'])
+    expect((board.DEF ?? []).map((r) => r.name)).toEqual(['Rams D/ST'])
+  })
+
+  /* The specific failure: a specialist at zero outranking a real player who is below
+     replacement, purely because we had nothing to say about him. */
+  it('carries only skill positions, whatever the league rosters', () => {
+    const positions = new Set((withSpecialists().ALL ?? []).map((r) => r.position))
+    expect([...positions].sort()).toEqual(['QB', 'RB'])
+  })
+})
