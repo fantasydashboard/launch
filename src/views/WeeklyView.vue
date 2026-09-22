@@ -2,7 +2,7 @@
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { computed, ref, watch } from 'vue'
 import { useWeeklyBoard } from '@/composables/useWeeklyBoard'
-import { winPctFromMargin } from '@/football/weeklyBoard'
+import { winPctFromMargin, WEEKLY_INJURY_DISCOUNT } from '@/football/weeklyBoard'
 import { useWinProbTrend } from '@/composables/useWinProbTrend'
 import MatchupWinProbChart from '@/components/matchup/MatchupWinProbChart.vue'
 import { useLeagueStore } from '@/stores/league'
@@ -792,8 +792,12 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
                      data; a discounted number with no badge reads as a bug. -->
                 <span v-else-if="row.ruledOut" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]"
                       :title="`Ruled ${row.injuryTag?.toLowerCase()} — projected at zero`">{{ row.injuryTag }}</span>
+                <!-- Say the SIZE of the cut, not merely that there was one. A reader who sees a
+                     questionable receiver at WR49 reads it as our opinion of the player unless the
+                     badge tells him it is a priced risk: the rank he is looking at is already a
+                     bet on whether the man suits up. -->
                 <span v-else-if="row.injuryTag" class="ml-1 font-mono text-[9px] uppercase text-[#d29922]"
-                      :title="`${row.injuryTag} — projection discounted for the chance he does not play`">{{ row.injuryTag.slice(0, 1) }}</span>
+                      :title="`${row.injuryTag} — ranked at ${Math.round((WEEKLY_INJURY_DISCOUNT[row.injuryTag.toUpperCase()] ?? 1) * 100)}% of a normal week, because roughly seven in ten play and rarely at full strength. Ranked on what he is worth, not on what he does if he suits up.`">{{ row.injuryTag.slice(0, 1) }}</span>
               </span>
               <!-- The opponent gets their crest beside their name; every other manager stays a
                    name in muted type, so the team you are playing is the only one with a face. -->

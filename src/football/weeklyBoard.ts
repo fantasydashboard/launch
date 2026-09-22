@@ -137,18 +137,35 @@ export const MAX_TIER_SPREAD = 2.0
 export const MIN_SPLIT_GAP = 0.5
 
 /**
- * Weekly injury discount, which this board applied nowhere.
+ * Weekly injury discount: what a Questionable player is worth, not what he scores if he plays.
  *
- * Sleeper's projection does not move for a designation and nothing here discounted one, so a
- * Questionable player sat at full strength. Measured against a trusted analyst's week-2 board,
- * that single omission accounted for nearly all our divergence at receiver (rank agreement
- * 0.65 overall, 0.83 once Questionable players were set aside) and at tight end (0.78 -> 0.89).
+ * Sleeper's projection does not move for a designation, so before this a Questionable player
+ * sat on the board at full strength, which is a claim nobody believes.
  *
- * Deliberately harsher than the season-long DTD haircut in myteam/injuryStatus.ts, which is
- * 0.9. Over a season a day-to-day player misses at most one game of a dozen; over ONE WEEK the
- * question is whether he plays at all and whether he is limited if he does. Same tag, two
- * horizons, two numbers. Roughly seven in ten Questionable players suit up, at something under
- * full effectiveness.
+ * WHY 0.65. It is roughly the chance he suits up times how much of him turns up — about seven
+ * in ten play, rarely at full strength. That makes the rank an EXPECTED VALUE, which is the
+ * right currency for a start/sit: you are choosing between two players before you know, not
+ * after. Deliberately harsher than the season-long day-to-day haircut in myteam/injuryStatus.ts
+ * (0.9), because over a season he misses at most one game of a dozen and over ONE WEEK the
+ * question is whether he plays at all. Same tag, two horizons, two numbers.
+ *
+ * THE ORIGINAL JUSTIFICATION FOR THIS NUMBER WAS WRONG AND IS CORRECTED HERE. It cited
+ * agreement with a trusted analyst's week-2 board: 0.65 overall, rising to 0.83 once
+ * Questionable players were set aside. That shows only that Questionable players were WHERE we
+ * disagreed; it assumed he ranked them down. He does not. On his week-3 board he had two
+ * questionable receivers at WR15 and WR19 where we had them WR49 and WR43, and relaxing this
+ * discount toward 1.0 moves our agreement with him from 5.0 to 4.4 mean positional slots.
+ *
+ * It stays at 0.65 anyway, on the first-principles argument above rather than on his agreement:
+ * his list reads as ranking players CONDITIONAL ON PLAYING and leaving the injury call to the
+ * reader, which is a different question from the one this board answers. That difference is now
+ * stated on the badge, so a reader seeing a questionable receiver ranked low knows he is looking
+ * at a priced risk rather than our opinion of the player.
+ *
+ * NOT MEASURABLE, AND WORTH KNOWING. Sleeper exposes only CURRENT injury status, so there is no
+ * way to reconstruct who was questionable in a past week. This number cannot be backtested the
+ * way rosBlend's can; agreement with a human is the only instrument available, and it is not
+ * ground truth. Treat changes here as judgment, and say so.
  *
  * Never applied to banked points: those already happened.
  */
