@@ -2595,6 +2595,95 @@
 
 
     </template>
+
+    <!-- ══ 35 · ROS RISERS & FALLERS ══ -->
+    <template v-if="selectedInteractiveItem === 'ros_movers'">
+    <div class="post-wrap" style="max-width:none;">
+      <div class="post-label">ROS Risers &amp; Fallers</div>
+
+      <!-- Controls -->
+      <div class="wp-controls">
+        <div class="wp-control-row">
+          <label class="wp-label">Compare against</label>
+          <select v-model.number="rmLookback" class="wp-input" style="width:130px">
+            <option :value="1">Last week</option>
+            <option :value="2">Two weeks ago</option>
+          </select>
+          <button @click="loadRosMovers" :disabled="rmLoading"
+            style="padding:6px 14px;background:#eab308;border:none;border-radius:6px;color:#0a0c14;font-weight:700;cursor:pointer;font-size:12px;"
+            :style="rmLoading ? 'opacity:0.5;cursor:not-allowed' : ''">
+            {{ rmLoading ? '⏳ Building…' : '⬇ Build board' }}
+          </button>
+        </div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:8px;">
+          Rebuilds our rest-of-season board as it stood then and as it stands now, and diffs the
+          positional ranks. 12-team half-PPR. Nothing is stored — the old board is replayed.
+        </div>
+        <div v-if="rmError" style="color:#ef4444;font-size:12px;margin-top:8px;">⚠️ {{ rmError }}</div>
+      </div>
+
+      <ThreeSizePreview name="ros-risers-fallers">
+      <div class="rm-card">
+        <div class="rm-grain"></div>
+        <div class="rm-inner">
+          <div class="rm-head">
+            <div class="rm-head-text">
+              <div class="rm-eyebrow">Rest-of-season rankings</div>
+              <div class="rm-title">BIGGEST <span class="rm-title-y">MOVERS</span></div>
+            </div>
+            <img src="/UFD_V8.png" alt="UFD" class="rm-logo" />
+          </div>
+          <div class="rm-sub">{{ rmSubLabel }}</div>
+
+          <div class="rm-cols">
+            <div class="rm-col">
+              <div class="rm-col-head rm-up">▲ RISING</div>
+              <div class="rm-rows">
+              <div v-for="m in rmRisers" :key="'rmu' + m.playerKey" class="rm-row">
+                <div class="rm-row-main">
+                  <span class="rm-name">{{ m.name }}</span>
+                  <span class="rm-delta rm-up">+{{ m.move }}</span>
+                </div>
+                <div class="rm-meta">
+                  <span class="rm-was">{{ m.position }}{{ m.from }}</span>
+                  <span class="rm-arrow">→</span>
+                  <span class="rm-now">{{ m.position }}{{ m.to }}</span>
+                  <span class="rm-team">{{ m.team }}</span>
+                </div>
+              </div>
+              <div v-if="!rmRisers.length" class="rm-empty">Build the board to fill this in</div>
+              </div>
+            </div>
+
+            <div class="rm-col">
+              <div class="rm-col-head rm-down">▼ FALLING</div>
+              <div class="rm-rows">
+              <div v-for="m in rmFallers" :key="'rmd' + m.playerKey" class="rm-row">
+                <div class="rm-row-main">
+                  <span class="rm-name">{{ m.name }}</span>
+                  <span class="rm-delta rm-down">{{ m.move }}</span>
+                </div>
+                <div class="rm-meta">
+                  <span class="rm-was">{{ m.position }}{{ m.from }}</span>
+                  <span class="rm-arrow">→</span>
+                  <span class="rm-now">{{ m.position }}{{ m.to }}</span>
+                  <span class="rm-team">{{ m.team }}</span>
+                </div>
+              </div>
+              <div v-if="!rmFallers.length" class="rm-empty">Build the board to fill this in</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="rm-foot">
+            <span class="rm-foot-why">Our board updates on what players actually do</span>
+            <span class="rm-foot-url">ultimatefantasydashboard.com</span>
+          </div>
+        </div>
+      </div>
+      </ThreeSizePreview>
+    </div>
+    </template>
     </template><!-- end interactive tab -->
   </div>
 </template>
@@ -2604,6 +2693,11 @@ import { ref, computed, defineComponent, h, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { trackCardShare } from '@/services/shareTracking'
+import { sleeperService } from '@/services/sleeper'
+import { getSeasonLines } from '@/services/playerUsage'
+import { buildRosPoints } from '@/football/rosBlend'
+import { buildFootballVor } from '@/football/footballVor'
+import { buildRosMovers, type Mover, type MoverPlayer } from '@/football/rosMovers'
 
 // ── Embed detection (hide shell when loaded in admin iframe) ──────────────
 const route = useRoute()
@@ -2729,8 +2823,128 @@ const interactiveItems = [
   { id: 'wp_card',        label: '29 · Win Probability Card' },
   { id: 'most_traded',    label: '32 · Most Traded Players' },
   { id: 'ranking_impact', label: '34 · Player Ranking Impact' },
+  { id: 'ros_movers',     label: '35 · ROS Risers & Fallers' },
 ]
 const selectedInteractiveItem = ref('wp_daily')
+
+
+// ══════════════════════════════════════════════════════════════════════════
+// 35 · ROS RISERS & FALLERS
+//
+// The board moves every week on its own, because the blend keeps updating on what players
+// actually do. That movement is the post: "Jalen Coker, WR46 to WR14" is a claim with a reason
+// behind it, where a static top fifty is a list anybody can publish.
+//
+// Last week's board is REPLAYED, not remembered — the same blend run against the lines that
+// existed a week ago. So any past week can be regenerated and there is no snapshot to fall out
+// of step with the code.
+// ══════════════════════════════════════════════════════════════════════════
+
+/*
+ * How deep each position stays worth naming. Deliberately near the startable line for a 12-team
+ * league (WR36 is the last starting receiver) rather than the full board: below it a point of
+ * projection separates twenty players, so the biggest MOVES are nearly all down there. At a
+ * 60-deep receiver cut the card filled with WR86-to-WR58 and read as noise.
+ */
+const RM_DEPTH: Record<string, number> = { QB: 18, RB: 30, WR: 42, TE: 15 }
+/** Standard 12-team half-PPR. A public post cannot read anybody's league settings. */
+const RM_SLOTS: Record<string, number> = { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1 }
+const RM_TEAMS = 12
+
+const rmLookback = ref(1)
+const rmLoading = ref(false)
+const rmError = ref('')
+const rmWeek = ref(0)
+const rmBuiltLookback = ref(1)
+const rmRisers = ref<Mover[]>([])
+const rmFallers = ref<Mover[]>([])
+
+const rmSubLabel = computed(() => {
+  if (!rmWeek.value) return 'Build the board to fill this in'
+  const n = rmBuiltLookback.value
+  return `Week ${rmWeek.value} · movement over the last ${n === 1 ? 'week' : n + ' weeks'}`
+})
+
+async function loadRosMovers() {
+  rmLoading.value = true
+  rmError.value = ''
+  try {
+    const state = await sleeperService.getNflState()
+    const season = String(state.season)
+    const week = Number(state.week) || 1
+    const back = rmLookback.value === 2 ? 2 : 1
+    if (week - back < 1) throw new Error('Not enough of the season has been played to compare against.')
+
+    const [rawProj, playersMap] = await Promise.all([
+      sleeperService.getSeasonProjections('football', season),
+      sleeperService.getPlayers(),
+    ])
+
+    /* Sleeper's own half-PPR projection is the prior, the same figure the landing board uses. */
+    const projected: Record<string, number> = {}
+    for (const [id, stats] of Object.entries(rawProj)) {
+      const pts = Number((stats as Record<string, number>)?.pts_half_ppr)
+      if (Number.isFinite(pts) && pts > 0) projected[id] = pts
+    }
+
+    const players: Record<string, MoverPlayer> = {}
+    const positionByKey: Record<string, string> = {}
+    for (const [id, pl] of Object.entries(playersMap as Record<string, any>)) {
+      const pos = String(pl?.position ?? '').toUpperCase()
+      if (!(pos in RM_DEPTH) || !projected[id] || !pl?.full_name) continue
+      players[id] = {
+        playerKey: id, name: pl.full_name, position: pos, team: String(pl?.team ?? '').toUpperCase(),
+      }
+      positionByKey[id] = pos
+    }
+    const ids = Object.keys(players)
+    if (!ids.length) throw new Error('No projections came back from Sleeper.')
+
+    const allLines = await getSeasonLines(season, week)
+    if (!allLines.length) throw new Error('No scoring lines yet — nothing has moved.')
+
+    /** The board exactly as it stood going into `asOf`: everything knowable then, nothing more. */
+    const boardAt = (asOf: number): Record<string, number> => {
+      const ros = buildRosPoints({
+        seasonProjection: Object.fromEntries(ids.map((i) => [i, projected[i]])),
+        lines: allLines.filter((l) => l.week < asOf),
+        currentWeek: asOf,
+      })
+      const vor = buildFootballVor({
+        points: Object.fromEntries(ids.map((i) => [i, ros[i]?.pointsRos ?? 0])),
+        positionByKey,
+        slots: RM_SLOTS,
+        teams: RM_TEAMS,
+      })
+      const rank: Record<string, number> = {}
+      for (const pos of Object.keys(RM_DEPTH)) {
+        ids
+          .filter((i) => positionByKey[i] === pos)
+          .sort((a, b) => (vor[b]?.vorRos ?? 0) - (vor[a]?.vorRos ?? 0))
+          .forEach((i, n) => (rank[i] = n + 1))
+      }
+      return rank
+    }
+
+    const { risers, fallers } = buildRosMovers({
+      current: boardAt(week),
+      previous: boardAt(week - back),
+      players,
+      depth: RM_DEPTH,
+    })
+    rmRisers.value = risers
+    rmFallers.value = fallers
+    rmWeek.value = week
+    rmBuiltLookback.value = back
+    if (!risers.length && !fallers.length) {
+      rmError.value = 'Nothing cleared the threshold — try a two-week comparison.'
+    }
+  } catch (e: any) {
+    rmError.value = e?.message || 'Could not build the board.'
+  } finally {
+    rmLoading.value = false
+  }
+}
 
 // ── Static item picker ────────────────────────────────────────────────────
 const staticItems = [
@@ -6002,4 +6216,81 @@ async function loadWwData() {
   border: 1px solid rgba(34,197,94,0.2); border-radius: 8px;
   color: #4ade80; font-size: 12px; margin-bottom: 16px;
 }
+
+/* ══ 35 · ROS Risers & Fallers ══ */
+.rm-card {
+  width: 540px; height: 540px; position: relative; overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 55% at 100% 0%, rgba(234,179,8,0.18) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 0% 100%, rgba(234,179,8,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 100% 80% at 50% 50%, #0f1219 0%, #0a0c14 60%, #05060a 100%);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  box-shadow: 0 0 0 1px #1e2130, 0 20px 60px rgba(0,0,0,0.7);
+}
+.rm-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; z-index: 2;
+  background: linear-gradient(90deg, transparent 0%, rgba(234,179,8,0.6) 30%, rgba(234,179,8,0.9) 50%, rgba(234,179,8,0.6) 70%, transparent 100%);
+}
+.rm-grain {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.55;
+  background-image: radial-gradient(circle at 1px 1px, rgba(234,179,8,0.08) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse 100% 80% at 50% 50%, #000 30%, transparent 90%);
+  -webkit-mask-image: radial-gradient(ellipse 100% 80% at 50% 50%, #000 30%, transparent 90%);
+}
+.rm-inner {
+  position: relative; z-index: 1; height: 100%;
+  padding: 26px 28px 20px; display: flex; flex-direction: column; line-height: 1.1;
+}
+.rm-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.rm-eyebrow {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+  color: #6b7280; margin-bottom: 7px;
+}
+.rm-title { font-size: 38px; font-weight: 800; letter-spacing: -0.02em; color: #fff; }
+.rm-title-y { color: #eab308; }
+.rm-logo { width: 46px; height: 46px; object-fit: contain; flex-shrink: 0; }
+.rm-sub { margin-top: 9px; font-size: 11px; color: #9ca3af; letter-spacing: 0.01em; }
+
+.rm-cols { display: flex; gap: 14px; margin-top: 18px; flex: 1; min-height: 0; }
+.rm-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.rm-col-head {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+  padding-bottom: 6px; border-bottom: 1px solid #1e2130;
+}
+.rm-up { color: #22c55e; }
+.rm-down { color: #ef4444; }
+
+/* Rows share the column's height rather than stacking at the top, so five of them fill the
+   card instead of leaving a dead band above the footer — and four or three still look composed. */
+.rm-rows { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.rm-row {
+  flex: 1 1 0; min-height: 0; padding: 5px 0 6px;
+  display: flex; flex-direction: column; justify-content: center;
+  border-bottom: 1px solid rgba(30,33,48,0.6);
+}
+.rm-row:last-child { border-bottom: none; }
+.rm-row-main { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.rm-name {
+  font-size: 14px; font-weight: 700; color: #f3f4f6; letter-spacing: -0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rm-delta { font-size: 13px; font-weight: 800; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.rm-meta {
+  margin-top: 4px; display: flex; align-items: center; gap: 5px;
+  font-size: 10px; color: #6b7280; font-variant-numeric: tabular-nums;
+}
+.rm-was { text-decoration: line-through; opacity: 0.75; }
+.rm-arrow { color: #4b5563; }
+.rm-now { color: #d1d5db; font-weight: 700; }
+.rm-team { margin-left: auto; color: #4b5563; font-weight: 700; letter-spacing: 0.06em; }
+.rm-empty { font-size: 11px; color: #374151; padding-top: 10px; }
+
+.rm-foot {
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid #1e2130;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.rm-foot-why { font-size: 9px; color: #4b5563; letter-spacing: 0.02em; }
+.rm-foot-url { font-size: 10px; font-weight: 700; color: #eab308; letter-spacing: 0.02em; }
+
 </style>
