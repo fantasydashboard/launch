@@ -78,6 +78,8 @@ export function useFootballWire(inputs: {
   myTeamKey: Ref<string>
   season: Ref<string>
   enabled: Ref<boolean>
+  /** Weeks still to play — the horizon the board's tier width is measured over. */
+  weeksLeft: Ref<number>
   /** pool teamKey -> display name, so a rostered player can say who holds him. */
   teamNames?: Ref<Record<string, string>>
 }): {
@@ -160,6 +162,7 @@ export function useFootballWire(inputs: {
       myTeamKey: inputs.myTeamKey.value,
       playingTeams: playingTeams.value,
       teamNames: inputs.teamNames?.value ?? {},
+      weeksLeft: inputs.weeksLeft.value,
     })
   })
 

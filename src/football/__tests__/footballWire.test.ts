@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { buildFootballWire, TIER_DEPTH } from '../footballWire'
+import { buildFootballWire } from '../footballWire'
+
+/* Tier thresholds are stated per week, so every board needs a horizon. Ten keeps the
+   arithmetic in these fixtures readable: one point per week is a ten-point span. */
+const WEEKS_LEFT = 10
 import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { AvailablePlayer } from '@/players/types'
 import type { PlayerVor } from '../footballVor'
@@ -38,7 +42,7 @@ const vorByKey: Record<string, PlayerVor> = {
 }
 
 describe('buildFootballWire', () => {
-  const wire = buildFootballWire({ freeAgents, vorByKey, pool, slots, myTeamKey: 'me' })
+  const wire = buildFootballWire({ freeAgents, vorByKey, pool, slots, myTeamKey: 'me', weeksLeft: WEEKS_LEFT })
 
   it('bestAvailable is free agents by ROS VOR desc', () => {
     expect(wire.bestAvailable.map((r) => r.player.name)).toEqual(['Stud FA RB', 'Backup FA QB'])
@@ -103,6 +107,7 @@ describe('the overall board', () => {
     ] as AvailablePlayer[],
     myTeamKey: 'me',
     slots,
+    weeksLeft: WEEKS_LEFT,
   })
 
   it('ranks every position together, best first', () => {
@@ -132,16 +137,21 @@ describe('the overall board', () => {
 })
 
 /*
- * Tiers have to land where the reader is looking.
+ * Tiers have to land where the decisions are.
  *
- * The quarterback board drew one line — under Josh Allen — and then ran nineteen players
- * spanning ninety points with no cliff at all. assignTiers was not misbehaving: it spends a
- * fixed budget of cuts on the biggest gaps in whatever column it is handed, and a real
- * position column runs far past the twenty-five rows the page shows, trailing through third
- * quarterbacks to minus three hundred. Those tail gaps are the biggest ones, so they took
- * every cut. On a realistic 42-deep column the seven largest gaps were 45, 40, 36, 35, 30, 25
- * and 20 — six of the seven below the fold. The board was not under-tiered, it was tiered
- * somewhere nobody looks.
+ * Two bugs, one after the other. First, `assignTiers` spent a fixed budget of cuts on the
+ * biggest gaps in whatever column it was handed, and a real position column runs far past the
+ * rows anyone reads, trailing through third quarterbacks to minus three hundred. Those tail
+ * gaps are the biggest, so they took every cut and the visible board came back as one tier.
+ *
+ * The fix for that was to tier only the top twenty-five rows — which created the second bug.
+ * Tiers then existed exactly where nobody needs them (no one wonders whether to claim the
+ * overall QB1) and stopped at row twenty-six, where every waiver claim actually lives. A
+ * manager choosing between the 61st and the 74th receiver got a ranked list and no grouping.
+ *
+ * `indifferenceTiers` has no cut budget, so it needs no depth limit: it tiers the whole column
+ * by asking the same question at every row — is this player still within a point a week of the
+ * one leading his tier?
  */
 describe('tiers land on the rows that are displayed', () => {
   const column = (vals: number[]) => {
@@ -153,7 +163,7 @@ describe('tiers land on the rows that are displayed', () => {
       vorByKey[k] = vor(k, 'QB', v)
     })
     return buildFootballWire({
-      pool, vorByKey, freeAgents: [], myTeamKey: 'me',
+      pool, vorByKey, freeAgents: [], myTeamKey: 'me', weeksLeft: WEEKS_LEFT,
       slots: { QB: 1, RB: 2, FLEX: 1 },
     }).board.QB
   }
@@ -167,13 +177,14 @@ describe('tiers land on the rows that are displayed', () => {
 
   it('cuts more than one cliff into the part where decisions happen', () => {
     const rows = column(REAL)
-    const visibleBreaks = rows.slice(0, TIER_DEPTH).filter((r) => r.tierBreak).length
+    const visibleBreaks = rows.slice(0, 25).filter((r) => r.tierBreak).length
     expect(visibleBreaks).toBeGreaterThan(1)
   })
 
-  it('draws no line past the fold, where a tier number could not be read anyway', () => {
+  it('keeps cutting below the fold, where the waiver decisions are', () => {
+    // The old rule stopped at row 25 and left everything under it as one flat list.
     const rows = column(REAL)
-    for (const r of rows.slice(TIER_DEPTH)) expect(r.tierBreak).toBeUndefined()
+    expect(rows.slice(25).filter((r) => r.tierBreak).length).toBeGreaterThan(0)
   })
 
   it('keeps tier numbers ascending down the column', () => {
@@ -184,12 +195,11 @@ describe('tiers land on the rows that are displayed', () => {
 })
 
 /*
- * Depth of the list and depth of the tiering are two different numbers.
+ * How long the column is must not change how it is tiered.
  *
- * They were one constant, so a board could not be made longer without sending every tier cut
- * into the tail — the bug that once put every visible quarterback in a single tier. A column
- * of 183 running backs truncated at 25 is fine for streaming and useless as a reference, and
- * flatly wrong for someone who uploaded a 200-deep ranking of their own.
+ * This was once enforced by tiering a fixed 25 rows and ignoring the rest. It is now a
+ * property of the rule instead: tiers are assigned in a single top-down walk, so players added
+ * below a tier are read after it has already been decided and cannot reach back up to move it.
  */
 describe('list depth and tier depth are independent', () => {
   const deepColumn = (n: number) =>
@@ -205,6 +215,7 @@ describe('list depth and tier depth are independent', () => {
     })
     return buildFootballWire({
       pool, vorByKey, freeAgents: [], myTeamKey: 'me', slots: { RB: 2, FLEX: 1 },
+      weeksLeft: WEEKS_LEFT,
     }).board.RB
   }
 
@@ -213,15 +224,15 @@ describe('list depth and tier depth are independent', () => {
     expect(build(183)).toHaveLength(183)
   })
 
-  it('still cuts every cliff into the top of it', () => {
+  it('tiers the depths as well as the top', () => {
     const rows = build(183)
-    for (const r of rows.slice(TIER_DEPTH)) expect(r.tierBreak).toBeUndefined()
+    expect(rows.slice(100).filter((r) => r.tierBreak).length).toBeGreaterThan(0)
   })
 
   it('tiers the same way whether the column is short or long', () => {
-    // Adding 150 rows below the fold must not move a single cliff above it.
-    const short = build(TIER_DEPTH).filter((r) => r.tierBreak).map((r) => r.name)
-    const long = build(183).slice(0, TIER_DEPTH).filter((r) => r.tierBreak).map((r) => r.name)
+    // Adding 158 rows below must not move a single cliff, or renumber a single tier, above.
+    const short = build(25).map((r) => [r.name, r.tier, !!r.tierBreak])
+    const long = build(183).slice(0, 25).map((r) => [r.name, r.tier, !!r.tierBreak])
     expect(long).toEqual(short)
   })
 })

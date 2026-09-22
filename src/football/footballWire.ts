@@ -9,7 +9,7 @@ import type { DepthPlayer } from '@/trades/positionalLandscape'
 import { lineupMarginal } from './lineupMarginal'
 import type { PlayerVor } from './footballVor'
 import { startablePositions } from '@/trades/rosterSlots'
-import { assignTiers } from '@/draft/room/tierCliffs'
+import { indifferenceTiers } from '@/football/indifferenceTiers'
 import { canonicalPosition } from '@/trades/rosterSlots'
 
 /** A free agent joined to its VOR row (the Wire's currency). */
@@ -78,21 +78,6 @@ const normPos = (pos: string): string => canonicalPosition((pos || '').split(/[,
 const faKey = (fa: { playerKey?: string; name: string }): string => fa.playerKey ?? `fa:${fa.name}`
 
 /**
- * How deep tier cliffs are cut.
- *
- * NOT how many rows the page shows — those were one constant and had to stop being one. A
- * board can run two hundred deep for reference, and assignTiers spends a fixed budget of cuts
- * on the biggest gaps in whatever it is handed, so tiering across two hundred rows sends every
- * cut into the tail and leaves the top undifferentiated. That is the exact bug that put every
- * visible quarterback in a single tier.
- *
- * Cliffs belong where decisions are made, which is the top of the board. Rows past this depth
- * still render — they simply carry no tier line, because a cliff between the 140th and 141st
- * running back is not a thing anyone acts on.
- */
-export const TIER_DEPTH = 25
-
-/**
  * How many rows the board renders before asking to be expanded.
  *
  * Deep enough to be useful without dumping two hundred rows on someone who wanted the top of
@@ -101,20 +86,23 @@ export const TIER_DEPTH = 25
 export const BOARD_DEPTH = 50
 
 /**
- * Cut tiers over the displayed depth and mark the cliffs, in place.
+ * Tier the column and mark the cliffs, in place.
  *
- * Same rule the draft board uses — tiers are the visible cliffs, not every gap over a
- * threshold. A flat ranked column of forty receivers hides the only thing the reader is
- * looking for: where the drop-off is.
+ * Tiers run the WHOLE column, top to bottom. They used to stop at a fixed depth, which was a
+ * workaround for a rule that had to spend a fixed number of cuts and would otherwise spend
+ * them all in the tail. `indifferenceTiers` spends nothing it has not earned, so the limit is
+ * gone — and it had to go, because rows past that depth are precisely where a waiver claim
+ * gets made. Nobody needs a tier line to tell them about the best back on the board.
  */
-function tierInPlace(entries: BoardRow[]): void {
-  const shown = entries.slice(0, TIER_DEPTH)
-  if (!shown.length) return
-  const tierByKey = assignTiers(shown.map((e) => ({ playerKey: e.playerKey, value: e.vorRos })))
+function tierInPlace(entries: BoardRow[], weeksLeft: number): void {
+  if (!entries.length) return
+  const tierByKey = indifferenceTiers(
+    entries.map((e) => ({ playerKey: e.playerKey, value: e.vorRos })),
+    weeksLeft,
+  )
   let prevTier = 0
   let prevVor = 0
-  let lastTier = 1
-  for (const row of shown) {
+  for (const row of entries) {
     row.tier = tierByKey[row.playerKey] ?? 1
     // Sorted descending, so the previous row IS the last row of the tier above.
     if (prevTier && row.tier !== prevTier) {
@@ -123,14 +111,6 @@ function tierInPlace(entries: BoardRow[]): void {
     }
     prevTier = row.tier
     prevVor = row.vorRos
-    lastTier = row.tier
-  }
-  // Past the fold: carry the last tier, draw no line. These rows are off the page, and a
-  // tier number on them would only matter if we ever showed them.
-  for (const row of entries.slice(TIER_DEPTH)) {
-    row.tier = lastTier
-    row.tierBreak = undefined
-    row.tierDrop = undefined
   }
 }
 
@@ -147,8 +127,14 @@ export function buildFootballWire(input: {
   playingTeams?: Set<string>
   /** pool teamKey -> display name, so a rostered player can say who has him. */
   teamNames?: Record<string, string>
+  /**
+   * Weeks still to play. Tier width is stated in points per WEEK, so the horizon is what
+   * converts a rest-of-season value into it — and it is required rather than defaulted
+   * because a wrong horizon silently produces plausible, wrong tiers.
+   */
+  weeksLeft: number
 }): FootballWire {
-  const { freeAgents, vorByKey, pool, slots, myTeamKey, playingTeams, teamNames } = input
+  const { freeAgents, vorByKey, pool, slots, myTeamKey, playingTeams, teamNames, weeksLeft } = input
   const scheduleKnown = !!playingTeams && playingTeams.size > 0
   const onBye = (team?: string) => scheduleKnown && !playingTeams!.has(String(team ?? '').toUpperCase())
 
@@ -214,20 +200,12 @@ export function buildFootballWire(input: {
   upgrades.sort((a, b) => b.marginal - a.marginal)
 
   /*
-   * Tier the rows a reader can SEE.
+   * Tier every row, at every depth.
    *
-   * assignTiers spends a fixed budget of cuts on the biggest gaps in whatever column it is
-   * given, and a position column in a real league runs far past what the page shows — third
-   * quarterbacks and handcuff backs trailing to minus three hundred. Those gaps are enormous
-   * and they are all in the tail, so they took every cut, and the twenty-five rows actually on
-   * screen came back as one undifferentiated tier. The quarterback board showed a single line
-   * under Josh Allen and then nineteen players spanning ninety points with no cliff drawn.
-   *
-   * Reproduced by adding a realistic tail to a fixture: five breaks, four of them at rows 26
-   * to 29. The board was not under-tiered, it was tiered somewhere the reader never looks.
-   *
-   * So tiering runs over TIER_DEPTH, and everything past it inherits the last tier without
-   * drawing a line.
+   * A tier here says one thing: these players are interchangeable — within a point per week of
+   * whoever leads the group. That is the claim a manager needs at row eighty as much as at row
+   * three, and arguably more, because the top of a board sorts itself. Six near-identical backs
+   * in the middle of the wire is the answer to "who do I claim"; a ranked list of them is not.
    */
   // Full board: rostered + FA per position, VOR-ranked, owned/free flagged, tiered.
   const board: Record<string, BoardRow[]> = {}
@@ -247,7 +225,7 @@ export function buildFootballWire(input: {
     if (!entries.length) continue
 
     entries.sort((a, b) => b.vorRos - a.vorRos)
-    tierInPlace(entries)
+    tierInPlace(entries, weeksLeft)
     board[pos] = entries
   }
 
@@ -269,7 +247,7 @@ export function buildFootballWire(input: {
     /* Re-tiered on its own, never inherited. A player's tier among ALL startable bodies is a
        different fact from his tier among receivers, and the rows above are shared objects. */
     const rows: BoardRow[] = all.map((r) => ({ ...r, tier: 0, tierBreak: undefined, tierDrop: undefined }))
-    tierInPlace(rows)
+    tierInPlace(rows, weeksLeft)
     board.ALL = rows
   }
 

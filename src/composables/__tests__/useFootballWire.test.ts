@@ -68,9 +68,10 @@ describe('reseatRos', () => {
  * tell you to add Alpha.
  */
 describe('an active ROS list reaches the add/drop verdict', () => {
-  const ours = buildFootballWire({ freeAgents, vorByKey: base, pool, slots, myTeamKey: 'me' })
+  const ours = buildFootballWire({ freeAgents, vorByKey: base, pool, slots, myTeamKey: 'me', weeksLeft: 10 })
   const theirs = buildFootballWire({
     freeAgents, vorByKey: reseatRos(base, { fa_b: 1, fa_a: 2 }), pool, slots, myTeamKey: 'me',
+    weeksLeft: 10,
   })
 
   it('changes who we tell you to add, not just how the list is sorted', () => {

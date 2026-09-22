@@ -428,6 +428,7 @@ const { wire: fbWire, loading: fbLoading, rosSource } = useFootballWire({
   myTeamKey,
   season,
   enabled: isFootball,
+  weeksLeft,
   teamNames,
 })
 /**
@@ -929,9 +930,9 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                   </span>
                 </span>
               </div>
-              <!-- Selected board. Depth is independent of TIER_DEPTH now: cliffs are cut over
-                   the top of the list where decisions happen, while the list itself can run as
-                   deep as the reader wants for reference. -->
+              <!-- Selected board. Tiers run the full depth of the list: a tier means the
+                   players in it are within about a point a week of each other, which is as
+                   true at row eighty as at row three. -->
               <template v-for="(row, i) in visibleBoard" :key="'fbbd-' + row.playerKey">
                 <!-- Where the uploaded list stops. Past it the order is ours, and row 20 and
                      row 21 look identical unless the boundary is drawn. -->
