@@ -10,6 +10,7 @@ import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 import { yahooService } from '@/services/yahoo'
+import { readRefreshFailure } from '@/lib/yahooGrant'
 import { espnService } from '@/services/espn'
 import type { ConnectedPlatform, Platform, Sport, LeagueInsert } from '@/types/supabase'
 
@@ -34,6 +35,14 @@ export const usePlatformsStore = defineStore('platforms', () => {
   const connectedPlatforms = ref<ConnectedPlatform[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  /**
+   * Yahoo's grant is gone and only re-authorising will bring it back.
+   *
+   * Distinct from "not connected": the row may still be there, and distinct from an ordinary
+   * error, which a retry can clear. Surfaces the reconnect prompt without any caller having to
+   * pattern-match an error string to work out what happened.
+   */
+  const yahooNeedsReconnect = ref(false)
 
   // Computed
   const isSleeperConnected = computed(() => 
@@ -326,14 +335,35 @@ export const usePlatformsStore = defineStore('platforms', () => {
         })
 
         if (!response.ok) {
-          throw new Error('Failed to refresh Yahoo token')
+          /*
+           * A refusal here is either the end of the grant or a bad minute on the network, and
+           * those need opposite responses. This used to log both and return null, which left a
+           * green "Connected" badge on an account that could not load a single league — the
+           * same failure the connect screen was fixed for once already.
+           *
+           * A dead grant clears the row, so nothing downstream can keep believing in it, and
+           * raises the flag the reconnect prompt reads. A transient one changes nothing: the
+           * next attempt will refresh normally, and deleting somebody's connection because
+           * Yahoo had a bad minute is the more expensive mistake by far.
+           */
+          const detail = await response.text().catch(() => '')
+          if (readRefreshFailure(response.status, detail) === 'grant-dead') {
+            console.warn('[yahoo] refresh refused, grant is dead — clearing connection', response.status)
+            yahooNeedsReconnect.value = true
+            await disconnectPlatform('yahoo')
+          } else {
+            console.error('[yahoo] refresh failed, treating as transient', response.status, detail)
+          }
+          return null
         }
 
         const tokens = await response.json()
         await storeYahooTokens(tokens)
+        yahooNeedsReconnect.value = false
         
         return tokens.access_token
       } catch (err) {
+        // Never reached Yahoo at all: no status, no verdict, nothing to conclude about the grant.
         console.error('Error refreshing Yahoo token:', err)
         return null
       }
@@ -595,6 +625,7 @@ export const usePlatformsStore = defineStore('platforms', () => {
     disconnectPlatform,
     isYahooTokenExpired,
     getYahooAccessToken,
+    yahooNeedsReconnect,
     clearState,
 
     // Sleeper
