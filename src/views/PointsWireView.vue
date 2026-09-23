@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
@@ -12,18 +13,10 @@ import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { nhlTeamLogo } from '@/players/nhlTeamLogo'
 import { wordsFor } from '@/lib/sportWords'
 import { useFootballWire } from '@/composables/useFootballWire'
-import RankingPicker from '@/components/RankingPicker.vue'
-import { BOARD_DEPTH } from '@/football/footballWire'
 import { getWeeklyUsage, type UsageByKey } from '@/services/playerUsage'
 import { buildWaiverTargets } from '@/football/waiverTargets'
-import { useCustomRankings } from '@/composables/useCustomRankings'
 import { getSeasonLines } from '@/services/playerUsage'
-import { getSeasonSchedule, REGULAR_SEASON_WEEKS, type SeasonSchedule } from '@/services/nflSchedule'
-import { buildAllowed } from '@/football/defenseAllowed'
-import { buildDifficulty, type DifficultyRow } from '@/football/scheduleDifficulty'
 import { useDynastyValues } from '@/composables/useDynastyValues'
-import { readAge, AGE_TONE } from '@/football/positionalAge'
-import { readHorizons } from '@/football/dynastyValues'
 import SeasonPassGate from '@/components/SeasonPassGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
@@ -84,7 +77,6 @@ const teamNames = source.teamNames
 /* Declared before anything that reads them: lastCompletedWeek derives from seasonLines, and
    its watcher runs immediately — reading a ref that had not been initialised yet is a
    dead-zone crash on page load, not a lint nit. */
-const seasonSchedule = ref<SeasonSchedule>({})
 const seasonLines = ref<Awaited<ReturnType<typeof getSeasonLines>>>([])
 const seasonYear = computed(() => new Date().getFullYear())
 
@@ -117,92 +109,13 @@ const gainByKey = computed<Record<string, number>>(() => {
   }
   return out
 })
-/*
- * Schedule difficulty, per position, plus season scoring average and the bye.
- *
- * A single strength-of-schedule number would be close to useless: defences are not uniformly
- * good, so one team can be the easiest run of opponents in the league for backs and near the
- * hardest for tight ends. The rank is therefore computed per position, from adjusted points
- * allowed, and the same schedule produces a different answer in each column of the board.
- *
- * Two horizons because they disagree. Rest-of-season answers "should I hold him", next four
- * answers "should I start or trade him now", and a player can have the easiest season ahead
- * and a brutal month first.
- */
-
 watch([() => leagueStore.currentWeek, () => leagueStore.activeSport], async () => {
-  if (!isFootball.value) { seasonSchedule.value = {}; seasonLines.value = []; return }
-  seasonSchedule.value = await getSeasonSchedule(seasonYear.value)
+  if (!isFootball.value) { seasonLines.value = []; return }
   /* Through the CURRENT week, not the one before it — a league stays on a week until the next
      opens, so week one's results are only reachable by asking for week one. Unplayed weeks
      come back empty and are dropped by the fetch. */
   seasonLines.value = await getSeasonLines(seasonYear.value, leagueStore.currentWeek ?? 1)
 }, { immediate: true })
-
-const allowed = computed(() => buildAllowed(seasonLines.value.map((l) => ({
-  team: l.team, opponent: l.opponent, position: l.position, points: l.points,
-}))))
-
-/** Difficulty for the position currently on the board, keyed by NFL team. */
-const difficulty = computed<Record<string, DifficultyRow>>(() => {
-  const pos = boardPos.value === 'ALL' ? '' : boardPos.value
-  if (!pos || !Object.keys(seasonSchedule.value).length || !seasonLines.value.length) return {}
-  return buildDifficulty({
-    schedule: seasonSchedule.value,
-    allowed: allowed.value,
-    position: pos,
-    fromWeek: (leagueStore.currentWeek ?? 1),
-    throughWeek: REGULAR_SEASON_WEEKS,
-  })
-})
-
-/* Season scoring average per player — games actually played, so a bye or an injury week does
-   not quietly drag an average toward zero. */
-const ppgByKey = computed<Record<string, number>>(() => {
-  const acc = new Map<string, { total: number; games: number }>()
-  for (const l of seasonLines.value) {
-    const e = acc.get(l.playerKey) ?? { total: 0, games: 0 }
-    e.total += l.points
-    e.games += 1
-    acc.set(l.playerKey, e)
-  }
-  const out: Record<string, number> = {}
-  for (const [k, e] of acc) if (e.games) out[k] = e.total / e.games
-  return out
-})
-
-/** How many games of defensive data the difficulty columns rest on. Small means noisy. */
-const difficultySample = computed(() =>
-  Math.max(0, ...Object.values(difficulty.value).map((d) => d.sampleGames ?? 0)))
-
-/* Easy schedules read green, hard ones amber — the same scale the rest of the page uses for
-   "this helps you" and "this costs you". Absent stays neutral rather than scoring as hard. */
-/*
- * Where the uploaded list runs out.
- *
- * With the list authoritative for its position, everyone past its last name is in OUR order —
- * and row 20 and row 21 look identical unless the boundary is drawn. The dynasty board has
- * said this for a while; the season board never did.
- */
-const rosRankings = useCustomRankings('ros')
-const rosRankedKeys = computed(() => {
-  if (!rosRankings.enabled.value) return new Set<string>()
-  const named = pool.value.map((p) => ({ playerKey: p.playerKey, name: p.name, position: p.position }))
-  return new Set(Object.keys(rosRankings.match(named).rankByKey))
-})
-const lastRankedIndex = computed(() => {
-  if (!rosRankedKeys.value.size) return -1
-  let last = -1
-  visibleBoard.value.forEach((r, i) => { if (rosRankedKeys.value.has(r.playerKey)) last = i })
-  return last
-})
-
-const sosTone = (rank: number | null) =>
-  rank === null ? 'text-dark-textMuted/40'
-    : rank <= 8 ? 'text-[#7ee787]'
-    : rank <= 16 ? 'text-[#3fb950]'
-    : rank <= 24 ? 'text-dark-textMuted'
-    : 'text-[#e69a4a]'
 
 const NFL_LAST_WEEK = 17
 const weeksLeft = computed(() => Math.max(1, NFL_LAST_WEEK - (leagueStore.currentWeek ?? 1) + 1))
@@ -282,94 +195,6 @@ const dynRow = (key?: string) => (key ? dynasty.rows.value[key] ?? null : null)
  */
 type WireSort = 'season' | 'dynasty'
 const wireSort = ref<WireSort>('season')
-const WIRE_SORTS: { key: WireSort; label: string; hint: string }[] = [
-  { key: 'season', label: 'This season', hint: 'value over replacement, rest of season' },
-  { key: 'dynasty', label: 'Dynasty', hint: 'the long-term market, ours untouched' },
-]
-/*
- * THE COMPARISON, which is the point and was the thing missing.
- *
- * Both rankings were on the page and the gap between them never was — so finding a buy-low
- * meant holding "Henry is DYN RB17" in your head, flipping the sort, hunting for him again
- * and subtracting by eye. Worse, the board printed a dynasty RANK beside a season POINT
- * total, which are not comparable quantities at all.
- *
- * So each row now carries its season position rank as well, and the signed distance between
- * the two. A player the long-term market rates well above his rest-of-season points is
- * someone you can buy while his current production hides him; the reverse is someone to sell
- * while this year's box score still flatters him.
- */
-const seasonRankByKey = computed(() => {
-  const m = new Map<string, number>()
-  const rows = fbWire.value?.board[boardPos.value] ?? []
-  /*
-   * The board arrives sorted by rest-of-season value, so position in that list IS the rank —
-   * on a per-position board. On the overall board it is not: index there is an overall rank,
-   * and it feeds `horizons`, which compares it against a POSITIONAL dynasty rank. Season 140th
-   * against dynasty TE12 is two different units on one subtraction, and it would have read as
-   * a colossal disagreement for every player outside the top thirty.
-   *
-   * So rank within the player's own position either way, and the comparison stays like for
-   * like no matter which pill is selected.
-   */
-  const seen: Record<string, number> = {}
-  rows.forEach((r) => {
-    const pos = r.position || '—'
-    seen[pos] = (seen[pos] ?? 0) + 1
-    m.set(r.playerKey, seen[pos])
-  })
-  return m
-})
-/*
- * The horizon read, adjusted for age.
- *
- * This used to fire on the raw distance between the two ranks and call the result "buy-low"
- * or "sell-high". Both were wrong. Those terms describe a price adrift from a value, which is
- * not what this measures and not something we can measure — testing a price needs an
- * independent estimate of value, and the dynasty market is the only long-term number we have.
- * And the direction was backwards for half the readers: McCaffrey at season RB3 and dynasty
- * RB13 read "sell-high" when, to a contender, he is the third-best back this year at the
- * price of the thirteenth-best asset.
- *
- * It was also mostly an age readout — r = -0.67 against age on the live market — sitting
- * beside a column that already prints age.
- *
- * So it is descriptive now (win-now / future, not an instruction), and it only speaks where
- * the gap survives what age and position already explain.
- */
-const horizons = computed(() =>
-  readHorizons(
-    (fbWire.value?.board[boardPos.value] ?? []).map((r) => ({
-      playerKey: r.playerKey,
-      seasonRank: seasonRankByKey.value.get(r.playerKey) ?? 0,
-      dynastyRank: dynRow(r.playerKey)?.positionRank ?? 0,
-      age: dynRow(r.playerKey)?.age ?? null,
-    })),
-  ),
-)
-const rankGap = (key: string) => {
-  const h = horizons.value[key]
-  const d = dynRow(key)
-  if (!h || !d) return null
-  let tag: string = h.lean
-  /* A gap the market has JUST created is not a standing read on the player — it is news, and
-     our season projection is the half that has not caught up. */
-  if (tag === 'future' && d.momentum === 'rising') tag = ''
-  if (tag === 'win-now' && d.momentum === 'falling') tag = ''
-  return { season: seasonRankByKey.value.get(key) ?? 0, dyn: d.positionRank, delta: h.gap,
-           residual: h.residual, tag, momentum: d.momentum }
-}
-const GAP_CLS: Record<string, string> = {
-  future: 'text-[#7ee787]',
-  'win-now': 'text-[#e69a4a]',
-}
-/* Shown INSTEAD of a buy/sell read, not beside it — the point is that the market moving is a
-   different fact from the market being wrong. */
-const MOMENTUM_CLS: Record<string, string> = {
-  falling: 'text-[#f85149]',
-  rising: 'text-[#7ee787]',
-  steady: '',
-}
 
 const byDynasty = (ka?: string, kb?: string) => {
   const a = dynRow(ka), b = dynRow(kb)
@@ -391,21 +216,6 @@ const sortedBest = computed(() => {
   if (wireSort.value === 'season' || !dynasty.ready.value) return rows
   return [...rows].sort((x, y) => byDynasty(x.player.playerKey, y.player.playerKey))
 })
-const sortedBoard = computed(() => {
-  const rows = fbWire.value?.board[boardPos.value] ?? []
-  if (wireSort.value === 'season' || !dynasty.ready.value) return rows
-  return [...rows].sort((x, y) => byDynasty(x.playerKey, y.playerKey))
-})
-
-/*
- * Full depth caps at 200 — a complete draft board's worth. Past that a column is padding: the
- * 200th running back is not a player anyone is choosing between, and rendering nine hundred
- * rows costs a scroll nobody wanted.
- */
-const FULL_DEPTH = 200
-const visibleBoard = computed(() =>
-  sortedBoard.value.slice(0, boardExpanded.value ? FULL_DEPTH : BOARD_DEPTH))
-
 /* Position rank among players the market has priced, toned on the same scale as everything
    else on the page. Absent = "—", never a zero that would read as a verdict. */
 const dynTone = (r: { positionRank: number } | null) =>
@@ -442,45 +252,6 @@ const cutCandidates = computed(() => {
   if (!b) return []
   const mine = Object.values(b).flat().filter((r) => r.owned)
   return [...mine].sort((a, b2) => a.vorRos - b2.vorRos).slice(0, 3)
-})
-
-/* Open by default. This board is the product's rest-of-season ranked list — your roster and
-   the wire in one order — and it was collapsed behind a "+" on a page framed as a waiver
-   feed, so the most complete thing here was also the least likely to be seen. */
-const boardOpen = ref(true)
-// Canonical order only — which of these actually appear is decided by the league's own
-// roster_positions inside buildFootballWire, so a league with no K/DEF slot never sees them.
-const boardPositions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
-/*
- * How much of the board is on screen.
- *
- * It was a flat 25, which is fine for "who should I stream" and useless as a reference —
- * there are 183 running backs, and someone who uploaded their own 200-deep ranking could see
- * a quarter of it. Expanding is a click, and the count is named on the button so nobody has
- * to guess how much more there is.
- */
-const boardPos = ref('RB')
-const boardExpanded = ref(false)
-/* A new position starts at the top again — carrying an expanded state across positions means
-   landing halfway down a list you did not ask to be deep in. */
-watch(boardPos, () => { boardExpanded.value = false })
-/*
- * Picker pills, with the overall order first.
- *
- * ALL leads because it answers the question a waiver claim actually poses — of everything on
- * this wire, what should I want — which the per-position pills could not. They answered "who
- * is the best receiver available", one position at a time, and left the reader to hold four
- * columns in their head to compare across them.
- */
-const boardPositionsWithRows = computed(() => {
-  if (!fbWire.value) return []
-  const withRows = boardPositions.filter((p) => fbWire.value!.board[p]?.length)
-  return fbWire.value.board.ALL?.length ? ['ALL', ...withRows] : withRows
-})
-// Keep the selected pill on a position this league actually has — otherwise switching to a
-// league without the current selection leaves the board rendering nothing.
-watch(boardPositionsWithRows, (available) => {
-  if (available.length && !available.includes(boardPos.value)) boardPos.value = available[0]
 })
 
 const teamModel = computed(() => {
@@ -861,230 +632,24 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
             </div>
           </section>
 
-          <!-- 4. FULL BOARD — every player by position, VOR-ranked, yours highlighted -->
+          <!--
+            4. THE FULL BOARD MOVED TO /rankings.
+
+            It was a reference work living on a transaction page. Every other block here is a
+            player you can act on today — yours to drop, or a free agent to add — and the board
+            was a league-wide ranked list including players nobody can have, which is a
+            different job. It is free there, and open to people without an account.
+          -->
           <section class="rounded-xl border border-dark-border bg-dark-card p-4">
-            <button class="flex w-full items-center justify-between font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted" @click="boardOpen = !boardOpen">
-              <span>Full board <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">· your roster vs the wire</span></span>
-              <span class="font-mono">{{ boardOpen ? '−' : '+' }}</span>
-            </button>
-            <div v-if="boardOpen" class="mt-3">
-              <!-- position picker -->
-              <div class="mb-3 flex flex-wrap gap-1.5">
-                <button
-                  v-for="pos in boardPositionsWithRows"
-                  :key="pos"
-                  class="rounded px-2.5 py-1 font-mono text-[11px] uppercase tracking-wide transition-colors"
-                  :class="boardPos === pos ? 'bg-primary/20 text-primary' : 'bg-dark-bg text-dark-textMuted hover:text-dark-text'"
-                  @click="boardPos = pos"
-                >
-                  {{ pos }}
-                </button>
-              </div>
-              <!--
-                Column headers, because four numbers arrived on every row with nothing naming
-                them. ROS and NEXT4 are 1-32 ranks of how easy the upcoming defences are AT
-                THIS POSITION — the same schedule reads differently for a back and a tight end,
-                which is the whole reason they are computed per position.
-              -->
-              <div v-if="boardPos !== 'ALL' && Object.keys(difficulty).length"
-                   class="mb-1 flex items-center gap-2 pr-1 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted/60">
-                <span class="min-w-0 flex-1"></span>
-                <span class="hidden w-10 shrink-0 text-right lg:block" title="Rest-of-season schedule rank at this position">ROS</span>
-                <span class="hidden w-10 shrink-0 text-right lg:block" title="Next four games">NEXT4</span>
-                <span class="hidden w-10 shrink-0 text-right sm:block" title="Points per game this season">PPG</span>
-                <span class="hidden w-8 shrink-0 text-right lg:block" title="Bye week">BYE</span>
-                <span class="w-10 shrink-0 text-right">VOR</span>
-              </div>
-
-              <!-- legend: the board mixes three states and only one of them used to be visible -->
-              <div class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted">
-                <span><span class="text-primary">★</span> yours</span>
-                <span><span class="text-[#4ade80]">●</span> free agent</span>
-                <span><span class="text-dark-textMuted/50">●</span> rostered elsewhere</span>
-                <span v-if="dynasty.ready.value" class="hidden sm:inline">
-                  this season &middot; <span class="text-dark-textSecondary">dynasty</span> &middot;
-                  <span class="text-[#7ee787]">future</span>/<span class="text-[#e69a4a]">win-now</span> beyond what his age explains &middot;
-                  age <span class="text-[#7ee787]">rising</span>/<span class="text-[#d29922]">ageing</span>/<span class="text-[#f85149]">old</span> for the position &middot;
-                  <span class="text-[#f85149]">falling</span> = the market just moved him, so the gap is news
+            <RouterLink to="/rankings" class="flex w-full items-center justify-between">
+              <span class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+                Full board
+                <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">
+                  &middot; every player, ranked and tiered
                 </span>
-                <span v-if="dynasty.ready.value && wireSort === 'dynasty'" class="hidden text-dark-textMuted/50 sm:inline">
-                  tier cliffs are season point drops — hidden in this order
-                </span>
-                <!-- Both controls together, once. They were two dropdowns in two cards that
-                     from the reader's seat asked the same question — which ranking am I
-                     looking at — and one of them lived inside a card that is folded shut. -->
-                <span class="ml-auto flex items-center gap-2">
-                  <span v-if="dynasty.ready.value" class="flex items-center gap-0.5 rounded-lg border border-dark-border p-0.5">
-                    <button v-for="opt in WIRE_SORTS" :key="'bd-' + opt.key"
-                            class="rounded-md px-2 py-0.5 uppercase tracking-wider transition-colors"
-                            :class="wireSort === opt.key ? 'bg-primary/15 font-bold text-primary' : 'text-dark-textMuted hover:text-dark-text'"
-                            :title="opt.hint"
-                            @click="wireSort = opt.key">{{ opt.label }}</button>
-                  </span>
-                  <RankingPicker :kind="wireSort === 'dynasty' ? 'dynasty' : 'ros'" />
-                </span>
-                <!-- Said out loud, because a list that resolved 140 of 200 names renders
-                     exactly like one that resolved all of them. -->
-                <span v-if="wireSort === 'dynasty' && dynasty.coverage.value.matched"
-                      class="w-full text-dark-textMuted/70">
-                  {{ dynasty.coverage.value.matched }} of {{ dynasty.coverage.value.listRows }} from your list<template
-                    v-if="dynasty.coverage.value.filled"> · {{ dynasty.coverage.value.filled }} more from UFD below</template>
-                  <span v-if="dynasty.coverage.value.suspectPartial" class="text-[#d29922]">
-                    · this doesn't look like a top-to-bottom list, so nothing was appended
-                  </span>
-                </span>
-              </div>
-              <!-- Selected board. Tiers run the full depth of the list: a tier means the
-                   players in it are within about a point a week of each other, which is as
-                   true at row eighty as at row three. -->
-              <template v-for="(row, i) in visibleBoard" :key="'fbbd-' + row.playerKey">
-                <!-- Where the uploaded list stops. Past it the order is ours, and row 20 and
-                     row 21 look identical unless the boundary is drawn. -->
-                <div v-if="wireSort === 'season' && lastRankedIndex >= 0 && i === lastRankedIndex + 1"
-                     class="flex items-center gap-2 py-1.5">
-                  <span class="h-px flex-1 bg-dark-border"></span>
-                  <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70">
-                    {{ rosSource }} ends &middot; UFD order below
-                  </span>
-                  <span class="h-px flex-1 bg-dark-border"></span>
-                </div>
-                <!-- tier cliff: the drop-off is the decision, so name it rather than leaving a flat list -->
-                <!-- Where your opinion stops and ours starts. Without this, row 197 and row
-                     205 look equally authoritative. -->
-                <div v-if="wireSort === 'dynasty' && dynRow(row.playerKey)?.source === 'market' && dynRow(row.playerKey)?.overallRank === dynasty.coverage.value.boundary"
-                     class="flex items-center gap-2 py-1.5">
-                  <span class="h-px flex-1 bg-dark-border"></span>
-                  <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70">
-                    your list ends &middot; UFD order below
-                  </span>
-                  <span class="h-px flex-1 bg-dark-border"></span>
-                </div>
-                <div v-if="row.tierBreak && wireSort === 'season'" class="flex items-center gap-2 py-1.5">
-                  <span class="h-px flex-1 bg-dark-border"></span>
-                  <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70">
-                    tier {{ row.tier }} &middot; &minus;{{ round(row.tierDrop ?? 0) }} pts
-                  </span>
-                  <span class="h-px flex-1 bg-dark-border"></span>
-                </div>
-                <div class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm last:border-0" :class="row.owned ? 'text-primary' : row.free ? 'text-dark-text' : 'text-dark-textMuted'">
-                  <img v-if="row.headshot" :src="row.headshot" :alt="row.name" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
-                  <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
-                  <span class="min-w-0 flex-1 truncate">
-                    {{ row.owned ? '★ ' : '' }}{{ row.name }}
-                    <!-- On a per-position board the position is the pill you pressed. On the
-                         overall board it is the whole point of the row, so say it there. -->
-                    <span v-if="boardPos === 'ALL'" class="ml-1 font-mono text-[10px] text-dark-textMuted/70">{{ row.position }}</span>
-                    <!-- A season-long call still has to survive Sunday: don't cut a player who
-                         is playing for one who is idle without seeing it. -->
-                    <span v-if="row.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>
-                  </span>
-                  <span
-                    v-if="!row.owned"
-                    class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide"
-                    :class="row.free ? 'bg-[#4ade80]/15 text-[#4ade80]' : 'bg-dark-bg text-dark-textMuted/60'"
-                  >{{ row.free ? 'free' : 'rostered' }}</span>
-                  <img v-if="row.team" :src="teamLogo(row.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 shrink-0 object-contain" />
-                  <!--
-                    The second horizon. Only in dynasty leagues, and only for players the
-                    market actually priced — an unpriced player shows an em dash, because a
-                    zero here would sort a real body last and read as a verdict we never made.
-                  -->
-                  <template v-if="dynasty.ready.value">
-                    <!-- Season rank, so the dynasty rank beside it is a like-for-like
-                         comparison rather than a rank sitting next to a point total. -->
-                    <span class="hidden w-9 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/70 sm:inline">
-                      {{ seasonRankByKey.get(row.playerKey) ? row.position + seasonRankByKey.get(row.playerKey) : '' }}
-                    </span>
-                    <span class="hidden w-9 shrink-0 text-right font-mono text-[10px] sm:inline"
-                          :class="dynTone(dynRow(row.playerKey))"
-                          :title="dynRow(row.playerKey) ? `Dynasty market: ${row.position}${dynRow(row.playerKey)!.positionRank}, overall ${dynRow(row.playerKey)!.overallRank}` : 'Not priced by the dynasty market'">
-                      {{ dynRow(row.playerKey) ? row.position + dynRow(row.playerKey)!.positionRank : '—' }}
-                    </span>
-                    <!-- The gap, named. This is the whole reason both rankings are here. -->
-                    <span class="hidden w-16 shrink-0 text-right font-mono text-[9px] uppercase tracking-wide lg:inline"
-                          :class="rankGap(row.playerKey)?.tag
-                            ? GAP_CLS[rankGap(row.playerKey)!.tag]
-                            : MOMENTUM_CLS[rankGap(row.playerKey)?.momentum ?? 'steady']"
-                          :title="rankGap(row.playerKey)
-                            ? (rankGap(row.playerKey)!.momentum !== 'steady'
-                                ? 'The dynasty market has moved him sharply in the last 30 days — this gap is news, not a standing read.'
-                                : `${row.position}${rankGap(row.playerKey)!.season} this season vs ${row.position}${rankGap(row.playerKey)!.dyn} long term — ${Math.abs(Math.round(rankGap(row.playerKey)!.residual))} places beyond what his age and position already explain.`)
-                            : ''">
-                      {{ rankGap(row.playerKey)?.tag
-                         || (rankGap(row.playerKey)?.momentum !== 'steady' ? rankGap(row.playerKey)?.momentum : '') }}
-                    </span>
-                    <!-- Age, read against the position. 28 is late for a back and prime for
-                         a receiver, and the board used to print both as "28". -->
-                    <span class="hidden w-6 shrink-0 text-right font-mono text-[10px] md:inline"
-                          :class="AGE_TONE[readAge(row.position, dynRow(row.playerKey)?.age)?.phase ?? 'prime']"
-                          :title="readAge(row.position, dynRow(row.playerKey)?.age)?.detail ?? ''">
-                      {{ dynRow(row.playerKey)?.age ? Math.floor(dynRow(row.playerKey)!.age!) : '' }}
-                    </span>
-                  </template>
-                  <!--
-                    Schedule, scoring average and the bye. Hidden on narrow screens because
-                    four extra columns on a phone would squeeze the name to nothing — the
-                    thing everything else is an attribute of.
-                  -->
-                  <template v-if="boardPos !== 'ALL' && difficulty[row.team ?? '']">
-                    <span class="hidden w-10 shrink-0 text-right font-mono text-[10px] lg:block"
-                          :class="sosTone(difficulty[row.team!].ros)"
-                          :title="`Rest-of-season ${boardPos} schedule: 1 is the easiest run of defences in the league, 32 the hardest`">
-                      {{ difficulty[row.team!].ros ?? '—' }}
-                    </span>
-                    <span class="hidden w-10 shrink-0 text-right font-mono text-[10px] lg:block"
-                          :class="sosTone(difficulty[row.team!].next4)"
-                          :title="`Next four games at ${boardPos}, same 1-32 scale`">
-                      {{ difficulty[row.team!].next4 ?? '—' }}
-                    </span>
-                  </template>
-                  <span v-if="ppgByKey[row.playerKey] !== undefined"
-                        class="hidden w-10 shrink-0 text-right font-mono text-[10px] text-dark-textSecondary sm:block"
-                        title="Points per game this season, over games actually played">
-                    {{ ppgByKey[row.playerKey].toFixed(1) }}
-                  </span>
-                  <span v-else class="hidden w-10 shrink-0 sm:block" />
-                  <span v-if="difficulty[row.team ?? '']?.bye"
-                        class="hidden w-8 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/60 lg:block"
-                        title="Bye week">{{ difficulty[row.team!].bye }}</span>
-                  <span v-else class="hidden w-8 shrink-0 lg:block" />
-
-                  <span v-if="row.unprojected" class="w-10 shrink-0 text-right font-mono text-[10px] italic text-dark-textMuted/50">no proj</span>
-                  <span v-else class="w-10 shrink-0 text-right font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">{{ row.vorRos >= 0 ? '+' : '' }}{{ round(row.vorRos) }}</span>
-                </div>
-              </template>
-              <!--
-                The way out of a truncated list. It was a flat 25 with a line claiming the rest
-                were below replacement — true for streaming, useless as a reference, and flatly
-                wrong for anyone who had uploaded their own 200-deep ranking and could see a
-                quarter of it. The count goes on the button so nobody has to guess.
-              -->
-              <button
-                v-if="!boardExpanded && sortedBoard.length > visibleBoard.length"
-                class="mt-3 w-full rounded-lg border border-dark-border bg-dark-bg/60 py-2 font-mono text-[11px] text-dark-textSecondary transition-colors hover:text-dark-text"
-                @click="boardExpanded = true"
-              >
-                Show all {{ Math.min(sortedBoard.length, FULL_DEPTH) }} {{ boardPos }}
-              </button>
-              <button
-                v-else-if="boardExpanded && sortedBoard.length > BOARD_DEPTH"
-                class="mt-3 w-full rounded-lg border border-dark-border bg-dark-bg/60 py-2 font-mono text-[11px] text-dark-textMuted transition-colors hover:text-dark-text"
-                @click="boardExpanded = false"
-              >
-                Show top {{ BOARD_DEPTH }}
-              </button>
-              <!--
-                Two games is two games. A confident 1-to-32 rank over one week of defensive
-                data would be the most authoritative-looking thing on the page and the least
-                earned, so the sample is printed beside it rather than left to be assumed.
-              -->
-              <p v-if="difficultySample > 0 && difficultySample < 4" class="mt-2 font-mono text-[9px] text-[#e69a4a]">
-                ROS and NEXT4 rest on {{ difficultySample }} game{{ difficultySample === 1 ? '' : 's' }} of defensive data &mdash; treat them as a hint, not a ranking, until a few more weeks are in.
-              </p>
-              <p v-if="(fbWire.board[boardPos]?.length ?? 0) > BOARD_DEPTH" class="mt-2 font-mono text-[9px] text-dark-textMuted">
-                showing {{ visibleBoard.length }} of {{ fbWire.board[boardPos].length }} {{ boardPos }}<template v-if="rosSource !== 'UFD'"> &middot; {{ rosSource }}'s order</template>
-              </p>
-            </div>
+              </span>
+              <span class="font-mono text-[11px] text-primary">Rankings &rarr;</span>
+            </RouterLink>
           </section>
         </template>
       </template>
