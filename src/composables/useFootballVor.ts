@@ -33,6 +33,14 @@ export function useFootballVor(inputs: {
   season: Ref<string>
   enabled: Ref<boolean>
   weeklyHorizon?: number // weeks of weekly-VOR/streamability to fetch (default 4; 0 = ROS only)
+  /**
+   * Whether `playerKey` is already a Sleeper player id.
+   *
+   * Normally answered by the active league's platform. The public rankings board has no
+   * active league and builds its pool straight from Sleeper's player map, so it says so
+   * outright rather than being told "no" by a store that has nothing to say.
+   */
+  keysAreSleeperIds?: Ref<boolean>
 }): { vorByKey: Ref<Record<string, PlayerVor>>; audit: Ref<VorAudit | null>; loading: Ref<boolean>; load: () => void } {
   const leagueStore = useLeagueStore()
   /**
@@ -41,7 +49,9 @@ export function useFootballVor(inputs: {
    * name at all in Sleeper's data, so name matching silently dropped every
    * defense from the board.
    */
-  const keysAreSleeperIds = computed(() => leagueStore.activePlatform === 'sleeper')
+  const keysAreSleeperIds = computed(
+    () => inputs.keysAreSleeperIds?.value ?? leagueStore.activePlatform === 'sleeper',
+  )
 
   const vorByKey = ref<Record<string, PlayerVor>>({})
   const audit = ref<VorAudit | null>(null)
