@@ -78,3 +78,23 @@ export function parseEspnLeagueUrl(input: string): EspnLeagueRef | null {
 export function looksLikeEspnLeague(input: string): boolean {
   return parseEspnLeagueUrl(input) !== null
 }
+
+/**
+ * Which other platform a pasted URL belongs to, when it is not ESPN.
+ *
+ * The box used to answer anything it could not parse with "that doesn't look like an ESPN
+ * league URL", which was true when ESPN was the only league this board could read and is
+ * now actively misleading: somebody pastes a perfectly good Yahoo URL and is told it is not
+ * a URL. Recognising the host lets the surface say the useful thing — that Yahoo cannot be
+ * read without signing in, and that the rules can be entered by hand instead.
+ *
+ * Deliberately narrow. It answers null for anything it does not recognise, because the old
+ * message is the right one for an actual typo.
+ */
+export function otherPlatformFromUrl(input: string): 'yahoo' | 'sleeper' | null {
+  const text = String(input ?? '').toLowerCase()
+  if (!text.includes('.')) return null
+  if (text.includes('yahoo.com')) return 'yahoo'
+  if (text.includes('sleeper.com') || text.includes('sleeper.app')) return 'sleeper'
+  return null
+}

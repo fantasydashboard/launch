@@ -20,7 +20,7 @@
 import { computed, onUnmounted, ref, watchEffect } from 'vue'
 import { useHockeyBoard } from '@/composables/useHockeyBoard'
 import CategoryLedgerPanel from '@/components/draft/CategoryLedgerPanel.vue'
-import { parseEspnLeagueUrl } from '@/hockey/espnLeagueUrl'
+import { parseEspnLeagueUrl, otherPlatformFromUrl } from '@/hockey/espnLeagueUrl'
 import { CATEGORY_CHOICES, YAHOO_DEFAULT_CATEGORIES, rulesFromManual } from '@/hockey/manualRules'
 import { rulesProblem } from '@/hockey/hockeyLeague'
 
@@ -53,7 +53,19 @@ function applyUrl() {
   urlError.value = ''
   const ref_ = parseEspnLeagueUrl(urlInput.value)
   if (!ref_) {
-    urlError.value = "That doesn't look like an ESPN league URL — paste the address bar from your draft room."
+    /*
+     * A Yahoo or Sleeper URL is not a typo, and saying "that doesn't look like a URL" to
+     * somebody who pasted a perfectly good one is the worst answer available. Only ESPN
+     * answers anonymous league reads — Yahoo returns 401 to every unauthenticated request —
+     * so the useful reply names the reason and points at the thing that does work.
+     */
+    const other = otherPlatformFromUrl(urlInput.value)
+    urlError.value = other === 'yahoo'
+      ? 'Yahoo will not let anyone read a league without signing in, so no URL can load one here. Enter the rules by hand below — the board needs nothing else from Yahoo, since you mark the picks yourself.'
+      : other === 'sleeper'
+        ? 'This box reads ESPN leagues. For a Sleeper league, enter the rules by hand below — the board needs nothing else, since you mark the picks yourself.'
+        : "That doesn't look like an ESPN league URL — paste the address bar from your draft room."
+    if (other) showManual.value = true
     return
   }
   if (ref_.sport && ref_.sport !== 'hockey') {

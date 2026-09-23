@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseEspnLeagueUrl, looksLikeEspnLeague } from '../espnLeagueUrl'
+import { parseEspnLeagueUrl, looksLikeEspnLeague, otherPlatformFromUrl } from '../espnLeagueUrl'
 
 describe('parseEspnLeagueUrl', () => {
   it('reads a league URL', () => {
@@ -70,5 +70,42 @@ describe('parseEspnLeagueUrl', () => {
   it('answers the looks-like question', () => {
     expect(looksLikeEspnLeague('https://fantasy.espn.com/hockey/league?leagueId=1')).toBe(true)
     expect(looksLikeEspnLeague('nonsense')).toBe(false)
+  })
+})
+
+/*
+ * Telling somebody their valid URL "doesn't look like a URL" is the worst answer available.
+ *
+ * The box was written when ESPN was the only league this board could read, so anything else
+ * was a typo. It no longer is: rules can be entered by hand, which is the ONLY path a Yahoo
+ * league has, because Yahoo answers 401 to every unauthenticated read. Recognising the host
+ * lets the error say the one useful thing instead of the one discouraging thing.
+ */
+describe('otherPlatformFromUrl', () => {
+  it('recognises a Yahoo league', () => {
+    expect(otherPlatformFromUrl('https://hockey.fantasysports.yahoo.com/hockey/2317648')).toBe('yahoo')
+  })
+
+  it('recognises a Yahoo mock draft lobby', () => {
+    expect(otherPlatformFromUrl(
+      'https://hockey.fantasysports.yahoo.com/hockey/35412/mock_waiting?mlid=2317831&lobby=standard',
+    )).toBe('yahoo')
+  })
+
+  it('recognises a Yahoo draft client', () => {
+    expect(otherPlatformFromUrl('https://hockey.fantasysports.yahoo.com/draftclient/hockey/2317648/2?auth=x')).toBe('yahoo')
+  })
+
+  it('recognises Sleeper', () => {
+    expect(otherPlatformFromUrl('https://sleeper.com/draft/nhl/1234567890')).toBe('sleeper')
+  })
+
+  it('says nothing about an ESPN url, which has its own parser', () => {
+    expect(otherPlatformFromUrl('https://fantasy.espn.com/hockey/league?leagueId=123&seasonId=2027')).toBeNull()
+  })
+
+  it('says nothing about gibberish, which really is a typo', () => {
+    expect(otherPlatformFromUrl('not a url at all')).toBeNull()
+    expect(otherPlatformFromUrl('')).toBeNull()
   })
 })
