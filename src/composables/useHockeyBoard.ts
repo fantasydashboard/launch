@@ -2,6 +2,7 @@ import { computed, onScopeDispose, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { buildHockeyBoard, type HockeyBoardResult } from '@/hockey/hockeyBoard'
 import { rulesFromEspnSettings, rulesProblem, type HockeyLeagueRules } from '@/hockey/hockeyLeague'
+import { rulesFromManual, type ManualLeagueInput } from '@/hockey/manualRules'
 import type { HockeyProjection } from '@/hockey/hockeyValue'
 import {
   parseDraftDetail, draftClock, teamNamesFromEspn, type HockeyDraftState,
@@ -143,6 +144,37 @@ export function useHockeyBoard() {
    * single pick was made. Connecting a throwaway league to see it would be the wrong trade,
    * so the URL is enough.
    */
+  /*
+   * Rules stated by hand, which is what makes this board portable.
+   *
+   * Everything it needs from a platform is these eight settings: projections are ours and
+   * picks are marked by the user. Yahoo refuses anonymous reads outright — 401 on every
+   * endpoint, no public-league exception — so the paste-a-URL path that works for ESPN cannot
+   * be built for it at any price. Typing the rules can, and it serves a Sleeper league or a
+   * private ESPN one just as well.
+   *
+   * Kept in localStorage because the thing this is for is draft night: a reload at the wrong
+   * moment should not cost somebody their settings while the clock is running.
+   */
+  const MANUAL_KEY = 'ufd:hockey:manualRules'
+  const manual = ref<ManualLeagueInput | null>(readManual())
+  function readManual(): ManualLeagueInput | null {
+    try {
+      const raw = localStorage.getItem(MANUAL_KEY)
+      return raw ? (JSON.parse(raw) as ManualLeagueInput) : null
+    } catch { return null }
+  }
+  function setManualRules(next: ManualLeagueInput | null) {
+    manual.value = next
+    try {
+      if (next) localStorage.setItem(MANUAL_KEY, JSON.stringify(next))
+      else localStorage.removeItem(MANUAL_KEY)
+    } catch { /* private mode — the board still works for this session */ }
+    resolvedSeason.value = 0
+    mockOrder.value = []
+    load()
+  }
+
   const override = ref<{ leagueId: string; season: number } | null>(null)
   function setLeagueOverride(next: { leagueId: string; season: number } | null) {
     if (next?.leagueId === override.value?.leagueId
@@ -227,11 +259,52 @@ export function useHockeyBoard() {
     }
   }
 
+  /** Projections, which are ours and belong to no platform. Shared by both load paths. */
+  async function loadProjections(forSeason: number): Promise<string> {
+    const res = await fetch(`${PROJECTIONS_URL}?season=${forSeason}`)
+    if (!res.ok) return `Could not load projections (${res.status}).`
+    const proj = await res.json()
+    const parsed: Record<string, HockeyProjection> = {}
+    const names: Record<string, string> = {}
+    for (const p of proj?.players ?? []) {
+      parsed[p.playerKey] = {
+        playerKey: p.playerKey, position: p.position, stats: p.stats ?? {},
+        adp: p.adp ?? null, auctionValue: p.auctionValue ?? null,
+        percentOwned: p.percentOwned ?? null, injuryStatus: p.injuryStatus ?? null,
+      }
+      names[p.playerKey] = p.name
+    }
+    projections.value = parsed
+    namesByKey.value = names
+    return ''
+  }
+
   async function load() {
     resolvedSeason.value = 0
-    if (!isHockey.value) { problem.value = 'This board is for hockey leagues.'; return }
+    if (!isHockey.value && !manual.value) { problem.value = 'This board is for hockey leagues.'; return }
+
+    /* Hand-entered rules answer everything a platform would have been asked, so nothing is
+       fetched from one. This is the only path a Yahoo league has. */
+    if (manual.value) {
+      loading.value = true
+      problem.value = ''
+      try {
+        const r = rulesFromManual(manual.value)
+        const why = rulesProblem(r)
+        if (why) { problem.value = why; rules.value = null; return }
+        const projProblem = await loadProjections(r.season)
+        if (projProblem) { problem.value = projProblem; return }
+        rules.value = r
+      } catch (e: any) {
+        problem.value = `Could not build the board: ${e?.message ?? e}`
+      } finally {
+        loading.value = false
+      }
+      return
+    }
+
     if (!isEspn.value) {
-      problem.value = 'Hockey currently reads ESPN leagues. Yahoo is waiting on API access.'
+      problem.value = 'Hockey reads ESPN leagues directly. For a Yahoo or Sleeper league, enter the rules by hand below.'
       return
     }
     if (!leagueId.value) { problem.value = 'No league selected.'; return }
@@ -239,34 +312,18 @@ export function useHockeyBoard() {
     loading.value = true
     problem.value = ''
     try {
-      const [projRes, settingsResult] = await Promise.all([
-        fetch(`${PROJECTIONS_URL}?season=${season.value}`),
+      // Still in parallel: the settings read is ESPN's and the projections are ours.
+      const [projProblem, settingsResult] = await Promise.all([
+        loadProjections(season.value),
         loadSettings(),
       ])
 
-      if (!projRes.ok) {
-        problem.value = `Could not load projections (${projRes.status}).`
-        return
-      }
+      if (projProblem) { problem.value = projProblem; return }
       const { settings, why: settingsProblem } = settingsResult
       if (!settings?.settings) {
         problem.value = settingsProblem
         return
       }
-
-      const proj = await projRes.json()
-      const parsed: Record<string, HockeyProjection> = {}
-      const names: Record<string, string> = {}
-      for (const p of proj?.players ?? []) {
-        parsed[p.playerKey] = {
-          playerKey: p.playerKey, position: p.position, stats: p.stats ?? {},
-          adp: p.adp ?? null, auctionValue: p.auctionValue ?? null,
-          percentOwned: p.percentOwned ?? null, injuryStatus: p.injuryStatus ?? null,
-        }
-        names[p.playerKey] = p.name
-      }
-      projections.value = parsed
-      namesByKey.value = names
 
       const r = rulesFromEspnSettings(settings, leagueId.value, season.value)
       const why = rulesProblem(r)
@@ -515,6 +572,7 @@ export function useHockeyBoard() {
     loading, problem, rules, result, drafted,
     ledger, marginal, marginalByKey, puntAdvice, picksByTeam,
     isCategoryBoard, override, setLeagueOverride,
+    manual, setManualRules,
     rows: computed(() => result.value?.rows ?? []),
     replacement: computed(() => result.value?.replacement ?? {}),
     unnamedScoredStatIds: computed(() => result.value?.unnamedScoredStatIds ?? []),

@@ -21,11 +21,14 @@ import { computed, onUnmounted, ref, watchEffect } from 'vue'
 import { useHockeyBoard } from '@/composables/useHockeyBoard'
 import CategoryLedgerPanel from '@/components/draft/CategoryLedgerPanel.vue'
 import { parseEspnLeagueUrl } from '@/hockey/espnLeagueUrl'
+import { CATEGORY_CHOICES, YAHOO_DEFAULT_CATEGORIES, rulesFromManual } from '@/hockey/manualRules'
+import { rulesProblem } from '@/hockey/hockeyLeague'
 
 const {
   loading, problem, rules, rows, replacement, unnamedScoredStatIds,
   mode, categoryKeys, contestedKeys, perCategoryByKey,
   ledger, marginalByKey, puntAdvice, override, setLeagueOverride,
+  manual, setManualRules,
   punted, togglePunt, clearPunts,
   drafted, take, undo, undoLast, reset, load,
   live, liveError, liveState, lastSyncedAt, myTeamId, teamNames, clock, goLive, goMock, syncDraft,
@@ -67,6 +70,65 @@ function clearUrl() {
   urlInput.value = ''
   urlError.value = ''
   setLeagueOverride(null)
+}
+
+/*
+ * RULES BY HAND — the only path a Yahoo league has.
+ *
+ * Yahoo answers 401 to every unauthenticated read, with no public-league exception, so no
+ * pasted URL can ever load one the way an ESPN mock does. The board needs nothing else from a
+ * platform: the projections are ours and the picks are marked on this page. So the settings
+ * are the whole gap, and typing them closes it — for Yahoo, for Sleeper, and for a private
+ * ESPN league that will not read.
+ *
+ * Seeded from whatever was saved, so draft night survives a reload.
+ */
+const MANUAL_SLOTS = ['C', 'LW', 'RW', 'F', 'D', 'G', 'UTIL'] as const
+const showManual = ref(false)
+const manualError = ref('')
+const mName = ref(manual.value?.name ?? '')
+const mTeams = ref<number>(manual.value?.teams ?? 12)
+const mRosterSize = ref<number>(manual.value?.rosterSize ?? 20)
+const mSeason = ref<number>(manual.value?.season ?? new Date().getFullYear() + 1)
+const mKind = ref<'categories' | 'points'>(manual.value?.kind ?? 'categories')
+const mCats = ref<string[]>([...(manual.value?.categoryKeys ?? YAHOO_DEFAULT_CATEGORIES)])
+const mWeights = ref<Record<string, number>>({ ...(manual.value?.weights ?? {}) })
+const mSlots = ref<Record<string, number>>({
+  C: 0, LW: 0, RW: 0, F: 0, D: 0, G: 0, UTIL: 0, ...(manual.value?.slots ?? { F: 9, D: 4, G: 2, UTIL: 1 }),
+})
+
+function toggleCat(key: string) {
+  const at = mCats.value.indexOf(key)
+  if (at >= 0) mCats.value.splice(at, 1)
+  else mCats.value.push(key)
+}
+
+function applyManual() {
+  manualError.value = ''
+  const input = {
+    name: mName.value,
+    season: Number(mSeason.value) || 0,
+    teams: Number(mTeams.value) || 0,
+    kind: mKind.value,
+    categoryKeys: [...mCats.value],
+    // A blank box is not a zero-scoring stat, it is a stat the league does not pay for.
+    weights: Object.fromEntries(
+      Object.entries(mWeights.value).filter(([, v]) => Number.isFinite(v) && v !== 0),
+    ),
+    slots: { ...mSlots.value },
+    rosterSize: Number(mRosterSize.value) || 0,
+  }
+  /* Validated with the same function the ESPN path uses, so a hand-entered league cannot get
+     a board on rules an ESPN league would have been refused for. */
+  const why = rulesProblem(rulesFromManual(input))
+  if (why) { manualError.value = why; return }
+  setManualRules(input)
+  showManual.value = false
+}
+
+function clearManual() {
+  setManualRules(null)
+  manualError.value = ''
 }
 const gridRows = computed(() =>
   showGrid.value ? grid.value : grid.value.filter((r) => r.cells.some((c) => c.pick)).slice(-3),
@@ -501,6 +563,104 @@ const POS_TONE: Record<string, string> = {
         <p v-else class="mt-1.5 font-mono text-[10px] text-dark-textMuted/60">
           a practice draft works for the board &mdash; ESPN reads without a login
         </p>
+
+        <!--
+          Rules by hand: the only path a Yahoo league has.
+          Yahoo refuses anonymous reads on every endpoint, so no URL can ever load one. The
+          board needs nothing else from a platform — projections are ours, picks are marked
+          here — so stating the rules is enough to make it work for any league anywhere.
+        -->
+        <div class="mt-3 border-t border-dark-border pt-3">
+          <button type="button"
+                  class="font-mono text-[10px] text-dark-textMuted underline decoration-dotted underline-offset-2 hover:text-dark-text"
+                  @click="showManual = !showManual">
+            {{ showManual ? 'hide' : (manual ? 'using hand-entered rules — edit' : 'Yahoo, Sleeper or a private league? enter the rules by hand') }}
+          </button>
+
+          <div v-if="showManual" class="mt-3 space-y-3">
+            <div class="flex flex-wrap items-end gap-3">
+              <label class="font-mono text-[10px] text-dark-textMuted">league name
+                <input v-model="mName" type="text" placeholder="My Yahoo league"
+                       class="mt-1 block w-44 rounded-lg border border-dark-border bg-dark-bg px-2 py-1 font-mono text-[11px] text-dark-text focus:border-primary focus:outline-none" />
+              </label>
+              <label class="font-mono text-[10px] text-dark-textMuted">teams
+                <input v-model.number="mTeams" type="number" min="2" max="20"
+                       class="mt-1 block w-16 rounded-lg border border-dark-border bg-dark-bg px-2 py-1 font-mono text-[11px] text-dark-text focus:border-primary focus:outline-none" />
+              </label>
+              <label class="font-mono text-[10px] text-dark-textMuted">roster size
+                <input v-model.number="mRosterSize" type="number" min="1" max="40"
+                       class="mt-1 block w-16 rounded-lg border border-dark-border bg-dark-bg px-2 py-1 font-mono text-[11px] text-dark-text focus:border-primary focus:outline-none" />
+              </label>
+              <label class="font-mono text-[10px] text-dark-textMuted">season
+                <input v-model.number="mSeason" type="number"
+                       class="mt-1 block w-20 rounded-lg border border-dark-border bg-dark-bg px-2 py-1 font-mono text-[11px] text-dark-text focus:border-primary focus:outline-none" />
+              </label>
+              <label class="font-mono text-[10px] text-dark-textMuted">scoring
+                <select v-model="mKind"
+                        class="mt-1 block rounded-lg border border-dark-border bg-dark-bg px-2 py-1 font-mono text-[11px] text-dark-text focus:border-primary focus:outline-none">
+                  <option value="categories">categories</option>
+                  <option value="points">points</option>
+                </select>
+              </label>
+            </div>
+
+            <div>
+              <div class="font-mono text-[10px] text-dark-textMuted">starting slots &mdash; bench and IR excluded</div>
+              <div class="mt-1 flex flex-wrap gap-2">
+                <label v-for="pos in MANUAL_SLOTS" :key="'ms' + pos" class="font-mono text-[10px] text-dark-textMuted">
+                  {{ pos }}
+                  <input v-model.number="mSlots[pos]" type="number" min="0" max="12"
+                         class="ml-1 w-12 rounded border border-dark-border bg-dark-bg px-1.5 py-0.5 font-mono text-[11px] text-dark-text focus:border-primary focus:outline-none" />
+                </label>
+              </div>
+            </div>
+
+            <div v-if="mKind === 'categories'">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-[10px] text-dark-textMuted">categories</span>
+                <button type="button" class="font-mono text-[10px] text-primary underline decoration-dotted underline-offset-2"
+                        @click="mCats = [...YAHOO_DEFAULT_CATEGORIES]">Yahoo default</button>
+                <button type="button" class="font-mono text-[10px] text-dark-textMuted underline decoration-dotted underline-offset-2"
+                        @click="mCats = []">clear</button>
+              </div>
+              <div class="mt-1 flex flex-wrap gap-1.5">
+                <button v-for="c in CATEGORY_CHOICES" :key="'mc' + c.key" type="button"
+                        class="rounded border px-1.5 py-0.5 font-mono text-[10px] transition-colors"
+                        :class="mCats.includes(c.key)
+                          ? 'border-primary/60 bg-primary/15 text-primary'
+                          : 'border-dark-border text-dark-textMuted hover:text-dark-text'"
+                        @click="toggleCat(c.key)">{{ c.key }}<span v-if="c.reverse" title="lower wins"> &darr;</span></button>
+              </div>
+              <!-- Faceoff wins is the one people ask for. Say why it is missing rather than
+                   letting somebody hunt for it. -->
+              <p class="mt-1 font-mono text-[9px] text-dark-textMuted/60">
+                faceoff wins is not here &mdash; our projection feed has no column for it, so a
+                league that uses it will be short by whatever it was worth
+              </p>
+            </div>
+
+            <div v-else>
+              <div class="font-mono text-[10px] text-dark-textMuted">points per unit &mdash; leave a stat blank to score it nothing</div>
+              <div class="mt-1 flex flex-wrap gap-2">
+                <label v-for="c in CATEGORY_CHOICES" :key="'mw' + c.key" class="font-mono text-[10px] text-dark-textMuted">
+                  {{ c.key }}
+                  <input v-model.number="mWeights[c.key]" type="number" step="0.1"
+                         class="ml-1 w-14 rounded border border-dark-border bg-dark-bg px-1.5 py-0.5 font-mono text-[11px] text-dark-text focus:border-primary focus:outline-none" />
+                </label>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button type="button"
+                      class="rounded-lg border border-primary/50 px-3 py-1.5 font-mono text-[11px] text-primary transition-colors hover:bg-primary/10"
+                      @click="applyManual">use these rules</button>
+              <button v-if="manual" type="button"
+                      class="rounded-lg border border-dark-border px-3 py-1.5 font-mono text-[11px] text-dark-textMuted transition-colors hover:text-dark-text"
+                      @click="clearManual">clear</button>
+              <span v-if="manualError" class="font-mono text-[10px] text-[#FF5C5C]">{{ manualError }}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!--
