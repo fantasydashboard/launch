@@ -1223,6 +1223,7 @@ import DevModePanel from '@/components/DevModePanel.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import OnboardingTour from '@/components/OnboardingTour.vue'
 import { shouldWelcome } from '@/lib/welcomeCard'
+import { showsDraftTab } from '@/lib/navTabs'
 import DailyUpgradeNudge from '@/components/DailyUpgradeNudge.vue'
 
 const router = useRouter()
@@ -1364,8 +1365,13 @@ const tabs = computed(() => [
   ...(leagueStore.activeSport === 'football'
     ? [{ name: 'This Week', path: '/this-week' }]
     : [{ name: 'Today', path: '/today' }]),
-  // Draft Room reads live picks from Sleeper, so it only appears where it works.
-  ...(leagueStore.activeSport === 'football' && leagueStore.activePlatform === 'sleeper'
+  /* Draft Room reads live picks from Sleeper, so it only appears where it works — and only
+     while there is a draft to follow. See showsDraftTab for why it comes down afterwards. */
+  ...(showsDraftTab({
+    sport: leagueStore.activeSport,
+    platform: leagueStore.activePlatform,
+    leagueStatus: leagueStore.currentLeague?.status,
+  })
     ? [{ name: 'Draft Room', path: '/draft-room' }]
     : []),
   /* Hockey's board is a separate tab rather than the same one, because it is a different
@@ -1409,6 +1415,10 @@ const tabs = computed(() => [
   ...(isRotoLeague.value
     ? [{ name: 'Roto Race', path: '/matchup' }]
     : []),
+  /* Rankings sits beside the Wire because they are the two halves of one split: what is true,
+     and what you can do about it. It takes the slot the Draft Room vacates in season, so the
+     bar does not grow. */
+  { name: 'Rankings', path: '/rankings' },
   { name: 'The Wire', path: '/players' },
   { name: 'Trades', path: '/trades' },
   /* Power Rankings folded into League. The two were the same ten rows sorted differently —
