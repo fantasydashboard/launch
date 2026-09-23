@@ -22,6 +22,22 @@
         for the rest of the season. Players inside a tier are within about a point a week of
         each other — close enough to be interchangeable.
       </p>
+      <!--
+        What this board is NOT, said before the board rather than under it.
+
+        It used to say this in the footer, which is the right place for somebody who read the
+        whole page and the wrong place for somebody who opened it expecting their own team. A
+        paying user landed here, scrolled a hundred ranked players looking for their roster, and
+        had to reach the bottom to learn the page does not know who they are. The disclosure has
+        to arrive before the thing it disclaims.
+      -->
+      <p class="mt-3 max-w-xl rounded-lg border border-dark-border bg-dark-card/60 px-3 py-2 font-mono text-[11px] leading-relaxed text-dark-textMuted">
+        Everyone sees the same board: full PPR, standard twelve-team. It does not follow your
+        league's scoring or mark your roster
+        <span v-if="hasLeague">— yet</span>.
+        <RouterLink to="/players" class="text-primary underline underline-offset-2">The Wire</RouterLink>
+        is the page scored for your league.
+      </p>
 
       <div v-if="loading" class="mt-8 font-mono text-xs text-dark-textMuted">Loading the board…</div>
 
@@ -81,16 +97,11 @@
           why the order moved.
         -->
         <div class="mt-4 rounded-xl border border-dark-border bg-dark-card p-4">
-          <p class="text-sm text-dark-textSecondary">
-            This board is full PPR, scored for a standard twelve-team league, and the same for
-            everyone — it does not follow your league's settings or any ranking list you've
-            uploaded.
-          </p>
-          <p v-if="!hasLeague" class="mt-2 text-xs text-dark-textMuted">
+          <p v-if="!hasLeague" class="text-sm text-dark-textSecondary">
             <RouterLink to="/connect" class="text-primary underline underline-offset-2">Connect a league</RouterLink>
             for standings, power rankings and your full history — free, no expiry.
           </p>
-          <p class="mt-2 text-xs text-dark-textMuted">
+          <p class="text-xs text-dark-textMuted" :class="{ 'mt-2': !hasLeague }">
             Who's actually available, what an add costs you and this week's start/sit calls live
             on <RouterLink to="/players" class="underline underline-offset-2">The Wire</RouterLink>.
           </p>
