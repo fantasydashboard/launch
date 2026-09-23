@@ -32,11 +32,20 @@
         to arrive before the thing it disclaims.
       -->
       <p class="mt-3 max-w-xl rounded-lg border border-dark-border bg-dark-card/60 px-3 py-2 font-mono text-[11px] leading-relaxed text-dark-textMuted">
-        Everyone sees the same board: full PPR, standard twelve-team. It does not follow your
-        league's scoring or mark your roster
-        <span v-if="hasLeague">— yet</span>.
-        <RouterLink to="/players" class="text-primary underline underline-offset-2">The Wire</RouterLink>
-        is the page scored for your league.
+        <template v-if="!access.scopedToLeague">
+          Everyone sees the same board: full PPR, standard twelve-team. It does not follow your
+          league's scoring or mark your roster
+          <span v-if="hasLeague">— yet</span>.
+          <RouterLink to="/players" class="text-primary underline underline-offset-2">The Wire</RouterLink>
+          is the page scored for your league.
+        </template>
+        <template v-else-if="!access.showsAvailability">
+          Scored on {{ scoringLabel(scoringSource) }} — your league. Who's actually available
+          and who holds him is on the pass.
+        </template>
+        <template v-else>
+          Scored on {{ scoringLabel(scoringSource) }} — your league.
+        </template>
       </p>
 
       <div v-if="loading" class="mt-8 font-mono text-xs text-dark-textMuted">Loading the board…</div>
@@ -73,10 +82,17 @@
                    class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
               <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
               <span class="min-w-0 flex-1 truncate">
-                {{ row.name }}
+                <span v-if="access.scopedToLeague && row.owned" class="text-primary">★ </span>{{ row.name }}
                 <span v-if="active === 'ALL'" class="ml-1 font-mono text-[10px] text-dark-textMuted/70">{{ row.position }}</span>
               </span>
               <span class="shrink-0 font-mono text-[10px] text-dark-textMuted/70">{{ row.team }}</span>
+              <span v-if="access.showsAvailability && !row.owned"
+                    class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide"
+                    :class="row.free ? 'bg-[#4ade80]/15 text-[#4ade80]' : 'bg-dark-bg text-dark-textMuted/60'"
+              >{{ row.free ? 'free' : 'rostered' }}</span>
+              <span v-else-if="access.scopedToLeague && !access.showsAvailability && !row.owned" aria-hidden="true"
+                    class="shrink-0 select-none rounded bg-dark-bg px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-transparent"
+                    style="text-shadow: 0 0 6px rgba(255,255,255,0.35)">rostered</span>
               <span class="w-10 shrink-0 text-right font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">
                 {{ row.vorRos >= 0 ? '+' : '' }}{{ Math.round(row.vorRos) }}
               </span>
@@ -114,10 +130,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
-import { usePublicRankings } from '@/composables/usePublicRankings'
+import { useRankings } from '@/composables/useRankings'
+import { scoringLabel } from '@/composables/useFootballScoring'
 import { useLeagueStore } from '@/stores/league'
 
-const { board, positions, loading, ready } = usePublicRankings()
+const { board, positions, loading, ready, access, scoringSource } = useRankings()
 
 /* Whether this reader already has a league, which changes what the footer can honestly say.
    localStorage-backed, so it is true for a signed-out visitor who has connected one. */
