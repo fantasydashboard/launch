@@ -38,12 +38,17 @@
           <RouterLink to="/players" class="text-primary underline underline-offset-2">The Wire</RouterLink>
           is the page scored for your league.
         </template>
+        <!--
+          The label already names whose scoring it is — "your league's scoring" or "standard
+          scoring (full PPR)" — so nothing is appended to it. An earlier version added
+          "— your league" after it and read "Scored on your league's scoring — your league."
+        -->
         <template v-else-if="!access.showsAvailability">
-          Scored on {{ scoringLabel(scoringSource) }} — your league. Who's actually available
-          and who holds him is on the pass.
+          Scored on {{ scoringLabel(scoringSource) }}, your roster marked. Who's actually
+          available, and who holds him, is on the pass.
         </template>
         <template v-else>
-          Scored on {{ scoringLabel(scoringSource) }} — your league.
+          Scored on {{ scoringLabel(scoringSource) }}, your roster marked.
         </template>
       </p>
 
