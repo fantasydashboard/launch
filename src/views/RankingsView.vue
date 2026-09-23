@@ -34,8 +34,7 @@
       <p class="mt-3 max-w-xl rounded-lg border border-dark-border bg-dark-card/60 px-3 py-2 font-mono text-[11px] leading-relaxed text-dark-textMuted">
         <template v-if="!access.scopedToLeague">
           Everyone sees the same board: full PPR, standard twelve-team. It does not follow your
-          league's scoring or mark your roster
-          <span v-if="hasLeague">— yet</span>.
+          league's scoring or mark your roster.
           <RouterLink to="/players" class="text-primary underline underline-offset-2">The Wire</RouterLink>
           is the page scored for your league.
         </template>
@@ -91,8 +90,8 @@
                     :class="row.free ? 'bg-[#4ade80]/15 text-[#4ade80]' : 'bg-dark-bg text-dark-textMuted/60'"
               >{{ row.free ? 'free' : 'rostered' }}</span>
               <span v-else-if="access.scopedToLeague && !access.showsAvailability && !row.owned" aria-hidden="true"
-                    class="shrink-0 select-none rounded bg-dark-bg px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-transparent"
-                    style="text-shadow: 0 0 6px rgba(255,255,255,0.35)">rostered</span>
+                    class="shrink-0 select-none rounded bg-dark-bg px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-dark-textMuted/40"
+              >•••</span>
               <span class="w-10 shrink-0 text-right font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">
                 {{ row.vorRos >= 0 ? '+' : '' }}{{ Math.round(row.vorRos) }}
               </span>
@@ -108,16 +107,16 @@
 
         <!--
           What this board is, said plainly, because the Wire links here while announcing that a
-          ranking list drives IT. This one is deliberately league-agnostic — default scoring, a
-          twelve-team shape — so a reader arriving from a league page is not left to work out
-          why the order moved.
+          ranking list drives IT. It follows the league's own scoring once one exists; only a
+          reader with no football league is shown the public shape — default scoring, a
+          twelve-team league — so nobody is left to work out why the order moved.
         -->
         <div class="mt-4 rounded-xl border border-dark-border bg-dark-card p-4">
-          <p v-if="!hasLeague" class="text-sm text-dark-textSecondary">
+          <p v-if="!access.scopedToLeague" class="text-sm text-dark-textSecondary">
             <RouterLink to="/connect" class="text-primary underline underline-offset-2">Connect a league</RouterLink>
             for standings, power rankings and your full history — free, no expiry.
           </p>
-          <p class="text-xs text-dark-textMuted" :class="{ 'mt-2': !hasLeague }">
+          <p class="text-xs text-dark-textMuted" :class="{ 'mt-2': !access.scopedToLeague }">
             Who's actually available, what an add costs you and this week's start/sit calls live
             on <RouterLink to="/players" class="underline underline-offset-2">The Wire</RouterLink>.
           </p>
@@ -132,14 +131,19 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useRankings } from '@/composables/useRankings'
 import { scoringLabel } from '@/composables/useFootballScoring'
-import { useLeagueStore } from '@/stores/league'
 
+/*
+ * `access.scopedToLeague` is the one fact "does this reader have a football league" resolves
+ * to on this page — that is what `rankingsAccess` was extracted to guarantee. A second local
+ * copy of the same question is exactly the drift that let a baseball-only reader be told this
+ * was their league's board; the template reads `access.scopedToLeague` everywhere instead.
+ *
+ * `useRankings` also exports `accessKnown`, unused here: `access` already defaults to the
+ * unlocked reading while the subscription check is in flight (see useRankings.ts), so no
+ * branch in this template can reach the locked copy or the greyed pill before it resolves —
+ * a second gate on `accessKnown` here would be redundant by construction.
+ */
 const { board, positions, loading, ready, access, scoringSource } = useRankings()
-
-/* Whether this reader already has a league, which changes what the footer can honestly say.
-   localStorage-backed, so it is true for a signed-out visitor who has connected one. */
-const leagueStore = useLeagueStore()
-const hasLeague = computed(() => leagueStore.savedLeagues.length > 0)
 
 const active = ref('ALL')
 const expanded = ref(false)

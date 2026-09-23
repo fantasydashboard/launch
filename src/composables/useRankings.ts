@@ -33,14 +33,26 @@ export function useRankings(): {
   loading: ComputedRef<boolean>
   ready: ComputedRef<boolean>
   access: ComputedRef<RankingsAccess>
+  accessKnown: ComputedRef<boolean>
   scoringSource: ComputedRef<FootballScoringSource>
 } {
   const leagueStore = useLeagueStore()
   const isFootball = computed(() => leagueStore.activeSport === 'football')
-  const hasLeague = computed(() => leagueStore.savedLeagues.length > 0)
+  /*
+   * A football league, specifically. `savedLeagues.length` is sport-blind, and this page is
+   * football-only — so a reader whose only league is baseball was told the board was "scored
+   * for your league" while looking at the public one, and with a pass got a ROSTERED pill on
+   * every row, because the public board marks every entry unavailable.
+   *
+   * Keyed on the same condition that gates useFootballWire, so "we say it is your league" and
+   * "it actually is your league" cannot come apart.
+   */
+  const hasLeague = computed(
+    () => leagueStore.activeSport === 'football' && !!leagueStore.activeLeagueId,
+  )
 
   const publicRankings = usePublicRankings()
-  const { hasFullAccess } = useFeatureAccess()
+  const { hasFullAccess, accessKnown } = useFeatureAccess()
 
   const source = useActivePointsSource()
   const fbScoring = useFootballScoring()
@@ -92,12 +104,17 @@ export function useRankings(): {
   })
 
   const loading = computed(() =>
-    isFootball.value && hasLeague.value ? fbLoading.value : publicRankings.loading.value,
+    hasLeague.value ? fbLoading.value : publicRankings.loading.value,
   )
   const ready = computed(() => !!board.value.ALL?.length)
 
+  /* Not "no pass" until we have actually asked. Until then the page must not draw the locked
+     state, or a pass holder watches their own page tell them they have not paid. */
   const access = computed(() =>
-    rankingsAccess({ hasLeague: hasLeague.value, hasPass: hasFullAccess.value }),
+    rankingsAccess({
+      hasLeague: hasLeague.value,
+      hasPass: accessKnown.value ? hasFullAccess.value : true,
+    }),
   )
 
   return {
@@ -106,6 +123,7 @@ export function useRankings(): {
     loading,
     ready,
     access,
+    accessKnown,
     scoringSource: fbScoring.source,
   }
 }
