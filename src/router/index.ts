@@ -153,6 +153,16 @@ const router = createRouter({
       name: 'players',
       component: () => import('@/views/PlayersWrapper.vue')
     },
+    /* Rankings is PUBLIC. It is the page every tier card and movers post we publish should
+       land on, and it was landing on a signup wall instead. What it shows — the ranked list
+       and its tier cliffs — is a commodity every competitor publishes; what the pass sells is
+       what you can do about it, which lives on The Wire. */
+    {
+      path: '/rankings',
+      name: 'rankings',
+      component: () => import('@/views/RankingsView.vue'),
+      meta: { public: true, publicLayout: 'marketing' }
+    },
     {
       path: '/trades',
       name: 'trades',

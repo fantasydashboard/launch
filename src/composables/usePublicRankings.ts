@@ -1,4 +1,4 @@
-import { computed, ref, type ComputedRef } from 'vue'
+import { computed, ref, watch, type ComputedRef } from 'vue'
 import { sleeperService } from '@/services/sleeper'
 import { useFootballVor } from './useFootballVor'
 import { publicNflPool, PUBLIC_POSITIONS } from '@/football/publicPool'
@@ -115,7 +115,24 @@ export function usePublicRankings(): {
     return board.value.ALL?.length ? ['ALL', ...withRows] : [...withRows]
   })
 
-  const loading = computed(() => loadingPool.value || loadingVor.value)
+  /*
+   * Whether the value pipeline has finished at least one run since the pool arrived.
+   *
+   * Without this the page flashes its failure card on a healthy load: loadPool resolves and
+   * drops `loadingPool`, but useFootballVor's watcher has not fired yet, so its own `loading`
+   * is still false as well — one tick in which nothing is loading and nothing is ready, which
+   * a view can only read as "the feed is down".
+   *
+   * Deliberately a SETTLED flag and not a has-data one. A pipeline that finishes with an empty
+   * map has still finished, and the page has to be allowed to say so; treating empty as "still
+   * loading" would spin forever on a season with no projections.
+   */
+  const vorSettled = ref(false)
+  watch(loadingVor, (now, before) => { if (before && !now) vorSettled.value = true })
+
+  const loading = computed(
+    () => loadingPool.value || loadingVor.value || (enabled.value && !vorSettled.value),
+  )
   const ready = computed(() => !!board.value.ALL?.length)
 
   return { board, positions, loading, ready }
