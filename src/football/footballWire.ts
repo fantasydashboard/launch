@@ -135,6 +135,66 @@ function tierInPlace(entries: BoardRow[], weeksLeft: number): void {
   }
 }
 
+/**
+ * A player and his rest-of-season value, before anything is grouped or tiered.
+ *
+ * Deliberately says nothing about where the player came from. The Wire joins a league roster
+ * to its free-agent pool; the public Rankings page has neither and joins the whole NFL. Both
+ * arrive here as the same row, which is the only reason the two boards can be trusted to agree.
+ */
+export interface BoardEntryInput {
+  playerKey: string
+  name: string
+  position: string
+  team?: string
+  headshot?: string
+  vorRos: number
+  owned: boolean
+  free: boolean
+  unprojected?: boolean
+  ownerName?: string
+  bye?: boolean
+}
+
+/**
+ * Group, rank and tier a set of players into the per-position columns and the overall board.
+ *
+ * This is the whole ranked list, and it is the ONLY copy of it. It used to live inside
+ * buildFootballWire, where a second surface wanting the same board would have had to
+ * reimplement the tier rule, the cross-position fold and the K/DEF exclusion — three chances
+ * for two pages to tell a reader different things about the same player.
+ */
+export function buildRankingsBoard(input: {
+  entries: BoardEntryInput[]
+  positions: string[]
+  weeksLeft: number
+}): Record<string, BoardRow[]> {
+  const { entries, positions, weeksLeft } = input
+  const board: Record<string, BoardRow[]> = {}
+  for (const pos of positions) {
+    const rows: BoardRow[] = entries
+      .filter((e) => normPos(e.position) === pos)
+      .map((e) => ({ ...e, position: pos, tier: 0 }))
+    if (!rows.length) continue
+    rows.sort((a, b) => b.vorRos - a.vorRos)
+    tierInPlace(rows, weeksLeft)
+    board[pos] = rows
+  }
+
+  const all: BoardRow[] = Object.entries(board)
+    .filter(([pos]) => OVERALL_POSITIONS.has(pos))
+    .flatMap(([, rows]) => rows)
+    .sort((a, b) => b.vorRos - a.vorRos)
+  if (all.length) {
+    /* Re-tiered on its own, never inherited. A player's tier among ALL startable bodies is a
+       different fact from his tier among receivers, and the rows above are shared objects. */
+    const rows: BoardRow[] = all.map((r) => ({ ...r, tier: 0, tierBreak: undefined, tierDrop: undefined }))
+    tierInPlace(rows, weeksLeft)
+    board.ALL = rows
+  }
+  return board
+}
+
 export function buildFootballWire(input: {
   freeAgents: AvailablePlayer[]
   vorByKey: Record<string, PlayerVor>
@@ -228,52 +288,21 @@ export function buildFootballWire(input: {
    * three, and arguably more, because the top of a board sorts itself. Six near-identical backs
    * in the middle of the wire is the answer to "who do I claim"; a ranked list of them is not.
    */
-  // Full board: rostered + FA per position, VOR-ranked, owned/free flagged, tiered.
-  const board: Record<string, BoardRow[]> = {}
-  for (const pos of BOARD_POSITIONS.filter((p) => startable.has(p))) {
-    const entries: BoardRow[] = []
-    for (const p of pool) {
-      if (normPos(p.position) !== pos) continue
-      const pv = vorByKey[p.playerKey]
-      entries.push({ playerKey: p.playerKey, name: p.name, position: pos, team: p.proTeam, headshot: p.headshot, vorRos: pv?.vorRos ?? 0, owned: p.teamKey === myTeamKey, unprojected: !pv, free: false, tier: 0, bye: onBye(p.proTeam), ownerName: p.teamKey === myTeamKey ? '' : (teamNames?.[p.teamKey] ?? '') })
-    }
-    for (const fa of freeAgents) {
-      if (normPos(fa.position) !== pos) continue
-      const v = vorByKey[faKey(fa)]
-      if (!v) continue
-      entries.push({ playerKey: faKey(fa), name: fa.name, position: pos, team: fa.team, headshot: fa.headshot, vorRos: v.vorRos, owned: false, free: true, tier: 0, bye: onBye(fa.team) })
-    }
-    if (!entries.length) continue
-
-    entries.sort((a, b) => b.vorRos - a.vorRos)
-    tierInPlace(entries, weeksLeft)
-    board[pos] = entries
+  const boardEntries: BoardEntryInput[] = []
+  for (const p of pool) {
+    const pv = vorByKey[p.playerKey]
+    boardEntries.push({ playerKey: p.playerKey, name: p.name, position: p.position, team: p.proTeam, headshot: p.headshot, vorRos: pv?.vorRos ?? 0, owned: p.teamKey === myTeamKey, unprojected: !pv, free: false, bye: onBye(p.proTeam), ownerName: p.teamKey === myTeamKey ? '' : (teamNames?.[p.teamKey] ?? '') })
   }
-
-  /*
-   * One board across every position.
-   *
-   * Value over replacement is cross-position by construction — it is how many points a player
-   * is worth ABOVE the last startable body at his own position, which is the only honest way
-   * to put a quarterback and a tight end on the same axis. So an overall order is not a
-   * convenience view, it is the number this page already computes, finally shown whole.
-   *
-   * The per-position pills answered "who is the best receiver available". They could not
-   * answer "of everything on this wire, what should I want", which is the question you ask
-   * with one roster spot and a waiver claim. Positional rank hides that a free tight end at
-   * -3 is worth more to you than a free quarterback at -1 whose seat is already filled.
-   */
-  const all: BoardRow[] = Object.entries(board)
-    .filter(([pos]) => OVERALL_POSITIONS.has(pos))
-    .flatMap(([, rows]) => rows)
-    .sort((a, b) => b.vorRos - a.vorRos)
-  if (all.length) {
-    /* Re-tiered on its own, never inherited. A player's tier among ALL startable bodies is a
-       different fact from his tier among receivers, and the rows above are shared objects. */
-    const rows: BoardRow[] = all.map((r) => ({ ...r, tier: 0, tierBreak: undefined, tierDrop: undefined }))
-    tierInPlace(rows, weeksLeft)
-    board.ALL = rows
+  for (const fa of freeAgents) {
+    const v = vorByKey[faKey(fa)]
+    if (!v) continue
+    boardEntries.push({ playerKey: faKey(fa), name: fa.name, position: fa.position, team: fa.team, headshot: fa.headshot, vorRos: v.vorRos, owned: false, free: true, bye: onBye(fa.team) })
   }
+  const board = buildRankingsBoard({
+    entries: boardEntries,
+    positions: BOARD_POSITIONS.filter((p) => startable.has(p)),
+    weeksLeft,
+  })
 
   return { bestAvailable, upgrades, thisWeek, board }
 }

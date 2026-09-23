@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildFootballWire } from '../footballWire'
+import { buildFootballWire, buildRankingsBoard } from '../footballWire'
 
 /* Tier thresholds are stated per week, so every board needs a horizon. Ten keeps the
    arithmetic in these fixtures readable: one point per week is a ten-point span. */
@@ -293,5 +293,82 @@ describe('the overall board is skill positions only', () => {
   it('carries only skill positions, whatever the league rosters', () => {
     const positions = new Set((withSpecialists().ALL ?? []).map((r) => r.position))
     expect([...positions].sort()).toEqual(['QB', 'RB'])
+  })
+})
+
+/*
+ * The board assembly is the thing both surfaces share, so it is tested as its own
+ * unit rather than only through the Wire that used to own it.
+ */
+describe('buildRankingsBoard', () => {
+  const entry = (playerKey: string, position: string, vorRos: number) => ({
+    playerKey, name: playerKey, position, vorRos, owned: false, free: true,
+  })
+
+  it('groups by position and ranks each column by rest-of-season value', () => {
+    const board = buildRankingsBoard({
+      entries: [entry('rb2', 'RB', 10), entry('wr1', 'WR', 50), entry('rb1', 'RB', 40)],
+      positions: ['RB', 'WR'],
+      weeksLeft: 10,
+    })
+    expect(board.RB.map((r) => r.playerKey)).toEqual(['rb1', 'rb2'])
+    expect(board.WR.map((r) => r.playerKey)).toEqual(['wr1'])
+  })
+
+  it('omits a position with nobody in it rather than emitting an empty column', () => {
+    const board = buildRankingsBoard({
+      entries: [entry('rb1', 'RB', 40)],
+      positions: ['RB', 'TE'],
+      weeksLeft: 10,
+    })
+    expect(board.TE).toBeUndefined()
+  })
+
+  /* A defence's position arrives spelled "D/ST" on ESPN, and this used to split on the
+     slash for multi-eligible players — turning every defence into "D". */
+  it('folds a slash-spelled defence into DEF', () => {
+    const board = buildRankingsBoard({
+      entries: [entry('sf', 'D/ST', 5)],
+      positions: ['DEF'],
+      weeksLeft: 10,
+    })
+    expect(board.DEF.map((r) => r.playerKey)).toEqual(['sf'])
+  })
+
+  /* Kickers and defences are deliberately absent from the overall list: every kicker
+     projects to about replacement level, which on a VOR axis is dead centre. */
+  it('builds one cross-position board of skill positions only', () => {
+    const board = buildRankingsBoard({
+      entries: [entry('qb1', 'QB', 30), entry('k1', 'K', 31), entry('rb1', 'RB', 40)],
+      positions: ['QB', 'RB', 'K'],
+      weeksLeft: 10,
+    })
+    expect(board.ALL.map((r) => r.playerKey)).toEqual(['rb1', 'qb1'])
+  })
+
+  /* A player's tier among every startable body is a different fact from his tier among
+     receivers, and the rows are shared objects — so ALL must re-tier rather than inherit. */
+  it('re-tiers the overall board instead of inheriting positional tiers', () => {
+    const board = buildRankingsBoard({
+      entries: [entry('qb1', 'QB', 100), entry('rb1', 'RB', 100), entry('rb2', 'RB', 50)],
+      positions: ['QB', 'RB'],
+      weeksLeft: 10,
+    })
+    // rb1 leads RB at tier 1; in ALL it shares tier 1 with qb1 and rb2 still falls away.
+    expect(board.RB.find((r) => r.playerKey === 'rb2')!.tier).toBe(2)
+    expect(board.ALL.find((r) => r.playerKey === 'qb1')!.tier).toBe(1)
+    expect(board.ALL.find((r) => r.playerKey === 'rb2')!.tier).toBe(2)
+  })
+
+  it('marks the first row of each new tier with the size of the drop', () => {
+    const board = buildRankingsBoard({
+      entries: [entry('rb1', 'RB', 100), entry('rb2', 'RB', 50)],
+      positions: ['RB'],
+      weeksLeft: 10,
+    })
+    const [first, second] = board.RB
+    expect(first.tierBreak).toBeUndefined()
+    expect(second.tierBreak).toBe(true)
+    expect(second.tierDrop).toBe(50)
   })
 })
