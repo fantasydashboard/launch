@@ -2,6 +2,7 @@ import { computed, onMounted, onUnmounted, ref, watch, type ComputedRef, type Re
 import { useLeagueStore } from '@/stores/league'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useFootballVor } from '@/composables/useFootballVor'
+import { resolveFootballScoring } from '@/football/footballScoring'
 import { sleeperService } from '@/services/sleeper'
 import { fetchSeasonAdp } from '@/services/footballProjections'
 import { adpVariantFor } from '@/draft/room/adp'
@@ -98,6 +99,23 @@ export function useDraftRoom() {
     () => Number(draftMeta.value?.settings?.teams) || src.leagueSize.value,
   )
 
+  /*
+   * The same settings, validated and completed, for the value engine.
+   *
+   * `effectiveScoring` above stays raw because adpVariantFor reads it to choose which ADP
+   * market list to pull. buildFootballProjectionsByKey needs a COMPLETE weight map instead,
+   * which is what the resolver guarantees — and without this the room pulled a
+   * standard-scoring ADP list and then ranked it against full-PPR values, scoring the market
+   * column and the value column by different rules.
+   */
+  const draftScoring = computed(
+    () =>
+      resolveFootballScoring({
+        platform: leagueStore.activeSport === 'football' ? leagueStore.activePlatform : null,
+        sleeperScoringSettings: effectiveScoring.value,
+      }).weights,
+  )
+
   const { vorByKey, loading: vorLoading } = useFootballVor({
     pool: src.pool,
     freeAgents: src.freeAgents,
@@ -106,6 +124,7 @@ export function useDraftRoom() {
     season,
     enabled,
     weeklyHorizon: 0, // draft prep is rest-of-season only
+    scoring: draftScoring,
   })
 
   // ── ADP anchor + sync bookkeeping ───────────────────────────────────────────

@@ -3,11 +3,13 @@ import { computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useFootballVor } from '@/composables/useFootballVor'
+import { useFootballScoring } from '@/composables/useFootballScoring'
 
 const leagueStore = useLeagueStore()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
 const source = useActivePointsSource()
 const season = computed(() => '')
+const fbScoring = useFootballScoring()
 
 const { vorByKey, audit, loading } = useFootballVor({
   pool: source.pool,
@@ -16,6 +18,7 @@ const { vorByKey, audit, loading } = useFootballVor({
   teams: source.leagueSize,
   season,
   enabled: isFootball,
+  scoring: fbScoring.weights,
 })
 
 function loadAll() {

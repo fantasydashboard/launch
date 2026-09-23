@@ -5,6 +5,7 @@ import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { useFootballVor } from '@/composables/useFootballVor'
+import { useFootballScoring } from '@/composables/useFootballScoring'
 import { buildPointsTrades } from '@/myteam/pointsTrades'
 import { buildPointsTeam } from '@/myteam/pointsTeam'
 import { buildPointsTradeLandscape } from '@/myteam/pointsTradeLandscape'
@@ -57,6 +58,7 @@ const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => lea
 // Football VOR (shared engine). Replacement is calibrated on rostered players here
 // (empty free-agent list) — cross-team ranking is unaffected; Trades stays self-contained.
 const noFreeAgents = computed<AvailablePlayer[]>(() => [])
+const fbScoring = useFootballScoring()
 const { vorByKey: fbVor } = useFootballVor({
   pool,
   freeAgents: noFreeAgents,
@@ -65,6 +67,7 @@ const { vorByKey: fbVor } = useFootballVor({
   season,
   enabled: isFootball,
   weeklyHorizon: 0, // Trades uses only rest-of-season VOR — skip weekly/streamability fetches
+  scoring: fbScoring.weights,
 })
 /*
  * Your rest-of-season list, driving the trade engine.

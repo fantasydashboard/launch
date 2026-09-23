@@ -61,6 +61,10 @@ export function useFootballVor(inputs: {
   const vorByKey = ref<Record<string, PlayerVor>>({})
   const audit = ref<VorAudit | null>(null)
   const loading = ref(false)
+  /* Bumped on every load() call and captured as `seq` at the top of each run, so a load that
+     finishes after a newer one started can tell it is stale and skip its writes instead of
+     overwriting the newer league's numbers with the older one's. */
+  let loadSeq = 0
 
   const projPlayers = computed<ProjPlayer[]>(() => {
     const sid = keysAreSleeperIds.value
@@ -90,6 +94,7 @@ export function useFootballVor(inputs: {
 
   async function load() {
     if (!inputs.enabled.value || projPlayers.value.length === 0) { vorByKey.value = {}; audit.value = null; return }
+    const seq = ++loadSeq
     loading.value = true
     try {
       const state = await sleeperService.getNflState()
@@ -194,14 +199,21 @@ export function useFootballVor(inputs: {
         weekly: weekly.length ? weekly : undefined,
         opportunityByKey,
       }
+      // Stale: a newer load started (a league switch, most likely) while this one was still
+      // fetching. Its numbers belong to the league that was active when it started, not the
+      // one on screen now — drop them rather than let them win the race by finishing last.
+      if (seq !== loadSeq) return
       vorByKey.value = buildFootballVor(vorInput)
       audit.value = buildFootballVorAudit(vorInput)
     } catch (e) {
       console.error('[useFootballVor] load failed', e)
+      if (seq !== loadSeq) return
       vorByKey.value = {}
       audit.value = null
     } finally {
-      loading.value = false
+      // Same reasoning: a stale load's completion must not flip the spinner off while the
+      // newer load it was superseded by is still running.
+      if (seq === loadSeq) loading.value = false
     }
   }
 

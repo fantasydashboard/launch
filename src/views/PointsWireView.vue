@@ -13,7 +13,7 @@ import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { nhlTeamLogo } from '@/players/nhlTeamLogo'
 import { wordsFor } from '@/lib/sportWords'
 import { useFootballWire } from '@/composables/useFootballWire'
-import { useFootballScoring } from '@/composables/useFootballScoring'
+import { useFootballScoring, scoringLabel } from '@/composables/useFootballScoring'
 import RankingPicker from '@/components/RankingPicker.vue'
 import { getWeeklyUsage, type UsageByKey } from '@/services/playerUsage'
 import { buildWaiverTargets } from '@/football/waiverTargets'
@@ -641,6 +641,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
               <template v-if="dynasty.ready.value && wireSort === 'dynasty'">{{ dynasty.sourceName.value === 'UFD' ? 'dynasty market order' : dynasty.sourceName.value + "'s dynasty order" }} · our season points still shown at right</template>
               <template v-else-if="rosSource !== 'UFD'">{{ rosSource }}'s order, our points — drives this page</template>
               <template v-else>value over replacement (season)</template>
+              <span class="text-dark-textMuted/60"> · {{ scoringLabel(fbScoring.source.value) }}</span>
             </p>
             <template v-for="(r, i) in sortedBest.slice(0, 15)" :key="'fbba-' + (r.player.playerKey ?? r.player.name)">
               <!--

@@ -2,6 +2,7 @@ import { computed, onMounted, ref, watch, type ComputedRef, type Ref } from 'vue
 import { useLeagueStore } from '@/stores/league'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useFootballVor } from '@/composables/useFootballVor'
+import { useFootballScoring } from '@/composables/useFootballScoring'
 import { sleeperService } from '@/services/sleeper'
 import { opponentMap } from '@/football/footballBye'
 import { buildWeeklyBoard, type WeeklyBoard } from '@/football/weeklyBoard'
@@ -43,6 +44,7 @@ export function useWeeklyBoard(): {
   const isFootball = computed(() => leagueStore.activeSport === 'football')
   const src = useActivePointsSource()
   const season = computed(() => '') // useFootballVor falls back to the Sleeper NFL state season
+  const fbScoring = useFootballScoring()
 
   const { vorByKey, loading: vorLoading } = useFootballVor({
     pool: src.pool,
@@ -51,6 +53,7 @@ export function useWeeklyBoard(): {
     teams: src.leagueSize,
     season,
     enabled: isFootball,
+    scoring: fbScoring.weights,
   })
 
   /* This Week is now the Sunday page: the fantasy opponent belongs here, beside the lineup

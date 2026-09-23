@@ -9,6 +9,7 @@ import { buildPointsTeam } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
 import { useFootballVor } from '@/composables/useFootballVor'
+import { useFootballScoring } from '@/composables/useFootballScoring'
 import { teamLogoFor } from '@/players/teamLogo'
 import type { AvailablePlayer } from '@/players/types'
 
@@ -43,6 +44,7 @@ const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => lea
 // Football VOR (shared engine) — orders/tiers/values the roster. Rostered-only calibration
 // (empty free agents), ROS only (no weekly fetches). Undefined for baseball.
 const noFreeAgents = computed<AvailablePlayer[]>(() => [])
+const fbScoring = useFootballScoring()
 const { vorByKey: fbVor } = useFootballVor({
   pool,
   freeAgents: noFreeAgents,
@@ -51,6 +53,7 @@ const { vorByKey: fbVor } = useFootballVor({
   season,
   enabled: isFootball,
   weeklyHorizon: 0,
+  scoring: fbScoring.weights,
 })
 
 // My team key as the POOL labels it (full Yahoo team_key / `espn_{id}`).
