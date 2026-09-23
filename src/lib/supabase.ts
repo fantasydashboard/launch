@@ -8,6 +8,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
+import { makeTimeoutLock } from './authLock'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -95,6 +96,18 @@ export const supabase =
           persistSession: true,
           detectSessionInUrl: true,
           flowType: 'implicit',  // Tokens arrive in URL hash — no code exchange needed, proxy-safe
+          /*
+           * A lock that gives up rather than waiting forever.
+           *
+           * supabase-js serialises auth behind a Web Lock so two tabs cannot refresh one token
+           * at once, and waits for it with no timeout. In production a client took
+           * `lock:sb-<ref>-auth-token` exclusively and never released it — navigator.locks
+           * showed it held with another request pending indefinitely — and everything behind
+           * it stopped: getSession never settled, queries queued on it hung, the profile fetch
+           * never returned, and a null profile reads as tier 'free'. An admin was shown a
+           * paywall by a stuck lock in a tab they had forgotten about.
+           */
+          lock: makeTimeoutLock(3000),
         },
         global: {
           fetch: proxyFetch,
