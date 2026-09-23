@@ -58,8 +58,12 @@ export function usePublicRankings(): {
   const keysAreSleeperIds = ref(true)
   const loadingPool = ref(true)
 
+  /* No weekly fetches. This board is rest-of-season only, and vorRos does not read the weekly
+     maps — so the default horizon of 4 was eight sequential round trips bought for nothing,
+     on the page social traffic lands on. It also keeps this-week projections off the free
+     path, where they do not belong. */
   const { vorByKey, loading: loadingVor } = useFootballVor({
-    pool, freeAgents, slots, teams, season, enabled, keysAreSleeperIds,
+    pool, freeAgents, slots, teams, season, enabled, keysAreSleeperIds, weeklyHorizon: 0,
   })
 
   async function loadPool() {
@@ -70,7 +74,11 @@ export function usePublicRankings(): {
         sleeperService.getPlayers(),
       ])
       season.value = String(state.season ?? '')
-      currentWeek.value = Number(state.week) || 1
+      /* Sleeper counts preseason weeks in the same field. Reading week 3 of the PRESEASON as
+         week 3 of the season would cut the horizon by a fifth and draw every tier too narrow,
+         through exactly the stretch this page exists to catch. */
+      const regular = String(state.season_type ?? 'regular') === 'regular'
+      currentWeek.value = regular ? (Number(state.week) || 1) : 0
       pool.value = publicNflPool(players as Record<string, any>)
       enabled.value = pool.value.length > 0
     } catch (e) {

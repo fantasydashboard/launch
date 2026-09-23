@@ -38,7 +38,7 @@
             v-for="pos in positions"
             :key="pos"
             class="rounded px-2.5 py-1 font-mono text-[11px] uppercase tracking-wide transition-colors"
-            :class="active === pos ? 'bg-primary/20 text-primary' : 'bg-dark-bg text-dark-textMuted hover:text-dark-text'"
+            :class="active === pos ? 'bg-primary font-bold text-dark-bg' : 'bg-dark-card text-dark-textMuted hover:text-dark-text'"
             @click="active = pos"
           >{{ pos }}</button>
         </div>
@@ -71,7 +71,7 @@
             v-if="!expanded && rows.length > visible.length"
             class="mt-3 w-full rounded-lg border border-dark-border bg-dark-bg/60 py-2 font-mono text-[11px] text-dark-textSecondary transition-colors hover:text-dark-text"
             @click="expanded = true"
-          >Show all {{ rows.length }} {{ active }}</button>
+          >Show all {{ Math.min(rows.length, FULL_DEPTH) }} {{ active }}</button>
         </div>
 
         <!--
@@ -82,8 +82,9 @@
         -->
         <div class="mt-4 rounded-xl border border-dark-border bg-dark-card p-4">
           <p class="text-sm text-dark-textSecondary">
-            This board is scored for a standard twelve-team league and is the same for everyone
-            — it does not follow your league's settings or any ranking list you've uploaded.
+            This board is full PPR, scored for a standard twelve-team league, and the same for
+            everyone — it does not follow your league's settings or any ranking list you've
+            uploaded.
           </p>
           <p v-if="!hasLeague" class="mt-2 text-xs text-dark-textMuted">
             <RouterLink to="/connect" class="text-primary underline underline-offset-2">Connect a league</RouterLink>
@@ -126,7 +127,11 @@ watch(positions, (available) => {
 
 const rows = computed(() => board.value[active.value] ?? [])
 const DEPTH = 50
-const visible = computed(() => (expanded.value ? rows.value : rows.value.slice(0, DEPTH)))
+/* Expanded, but not unbounded. The two-hundredth back is not a player anybody is choosing
+   between, and rendering the whole column is a scroll nobody wanted and several hundred
+   images nobody looked at. */
+const FULL_DEPTH = 200
+const visible = computed(() => rows.value.slice(0, expanded.value ? FULL_DEPTH : DEPTH))
 
 function onImgErr(e: Event) {
   const el = e.target as HTMLImageElement

@@ -31,4 +31,10 @@ describe('publicWeeksLeft', () => {
     expect(publicWeeksLeft(-4)).toBe(17)
     expect(publicWeeksLeft(NaN)).toBe(17)
   })
+
+  /* Preseason: Sleeper reports weeks under season_type 'pre', and loadPool maps those to 0
+     so the horizon reads as a whole season rather than a fifth of one already gone. */
+  it('treats the preseason sentinel as a whole season ahead', () => {
+    expect(publicWeeksLeft(0)).toBe(17)
+  })
 })

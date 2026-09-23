@@ -1415,10 +1415,12 @@ const tabs = computed(() => [
   ...(isRotoLeague.value
     ? [{ name: 'Roto Race', path: '/matchup' }]
     : []),
-  /* Rankings sits beside the Wire because they are the two halves of one split: what is true,
-     and what you can do about it. It takes the slot the Draft Room vacates in season, so the
-     bar does not grow. */
-  { name: 'Rankings', path: '/rankings' },
+  /* Football only — this board is the NFL one, and the other sports have no equivalent built.
+     It takes the slot the Draft Room vacates once a football draft is done; for every other
+     sport the Draft Room was never there, so read this as one tab added, not one swapped. */
+  ...(leagueStore.activeSport === 'football'
+    ? [{ name: 'Rankings', path: '/rankings' }]
+    : []),
   { name: 'The Wire', path: '/players' },
   { name: 'Trades', path: '/trades' },
   /* Power Rankings folded into League. The two were the same ten rows sorted differently —

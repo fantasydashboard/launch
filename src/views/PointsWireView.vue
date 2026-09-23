@@ -20,6 +20,7 @@ import { getSeasonLines } from '@/services/playerUsage'
 import { useDynastyValues } from '@/composables/useDynastyValues'
 import SeasonPassGate from '@/components/SeasonPassGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import { publicWeeksLeft } from '@/composables/usePublicRankings'
 
 const leagueStore = useLeagueStore()
 /* The waiver call is one of the four the Season Pass sells, and it was fully readable by
@@ -118,8 +119,7 @@ watch([() => leagueStore.currentWeek, () => leagueStore.activeSport], async () =
   seasonLines.value = await getSeasonLines(seasonYear.value, leagueStore.currentWeek ?? 1)
 }, { immediate: true })
 
-const NFL_LAST_WEEK = 17
-const weeksLeft = computed(() => Math.max(1, NFL_LAST_WEEK - (leagueStore.currentWeek ?? 1) + 1))
+const weeksLeft = computed(() => publicWeeksLeft(leagueStore.currentWeek ?? 1))
 const waiverTargets = computed(() => {
   if (!Object.keys(usage.value).length) return []
   /* Every player the league can see, so a pickup that has already gone can still be named. */
@@ -486,6 +486,28 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
       </template>
 
       <template v-if="isFootball">
+        <!--
+          THE FULL BOARD MOVED TO /rankings, AND THE POINTER TO IT IS FREE.
+
+          It was a reference work living on a transaction page. Every other block here is a
+          player you can act on today — yours to drop, or a free agent to add — and the board
+          was a league-wide ranked list including players nobody can have, which is a
+          different job. It is free there, and open to people without an account — which this
+          card has to say before the paywall below decides whether the reader sees anything
+          else, not after, or only a subscriber ever hears the board is free.
+        -->
+        <section class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+          <RouterLink to="/rankings" class="flex w-full items-center justify-between">
+            <span class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+              Full board
+              <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">
+                &middot; every player, ranked and tiered
+              </span>
+            </span>
+            <span class="font-mono text-[11px] text-primary">Rankings &rarr;</span>
+          </RouterLink>
+        </section>
+
         <div v-if="fbLoading && !fbWire" class="py-10 text-center text-sm text-dark-textMuted">Loading league values…</div>
         <div v-else-if="!fbWire" class="py-10 text-center text-dark-textMuted">No free agents available right now.</div>
 
@@ -652,26 +674,6 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
             </template>
               </div>
             </div>
-          </section>
-
-          <!--
-            4. THE FULL BOARD MOVED TO /rankings.
-
-            It was a reference work living on a transaction page. Every other block here is a
-            player you can act on today — yours to drop, or a free agent to add — and the board
-            was a league-wide ranked list including players nobody can have, which is a
-            different job. It is free there, and open to people without an account.
-          -->
-          <section class="rounded-xl border border-dark-border bg-dark-card p-4">
-            <RouterLink to="/rankings" class="flex w-full items-center justify-between">
-              <span class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
-                Full board
-                <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">
-                  &middot; every player, ranked and tiered
-                </span>
-              </span>
-              <span class="font-mono text-[11px] text-primary">Rankings &rarr;</span>
-            </RouterLink>
           </section>
         </template>
       </template>
