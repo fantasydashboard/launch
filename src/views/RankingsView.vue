@@ -85,7 +85,19 @@
               <img v-if="row.headshot" :src="row.headshot" :alt="row.name" loading="lazy" @error="onImgErr"
                    class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
               <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
-              <span class="min-w-0 flex-1 truncate">
+              <!--
+                The name carries the state, not just the star beside it.
+
+                Three colours for three answers to "can I have him": yours in the product's own
+                lime, a free agent in the same green as the FREE badge so the two read as one
+                fact, and everyone else in plain text. At a glance the page separates the board
+                into what you hold, what you can take, and what you would have to trade for.
+
+                The free-agent colour is gated on `showsAvailability` for the same reason the
+                badge is: who is claimable is what the pass sells, and a green name would hand
+                it to a reader who has not bought it just as surely as the badge would.
+              -->
+              <span class="min-w-0 flex-1 truncate" :class="nameTone(row)">
                 <span v-if="access.scopedToLeague && row.owned" class="text-primary">★ </span>{{ row.name }}
                 <span v-if="active === 'ALL'" class="ml-1 font-mono text-[10px] text-dark-textMuted/70">{{ row.position }}</span>
               </span>
@@ -136,6 +148,7 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useRankings } from '@/composables/useRankings'
 import { scoringLabel } from '@/composables/useFootballScoring'
+import type { BoardRow } from '@/football/footballWire'
 
 /*
  * `access.scopedToLeague` is the one fact "does this reader have a football league" resolves
@@ -169,6 +182,19 @@ const DEPTH = 50
    images nobody looked at. */
 const FULL_DEPTH = 200
 const visible = computed(() => rows.value.slice(0, expanded.value ? FULL_DEPTH : DEPTH))
+
+/**
+ * What colour a player's name is, which is the same question as "can I have him".
+ *
+ * Lime for yours, the FREE badge's green for a free agent, plain for a body somebody else
+ * holds. Returns nothing for a reader without the pass — availability is what the pass sells,
+ * and a coloured name gives it away exactly as a badge would.
+ */
+function nameTone(row: BoardRow): string {
+  if (access.value.scopedToLeague && row.owned) return 'text-primary'
+  if (access.value.showsAvailability && row.free) return 'text-[#4ade80]'
+  return ''
+}
 
 function onImgErr(e: Event) {
   const el = e.target as HTMLImageElement
