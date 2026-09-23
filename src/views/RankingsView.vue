@@ -89,13 +89,13 @@
                 The name carries the state, not just the star beside it.
 
                 Three colours for three answers to "can I have him": yours in the product's own
-                lime, a free agent in the same green as the FREE badge so the two read as one
+                lime, a free agent in the same teal as the FREE badge so the two read as one
                 fact, and everyone else in plain text. At a glance the page separates the board
                 into what you hold, what you can take, and what you would have to trade for.
 
                 The free-agent colour is gated on `showsAvailability` for the same reason the
-                badge is: who is claimable is what the pass sells, and a green name would hand
-                it to a reader who has not bought it just as surely as the badge would.
+                badge is: who is claimable is what the pass sells, and a coloured name would
+                hand it to a reader who has not bought it just as surely as the badge would.
               -->
               <span class="min-w-0 flex-1 truncate" :class="nameTone(row)">
                 <span v-if="access.scopedToLeague && row.owned" class="text-primary">★ </span>{{ row.name }}
@@ -104,7 +104,7 @@
               <span class="shrink-0 font-mono text-[10px] text-dark-textMuted/70">{{ row.team }}</span>
               <span v-if="access.showsAvailability && !row.owned"
                     class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide"
-                    :class="row.free ? 'bg-[#4ade80]/15 text-[#4ade80]' : 'bg-dark-bg text-dark-textMuted/60'"
+                    :class="row.free ? 'bg-[#2dd4bf]/15 text-[#2dd4bf]' : 'bg-dark-bg text-dark-textMuted/60'"
               >{{ row.free ? 'free' : 'rostered' }}</span>
               <span v-else-if="access.scopedToLeague && !access.showsAvailability && !row.owned" aria-hidden="true"
                     class="shrink-0 select-none rounded bg-dark-bg px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-dark-textMuted/40"
@@ -186,13 +186,17 @@ const visible = computed(() => rows.value.slice(0, expanded.value ? FULL_DEPTH :
 /**
  * What colour a player's name is, which is the same question as "can I have him".
  *
- * Lime for yours, the FREE badge's green for a free agent, plain for a body somebody else
- * holds. Returns nothing for a reader without the pass — availability is what the pass sells,
+ * Lime for yours, teal for a free agent, plain for a body somebody else holds.
+ *
+ * Teal rather than the green it started as, and rather than the orange first suggested. Green
+ * sat one hue from the lime that means "mine" and the two blurred at this text size; orange is
+ * worse, because amber already means ROSTERED on the waiver card and in the dynasty columns —
+ * a hundred-odd usages saying the opposite of available. Teal is far from both. Returns nothing for a reader without the pass — availability is what the pass sells,
  * and a coloured name gives it away exactly as a badge would.
  */
 function nameTone(row: BoardRow): string {
   if (access.value.scopedToLeague && row.owned) return 'text-primary'
-  if (access.value.showsAvailability && row.free) return 'text-[#4ade80]'
+  if (access.value.showsAvailability && row.free) return 'text-[#2dd4bf]'
   return ''
 }
 
