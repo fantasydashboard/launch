@@ -1192,7 +1192,7 @@
     
     <!-- Dev Mode Panel (Admin Only) -->
     <!-- Onboarding Tour -->
-    <OnboardingTour :show="showOnboardingTour" @close="closeTour" />
+    <OnboardingTour :show="showOnboardingTour" :league-name="welcomeLeagueName" @close="closeTour" />
 
     <!-- Daily upgrade nudge for expired trial users -->
     <DailyUpgradeNudge />
@@ -1219,6 +1219,7 @@ import AppFooter from '@/components/AppFooter.vue'
 import DevModePanel from '@/components/DevModePanel.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import OnboardingTour from '@/components/OnboardingTour.vue'
+import { shouldWelcome } from '@/lib/welcomeCard'
 import DailyUpgradeNudge from '@/components/DailyUpgradeNudge.vue'
 
 const router = useRouter()
@@ -1273,12 +1274,25 @@ const showOnboardingTour = ref(false)
 
 const TOUR_KEY = 'ufd_onboarding_tour_done'
 
+/*
+ * Greet somebody only when they are actually new.
+ *
+ * This used to fire whenever localStorage did not carry the flag, which is a fact about a
+ * BROWSER rather than about a person — so a customer of a year opening the site on a new phone
+ * was welcomed to the product. The account already knows the answer: exactly one league, and
+ * it is the one that just connected.
+ */
 function maybeShowTour() {
-  // Only show on very first league add ever
-  if (!localStorage.getItem(TOUR_KEY)) {
-    showOnboardingTour.value = true
-  }
+  const seenBefore = !!localStorage.getItem(TOUR_KEY)
+  const leagueCount = leagueStore.savedLeagues?.length ?? 0
+  if (shouldWelcome({ leagueCount, seenBefore })) showOnboardingTour.value = true
 }
+
+/* Name the league they just connected, so the card is about THEIR league rather than about us. */
+const welcomeLeagueName = computed(() => {
+  const l = leagueStore.savedLeagues?.[0] as any
+  return (l?.league_name || l?.name || '') as string
+})
 
 function closeTour() {
   showOnboardingTour.value = false

@@ -1,68 +1,46 @@
+<!--
+  One card, shown once, when somebody's first league connects.
+
+  WHAT THIS REPLACED, AND WHY. A five-step modal tour. Its copy promised "full access to power
+  rankings, matchup analytics, league history and shareable graphics" to a reader who was about
+  to meet a $39 wall on the Wire — the same failure as badging Yahoo "Connected" on a platform
+  that could not return a league: an affordance describing our plumbing rather than the
+  reader's outcome. It listed the product from two redesigns ago and never mentioned the four
+  decisions the Season Pass actually sells. It pitched "Best Batters / Pitchers" to football
+  leagues, and had done for months, because a modal that narrates the whole product drifts
+  every time the product changes and nothing fails when it does.
+
+  It also arrived at the worst possible moment: somebody had just connected their league and
+  wanted to look at it, and got five screens of being told about menu items instead.
+
+  So: one card. It says what just happened, what is free, what is not, and gets out of the way.
+  Anything a surface needs to explain about itself belongs on that surface, the first time it
+  is opened — where it can be specific, and where it fails visibly when it goes stale.
+-->
 <template>
   <Teleport to="body">
     <Transition name="tour-fade">
-      <div v-if="show"
-        class="tour-backdrop"
-        @click.self="skip">
-
+      <div v-if="show" class="tour-backdrop" @click.self="finish">
         <div class="tour-modal">
+          <button class="tour-close" @click="finish" title="Close">✕</button>
 
-          <!-- Progress dots -->
-          <div class="tour-dots">
-            <button v-for="(_, i) in steps" :key="i"
-              class="tour-dot"
-              :class="{ 'tour-dot-active': i === current }"
-              @click="current = i" />
+          <div class="tour-slide">
+            <div class="tour-eyebrow">Connected</div>
+            <h2 class="tour-title">
+              {{ leagueName ? leagueName : 'Your league' }} is in.
+            </h2>
+
+            <p class="tour-body">
+              Standings, power rankings, the league page and your full history are free, for
+              every league you're in, with no expiry.
+            </p>
+            <p class="tour-body tour-body-dim">
+              The weekly calls — who to start, who to claim, what to trade, and the draft
+              board — are the Season Pass.
+            </p>
+
+            <button class="tour-btn-done" @click="finish">Show me my league</button>
           </div>
-
-          <!-- Close -->
-          <button class="tour-close" @click="skip" title="Skip tour">✕</button>
-
-          <!-- Slide content -->
-          <Transition :name="slideDir" mode="out-in">
-            <div :key="current" class="tour-slide">
-
-              <!-- Icon / Illustration -->
-              <div class="tour-icon">{{ steps[current].icon }}</div>
-
-              <!-- Step number -->
-              <div class="tour-step-label">{{ current + 1 }} of {{ steps.length }}</div>
-
-              <!-- Title -->
-              <h2 class="tour-title">{{ steps[current].title }}</h2>
-
-              <!-- Body -->
-              <p class="tour-body">{{ steps[current].body }}</p>
-
-              <!-- Feature pills -->
-              <div v-if="steps[current].pills" class="tour-pills">
-                <span v-for="pill in steps[current].pills" :key="pill" class="tour-pill">
-                  {{ pill }}
-                </span>
-              </div>
-
-              <!-- Tip box -->
-              <div v-if="steps[current].tip" class="tour-tip">
-                <span class="tour-tip-icon">💡</span>
-                <span>{{ steps[current].tip }}</span>
-              </div>
-
-            </div>
-          </Transition>
-
-          <!-- Actions -->
-          <div class="tour-actions">
-            <button v-if="current > 0" class="tour-btn-back" @click="prev">← Back</button>
-            <div v-else class="tour-btn-spacer" />
-
-            <button v-if="current < steps.length - 1" class="tour-btn-next" @click="next">
-              Next →
-            </button>
-            <button v-else class="tour-btn-done" @click="finish">
-              Let's go! 🚀
-            </button>
-          </div>
-
         </div>
       </div>
     </Transition>
@@ -70,73 +48,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-
-const props = defineProps<{ show: boolean }>()
+defineProps<{ show: boolean; leagueName?: string }>()
 const emit = defineEmits<{ (e: 'close'): void }>()
-
-const current = ref(0)
-const prevIndex = ref(0)
-
-const slideDir = computed(() =>
-  current.value > prevIndex.value ? 'tour-slide-left' : 'tour-slide-right'
-)
-
-const steps = [
-  {
-    icon: '🎉',
-    title: 'Your league is connected!',
-    body: 'Welcome to Ultimate Fantasy Dashboard. You now have full access to power rankings, matchup analytics, league history, and shareable graphics. Let us show you around.',
-    pills: ['Power Rankings', 'Matchups', 'History', 'Graphics'],
-    tip: 'Navigate between features using the menu bar at the top.'
-  },
-  {
-    icon: '🏆',
-    title: 'Power Rankings',
-    body: 'See who\'s really winning your league — not just by record. UFD factors in recent form, scoring trends, and schedule strength to rank every team. A new ranking drops every week.',
-    pills: ['Weekly algorithm', 'Trend graph', 'Team deep-dive'],
-    tip: 'Click any team in the rankings to pull up a detailed breakdown of what\'s driving their score.'
-  },
-  {
-    icon: '⚡',
-    title: 'Matchup Analytics',
-    body: 'Track live win probability throughout the week. Every player\'s performance shifts your chances in real time — so you always know exactly where you stand, day by day.',
-    pills: ['Live win probability', 'Day-by-day chart', 'Score projections'],
-    tip: 'The day hover panel shows how each day\'s performance moved your win probability up or down.'
-  },
-  {
-    icon: '📜',
-    title: 'League History',
-    body: 'Your league\'s full story in one place. Career stats, all-time records, head-to-head history, and a Legacy Score that ranks every manager across every season.',
-    pills: ['Career stats', 'H2H records', 'Legacy score', 'Hall of Fame'],
-    tip: 'Click any section header to expand the full list — the top 3 rows are always visible for free.'
-  },
-  {
-    icon: '📲',
-    title: 'Shareable Graphics',
-    body: 'Download beautiful, branded graphics and drop them straight into your group chat. Best Batters, Power Rankings, Win Probability — everything your league needs to start a conversation.',
-    pills: ['Best Batters / Pitchers', 'Power Rankings card', 'Win Probability'],
-    tip: 'Head to Free Tools → Social Templates to find all the graphics. Download and screenshot — your league won\'t know what hit them.'
-  },
-]
-
-function next() {
-  if (current.value < steps.length - 1) {
-    prevIndex.value = current.value
-    current.value++
-  }
-}
-
-function prev() {
-  if (current.value > 0) {
-    prevIndex.value = current.value
-    current.value--
-  }
-}
-
-function skip() {
-  emit('close')
-}
 
 function finish() {
   emit('close')
@@ -144,210 +57,96 @@ function finish() {
 </script>
 
 <style scoped>
-/* ── Backdrop ── */
 .tour-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10000;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
+  background: rgba(3, 5, 10, 0.78);
+  backdrop-filter: blur(3px);
 }
 
-/* ── Modal ── */
 .tour-modal {
   position: relative;
   width: 100%;
-  max-width: 480px;
-  background: linear-gradient(145deg, #0f1118, #0c0f1c);
-  border: 1px solid rgba(34, 197, 94, 0.35);
-  border-radius: 20px;
-  padding: 36px 32px 28px;
-  box-shadow: 0 0 60px rgba(34, 197, 94, 0.12), 0 40px 80px rgba(0, 0, 0, 0.6);
-  overflow: hidden;
+  max-width: 440px;
+  border-radius: 16px;
+  border: 1px solid #1e2130;
+  background: radial-gradient(ellipse 90% 70% at 50% 0%, #161a26 0%, #0b0e15 70%);
+  padding: 30px 28px 26px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
 }
-
-/* Top accent line */
+/* The hairline the rest of the product uses, so this reads as the same publication. */
 .tour-modal::before {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, #22c55e, #06b6d4, transparent);
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 16px 16px 0 0;
+  background: linear-gradient(90deg, transparent, rgba(198, 255, 58, 0.85) 50%, transparent);
 }
 
-/* ── Progress dots ── */
-.tour-dots {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  margin-bottom: 24px;
-}
-.tour-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: #1e2130;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.tour-dot-active {
-  background: #22c55e;
-  width: 24px;
-  border-radius: 4px;
-}
-
-/* ── Close ── */
 .tour-close {
   position: absolute;
-  top: 16px; right: 16px;
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid #1e2130;
-  color: #6b7280;
-  font-size: 12px;
+  top: 12px;
+  right: 14px;
+  border: 0;
+  background: none;
+  color: #4b5563;
+  font-size: 15px;
   cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s;
-}
-.tour-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
-
-/* ── Slide ── */
-.tour-slide { text-align: center; }
-
-.tour-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
   line-height: 1;
 }
+.tour-close:hover { color: #c6d0dc; }
 
-.tour-step-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+.tour-eyebrow {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #22c55e;
-  margin-bottom: 8px;
+  color: #c6ff3a;
+  margin-bottom: 10px;
 }
 
 .tour-title {
-  font-size: 22px;
-  font-weight: 900;
-  color: #fff;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
-  margin: 0 0 12px;
-  font-family: 'Barlow Condensed', sans-serif;
+  margin: 0 0 14px;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  line-height: 1.1;
+  color: #f2f5f2;
 }
 
 .tour-body {
+  margin: 0 0 10px;
   font-size: 14px;
-  color: #9ca3af;
-  line-height: 1.65;
-  margin: 0 0 16px;
+  line-height: 1.55;
+  color: #c6d0dc;
 }
-
-/* ── Feature pills ── */
-.tour-pills {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
-  margin-bottom: 16px;
-}
-.tour-pill {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 4px 10px;
-  border-radius: 20px;
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  color: #22c55e;
-}
-
-/* ── Tip ── */
-.tour-tip {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  text-align: left;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid #1e2130;
-  margin-bottom: 4px;
-}
-.tour-tip-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
-.tour-tip span:last-child { font-size: 12px; color: #6b7280; line-height: 1.5; }
-
-/* ── Actions ── */
-.tour-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 24px;
-  gap: 12px;
-}
-
-.tour-btn-spacer { flex: 1; }
-
-.tour-btn-back {
-  font-size: 13px;
-  font-weight: 700;
-  color: #6b7280;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 8px 0;
-  transition: color 0.15s;
-}
-.tour-btn-back:hover { color: #9ca3af; }
-
-.tour-btn-next {
-  padding: 10px 24px;
-  border-radius: 10px;
-  background: #22c55e;
-  color: #0a0c14;
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  border: none;
-  cursor: pointer;
-  transition: all 0.15s;
-  box-shadow: 0 2px 12px rgba(34,197,94,0.3);
-}
-.tour-btn-next:hover { background: #16a34a; transform: translateY(-1px); }
+.tour-body-dim { color: #8a93a0; }
 
 .tour-btn-done {
-  padding: 10px 24px;
+  margin-top: 18px;
+  width: 100%;
+  border: 0;
   border-radius: 10px;
-  background: linear-gradient(135deg, #22c55e, #06b6d4);
-  color: #0a0c14;
+  background: #c6ff3a;
+  color: #05060a;
+  font-weight: 700;
   font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  border: none;
+  padding: 11px 16px;
   cursor: pointer;
-  transition: all 0.15s;
-  box-shadow: 0 2px 16px rgba(34,197,94,0.35);
+  transition: filter 0.15s ease;
 }
-.tour-btn-done:hover { opacity: 0.9; transform: translateY(-1px); }
+.tour-btn-done:hover { filter: brightness(1.06); }
 
-/* ── Transitions ── */
-.tour-fade-enter-active, .tour-fade-leave-active { transition: all 0.25s ease; }
-.tour-fade-enter-from, .tour-fade-leave-to { opacity: 0; transform: scale(0.96); }
-
-.tour-slide-left-enter-active, .tour-slide-left-leave-active,
-.tour-slide-right-enter-active, .tour-slide-right-leave-active {
-  transition: all 0.22s ease;
-}
-.tour-slide-left-enter-from { opacity: 0; transform: translateX(30px); }
-.tour-slide-left-leave-to  { opacity: 0; transform: translateX(-30px); }
-.tour-slide-right-enter-from { opacity: 0; transform: translateX(-30px); }
-.tour-slide-right-leave-to  { opacity: 0; transform: translateX(30px); }
+.tour-fade-enter-active,
+.tour-fade-leave-active { transition: opacity 0.18s ease; }
+.tour-fade-enter-from,
+.tour-fade-leave-to { opacity: 0; }
 </style>
