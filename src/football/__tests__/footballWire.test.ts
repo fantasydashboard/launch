@@ -346,18 +346,28 @@ describe('buildRankingsBoard', () => {
     expect(board.ALL.map((r) => r.playerKey)).toEqual(['rb1', 'qb1'])
   })
 
-  /* A player's tier among every startable body is a different fact from his tier among
-     receivers, and the rows are shared objects — so ALL must re-tier rather than inherit. */
-  it('re-tiers the overall board instead of inheriting positional tiers', () => {
+  /*
+   * A player's tier among ALL startable bodies is a different fact from his tier among backs,
+   * and the rows are shared object references — so the overall board must re-tier FRESH
+   * COPIES. Re-tiering in place would write the overall numbers back onto the positional
+   * boards, and nothing else in the product would notice.
+   *
+   * The fixture is built so the two answers actually differ. An earlier version of this test
+   * used values whose leader-relative cuts happened to land identically either way, so it
+   * passed against an implementation with the aliasing bug deliberately reintroduced.
+   */
+  it('re-tiers the overall board without disturbing the positional ones', () => {
     const board = buildRankingsBoard({
-      entries: [entry('qb1', 'QB', 100), entry('rb1', 'RB', 100), entry('rb2', 'RB', 50)],
+      entries: [entry('qb1', 'QB', 200), entry('rb1', 'RB', 100), entry('rb2', 'RB', 95)],
       positions: ['QB', 'RB'],
       weeksLeft: 10,
     })
-    // rb1 leads RB at tier 1; in ALL it shares tier 1 with qb1 and rb2 still falls away.
-    expect(board.RB.find((r) => r.playerKey === 'rb2')!.tier).toBe(2)
-    expect(board.ALL.find((r) => r.playerKey === 'qb1')!.tier).toBe(1)
-    expect(board.ALL.find((r) => r.playerKey === 'rb2')!.tier).toBe(2)
+    // Among backs the two are interchangeable: one tier, no cliff drawn between them.
+    expect(board.RB.map((r) => r.tier)).toEqual([1, 1])
+    expect(board.RB[0].tierBreak).toBeUndefined()
+    expect(board.RB[1].tierBreak).toBeUndefined()
+    // Overall, the quarterback is a tier of his own and both backs fall below him.
+    expect(board.ALL.map((r) => [r.playerKey, r.tier])).toEqual([['qb1', 1], ['rb1', 2], ['rb2', 2]])
   })
 
   it('marks the first row of each new tier with the size of the drop', () => {
