@@ -41,6 +41,11 @@ export function useFootballVor(inputs: {
    * outright rather than being told "no" by a store that has nothing to say.
    */
   keysAreSleeperIds?: Ref<boolean>
+  /**
+   * The league's scoring weights. Absent means the football defaults, which is what every
+   * caller got unconditionally before this existed.
+   */
+  scoring?: Ref<Record<string, number>>
 }): { vorByKey: Ref<Record<string, PlayerVor>>; audit: Ref<VorAudit | null>; loading: Ref<boolean>; load: () => void } {
   const leagueStore = useLeagueStore()
   /**
@@ -90,7 +95,7 @@ export function useFootballVor(inputs: {
       const state = await sleeperService.getNflState()
       const season = inputs.season.value || state.season
       const currentWeek = Number(state.week) || 1
-      const scoring = defaultWeights('football')
+      const scoring = inputs.scoring?.value ?? defaultWeights('football')
 
       const [seasonStats, playersMap] = await Promise.all([
         fetchSeasonProjectionStats(season),
@@ -200,7 +205,14 @@ export function useFootballVor(inputs: {
     }
   }
 
-  watch([inputs.enabled, projPlayers, inputs.season], load, { immediate: true })
+  /* Scoring is in here because it is an INPUT to every point total below, not a display
+     preference. Without it, switching from a PPR league to a standard one leaves the first
+     league's numbers on screen — correct-looking, and wrong. */
+  watch(
+    [inputs.enabled, projPlayers, inputs.season, () => inputs.scoring?.value],
+    load,
+    { immediate: true, deep: false },
+  )
 
   return { vorByKey, audit, loading, load }
 }
