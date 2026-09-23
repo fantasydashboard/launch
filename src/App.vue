@@ -208,18 +208,24 @@
               <div class="relative" ref="leagueDropdownRef">
               <!-- League Helper Tooltip (Desktop) -->
               <Transition name="helper-pop">
+                <!--
+                  Anchored to the league button, but BELOW the nav row. At mt-4 it sat on top of
+                  "This Week" and "Draft Room" — covering the two links a new reader is most
+                  likely to want, at the exact moment we are telling them how to start. Opening
+                  leftward from `right-0` also pushed it off the left edge of the viewport.
+                -->
                 <div
                   v-if="showLeagueHelper"
-                  class="absolute top-full right-0 mt-4 z-[200] w-64 pointer-events-auto"
+                  class="absolute top-full left-0 mt-14 z-[200] w-64 pointer-events-auto"
                 >
                   <!-- Arrow pointing up to button -->
-                  <div class="flex justify-end pr-5 -mb-px">
+                  <div class="flex justify-start pl-5 -mb-px">
                     <div class="w-3 h-3 rotate-45 border-t border-l"
-                      style="background: #181b25; border-color: rgba(34,197,94,0.5);"
+                      style="background: #181b25; border-color: rgba(198,255,58,0.45);"
                     ></div>
                   </div>
                   <div class="rounded-xl p-4 shadow-2xl relative"
-                    style="background: #181b25; border: 1px solid rgba(34,197,94,0.45); box-shadow: 0 0 32px rgba(34,197,94,0.12);"
+                    style="background: #181b25; border: 1px solid rgba(198,255,58,0.4); box-shadow: 0 0 32px rgba(198,255,58,0.10);"
                   >
                     <!-- Dismiss X -->
                     <button
@@ -227,26 +233,25 @@
                       class="absolute top-2.5 right-2.5 w-5 h-5 flex items-center justify-center rounded-full text-dark-textMuted hover:text-white hover:bg-dark-border/60 transition-colors text-xs"
                       title="Dismiss"
                     >✕</button>
-                    <!-- Content -->
-                    <div class="flex items-center gap-2 mb-2">
-                      <span class="text-lg">👋</span>
-                      <span class="text-primary font-bold text-sm">Welcome to UFD!</span>
-                    </div>
+                    <!-- Says the outcome, not a feature list. "Track stats, matchups, power
+                         rankings and more" described everything and promised nothing. -->
+                    <div class="font-mono text-[10px] uppercase tracking-[0.18em] text-primary mb-2">No league yet</div>
                     <p class="text-dark-textSecondary text-xs leading-relaxed mb-3">
-                      Add your first league here to start tracking stats, matchups, power rankings, and more.
+                      Connect a league to see your week — your matchup, your lineup, and where
+                      every team really stands.
                     </p>
                     <button
                       @click.stop="showAddLeagueModal = true; dismissLeagueHelper()"
-                      class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-gray-900 transition-colors"
-                      style="background: #22c55e;"
+                      class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                      style="background: #C6FF3A; color: #05060a;"
                     >
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                       </svg>
-                      Add Your First League
+                      Connect a league
                     </button>
-                    <!-- Dev test badge -->
-                    <div v-if="forceNoLeaguesTest" class="mt-2 text-center">
+                    <!-- Dev only: this shipped to production and advertised a debug hook. -->
+                    <div v-if="forceNoLeaguesTest && isDev" class="mt-2 text-center">
                       <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">🧪 TEST MODE — ?forceNoLeagues=true</span>
                     </div>
                   </div>
@@ -558,38 +563,36 @@
                   <Transition name="helper-pop">
                     <div
                       v-if="showLeagueHelper"
-                      class="absolute top-full right-0 mt-3 z-[200] w-60 pointer-events-auto"
+                      class="absolute top-full left-0 mt-3 z-[200] w-60 pointer-events-auto"
                     >
-                      <div class="flex justify-end pr-4 -mb-px">
+                      <div class="flex justify-start pl-4 -mb-px">
                         <div class="w-3 h-3 rotate-45 border-t border-l"
-                          style="background: #181b25; border-color: rgba(34,197,94,0.5);"
+                          style="background: #181b25; border-color: rgba(198,255,58,0.45);"
                         ></div>
                       </div>
                       <div class="rounded-xl p-3.5 shadow-2xl relative"
-                        style="background: #181b25; border: 1px solid rgba(34,197,94,0.45); box-shadow: 0 0 28px rgba(34,197,94,0.12);"
+                        style="background: #181b25; border: 1px solid rgba(198,255,58,0.4); box-shadow: 0 0 28px rgba(198,255,58,0.10);"
                       >
                         <button
                           @click.stop="dismissLeagueHelper"
                           class="absolute top-2 right-2 w-5 h-5 flex items-center justify-center rounded-full text-dark-textMuted hover:text-white hover:bg-dark-border/60 transition-colors text-xs"
                         >✕</button>
-                        <div class="flex items-center gap-2 mb-1.5">
-                          <span class="text-base">👋</span>
-                          <span class="text-primary font-bold text-xs">Welcome to UFD!</span>
-                        </div>
+                        <div class="font-mono text-[9px] uppercase tracking-[0.18em] text-primary mb-1.5">No league yet</div>
                         <p class="text-dark-textSecondary text-xs leading-relaxed mb-2.5">
-                          Tap here to add your first league and start tracking your fantasy data.
+                          Connect a league to see your week — your matchup, your lineup, and
+                          where every team really stands.
                         </p>
                         <button
                           @click.stop="showAddLeagueModal = true; dismissLeagueHelper()"
-                          class="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-900 transition-colors"
-                          style="background: #22c55e;"
+                          class="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                          style="background: #C6FF3A; color: #05060a;"
                         >
                           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                           </svg>
-                          Add First League
+                          Connect a league
                         </button>
-                        <div v-if="forceNoLeaguesTest" class="mt-1.5 text-center">
+                        <div v-if="forceNoLeaguesTest && isDev" class="mt-1.5 text-center">
                           <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">🧪 TEST MODE</span>
                         </div>
                       </div>
@@ -1312,12 +1315,15 @@ function dismissLeagueHelper() {
   helperDismissed.value = true
 }
 
-// Reset dismissed state on every route change so tooltip reappears on new pages
-watch(() => route.path, () => {
-  if (!leagueStore.allLeagues || leagueStore.allLeagues.length === 0) {
-    helperDismissed.value = false
-  }
-})
+/*
+ * Dismissed stays dismissed, for the session.
+ *
+ * This used to clear the flag on every route change, so the ✕ postponed the tooltip until the
+ * next click rather than closing it: dismiss, open the Wire, and it is back. A control that
+ * does not do what it says teaches people to ignore it, and the next thing it says goes unread
+ * too. It returns on reload, which is enough for somebody who genuinely has no league.
+ */
+const isDev = !!(import.meta as any).env?.DEV
 // ─────────────────────────────────────────────────────────────────────────
 const { isPaid, hasRealIndividualAccess } = useFeatureAccess()
 
