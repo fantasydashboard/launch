@@ -58,10 +58,12 @@ The board assembly (group by position → sort by VOR → tier → build the cro
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `src/football/__tests__/footballWire.test.ts`:
+Append the `describe` block below to `src/football/__tests__/footballWire.test.ts`, and add
+`buildRankingsBoard` to that file's EXISTING import from `'../footballWire'` at the top rather
+than adding a second import statement at the end.
 
 ```ts
-import { buildRankingsBoard } from '../footballWire'
+// add buildRankingsBoard to the existing top-of-file import from '../footballWire'
 
 /*
  * The board assembly is the thing both surfaces share, so it is tested as its own
@@ -538,13 +540,20 @@ describe('publicWeeksLeft', () => {
     expect(publicWeeksLeft(17)).toBe(1)
   })
 
-  /* Past the regular season, and in the offseason where Sleeper reports week 0, the horizon
-     floors at one rather than going to zero or negative — a zero would divide the tier rule
-     by nothing and a negative would invert it. */
+  /* Past the regular season the horizon floors at one rather than going to zero or negative
+     — a zero would divide the tier rule by nothing and a negative would invert it. */
   it('never drops below one', () => {
     expect(publicWeeksLeft(18)).toBe(1)
-    expect(publicWeeksLeft(0)).toBe(1)
-    expect(publicWeeksLeft(-4)).toBe(1)
+    expect(publicWeeksLeft(30)).toBe(1)
+  })
+
+  /* Sleeper reports week 0 in the offseason. The whole season is still ahead then, so that
+     is what the horizon says — not "one week left", which would draw tiers seventeen times
+     too narrow and call half the league interchangeable. Garbage input reads the same way. */
+  it('reads the offseason as a whole season ahead', () => {
+    expect(publicWeeksLeft(0)).toBe(17)
+    expect(publicWeeksLeft(-4)).toBe(17)
+    expect(publicWeeksLeft(NaN)).toBe(17)
   })
 })
 ```
@@ -575,14 +584,22 @@ export const PUBLIC_TEAMS = 12
 const NFL_LAST_WEEK = 17
 
 /**
- * Weeks still to play, floored at one.
+ * Weeks still to play.
  *
  * The tier rule measures indifference in points per WEEK, so this is what converts a
- * rest-of-season value into it. A zero would divide by nothing and a negative would invert
- * the rule, so the offseason (where Sleeper reports week 0) reads as one week left.
+ * rest-of-season value into it — which makes a wrong answer here invisible rather than loud:
+ * it produces plausible tiers that are the wrong width.
+ *
+ * Both ends are clamped, and they clamp to opposite answers. Past the regular season there is
+ * one week left rather than zero, because zero divides the tier rule by nothing. Before it —
+ * the offseason, where Sleeper reports week 0 — the whole season is still ahead, and saying
+ * "one week left" there would draw every tier seventeen times too narrow and call half the
+ * league interchangeable.
  */
 export function publicWeeksLeft(currentWeek: number): number {
-  return Math.max(1, NFL_LAST_WEEK - (Number(currentWeek) || 1) + 1)
+  const wk = Number(currentWeek)
+  if (!Number.isFinite(wk) || wk < 1) return NFL_LAST_WEEK
+  return Math.max(1, NFL_LAST_WEEK - wk + 1)
 }
 
 /**
