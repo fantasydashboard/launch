@@ -28,8 +28,15 @@ export function useFootballScoring(): {
   const leagueStore = useLeagueStore()
   const resolved = computed(() =>
     resolveFootballScoring({
-      platform: leagueStore.activePlatform,
-      sleeperScoringSettings: (leagueStore.currentLeague as any)?.scoring_settings,
+      /*
+       * Sport goes through the platform slot deliberately: a non-football league resolves as
+       * an unknown platform and falls to the football defaults. Without it, a baseball Sleeper
+       * league's scoring_settings clears the usability guard and comes back tagged 'sleeper' —
+       * baseball weights under a label reading "your league's scoring". Nothing consumes that
+       * today, which is exactly why it had to be fixed now rather than found later.
+       */
+      platform: leagueStore.activeSport === 'football' ? leagueStore.activePlatform : null,
+      sleeperScoringSettings: leagueStore.currentLeague?.scoring_settings,
     }),
   )
   return {
