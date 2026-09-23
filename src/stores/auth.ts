@@ -134,9 +134,16 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = currentSession.user
         console.log('[Auth] User set, isAuthenticated should be:', !!user.value)
         
+        /* fetchProfile handles its own failure and records it on profileStatus, so this
+           catch is for the unexpected only — and the log has to read the STATUS rather than
+           assume success. It used to print "fetched successfully" unconditionally, which meant
+           the console claimed a success on the very line after it had logged the timeout that
+           caused an admin to be shown a paywall. A log that lies is worse than no log, because
+           it is read at exactly the moment somebody is trying to find out what happened. */
         try {
           await fetchProfile()
-          console.log('[Auth] Profile fetched successfully')
+          if (profileStatus.value === 'ready') console.log('[Auth] Profile loaded')
+          else console.warn('[Auth] Profile did not load — status:', profileStatus.value)
         } catch (profileErr) {
           console.error('[Auth] Profile fetch failed (non-fatal):', profileErr)
           // Don't throw - user is still authenticated even if profile fails
