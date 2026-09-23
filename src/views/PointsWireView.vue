@@ -255,7 +255,15 @@ const { wire: fbWire, loading: fbLoading, rosSource } = useFootballWire({
 const cutCandidates = computed(() => {
   const b = fbWire.value?.board
   if (!b) return []
-  const mine = Object.values(b).flat().filter((r) => r.owned)
+  /* Every position BUT the overall column. `ALL` is a re-tiered copy of the QB/RB/WR/TE
+     columns, not a fifth group of players, so flattening it alongside them listed each of
+     your skill-position bodies twice — and three chips of two players reads as a page that
+     cannot count your roster. Kickers and defences were spared only because they never
+     enter the overall board. */
+  const mine = Object.entries(b)
+    .filter(([pos]) => pos !== 'ALL')
+    .flatMap(([, rows]) => rows)
+    .filter((r) => r.owned)
   return [...mine].sort((a, b2) => a.vorRos - b2.vorRos).slice(0, 3)
 })
 
