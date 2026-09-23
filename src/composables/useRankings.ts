@@ -39,13 +39,18 @@ export function useRankings(): {
   const leagueStore = useLeagueStore()
   const isFootball = computed(() => leagueStore.activeSport === 'football')
   /*
-   * A football league, specifically. `savedLeagues.length` is sport-blind, and this page is
-   * football-only — so a reader whose only league is baseball was told the board was "scored
-   * for your league" while looking at the public one, and with a pass got a ROSTERED pill on
-   * every row, because the public board marks every entry unavailable.
+   * A football league, specifically, and the SAME ref that enables the league board below.
    *
-   * Keyed on the same condition that gates useFootballWire, so "we say it is your league" and
-   * "it actually is your league" cannot come apart.
+   * Two things had to be true at once and were not. `savedLeagues.length` is sport-blind, so a
+   * reader whose only league is baseball was told the board was "scored for your league" while
+   * looking at the public one — and with a pass, got a ROSTERED pill on every row, because the
+   * public board marks every entry unavailable.
+   *
+   * The second half is why this exact ref is passed as `enabled` rather than a broader
+   * `activeSport === 'football'`: the broader one stays true when the active league is removed,
+   * and the underlying source loader returns early without clearing its pool — so the wire went
+   * on serving a board built from the league you just deleted, under copy saying no league was
+   * loaded. One ref for both means the claim and the board cannot disagree.
    */
   const hasLeague = computed(
     () => leagueStore.activeSport === 'football' && !!leagueStore.activeLeagueId,
@@ -80,7 +85,7 @@ export function useRankings(): {
     teams: leagueSize,
     myTeamKey,
     season,
-    enabled: isFootball,
+    enabled: hasLeague,
     weeksLeft,
     teamNames,
     scoring: fbScoring.weights,
