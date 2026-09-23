@@ -82,6 +82,8 @@ export function useFootballWire(inputs: {
   weeksLeft: Ref<number>
   /** pool teamKey -> display name, so a rostered player can say who holds him. */
   teamNames?: Ref<Record<string, string>>
+  /** The league's scoring weights, passed through to the value engine. */
+  scoring?: Ref<Record<string, number>>
 }): {
   wire: ComputedRef<FootballWire | null>
   loading: Ref<boolean>
@@ -102,6 +104,7 @@ export function useFootballWire(inputs: {
     teams: inputs.teams,
     season: inputs.season,
     enabled: inputs.enabled,
+    scoring: inputs.scoring,
   })
 
   /* This week's NFL schedule, so a rest-of-season board can still warn that a body is idle

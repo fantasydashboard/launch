@@ -13,6 +13,7 @@ import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { nhlTeamLogo } from '@/players/nhlTeamLogo'
 import { wordsFor } from '@/lib/sportWords'
 import { useFootballWire } from '@/composables/useFootballWire'
+import { useFootballScoring } from '@/composables/useFootballScoring'
 import RankingPicker from '@/components/RankingPicker.vue'
 import { getWeeklyUsage, type UsageByKey } from '@/services/playerUsage'
 import { buildWaiverTargets } from '@/football/waiverTargets'
@@ -235,6 +236,7 @@ const LEAN_LABEL: Record<string, { text: string; cls: string }> = {
   'level': { text: '', cls: '' },
 }
 
+const fbScoring = useFootballScoring()
 const { wire: fbWire, loading: fbLoading, rosSource } = useFootballWire({
   pool,
   freeAgents,
@@ -245,6 +247,7 @@ const { wire: fbWire, loading: fbLoading, rosSource } = useFootballWire({
   enabled: isFootball,
   weeksLeft,
   teamNames,
+  scoring: fbScoring.weights,
 })
 /**
  * Your most droppable bodies: lowest value-over-replacement among players you own.
