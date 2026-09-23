@@ -13,6 +13,7 @@ import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { nhlTeamLogo } from '@/players/nhlTeamLogo'
 import { wordsFor } from '@/lib/sportWords'
 import { useFootballWire } from '@/composables/useFootballWire'
+import RankingPicker from '@/components/RankingPicker.vue'
 import { getWeeklyUsage, type UsageByKey } from '@/services/playerUsage'
 import { buildWaiverTargets } from '@/football/waiverTargets'
 import { getSeasonLines } from '@/services/playerUsage'
@@ -195,6 +196,10 @@ const dynRow = (key?: string) => (key ? dynasty.rows.value[key] ?? null : null)
  */
 type WireSort = 'season' | 'dynasty'
 const wireSort = ref<WireSort>('season')
+const WIRE_SORTS: { key: WireSort; label: string; hint: string }[] = [
+  { key: 'season', label: 'This season', hint: 'value over replacement, rest of season' },
+  { key: 'dynasty', label: 'Dynasty', hint: 'the long-term market, ours untouched' },
+]
 
 const byDynasty = (ka?: string, kb?: string) => {
   const a = dynRow(ka), b = dynRow(kb)
@@ -579,6 +584,23 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                 Best available
               </h2>
 
+              <!--
+                The two controls that say which ranking you are reading, together, on the card
+                whose caption below announces one of them drives the page. They used to sit in
+                the full board's legend; the board moved to /rankings and these did not follow
+                it, because they govern this page — the picker re-seats every add/drop verdict
+                above, and the toggle re-sorts the list immediately below.
+              -->
+              <span class="flex items-center gap-2 font-mono text-[9px] uppercase tracking-wide">
+                <span v-if="dynasty.ready.value" class="flex items-center gap-0.5 rounded-lg border border-dark-border p-0.5">
+                  <button v-for="opt in WIRE_SORTS" :key="'ba-' + opt.key"
+                          class="rounded-md px-2 py-0.5 uppercase tracking-wider transition-colors"
+                          :class="wireSort === opt.key ? 'bg-primary/15 font-bold text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+                          :title="opt.hint"
+                          @click="wireSort = opt.key">{{ opt.label }}</button>
+                </span>
+                <RankingPicker :kind="wireSort === 'dynasty' ? 'dynasty' : 'ros'" />
+              </span>
             </div>
             <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
               <!-- Say the scope out loud: the list drives this card, the board below it and the

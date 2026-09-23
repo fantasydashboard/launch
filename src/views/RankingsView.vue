@@ -75,15 +75,19 @@
         </div>
 
         <!--
-          The signed-in board is the same board, rescoped to your league and with your roster
-          marked — still free. What the pass buys is what you can DO about it, which is why the
-          pitch names those three things instead of promising "more rankings".
+          What this board is, said plainly, because the Wire links here while announcing that a
+          ranking list drives IT. This one is deliberately league-agnostic — default scoring, a
+          twelve-team shape — so a reader arriving from a league page is not left to work out
+          why the order moved.
         -->
         <div class="mt-4 rounded-xl border border-dark-border bg-dark-card p-4">
           <p class="text-sm text-dark-textSecondary">
-            Connect a league and this board is rescoped to your scoring with your roster marked —
-            free, no expiry.
-            <RouterLink to="/connect" class="text-primary underline underline-offset-2">Connect a league</RouterLink>.
+            This board is scored for a standard twelve-team league and is the same for everyone
+            — it does not follow your league's settings or any ranking list you've uploaded.
+          </p>
+          <p v-if="!hasLeague" class="mt-2 text-xs text-dark-textMuted">
+            <RouterLink to="/connect" class="text-primary underline underline-offset-2">Connect a league</RouterLink>
+            for standings, power rankings and your full history — free, no expiry.
           </p>
           <p class="mt-2 text-xs text-dark-textMuted">
             Who's actually available, what an add costs you and this week's start/sit calls live
@@ -99,8 +103,14 @@
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { usePublicRankings } from '@/composables/usePublicRankings'
+import { useLeagueStore } from '@/stores/league'
 
 const { board, positions, loading, ready } = usePublicRankings()
+
+/* Whether this reader already has a league, which changes what the footer can honestly say.
+   localStorage-backed, so it is true for a signed-out visitor who has connected one. */
+const leagueStore = useLeagueStore()
+const hasLeague = computed(() => leagueStore.savedLeagues.length > 0)
 
 const active = ref('ALL')
 const expanded = ref(false)
