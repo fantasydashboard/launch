@@ -73,6 +73,27 @@
         </div>
 
         <div class="rounded-xl border border-dark-border bg-dark-card p-4">
+          <!--
+            Column headers, because four numbers arriving on every row with nothing naming them
+            is worse than no numbers. ROS and NEXT4 are 1-32 ranks of how easy the upcoming
+            defences are AT THIS POSITION — the same schedule reads differently for a back and
+            a tight end, which is the whole reason they are computed per position and why they
+            are absent on the mixed board.
+          -->
+          <div v-if="access.showsPaidColumns"
+               class="mb-2 flex items-center gap-2.5 border-b border-dark-border/40 pb-1.5 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted/60">
+            <span class="h-6 w-6 shrink-0" />
+            <span class="min-w-0 flex-1"></span>
+            <template v-if="active !== 'ALL'">
+              <span class="hidden w-9 shrink-0 text-right lg:block" title="Rest-of-season schedule rank at this position">ROS</span>
+              <span class="hidden w-9 shrink-0 text-right lg:block" title="Next four games, same scale">NEXT4</span>
+            </template>
+            <span class="hidden w-10 shrink-0 text-right sm:block" title="What this add is worth to your starting lineup">ADD</span>
+            <span class="hidden w-10 shrink-0 text-right sm:block" title="Points per game this season">PPG</span>
+            <span class="hidden w-8 shrink-0 text-right lg:block" title="Bye week">BYE</span>
+            <span class="w-10 shrink-0 text-right">VOR</span>
+          </div>
+
           <template v-for="row in visible" :key="'rk-' + row.playerKey">
             <div v-if="row.tierBreak" class="flex items-center gap-2 py-1.5">
               <span class="h-px flex-1 bg-dark-border"></span>
@@ -109,6 +130,53 @@
               <span v-else-if="access.scopedToLeague && !access.showsPaidColumns && !row.owned" aria-hidden="true"
                     class="shrink-0 select-none rounded bg-dark-bg px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-dark-textMuted/40"
               >•••</span>
+
+              <!--
+                The paid columns. Each one renders an empty span of its own width when it has
+                no value, because a column that simply vanishes on some rows shifts everything
+                to its right and the board stops being scannable — which is the failure mode
+                that matters here, since scanning down a column is the entire point of them.
+
+                Hidden on narrow screens from the right inward: four extra numbers on a phone
+                squeeze the name to nothing, and the name is the thing the rest are attributes of.
+              -->
+              <template v-if="access.showsPaidColumns">
+                <template v-if="active !== 'ALL'">
+                  <span v-if="difficulty[row.team ?? '']"
+                        class="hidden w-9 shrink-0 text-right font-mono text-[10px] lg:block"
+                        :class="sosTone(difficulty[row.team!].ros)"
+                        :title="`Rest-of-season ${active} schedule: 1 is the easiest run of defences in the league, 32 the hardest`"
+                  >{{ difficulty[row.team!].ros ?? '—' }}</span>
+                  <span v-else class="hidden w-9 shrink-0 lg:block" />
+                  <span v-if="difficulty[row.team ?? '']"
+                        class="hidden w-9 shrink-0 text-right font-mono text-[10px] lg:block"
+                        :class="sosTone(difficulty[row.team!].next4)"
+                        :title="`Next four games at ${active}, same 1-32 scale`"
+                  >{{ difficulty[row.team!].next4 ?? '—' }}</span>
+                  <span v-else class="hidden w-9 shrink-0 lg:block" />
+                </template>
+
+                <!-- Only for a player you can actually add. What it would cost to claim
+                     somebody already rostered is a number about nothing. -->
+                <span v-if="row.free && addCost[row.playerKey]"
+                      class="hidden w-10 shrink-0 text-right font-mono text-[10px] text-[#2dd4bf] sm:block"
+                      :title="`Adding him is worth +${addCost[row.playerKey].marginal.toFixed(1)} to your starting lineup, dropping ${addCost[row.playerKey].dropName}`"
+                >+{{ addCost[row.playerKey].marginal.toFixed(1) }}</span>
+                <span v-else class="hidden w-10 shrink-0 sm:block" />
+
+                <span v-if="ppgByKey[row.playerKey] !== undefined"
+                      class="hidden w-10 shrink-0 text-right font-mono text-[10px] text-dark-textSecondary sm:block"
+                      title="Points per game this season, over games actually played"
+                >{{ ppgByKey[row.playerKey].toFixed(1) }}</span>
+                <span v-else class="hidden w-10 shrink-0 sm:block" />
+
+                <span v-if="difficulty[row.team ?? '']?.bye"
+                      class="hidden w-8 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/60 lg:block"
+                      title="Bye week"
+                >{{ difficulty[row.team!].bye }}</span>
+                <span v-else class="hidden w-8 shrink-0 lg:block" />
+              </template>
+
               <span class="w-10 shrink-0 text-right font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">
                 {{ row.vorRos >= 0 ? '+' : '' }}{{ Math.round(row.vorRos) }}
               </span>
@@ -161,7 +229,8 @@ import type { BoardRow } from '@/football/footballWire'
  * branch in this template can reach the locked copy or the greyed pill before it resolves —
  * a second gate on `accessKnown` here would be redundant by construction.
  */
-const { board, positions, loading, ready, access, scoringSource } = useRankings()
+const { board, positions, loading, ready, access, scoringSource,
+        difficulty, ppgByKey, addCost, setPosition } = useRankings()
 
 const active = ref('ALL')
 const expanded = ref(false)
@@ -169,6 +238,30 @@ const expanded = ref(false)
 /* A new position starts at the top again — carrying an expanded state across positions means
    landing halfway down a list you just opened. */
 watch(active, () => { expanded.value = false })
+
+/*
+ * Tell the composable which column is on screen.
+ *
+ * Schedule strength is computed against what defences allow AT A POSITION, so there is exactly
+ * one answer per board and it cannot be derived without knowing which board that is. On ALL
+ * the composable returns nothing, which is the honest result: the same run of defences is easy
+ * for a back and brutal for a receiver, and averaging the two would invent a number.
+ */
+watch(active, (pos) => setPosition(pos), { immediate: true })
+
+/**
+ * Easiest to hardest, on the 1-32 scale the schedule ranks use.
+ *
+ * Green at the easy end rather than the product's lime, because lime already means "yours" on
+ * this page and a schedule is not an ownership fact. Amber at the hard end is the same amber
+ * that means rostered elsewhere — both are "this is working against you".
+ */
+const sosTone = (rank: number | null) =>
+  rank === null ? 'text-dark-textMuted/40'
+    : rank <= 8 ? 'text-[#7ee787]'
+    : rank <= 16 ? 'text-[#3fb950]'
+    : rank <= 24 ? 'text-dark-textMuted'
+    : 'text-[#e69a4a]'
 
 /* Whatever this board can show, in case ALL is empty because every skill position is. */
 watch(positions, (available) => {
