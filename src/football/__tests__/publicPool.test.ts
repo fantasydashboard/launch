@@ -30,6 +30,19 @@ describe('publicNflPool', () => {
     expect(pool).toHaveLength(0)
   })
 
+  /*
+   * Sleeper does not send `active` for every player, and the pool must keep the ones it
+   * omits. Worth its own case because every other fixture here sets the key explicitly, so
+   * an implementation that started REQUIRING active === true would drop most of the real map
+   * while this file went on passing.
+   */
+  it('keeps a player whose active flag is absent entirely', () => {
+    const { active: _active, ...noFlag } = player()
+    const pool = publicNflPool({ a: noFlag })
+    expect(pool).toHaveLength(1)
+    expect(pool[0].playerKey).toBe('a')
+  })
+
   /* A free agent with no NFL team has no schedule, so no bye and no games remaining —
      every downstream number about him would be a guess dressed as a projection. */
   it('drops players with no NFL team', () => {
