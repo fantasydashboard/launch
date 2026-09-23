@@ -12,18 +12,18 @@ import { rankingsAccess } from '../rankingsAccess'
 describe('rankingsAccess', () => {
   it('gives a stranger the public board and nothing else', () => {
     expect(rankingsAccess({ hasLeague: false, hasPass: false }))
-      .toEqual({ scopedToLeague: false, showsAvailability: false })
+      .toEqual({ scopedToLeague: false, showsPaidColumns: false })
   })
 
   /* The whole bet: your own board, correctly scored, for free. */
   it('scopes to the league for a free account that has one', () => {
     expect(rankingsAccess({ hasLeague: true, hasPass: false }))
-      .toEqual({ scopedToLeague: true, showsAvailability: false })
+      .toEqual({ scopedToLeague: true, showsPaidColumns: false })
   })
 
   it('adds availability for a pass holder', () => {
     expect(rankingsAccess({ hasLeague: true, hasPass: true }))
-      .toEqual({ scopedToLeague: true, showsAvailability: true })
+      .toEqual({ scopedToLeague: true, showsPaidColumns: true })
   })
 
   /*
@@ -34,6 +34,6 @@ describe('rankingsAccess', () => {
    */
   it('cannot show availability without a league, pass or not', () => {
     expect(rankingsAccess({ hasLeague: false, hasPass: true }))
-      .toEqual({ scopedToLeague: false, showsAvailability: false })
+      .toEqual({ scopedToLeague: false, showsPaidColumns: false })
   })
 })

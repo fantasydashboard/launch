@@ -14,13 +14,17 @@
 export interface RankingsAccess {
   /** The league's scoring, and your roster marked. Free, once a league exists. */
   scopedToLeague: boolean
-  /** FREE / ROSTERED, who holds him, and schedule strength. The pass. */
-  showsAvailability: boolean
+  /**
+   * The columns that answer "what should I do about it" rather than "who is good": who holds
+   * him and whether you can claim him, what an add costs, how hard his remaining schedule is,
+   * and what he has actually scored. The Season Pass.
+   */
+  showsPaidColumns: boolean
 }
 
 export function rankingsAccess(input: { hasLeague: boolean; hasPass: boolean }): RankingsAccess {
   /* Availability is a fact ABOUT a league — who holds him, whether you can claim him. Without
      one there is no answer to show, and a pass cannot buy an answer that does not exist. */
   const scopedToLeague = input.hasLeague
-  return { scopedToLeague, showsAvailability: scopedToLeague && input.hasPass }
+  return { scopedToLeague, showsPaidColumns: scopedToLeague && input.hasPass }
 }

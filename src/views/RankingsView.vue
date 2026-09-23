@@ -43,7 +43,7 @@
           scoring (full PPR)" — so nothing is appended to it. An earlier version added
           "— your league" after it and read "Scored on your league's scoring — your league."
         -->
-        <template v-else-if="!access.showsAvailability">
+        <template v-else-if="!access.showsPaidColumns">
           Scored on {{ scoringLabel(scoringSource) }}, your roster marked. Who's actually
           available, and who holds him, is on the pass.
         </template>
@@ -93,7 +93,7 @@
                 fact, and everyone else in plain text. At a glance the page separates the board
                 into what you hold, what you can take, and what you would have to trade for.
 
-                The free-agent colour is gated on `showsAvailability` for the same reason the
+                The free-agent colour is gated on `showsPaidColumns` for the same reason the
                 badge is: who is claimable is what the pass sells, and a coloured name would
                 hand it to a reader who has not bought it just as surely as the badge would.
               -->
@@ -102,11 +102,11 @@
                 <span v-if="active === 'ALL'" class="ml-1 font-mono text-[10px] text-dark-textMuted/70">{{ row.position }}</span>
               </span>
               <span class="shrink-0 font-mono text-[10px] text-dark-textMuted/70">{{ row.team }}</span>
-              <span v-if="access.showsAvailability && !row.owned"
+              <span v-if="access.showsPaidColumns && !row.owned"
                     class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide"
                     :class="row.free ? 'bg-[#2dd4bf]/15 text-[#2dd4bf]' : 'bg-dark-bg text-dark-textMuted/60'"
               >{{ row.free ? 'free' : 'rostered' }}</span>
-              <span v-else-if="access.scopedToLeague && !access.showsAvailability && !row.owned" aria-hidden="true"
+              <span v-else-if="access.scopedToLeague && !access.showsPaidColumns && !row.owned" aria-hidden="true"
                     class="shrink-0 select-none rounded bg-dark-bg px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-dark-textMuted/40"
               >•••</span>
               <span class="w-10 shrink-0 text-right font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">
@@ -196,7 +196,7 @@ const visible = computed(() => rows.value.slice(0, expanded.value ? FULL_DEPTH :
  */
 function nameTone(row: BoardRow): string {
   if (access.value.scopedToLeague && row.owned) return 'text-primary'
-  if (access.value.showsAvailability && row.free) return 'text-[#2dd4bf]'
+  if (access.value.showsPaidColumns && row.free) return 'text-[#2dd4bf]'
   return ''
 }
 
