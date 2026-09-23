@@ -27,7 +27,7 @@ import { teamLogoFor } from '@/players/teamLogo'
 import type { AvailablePlayer } from '@/players/types'
 
 const leagueStore = useLeagueStore()
-const { hasFullAccess } = useFeatureAccess()
+const { hasFullAccess, accessKnown, accessCheckFailed } = useFeatureAccess()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
 const teamLogo = (abbr?: string) => teamLogoFor(leagueStore.activeSport, abbr)
 
@@ -638,8 +638,12 @@ function fairness(myGain: number, theirGain: number): string {
         which the landing page gives away. Everything below is the trade itself, which is one
         of the four calls the Season Pass sells and was fully readable to anyone.
       -->
+      <div v-if="!accessKnown" class="py-10 text-center text-sm text-dark-textMuted">
+        {{ accessCheckFailed ? 'Could not check your subscription just now — reload to try again.' : 'Checking your access…' }}
+      </div>
+
       <SeasonPassGate
-        v-if="!hasFullAccess"
+        v-else-if="accessKnown && !hasFullAccess"
         headline="The deal, and who to send it to"
         body="Where your lineup ranks against the league stays free, as do standings, power rankings and history. This is the trade itself: who is thin where you are deep, what a swap is worth to both sides, and the message that gets a reply."
         cta="Unlock trades — $39"

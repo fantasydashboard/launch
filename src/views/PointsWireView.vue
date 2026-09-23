@@ -30,7 +30,7 @@ import { useFeatureAccess } from '@/composables/useFeatureAccess'
 const leagueStore = useLeagueStore()
 /* The waiver call is one of the four the Season Pass sells, and it was fully readable by
    anyone who had not signed in — the Draft Room was honouring the wall on its own. */
-const { hasFullAccess } = useFeatureAccess()
+const { hasFullAccess, accessKnown, accessCheckFailed } = useFeatureAccess()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
 const isHockey = computed(() => leagueStore.activeSport === 'hockey')
 const words = computed(() => wordsFor(leagueStore.activeSport))
@@ -713,8 +713,12 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
         <div v-if="fbLoading && !fbWire" class="py-10 text-center text-sm text-dark-textMuted">Loading league values…</div>
         <div v-else-if="!fbWire" class="py-10 text-center text-dark-textMuted">No free agents available right now.</div>
 
+        <div v-else-if="!accessKnown" class="py-10 text-center text-sm text-dark-textMuted">
+          {{ accessCheckFailed ? 'Could not check your subscription just now — reload to try again.' : 'Checking your access…' }}
+        </div>
+
         <SeasonPassGate
-          v-else-if="!hasFullAccess"
+          v-else-if="accessKnown && !hasFullAccess"
           headline="Who to add, and who to cut"
           body="Standings, power rankings and your league history stay free for every league you're in. This is the waiver call: what clears your roster, what it costs you, and the body to drop for it."
           cta="Unlock the wire — $39"

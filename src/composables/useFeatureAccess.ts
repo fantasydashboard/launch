@@ -231,6 +231,25 @@ export function useFeatureAccess() {
      the Draft Room is worth the most. */
   const hasFullAccess = computed(() => isPaid.value)
 
+  /**
+   * Do we actually KNOW what this account is entitled to?
+   *
+   * False while the profile has not come back yet. It matters because `tier` reads
+   * `profile?.subscription_tier || 'free'`, which answers "we have not heard" and "you have
+   * not paid" with the same word — and a hung profile fetch therefore served an admin the
+   * Season Pass wall. A paying customer being told to buy what they own is a worse error than
+   * a moment of "checking", so every gate waits for this before refusing anybody.
+   *
+   * A signed-out visitor is KNOWN to be free; there is nothing pending for them.
+   */
+  const accessKnown = computed(() =>
+    !authStore.isAuthenticated || authStore.profileStatus === 'ready',
+  )
+  /** The answer never arrived. Surfaces as "could not check", never as "you have not paid". */
+  const accessCheckFailed = computed(() =>
+    authStore.isAuthenticated && authStore.profileStatus === 'failed',
+  )
+
   const effectiveTier = computed((): SubscriptionTier => {
     if (isAdmin.value) return 'admin'
     if (hasRealIndividualAccess.value) return 'individual'
@@ -312,6 +331,8 @@ export function useFeatureAccess() {
     // Effective access
     isPaid,
     hasFullAccess,
+    accessKnown,
+    accessCheckFailed,
     hasLeagueAccess: computed(() => effectiveAccess.value.hasLeague),
     hasPremiumAccess: computed(() => effectiveAccess.value.hasPremium),
     currentTier: computed(() => effectiveAccess.value.tier),

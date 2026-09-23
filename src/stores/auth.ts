@@ -9,6 +9,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { readStoredSession } from '@/lib/authSession'
+import { retryWithTimeout } from '@/lib/withTimeout'
 import type { User, Session } from '@supabase/supabase-js'
 import type { Profile } from '@/types/supabase'
 
@@ -42,6 +43,14 @@ export const useAuthStore = defineStore('auth', () => {
   // State
   const user = ref<User | null>(null)
   const profile = ref<Profile | null>(null)
+  /**
+   * Whether we have actually ASKED and got an answer.
+   *
+   * Distinct from `profile === null`, which conflates "no answer yet" with "no such row" —
+   * and that conflation is what showed a paywall to an admin. Anything gating paid features
+   * has to be able to tell "we do not know" from "you have not paid".
+   */
+  const profileStatus = ref<'unknown' | 'ready' | 'failed'>('unknown')
   const session = ref<Session | null>(null)
   const loading = ref(true)
   const initialized = ref(false)  // flips true once, never goes back
@@ -148,6 +157,7 @@ export const useAuthStore = defineStore('auth', () => {
           }
         } else {
           profile.value = null
+          profileStatus.value = 'ready'   // signed out: genuinely no profile, not an unknown
         }
       })
       
@@ -166,11 +176,22 @@ export const useAuthStore = defineStore('auth', () => {
     if (!supabase || !user.value) return
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.value.id)
-        .single()
+      /*
+       * Bounded and retried, because this call can hang rather than fail.
+       *
+       * Supabase's client wedges: getSession stops settling — the warning above already
+       * handles that — and every query queued behind it hangs with it, resolving and
+       * rejecting never. `await fetchProfile()` then never returns, the profile stays null,
+       * and a null tier reads as 'free'. An admin account was served the Season Pass wall
+       * that way, and clearing cookies could not fix it because the cookies were fine.
+       *
+       * Three attempts: a fresh call usually gets through even when the previous one is
+       * still hanging.
+       */
+      const { data, error: fetchError } = await retryWithTimeout(
+        () => supabase!.from('profiles').select('*').eq('id', user.value!.id).single(),
+        { attempts: 3, ms: 6000, label: 'Profile fetch' },
+      )
 
       if (fetchError) {
         // Profile might not exist yet, create it
@@ -182,6 +203,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       profile.value = data
+      profileStatus.value = 'ready'
 
       /*
        * Tag a brand-new OAuth account with the product that created it.
@@ -210,6 +232,9 @@ export const useAuthStore = defineStore('auth', () => {
         }
       }
     } catch (err) {
+      /* Failed is not free. The gates read this and show "checking" rather than a purchase
+         button, because telling a paying customer to buy what they own is the worse error. */
+      profileStatus.value = 'failed'
       console.error('Error fetching profile:', err)
     }
   }
@@ -424,6 +449,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
+    profileStatus,
     // State
     user,
     profile,

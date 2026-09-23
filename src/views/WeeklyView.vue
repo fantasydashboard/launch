@@ -12,7 +12,7 @@ import RankingPicker from '@/components/RankingPicker.vue'
 import SeasonPassGate from '@/components/SeasonPassGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
-const { hasFullAccess } = useFeatureAccess()
+const { hasFullAccess, accessKnown, accessCheckFailed } = useFeatureAccess()
 const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes, weekSource, spectator, sourceTiers } = useWeeklyBoard()
 
 /*
@@ -542,8 +542,12 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
         landing page gives away. Start/sit and the weekly rankings are advice, one of the four
         calls the Season Pass sells, and were readable by anyone.
       -->
+      <div v-if="!accessKnown" class="py-10 text-center text-sm text-dark-textMuted">
+        {{ accessCheckFailed ? 'Could not check your subscription just now — reload to try again.' : 'Checking your access…' }}
+      </div>
+
       <SeasonPassGate
-        v-if="!hasFullAccess"
+        v-else-if="accessKnown && !hasFullAccess"
         headline="Who to start, and who to sit"
         body="Your matchup, the scoreboard, standings, power rankings and history all stay free. This is the weekly call: the lineup to set, the closest calls, and where every startable player ranks in your scoring."
         cta="Unlock this week — $39"
