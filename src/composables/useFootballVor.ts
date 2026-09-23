@@ -93,8 +93,15 @@ export function useFootballVor(inputs: {
   })
 
   async function load() {
-    if (!inputs.enabled.value || projPlayers.value.length === 0) { vorByKey.value = {}; audit.value = null; return }
+    /*
+     * Bumped BEFORE the early return, not after. A load that clears the maps because the sport
+     * switched off is still a load, and any older one still in flight has to be invalidated by
+     * it. Incrementing only on the path that continues left the clear-to-empty case outside the
+     * counter entirely, so a stale football load could resolve a moment later and put its board
+     * back on a baseball league.
+     */
     const seq = ++loadSeq
+    if (!inputs.enabled.value || projPlayers.value.length === 0) { vorByKey.value = {}; audit.value = null; return }
     loading.value = true
     try {
       const state = await sleeperService.getNflState()
