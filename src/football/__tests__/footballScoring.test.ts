@@ -61,15 +61,36 @@ describe('resolveFootballScoring', () => {
     expect(r.weights).not.toHaveProperty('2B')
   })
 
+  /*
+   * Three mapped categories, deliberately. With fewer, `weightsAreUsable` rejects the map on
+   * count alone and the test would pass against the old implementation too — proving nothing.
+   * Three is enough to clear that guard, so the only thing that can still produce `default`
+   * here is the platform being refused outright, which is the behaviour under test.
+   */
   it('reports Yahoo football as unread rather than guessing', () => {
     const r = resolveFootballScoring({
       platform: 'yahoo',
-      yahooStatCategories: [{ stat: { stat_id: 4, display_name: 'HR', position_type: 'B' } }],
-      yahooStatModifiers: { '4': 4 },
+      yahooStatCategories: [
+        { stat: { stat_id: 12, display_name: 'HR', position_type: 'B' } },
+        { stat: { stat_id: 13, display_name: 'RBI', position_type: 'B' } },
+        { stat: { stat_id: 7, display_name: 'R', position_type: 'B' } },
+      ],
+      yahooStatModifiers: { '12': 4, '13': 1, '7': 1 },
     })
     expect(r.source).toBe('default')
     expect(r.weights).toEqual(defaultWeights('football'))
+    /* The tell: nothing from the baseball map survived into a football weight map. */
     expect(r.weights).not.toHaveProperty('HR')
+    expect(r.weights).not.toHaveProperty('RBI')
+  })
+
+  /* Non-null but too thin to trust. The point is that it degrades to a LABELLED default rather
+     than calling two stats a league's scoring — a board built from two weights would be
+     confidently wrong, which is the failure this whole resolver exists to make visible. */
+  it('reports a too-thin Sleeper blob as unread rather than trusting it', () => {
+    const r = resolveFootballScoring({ platform: 'sleeper', sleeperScoringSettings: { rec: 1 } })
+    expect(r.source).toBe('default')
+    expect(r.weights).toEqual(defaultWeights('football'))
   })
 
   /* FOOTBALL defaults, not baseball. useLeagueScoring's fallback calls defaultWeights() with
