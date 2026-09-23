@@ -41,36 +41,35 @@ describe('resolveFootballScoring', () => {
     expect(r.weights.rec).toBe(0.5)
   })
 
-  it('reads an ESPN league through the ESPN normaliser', () => {
-    // statIds 3, 4, 5, 7 — chosen because they ARE present in ESPN_POINTS_STAT
-    // (src/myteam/pointsScoring.ts), unlike the brief's original 3/4/24/42 (24 and 42
-    // aren't in that map at all). The point being proven is "four real mappings resolve
-    // to at least three weights," not that these particular ids mean anything football-y —
-    // normalizeEspnWeights is the shared, baseball-keyed normaliser this task was told to
-    // reuse as-is.
+  /*
+   * Both shared normalisers are baseball-keyed and there is no football statId map, so a
+   * football league on these platforms cannot be read at all. It must say so rather than
+   * returning baseball weights under a label claiming they are the league's.
+   */
+  it('reports ESPN football as unread rather than guessing', () => {
     const r = resolveFootballScoring({
       platform: 'espn',
       espnScoringItems: [
-        { statId: 3, points: 0.04 },
-        { statId: 4, points: 4 },
-        { statId: 5, points: 0.1 },
-        { statId: 7, points: 0.1 },
+        { statId: 3, points: 0.04 }, { statId: 4, points: 4 },
+        { statId: 5, points: 0.1 }, { statId: 7, points: 6 },
       ],
     })
-    expect(r.source).toBe('espn')
-    expect(Object.keys(r.weights).length).toBeGreaterThanOrEqual(3)
-  })
-
-  /*
-   * The guard that matters. ESPN reports bare statIds on an inconsistent enumeration, so a
-   * normalisation can come back nearly empty — and a nearly-empty weight map scores almost
-   * every stat at zero, which does not look like a failure. It looks like a league where
-   * nobody scores points.
-   */
-  it('falls back to football defaults when a platform yields too little', () => {
-    const r = resolveFootballScoring({ platform: 'espn', espnScoringItems: [{ statId: 3, points: 0.04 }] })
     expect(r.source).toBe('default')
     expect(r.weights).toEqual(defaultWeights('football'))
+    /* The tell: nothing from the baseball map survived into a football weight map. */
+    expect(r.weights).not.toHaveProperty('HR')
+    expect(r.weights).not.toHaveProperty('2B')
+  })
+
+  it('reports Yahoo football as unread rather than guessing', () => {
+    const r = resolveFootballScoring({
+      platform: 'yahoo',
+      yahooStatCategories: [{ stat: { stat_id: 4, display_name: 'HR', position_type: 'B' } }],
+      yahooStatModifiers: { '4': 4 },
+    })
+    expect(r.source).toBe('default')
+    expect(r.weights).toEqual(defaultWeights('football'))
+    expect(r.weights).not.toHaveProperty('HR')
   })
 
   /* FOOTBALL defaults, not baseball. useLeagueScoring's fallback calls defaultWeights() with

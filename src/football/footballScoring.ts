@@ -1,9 +1,4 @@
-import {
-  defaultWeights,
-  weightsAreUsable,
-  normalizeEspnWeights,
-  normalizeYahooWeights,
-} from '@/myteam/pointsScoring'
+import { defaultWeights, weightsAreUsable } from '@/myteam/pointsScoring'
 
 export type FootballScoringSource = 'sleeper' | 'espn' | 'yahoo' | 'default'
 
@@ -43,6 +38,9 @@ export function sleeperFootballWeights(scoringSettings: unknown): Record<string,
  * `source` is returned rather than inferred because the fallback has to be visible. A default
  * weight map does not look like a failure: it produces a complete, plausible, confidently wrong
  * board, which is the one outcome worth being able to detect.
+ *
+ * Only Sleeper can actually be read today. ESPN and Yahoo report `source: 'default'`
+ * unconditionally — see the case below for why.
  */
 export function resolveFootballScoring(input: {
   platform?: string | null
@@ -58,14 +56,22 @@ export function resolveFootballScoring(input: {
       const w = sleeperFootballWeights(input.sleeperScoringSettings)
       return w && weightsAreUsable(w) ? { weights: w, source: 'sleeper' } : fallback
     }
-    case 'espn': {
-      const w = normalizeEspnWeights(input.espnScoringItems as any)
-      return weightsAreUsable(w) ? { weights: w, source: 'espn' } : fallback
-    }
-    case 'yahoo': {
-      const w = normalizeYahooWeights(input.yahooStatCategories as any, input.yahooStatModifiers as any)
-      return weightsAreUsable(w) ? { weights: w, source: 'yahoo' } : fallback
-    }
+    /*
+     * ESPN and Yahoo cannot be read yet, and saying so is the point.
+     *
+     * The shared normalisers exist — normalizeEspnWeights, normalizeYahooWeights — but both are
+     * keyed entirely to BASEBALL stats (ESPN_POINTS_STAT is 2B/3B/HR/RBI/IP/ER/QS; Yahoo's two
+     * name maps match). There is no football statId map in this repo. Run a football league
+     * through either and you get baseball keys, which calculatePoints then ignores in favour of
+     * the football defaults underneath — a full-PPR board wearing a label that says it came from
+     * your league.
+     *
+     * A wrong number that announces itself is a bug. A wrong number that claims to be yours is
+     * worse, so these report `default` until somebody writes the football map.
+     */
+    case 'espn':
+    case 'yahoo':
+      return fallback
     default:
       return fallback
   }
