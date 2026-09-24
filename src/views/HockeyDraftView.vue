@@ -227,6 +227,19 @@ const logoUrl = (abbr?: string) => (abbr ? nhlTeamLogo(abbr) : undefined)
 /* A missing image hides rather than leaving a broken icon in the row. */
 const hideImg = (e: Event) => { (e.target as HTMLImageElement).style.visibility = 'hidden' }
 
+/* Derived from what the reader already entered — see the note beside the slot inputs. */
+/* The live league's bench, from the rules actually in force rather than the form. */
+const benchSpots = computed(() => {
+  const r = rules.value
+  if (!r?.rosterSize) return 0
+  const starters = Object.values(r.slots ?? {}).reduce((n: number, v: any) => n + (Number(v) || 0), 0)
+  return Math.max(0, r.rosterSize - starters)
+})
+
+const manualStarters = computed(() =>
+  MANUAL_SLOTS.reduce((n, pos) => n + (Number(mSlots.value[pos]) || 0), 0))
+const manualBench = computed(() => (Number(mRosterSize.value) || 0) - manualStarters.value)
+
 const marketTag = (r: any) => {
   if (!r?.marketFlag) return ''
   const n = Math.abs(r.marketRounds ?? 0)
@@ -428,6 +441,19 @@ const POS_TONE: Record<string, string> = {
                 <input v-model.number="mSlots[pos]" type="number" min="0" max="12"
                        class="ml-1 w-12 rounded border border-dark-border bg-dark-bg px-1.5 py-0.5 font-mono text-[11px] text-dark-text focus:border-primary focus:outline-none" />
               </label>
+            </div>
+            <!--
+              THE BENCH IS DERIVED, NOT ASKED. It is the roster size less the lineup, and a
+              third box for it would be a number that can disagree with the two it is made of —
+              leaving the form to decide which of the reader's own answers to ignore. Shown
+              instead, so the entry can be checked at a glance: if this reads a number you do
+              not recognise, one of the fields above is wrong.
+            -->
+            <div class="mt-1.5 font-mono text-[10px]"
+                 :class="manualBench < 0 ? 'text-[#FF5C5C]' : 'text-dark-textMuted/70'">
+              {{ manualStarters }} starting &middot;
+              <template v-if="manualBench >= 0">{{ manualBench }} on the bench</template>
+              <template v-else>{{ -manualBench }} more than the roster holds</template>
             </div>
           </div>
 
@@ -705,9 +731,14 @@ const POS_TONE: Record<string, string> = {
               </span>
             </span>
           </div>
-          <div v-if="roster.bench.length" class="flex items-baseline gap-2 font-mono text-[11px]">
+          <!--
+            Shown with a capacity and shown when empty, unlike the starting rows above, because
+            "how many spare spots do I have left" is a question you ask BEFORE the bench has
+            anyone on it — it is what decides whether you can afford to take a flier.
+          -->
+          <div v-if="benchSpots > 0 || roster.bench.length" class="flex items-baseline gap-2 font-mono text-[11px]">
             <span class="w-10 shrink-0 text-dark-textMuted/70">bench</span>
-            <span class="w-9 shrink-0 text-dark-textMuted/50">{{ roster.bench.length }}</span>
+            <span class="w-9 shrink-0 text-dark-textMuted/50">{{ roster.bench.length }}/{{ Math.max(benchSpots, roster.bench.length) }}</span>
             <span class="min-w-0 flex-1">
               <span v-for="k in roster.bench" :key="k"
                     class="mr-1.5 rounded border border-dark-border px-1.5 py-0.5 text-[10px] text-dark-textMuted">{{ nameOf(k) }}</span>

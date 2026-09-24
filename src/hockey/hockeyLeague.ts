@@ -146,5 +146,21 @@ export function rulesProblem(rules: HockeyLeagueRules | null): string {
   }
 
   if (!Object.keys(rules.slots).length) return 'The league reported no starting lineup slots.'
+
+  /*
+   * A roster has to hold its own starting lineup.
+   *
+   * The failure without this is silent rather than loud: categoryLedger derives the bench as
+   * `rosterSize - named` and clamps it at zero, so thirteen starters on a roster of ten drafts
+   * as though there were no bench. Nothing looks wrong; it is simply a roster nobody can field.
+   *
+   * A roster size of zero is a different complaint — it means nobody reported one — and is not
+   * this check's to make. Exactly enough is legal: a league may run with no bench at all.
+   */
+  const starters = Object.values(rules.slots).reduce((n, v) => n + (Number(v) || 0), 0)
+  if (rules.rosterSize > 0 && starters > rules.rosterSize) {
+    return `This lineup needs ${starters} starting spots but the roster only holds `
+      + `${rules.rosterSize}. Check the roster size, or the slot counts.`
+  }
   return ''
 }

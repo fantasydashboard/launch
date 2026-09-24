@@ -179,3 +179,38 @@ describe('a category league is asked a different question', () => {
     expect(isCategoryLeague('ROTO')).toBe(true)
   })
 })
+
+/*
+ * A roster has to hold its own starting lineup.
+ *
+ * Nothing checked it, and the failure was silent rather than loud: categoryLedger derives the
+ * bench as `rosterSize - named` and clamps it at zero, so a league entered with thirteen
+ * starters and a roster of ten quietly drafted as though the bench did not exist. The numbers
+ * never looked wrong, they were just built on a roster nobody could field.
+ */
+describe('a roster that cannot hold its own lineup', () => {
+  const base = {
+    leagueId: 'x', season: 2027, name: 'n', teams: 12, scoringType: 'H2H_CATEGORY',
+    weights: {}, categories: [{ key: 'G', statId: 13, reverse: false }],
+    slots: { C: 2, LW: 2, RW: 2, D: 4, G: 2, UTIL: 1 },   // 13 starters
+    unnamedScoredStatIds: [],
+  }
+
+  it('refuses a roster smaller than the lineup it must start', () => {
+    expect(rulesProblem({ ...base, rosterSize: 10 })).toMatch(/13 starting|roster/i)
+  })
+
+  it('accepts a roster with room to spare', () => {
+    expect(rulesProblem({ ...base, rosterSize: 20 })).toBe('')
+  })
+
+  /* Exactly enough is legal — a league can run with no bench at all. */
+  it('accepts a roster that is all starters', () => {
+    expect(rulesProblem({ ...base, rosterSize: 13 })).toBe('')
+  })
+
+  /* Unknown roster size is a different complaint and not this one's to make. */
+  it('says nothing about a roster size that was never reported', () => {
+    expect(rulesProblem({ ...base, rosterSize: 0 })).toBe('')
+  })
+})
