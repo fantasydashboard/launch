@@ -28,7 +28,7 @@ import { teamLogoFor } from '@/players/teamLogo'
 import type { AvailablePlayer } from '@/players/types'
 
 const leagueStore = useLeagueStore()
-const { hasFullAccess, accessKnown, accessCheckFailed } = useFeatureAccess()
+const { hasFullAccess, accessKnown, accessCheckFailed, isAdmin } = useFeatureAccess()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
 const teamLogo = (abbr?: string) => teamLogoFor(leagueStore.activeSport, abbr)
 
@@ -589,8 +589,8 @@ function fairness(myGain: number, theirGain: number): string {
         an order nothing on the page reads.
       -->
       <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
-        <RankingPicker kind="ros" />
-        <RankingPicker v-if="dynasty.ready.value" kind="dynasty" />
+        <RankingPicker v-if="isAdmin" kind="ros" />
+        <RankingPicker v-if="isAdmin && dynasty.ready.value" kind="dynasty" />
       </div>
     </header>
 

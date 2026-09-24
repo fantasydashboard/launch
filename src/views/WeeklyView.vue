@@ -12,7 +12,7 @@ import RankingPicker from '@/components/RankingPicker.vue'
 import SeasonPassGate from '@/components/SeasonPassGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
-const { hasFullAccess, accessKnown, accessCheckFailed } = useFeatureAccess()
+const { hasFullAccess, accessKnown, accessCheckFailed, isAdmin } = useFeatureAccess()
 const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes, weekSource, spectator, sourceTiers } = useWeeklyBoard()
 
 /*
@@ -733,7 +733,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             or offering a way back to ours.
           -->
           <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <RankingPicker kind="week" />
+            <RankingPicker v-if="isAdmin" kind="week" />
             <!-- weekSource was destructured in this file and never rendered, so a board being
                  driven by an uploaded list looked identical to one on our own numbers. -->
             <span v-if="weekSource !== 'UFD'" class="font-mono text-[10px] text-dark-textMuted/70">

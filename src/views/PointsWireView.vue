@@ -26,7 +26,7 @@ import { publicWeeksLeft } from '@/composables/usePublicRankings'
 const leagueStore = useLeagueStore()
 /* The waiver call is one of the four the Season Pass sells, and it was fully readable by
    anyone who had not signed in — the Draft Room was honouring the wall on its own. */
-const { hasFullAccess, accessKnown, accessCheckFailed } = useFeatureAccess()
+const { hasFullAccess, accessKnown, accessCheckFailed, isAdmin } = useFeatureAccess()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
 const isHockey = computed(() => leagueStore.activeSport === 'hockey')
 const words = computed(() => wordsFor(leagueStore.activeSport))
@@ -632,7 +632,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                           :title="opt.hint"
                           @click="wireSort = opt.key">{{ opt.label }}</button>
                 </span>
-                <RankingPicker :kind="wireSort === 'dynasty' ? 'dynasty' : 'ros'" />
+                <RankingPicker v-if="isAdmin" :kind="wireSort === 'dynasty' ? 'dynasty' : 'ros'" />
               </span>
             </div>
             <p class="mb-3 font-mono text-[10px] text-dark-textMuted">

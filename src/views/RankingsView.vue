@@ -62,7 +62,7 @@
       </div>
 
       <div v-else class="mt-6">
-        <div class="mb-3 flex flex-wrap gap-1.5">
+        <div class="mb-3 flex flex-wrap items-center gap-1.5">
           <button
             v-for="pos in positions"
             :key="pos"
@@ -70,6 +70,17 @@
             :class="active === pos ? 'bg-primary font-bold text-dark-bg' : 'bg-dark-card text-dark-textMuted hover:text-dark-text'"
             @click="active = pos"
           >{{ pos }}</button>
+          <!--
+            Admin only, and the whole board is what it re-seats — not one card.
+
+            Choosing whose ranking drives the page is a tool for measuring our model against
+            somebody else's, which is our job rather than a reader's. A board that silently
+            reorders because of a preference somebody set once and forgot is worse than one
+            that never moved, so nobody but us gets the lever.
+          -->
+          <span v-if="isAdmin" class="ml-auto font-mono text-[10px]">
+            <RankingPicker kind="ros" />
+          </span>
         </div>
 
         <div class="rounded-xl border border-dark-border bg-dark-card p-4">
@@ -217,6 +228,8 @@ import { RouterLink } from 'vue-router'
 import { useRankings } from '@/composables/useRankings'
 import { scoringLabel } from '@/composables/useFootballScoring'
 import type { BoardRow } from '@/football/footballWire'
+import RankingPicker from '@/components/RankingPicker.vue'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 /*
  * `access.scopedToLeague` is the one fact "does this reader have a football league" resolves
@@ -229,6 +242,11 @@ import type { BoardRow } from '@/football/footballWire'
  * branch in this template can reach the locked copy or the greyed pill before it resolves —
  * a second gate on `accessKnown` here would be redundant by construction.
  */
+/* The ranking-list lever is ours, not the reader's — see the picker's comment in the
+   template. isAdmin is the only thing this view takes from useFeatureAccess; the paid
+   columns are gated by `access`, which useRankings already resolves. */
+const { isAdmin } = useFeatureAccess()
+
 const { board, positions, loading, ready, access, scoringSource,
         difficulty, ppgByKey, addCost, setPosition } = useRankings()
 
