@@ -4,18 +4,20 @@ import { getNhlSchedule } from './nhlSchedule'
 /**
  * The NHL's own bulk stat feeds, fetched whole rather than one request per player.
  *
- * Three GETs against `api.nhle.com/stats/rest/en` plus the schedule this codebase already
- * trusts for hockey (`nhlSchedule.ts`) are everything `nhlRates.ts` needs. No auth, no key,
- * no proxy — the same class of source as Sleeper's draft feed.
+ * Read through `/api/nhl-stats`, NOT directly. The NHL sends no `access-control-allow-origin`
+ * — it sends `vary: Origin`, so it knows about the header and declines — which means a browser
+ * blocks every direct response. Sleeper, which this codebase does read directly, returns
+ * `access-control-allow-origin: *`; they are not the same class of source, and an earlier
+ * version of this comment said they were.
  *
- * PAGING IS THE LOAD-BEARING DETAIL. Each stats endpoint reports `total` (~940 for skaters,
- * ~98 for goalies) alongside only `limit` rows per request. A version that fetches page one
- * and stops produces a complete-looking board — it renders, it sorts, nothing throws — while
- * quietly rating a fifth of the league. That is the bug this file exists to not ship.
+ * PAGING IS THE LOAD-BEARING DETAIL, and it now lives in the relay. Each stats endpoint
+ * reports `total` (~940 for skaters, ~98 for goalies) alongside only `limit` rows per request.
+ * A version that fetches page one and stops produces a complete-looking board — it renders, it
+ * sorts, nothing throws — while quietly rating a fifth of the league. Doing it once server-side
+ * means no caller can reintroduce that.
  */
 
-const STATS_BASE = 'https://api.nhle.com/stats/rest/en'
-const PAGE_LIMIT = 100
+const RELAY = '/api/nhl-stats'
 
 /** `goalie/summary`'s own shape — not defined by Task 1, since rateSkaters never consumes it. */
 export interface GoalieRow {
@@ -44,36 +46,16 @@ export interface GoalieRow {
 const statsCache = new Map<string, unknown[]>()
 const teamsCache = new Map<string, Set<string>>()
 
-/**
- * Page a `stats/rest` endpoint to completion.
- *
- * `cayenneExp` is the query language this API actually uses for filtering; it must be
- * URL-encoded as a whole because it contains its own `=` and spaces (`seasonId=X and
- * gameTypeId=2`) that would otherwise be read as query-string syntax rather than the filter's
- * literal text.
- */
+/** One report, whole. The relay pages it; this just asks for it and caches the answer. */
 async function fetchAllRows<T>(path: string, seasonId: string): Promise<T[]> {
   const cacheKey = `${path}:${seasonId}`
   const cached = statsCache.get(cacheKey)
   if (cached) return cached as T[]
 
-  const cayenneExp = encodeURIComponent(`seasonId=${seasonId} and gameTypeId=2`)
-  const rows: T[] = []
-  let start = 0
-  let total = Infinity
-
-  while (start < total) {
-    const url = `${STATS_BASE}/${path}?limit=${PAGE_LIMIT}&start=${start}&cayenneExp=${cayenneExp}`
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`${path} responded ${res.status}`)
-    const json = await res.json()
-    const data: T[] = Array.isArray(json?.data) ? json.data : []
-    rows.push(...data)
-    total = typeof json?.total === 'number' ? json.total : rows.length
-    // An empty page before `start` reaches `total` would otherwise spin forever.
-    if (data.length === 0) break
-    start += PAGE_LIMIT
-  }
+  const res = await fetch(`${RELAY}?report=${encodeURIComponent(path)}&seasonId=${encodeURIComponent(seasonId)}`)
+  if (!res.ok) throw new Error(`${path} responded ${res.status}`)
+  const json = await res.json()
+  const rows: T[] = Array.isArray(json?.data) ? json.data : []
 
   statsCache.set(cacheKey, rows)
   return rows
