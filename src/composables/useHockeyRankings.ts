@@ -82,12 +82,31 @@ export function useHockeyRankings(): {
        * when to "switch over". A rule like that is the kind that is wrong for a week every
        * year and nobody notices.
        */
-      const [current, ice, prior] = await Promise.all([
+      const [current, currentIce, prior, priorIce] = await Promise.all([
         fetchSkaterSummary(seasonId(year)),
         fetchSkaterIce(seasonId(year)),
         fetchSkaterSummary(seasonId(year - 1)),
+        fetchSkaterIce(seasonId(year - 1)),
       ])
-      rates.value = rateSkaters(current, ice, prior)
+
+      /*
+       * Before a puck is dropped the current season returns NOTHING — not thin data, an empty
+       * list — and rateSkaters has no roster to rate, so the board renders its "feed is not
+       * answering" state on a feed that is answering perfectly.
+       *
+       * The roster for opening night is last season's, with every counting stat zeroed. That
+       * is not a fallback so much as the truth: nobody has played, so every player's record
+       * this year IS zero games, and the prior is what the whole rate model exists to lean on
+       * until that changes. Ice time comes from last season for the same reason — power-play
+       * minutes are the most stable thing about a player across a summer, and an opening-night
+       * board with no PP signal would throw away its best column.
+       */
+      const started = current.length > 0
+      const roster = started ? current : prior.map((p) => ({
+        ...p, gamesPlayed: 0, goals: 0, assists: 0, points: 0,
+        plusMinus: 0, penaltyMinutes: 0, ppPoints: 0, shots: 0,
+      }))
+      rates.value = rateSkaters(roster, started ? currentIce : priorIce, prior)
     } catch (e) {
       console.error('[useHockeyRankings] load failed', e)
       rates.value = []
