@@ -160,7 +160,7 @@ const router = createRouter({
     {
       path: '/rankings',
       name: 'rankings',
-      component: () => import('@/views/RankingsView.vue'),
+      component: () => import('@/views/RankingsWrapper.vue'),
       meta: { public: true, publicLayout: 'marketing' }
     },
     {
