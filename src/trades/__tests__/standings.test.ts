@@ -195,3 +195,30 @@ describe('addDropDelta', () => {
     expect(fixed.fixes).not.toContain('W')
   })
 })
+
+/*
+ * A category that declares no side belongs to everybody.
+ *
+ * The side filter is baseball's: a hitter cannot fix Wins, so a cat carries 'hit' or 'pit'
+ * and an off-side one is dropped from fixes and holds. Hockey's categories carry no side at
+ * all — goals and shots are skater columns by nature, not by declaration — so the filter,
+ * asked whether a skater's side matched `undefined`, said no to every column and emptied
+ * every row's fixes while leaving deltaEcw intact. A move that improves your standings while
+ * claiming to improve no category reads as a bug in the number rather than in the label.
+ */
+describe('addDropDelta with sideless categories', () => {
+  it('keeps a category that declares no side', () => {
+    const cats: CatSpec[] = [{ statId: 'G', lowerIsBetter: false, isRatio: false } as CatSpec]
+    const totals = aggregateTeamCatTotals(
+      [
+        { teamId: 'ME', players: [{ playerKey: 'a', stats: { G: 5 } }] },
+        { teamId: 'T2', players: [{ playerKey: 'b', stats: { G: 20 } }] },
+        { teamId: 'T3', players: [{ playerKey: 'c', stats: { G: 30 } }] },
+      ],
+      cats,
+    )
+    const out = addDropDelta(totals, cats, 'ME', { G: 40 }, { G: 0 }, { addSide: 'skater', dropSide: 'skater' })
+    expect(out.deltaEcw).toBeGreaterThan(0)
+    expect(out.fixes).toContain('G')
+  })
+})

@@ -124,3 +124,38 @@ describe('rankUpgrades', () => {
     expect(out[0].fixes).toContain('K')
   })
 })
+
+/*
+ * The engine is a CATEGORY engine, not a baseball one. `side` was typed to baseball's two
+ * values, which is what kept a hockey league out — its halves are skaters and goalies, and an
+ * engine that offered a winger in place of a goalie would be proposing a roster nobody can
+ * field. The rule is the same either way: an add only ever replaces a drop from its own half.
+ */
+describe('roster halves are not baseball-specific', () => {
+  it('pairs a skater with a skater rather than with the weaker goalie', () => {
+    const hockeyCats: CatSpec[] = [{ statId: 'G', lowerIsBetter: false, side: 'hit', isRatio: false }]
+    const totals = aggregateTeamCatTotals(
+      [
+        { teamId: 'ME', players: [{ playerKey: 'myGoalie', stats: { G: 0 } }, { playerKey: 'myWinger', stats: { G: 5 } }] },
+        { teamId: 'T2', players: [{ playerKey: 'b', stats: { G: 25 } }] },
+        { teamId: 'T3', players: [{ playerKey: 'c', stats: { G: 30 } }] },
+      ],
+      hockeyCats,
+    )
+    const out = rankUpgrades({
+      freeAgents: [
+        { playerKey: 'faWinger', name: 'A Winger', position: 'RW', team: 'BOS', effStats: { G: 40 }, side: 'skater' },
+      ],
+      leagueTotals: totals,
+      myTeamId: 'ME',
+      cats: hockeyCats,
+      /* The goalie is the weaker drop by every measure, and taking him would still be wrong. */
+      dropOptions: [
+        { playerKey: 'myGoalie', side: 'goalie', effStats: { G: 0 } },
+        { playerKey: 'myWinger', side: 'skater', effStats: { G: 5 } },
+      ],
+    })
+    expect(out[0].player.name).toBe('A Winger')
+    expect(out[0].dropKey).toBe('myWinger')
+  })
+})

@@ -7,14 +7,24 @@ export interface WireFreeAgent {
   position: string
   team: string
   headshot?: string
-  side: 'hit' | 'pit'
+  /**
+   * Which half of the roster a player occupies, so an add is only ever paired with a drop it
+   * could actually replace.
+   *
+   * Any string, compared only for equality. It was `'hit' | 'pit'`, which made this engine
+   * baseball's rather than the category engine it actually is — hockey's halves are skaters
+   * and goalies, and a board that offered to drop a goalie for a winger would be proposing a
+   * roster nobody can field.
+   */
+  side: string
   percentOwned?: number // current roster ownership %
   percentChange?: number // week-over-week ownership delta (rising = trending)
   effStats: Record<string, number> // effective ROS stats (incl. ratio volume stats)
 }
 export interface WireDropOption {
   playerKey: string
-  side: 'hit' | 'pit'
+  /** Same meaning as WireFreeAgent.side: an add only replaces a drop from its own half. */
+  side: string
   effStats: Record<string, number>
 }
 export interface WireUpgrade {

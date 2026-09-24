@@ -232,6 +232,12 @@ export interface AddDropDelta {
  * (the added/dropped player is null, or the caller doesn't know), every cat stays eligible
  * (legacy behavior). Passing a side is a UI-facing filter only: it does NOT change `deltaEcw`,
  * since a raw off-side stat contributes nothing to `applySwapToTeam` regardless.
+ *
+ * A side is any string, not baseball's two: hockey's halves are skaters and goalies. And a
+ * CATEGORY that declares no side belongs to everybody — hockey's columns are skater columns
+ * by nature rather than by declaration, and filtering them against a side they never claimed
+ * emptied every row's fixes while leaving deltaEcw intact, which reads as a bug in the number
+ * rather than in the label.
  */
 export function addDropDelta(
   totals: TeamCategoryTotals[],
@@ -239,7 +245,7 @@ export function addDropDelta(
   myTeamId: string,
   addStats: Record<string, number>,
   dropStats: Record<string, number> | null,
-  sides?: { addSide?: 'hit' | 'pit' | null; dropSide?: 'hit' | 'pit' | null },
+  sides?: { addSide?: string | null; dropSide?: string | null },
 ): AddDropDelta {
   const myTeam = totals.find((t) => t.teamId === myTeamId)
   if (!myTeam) return { deltaEcw: 0, ecwBefore: 0, ecwAfter: 0, fixes: [], holds: [] }
@@ -255,13 +261,13 @@ export function addDropDelta(
   // average ranks for ties (a 2-way tie for 1st is 1.5), which a strict `<= half`
   // would wrongly exclude when a tie group straddles the half line.
   const half = Math.ceil(totals.length / 2)
-  const eligibleSides = new Set<'hit' | 'pit'>()
+  const eligibleSides = new Set<string>()
   if (sides?.addSide) eligibleSides.add(sides.addSide)
   if (sides?.dropSide) eligibleSides.add(sides.dropSide)
   const fixes: string[] = []
   const holds: string[] = []
   for (const c of cats) {
-    if (eligibleSides.size > 0 && !eligibleSides.has(c.side)) continue
+    if (eligibleSides.size > 0 && c.side && !eligibleSides.has(c.side)) continue
     const rb = rankBefore.get(c.statId)!
     const ra = rankInCategory(after, c).get(myTeamId) ?? after.length
     if (ra < rb) fixes.push(c.statId)
