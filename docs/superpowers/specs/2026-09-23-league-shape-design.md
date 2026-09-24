@@ -52,10 +52,31 @@ One resolver, `leagueShape(league)` → `{ cadence: 'daily' | 'weekly', scoring:
 'categories' | 'roto' }`, read from the platform's settings and overridable by hand. Every page
 branches on THAT, never on sport.
 
-Detection is the unknown. ESPN carries a lineup-lock type in roster settings; Yahoo has an edit
-key and a weekly deadline; Sleeper's hockey leagues are new to us. **Nothing in this codebase
-reads any of them today**, so all three need probing against a real league before the resolver
-can be trusted — and until it is, the hand override is the product, not a fallback.
+### Detection: the field is found, the second value is not
+
+Probed 2026-09-23 against ESPN's public league defaults for all four sports.
+
+`settings.rosterSettings.rosterLocktimeType` is the discriminator:
+
+| Sport (league default) | value |
+|---|---|
+| hockey, basketball, baseball | `FIRSTGAME_SCORINGPERIOD` |
+| football | `INDIVIDUAL_GAME` |
+
+A roster that locks at the first game of each scoring period is a DAILY league — the period is a
+day, and once tonight starts you are committed. Football reads `INDIVIDUAL_GAME` because each
+player locks at his own kickoff and the period is already the week.
+
+**What this probe did not establish**: what a genuinely weekly-lineup hockey league returns.
+These are league DEFAULTS, and the default for those three sports is daily, so only one of the
+two values has been observed. The resolver cannot be written against a single sighting — it
+would be a rule inferred from the case it will get right by accident.
+
+So: one real weekly-lineup league on ESPN must be read before this is trusted. Yahoo and Sleeper
+are entirely unprobed. **Nothing in this codebase reads any of these fields today.**
+
+Until all of that lands, the hand override is the product and not a fallback, and
+`leagueShape.source` says which answer the page is using.
 
 This is the same lesson as league scoring earlier today: a shape resolver that guesses wrong
 produces a page that is confidently, invisibly about the wrong game. So `leagueShape` returns
