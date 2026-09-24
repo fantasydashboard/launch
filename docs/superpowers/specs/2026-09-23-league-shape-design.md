@@ -163,20 +163,32 @@ This product already learned that lesson once. `rosBlend` exists because Sleeper
 projection does not converge — the same number in week fourteen as in week one — so a board
 built on it alone cannot learn. On a one-night horizon that failure is far worse.
 
-So the feed is not a projection service. It is four layers:
+So the feed is not a projection service. It is the NHL's own data, in three bulk requests —
+probed and verified 2026-09-23, all free, no auth, no key:
 
-| Layer | Source | Status |
+| Source | Rows | Carries |
 |---|---|---|
-| Who plays tonight | NHL official API (`api-web.nhle.com/v1/schedule/<date>`) | Verified: free, no auth |
-| Production rate | NHL API player landing + MoneyPuck season CSV | Verified: 4,702 skaters, 154 columns |
-| Opportunity — ice time, PP time | MoneyPuck | Verified in the same CSV |
-| Prior for no-sample players | ESPN `fhl` leaguedefaults | Verified; used ONLY where we have nothing |
+| `api-web.nhle.com/v1/schedule/<date>` | 7-day week, ~10 games/day | who plays tonight, start times |
+| `api.nhle.com/stats/rest/en/skater/summary` | 940 skaters | goals, assists, points, ppGoals, shots, PIM, games |
+| `api.nhle.com/stats/rest/en/skater/timeonice` | 940 skaters | **ppTimeOnIcePerGame**, evTOI/game, shifts/game |
+| `api.nhle.com/stats/rest/en/goalie/summary` | 98 goalies | **gamesStarted**, savePct, GAA, wins, saves |
 
-ESPN survives as the fallback for a rookie or a player returning from injury, where there is no
-recent sample to rate. Everywhere else it is outranked by what the player has actually done.
+Three requests cover an entire league, rather than the one-per-player that
+`/v1/player/<id>/landing` would have meant.
 
-This also removes the single-point-of-failure the earlier version introduced: the NHL's own API
-is the authority for who is playing, and no fantasy platform sits between us and it.
+**MoneyPuck is not needed, and the licensing question it raised goes with it.** It has richer
+data — expected goals, 154 columns — but nothing in the model above requires it, and depending
+on a third party inside a paid product for data the league itself publishes would be taking on
+a risk for no gain.
+
+**ESPN is not needed either**, except as a prior for a player with no games yet. Its projections
+lost to the league's own box scores the moment those existed.
+
+Ice time is the design's centre of gravity. `ppTimeOnIcePerGame` in particular is the strongest
+available predictor of fantasy production, because power-play minutes are where points are
+scored and because coaches change them slowly and visibly — a player promoted to PP1 is a buy
+before his points catch up, which is exactly the edge a waiver page should surface and no
+preseason projection can.
 
 ### The part no feed solves: confirmed goalie starters
 
@@ -189,17 +201,18 @@ This is named here because a daily hockey product that silently ignores it is no
 and because no amount of projection quality substitutes for it. It should be scoped as its own
 problem rather than assumed away inside piece 2.
 
-### Licensing, unverified
+### Goalie starts, partially answered
 
-MoneyPuck's data is free to download. Whether it is free to use inside a paid product is a
-different question and has NOT been checked. Do that before building on it; the NHL API and
-ESPN paths do not depend on the answer.
+`goalie/summary` carries `gamesStarted`, which is not who starts tonight but IS who has been
+carrying the crease. A goalie with 8 starts in 9 team games is a workhorse and a safe hold; a
+50/50 tandem is the case where tonight's confirmation actually decides the night. So the feed
+narrows the problem to the leagues and goalies where it matters, without solving it.
 
 ## Open questions
 
 1. Does any platform expose lineup cadence readably? The owner's position is that it should.
    Needs a probe against live leagues on all three before the resolver can trust it.
-2. Is MoneyPuck licensed for use in a paid product?
+2. RESOLVED — MoneyPuck is not needed; the NHL's own bulk endpoints cover the model.
 3. "Categories" is three different games — H2H each category, H2H most categories, and roto.
    Which does the first build target?
 4. Goalie starts: scrape Daily Faceoff, ask the user, or ship without and say so?
