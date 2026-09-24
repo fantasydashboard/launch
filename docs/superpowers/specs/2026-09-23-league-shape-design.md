@@ -21,10 +21,15 @@ Two axes, not one:
 
 |  | **Points** | **Categories (H2H)** | **Roto** |
 |---|---|---|---|
-| **Weekly lineup** | football today | hockey/basketball weekly leagues | — |
-| **Daily lineup** | daily points leagues | hockey/basketball/baseball daily | season-long, no opponent |
+| **Weekly lineup** | football · NHL/NBA/MLB | NHL/NBA/MLB | — |
+| **Daily lineup** | NHL/NBA/MLB | NHL/NBA/MLB | NHL/NBA/MLB — no opponent |
 
-Six live combinations. The product currently serves one of them well.
+**Football is points and weekly, always.** It is the only sport with a fixed shape, because the
+sport itself has one game a week. Hockey, basketball and baseball can each be any scoring type
+AND either cadence — all six cells, per league.
+
+So sport tells you almost nothing about shape. It tells you which player universe and schedule
+to load, and that is all. The product currently serves one cell well.
 
 ## What already exists
 
@@ -116,13 +121,38 @@ which is wrong for them but not broken. That is the honest cut.
 - **"Categories" is not one thing.** H2H-each-category, H2H-most-categories and roto score
   differently, and the matchup page differs for each. This design treats them as one; that will
   not survive contact.
-- **No projection feed for hockey is identified.** Football has Sleeper. The category maths
-  exists but what feeds it for NHL is not established in this document and needs answering
-  before piece 2.
+- **The projection feed is ESPN, and that is a single point of failure.** See below. Unlike
+  football, where Sleeper serves projections for everyone, here an ESPN outage takes the
+  numbers down for Yahoo and Sleeper leagues too.
+
+## The projection feed: ESPN, for every platform
+
+Probed 2026-09-23.
+
+**Sleeper is not an option.** It serves NHL players (3,577) and season state, but both
+projection endpoints return empty arrays. It is a player dictionary, not a projection source,
+for this sport.
+
+**ESPN is.** The public `leaguedefaults` endpoint on the `fhl` game returns projections without
+auth — Connor McDavid comes back with 87 stat entries, of which `statSourceId: 1` is the
+projection. It is the same request shape `src/services/espn.ts` already makes for rosters, so
+there is a client for it.
+
+The consequence worth stating: **ESPN becomes the projection source for every NHL league,
+including Yahoo and Sleeper ones.** That is already true in spirit for football, where Sleeper
+serves everybody — but it means a hockey manager on Yahoo depends on two platforms, and an ESPN
+change breaks the numbers for all of them. Same shape as the football dependency, wider blast
+radius.
+
+Per-period entries exist in the payload, which is what a daily league needs. Whether those
+periods are days and how they are keyed was NOT established by this probe and must be confirmed
+before piece 2 — a projection accidentally read as season-long when it is nightly would produce
+a confidently wrong board, which is the failure this product has now shipped twice.
 
 ## Open questions
 
-1. Which platform is hockey on for the first real test — Yahoo, ESPN, or Sleeper?
-2. Does any platform expose lineup cadence readably? Needs a probe against a live league.
-3. What feeds NHL projections?
-4. Is the first hockey league daily or weekly? It decides whether piece 2 or piece 3 comes first.
+1. Does any platform expose lineup cadence readably? Needs a probe against live leagues on all
+   three. Until answered, the hand override IS the feature.
+2. Are ESPN's per-period hockey projections daily, and how are periods keyed?
+3. "Categories" is three different games — H2H each category, H2H most categories, and roto.
+   Which does the first build target?
