@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { showsDraftTab } from '../navTabs'
+import { showsDraftTab, showsHockeyBoardTab } from '../navTabs'
 
 /*
  * The nav was sport- and platform-aware but not time-aware, so Draft Room sat second in the
@@ -46,5 +46,30 @@ describe('showsDraftTab', () => {
     expect(showsDraftTab({ ...sleeper, leagueStatus: null })).toBe(true)
     expect(showsDraftTab({ ...sleeper, leagueStatus: '' })).toBe(true)
     expect(showsDraftTab(sleeper)).toBe(true)
+  })
+})
+
+describe('showsHockeyBoardTab', () => {
+  const hockey = { sport: 'hockey', platform: 'espn' }
+
+  it('shows the board before the games start', () => {
+    expect(showsHockeyBoardTab({ ...hockey, seasonStarted: false })).toBe(true)
+  })
+
+  it('takes it down once there is a season to play', () => {
+    expect(showsHockeyBoardTab({ ...hockey, seasonStarted: true })).toBe(false)
+  })
+
+  /* Unknown shows it, for the same reason the Draft Room does: a manager mid-draft with no
+     way onto the board is a worse failure than a tab nobody needed. */
+  it('shows it while the answer is still unknown', () => {
+    expect(showsHockeyBoardTab(hockey)).toBe(true)
+  })
+
+  /* The board reads an ESPN league's own settings and draft feed, so it works nowhere else. */
+  it('never shows for another sport or platform', () => {
+    expect(showsHockeyBoardTab({ sport: 'football', platform: 'espn' })).toBe(false)
+    expect(showsHockeyBoardTab({ sport: 'hockey', platform: 'yahoo' })).toBe(false)
+    expect(showsHockeyBoardTab({ sport: 'hockey', platform: 'sleeper' })).toBe(false)
   })
 })

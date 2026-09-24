@@ -25,3 +25,27 @@ export function showsDraftTab(input: {
   if (!status) return true
   return DRAFT_LIVE.has(status)
 }
+
+/**
+ * Whether hockey's Draft Board belongs in the tab bar.
+ *
+ * Same question as the Draft Room above, different answer to "when". That one reads Sleeper's
+ * league status; ESPN publishes nothing equivalent, so this asks the sport instead: have the
+ * games started? A board that prices a pool you draft against by hand has no readers once
+ * there is a season to play, and it was sitting second in the bar in February.
+ *
+ * `seasonStarted` comes from the NHL feed the hockey pages already load — the current season
+ * either has box scores in it or it does not. Unknown reads as "not started", so the tab
+ * shows: somebody mid-draft with no way onto the board is a worse failure than a tab nobody
+ * needed in March, and the answer arrives within a second of the page loading.
+ *
+ * The route stays live either way, the same as every other tab this file takes down.
+ */
+export function showsHockeyBoardTab(input: {
+  sport?: string | null
+  platform?: string | null
+  seasonStarted?: boolean
+}): boolean {
+  if (input.sport !== 'hockey' || input.platform !== 'espn') return false
+  return !input.seasonStarted
+}

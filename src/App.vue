@@ -1224,7 +1224,7 @@ import DevModePanel from '@/components/DevModePanel.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import OnboardingTour from '@/components/OnboardingTour.vue'
 import { shouldWelcome } from '@/lib/welcomeCard'
-import { showsDraftTab } from '@/lib/navTabs'
+import { showsDraftTab, showsHockeyBoardTab } from '@/lib/navTabs'
 import DailyUpgradeNudge from '@/components/DailyUpgradeNudge.vue'
 
 const router = useRouter()
@@ -1361,6 +1361,23 @@ const isRotoLeague = computed(() => {
   return false
 })
 
+/*
+ * Have the NHL's games started? Only asked when somebody is looking at a hockey league.
+ *
+ * `loadNhlFeed` is the same cached loader the hockey pages use, so for a hockey reader this
+ * costs nothing — the page was going to fetch it anyway and the second caller waits on the
+ * first. For everyone else it is never called, which is why this is a watcher and not a
+ * composable: mounting one here would have made every football user fetch the NHL.
+ */
+const nhlSeasonStarted = ref(false)
+watch(() => leagueStore.activeSport, async (sport) => {
+  if (sport !== 'hockey') return
+  const now = new Date()
+  const season = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear()
+  const { loadNhlFeed } = await import('@/composables/useNhlFeed')
+  nhlSeasonStarted.value = (await loadNhlFeed(season)).started
+}, { immediate: true })
+
 const tabs = computed(() => [
   // "Today" is a daily-optimizer built for baseball's game-by-game slate; football is weekly,
   // so football gets the weekly "This Week" start/sit tab in that slot instead.
@@ -1383,7 +1400,11 @@ const tabs = computed(() => [
   /* Hockey's board is a separate tab rather than the same one, because it is a different
      thing: the Sleeper room follows a live draft, and this one prices a pool you draft
      against by hand. Calling both "Draft Room" would promise a sync that does not exist. */
-  ...(leagueStore.activeSport === 'hockey' && leagueStore.activePlatform === 'espn'
+  ...(showsHockeyBoardTab({
+    sport: leagueStore.activeSport,
+    platform: leagueStore.activePlatform,
+    seasonStarted: nhlSeasonStarted.value,
+  })
     ? [{ name: 'Draft Board', path: '/hockey/draft' }]
     : []),
   /* My Team is retired for football. Of its five blocks, four already existed elsewhere in
