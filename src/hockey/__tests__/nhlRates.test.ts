@@ -98,4 +98,56 @@ describe('rateSkaters', () => {
   it('exposes the shrink point so a surface can explain itself', () => {
     expect(SHRINK_GAMES).toBeGreaterThan(0)
   })
+
+  /*
+   * THE PRIOR THAT MATTERS: last season's own rate, not the league's.
+   *
+   * Shrinking toward a positional baseline is right when we know nothing about a player and
+   * badly wrong when we know a great deal. On opening night nobody has a current-season
+   * sample, so a baseline-only model rates Connor McDavid as an average forward — which is the
+   * single worst week of the year to be saying that, because it is the week a new user decides
+   * whether the board is worth reading.
+   *
+   * Last season's rate is a far better guess about a player than the population mean, and it
+   * is free: the same endpoint, one season back.
+   */
+  it('rates a player with no games from his own prior season, not the league average', () => {
+    const prior = [skater({ playerId: 1, gamesPlayed: 80, goals: 60, assists: 60, points: 120 })]
+    const [r] = rateSkaters([skater({ playerId: 1, gamesPlayed: 0, goals: 0, assists: 0, points: 0 })], [], prior)
+    // His own prior is 0.75 goals a game; the forward baseline is nearer 0.2.
+    expect(r.perGame.goals).toBeGreaterThan(0.6)
+  })
+
+  it('still falls back to the baseline for a player with no prior at all', () => {
+    const prior = [skater({ playerId: 99, gamesPlayed: 80, goals: 60 })]
+    const [r] = rateSkaters([skater({ playerId: 1, gamesPlayed: 0, goals: 0 })], [], prior)
+    // A rookie. Nothing known, so the positional baseline is the honest answer.
+    expect(r.perGame.goals).toBeLessThan(0.4)
+    expect(r.confidence).toBe(0)
+  })
+
+  /* A thin prior is not a strong one. Two games last season says nearly as little as none, so
+     the prior itself is shrunk toward the baseline before it is used as a target. */
+  it('does not trust a two-game prior the way it trusts a full season', () => {
+    const thin = [skater({ playerId: 1, gamesPlayed: 2, goals: 4, assists: 0, points: 4 })]
+    const thick = [skater({ playerId: 1, gamesPlayed: 80, goals: 160, assists: 0, points: 160 })]
+    const fromThin = rateSkaters([skater({ playerId: 1, gamesPlayed: 0, goals: 0 })], [], thin)[0]
+    const fromThick = rateSkaters([skater({ playerId: 1, gamesPlayed: 0, goals: 0 })], [], thick)[0]
+    expect(fromThick.perGame.goals).toBeGreaterThan(fromThin.perGame.goals)
+  })
+
+  /* Once this season has real games, they outweigh last season — the prior is a starting
+     point, not an anchor. */
+  it('lets the current season overtake the prior as games accumulate', () => {
+    const prior = [skater({ playerId: 1, gamesPlayed: 80, goals: 8, assists: 0, points: 8 })]
+    const early = rateSkaters([skater({ playerId: 1, gamesPlayed: 2, goals: 4 })], [], prior)[0]
+    const late = rateSkaters([skater({ playerId: 1, gamesPlayed: 60, goals: 60 })], [], prior)[0]
+    expect(late.perGame.goals).toBeGreaterThan(early.perGame.goals)
+  })
+
+  it('behaves exactly as before when no prior is supplied', () => {
+    const without = rateSkaters([skater({ gamesPlayed: 20, goals: 10 })])[0]
+    const withEmpty = rateSkaters([skater({ gamesPlayed: 20, goals: 10 })], [], [])[0]
+    expect(withEmpty.perGame.goals).toBeCloseTo(without.perGame.goals, 6)
+  })
 })

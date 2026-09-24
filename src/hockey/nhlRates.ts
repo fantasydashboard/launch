@@ -115,7 +115,43 @@ function leaveOneOut(sum: { totals: CatTotals; games: number }, row: SkaterRow):
   return rate
 }
 
-export function rateSkaters(skaters: SkaterRow[], ice: IceRow[] = []): SkaterRate[] {
+/**
+ * Each player's own prior-season rate, itself shrunk toward that season's baseline.
+ *
+ * Two stages, and the first is the one people skip. A player who appeared twice last season
+ * has a rate but not evidence, so his prior is pulled toward the population before it is used
+ * as anybody's target — otherwise a two-game fluke from last year becomes the anchor for a
+ * whole new season, which is the same mistake as believing a two-game sample this year, just
+ * laundered through a extra step.
+ */
+function priorRates(prior: SkaterRow[]): Map<number, CatTotals> {
+  const out = new Map<number, CatTotals>()
+  if (!prior.length) return out
+  const d = sumGroup(prior.filter((s) => isDefenceman(s.positionCode)))
+  const f = sumGroup(prior.filter((s) => !isDefenceman(s.positionCode)))
+  const all = sumGroup(prior)
+  for (const row of prior) {
+    const base =
+      leaveOneOut(isDefenceman(row.positionCode) ? d : f, row)
+      ?? leaveOneOut(all, row)
+      ?? DEFAULT_BASELINE[isDefenceman(row.positionCode) ? 'D' : 'F']
+    const gp = row.gamesPlayed
+    const rate = zeroTotals()
+    for (const cat of CATEGORIES) {
+      const own = gp > 0 ? row[cat] : 0
+      rate[cat] = (own + base[cat] * SHRINK_GAMES) / (gp + SHRINK_GAMES)
+    }
+    out.set(row.playerId, rate)
+  }
+  return out
+}
+
+/**
+ * @param prior last season's rows. Optional, and omitting it reproduces the old behaviour
+ *              exactly — but supplying it is the difference between rating McDavid as McDavid
+ *              and rating him as an average forward on opening night.
+ */
+export function rateSkaters(skaters: SkaterRow[], ice: IceRow[] = [], prior: SkaterRow[] = []): SkaterRate[] {
   if (skaters.length === 0) return []
 
   const iceByPlayer = new Map<number, IceRow>()
@@ -128,11 +164,22 @@ export function rateSkaters(skaters: SkaterRow[], ice: IceRow[] = []): SkaterRat
   const forwardSum = sumGroup(forwards)
   const allSum = sumGroup(skaters)
 
+  const priorByPlayer = priorRates(prior)
+
   return skaters.map((row) => {
     const ownGroupSum = isDefenceman(row.positionCode) ? defenceSum : forwardSum
-    // Own position group (minus self) -> whole league (minus self) -> hardcoded prior.
+    /*
+     * What this player regresses TOWARD, best first.
+     *
+     * His own prior season beats any population mean, because it is about him. The league
+     * baselines below it are for the players it cannot speak for — rookies, and anybody who
+     * did not appear last year. Without this the board rates every player as average on the
+     * one night of the season when nobody has a current sample, which is precisely when a
+     * reader forms their view of whether it is any good.
+     */
     const baseline =
-      leaveOneOut(ownGroupSum, row)
+      priorByPlayer.get(row.playerId)
+      ?? leaveOneOut(ownGroupSum, row)
       ?? leaveOneOut(allSum, row)
       ?? DEFAULT_BASELINE[isDefenceman(row.positionCode) ? 'D' : 'F']
 
