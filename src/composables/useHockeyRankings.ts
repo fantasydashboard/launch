@@ -1,5 +1,5 @@
 import { computed, ref, type ComputedRef } from 'vue'
-import { fetchSkaterSummary, fetchSkaterIce } from '@/services/nhlStats'
+import { fetchSkaterSummary, fetchSkaterIce, fetchGoalieSummary, type GoalieRow } from '@/services/nhlStats'
 import { rateSkaters, type SkaterRate } from '@/hockey/nhlRates'
 import { ratesToProjection } from '@/hockey/ratesToProjection'
 import { buildHockeyCategoryValue, type HockeyCategory } from '@/hockey/hockeyCategoryValue'
@@ -18,6 +18,24 @@ import { buildHockeyCategoryValue, type HockeyCategory } from '@/hockey/hockeyCa
  * Connor McDavid on the one night of the season when the most people are looking. A prior about
  * the player beats a mean about the population, and the league publishes it.
  */
+
+/**
+ * The columns a player actually wins, best first.
+ *
+ * The number that ranks a category board is a SUM, and a sum hides the thing the reader needs:
+ * two players at 5.0 are not the same player if one got there on goals and the other on
+ * penalty minutes. In football equal points really does mean interchangeable, because there is
+ * one currency. Here it does not, and a board that implied otherwise would be lying in the
+ * most expensive way — to somebody deciding which of two players fixes their team.
+ */
+function topCategories(perCat: Record<string, number> | undefined, n = 3): string[] {
+  if (!perCat) return []
+  return Object.entries(perCat)
+    .filter(([, z]) => z > 0.5)          // a column he is actually good at, not merely present in
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([k]) => k)
+}
 
 /** A season id the NHL understands: 2026 -> '20262027'. */
 function seasonId(startYear: number): string {
@@ -42,14 +60,47 @@ export const DEFAULT_CATEGORIES: HockeyCategory[] = [
   { key: 'SOG', statId: 29, reverse: false },
 ]
 
+/**
+ * Goalie categories, which are a different game from a skater's.
+ *
+ * A goalie has no shots on goal and a skater has no saves, so the two are standardised over
+ * separate pools and ranked as separate lists. Combining them would produce a z-total across
+ * categories nobody can hold in one hand — and the model already refuses to, which is why this
+ * exists rather than being bolted onto the skater set.
+ *
+ * GAA reverses: a lower goals-against average wins the column.
+ */
+export const GOALIE_CATEGORIES: HockeyCategory[] = [
+  { key: 'W', statId: 1, reverse: false },
+  { key: 'SV', statId: 6, reverse: false },
+  { key: 'SHO', statId: 7, reverse: false },
+  { key: 'GA', statId: 4, reverse: true },
+]
+
 /** A 12-team league rostering ~14 skaters apiece. The pool the z-scores are measured over. */
 const DRAFTABLE = 168
+/** Two goalies a team, so the pool that matters is far smaller than the skater one. */
+const DRAFTABLE_G = 24
+
+/**
+ * The league's own mugshot for a player.
+ *
+ * `teamAbbrevs` carries every team a player appeared for — "COL,CAR" after a trade — and the
+ * image lives under the one he is with now, which is the last of them.
+ */
+function headshot(playerId: number, teamAbbrevs: string, season: string): string {
+  const team = String(teamAbbrevs || '').split(',').pop()?.trim() || ''
+  return `https://assets.nhle.com/mugs/nhl/${season}/${team}/${playerId}.png`
+}
 
 export interface HockeyRankRow {
   playerKey: string
   name: string
   position: string
   team: string
+  headshot: string
+  /** The columns this player actually wins, best first — what a category board is FOR. */
+  wins: string[]
   /** Total z across the league's columns — what the board ranks on. */
   value: number
   /** Per-game points, for a reader who wants a number they recognise. */
@@ -63,12 +114,15 @@ export interface HockeyRankRow {
 
 export function useHockeyRankings(): {
   rows: ComputedRef<HockeyRankRow[]>
+  goalies: ComputedRef<HockeyRankRow[]>
   loading: ComputedRef<boolean>
   ready: ComputedRef<boolean>
   /** Categories the feed cannot fill for this league. Named, never silently dropped. */
   missing: ComputedRef<string[]>
 } {
   const rates = ref<SkaterRate[]>([])
+  const goalieRows = ref<GoalieRow[]>([])
+  const seasonRef = ref('')
   const loadingRef = ref(true)
 
   async function load() {
@@ -82,11 +136,13 @@ export function useHockeyRankings(): {
        * when to "switch over". A rule like that is the kind that is wrong for a week every
        * year and nobody notices.
        */
-      const [current, currentIce, prior, priorIce] = await Promise.all([
+      const [current, currentIce, prior, priorIce, curG, priorG] = await Promise.all([
         fetchSkaterSummary(seasonId(year)),
         fetchSkaterIce(seasonId(year)),
         fetchSkaterSummary(seasonId(year - 1)),
         fetchSkaterIce(seasonId(year - 1)),
+        fetchGoalieSummary(seasonId(year)),
+        fetchGoalieSummary(seasonId(year - 1)),
       ])
 
       /*
@@ -107,6 +163,12 @@ export function useHockeyRankings(): {
         plusMinus: 0, penaltyMinutes: 0, ppPoints: 0, shots: 0,
       }))
       rates.value = rateSkaters(roster, started ? currentIce : priorIce, prior)
+      /* Goalies take last season wholesale before the season starts, for the same reason the
+         skaters do — and unlike skaters they are not rate-shrunk here, because a goalie's
+         fantasy value is dominated by how often he STARTS, which is a fact about his coach
+         rather than a rate that needs regressing. */
+      goalieRows.value = curG.length ? curG : priorG
+      seasonRef.value = started ? seasonId(year) : seasonId(year - 1)
     } catch (e) {
       console.error('[useHockeyRankings] load failed', e)
       rates.value = []
@@ -123,7 +185,7 @@ export function useHockeyRankings(): {
        number by the same factor. */
     const { projections, missing } = ratesToProjection(rates.value, 82,
       DEFAULT_CATEGORIES.map((c) => c.key))
-    const { totalByKey } = buildHockeyCategoryValue({
+    const { totalByKey, perCategoryByKey } = buildHockeyCategoryValue({
       projections,
       categories: DEFAULT_CATEGORIES,
       draftablePlayers: DRAFTABLE,
@@ -137,6 +199,8 @@ export function useHockeyRankings(): {
           name: r?.name ?? key,
           position: r?.position ?? '',
           team: r?.team ?? '',
+          headshot: r ? headshot(r.playerId, r.team, seasonRef.value) : '',
+          wins: topCategories(perCategoryByKey[key]),
           value,
           pointsPerGame: r?.perGame.points ?? 0,
           ppSecondsPerGame: r?.ppSecondsPerGame ?? 0,
@@ -149,8 +213,46 @@ export function useHockeyRankings(): {
     return { rows, missing }
   })
 
+  const builtGoalies = computed<HockeyRankRow[]>(() => {
+    const rows = goalieRows.value
+    if (!rows.length) return []
+    const projections: Record<string, any> = {}
+    for (const g of rows) {
+      projections[String(g.playerId)] = {
+        playerKey: String(g.playerId),
+        position: 'G',
+        stats: { W: g.wins, SV: g.saves, SHO: g.shutouts, GA: g.goalsAgainst, GP: g.gamesStarted },
+      }
+    }
+    const { totalByKey, perCategoryByKey } = buildHockeyCategoryValue({
+      projections, categories: GOALIE_CATEGORIES, draftablePlayers: DRAFTABLE_G,
+    })
+    const byId = new Map(rows.map((g) => [String(g.playerId), g]))
+    const out = Object.entries(totalByKey).map(([key, value]) => {
+      const g = byId.get(key)
+      return {
+        playerKey: key,
+        name: g?.goalieFullName ?? key,
+        position: 'G',
+        team: String(g?.teamAbbrevs ?? '').split(',').pop()?.trim() ?? '',
+        headshot: g ? headshot(g.playerId, g.teamAbbrevs, seasonRef.value) : '',
+        wins: topCategories(perCategoryByKey[key]),
+        value,
+        /* Starts, not points. A goalie with eight starts in nine team games is a different
+           asset from a fifty-fifty tandem no matter how the rate stats compare. */
+        pointsPerGame: g?.gamesStarted ?? 0,
+        ppSecondsPerGame: 0,
+        confidence: g && g.gamesStarted > 0 ? 1 : 0,
+        rank: 0,
+      }
+    }).sort((a, b) => b.value - a.value)
+    out.forEach((r, i) => { r.rank = i + 1 })
+    return out
+  })
+
   return {
     rows: computed(() => built.value.rows),
+    goalies: builtGoalies,
     loading: computed(() => loadingRef.value),
     ready: computed(() => built.value.rows.length > 0),
     missing: computed(() => built.value.missing),

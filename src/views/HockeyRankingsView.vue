@@ -52,21 +52,52 @@
         </p>
       </div>
 
-      <div v-else class="mt-6 rounded-xl border border-dark-border bg-dark-card p-4">
+      <!--
+        Position, because a hockey roster is built by it. A manager needs two centres and four
+        defencemen, not "the best twenty players" — and Cale Makar sitting twentieth on a mixed
+        board is unfindable by the person who came here to fix his blue line.
+        G is its own list rather than a filter: a goalie's categories are not a skater's, so
+        they are ranked against each other and never against a winger.
+      -->
+      <div v-else class="mt-4 flex flex-wrap gap-1.5">
+        <button
+          v-for="p in POSITIONS"
+          :key="p"
+          class="rounded px-2.5 py-1 font-mono text-[11px] uppercase tracking-wide transition-colors"
+          :class="active === p ? 'bg-primary font-bold text-dark-bg' : 'bg-dark-card text-dark-textMuted hover:text-dark-text'"
+          @click="active = p"
+        >{{ p }}</button>
+      </div>
+
+      <div v-if="ready" class="mt-3 rounded-xl border border-dark-border bg-dark-card p-4">
         <div class="mb-2 flex items-center gap-2.5 border-b border-dark-border/40 pb-1.5 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted/60">
           <span class="w-8 shrink-0"></span>
+          <span class="h-7 w-7 shrink-0"></span>
           <span class="min-w-0 flex-1"></span>
-          <span class="hidden w-12 shrink-0 text-right sm:block" title="Power-play minutes per game — where points are scored">PP</span>
-          <span class="hidden w-12 shrink-0 text-right sm:block" title="Points per game">PTS/G</span>
+          <span v-if="active !== 'G'" class="hidden w-12 shrink-0 text-right sm:block" title="Power-play minutes per game — where points are scored">PP</span>
+          <span class="hidden w-12 shrink-0 text-right sm:block"
+                :title="active === 'G' ? 'Games started — the thing that decides a goalie' : 'Points per game'"
+          >{{ active === 'G' ? 'GS' : 'PTS/G' }}</span>
           <span class="w-12 shrink-0 text-right" title="Total standard deviations across the scored categories">VALUE</span>
         </div>
 
         <div v-for="row in visible" :key="row.playerKey"
              class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm text-dark-text last:border-0">
           <span class="w-8 shrink-0 text-right font-mono text-[11px] text-dark-textMuted/60">{{ row.rank }}</span>
+          <img v-if="row.headshot" :src="row.headshot" :alt="row.name" loading="lazy" @error="onImgErr"
+               class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" />
+          <span v-else class="h-7 w-7 shrink-0 rounded-full bg-dark-border" />
           <span class="min-w-0 flex-1 truncate">
             {{ row.name }}
             <span class="ml-1 font-mono text-[10px] text-dark-textMuted/70">{{ row.position }} · {{ row.team }}</span>
+            <!--
+              WHICH columns he wins, not just how many deviations he is worth in total. The sum
+              is what ranks him; this is what tells you whether he fixes YOUR team. Two players
+              at 5.0 are not the same player when one brings goals and the other penalty
+              minutes, which is the whole way a category league differs from a points one.
+            -->
+            <span v-for="w in row.wins" :key="w"
+                  class="ml-1 rounded bg-dark-bg px-1 py-0.5 font-mono text-[9px] uppercase text-[#2dd4bf]">{{ w }}</span>
             <!--
               How much of this rating is the player rather than last season standing in for
               him. Shown only where it is genuinely thin, because a confidence badge on every
@@ -76,35 +107,56 @@
                   class="ml-1 font-mono text-[9px] uppercase text-[#e69a4a]"
                   title="Mostly last season — he has barely played yet">thin</span>
           </span>
-          <span class="hidden w-12 shrink-0 text-right font-mono text-[10px] text-dark-textSecondary sm:block">
+          <span v-if="active !== 'G'" class="hidden w-12 shrink-0 text-right font-mono text-[10px] text-dark-textSecondary sm:block">
             {{ (row.ppSecondsPerGame / 60).toFixed(1) }}
           </span>
           <span class="hidden w-12 shrink-0 text-right font-mono text-[10px] text-dark-textSecondary sm:block">
-            {{ row.pointsPerGame.toFixed(2) }}
+            {{ active === 'G' ? row.pointsPerGame.toFixed(0) : row.pointsPerGame.toFixed(2) }}
           </span>
           <span class="w-12 shrink-0 text-right font-mono text-xs">{{ row.value.toFixed(1) }}</span>
         </div>
 
         <button
-          v-if="!expanded && rows.length > visible.length"
+          v-if="!expanded && pool.length > visible.length"
           class="mt-3 w-full rounded-lg border border-dark-border bg-dark-bg/60 py-2 font-mono text-[11px] text-dark-textSecondary transition-colors hover:text-dark-text"
           @click="expanded = true"
-        >Show all {{ Math.min(rows.length, FULL_DEPTH) }}</button>
+        >Show all {{ Math.min(pool.length, FULL_DEPTH) }}</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useHockeyRankings } from '@/composables/useHockeyRankings'
 
-const { rows, loading, ready, missing } = useHockeyRankings()
+const { rows, goalies, loading, ready, missing } = useHockeyRankings()
+
+/* Skater positions as the NHL spells them, plus goalies as their own list. */
+const POSITIONS = ['ALL', 'C', 'L', 'R', 'D', 'G'] as const
+const active = ref<string>('ALL')
 
 const expanded = ref(false)
 const DEPTH = 50
 const FULL_DEPTH = 200
-const visible = computed(() => rows.value.slice(0, expanded.value ? FULL_DEPTH : DEPTH))
+
+watch(active, () => { expanded.value = false })
+
+const pool = computed(() => {
+  if (active.value === 'G') return goalies.value
+  if (active.value === 'ALL') return rows.value
+  /* Re-ranked within the position, so the numbers read 1..n rather than the gaps a filtered
+     overall list would leave. A defenceman being "20th" is a different claim from his being
+     the best defenceman available, and only one of them helps. */
+  return rows.value.filter((r) => r.position === active.value)
+    .map((r, i) => ({ ...r, rank: i + 1 }))
+})
+const visible = computed(() => pool.value.slice(0, expanded.value ? FULL_DEPTH : DEPTH))
+
+function onImgErr(e: Event) {
+  const el = e.target as HTMLImageElement
+  el.style.visibility = 'hidden'
+}
 
 /* Every rating thin means the season has not started. That is one fact about the board, not a
    property of nine hundred players, so it is stated once above rather than stamped on each. */
