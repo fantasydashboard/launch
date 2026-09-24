@@ -143,8 +143,10 @@ which is wrong for them but not broken. That is the honest cut.
 - **"Categories" is not one thing.** H2H-each-category, H2H-most-categories and roto score
   differently, and the matchup page differs for each. This design treats them as one; that will
   not survive contact.
-- **Goalie starts are unsolved and unsolvable by modelling.** See below. The largest daily
-  decision in the sport depends on a scrape nobody has written.
+- **Goalie starter status is ESPN's, and its semantics are unverified.** The field exists and
+  differentiates, but "CONFIRMED" eighteen games out cannot mean what it says. Reading it as a
+  morning-skate confirmation when it is a season-long expectation would put a false certainty
+  on the biggest decision the page makes.
 - **A rate model needs a season to rate.** In October there is no recent sample, so opening
   weeks lean on the ESPN prior — exactly when a new hockey user is forming their opinion of
   whether this product is any good.
@@ -190,23 +192,34 @@ scored and because coaches change them slowly and visibly — a player promoted 
 before his points catch up, which is exactly the edge a waiver page should surface and no
 preseason projection can.
 
-### The part no feed solves: confirmed goalie starters
+### Goalie starts: ESPN publishes them, and scraping is not needed
 
-The largest single daily decision in fantasy hockey is which goalie to start, and it is decided
-by a coach's morning skate, not by a model. Start a goalie who sits and you take a zero; guess
-the backup correctly and you win the night. No free API publishes confirmed starters — Daily
-Faceoff is the de facto source and reading it means scraping.
+The largest single daily decision in fantasy hockey is which goalie to start. Start one who
+sits and you take a zero. The first draft of this spec called it unsolvable without scraping
+Daily Faceoff. That was wrong, and the correction came from the owner asking whether ESPN or
+Yahoo expose it.
 
-This is named here because a daily hockey product that silently ignores it is not a serious one,
-and because no amount of projection quality substitutes for it. It should be scoped as its own
-problem rather than assumed away inside piece 2.
+They do. ESPN's `kona_player_info` carries `player.proGamePlayerDetail`, keyed by ESPN game id:
 
-### Goalie starts, partially answered
+```json
+{ "401803331": { "lineupOrder": null, "starterStatus": "CONFIRMED" } }
+```
 
-`goalie/summary` carries `gamesStarted`, which is not who starts tonight but IS who has been
-carrying the crease. A goalie with 8 starts in 9 team games is a workhorse and a safe hold; a
-50/50 tandem is the case where tonight's confirmation actually decides the night. So the feed
-narrows the problem to the leagues and goalies where it matters, without solving it.
+Verified 2026-09-23 that the field **differentiates** rather than being a constant: the leading
+goalies return `CONFIRMED` across their scheduled games while Connor McDavid returns
+`NOTSTARTING` for his. So there are at least two values and the field carries real information.
+
+This is the same request the projections prior already makes, against an API this codebase
+already speaks. No third party, no scrape, no fragile HTML parse.
+
+**Two things to establish in-season before trusting it.** Every scheduled game for a starting
+goalie currently reads `CONFIRMED`, eighteen games out — nobody confirms a start eighteen games
+ahead, so the label almost certainly means "expected starter" rather than "confirmed by the
+morning skate". That distinction is the whole value in a tandem. And the full set of values is
+unknown; only `CONFIRMED` and `NOTSTARTING` have been seen. Re-probe against a live slate.
+
+`lineupOrder` sits beside it and is null for every player probed, so it is NOT line or
+power-play unit. Ice time from the NHL feed remains the opportunity signal.
 
 ## Open questions
 
@@ -215,4 +228,5 @@ narrows the problem to the leagues and goalies where it matters, without solving
 2. RESOLVED — MoneyPuck is not needed; the NHL's own bulk endpoints cover the model.
 3. "Categories" is three different games — H2H each category, H2H most categories, and roto.
    Which does the first build target?
-4. Goalie starts: scrape Daily Faceoff, ask the user, or ship without and say so?
+4. What does ESPN's `starterStatus` mean in-season, and what is its full value set? Only
+   CONFIRMED and NOTSTARTING have been observed, in a preseason with no real slate.
