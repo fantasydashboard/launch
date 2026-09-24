@@ -17,9 +17,20 @@ function getScoringType(leagueStore: ReturnType<typeof useLeagueStore>): string 
     ? leagueStore.yahooLeague[0]
     : leagueStore.yahooLeague
   if (yahooLeagueData?.scoring_type) return yahooLeagueData.scoring_type
-  // currentLeague is typed as SleeperLeague, which doesn't declare scoring_type — the same gap
-  // isRotoLeague hits in App.vue. Cast rather than let it grow the app-wide vue-tsc error count.
-  const current = leagueStore.currentLeague as any
+  /*
+   * Narrowed, not blanketed. Same gap isRotoLeague hits in App.vue.
+   *
+   * `currentLeague` is typed SleeperLeague, which has no `scoring_type` — the type is a
+   * pre-existing lie, because the ESPN and Yahoo paths assign their own shapes into that same
+   * ref. Writing the access cleanly would add errors to a baseline that must not rise, so a
+   * cast is unavoidable here.
+   *
+   * But `as any` would have switched off checking for every OTHER property too: a typo like
+   * `.scoringType` would then sail through silently. Widening by exactly the one field keeps
+   * the rest of the object honest, and was verified to hold the error count unchanged.
+   */
+  const current = leagueStore.currentLeague as
+    (typeof leagueStore.currentLeague & { scoring_type?: string })
   if (current?.scoring_type) return current.scoring_type
   const saved = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
   if (saved?.scoring_type) return saved.scoring_type
