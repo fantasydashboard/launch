@@ -26,6 +26,14 @@
       <p class="mt-3 max-w-xl rounded-lg border border-dark-border bg-dark-card/60 px-3 py-2 font-mono text-[11px] leading-relaxed text-dark-textMuted">
         Standard six-category scoring, the same board for everyone.
         <!--
+          Said once, here, rather than as a badge on every row. A flag that appears on all of
+          them carries no information — it is the same claim repeated, and the reader has to
+          scan past it to find the rows it does not apply to, of which there are none.
+        -->
+        <template v-if="allThin">
+          Nobody has played yet, so every rating is last season's.
+        </template>
+        <!--
           Said plainly because the alternative is a column that always reads zero, which ranks
           every player as equally bad at it rather than as unmeasured.
         -->
@@ -64,7 +72,7 @@
               him. Shown only where it is genuinely thin, because a confidence badge on every
               row in March would be noise nobody reads.
             -->
-            <span v-if="row.confidence < 0.4"
+            <span v-if="!allThin && row.confidence < 0.4"
                   class="ml-1 font-mono text-[9px] uppercase text-[#e69a4a]"
                   title="Mostly last season — he has barely played yet">thin</span>
           </span>
@@ -97,4 +105,8 @@ const expanded = ref(false)
 const DEPTH = 50
 const FULL_DEPTH = 200
 const visible = computed(() => rows.value.slice(0, expanded.value ? FULL_DEPTH : DEPTH))
+
+/* Every rating thin means the season has not started. That is one fact about the board, not a
+   property of nine hundred players, so it is stated once above rather than stamped on each. */
+const allThin = computed(() => rows.value.length > 0 && rows.value.every((r) => r.confidence < 0.4))
 </script>
