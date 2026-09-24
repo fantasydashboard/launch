@@ -1207,6 +1207,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import { useLeagueShape } from '@/composables/useLeagueShape'
 import { useRouter, useRoute } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { useDarkModeStore } from '@/stores/darkMode'
@@ -1229,6 +1230,7 @@ import DailyUpgradeNudge from '@/components/DailyUpgradeNudge.vue'
 const router = useRouter()
 const route = useRoute()
 const leagueStore = useLeagueStore()
+const { shape } = useLeagueShape()
 const darkModeStore = useDarkModeStore()
 const authStore = useAuthStore()
 const sportStore = useSportStore()
@@ -1362,8 +1364,12 @@ const isRotoLeague = computed(() => {
 const tabs = computed(() => [
   // "Today" is a daily-optimizer built for baseball's game-by-game slate; football is weekly,
   // so football gets the weekly "This Week" start/sit tab in that slot instead.
-  ...(leagueStore.activeSport === 'football'
-    ? [{ name: 'This Week', path: '/this-week' }]
+  /* Cadence, not sport. A hockey league that sets lineups weekly was being handed a daily
+     optimiser it could not act on, and a daily league would get the reverse. See
+     leagueShape — and note the label is all that changes here; the ROUTES still split by
+     sport until the daily/weekly pages are unified. */
+  ...(shape.value.cadence === 'weekly'
+    ? [{ name: 'This Week', path: leagueStore.activeSport === 'football' ? '/this-week' : '/today' }]
     : [{ name: 'Today', path: '/today' }]),
   /* Draft Room reads live picks from Sleeper, so it only appears where it works — and only
      while there is a draft to follow. See showsDraftTab for why it comes down afterwards. */
