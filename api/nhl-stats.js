@@ -29,6 +29,20 @@ const WEB = 'https://api-web.nhle.com/v1'
    arbitrary NHL paths, and the allowlist costs one line per legitimate addition. */
 const ALLOWED = new Set(['skater/summary', 'skater/timeonice', 'skater/realtime', 'goalie/summary'])
 
+/*
+ * The load-bearing query parameter.
+ *
+ * Without it the endpoint returns rows in NO GUARANTEED ORDER, and it re-orders between
+ * requests — so page 2 is a slice of a different arrangement than page 1. Measured live on
+ * 20252026: 940 rows came back carrying 933 distinct players, and the count moved run to run.
+ * Seven players appeared twice and seven appeared not at all, at random, on every load.
+ *
+ * That failure is invisible from outside — the row count is right, the totals are right, and
+ * the board looks complete. It is the reason paging lives in this file rather than in callers:
+ * the fix has to be in the same place as the loop.
+ */
+const SORT = encodeURIComponent(JSON.stringify([{ property: 'playerId', direction: 'ASC' }]))
+
 const PAGE = 100
 /* A full season is ~940 skaters. The ceiling is here so a malformed `total` cannot spin this
    function until it times out — it bounds the loop, it does not shape normal responses. */
@@ -69,7 +83,7 @@ export default async function handler(req, res) {
     const data = []
     let total = 1
     for (let page = 0; page < MAX_PAGES && data.length < total; page++) {
-      const url = `${STATS}/${report}?limit=${PAGE}&start=${page * PAGE}&cayenneExp=${exp}`
+      const url = `${STATS}/${report}?limit=${PAGE}&start=${page * PAGE}&cayenneExp=${exp}&sort=${SORT}`
       const r = await fetch(url)
       if (!r.ok) return res.status(r.status).json({ error: `NHL ${report} ${r.status}` })
       const j = await r.json()
