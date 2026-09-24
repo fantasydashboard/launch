@@ -27,7 +27,7 @@ const WEB = 'https://api-web.nhle.com/v1'
 
 /* Only the reports this product reads. An open relay would let anyone point our origin at
    arbitrary NHL paths, and the allowlist costs one line per legitimate addition. */
-const ALLOWED = new Set(['skater/summary', 'skater/timeonice', 'goalie/summary'])
+const ALLOWED = new Set(['skater/summary', 'skater/timeonice', 'skater/realtime', 'goalie/summary'])
 
 const PAGE = 100
 /* A full season is ~940 skaters. The ceiling is here so a malformed `total` cannot spin this

@@ -11,6 +11,29 @@ export interface SkaterRow {
   penaltyMinutes: number
   ppPoints: number
   shots: number
+  /*
+   * Columns the feed gives directly, and the two halves that make the rest derivable.
+   *
+   * PPA is ppPoints - ppGoals and SHA is shPoints - shGoals, so carrying the goals halves is
+   * exactly what makes both assist columns possible. An earlier version of this file called
+   * them unsupplyable, which was true only of a version that had not looked.
+   *
+   * hits and blockedShots come from `skater/realtime` and are merged in before rating.
+   * Defaulted to zero rather than left optional so every row is a complete record and no
+   * arithmetic downstream has to guard.
+   */
+  ppGoals: number
+  shGoals: number
+  shPoints: number
+  hits: number
+  blockedShots: number
+}
+
+/** `skater/realtime` — hits and blocks, which live on their own endpoint. */
+export interface RealtimeRow {
+  playerId: number
+  hits: number
+  blockedShots: number
 }
 
 export interface IceRow {
@@ -34,7 +57,14 @@ export interface SkaterRate {
   confidence: number
 }
 
-const CATEGORIES = ['goals', 'assists', 'points', 'plusMinus', 'penaltyMinutes', 'ppPoints', 'shots'] as const
+const CATEGORIES = [
+  'goals', 'assists', 'points', 'plusMinus', 'penaltyMinutes', 'ppPoints', 'shots',
+  /* Hits and blocks come from skater/realtime, and the power-play and short-handed goals
+     from summary. All five are shrunk exactly like the rest — a hit is as noisy over two
+     games as a goal is, and a board that regressed scoring but believed a small sample of
+     hits would just move the problem to the categories nobody is checking. */
+  'hits', 'blockedShots', 'ppGoals', 'shGoals', 'shPoints',
+] as const
 type Category = (typeof CATEGORIES)[number]
 type CatTotals = Record<Category, number>
 
@@ -69,8 +99,10 @@ export const SHRINK_GAMES = 10
  * the position IS the information. A defenceman scores a third as often as a forward.
  */
 const DEFAULT_BASELINE: Record<'D' | 'F', CatTotals> = {
-  D: { goals: 0.070, assists: 0.261, points: 0.331, plusMinus: 0.022, penaltyMinutes: 0.475, ppPoints: 0.060, shots: 1.310 },
-  F: { goals: 0.214, assists: 0.291, points: 0.505, plusMinus: -0.027, penaltyMinutes: 0.421, ppPoints: 0.112, shots: 1.692 },
+  D: { goals: 0.070, assists: 0.261, points: 0.331, plusMinus: 0.022, penaltyMinutes: 0.475, ppPoints: 0.060, shots: 1.310,
+       hits: 1.020, blockedShots: 1.560, ppGoals: 0.014, shGoals: 0.004, shPoints: 0.010 },
+  F: { goals: 0.214, assists: 0.291, points: 0.505, plusMinus: -0.027, penaltyMinutes: 0.421, ppPoints: 0.112, shots: 1.692,
+       hits: 1.140, blockedShots: 0.520, ppGoals: 0.046, shGoals: 0.008, shPoints: 0.016 },
 }
 
 function isDefenceman(positionCode: string): boolean {
@@ -78,7 +110,10 @@ function isDefenceman(positionCode: string): boolean {
 }
 
 function zeroTotals(): CatTotals {
-  return { goals: 0, assists: 0, points: 0, plusMinus: 0, penaltyMinutes: 0, ppPoints: 0, shots: 0 }
+  return {
+    goals: 0, assists: 0, points: 0, plusMinus: 0, penaltyMinutes: 0, ppPoints: 0, shots: 0,
+    hits: 0, blockedShots: 0, ppGoals: 0, shGoals: 0, shPoints: 0,
+  }
 }
 
 /** Games-weighted totals across rows that have played at least one game. */
@@ -151,7 +186,11 @@ function priorRates(prior: SkaterRow[]): Map<number, CatTotals> {
  *              exactly — but supplying it is the difference between rating McDavid as McDavid
  *              and rating him as an average forward on opening night.
  */
-export function rateSkaters(skaters: SkaterRow[], ice: IceRow[] = [], prior: SkaterRow[] = []): SkaterRate[] {
+export function rateSkaters(
+  skaters: SkaterRow[],
+  ice: IceRow[] = [],
+  prior: SkaterRow[] = [],
+): SkaterRate[] {
   if (skaters.length === 0) return []
 
   const iceByPlayer = new Map<number, IceRow>()

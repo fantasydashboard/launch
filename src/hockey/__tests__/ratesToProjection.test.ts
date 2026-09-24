@@ -8,7 +8,10 @@ const rate = (over: Partial<SkaterRate> = {}): SkaterRate => ({
   position: 'C',
   team: 'EDM',
   gamesPlayed: 40,
-  perGame: { goals: 0.5, assists: 0.8, points: 1.3, plusMinus: 0.1, penaltyMinutes: 0.4, ppPoints: 0.3, shots: 3.2 },
+  perGame: {
+    goals: 0.5, assists: 0.8, points: 1.3, plusMinus: 0.1, penaltyMinutes: 0.4, ppPoints: 0.3,
+    shots: 3.2, hits: 1.5, blockedShots: 0.9, ppGoals: 0.1, shGoals: 0, shPoints: 0,
+  },
   ppSecondsPerGame: 180,
   confidence: 0.8,
   ...over,
@@ -50,9 +53,17 @@ describe('ratesToProjection', () => {
    * which is below average rather than unknown. In a league that counts hits that would bury
    * every hit-heavy forward behind a ranking that looks considered.
    */
+  /* Hits and blocks USED to be the example here, and are now supplied — so the case needs a
+     column the feed genuinely cannot fill. Faceoff wins is one: it is on the summary endpoint
+     but is not carried through the rate model. */
   it('names the league categories it cannot fill', () => {
-    const { missing } = ratesToProjection([rate()], 20, ['G', 'A', 'HITS', 'BLK', 'SOG'])
-    expect(missing).toEqual(['HITS', 'BLK'])
+    const { missing } = ratesToProjection([rate()], 20, ['G', 'A', 'FOW', 'SOG'])
+    expect(missing).toEqual(['FOW'])
+  })
+
+  it('reports nothing missing for a league that scores hits and blocks', () => {
+    const { missing } = ratesToProjection([rate()], 20, ['G', 'A', 'HITS', 'BLK', 'SOG', 'PPG', 'PPA'])
+    expect(missing).toEqual([])
   })
 
   it('reports nothing missing when the league scores only what we have', () => {
@@ -60,9 +71,10 @@ describe('ratesToProjection', () => {
     expect(missing).toEqual([])
   })
 
-  it('lists the unsuppliable keys for a surface to explain itself', () => {
-    expect(UNSUPPLIED_KEYS).toContain('HITS')
-    expect(UNSUPPLIED_KEYS).toContain('BLK')
+  /* Empty, and the emptiness is the claim: every column a standard hockey league scores is
+     filled. Kept as a concept because the next unusual league will need it back. */
+  it('claims no unsuppliable keys, which is checkable', () => {
+    expect(UNSUPPLIED_KEYS).toEqual([])
   })
 
   /* A season that is over. Everything is zero because nothing is left to play, which is the

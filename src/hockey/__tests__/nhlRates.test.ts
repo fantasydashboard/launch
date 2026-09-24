@@ -4,7 +4,8 @@ import { rateSkaters, SHRINK_GAMES, type SkaterRow, type IceRow } from '../nhlRa
 const skater = (over: Partial<SkaterRow> = {}): SkaterRow => ({
   playerId: 1, skaterFullName: 'A Player', positionCode: 'C', teamAbbrevs: 'EDM',
   gamesPlayed: 20, goals: 10, assists: 20, points: 30, plusMinus: 5,
-  penaltyMinutes: 10, ppPoints: 8, shots: 60, ...over,
+  penaltyMinutes: 10, ppPoints: 8, shots: 60,
+  ppGoals: 3, shGoals: 0, shPoints: 0, hits: 20, blockedShots: 15, ...over,
 })
 
 describe('rateSkaters', () => {

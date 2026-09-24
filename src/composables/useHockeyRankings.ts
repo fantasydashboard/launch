@@ -1,5 +1,7 @@
 import { computed, ref, type ComputedRef } from 'vue'
-import { fetchSkaterSummary, fetchSkaterIce, fetchGoalieSummary, type GoalieRow } from '@/services/nhlStats'
+import {
+  fetchSkaterSummary, fetchSkaterIce, fetchSkaterRealtime, fetchGoalieSummary, type GoalieRow,
+} from '@/services/nhlStats'
 import { rateSkaters, type SkaterRate } from '@/hockey/nhlRates'
 import { ratesToProjection } from '@/hockey/ratesToProjection'
 import {
@@ -193,13 +195,15 @@ export function useHockeyRankings(): {
        * when to "switch over". A rule like that is the kind that is wrong for a week every
        * year and nobody notices.
        */
-      const [current, currentIce, prior, priorIce, curG, priorG] = await Promise.all([
+      const [current, currentIce, prior, priorIce, curG, priorG, curRt, priorRt] = await Promise.all([
         fetchSkaterSummary(seasonId(year)),
         fetchSkaterIce(seasonId(year)),
         fetchSkaterSummary(seasonId(year - 1)),
         fetchSkaterIce(seasonId(year - 1)),
         fetchGoalieSummary(seasonId(year)),
         fetchGoalieSummary(seasonId(year - 1)),
+        fetchSkaterRealtime(seasonId(year)),
+        fetchSkaterRealtime(seasonId(year - 1)),
       ])
 
       /*
@@ -214,12 +218,26 @@ export function useHockeyRankings(): {
        * minutes are the most stable thing about a player across a summer, and an opening-night
        * board with no PP signal would throw away its best column.
        */
-      const started = current.length > 0
-      const roster = started ? current : prior.map((p) => ({
+      /* Hits and blocks arrive on their own report, so they are merged onto the rows before
+         rating — the rate model shrinks them exactly like goals, which is the point. */
+      const mergeRt = (rows: typeof current, rt: typeof curRt) => {
+        const by = new Map(rt.map((r) => [r.playerId, r]))
+        return rows.map((r) => ({
+          ...r,
+          hits: by.get(r.playerId)?.hits ?? 0,
+          blockedShots: by.get(r.playerId)?.blockedShots ?? 0,
+        }))
+      }
+      const currentFull = mergeRt(current, curRt)
+      const priorFull = mergeRt(prior, priorRt)
+
+      const started = currentFull.length > 0
+      const roster = started ? currentFull : priorFull.map((p) => ({
         ...p, gamesPlayed: 0, goals: 0, assists: 0, points: 0,
         plusMinus: 0, penaltyMinutes: 0, ppPoints: 0, shots: 0,
+        hits: 0, blockedShots: 0, ppGoals: 0, shGoals: 0, shPoints: 0,
       }))
-      rates.value = rateSkaters(roster, started ? currentIce : priorIce, prior)
+      rates.value = rateSkaters(roster, started ? currentIce : priorIce, priorFull)
       /* Goalies take last season wholesale before the season starts, for the same reason the
          skaters do — and unlike skaters they are not rate-shrunk here, because a goalie's
          fantasy value is dominated by how often he STARTS, which is a fact about his coach

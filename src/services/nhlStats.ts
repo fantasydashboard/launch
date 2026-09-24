@@ -1,4 +1,4 @@
-import type { SkaterRow, IceRow } from '@/hockey/nhlRates'
+import type { SkaterRow, IceRow, RealtimeRow } from '@/hockey/nhlRates'
 import { getNhlSchedule } from './nhlSchedule'
 
 /**
@@ -59,6 +59,22 @@ async function fetchAllRows<T>(path: string, seasonId: string): Promise<T[]> {
 
   statsCache.set(cacheKey, rows)
   return rows
+}
+
+/**
+ * Hits and blocked shots, which the summary endpoint does not carry.
+ *
+ * Their own request because they are their own report. A league that scores them and gets a
+ * board without them is not slightly wrong — a z-scored absent column reads as "worst in the
+ * league at it", which buries exactly the players those categories exist to reward.
+ */
+export async function fetchSkaterRealtime(seasonId: string): Promise<RealtimeRow[]> {
+  try {
+    return await fetchAllRows<RealtimeRow>('skater/realtime', seasonId)
+  } catch (err) {
+    console.warn('[nhlStats] fetchSkaterRealtime failed, returning empty', err)
+    return []
+  }
 }
 
 /** Every skater's season totals. Feeds `rateSkaters` in `hockey/nhlRates.ts`. */
