@@ -23,6 +23,11 @@ const KEY_BY_CATEGORY: Record<string, string> = {
   plusMinus: 'PLUSMINUS',
   penaltyMinutes: 'PIM',
   shots: 'SOG',
+  /* Power-play POINTS, which needs no splitting. An earlier version of this file listed PPP
+     among the categories it could not supply, conflating it with the PPG/PPA split — those
+     need power-play goals broken out, which the feed does not give. Power-play points it gives
+     directly, and it is a standard column in nearly every league. */
+  ppPoints: 'PPP',
 }
 
 /**
@@ -34,9 +39,9 @@ const KEY_BY_CATEGORY: Record<string, string> = {
  * while looking like a considered ranking.
  *
  * - HITS, BLK: live on `skater/realtime`, which this feed does not read.
- * - PPG, PPA: the NHL reports power-play POINTS and power-play GOALS; splitting assists out
- *   is possible but `nhlRates` does not currently carry ppGoals, so neither half is emitted
- *   rather than emitting one and letting the other read as zero.
+ * - PPG, PPA: the SPLIT of power-play points into goals and assists needs ppGoals, which
+ *   `nhlRates` does not carry. Power-play POINTS (PPP) is supplied and is the column most
+ *   leagues actually score.
  */
 export const UNSUPPLIED_KEYS = ['HITS', 'BLK', 'PPG', 'PPA'] as const
 

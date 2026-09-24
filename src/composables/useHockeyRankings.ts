@@ -2,7 +2,12 @@ import { computed, ref, type ComputedRef } from 'vue'
 import { fetchSkaterSummary, fetchSkaterIce, fetchGoalieSummary, type GoalieRow } from '@/services/nhlStats'
 import { rateSkaters, type SkaterRate } from '@/hockey/nhlRates'
 import { ratesToProjection } from '@/hockey/ratesToProjection'
-import { buildHockeyCategoryValue, type HockeyCategory } from '@/hockey/hockeyCategoryValue'
+import {
+  buildHockeyCategoryValue, categoriesFromScoringItems, type HockeyCategory,
+} from '@/hockey/hockeyCategoryValue'
+import { useLeagueStore } from '@/stores/league'
+import { useAuthStore } from '@/stores/auth'
+import { usePlatformsStore } from '@/stores/platforms'
 
 /**
  * The rest-of-season hockey board, in the currency a category league actually settles in.
@@ -45,18 +50,26 @@ function seasonId(startYear: number): string {
 /**
  * Standard category scoring, for a reader with no league connected.
  *
- * Deliberately the common set rather than a maximal one: goals, assists, points, plus-minus,
- * penalty minutes and shots are scored by nearly every league, and every one of them is
- * supplied by the NHL feed. Hits and blocks are NOT here because the feed cannot fill them —
- * putting a column on the board that always reads zero would rank every player as equally bad
- * at it, which is worse than leaving it out and saying so.
+ * The real default: goals, assists, plus-minus, penalty minutes, power-play points and shots.
+ * That is what Yahoo and ESPN ship, and it is six columns rather than the seven an earlier
+ * version had.
+ *
+ * POINTS IS NOT AMONG THEM, and leaving it out is the correction that matters. PTS is G + A by
+ * definition, so a set containing all three counts every goal twice and every assist twice —
+ * which quietly triples the weight of scoring against the columns that are supposed to balance
+ * it, and turns a category board back into a points board wearing z-scores. The chips on the
+ * rows are what exposed it: nearly every player was winning PTS, because nearly every player
+ * who wins G or A wins it by construction.
+ *
+ * Hits and blocks stay out because the feed cannot fill them — a column that always reads zero
+ * ranks every player as equally bad at it rather than as unmeasured.
  */
 export const DEFAULT_CATEGORIES: HockeyCategory[] = [
   { key: 'G', statId: 13, reverse: false },
   { key: 'A', statId: 14, reverse: false },
-  { key: 'PTS', statId: 16, reverse: false },
   { key: 'PLUSMINUS', statId: 15, reverse: false },
   { key: 'PIM', statId: 17, reverse: false },
+  { key: 'PPP', statId: 38, reverse: false },
   { key: 'SOG', statId: 29, reverse: false },
 ]
 
@@ -70,6 +83,9 @@ export const DEFAULT_CATEGORIES: HockeyCategory[] = [
  *
  * GAA reverses: a lower goals-against average wins the column.
  */
+/** Columns that belong to goalies, so the skater pass can exclude them. */
+const GOALIE_KEYS = new Set(['W', 'L', 'SV', 'SHO', 'GA', 'GAA', 'SVPCT', 'SA', 'OTL', 'DEC'])
+
 export const GOALIE_CATEGORIES: HockeyCategory[] = [
   { key: 'W', statId: 1, reverse: false },
   { key: 'SV', statId: 6, reverse: false },
@@ -115,11 +131,52 @@ export interface HockeyRankRow {
 export function useHockeyRankings(): {
   rows: ComputedRef<HockeyRankRow[]>
   goalies: ComputedRef<HockeyRankRow[]>
+  /** The columns actually being scored, and whether they came from the league or a default. */
+  categories: ComputedRef<HockeyCategory[]>
+  fromLeague: ComputedRef<boolean>
   loading: ComputedRef<boolean>
   ready: ComputedRef<boolean>
   /** Categories the feed cannot fill for this league. Named, never silently dropped. */
   missing: ComputedRef<string[]>
 } {
+  const leagueCats = ref<HockeyCategory[] | null>(null)
+
+  /*
+   * The LEAGUE's columns, not a house set.
+   *
+   * A category board is only about your league if it counts your league's categories. One that
+   * scores hits and blocks and gets ranked on goals and shots is answering a question nobody
+   * asked — and the earlier version shipped a hardcoded six, which is right for a reader with
+   * no league connected and wrong for everybody else.
+   *
+   * `categoriesFromScoringItems` takes direction from ESPN's own `isReverseItem` rather than
+   * guessing, which matters because several hockey columns genuinely go both ways: penalty
+   * minutes are won by having more in most leagues and fewer in some.
+   */
+  async function loadLeagueCategories() {
+    const leagueStore = useLeagueStore()
+    if (leagueStore.activeSport !== 'hockey') return
+    const key = String(leagueStore.activeLeagueId ?? '')
+    const parts = key.split('_')          // espn_{sport}_{leagueId}_{season}
+    if (parts[0] !== 'espn' || parts.length < 4) return
+    try {
+      const authStore = useAuthStore()
+      const platformsStore = usePlatformsStore()
+      const { espnService } = await import('@/services/espn')
+      if (authStore.user?.id) await espnService.initialize(authStore.user.id)
+      const creds = platformsStore.getEspnCredentials()
+      if (creds) espnService.setCredentials(creds.espn_s2, creds.swid)
+      const scoring: any = await espnService.getScoringSettings(
+        parts[1] as any, parts[2], parseInt(parts[3], 10))
+      const { categories } = categoriesFromScoringItems(scoring?.scoringItems)
+      if (categories.length >= 3) leagueCats.value = categories
+    } catch (e) {
+      /* Defaults stand, and `fromLeague` says so. A board quietly scored on the wrong columns
+         is worse than one that admits it is showing the standard set. */
+      console.warn('[useHockeyRankings] league categories unavailable', e)
+    }
+  }
+
   const rates = ref<SkaterRate[]>([])
   const goalieRows = ref<GoalieRow[]>([])
   const seasonRef = ref('')
@@ -177,17 +234,23 @@ export function useHockeyRankings(): {
     }
   }
   void load()
+  void loadLeagueCategories()
+
+  const activeCats = computed<HockeyCategory[]>(() => leagueCats.value ?? DEFAULT_CATEGORIES)
 
   const built = computed(() => {
     if (!rates.value.length) return { rows: [] as HockeyRankRow[], missing: [] as string[] }
     /* Games left is a scalar here: this is a season-long board, and a per-player remaining
        count would need a schedule read that changes nobody's ORDER, only the size of every
        number by the same factor. */
+    /* Goalie columns are filtered out of the skater pass: a skater standardised on wins and
+       saves would read as catastrophically bad at both, which is not a fact about him. */
+    const skaterCats = activeCats.value.filter((c) => !GOALIE_KEYS.has(c.key))
     const { projections, missing } = ratesToProjection(rates.value, 82,
-      DEFAULT_CATEGORIES.map((c) => c.key))
+      skaterCats.map((c) => c.key))
     const { totalByKey, perCategoryByKey } = buildHockeyCategoryValue({
       projections,
-      categories: DEFAULT_CATEGORIES,
+      categories: skaterCats,
       draftablePlayers: DRAFTABLE,
     })
     const byId = new Map(rates.value.map((r) => [String(r.playerId), r]))
@@ -253,6 +316,8 @@ export function useHockeyRankings(): {
   return {
     rows: computed(() => built.value.rows),
     goalies: builtGoalies,
+    categories: activeCats,
+    fromLeague: computed(() => leagueCats.value !== null),
     loading: computed(() => loadingRef.value),
     ready: computed(() => built.value.rows.length > 0),
     missing: computed(() => built.value.missing),

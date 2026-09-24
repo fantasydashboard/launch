@@ -18,13 +18,23 @@
         Hockey rankings
       </h1>
       <p class="mt-2 max-w-xl text-sm leading-relaxed text-dark-textSecondary">
-        Every skater ranked by what he contributes across the categories a league counts —
-        goals, assists, points, plus-minus, penalty minutes and shots — measured in standard
-        deviations, not points. A player can rank here on volume alone.
+        Every skater ranked by what he contributes across the categories your league counts,
+        measured in standard deviations rather than points. A player can rank here on volume
+        alone.
       </p>
 
       <p class="mt-3 max-w-xl rounded-lg border border-dark-border bg-dark-card/60 px-3 py-2 font-mono text-[11px] leading-relaxed text-dark-textMuted">
-        Standard six-category scoring, the same board for everyone.
+        <!--
+          The columns, named. A category board that does not say which categories it counted is
+          asking to be trusted about the one thing the reader can check.
+        -->
+        <template v-if="fromLeague">
+          Scored on your league's columns: {{ categories.map((c) => c.key).join(' · ') }}.
+        </template>
+        <template v-else>
+          {{ categories.map((c) => c.key).join(' · ') }} — the standard set, because we could
+          not read your league's own columns.
+        </template>
         <!--
           Said once, here, rather than as a badge on every row. A flag that appears on all of
           them carries no information — it is the same claim repeated, and the reader has to
@@ -130,7 +140,7 @@
 import { computed, ref, watch } from 'vue'
 import { useHockeyRankings } from '@/composables/useHockeyRankings'
 
-const { rows, goalies, loading, ready, missing } = useHockeyRankings()
+const { rows, goalies, loading, ready, missing, categories, fromLeague } = useHockeyRankings()
 
 /* Skater positions as the NHL spells them, plus goalies as their own list. */
 const POSITIONS = ['ALL', 'C', 'L', 'R', 'D', 'G'] as const
