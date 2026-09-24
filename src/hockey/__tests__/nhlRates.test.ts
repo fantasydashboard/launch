@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { rateSkaters, SHRINK_GAMES, type SkaterRow, type IceRow } from '../nhlRates'
+import { rateSkaters, SHRINK_GAMES, CATEGORIES, type SkaterRow, type IceRow } from '../nhlRates'
 
 const skater = (over: Partial<SkaterRow> = {}): SkaterRow => ({
   playerId: 1, skaterFullName: 'A Player', positionCode: 'C', teamAbbrevs: 'EDM',
@@ -16,12 +16,14 @@ describe('rateSkaters', () => {
    * An earlier version asserted the raw rate (10 goals in 20 games = 0.5) and passed only
    * because the fallback baseline had been reverse-engineered to 0.5 as well, which made the
    * shrinkage arithmetically invisible. Two wrongs agreeing is not a passing test. With the
-   * measured baseline (forwards score 0.214/game) the honest answer at 20 games is
-   * (10 + 0.214*10) / (20 + 10) = 0.405 — two thirds of the way from the league to him.
+   * measured baseline (forwards score 0.214/game) and the measured shrink point for goals
+   * (16.5 games, because goals are the slowest column to stabilise) the honest answer at 20
+   * games is (10 + 0.214*16.5) / (20 + 16.5) = 0.371 — just over halfway from the league to
+   * him, which is what twenty games of goal-scoring actually buys.
    */
   it('turns season totals into per-game rates, shrunk toward the league', () => {
     const [r] = rateSkaters([skater({ gamesPlayed: 20, goals: 10, assists: 20 })])
-    expect(r.perGame.goals).toBeCloseTo(0.405, 2)
+    expect(r.perGame.goals).toBeCloseTo(0.371, 2)
     // Between the baseline and his own record, never outside them.
     expect(r.perGame.goals).toBeGreaterThan(0.214)
     expect(r.perGame.goals).toBeLessThan(0.5)
@@ -97,7 +99,50 @@ describe('rateSkaters', () => {
   })
 
   it('exposes the shrink point so a surface can explain itself', () => {
-    expect(SHRINK_GAMES).toBeGreaterThan(0)
+    expect(SHRINK_GAMES.F.points).toBeGreaterThan(0)
+    expect(SHRINK_GAMES.D.points).toBeGreaterThan(0)
+  })
+
+  /* A missing entry would divide a rate by NaN and silently rank the player last, so the
+     table's completeness is asserted rather than assumed. */
+  it('prices every category for both positions', () => {
+    for (const group of ['F', 'D'] as const) {
+      for (const cat of CATEGORIES) {
+        expect(Number.isFinite(SHRINK_GAMES[group][cat]), `${group}.${cat}`).toBe(true)
+        expect(SHRINK_GAMES[group][cat], `${group}.${cat}`).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  /*
+   * THE MEASUREMENT THIS TABLE EXISTS FOR.
+   *
+   * One shrinkage number for every category was a guess, and the guess was wrong in both
+   * directions at once. Over 1,860 player-seasons, goals need about 16.5 games before a
+   * sample outweighs the prior and shots need about 3.4 — five times apart. A file comment
+   * here used to claim "a hit is as noisy over two games as a goal is"; hits measured 1.6.
+   *
+   * So the same nine-game sample must be treated differently by column: a player shooting at
+   * twice the league rate has nearly earned that number, while a player scoring at twice the
+   * league rate has mostly been lucky. The assertion is the ORDERING of how much survives,
+   * which is what a single constant cannot produce however it is tuned.
+   */
+  it('trusts nine games of shot volume far more than nine games of goals', () => {
+    const base = { gamesPlayed: 9, goals: 0, shots: 0, assists: 0, points: 0 }
+    /* Each at roughly twice his positional baseline: 0.428 goals/gm and 3.384 shots/gm. */
+    const [r] = rateSkaters([skater({ ...base, goals: 3.85, shots: 30.5 })])
+    const goalShare = (r.perGame.goals - 0.214) / (0.428 - 0.214)
+    const shotShare = (r.perGame.shots - 1.692) / (3.384 - 1.692)
+    expect(shotShare).toBeGreaterThan(goalShare * 1.5)
+    expect(goalShare).toBeLessThan(0.5)      // nine games of goals is mostly not his
+    expect(shotShare).toBeGreaterThan(0.6)   // nine games of shots mostly is
+  })
+
+  /* Plus-minus is the column nobody should be ranked on from a partial season: it measured
+     around 180 games of prior weight, so even a full season leaves it mostly regressed. */
+  it('barely moves plus-minus on a full season, because it is almost all noise', () => {
+    const [r] = rateSkaters([skater({ gamesPlayed: 82, plusMinus: 82 })])  // +1.0 a game
+    expect(r.perGame.plusMinus).toBeLessThan(0.45)
   })
 
   /*

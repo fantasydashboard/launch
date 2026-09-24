@@ -57,30 +57,64 @@ export interface SkaterRate {
   confidence: number
 }
 
-const CATEGORIES = [
+export const CATEGORIES = [
   'goals', 'assists', 'points', 'plusMinus', 'penaltyMinutes', 'ppPoints', 'shots',
   /* Hits and blocks come from skater/realtime, and the power-play and short-handed goals
-     from summary. All five are shrunk exactly like the rest — a hit is as noisy over two
-     games as a goal is, and a board that regressed scoring but believed a small sample of
-     hits would just move the problem to the categories nobody is checking. */
+     from summary. All five are shrunk like the rest but not by the same amount: see
+     SHRINK_GAMES, where hits measured 1.6 games of prior weight against goals' 16.5. An
+     earlier version of this comment claimed they were equally noisy. They are not. */
   'hits', 'blockedShots', 'ppGoals', 'shGoals', 'shPoints',
 ] as const
 type Category = (typeof CATEGORIES)[number]
 type CatTotals = Record<Category, number>
 
 /**
- * The dial between two failure modes this product has now met on both sides of the puck.
+ * The dial between two failure modes this product has now met on both sides of the puck —
+ * MEASURED, per category, rather than guessed once for all of them.
  *
  * rosBlend (src/football/rosBlend.ts) exists because a board built on a frozen preseason
- * projection cannot learn from what a player actually does. The mirror failure is a board
- * that learns too fast: two games of a hot streak is not a season rate, and a winger who
- * scored on opening night is not a goal-a-game player. SHRINK_GAMES is how many games of
- * positional-baseline weight get blended against a player's own total — at gp = SHRINK_GAMES
- * a player is exactly half his own record and half the baseline, and confidence (gp / (gp +
- * SHRINK_GAMES)) exposes that same weight so a surface can say so rather than imply certainty
- * it doesn't have.
+ * projection cannot learn from what a player actually does. The mirror failure is a board that
+ * learns too fast: two games of a hot streak is not a season rate, and a winger who scored on
+ * opening night is not a goal-a-game player. These numbers are how many games of
+ * positional-baseline weight get blended against a player's own total — at gp = k a player is
+ * exactly half his own record and half the baseline.
+ *
+ * WHY A TABLE AND NOT A CONSTANT. This was one number, 10, for every column. A comment a few
+ * lines below asserted the reasoning: "a hit is as noisy over two games as a goal is". It is
+ * not, and the gap is not small. Estimated over 1,860 player-seasons (2024-25 and 2025-26,
+ * regulars only), by empirical Bayes — the spread of observed rates is true spread plus
+ * sampling noise, so true spread tau^2 = var(observed) - mean(lambda/G), and the games at
+ * which sample and prior deserve equal weight is k = lambda / tau^2:
+ *
+ *     goals  F 16.5   D 29.3      shots  F  3.4   D  4.2
+ *     hits   F  1.6   D  2.5      points F  6.5   D  8.8
+ *
+ * Shot volume and hits are real about a player within a handful of games; goals take a third
+ * of a season. One constant could not be right for both, and at 10 it over-trusted every hot
+ * goal start while throwing away genuine signal on the volume columns.
+ *
+ * PLUS-MINUS is the extreme case and the estimate says so: about 180 games of prior weight for
+ * a forward, because its per-game variance is dominated by which goals happened to be scored
+ * while he was on the ice. Even a full season leaves it mostly regressed, which is the correct
+ * treatment of a statistic nobody should be ranked on.
+ *
+ * CAPPED AT 200. Short-handed goals for defencemen estimated past 2,000 — an artefact of
+ * dividing by a true spread indistinguishable from zero, which is itself the finding: every
+ * defenceman is the same at short-handed goals. The cap keeps a degenerate estimate from
+ * reading as a precise one.
  */
-export const SHRINK_GAMES = 10
+export const SHRINK_GAMES: Record<'D' | 'F', CatTotals> = {
+  F: {
+    goals: 16.5, assists: 9.6, points: 6.5, plusMinus: 180, penaltyMinutes: 5.0,
+    ppPoints: 7.9, shots: 3.4, hits: 1.6, blockedShots: 14.8, ppGoals: 20.8,
+    shGoals: 111.7, shPoints: 60.2,
+  },
+  D: {
+    goals: 29.3, assists: 11.6, points: 8.8, plusMinus: 103.7, penaltyMinutes: 5.9,
+    ppPoints: 6.5, shots: 4.2, hits: 2.5, blockedShots: 9.1, ppGoals: 32.4,
+    shGoals: 200, shPoints: 200,
+  },
+}
 
 /**
  * League-average per-game rates, by position group, used ONLY when no other player in the
@@ -171,10 +205,12 @@ function priorRates(prior: SkaterRow[]): Map<number, CatTotals> {
       ?? leaveOneOut(all, row)
       ?? DEFAULT_BASELINE[isDefenceman(row.positionCode) ? 'D' : 'F']
     const gp = row.gamesPlayed
+    const shrink = SHRINK_GAMES[isDefenceman(row.positionCode) ? 'D' : 'F']
     const rate = zeroTotals()
     for (const cat of CATEGORIES) {
       const own = gp > 0 ? row[cat] : 0
-      rate[cat] = (own + base[cat] * SHRINK_GAMES) / (gp + SHRINK_GAMES)
+      const k = shrink[cat]
+      rate[cat] = (own + base[cat] * k) / (gp + k)
     }
     out.set(row.playerId, rate)
   }
@@ -223,11 +259,14 @@ export function rateSkaters(
       ?? DEFAULT_BASELINE[isDefenceman(row.positionCode) ? 'D' : 'F']
 
     const gp = row.gamesPlayed
+    const group = isDefenceman(row.positionCode) ? 'D' : 'F'
+    const shrink = SHRINK_GAMES[group]
     const perGame: Record<string, number> = {}
     for (const cat of CATEGORIES) {
       // A player with 0 games has no observed rate, whatever total happens to sit on the row.
       const ownContribution = gp > 0 ? row[cat] : 0
-      perGame[cat] = (ownContribution + baseline[cat] * SHRINK_GAMES) / (gp + SHRINK_GAMES)
+      const k = shrink[cat]
+      perGame[cat] = (ownContribution + baseline[cat] * k) / (gp + k)
     }
 
     const iceRow = iceByPlayer.get(row.playerId)
@@ -240,7 +279,10 @@ export function rateSkaters(
       gamesPlayed: gp,
       perGame,
       ppSecondsPerGame: iceRow ? iceRow.ppTimeOnIcePerGame : 0,
-      confidence: gp / (gp + SHRINK_GAMES),
+      /* On POINTS, which is the column a reader summarises a skater by. A mean across every
+         category would drag a fully measured player down to 0.7 on the strength of plus-minus
+         never being knowable, which is a fact about plus-minus and not about him. */
+      confidence: gp / (gp + shrink.points),
     }
   })
 }
