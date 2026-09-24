@@ -10,9 +10,15 @@ import type { WeekSchedule } from './mlbSchedule'
  * Matchup was reading it for hockey and reporting baseball fixtures as hockey games, which is
  * why that panel is currently hidden rather than translated.
  *
- * api-web.nhle.com is public, unauthenticated and returns a full week from one date. No key,
- * no proxy, no scraping — the same class of source as Sleeper's draft feed, and the reason
- * hockey's daily layer is tractable at all.
+ * api-web.nhle.com is public, unauthenticated and returns a full week from one date. It is
+ * NOT, however, readable from a browser: it sends `vary: Origin` and no
+ * `access-control-allow-origin`, so the browser blocks the response after it arrives. Sleeper,
+ * which this codebase does read directly from the page, returns `access-control-allow-origin:
+ * *` — an earlier version of this comment called them the same class of source and was wrong
+ * in the way that mattered.
+ *
+ * So it is read through `/api/nhl-stats?schedule=<date>`. The relay exists because of this,
+ * not because of payload size (which is what api/hockey-projections.js solves).
  *
  * ABBREVIATIONS ALREADY AGREE, which is the part that could easily have gone wrong. The NHL
  * writes BOS, UTA, NYR, SJS; ESPN's fantasy rosters write the same, bar the handful its
@@ -22,7 +28,7 @@ import type { WeekSchedule } from './mlbSchedule'
  * and the player quietly disappears from every daily surface.
  */
 
-const API = 'https://api-web.nhle.com/v1/schedule'
+const API = '/api/nhl-stats'
 
 /**
  * Both spellings of every club whose sources disagree.
@@ -101,7 +107,10 @@ export function parseNhlSchedule(data: unknown, from: string, to: string): WeekS
  */
 export async function getNhlSchedule(from: string, to: string): Promise<WeekSchedule> {
   try {
-    const res = await fetch(`${API}/${from}`)
+    /* Through the relay: the NHL blocks browsers, and the empty-schedule fallback below
+       renders a blocked request as "nobody plays tonight" — a plausible sentence that is not
+       an error, which is the worst way for this to fail. */
+    const res = await fetch(`${API}?schedule=${encodeURIComponent(from)}`)
     if (!res.ok) return { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
     return parseNhlSchedule(await res.json(), from, to)
   } catch {
