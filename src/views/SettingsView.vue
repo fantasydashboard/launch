@@ -236,6 +236,49 @@
       <LoadingSpinner size="xl" />
     </div>
 
+    <!-- ── Lineup cadence ────────────────────────────────────────────────
+         Only shown for the sports that can run either way. Football has one
+         game a week and therefore one shape, so asking would be noise. -->
+    <div v-if="showCadence" class="card">
+      <div class="card-header">
+        <div class="flex items-center gap-3">
+          <h2 class="card-title">Lineup cadence</h2>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="mb-1 text-sm text-dark-textMuted">
+          Whether this league sets a lineup every day or once a week. It decides which
+          first page you get and what the projections are measured over.
+        </p>
+        <!--
+          The source, said out loud. Detection reads one ESPN field and has only ever seen
+          one of its two values, so a page that presented a default as a finding would be
+          claiming to know something nobody has checked.
+        -->
+        <p class="mb-3 font-mono text-[11px] text-dark-textMuted/70">
+          <template v-if="shape.source === 'manual'">Set by you.</template>
+          <template v-else-if="shape.source === 'detected'">Read from your league's settings.</template>
+          <template v-else>We could not read this from your league — this is our default, not a finding.</template>
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            v-for="opt in (['daily', 'weekly'] as const)"
+            :key="opt"
+            class="rounded-lg px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition-colors"
+            :class="shape.cadence === opt
+              ? 'bg-primary font-bold text-dark-bg'
+              : 'bg-dark-bg text-dark-textMuted hover:text-dark-text'"
+            @click="setCadence(opt)"
+          >{{ opt }}</button>
+          <button
+            v-if="shape.source === 'manual'"
+            class="ml-1 font-mono text-[11px] text-dark-textMuted underline underline-offset-2 hover:text-dark-text"
+            @click="setCadence(null)"
+          >Use what the league says</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Your Leagues Section -->
     <div class="card">
       <div class="card-header">
@@ -338,9 +381,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
+import { useLeagueShape } from '@/composables/useLeagueShape'
 import { usePlatformsStore } from '@/stores/platforms'
 import { useAuthStore } from '@/stores/auth'
 import { supabase } from '@/lib/supabase'
@@ -351,6 +395,11 @@ import { parseRankings, inferRankingPosition } from '@/draft/room/customRankings
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const leagueStore = useLeagueStore()
+/* Cadence is only a question for the sports that can run either way. */
+const { shape, setCadence } = useLeagueShape()
+const showCadence = computed(() =>
+  ['hockey', 'basketball', 'baseball'].includes(String(leagueStore.activeSport ?? '')))
+
 
 /* Subscription management. Stripe hosts the portal — cancelling, changing a card and
    downloading invoices all live there — so this only mints the link. A subscriber who
