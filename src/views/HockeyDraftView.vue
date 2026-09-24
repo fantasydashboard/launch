@@ -680,20 +680,39 @@ const POS_TONE: Record<string, string> = {
             every starting slot filled &mdash; best available from here
           </p>
         </div>
-        <div class="mt-2 flex flex-wrap gap-x-5 gap-y-1">
-          <div v-for="sl in roster.slots" :key="sl.slot" class="font-mono text-[11px]">
-            <span class="text-dark-textMuted/70">{{ sl.slot }}</span>
-            <span class="ml-1.5" :class="sl.open > 0 ? 'text-dark-text' : 'text-dark-textMuted/50'">
+        <!--
+          THE LINEUP, not a tally.
+
+          fillRoster already seats every player in a specific slot and overflows the rest to the
+          bench; this rendered only the counts, so a manager mid-draft could see "F 2/9" and not
+          which two. The question on draft night is who is starting and who is spare, and the
+          answer was computed and thrown away. Narrowest slot first is fillRoster's own order —
+          a centre-only seat is scarcer than a UTIL that takes anyone.
+        -->
+        <div class="mt-2 space-y-1">
+          <div v-for="sl in roster.slots" :key="sl.slot" class="flex items-baseline gap-2 font-mono text-[11px]">
+            <span class="w-10 shrink-0 text-dark-textMuted/70">{{ sl.slot }}</span>
+            <span class="w-9 shrink-0" :class="sl.open > 0 ? 'text-dark-text' : 'text-dark-textMuted/50'">
               {{ sl.filled.length }}/{{ sl.filled.length + sl.open }}
             </span>
+            <span class="min-w-0 flex-1">
+              <span v-for="k in sl.filled" :key="k"
+                    class="mr-1.5 rounded border border-primary/30 px-1.5 py-0.5 text-[10px] text-primary/90">{{ nameOf(k) }}</span>
+              <!-- Open seats named as open, because an empty row and a filled one should not
+                   look alike at a glance while the clock is running. -->
+              <span v-if="sl.open > 0" class="text-dark-textMuted/40">
+                {{ sl.open }} open
+              </span>
+            </span>
           </div>
-          <div v-if="roster.bench.length" class="font-mono text-[11px] text-dark-textMuted/60">
-            bench {{ roster.bench.length }}
+          <div v-if="roster.bench.length" class="flex items-baseline gap-2 font-mono text-[11px]">
+            <span class="w-10 shrink-0 text-dark-textMuted/70">bench</span>
+            <span class="w-9 shrink-0 text-dark-textMuted/50">{{ roster.bench.length }}</span>
+            <span class="min-w-0 flex-1">
+              <span v-for="k in roster.bench" :key="k"
+                    class="mr-1.5 rounded border border-dark-border px-1.5 py-0.5 text-[10px] text-dark-textMuted">{{ nameOf(k) }}</span>
+            </span>
           </div>
-        </div>
-        <div v-if="myPlayers.length" class="mt-2 flex flex-wrap gap-1.5">
-          <span v-for="k in myPlayers" :key="k"
-                class="rounded border border-primary/30 px-2 py-0.5 font-mono text-[10px] text-primary/90">{{ nameOf(k) }}</span>
         </div>
       </div>
 
