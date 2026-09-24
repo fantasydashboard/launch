@@ -99,8 +99,9 @@ This is a program, not a plan. Four pieces, each shippable:
 
 1. **`leagueShape`** — the resolver, detection per platform, the manual override, and the nav
    reading it instead of sport. Nothing else moves until this is right.
-2. **Daily page for categories** — the most-used page for a hockey manager, and the closest to
-   existing (`src/today/` plus the category value maths).
+2. **Daily page for categories** — chosen as the first surface. The most-used page for a hockey
+   manager and the closest to what exists (`src/today/` plus the category value maths). Needs
+   the NHL feed above before it is worth anything.
 3. **Weekly category matchup** — category-by-category head-to-head.
 4. **Rankings and the Wire for categories** — the per-category contribution model.
 
@@ -121,38 +122,63 @@ which is wrong for them but not broken. That is the honest cut.
 - **"Categories" is not one thing.** H2H-each-category, H2H-most-categories and roto score
   differently, and the matchup page differs for each. This design treats them as one; that will
   not survive contact.
-- **The projection feed is ESPN, and that is a single point of failure.** See below. Unlike
-  football, where Sleeper serves projections for everyone, here an ESPN outage takes the
-  numbers down for Yahoo and Sleeper leagues too.
+- **Goalie starts are unsolved and unsolvable by modelling.** See below. The largest daily
+  decision in the sport depends on a scrape nobody has written.
+- **A rate model needs a season to rate.** In October there is no recent sample, so opening
+  weeks lean on the ESPN prior — exactly when a new hockey user is forming their opinion of
+  whether this product is any good.
 
-## The projection feed: ESPN, for every platform
+## The projection feed: not ESPN, and not really a projection
 
-Probed 2026-09-23.
+Probed 2026-09-23. The first version of this section recommended ESPN. That was wrong, and the
+reason it was wrong is worth keeping.
 
-**Sleeper is not an option.** It serves NHL players (3,577) and season state, but both
-projection endpoints return empty arrays. It is a player dictionary, not a projection source,
-for this sport.
+**The football model does not transfer.** In football you project a week ahead because there is
+one game and the lineup locks on Sunday — a forecast is the only instrument available. In daily
+hockey the question is "who plays tonight, and who is producing right now", and a rate model
+built from recent real output beats anybody's preseason projection.
 
-**ESPN is.** The public `leaguedefaults` endpoint on the `fhl` game returns projections without
-auth — Connor McDavid comes back with 87 stat entries, of which `statSourceId: 1` is the
-projection. It is the same request shape `src/services/espn.ts` already makes for rosters, so
-there is a client for it.
+This product already learned that lesson once. `rosBlend` exists because Sleeper's season
+projection does not converge — the same number in week fourteen as in week one — so a board
+built on it alone cannot learn. On a one-night horizon that failure is far worse.
 
-The consequence worth stating: **ESPN becomes the projection source for every NHL league,
-including Yahoo and Sleeper ones.** That is already true in spirit for football, where Sleeper
-serves everybody — but it means a hockey manager on Yahoo depends on two platforms, and an ESPN
-change breaks the numbers for all of them. Same shape as the football dependency, wider blast
-radius.
+So the feed is not a projection service. It is four layers:
 
-Per-period entries exist in the payload, which is what a daily league needs. Whether those
-periods are days and how they are keyed was NOT established by this probe and must be confirmed
-before piece 2 — a projection accidentally read as season-long when it is nightly would produce
-a confidently wrong board, which is the failure this product has now shipped twice.
+| Layer | Source | Status |
+|---|---|---|
+| Who plays tonight | NHL official API (`api-web.nhle.com/v1/schedule/<date>`) | Verified: free, no auth |
+| Production rate | NHL API player landing + MoneyPuck season CSV | Verified: 4,702 skaters, 154 columns |
+| Opportunity — ice time, PP time | MoneyPuck | Verified in the same CSV |
+| Prior for no-sample players | ESPN `fhl` leaguedefaults | Verified; used ONLY where we have nothing |
+
+ESPN survives as the fallback for a rookie or a player returning from injury, where there is no
+recent sample to rate. Everywhere else it is outranked by what the player has actually done.
+
+This also removes the single-point-of-failure the earlier version introduced: the NHL's own API
+is the authority for who is playing, and no fantasy platform sits between us and it.
+
+### The part no feed solves: confirmed goalie starters
+
+The largest single daily decision in fantasy hockey is which goalie to start, and it is decided
+by a coach's morning skate, not by a model. Start a goalie who sits and you take a zero; guess
+the backup correctly and you win the night. No free API publishes confirmed starters — Daily
+Faceoff is the de facto source and reading it means scraping.
+
+This is named here because a daily hockey product that silently ignores it is not a serious one,
+and because no amount of projection quality substitutes for it. It should be scoped as its own
+problem rather than assumed away inside piece 2.
+
+### Licensing, unverified
+
+MoneyPuck's data is free to download. Whether it is free to use inside a paid product is a
+different question and has NOT been checked. Do that before building on it; the NHL API and
+ESPN paths do not depend on the answer.
 
 ## Open questions
 
-1. Does any platform expose lineup cadence readably? Needs a probe against live leagues on all
-   three. Until answered, the hand override IS the feature.
-2. Are ESPN's per-period hockey projections daily, and how are periods keyed?
+1. Does any platform expose lineup cadence readably? The owner's position is that it should.
+   Needs a probe against live leagues on all three before the resolver can trust it.
+2. Is MoneyPuck licensed for use in a paid product?
 3. "Categories" is three different games — H2H each category, H2H most categories, and roto.
    Which does the first build target?
+4. Goalie starts: scrape Daily Faceoff, ask the user, or ship without and say so?
