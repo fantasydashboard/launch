@@ -7,6 +7,8 @@ import { ratesToProjection } from '@/hockey/ratesToProjection'
 import {
   buildHockeyCategoryValue, categoriesFromScoringItems, type HockeyCategory,
 } from '@/hockey/hockeyCategoryValue'
+import { buildHockeyValue } from '@/hockey/hockeyValue'
+import { isCategoryLeague, weightsFromScoringItems } from '@/hockey/hockeyLeague'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { usePlatformsStore } from '@/stores/platforms'
@@ -136,12 +138,18 @@ export function useHockeyRankings(): {
   /** The columns actually being scored, and whether they came from the league or a default. */
   categories: ComputedRef<HockeyCategory[]>
   fromLeague: ComputedRef<boolean>
+  /** 'points' or 'categories' — the league's own shape, which decides what the numbers mean. */
+  mode: ComputedRef<'points' | 'categories'>
   loading: ComputedRef<boolean>
   ready: ComputedRef<boolean>
   /** Categories the feed cannot fill for this league. Named, never silently dropped. */
   missing: ComputedRef<string[]>
 } {
   const leagueCats = ref<HockeyCategory[] | null>(null)
+  const leagueWeights = ref<Record<string, number> | null>(null)
+  /* 'categories' | 'points' — and it is the LEAGUE that says which, never the shape of the
+     settings blob. */
+  const mode = ref<'categories' | 'points'>('categories')
 
   /*
    * The LEAGUE's columns, not a house set.
@@ -170,8 +178,26 @@ export function useHockeyRankings(): {
       if (creds) espnService.setCredentials(creds.espn_s2, creds.swid)
       const scoring: any = await espnService.getScoringSettings(
         parts[1] as any, parts[2], parseInt(parts[3], 10))
-      const { categories } = categoriesFromScoringItems(scoring?.scoringItems)
-      if (categories.length >= 3) leagueCats.value = categories
+      /*
+       * POINTS OR CATEGORIES, and the league's own scoringType is the only thing that can say.
+       *
+       * hockeyLeague.ts warns about exactly this: "A points league lists every stat it could
+       * score and zeroes most, so reading this for one would report twenty-one categories it
+       * does not have." That is what shipped — a ten-team H2H_POINTS league was z-scored
+       * across fourteen imaginary columns, which is not a different presentation of the same
+       * answer, it is a different question. The draft board has always branched here; the
+       * rankings page did not.
+       */
+      const scoringType = String(scoring?.scoringType ?? '')
+      if (isCategoryLeague(scoringType)) {
+        mode.value = 'categories'
+        const { categories } = categoriesFromScoringItems(scoring?.scoringItems)
+        if (categories.length >= 3) leagueCats.value = categories
+      } else {
+        mode.value = 'points'
+        const { weights } = weightsFromScoringItems(scoring?.scoringItems)
+        if (weights && Object.keys(weights).length) leagueWeights.value = weights
+      }
     } catch (e) {
       /* Defaults stand, and `fromLeague` says so. A board quietly scored on the wrong columns
          is worse than one that admits it is showing the standard set. */
@@ -266,11 +292,31 @@ export function useHockeyRankings(): {
     const skaterCats = activeCats.value.filter((c) => !GOALIE_KEYS.has(c.key))
     const { projections, missing } = ratesToProjection(rates.value, 82,
       skaterCats.map((c) => c.key))
-    const { totalByKey, perCategoryByKey } = buildHockeyCategoryValue({
-      projections,
-      categories: skaterCats,
-      draftablePlayers: DRAFTABLE,
-    })
+    /*
+     * A points league is ranked on POINTS, which is what it pays. Standard deviations answer
+     * "how far clear of the field is he in each column", and a league with an exchange rate
+     * has already told us how to trade those columns against each other — so imposing z-scores
+     * on top would be overruling the league with a statistic it does not use.
+     */
+    let totalByKey: Record<string, number>
+    let perCategoryByKey: Record<string, Record<string, number>>
+    if (mode.value === 'points' && leagueWeights.value) {
+      const { valueByKey } = buildHockeyValue({ projections, weights: leagueWeights.value })
+      totalByKey = {}
+      for (const [k, v] of Object.entries(valueByKey)) totalByKey[k] = (v as any).total ?? 0
+      /* No per-category chips in a points league: the columns are not columns, they are terms
+         in one sum, and "he wins shots" says nothing when shots are simply worth 0.1 each. */
+      perCategoryByKey = {}
+    } else {
+      const built = buildHockeyCategoryValue({
+        projections,
+        categories: skaterCats,
+        draftablePlayers: DRAFTABLE,
+      })
+      totalByKey = built.totalByKey
+      perCategoryByKey = built.perCategoryByKey
+    }
+
     const byId = new Map(rates.value.map((r) => [String(r.playerId), r]))
     const rows = Object.entries(totalByKey)
       .map(([key, value]) => {
@@ -335,7 +381,8 @@ export function useHockeyRankings(): {
     rows: computed(() => built.value.rows),
     goalies: builtGoalies,
     categories: activeCats,
-    fromLeague: computed(() => leagueCats.value !== null),
+    fromLeague: computed(() => leagueCats.value !== null || leagueWeights.value !== null),
+    mode: computed(() => mode.value),
     loading: computed(() => loadingRef.value),
     ready: computed(() => built.value.rows.length > 0),
     missing: computed(() => built.value.missing),

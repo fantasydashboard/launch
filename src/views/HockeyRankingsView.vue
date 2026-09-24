@@ -18,9 +18,15 @@
         Hockey rankings
       </h1>
       <p class="mt-2 max-w-xl text-sm leading-relaxed text-dark-textSecondary">
-        Every skater ranked by what he contributes across the categories your league counts,
-        measured in standard deviations rather than points. A player can rank here on volume
-        alone.
+        <template v-if="mode === 'points'">
+          Every skater ranked by the points he is projected to score under your league's own
+          scoring, for the rest of the season.
+        </template>
+        <template v-else>
+          Every skater ranked by what he contributes across the categories your league counts,
+          measured in standard deviations rather than points. A player can rank here on volume
+          alone.
+        </template>
       </p>
 
       <p class="mt-3 max-w-xl rounded-lg border border-dark-border bg-dark-card/60 px-3 py-2 font-mono text-[11px] leading-relaxed text-dark-textMuted">
@@ -28,7 +34,15 @@
           The columns, named. A category board that does not say which categories it counted is
           asking to be trusted about the one thing the reader can check.
         -->
-        <template v-if="fromLeague">
+        <!--
+          A points league is not a category league with the columns hidden — it is a different
+          question, and calling its scoring items "categories" was how this page came to
+          z-score a ten-team H2H_POINTS league across fourteen columns it does not have.
+        -->
+        <template v-if="mode === 'points'">
+          Scored on your league's own point values.
+        </template>
+        <template v-else-if="fromLeague">
           Scored on your league's columns: {{ categories.map((c) => c.key).join(' · ') }}.
         </template>
         <template v-else>
@@ -88,7 +102,11 @@
           <span class="hidden w-12 shrink-0 text-right sm:block"
                 :title="active === 'G' ? 'Games started — the thing that decides a goalie' : 'Points per game'"
           >{{ active === 'G' ? 'GS' : 'PTS/G' }}</span>
-          <span class="w-12 shrink-0 text-right" title="Total standard deviations across the scored categories">VALUE</span>
+          <span class="w-12 shrink-0 text-right"
+                :title="mode === 'points'
+                  ? 'Projected points under your league\'s scoring'
+                  : 'Total standard deviations across the scored categories'"
+          >{{ mode === 'points' ? 'PTS' : 'VALUE' }}</span>
         </div>
 
         <div v-for="row in visible" :key="row.playerKey"
@@ -123,7 +141,9 @@
           <span class="hidden w-12 shrink-0 text-right font-mono text-[10px] text-dark-textSecondary sm:block">
             {{ active === 'G' ? row.pointsPerGame.toFixed(0) : row.pointsPerGame.toFixed(2) }}
           </span>
-          <span class="w-12 shrink-0 text-right font-mono text-xs">{{ row.value.toFixed(1) }}</span>
+          <span class="w-12 shrink-0 text-right font-mono text-xs">
+            {{ mode === 'points' ? Math.round(row.value) : row.value.toFixed(1) }}
+          </span>
         </div>
 
         <button
@@ -140,7 +160,7 @@
 import { computed, ref, watch } from 'vue'
 import { useHockeyRankings } from '@/composables/useHockeyRankings'
 
-const { rows, goalies, loading, ready, missing, categories, fromLeague } = useHockeyRankings()
+const { rows, goalies, loading, ready, missing, categories, fromLeague, mode } = useHockeyRankings()
 
 /* Skater positions as the NHL spells them, plus goalies as their own list. */
 const POSITIONS = ['ALL', 'C', 'L', 'R', 'D', 'G'] as const
