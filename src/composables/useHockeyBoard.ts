@@ -111,6 +111,9 @@ export function useHockeyBoard() {
 
   const projections = ref<Record<string, HockeyProjection>>({})
   const namesByKey = ref<Record<string, string>>({})
+  /* The team each player is on, so the board can show a crest. buildHockeyBoard has accepted
+     this since it was written and nothing ever passed it, so `proTeam` was always undefined. */
+  const teamsByKey = ref<Record<string, string>>({})
 
   const isHockey = computed(() => leagueStore.activeSport === 'hockey')
   const isEspn = computed(() => leagueStore.activePlatform === 'espn')
@@ -283,6 +286,7 @@ export function useHockeyBoard() {
       Object.entries(merged.projections).filter(([k]) => !k.startsWith('nhl:')),
     )
     namesByKey.value = merged.namesByKey
+    teamsByKey.value = merged.teamByKey
     return ''
   }
 
@@ -355,6 +359,7 @@ export function useHockeyBoard() {
         projections: projections.value,
         rules: rules.value,
         namesByKey: namesByKey.value,
+        teamsByKey: teamsByKey.value,
         drafted: drafted.value,
         punted: punted.value,
       })

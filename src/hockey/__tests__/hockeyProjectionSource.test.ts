@@ -158,6 +158,24 @@ describe('mergeHockeyProjections', () => {
     expect(missing).toEqual(['FOW'])
   })
 
+  /*
+   * The team, carried so a board can show a crest beside a name. `teamAbbrevs` lists every
+   * team a player appeared for — "COL,CAR" after a trade — and the one that matters is the
+   * one he is with NOW, which is the last of them.
+   */
+  it('carries the team a player is on now, not the one he was traded from', () => {
+    const { teamByKey } = mergeHockeyProjections({
+      espn: [espnPlayer()],
+      rates: [rate({ team: 'COL,CAR' })],
+    })
+    expect(teamByKey['3900']).toBe('CAR')
+  })
+
+  it('carries a single team through untouched', () => {
+    const { teamByKey } = mergeHockeyProjections({ espn: [espnPlayer()], rates: [rate()] })
+    expect(teamByKey['3900']).toBe('EDM')
+  })
+
   it('survives both feeds being empty', () => {
     const r = mergeHockeyProjections({ espn: [], rates: [] })
     expect(r.projections).toEqual({})

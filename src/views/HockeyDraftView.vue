@@ -23,6 +23,7 @@ import CategoryLedgerPanel from '@/components/draft/CategoryLedgerPanel.vue'
 import { parseEspnLeagueUrl, otherPlatformFromUrl } from '@/hockey/espnLeagueUrl'
 import { CATEGORY_CHOICES, YAHOO_DEFAULT_CATEGORIES, rulesFromManual } from '@/hockey/manualRules'
 import { rulesProblem } from '@/hockey/hockeyLeague'
+import { nhlTeamLogo } from '@/players/nhlTeamLogo'
 
 const {
   loading, problem, rules, rows, replacement, unnamedScoredStatIds,
@@ -219,6 +220,13 @@ const injuryTag = (s: string | null | undefined) => (s ? INJURY_LABEL[s] ?? s : 
 
 /* Rounds of disagreement with the room, shown only past a full round — a badge on every row
    carries as much information as a badge on none. */
+/* ESPN's own headshot, keyed by the id the board already uses. */
+const headshotUrl = (playerKey: string) =>
+  `https://a.espncdn.com/i/headshots/nhl/players/full/${playerKey}.png`
+const logoUrl = (abbr?: string) => (abbr ? nhlTeamLogo(abbr) : undefined)
+/* A missing image hides rather than leaving a broken icon in the row. */
+const hideImg = (e: Event) => { (e.target as HTMLImageElement).style.visibility = 'hidden' }
+
 const marketTag = (r: any) => {
   if (!r?.marketFlag) return ''
   const n = Math.abs(r.marketRounds ?? 0)
@@ -735,6 +743,17 @@ const POS_TONE: Record<string, string> = {
         <span class="w-8 shrink-0 font-mono text-[10px]" :class="POS_TONE[r.position]">{{ r.position }}</span>
         <span class="w-2 shrink-0 font-mono text-[10px] text-primary"
               :title="'Fills a starting slot you still have open'">{{ !live && mySlot !== null && fillsNeed(r.position) ? '•' : '' }}</span>
+        <!--
+          A FACE AND A CREST, because a draft is read at a glance and a wall of names is not.
+          The headshot needs no data plumbing — a matched row's playerKey IS the ESPN player
+          id — and the crest comes from the team the merge now carries. Both fail soft: a
+          missing image hides rather than leaving a broken icon in the row.
+        -->
+        <img v-if="r.playerKey" :src="headshotUrl(r.playerKey)" :alt="r.name" loading="lazy"
+             @error="hideImg" class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" />
+        <img v-if="logoUrl(r.proTeam)" :src="logoUrl(r.proTeam)" :alt="r.proTeam ?? ''" loading="lazy"
+             @error="hideImg" class="h-4 w-4 shrink-0 object-contain" />
+        <span v-else class="w-4 shrink-0" />
         <span class="min-w-0 flex-1 truncate">
           <span class="text-dark-text">{{ r.name }}</span>
           <span v-if="injuryTag(r.injuryStatus)"

@@ -77,6 +77,14 @@ export interface MergeResult {
   namesByKey: Record<string, string>
   /** playerKey -> the rate behind it, for the columns only the rankings board shows. */
   rateByKey: Record<string, SkaterRate>
+  /**
+   * playerKey -> the team he is on NOW, for a crest beside a name.
+   *
+   * `teamAbbrevs` lists every team a player appeared for — "COL,CAR" after a trade — and the
+   * one that matters is the last of them. Absent for a player only ESPN knows, since ESPN
+   * gives a numeric proTeamId rather than the abbreviation a logo lookup needs.
+   */
+  teamByKey: Record<string, string>
   /** League categories the feed cannot fill. */
   missing: string[]
   /** How many rate rows found an ESPN row. The join's own health, reportable. */
@@ -146,6 +154,7 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
   const keyByName: Record<string, string> = {}
   const namesByKey: Record<string, string> = {}
   const rateByKey: Record<string, SkaterRate> = {}
+  const teamByKey: Record<string, string> = {}
   const claimed = new Set<string>()
 
   for (const r of rates) {
@@ -168,6 +177,8 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
     keyByName[normalizeName(r.name)] = key
     namesByKey[key] = r.name
     rateByKey[key] = r
+    const team = String(r.team ?? '').split(',').pop()?.trim()
+    if (team) teamByKey[key] = team
   }
 
   /*
@@ -192,5 +203,5 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
     namesByKey[p.playerKey] = p.name
   }
 
-  return { projections: out, keyByName, namesByKey, rateByKey, missing, matched: espnFor.size }
+  return { projections: out, keyByName, namesByKey, rateByKey, teamByKey, missing, matched: espnFor.size }
 }
