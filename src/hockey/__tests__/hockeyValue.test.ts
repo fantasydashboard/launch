@@ -114,6 +114,36 @@ describe('scoring a hockey projection', () => {
     expect(half.valueByKey.mac.games).toBe(41)
     expect(half.valueByKey.mac.total).toBeCloseTo(222.7 / 2, 4)
   })
+
+  /*
+   * THE SEASON IS ALSO A CEILING, and without it a player back from injury is credited with
+   * games that do not exist.
+   *
+   * Subtracting what a player has played from what he was projected is right only while the
+   * projection's own absence is still ahead of him. A skater projected 64 games who has
+   * played 5 of his team's 60 has 59 by that subtraction — but there are only 22 nights left
+   * in the season. He cannot play 59 of them, and a board that priced him as though he could
+   * would rank the most-injured players on the waiver wire highest, which is exactly backwards.
+   */
+  it('never credits a player with more games than the season has left', () => {
+    const r = buildHockeyValue({
+      projections: proj, weights: WEIGHTS, gamesPlayed: { mac: 5 }, gamesLeft: 22,
+    })
+    expect(r.valueByKey.mac.games).toBe(22)
+  })
+
+  /* And the cap does not INVENT games for somebody the projection says is nearly done. */
+  it('keeps the smaller of what he has left and what the season has left', () => {
+    const r = buildHockeyValue({
+      projections: proj, weights: WEIGHTS, gamesPlayed: { mac: 75 }, gamesLeft: 22,
+    })
+    expect(r.valueByKey.mac.games).toBe(7)
+  })
+
+  it('is unchanged when no season horizon is supplied', () => {
+    const r = buildHockeyValue({ projections: proj, weights: WEIGHTS, gamesPlayed: { mac: 41 } })
+    expect(r.valueByKey.mac.games).toBe(41)
+  })
 })
 
 describe('stats the league pays for that we cannot name', () => {

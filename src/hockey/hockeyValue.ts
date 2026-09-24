@@ -130,6 +130,16 @@ export interface HockeyValueInput {
   /** Games each player has already played, when known. Absent means none. */
   gamesPlayed?: Record<string, number>
   /**
+   * Games the SEASON has left, as a ceiling on any one player's remainder.
+   *
+   * Subtracting what a player has played from what he was projected is right only while the
+   * projection's own absence is still ahead of him. A skater projected 64 games who has
+   * played 5 of his team's 60 has 59 left by that subtraction, and 22 nights left in reality.
+   * Without this cap the board ranks the most-injured players on the wire highest, which is
+   * exactly backwards. Omitted means no ceiling, which is correct before puck drop.
+   */
+  gamesLeft?: number
+  /**
    * The league's scoringItems, when the caller has them.
    *
    * Only used to report the gap: a league that pays for a stat we cannot name leaves every
@@ -181,7 +191,7 @@ export function unidentifiedScoredStats(
  * that passes no gamesPlayed gets the full season, which is right before puck drop.
  */
 export function buildHockeyValue(input: HockeyValueInput): HockeyValueResult {
-  const { projections, weights, gamesPlayed = {}, scoringItems } = input
+  const { projections, weights, gamesPlayed = {}, gamesLeft, scoringItems } = input
   const valueByKey: ValueByKey = {}
 
   for (const [key, proj] of Object.entries(projections)) {
@@ -214,7 +224,11 @@ export function buildHockeyValue(input: HockeyValueInput): HockeyValueResult {
       : (proj.stats.GP || 0)
 
     const played = Math.max(0, gamesPlayed[key] ?? 0)
-    const remaining = Math.max(0, (projectedGames || NHL_SEASON_GAMES) - played)
+    const ceiling = Number.isFinite(gamesLeft) ? Math.max(0, gamesLeft as number) : Infinity
+    const remaining = Math.min(
+      ceiling,
+      Math.max(0, (projectedGames || NHL_SEASON_GAMES) - played),
+    )
     const perGame = projectedGames > 0 ? seasonTotal / projectedGames : 0
 
     valueByKey[key] = {

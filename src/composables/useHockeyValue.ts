@@ -19,11 +19,17 @@ import { mergeHockeyProjections, normalizeName } from '@/hockey/hockeyProjection
  * scored and belongs to whoever held the player then. The value is scaled to the games that
  * REMAIN, which is the same correction the football engine needed.
  *
- * HOW REMAINING GAMES ARE ESTIMATED, AND WHY IT IS AN ESTIMATE. The season's elapsed fraction
- * is taken from the calendar and applied to every player equally. That is wrong for anybody
- * who has missed time — a player back from six weeks out has more left than this says — and it
- * is stated here rather than hidden, because the alternative on offer was being wrong about
- * the whole sport.
+ * HOW REMAINING GAMES ARE COUNTED. Per player, from what he has actually played — not from
+ * the calendar spread evenly over everybody, which is what this used to do and which was
+ * wrong for exactly the players a manager is deciding about. A winger back from six weeks out
+ * has absorbed his absence already; charging him a share of it again, every week, for the rest
+ * of the season, priced him as permanently injured. The NHL feed publishes his games played,
+ * so the estimate was never needed.
+ *
+ * The season's own remaining nights stay as a CEILING, because the correction has an obvious
+ * failure mode without one: a player projected 64 games who has played 5 would otherwise be
+ * credited with 59 more on a slate with 22 left, which would rank the most-injured players on
+ * the wire highest.
  *
  * WHERE THE NUMBERS COME FROM. The same merged source every other hockey surface reads: our
  * measured NHL rates over ESPN's expected games-played, with ESPN's market and injury data
@@ -33,6 +39,8 @@ import { mergeHockeyProjections, normalizeName } from '@/hockey/hockeyProjection
 
 /** NHL regular season: early October to mid April, about twenty-six weeks. */
 export const NHL_SEASON_WEEKS = 26
+/** And eighty-two games inside them. */
+export const NHL_SEASON_GAMES = 82
 
 export interface HockeyValueInputs {
   /** ESPN league key or id, for reading the league's own scoring. */
@@ -81,18 +89,26 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
 
   watch([inputs.enabled, inputs.leagueId, inputs.season], load, { immediate: true })
 
+  /** Nights the season has left, from the calendar — a ceiling, not a per-player estimate. */
+  const gamesLeft = computed(() => {
+    const weeks = Math.max(0, Math.min(NHL_SEASON_WEEKS, inputs.weeksLeft.value))
+    return Math.round(NHL_SEASON_GAMES * (weeks / NHL_SEASON_WEEKS))
+  })
+
   /**
-   * Games already gone, estimated from the calendar and applied to everyone alike.
+   * Games already gone, PER PLAYER, measured rather than estimated.
    *
-   * See the header: this is the honest weak point. A player who missed a month has more left
-   * than this credits him with, and there is no games-played in the feed to know it.
+   * Skaters come from the rate model, which carries each man's real games played. Goalies
+   * have no rate row — there is no goalie rate model — so they keep the calendar share, and
+   * that fallback is named here rather than left to look like a measurement.
    */
   const gamesPlayed = computed<Record<string, number>>(() => {
-    const left = Math.max(0, Math.min(NHL_SEASON_WEEKS, inputs.weeksLeft.value))
-    const elapsed = 1 - left / NHL_SEASON_WEEKS
+    const elapsed = 1 - gamesLeft.value / NHL_SEASON_GAMES
     if (elapsed <= 0) return {}          // preseason: the full projection is what remains
     const out: Record<string, number> = {}
     for (const [key, p] of Object.entries(merged.value.projections)) {
+      const rate = merged.value.rateByKey[key]
+      if (rate) { out[key] = rate.gamesPlayed; continue }
       const total = p.position === 'G' ? (p.stats.DEC || p.stats.GP || 0) : (p.stats.GP || 0)
       out[key] = total * elapsed
     }
@@ -105,6 +121,7 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
       projections: merged.value.projections,
       weights: weights.value,
       gamesPlayed: gamesPlayed.value,
+      gamesLeft: gamesLeft.value,
     }).valueByKey
   })
 
