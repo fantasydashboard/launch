@@ -124,16 +124,33 @@
               at 5.0 are not the same player when one brings goals and the other penalty
               minutes, which is the whole way a category league differs from a points one.
             -->
+            <!--
+              NOT PLAYING, said on the row rather than left for the reader to know. A board
+              that ranked Cale Makar twelfth while he was listed OUT was answering a question
+              about talent when the person reading it was asking one about this week. The rate
+              cannot know this — an injury is a fact about the present, not a measured rate —
+              so it comes from ESPN, which is what the league itself shows.
+            -->
+            <span v-if="injuryLabel(row.injuryStatus)"
+                  class="ml-1 rounded px-1 py-0.5 font-mono text-[9px] font-bold uppercase"
+                  :class="row.injuryStatus === 'DAY_TO_DAY'
+                    ? 'bg-[#e69a4a]/20 text-[#e69a4a]' : 'bg-[#ef4444]/20 text-[#ef4444]'"
+            >{{ injuryLabel(row.injuryStatus) }}</span>
             <span v-for="w in row.wins" :key="w"
                   class="ml-1 rounded bg-dark-bg px-1 py-0.5 font-mono text-[9px] uppercase text-[#2dd4bf]">{{ w }}</span>
             <!--
-              How much of this rating is the player rather than last season standing in for
-              him. Shown only where it is genuinely thin, because a confidence badge on every
-              row in March would be noise nobody reads.
+              THE SAMPLE, as a number rather than an adjective.
+              This was the word "thin", which told a reader that something was uncertain
+              without telling them how uncertain. Nine games and nineteen games are both thin
+              and they are not the same claim. The number also does work the rest of the row
+              cannot: the GP column shows the games he is EXPECTED to play, so a rookie rated
+              off nine appearances reads as an 82-game player with nothing to say otherwise.
+              Shown only below twenty, because past that the sample is the answer.
             -->
-            <span v-if="!allThin && row.confidence < 0.4"
+            <span v-if="row.gamesPlayed > 0 && row.gamesPlayed < 20"
                   class="ml-1 font-mono text-[9px] uppercase text-[#e69a4a]"
-                  title="Mostly last season — he has barely played yet">thin</span>
+                  :title="`Rated off only ${row.gamesPlayed} games — mostly last season and the league average`"
+            >{{ row.gamesPlayed }} gp</span>
           </span>
           <span v-if="active !== 'G'" class="hidden w-12 shrink-0 text-right font-mono text-[10px] text-dark-textSecondary sm:block">
             {{ (row.ppSecondsPerGame / 60).toFixed(1) }}
@@ -183,12 +200,27 @@ const pool = computed(() => {
 })
 const visible = computed(() => pool.value.slice(0, expanded.value ? FULL_DEPTH : DEPTH))
 
+/*
+ * ESPN's designations, shortened to what fits on a row. ACTIVE never arrives — the feed drops
+ * it deliberately, because a flag on every healthy player is a flag that says nothing.
+ */
+const INJURY_LABEL: Record<string, string> = {
+  OUT: 'OUT',
+  INJURY_RESERVE: 'IR',
+  DAY_TO_DAY: 'DTD',
+  SUSPENSION: 'SUSP',
+}
+function injuryLabel(status: string | null): string {
+  return status ? INJURY_LABEL[status] ?? '' : ''
+}
+
 function onImgErr(e: Event) {
   const el = e.target as HTMLImageElement
   el.style.visibility = 'hidden'
 }
 
-/* Every rating thin means the season has not started. That is one fact about the board, not a
-   property of nine hundred players, so it is stated once above rather than stamped on each. */
-const allThin = computed(() => rows.value.length > 0 && rows.value.every((r) => r.confidence < 0.4))
+/* Nobody having played is one fact about the board, not a property of nine hundred players, so
+   it is stated once above rather than stamped on each row. Read off games rather than a derived
+   confidence, because the sentence it controls is literally "nobody has played yet". */
+const allThin = computed(() => rows.value.length > 0 && rows.value.every((r) => r.gamesPlayed === 0))
 </script>

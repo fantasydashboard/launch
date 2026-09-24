@@ -16,6 +16,8 @@ import { createLedgerEngine } from '@/hockey/categoryLedger'
 import { buildCategoryMarginal } from '@/hockey/categoryMarginal'
 import { suggestPunts } from '@/hockey/puntAdvisor'
 import { picksByTeamFromOrder } from '@/hockey/picksByTeam'
+import { loadNhlFeed } from '@/composables/useNhlFeed'
+import { mergeHockeyProjections } from '@/hockey/hockeyProjectionSource'
 
 /**
  * A hockey draft board for the active ESPN league.
@@ -32,7 +34,6 @@ import { picksByTeamFromOrder } from '@/hockey/picksByTeam'
  * they are holding.
  */
 
-const PROJECTIONS_URL = '/api/hockey-projections'
 
 /**
  * Every league read goes through the ESPN service, which goes through the Supabase proxy.
@@ -259,23 +260,29 @@ export function useHockeyBoard() {
     }
   }
 
-  /** Projections, which are ours and belong to no platform. Shared by both load paths. */
+  /**
+   * Projections, from the one source every hockey surface reads.
+   *
+   * This used to fetch ESPN's projection directly while the rankings page ran our own rate
+   * model, so the two pages ranked the same players differently — the drift you notice by
+   * checking a player on one page and then the other, with nothing to say which is right.
+   * Now both read measured NHL rates over ESPN's expected games-played.
+   *
+   * ESPN-KEYED ROWS ONLY, and that restriction is load-bearing rather than tidy. The board
+   * learns who has been taken from ESPN's own draft feed, keyed by ESPN player id. A skater
+   * the rate model knows and ESPN never listed has no such id, so he could never be marked
+   * drafted — he would sit in the available pool all night after somebody took him. Showing
+   * a player who cannot be crossed off is worse than not showing him, so the draft board
+   * stays inside ESPN's universe while every other surface gets all 940.
+   */
   async function loadProjections(forSeason: number): Promise<string> {
-    const res = await fetch(`${PROJECTIONS_URL}?season=${forSeason}`)
-    if (!res.ok) return `Could not load projections (${res.status}).`
-    const proj = await res.json()
-    const parsed: Record<string, HockeyProjection> = {}
-    const names: Record<string, string> = {}
-    for (const p of proj?.players ?? []) {
-      parsed[p.playerKey] = {
-        playerKey: p.playerKey, position: p.position, stats: p.stats ?? {},
-        adp: p.adp ?? null, auctionValue: p.auctionValue ?? null,
-        percentOwned: p.percentOwned ?? null, injuryStatus: p.injuryStatus ?? null,
-      }
-      names[p.playerKey] = p.name
-    }
-    projections.value = parsed
-    namesByKey.value = names
+    const feed = await loadNhlFeed(forSeason)
+    if (!feed.espn.length) return 'Could not load projections.'
+    const merged = mergeHockeyProjections({ espn: feed.espn, rates: feed.rates })
+    projections.value = Object.fromEntries(
+      Object.entries(merged.projections).filter(([k]) => !k.startsWith('nhl:')),
+    )
+    namesByKey.value = merged.namesByKey
     return ''
   }
 

@@ -1,9 +1,6 @@
 import { computed, ref, type ComputedRef } from 'vue'
-import {
-  fetchSkaterSummary, fetchSkaterIce, fetchSkaterRealtime, fetchGoalieSummary, type GoalieRow,
-} from '@/services/nhlStats'
-import { rateSkaters, type SkaterRate } from '@/hockey/nhlRates'
-import { ratesToProjection } from '@/hockey/ratesToProjection'
+import { useNhlFeed } from '@/composables/useNhlFeed'
+import { mergeHockeyProjections } from '@/hockey/hockeyProjectionSource'
 import {
   buildHockeyCategoryValue, categoriesFromScoringItems, type HockeyCategory,
 } from '@/hockey/hockeyCategoryValue'
@@ -44,11 +41,6 @@ function topCategories(perCat: Record<string, number> | undefined, n = 3): strin
     .sort((a, b) => b[1] - a[1])
     .slice(0, n)
     .map(([k]) => k)
-}
-
-/** A season id the NHL understands: 2026 -> '20262027'. */
-function seasonId(startYear: number): string {
-  return `${startYear}${startYear + 1}`
 }
 
 /**
@@ -129,6 +121,10 @@ export interface HockeyRankRow {
   ppSecondsPerGame: number
   /** 0..1 — how much of this is the player rather than a prior. */
   confidence: number
+  /** Games he has actually played. The row's other numbers are a projection; this is not. */
+  gamesPlayed: number
+  /** ESPN's designation — OUT, DAY_TO_DAY, INJURY_RESERVE. Null when he is fine. */
+  injuryStatus: string | null
   rank: number
 }
 
@@ -205,93 +201,44 @@ export function useHockeyRankings(): {
     }
   }
 
-  const rates = ref<SkaterRate[]>([])
-  const goalieRows = ref<GoalieRow[]>([])
-  const seasonRef = ref('')
-  const loadingRef = ref(true)
+  /*
+   * ONE FEED, shared with the draft board and the value engine behind Today and My Team.
+   *
+   * This composable used to fetch and rate the NHL's skaters itself, which made the rankings
+   * page the only surface running the rate model — the draft board and My Team ran ESPN's
+   * projection instead. Two sources for one sport is a product that contradicts itself, and a
+   * manager checking both pages had no way to tell which to believe.
+   */
+  const espnSeason = computed(() => {
+    /* An NHL season is named for the year it ENDS, and the changeover is the summer. */
+    const now = new Date()
+    return now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear()
+  })
+  const { feed, loading: loadingRef } = useNhlFeed(espnSeason)
 
-  async function load() {
-    loadingRef.value = true
-    try {
-      const year = new Date().getFullYear()
-      /*
-       * Last season is fetched alongside this one, not instead of it. Early in a season the
-       * prior is doing nearly all the work and by March it is doing almost none — the
-       * shrinkage handles that transition on its own, so there is no date logic here deciding
-       * when to "switch over". A rule like that is the kind that is wrong for a week every
-       * year and nobody notices.
-       */
-      const [current, currentIce, prior, priorIce, curG, priorG, curRt, priorRt] = await Promise.all([
-        fetchSkaterSummary(seasonId(year)),
-        fetchSkaterIce(seasonId(year)),
-        fetchSkaterSummary(seasonId(year - 1)),
-        fetchSkaterIce(seasonId(year - 1)),
-        fetchGoalieSummary(seasonId(year)),
-        fetchGoalieSummary(seasonId(year - 1)),
-        fetchSkaterRealtime(seasonId(year)),
-        fetchSkaterRealtime(seasonId(year - 1)),
-      ])
-
-      /*
-       * Before a puck is dropped the current season returns NOTHING — not thin data, an empty
-       * list — and rateSkaters has no roster to rate, so the board renders its "feed is not
-       * answering" state on a feed that is answering perfectly.
-       *
-       * The roster for opening night is last season's, with every counting stat zeroed. That
-       * is not a fallback so much as the truth: nobody has played, so every player's record
-       * this year IS zero games, and the prior is what the whole rate model exists to lean on
-       * until that changes. Ice time comes from last season for the same reason — power-play
-       * minutes are the most stable thing about a player across a summer, and an opening-night
-       * board with no PP signal would throw away its best column.
-       */
-      /* Hits and blocks arrive on their own report, so they are merged onto the rows before
-         rating — the rate model shrinks them exactly like goals, which is the point. */
-      const mergeRt = (rows: typeof current, rt: typeof curRt) => {
-        const by = new Map(rt.map((r) => [r.playerId, r]))
-        return rows.map((r) => ({
-          ...r,
-          hits: by.get(r.playerId)?.hits ?? 0,
-          blockedShots: by.get(r.playerId)?.blockedShots ?? 0,
-        }))
-      }
-      const currentFull = mergeRt(current, curRt)
-      const priorFull = mergeRt(prior, priorRt)
-
-      const started = currentFull.length > 0
-      const roster = started ? currentFull : priorFull.map((p) => ({
-        ...p, gamesPlayed: 0, goals: 0, assists: 0, points: 0,
-        plusMinus: 0, penaltyMinutes: 0, ppPoints: 0, shots: 0,
-        hits: 0, blockedShots: 0, ppGoals: 0, shGoals: 0, shPoints: 0,
-      }))
-      rates.value = rateSkaters(roster, started ? currentIce : priorIce, priorFull)
-      /* Goalies take last season wholesale before the season starts, for the same reason the
-         skaters do — and unlike skaters they are not rate-shrunk here, because a goalie's
-         fantasy value is dominated by how often he STARTS, which is a fact about his coach
-         rather than a rate that needs regressing. */
-      goalieRows.value = curG.length ? curG : priorG
-      seasonRef.value = started ? seasonId(year) : seasonId(year - 1)
-    } catch (e) {
-      console.error('[useHockeyRankings] load failed', e)
-      rates.value = []
-    } finally {
-      loadingRef.value = false
-    }
-  }
-  void load()
   void loadLeagueCategories()
 
   const activeCats = computed<HockeyCategory[]>(() => leagueCats.value ?? DEFAULT_CATEGORIES)
 
   const built = computed(() => {
-    if (!rates.value.length) return { rows: [] as HockeyRankRow[], missing: [] as string[] }
-    /* Games left is a scalar here: this is a season-long board, and a per-player remaining
-       count would need a schedule read that changes nobody's ORDER, only the size of every
-       number by the same factor. */
+    if (!feed.value.rates.length) return { rows: [] as HockeyRankRow[], missing: [] as string[] }
     /* Goalie columns are filtered out of the skater pass: a skater standardised on wins and
        saves would read as catastrophically bad at both, which is not a fact about him. */
     const skaterCats = activeCats.value.filter((c) => !GOALIE_KEYS.has(c.key))
-    const { projections, missing } = ratesToProjection(rates.value, 82,
-      skaterCats.map((c) => c.key))
+    /* Our rates over ESPN's expected games. Eighty-two for everybody says every player will be
+       healthy all year, which is false about a predictable fraction of them and most false
+       about exactly the players a manager is deciding between. */
+    const merged = mergeHockeyProjections({
+      espn: feed.value.espn,
+      rates: feed.value.rates,
+      leagueKeys: skaterCats.map((c) => c.key),
+    })
+    const { missing, rateByKey } = merged
+    /* Goalies are ranked in their own list below, so they are kept out of the skater pool
+       here — the merge carries them through for the surfaces that do want them. */
+    const projections = Object.fromEntries(
+      Object.entries(merged.projections).filter(([k]) => rateByKey[k]),
+    )
     /*
      * A points league is ranked on POINTS, which is what it pays. Standard deviations answer
      * "how far clear of the field is he in each column", and a league with an exchange rate
@@ -317,21 +264,25 @@ export function useHockeyRankings(): {
       perCategoryByKey = built.perCategoryByKey
     }
 
-    const byId = new Map(rates.value.map((r) => [String(r.playerId), r]))
     const rows = Object.entries(totalByKey)
       .map(([key, value]) => {
-        const r = byId.get(key)
+        const r = rateByKey[key]
         return {
           playerKey: key,
           name: r?.name ?? key,
           position: r?.position ?? '',
           team: r?.team ?? '',
-          headshot: r ? headshot(r.playerId, r.team, seasonRef.value) : '',
+          headshot: r ? headshot(r.playerId, r.team, feed.value.season) : '',
+          /* OUT, DAY_TO_DAY, INJURY_RESERVE — from ESPN, because a measured rate cannot know
+             it. A board that ranked Cale Makar twelfth while he was listed OUT was answering
+             a question about talent when the reader was asking one about this week. */
+          injuryStatus: merged.projections[key]?.injuryStatus ?? null,
           wins: topCategories(perCategoryByKey[key]),
           value,
           pointsPerGame: r?.perGame.points ?? 0,
           ppSecondsPerGame: r?.ppSecondsPerGame ?? 0,
           confidence: r?.confidence ?? 0,
+          gamesPlayed: r?.gamesPlayed ?? 0,
           rank: 0,
         }
       })
@@ -341,7 +292,7 @@ export function useHockeyRankings(): {
   })
 
   const builtGoalies = computed<HockeyRankRow[]>(() => {
-    const rows = goalieRows.value
+    const rows = feed.value.goalies
     if (!rows.length) return []
     const projections: Record<string, any> = {}
     for (const g of rows) {
@@ -362,14 +313,16 @@ export function useHockeyRankings(): {
         name: g?.goalieFullName ?? key,
         position: 'G',
         team: String(g?.teamAbbrevs ?? '').split(',').pop()?.trim() ?? '',
-        headshot: g ? headshot(g.playerId, g.teamAbbrevs, seasonRef.value) : '',
+        headshot: g ? headshot(g.playerId, g.teamAbbrevs, feed.value.season) : '',
         wins: topCategories(perCategoryByKey[key]),
         value,
+        injuryStatus: null,
         /* Starts, not points. A goalie with eight starts in nine team games is a different
            asset from a fifty-fifty tandem no matter how the rate stats compare. */
         pointsPerGame: g?.gamesStarted ?? 0,
         ppSecondsPerGame: 0,
         confidence: g && g.gamesStarted > 0 ? 1 : 0,
+        gamesPlayed: g?.gamesStarted ?? 0,
         rank: 0,
       }
     }).sort((a, b) => b.value - a.value)

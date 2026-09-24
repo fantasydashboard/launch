@@ -1,7 +1,9 @@
 import { computed, ref, watch, type Ref } from 'vue'
 import type { ValueByKey, PlayerValue } from '@/myteam/playerValue'
-import { buildHockeyValue, type HockeyProjection } from '@/hockey/hockeyValue'
+import { buildHockeyValue } from '@/hockey/hockeyValue'
 import { weightsFromScoringItems } from '@/hockey/hockeyLeague'
+import { useNhlFeed } from '@/composables/useNhlFeed'
+import { mergeHockeyProjections, normalizeName } from '@/hockey/hockeyProjectionSource'
 
 /**
  * Rest-of-season hockey value, for every surface that is not the draft board.
@@ -17,18 +19,20 @@ import { weightsFromScoringItems } from '@/hockey/hockeyLeague'
  * scored and belongs to whoever held the player then. The value is scaled to the games that
  * REMAIN, which is the same correction the football engine needed.
  *
- * HOW REMAINING GAMES ARE ESTIMATED, AND WHY IT IS AN ESTIMATE. ESPN's projection feed is
- * preseason and carries no games-played. Rather than pretend otherwise, the season's elapsed
- * fraction is taken from the calendar and applied to every player equally. That is wrong for
- * anybody who has missed time — a player back from six weeks out has more left than this
- * says — and it is stated here rather than hidden, because the alternative on offer was
- * being wrong about the whole sport.
+ * HOW REMAINING GAMES ARE ESTIMATED, AND WHY IT IS AN ESTIMATE. The season's elapsed fraction
+ * is taken from the calendar and applied to every player equally. That is wrong for anybody
+ * who has missed time — a player back from six weeks out has more left than this says — and it
+ * is stated here rather than hidden, because the alternative on offer was being wrong about
+ * the whole sport.
+ *
+ * WHERE THE NUMBERS COME FROM. The same merged source every other hockey surface reads: our
+ * measured NHL rates over ESPN's expected games-played, with ESPN's market and injury data
+ * riding along. This composable used to fetch ESPN's projection directly, which made My Team
+ * and Today disagree with the rankings page about the same players.
  */
 
 /** NHL regular season: early October to mid April, about twenty-six weeks. */
 export const NHL_SEASON_WEEKS = 26
-
-const PROJECTIONS_URL = '/api/hockey-projections'
 
 export interface HockeyValueInputs {
   /** ESPN league key or id, for reading the league's own scoring. */
@@ -42,10 +46,14 @@ export interface HockeyValueInputs {
 export function useHockeyValue(inputs: HockeyValueInputs) {
   const loading = ref(false)
   const problem = ref('')
-  const projections = ref<Record<string, HockeyProjection>>({})
   const weights = ref<Record<string, number>>({})
-  /** Lower-cased name -> playerKey, so a free agent with no key still resolves. */
-  const keyByName = ref<Record<string, string>>({})
+
+  const { feed, loading: feedLoading } = useNhlFeed(inputs.season)
+
+  const merged = computed(() => mergeHockeyProjections({
+    espn: feed.value.espn,
+    rates: feed.value.rates,
+  }))
 
   async function load() {
     if (!inputs.enabled.value || !inputs.leagueId.value) return
@@ -53,37 +61,16 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
     problem.value = ''
     try {
       const { espnService } = await import('@/services/espn')
-      const [projRes, settings] = await Promise.all([
-        fetch(`${PROJECTIONS_URL}?season=${inputs.season.value}`),
-        espnService
-          .getRawLeagueViews('hockey', inputs.leagueId.value, inputs.season.value, ['mSettings'])
-          .catch(() => null),
-      ])
-
-      if (projRes.ok) {
-        const payload = await projRes.json()
-        const parsed: Record<string, HockeyProjection> = {}
-        const names: Record<string, string> = {}
-        for (const p of payload?.players ?? []) {
-          parsed[p.playerKey] = {
-            playerKey: p.playerKey, position: p.position, stats: p.stats ?? {},
-            adp: p.adp ?? null, injuryStatus: p.injuryStatus ?? null,
-          }
-          if (p.name) names[String(p.name).toLowerCase()] = p.playerKey
-        }
-        projections.value = parsed
-        keyByName.value = names
-      } else {
-        problem.value = `Could not load projections (${projRes.status}).`
-      }
+      const settings = await espnService
+        .getRawLeagueViews('hockey', inputs.leagueId.value, inputs.season.value, ['mSettings'])
+        .catch(() => null)
 
       /* The league's OWN weights, read with the hockey stat map. normalizeEspnWeights in
          myteam/pointsScoring is baseball-and-football shaped and would name none of these. */
       const items = settings?.settings?.scoringSettings?.scoringItems
       weights.value = items ? weightsFromScoringItems(items).weights : {}
       if (!Object.keys(weights.value).length) {
-        problem.value = problem.value
-          || 'This league published no scoring weights, so nothing can be priced.'
+        problem.value = 'This league published no scoring weights, so nothing can be priced.'
       }
     } catch (e: any) {
       problem.value = `Could not load hockey values: ${e?.message ?? e}`
@@ -105,7 +92,7 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
     const elapsed = 1 - left / NHL_SEASON_WEEKS
     if (elapsed <= 0) return {}          // preseason: the full projection is what remains
     const out: Record<string, number> = {}
-    for (const [key, p] of Object.entries(projections.value)) {
+    for (const [key, p] of Object.entries(merged.value.projections)) {
       const total = p.position === 'G' ? (p.stats.DEC || p.stats.GP || 0) : (p.stats.GP || 0)
       out[key] = total * elapsed
     }
@@ -115,17 +102,32 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
   const valueByKey = computed<ValueByKey>(() => {
     if (!Object.keys(weights.value).length) return {}
     return buildHockeyValue({
-      projections: projections.value,
+      projections: merged.value.projections,
       weights: weights.value,
       gamesPlayed: gamesPlayed.value,
     }).valueByKey
   })
 
-  /** By name, for a free agent the roster pool has no key for. */
+  /**
+   * By name, for a free agent the roster pool has no key for.
+   *
+   * Normalised rather than merely lower-cased, so "T.J. Oshie" and "TJ Oshie" resolve to the
+   * same man. The name map itself is built position-aware upstream: there are two Elias
+   * Petterssons, a 51-point centre and a 10-point defenceman, and a plain lower-cased map
+   * handed out whichever one it happened to keep.
+   */
   const valueOf = computed(() => (p: { name?: string }): PlayerValue | null => {
-    const key = keyByName.value[String(p?.name ?? '').toLowerCase()]
+    const key = merged.value.keyByName[normalizeName(String(p?.name ?? ''))]
     return key ? valueByKey.value[key] ?? null : null
   })
 
-  return { valueByKey, valueOf, loading, problem, load, weights, projections }
+  return {
+    valueByKey,
+    valueOf,
+    loading: computed(() => loading.value || feedLoading.value),
+    problem,
+    load,
+    weights,
+    projections: computed(() => merged.value.projections),
+  }
 }

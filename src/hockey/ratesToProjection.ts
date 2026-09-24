@@ -59,19 +59,31 @@ export interface RatesProjectionResult {
 
 /**
  * @param rates      per-game rates from `rateSkaters`
- * @param gamesLeft  games each player still has — a scalar applies to everyone
+ * @param gamesLeft  games each player still has. A scalar applies to everyone; a function is
+ *                   asked per player, which is how an expected games-played gets in.
+ *
+ *                   EIGHTY-TWO FOR EVERYBODY IS A CLAIM, and a bad one. It says every player
+ *                   on the board will be healthy and in the lineup all year, which is false
+ *                   about a predictable fraction of them and most false about exactly the
+ *                   players a manager is deciding between. The NHL's own data cannot answer
+ *                   it — an expected games-played is a statement about health and role next
+ *                   season, not a rate that can be measured from last one — so the horizon is
+ *                   the one part of this projection worth taking from somewhere else.
  * @param leagueKeys the unified stat keys this league actually scores, so `missing` can be
  *                   about THIS league rather than a generic complaint
  */
 export function ratesToProjection(
   rates: SkaterRate[],
-  gamesLeft: number,
+  gamesLeft: number | ((rate: SkaterRate) => number),
   leagueKeys: string[] = [],
 ): RatesProjectionResult {
-  const games = Math.max(0, gamesLeft)
+  const gamesFor = typeof gamesLeft === 'function'
+    ? (r: SkaterRate) => Math.max(0, gamesLeft(r))
+    : () => Math.max(0, gamesLeft)
   const projections: Record<string, HockeyProjection> = {}
 
   for (const r of rates) {
+    const games = gamesFor(r)
     const stats: Record<string, number> = { GP: games }
     for (const [cat, key] of Object.entries(KEY_BY_CATEGORY)) {
       const perGame = r.perGame[cat]

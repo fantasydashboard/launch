@@ -93,6 +93,28 @@ describe('ratesToProjection', () => {
     expect(projections['8478402'].stats.G).toBe(0)
   })
 
+
+  /*
+   * Games per player, because 82 for everybody is a claim nobody should make. ESPN's feed
+   * publishes an expected games-played — Makar 78, Bedard 64 — which is the one thing about
+   * next season the NHL's own data cannot know, since it is a statement about health and role
+   * rather than a rate. The rate stays ours; only the horizon is borrowed.
+   */
+  it('takes a per-player games count when one is supplied', () => {
+    const a = rate({ playerId: 1 })
+    const b = rate({ playerId: 2 })
+    const { projections } = ratesToProjection([a, b], (r) => (r.playerId === 1 ? 82 : 41))
+    expect(projections['1'].stats.G).toBeCloseTo(41, 5)   // 0.5 * 82
+    expect(projections['2'].stats.G).toBeCloseTo(20.5, 5) // 0.5 * 41
+    expect(projections['2'].stats.GP).toBe(41)
+  })
+
+  it('refuses a negative per-player horizon the same way it refuses a scalar one', () => {
+    const { projections } = ratesToProjection([rate()], () => -5)
+    expect(projections['8478402'].stats.GP).toBe(0)
+    expect(projections['8478402'].stats.G).toBe(0)
+  })
+
   it('survives an empty league', () => {
     expect(ratesToProjection([], 20).projections).toEqual({})
   })
