@@ -1421,10 +1421,12 @@ const tabs = computed(() => [
   ...(isRotoLeague.value
     ? [{ name: 'Roto Race', path: '/matchup' }]
     : []),
-  /* Football only — this board is the NFL one, and the other sports have no equivalent built.
-     It takes the slot the Draft Room vacates once a football draft is done; for every other
-     sport the Draft Room was never there, so read this as one tab added, not one swapped. */
-  ...(leagueStore.activeSport === 'football'
+  /* Football and hockey. The gate used to read football-only and the comment claimed the other
+     sports had no equivalent — which stopped being true the moment the hockey board shipped,
+     and left a finished page reachable only by typing its URL. Baseball and basketball are
+     still genuinely absent, so they are still excluded rather than pointed at a board built
+     for a different sport. */
+  ...(['football', 'hockey'].includes(String(leagueStore.activeSport ?? ''))
     ? [{ name: 'Rankings', path: '/rankings' }]
     : []),
   { name: 'The Wire', path: '/players' },
