@@ -8,11 +8,31 @@ const skater = (over: Partial<SkaterRow> = {}): SkaterRow => ({
 })
 
 describe('rateSkaters', () => {
-  it('turns season totals into per-game rates', () => {
+  /*
+   * Season totals become per-game rates — but SHRUNK, always, and this test says so rather
+   * than pretending otherwise.
+   *
+   * An earlier version asserted the raw rate (10 goals in 20 games = 0.5) and passed only
+   * because the fallback baseline had been reverse-engineered to 0.5 as well, which made the
+   * shrinkage arithmetically invisible. Two wrongs agreeing is not a passing test. With the
+   * measured baseline (forwards score 0.214/game) the honest answer at 20 games is
+   * (10 + 0.214*10) / (20 + 10) = 0.405 — two thirds of the way from the league to him.
+   */
+  it('turns season totals into per-game rates, shrunk toward the league', () => {
     const [r] = rateSkaters([skater({ gamesPlayed: 20, goals: 10, assists: 20 })])
-    /* 20 games is well past the shrink point, so the player is essentially his own record. */
-    expect(r.perGame.goals).toBeCloseTo(0.5, 1)
-    expect(r.perGame.assists).toBeCloseTo(1.0, 1)
+    expect(r.perGame.goals).toBeCloseTo(0.405, 2)
+    // Between the baseline and his own record, never outside them.
+    expect(r.perGame.goals).toBeGreaterThan(0.214)
+    expect(r.perGame.goals).toBeLessThan(0.5)
+  })
+
+  /* The direction that matters: more evidence moves a player toward his own record, and the
+     same raw rate is believed more at 80 games than at 20. */
+  it('moves toward the raw rate as games accumulate', () => {
+    const at20 = rateSkaters([skater({ gamesPlayed: 20, goals: 10 })])[0].perGame.goals
+    const at80 = rateSkaters([skater({ gamesPlayed: 80, goals: 40 })])[0].perGame.goals
+    expect(at80).toBeGreaterThan(at20)
+    expect(at80).toBeLessThan(0.5)
   })
 
   /*

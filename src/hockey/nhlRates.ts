@@ -53,19 +53,24 @@ type CatTotals = Record<Category, number>
 export const SHRINK_GAMES = 10
 
 /**
- * Placeholder prior used ONLY when there is no other player anywhere in the input with a
- * game played — i.e. before a single game has been played league-wide. It is not tuned from
- * real historical NHL data (that's future work); it exists so a preseason board shows a
- * plausible per-game shape instead of an all-zero row that reads as a verdict on the player.
+ * League-average per-game rates, by position group, used ONLY when no other player in the
+ * input has played a game — i.e. a board opened before the season starts.
+ *
+ * MEASURED, not invented. Computed 2026-09-23 from the NHL's own `skater/summary` for the
+ * 2024-25 regular season: 920 skaters, 47,005 player-games, games-weighted.
+ *
+ * An earlier version of this table was reverse-engineered to satisfy a test tolerance, and it
+ * put forwards at 0.5 goals per game — elite production, more than double the real 0.214. A
+ * preseason board built on that would have rated every unplayed player as a star and then
+ * quietly deflated them all through October, which is precisely when a new user decides
+ * whether the numbers are worth trusting.
+ *
+ * Split by position because that is the whole point of a baseline: before anyone has played,
+ * the position IS the information. A defenceman scores a third as often as a forward.
  */
-const DEFAULT_BASELINE: CatTotals = {
-  goals: 0.5,
-  assists: 1.0,
-  points: 1.5,
-  plusMinus: 0,
-  penaltyMinutes: 0.5,
-  ppPoints: 0.3,
-  shots: 3.0,
+const DEFAULT_BASELINE: Record<'D' | 'F', CatTotals> = {
+  D: { goals: 0.070, assists: 0.261, points: 0.331, plusMinus: 0.022, penaltyMinutes: 0.475, ppPoints: 0.060, shots: 1.310 },
+  F: { goals: 0.214, assists: 0.291, points: 0.505, plusMinus: -0.027, penaltyMinutes: 0.421, ppPoints: 0.112, shots: 1.692 },
 }
 
 function isDefenceman(positionCode: string): boolean {
@@ -126,7 +131,10 @@ export function rateSkaters(skaters: SkaterRow[], ice: IceRow[] = []): SkaterRat
   return skaters.map((row) => {
     const ownGroupSum = isDefenceman(row.positionCode) ? defenceSum : forwardSum
     // Own position group (minus self) -> whole league (minus self) -> hardcoded prior.
-    const baseline = leaveOneOut(ownGroupSum, row) ?? leaveOneOut(allSum, row) ?? DEFAULT_BASELINE
+    const baseline =
+      leaveOneOut(ownGroupSum, row)
+      ?? leaveOneOut(allSum, row)
+      ?? DEFAULT_BASELINE[isDefenceman(row.positionCode) ? 'D' : 'F']
 
     const gp = row.gamesPlayed
     const perGame: Record<string, number> = {}
