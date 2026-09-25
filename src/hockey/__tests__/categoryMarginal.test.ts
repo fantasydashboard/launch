@@ -104,7 +104,12 @@ describe('category marginal value', () => {
 
 /* ── the same engine, on the real feed ─────────────────────────────────────────────────── */
 
-const FILE = '/private/tmp/claude-501/-Users-joshdaniel/c6037eeb-7afa-4879-8998-f95d9b3b1837/scratchpad/hockey_proj.json'
+/* Committed rather than pulled. This pointed at an absolute path inside one session's
+   temporary directory, so it ran for exactly as long as that directory survived and then
+   failed for everyone — and the existsSync guard below could not save it, because the load
+   happens at module scope. A snapshot of the 454 players ESPN published for 2026-27, which is
+   173KB and the whole point of the test. */
+const FILE = 'src/hockey/__tests__/fixtures/espn-hockey-2027.json'
 const live = existsSync(FILE) ? describe : describe.skip
 
 live('on the live ESPN pull', () => {

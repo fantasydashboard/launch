@@ -13,7 +13,12 @@ import type { HockeyProjection } from '../hockeyValue'
  *
  * Skips itself when the pull is absent, so CI does not depend on a 34MB download.
  */
-const FILE = '/private/tmp/claude-501/-Users-joshdaniel/c6037eeb-7afa-4879-8998-f95d9b3b1837/scratchpad/hockey_proj.json'
+/* Committed rather than pulled. This pointed at an absolute path inside one session's
+   temporary directory, so it ran for exactly as long as that directory survived and then
+   failed for everyone — and the existsSync guard below could not save it, because the load
+   happens at module scope. A snapshot of the 454 players ESPN published for 2026-27, which is
+   173KB and the whole point of the test. */
+const FILE = 'src/hockey/__tests__/fixtures/espn-hockey-2027.json'
 
 /* Keyed by playerKey, NOT an array — the board takes a Record, and handing it an array
    silently keys every player by his array INDEX, which produces a full-looking board whose

@@ -109,7 +109,14 @@ export function useHockeyBoard() {
    */
   const punted = ref<Set<string>>(new Set())
 
-  const projections = ref<Record<string, HockeyProjection>>({})
+  const allProjections = ref<Record<string, HockeyProjection>>({})
+  /* Narrowed to ESPN's universe only while a live draft is being followed — see
+     loadProjections for why that is the one mode where it matters. */
+  const projections = computed<Record<string, HockeyProjection>>(() => (
+    live.value
+      ? Object.fromEntries(Object.entries(allProjections.value).filter(([k]) => !k.startsWith('nhl:')))
+      : allProjections.value
+  ))
   const namesByKey = ref<Record<string, string>>({})
   /* The team each player is on, so the board can show a crest. buildHockeyBoard has accepted
      this since it was written and nothing ever passed it, so `proTeam` was always undefined. */
@@ -271,20 +278,24 @@ export function useHockeyBoard() {
    * checking a player on one page and then the other, with nothing to say which is right.
    * Now both read measured NHL rates over ESPN's expected games-played.
    *
-   * ESPN-KEYED ROWS ONLY, and that restriction is load-bearing rather than tidy. The board
-   * learns who has been taken from ESPN's own draft feed, keyed by ESPN player id. A skater
-   * the rate model knows and ESPN never listed has no such id, so he could never be marked
-   * drafted — he would sit in the available pool all night after somebody took him. Showing
-   * a player who cannot be crossed off is worse than not showing him, so the draft board
-   * stays inside ESPN's universe while every other surface gets all 940.
+   * ESPN-KEYED ROWS ONLY WHEN FOLLOWING AN ESPN DRAFT, and only then.
+   *
+   * In live mode the board learns who has been taken from ESPN's own draft feed, keyed by ESPN
+   * player id. A skater the rate model knows and ESPN never listed has no such id, so he could
+   * never be crossed off — he would sit in the available pool all night after somebody took
+   * him, and showing a player you cannot remove is worse than not showing him.
+   *
+   * None of that is true when you are marking picks yourself. There is no feed to join
+   * against: a pick is a name you type, and `take` will cross off any key it is handed. The
+   * filter was applied to both paths, which cost a hand-marked draft the better part of six
+   * hundred players to protect a join it was not using. Found the only way it could be —
+   * somebody drafting, hunting for a player who was not there.
    */
   async function loadProjections(forSeason: number): Promise<string> {
     const feed = await loadNhlFeed(forSeason)
     if (!feed.espn.length) return 'Could not load projections.'
     const merged = mergeHockeyProjections({ espn: feed.espn, rates: feed.rates })
-    projections.value = Object.fromEntries(
-      Object.entries(merged.projections).filter(([k]) => !k.startsWith('nhl:')),
-    )
+    allProjections.value = merged.projections
     namesByKey.value = merged.namesByKey
     teamsByKey.value = merged.teamByKey
     return ''
