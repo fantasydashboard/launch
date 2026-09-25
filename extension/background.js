@@ -104,6 +104,78 @@ async function readLeagues(cookies) {
   })
 }
 
+/* ── draft sync ──────────────────────────────────────────────────────────────────────────
+ *
+ * The draft-room hosts are OPTIONAL and the content scripts are registered at RUNTIME, never
+ * declared in the manifest. That is not tidiness: a statically declared content script counts
+ * as a host permission at install time, so adding one to a published extension disables it for
+ * every existing user until they re-accept. Cookie sync would stop working for everybody on
+ * update day, to enable a feature most of them are not drafting today.
+ *
+ * So nothing changes for anyone until they ask for draft sync, and asking is what grants the
+ * permission.
+ */
+const DRAFT_HOSTS = [
+  'https://*.fantasy.espn.com/*',
+  'https://*.football.fantasysports.yahoo.com/*',
+  'https://*.basketball.fantasysports.yahoo.com/*',
+  'https://*.hockey.fantasysports.yahoo.com/*',
+  'https://*.baseball.fantasysports.yahoo.com/*',
+]
+const DRAFT_SCRIPT_ID = 'ufd-draft'
+
+async function draftEnabled() {
+  return chrome.permissions.contains({ origins: DRAFT_HOSTS })
+}
+
+/**
+ * Put the readers in place. Idempotent: re-registering an existing id throws, and a service
+ * worker restarts often enough that this is the normal path rather than the exception.
+ */
+async function registerDraftScripts() {
+  const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [DRAFT_SCRIPT_ID, DRAFT_SCRIPT_ID + '-main'] })
+  if (existing.length === 2) return
+  if (existing.length) await chrome.scripting.unregisterContentScripts({ ids: existing.map((e) => e.id) })
+  await chrome.scripting.registerContentScripts([
+    {
+      id: DRAFT_SCRIPT_ID + '-main',
+      matches: DRAFT_HOSTS,
+      js: ['inject-socket.js'],
+      world: 'MAIN',
+      runAt: 'document_start',
+    },
+    {
+      id: DRAFT_SCRIPT_ID,
+      matches: DRAFT_HOSTS,
+      js: ['content-draft.js'],
+      runAt: 'document_start',
+    },
+  ])
+}
+
+/* Survive the worker being shut down and restarted mid-draft, which Chrome does freely. */
+chrome.runtime.onStartup?.addListener(() => { draftEnabled().then((ok) => ok && registerDraftScripts()) })
+chrome.permissions.onAdded?.addListener(() => { draftEnabled().then((ok) => ok && registerDraftScripts()) })
+
+/**
+ * Picks seen this session, per tab.
+ *
+ * Kept here rather than in the draft tab because the board is in a DIFFERENT tab, and a page
+ * cannot read another page's memory. The worker is the only thing both tabs can reach.
+ */
+const session = { picks: [], lastPickAt: 0, href: '' }
+
+chrome.runtime.onMessage.addListener((msg, sender, respond) => {
+  if (msg?.action === 'draftPicks') {
+    session.href = msg.href || sender?.tab?.url || ''
+    for (const p of msg.picks || []) session.picks.push(p)
+    session.lastPickAt = Date.now()
+    respond({ ok: true, total: session.picks.length })
+    return true
+  }
+  return false
+})
+
 /*
  * Every path answers. The client reads null/undefined as "not installed" and shows an install
  * prompt to somebody who already has it — so an internal failure must come back as an error
@@ -133,6 +205,37 @@ chrome.runtime.onMessageExternal.addListener((msg, _sender, sendResponse) => {
         if (!c.espn_s2 || !c.swid) return sendResponse({ error: 'not_logged_in' })
         const leagues = await readLeagues(c)
         sendResponse({ leagues, espn_s2: c.espn_s2, swid: c.swid })
+      })
+      .catch((e) => sendResponse({ error: String(e?.message || e) }))
+    return true
+  }
+
+  /* ── draft sync, from the board tab ─────────────────────────────────────────────────── */
+
+  if (action === 'draftStatus') {
+    draftEnabled().then((enabled) => sendResponse({
+      enabled,
+      picks: session.picks.length,
+      /* The age of the newest pick, so the board can go red rather than quietly showing a
+         stale list. A sync that stops at pick 40 and says nothing is worse than no sync. */
+      lastPickAgoMs: session.lastPickAt ? Date.now() - session.lastPickAt : null,
+      href: session.href,
+    }))
+    return true
+  }
+
+  if (action === 'getDraftPicks') {
+    sendResponse({ picks: session.picks, lastPickAt: session.lastPickAt })
+    return false
+  }
+
+  /* Asking turns it on: the permission prompt IS the consent, and it cannot be requested
+     without a user gesture, which the board's own button provides. */
+  if (action === 'enableDraftSync') {
+    chrome.permissions.request({ origins: DRAFT_HOSTS })
+      .then(async (granted) => {
+        if (granted) await registerDraftScripts()
+        sendResponse({ granted })
       })
       .catch((e) => sendResponse({ error: String(e?.message || e) }))
     return true
