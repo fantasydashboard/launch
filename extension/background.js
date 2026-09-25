@@ -16,7 +16,13 @@
  *
  * THE CONTRACT, from the caller's side:
  *
- *   { action: 'ping' }            -> anything non-null. The client only checks it responded.
+ *   { action: 'ping' }            -> { status: 'ok' }. The EXACT string matters: isExtensionInstalled
+ *                                   tests `response?.status === 'ok'` and treats anything else as
+ *                                   not installed. An earlier draft of this file replied
+ *                                   { ok: true } on the strength of a comment saying the client
+ *                                   "only checks it responded" — it does not. Cookies kept
+ *                                   working, so the failure would have surfaced as every existing
+ *                                   user being told to install the extension they already have.
  *   { action: 'getEspnCookies' }  -> { espn_s2, swid } | { error }
  *   { action: 'getEspnLeagues' }  -> { leagues: [...], espn_s2, swid } | { error }
  *
@@ -28,13 +34,8 @@
    is sent that way — stripping the braces produces a token ESPN rejects. */
 const COOKIE_DOMAIN = 'https://fantasy.espn.com'
 
-/** Sports ESPN exposes, and the names the client's EspnLeague.sport union expects. */
-const SPORTS = [
-  { slug: 'ffl', sport: 'football' },
-  { slug: 'flb', sport: 'baseball' },
-  { slug: 'fba', sport: 'basketball' },
-  { slug: 'fhl', sport: 'hockey' },
-]
+/** ESPN's game abbreviations, and the names the client's EspnLeague.sport union expects. */
+const SPORT_BY_ABBREV = { FFL: 'football', FLB: 'baseball', FBA: 'basketball', FHL: 'hockey' }
 
 async function readCookies() {
   const [s2, swid] = await Promise.all([
@@ -45,63 +46,55 @@ async function readCookies() {
 }
 
 /**
- * The season ESPN is currently serving.
+ * Every league this ESPN account can see, across all four sports, in one request.
  *
- * Every fantasy sport names its season for the year it ENDS except football, which names it for
- * the year it starts. Asking for the wrong one returns an empty league list rather than an
- * error, which would read to the user as "you have no leagues" — the most confusing possible
- * failure. Both are tried and whatever answers wins.
- */
-function seasonsFor(slug) {
-  const now = new Date()
-  const y = now.getFullYear()
-  if (slug === 'ffl') return [now.getMonth() >= 2 ? y : y - 1]
-  return [now.getMonth() >= 6 ? y + 1 : y, y]
-}
-
-/**
- * Every league this ESPN account can see, across all four sports.
+ * WHY THE FAN API AND NOT THE FANTASY ONE. The obvious endpoint —
+ * `apis/v3/games/{ffl|flb|fba|fhl}/seasons/{year}` — answers 200 and returns the SEASON, not
+ * your leagues: abbrev, scoringPeriods, segments. Probed live, it never contained a league at
+ * all, so the first version of this function asked it eight times (four sports, two candidate
+ * seasons each) and correctly reported nothing every time.
  *
- * fantasy.espn.com/apis/v3 answers with the user's own leagues when the cookies are sent, which
- * is the entire point: the app cannot make this call itself, because the browser will not attach
- * a third party's cookies to it. The extension can, because it is the user's own browser.
+ * fan.api.espn.com knows what a person is subscribed to. One call returns every fantasy league
+ * across every sport, with the season attached, so there is no season to guess — which was the
+ * other half of the first version's problem.
+ *
+ * CREDENTIALS, WHICH IS THE BUG WORTH REMEMBERING. The first version set a `Cookie` header by
+ * hand and passed `credentials: 'omit'`. `Cookie` is a forbidden header name: the browser
+ * strips it silently, so the request went out unauthenticated and ESPN answered for a logged-out
+ * stranger — 200, well-formed, and empty. Nothing errored. The fix is to let Chrome attach the
+ * cookies it already holds, which it will because this extension has host permission for
+ * espn.com.
  */
 async function readLeagues(cookies) {
-  const header = `espn_s2=${cookies.espn_s2}; SWID=${cookies.swid}`
-  const out = []
+  /* chrome.cookies hands back the raw brace-wrapped value; the path segment needs it encoded. */
+  const swid = encodeURIComponent(cookies.swid)
+  const res = await fetch(
+    `https://fan.api.espn.com/apis/v2/fans/${swid}`
+      + '?displayEvents=true&displayNow=true&displayRecs=false&platform=web&lang=en',
+    { credentials: 'include' },
+  )
+  if (!res.ok) throw new Error(`fan api ${res.status}`)
+  const body = await res.json()
 
-  for (const { slug, sport } of SPORTS) {
-    for (const season of seasonsFor(slug)) {
-      try {
-        const res = await fetch(
-          `https://fantasy.espn.com/apis/v3/games/${slug}/seasons/${season}?view=chui_default`,
-          { headers: { Cookie: header }, credentials: 'omit' },
-        )
-        if (!res.ok) continue
-        const body = await res.json()
-        /* ESPN nests the account's own leagues under a different key per view; both shapes have
-           been seen in the wild, so accept either rather than guessing which is current. */
-        const raw = body?.leagues ?? body?.teams ?? []
-        for (const l of Array.isArray(raw) ? raw : []) {
-          const id = String(l?.id ?? l?.leagueId ?? '')
-          if (!id) continue
-          out.push({
-            id,
-            name: String(l?.name ?? l?.settings?.name ?? `League ${id}`),
-            size: Number(l?.size ?? l?.settings?.size ?? 0),
-            sport,
-            season,
-          })
-        }
-        if (out.length) break        // this season answered; do not also ask the other
-      } catch {
-        /* One sport failing is not the request failing. A user with three football leagues and
-           no hockey should get three leagues, not an error about hockey. */
-      }
-    }
+  const out = []
+  for (const pref of body?.preferences ?? []) {
+    if ((pref?.type?.code ?? '') !== 'fantasy') continue
+    const entry = pref?.metaData?.entry
+    const group = entry?.groups?.[0]
+    if (!group?.groupId) continue
+    const sport = SPORT_BY_ABBREV[String(entry?.abbrev ?? '').toUpperCase()]
+    if (!sport) continue          // a game we do not support is not an error, it is not ours
+    out.push({
+      id: String(group.groupId),
+      name: String(group.groupName ?? `League ${group.groupId}`),
+      size: Number(group.groupSize ?? 0),
+      sport,
+      season: Number(entry?.seasonId ?? 0),
+    })
   }
-  /* ESPN can list the same league under two seasons. Keyed by sport+id so a football league and
-     a hockey league that share an id are not collapsed into one. */
+
+  /* One league can appear under two seasons. Keyed by sport+id so a football league and a
+     hockey league that happen to share an id are not collapsed into one. */
   const seen = new Set()
   return out.filter((l) => {
     const k = `${l.sport}:${l.id}`
@@ -120,7 +113,8 @@ chrome.runtime.onMessageExternal.addListener((msg, _sender, sendResponse) => {
   const action = msg?.action
 
   if (action === 'ping') {
-    sendResponse({ ok: true, version: chrome.runtime.getManifest().version })
+    /* `status: 'ok'` is the contract; the rest is diagnostics. */
+    sendResponse({ status: 'ok', ok: true, version: chrome.runtime.getManifest().version })
     return false
   }
 
