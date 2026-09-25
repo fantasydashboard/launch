@@ -12,7 +12,21 @@
 -->
 <template>
   <div class="min-h-screen bg-dark-bg px-4 py-8">
-    <div class="mx-auto max-w-3xl">
+    <!--
+      WIDTH FOLLOWS THE COLUMN COUNT, which is the only thing that justifies it.
+
+      The board was capped at 768px inside a 1400px window while carrying five numeric columns:
+      no room inside the row, and a wasted half-screen around it. 1024 fixes that — it is what
+      the League page already uses, and the League page reads better than this one for exactly
+      that reason.
+
+      But a reader without the pass has three things on the right of a row, not seven, and the
+      same 1024 leaves them stranded across a dead zone with the name and the number at
+      opposite ends of the screen. Width is not a house style; it is a consequence of how much
+      a row has to carry. The prose keeps its own narrower cap either way — a 1024px line of
+      body copy is a different mistake.
+    -->
+    <div class="mx-auto" :class="access.showsPaidColumns ? 'max-w-5xl' : 'max-w-3xl'">
       <div class="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Rest of season</div>
       <h1 class="mt-2 font-display text-3xl font-extrabold tracking-tight text-dark-text">
         Football rankings
@@ -92,8 +106,8 @@
             are absent on the mixed board.
           -->
           <div v-if="access.showsPaidColumns"
-               class="mb-2 flex items-center gap-2.5 border-b border-dark-border/40 pb-1.5 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted/60">
-            <span class="h-6 w-6 shrink-0" />
+               class="mb-2 flex items-center gap-2.5 border-b border-dark-border/40 pb-1.5 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted/60 sm:gap-3">
+            <span class="h-7 w-7 shrink-0 sm:h-8 sm:w-8" />
             <span class="min-w-0 flex-1"></span>
             <template v-if="active !== 'ALL'">
               <span class="hidden w-9 shrink-0 text-right lg:block" title="Rest-of-season schedule rank at this position">ROS</span>
@@ -102,21 +116,48 @@
             <span class="hidden w-10 shrink-0 text-right sm:block" title="What this add is worth to your starting lineup">ADD</span>
             <span class="hidden w-10 shrink-0 text-right sm:block" title="Points per game this season">PPG</span>
             <span class="hidden w-8 shrink-0 text-right lg:block" title="Bye week">BYE</span>
-            <span class="w-10 shrink-0 text-right">VOR</span>
+            <span class="w-11 shrink-0 text-right sm:w-14">VOR</span>
           </div>
 
           <template v-for="row in visible" :key="'rk-' + row.playerKey">
-            <div v-if="row.tierBreak" class="flex items-center gap-2 py-1.5">
-              <span class="h-px flex-1 bg-dark-border"></span>
-              <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70">
+            <!--
+              THE TIER BREAK, at the volume it earns.
+
+              This is the one thing the board knows that a ranked list does not — where the
+              position actually breaks, as opposed to where the numbering happens to change.
+              It was 9px of muted grey on a hairline, quieter than the team abbreviation beside
+              it, while the same information is the loudest element on every card we publish.
+              A product should not whisper its own differentiator.
+            -->
+            <div v-if="row.tierBreak" class="flex items-center gap-3 pb-2 pt-4">
+              <span class="h-px flex-1 bg-[#e69a4a]/30"></span>
+              <span class="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-[#e69a4a]">
                 tier {{ row.tier }} &middot; &minus;{{ Math.round(row.tierDrop ?? 0) }} pts
               </span>
-              <span class="h-px flex-1 bg-dark-border"></span>
+              <span class="h-px flex-1 bg-[#e69a4a]/30"></span>
             </div>
-            <div class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm text-dark-text last:border-0">
+            <!--
+              CONTRAST, not scale. The name was 14px against 10px secondaries — a ratio of 1.4
+              to 1, which is why the row read as one grey block with no entry point. The cards
+              we publish run about 4 to 1. Raising the name to 16 and the VOR to 18 gets the
+              same ratio for four pixels of row height; scaling everything up by a fifth would
+              have cost rows and changed nothing about how it reads.
+
+              The headshot goes 24 -> 32 because below about 32 a face is not a face: it was
+              taking layout space and returning no recognition at all.
+            -->
+            <!--
+              EVERY FIXED ELEMENT SHRINKS ON A PHONE, because the name is what they are all
+              attributes of. Measured at 390px: the desktop sizes below pushed Christian
+              McCaffrey, Jonathan Taylor, Amon-Ra St. Brown and Jaxon Smith-Njigba into
+              ellipses, none of which truncated before. A board that reads beautifully on a
+              laptop and clips its best players on the device most people open it on has not
+              been improved, it has been traded.
+            -->
+            <div class="flex items-center gap-2.5 border-b border-dark-border/40 py-2.5 text-base text-dark-text last:border-0 sm:gap-3">
               <img v-if="row.headshot" :src="row.headshot" :alt="row.name" loading="lazy" @error="onImgErr"
-                   class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
-              <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
+                   class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover sm:h-8 sm:w-8" />
+              <span v-else class="h-7 w-7 shrink-0 rounded-full bg-dark-border sm:h-8 sm:w-8" />
               <!--
                 The name carries the state, not just the star beside it.
 
@@ -133,11 +174,25 @@
                 <span v-if="access.scopedToLeague && row.owned" class="text-primary">★ </span>{{ row.name }}
                 <span v-if="active === 'ALL'" class="ml-1 font-mono text-[10px] text-dark-textMuted/70">{{ row.position }}</span>
               </span>
-              <span class="shrink-0 font-mono text-[10px] text-dark-textMuted/70">{{ row.team }}</span>
-              <span v-if="access.showsPaidColumns && !row.owned"
-                    class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide"
-                    :class="row.free ? 'bg-[#2dd4bf]/15 text-[#2dd4bf]' : 'bg-dark-bg text-dark-textMuted/60'"
-              >{{ row.free ? 'free' : 'rostered' }}</span>
+              <!--
+                Hidden on a phone, on the same argument the numeric columns are: the headshot
+                already carries the team's colours, the position tag is still on the name, and
+                three characters of team are not worth four of a player's surname.
+              -->
+              <span class="hidden shrink-0 font-mono text-[10px] text-dark-textMuted/70 sm:inline">{{ row.team }}</span>
+              <!--
+                ONLY THE CLAIMABLE ONES ARE BADGED.
+
+                Nearly every player on a rest-of-season board is rostered, so a ROSTERED chip
+                appeared on nearly every row — the same claim repeated down the page, which
+                carries no information and forces the reader to scan past it to find the rows
+                it does not apply to. Inverted: absence means rostered, and the badge marks the
+                handful you can actually go and take. The teal still matches the name colour,
+                so the two read as one fact rather than two.
+              -->
+              <span v-if="access.showsPaidColumns && !row.owned && row.free"
+                    class="shrink-0 rounded bg-[#2dd4bf]/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-[#2dd4bf]"
+              >free</span>
               <span v-else-if="access.scopedToLeague && !access.showsPaidColumns && !row.owned" aria-hidden="true"
                     class="shrink-0 select-none rounded bg-dark-bg px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-dark-textMuted/40"
               >•••</span>
@@ -188,7 +243,13 @@
                 <span v-else class="hidden w-8 shrink-0 lg:block" />
               </template>
 
-              <span class="w-10 shrink-0 text-right font-mono text-xs" :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">
+              <!--
+                The number the board is SORTED by, and until now it was set in the same 10px
+                mono as the bye week. One loud number per row is what makes a row scannable —
+                it is the only thing besides the name that a reader is meant to carry away.
+              -->
+              <span class="w-11 shrink-0 text-right font-display text-base font-bold tabular-nums sm:w-14 sm:text-lg"
+                    :class="row.vorRos >= 0 ? '' : 'text-dark-textMuted'">
                 {{ row.vorRos >= 0 ? '+' : '' }}{{ Math.round(row.vorRos) }}
               </span>
             </div>
@@ -207,7 +268,7 @@
           reader with no football league is shown the public shape — default scoring, a
           twelve-team league — so nobody is left to work out why the order moved.
         -->
-        <div class="mt-4 rounded-xl border border-dark-border bg-dark-card p-4">
+        <div class="mt-4 max-w-2xl rounded-xl border border-dark-border bg-dark-card p-4">
           <p v-if="!access.scopedToLeague" class="text-sm text-dark-textSecondary">
             <RouterLink to="/connect" class="text-primary underline underline-offset-2">Connect a league</RouterLink>
             for standings, power rankings and your full history — free, no expiry.

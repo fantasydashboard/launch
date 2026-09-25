@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "ESPN Fantasy Cookie Sync",
+  "version": "2.0.0",
+  "description": "Connects your private ESPN Fantasy leagues, and syncs live draft picks to your board.",
+  "permissions": ["cookies"],
+  "host_permissions": ["https://*.espn.com/*"],
+  "optional_host_permissions": [
+    "https://*.fantasy.espn.com/*",
+    "https://*.football.fantasysports.yahoo.com/*",
+    "https://*.basketball.fantasysports.yahoo.com/*",
+    "https://*.hockey.fantasysports.yahoo.com/*",
+    "https://*.baseball.fantasysports.yahoo.com/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "externally_connectable": {
+    "matches": [
+      "https://www.ultimatefantasydashboard.com/*",
+      "https://ultimatefantasydashboard.com/*",
+      "https://www.theleaguebeat.com/*",
+      "https://theleaguebeat.com/*",
+      "http://localhost:5173/*"
+    ]
+  },
+  "icons": { "16": "icon16.png", "48": "icon48.png", "128": "icon128.png" }
+}
