@@ -1382,6 +1382,40 @@ describe('a player who is not playing', () => {
     expect(rows('Questionable').find((r) => r.playerKey === 'hurt')!.injuryTag).toBe('QUESTIONABLE')
     expect(rows('Out').find((r) => r.playerKey === 'fit')!.injuryTag).toBe('')
   })
+
+  /*
+   * ACTIVE IS NOT A DESIGNATION, it is the absence of one.
+   *
+   * The platforms send it on nearly every player, and the board carried any non-empty status
+   * through — so the weekly list rendered a small "A" beside almost every name, which is the
+   * same claim repeated four hundred times. The reader then has to scan past it to find the
+   * rows it does not apply to, which are the only rows that matter. ESPN's own feed drops
+   * ACTIVE for exactly this reason.
+   *
+   * Only a status the board acts on is carried: one it discounts, or one it zeroes.
+   */
+  it('does not tag a healthy player, however loudly the platform says so', () => {
+    for (const healthy of ['Active', 'ACTIVE', 'A', 'Probable', 'Full Practice']) {
+      expect(rows(healthy).find((r) => r.playerKey === 'hurt')!.injuryTag).toBe('')
+    }
+  })
+
+  it('still tags every status it actually acts on', () => {
+    for (const tag of ['Questionable', 'Doubtful', 'GTD']) {
+      expect(rows(tag).find((r) => r.playerKey === 'hurt')!.injuryTag).not.toBe('')
+    }
+    for (const tag of ['Out', 'IR', 'SUSP']) {
+      const r = rows(tag).find((x) => x.playerKey === 'hurt')!
+      expect(r.injuryTag).not.toBe('')
+      expect(r.ruledOut).toBe(true)
+    }
+  })
+
+  /* An unknown status must not silently stop being discounted — it was never discounted, and
+     dropping the badge is the only change. */
+  it('leaves the discount alone for a status it does not recognise', () => {
+    expect(rows('Probable').find((r) => r.playerKey === 'hurt')!.weekPoints).toBe(18)
+  })
 })
 
 describe('a tier line that came from an uploaded list', () => {

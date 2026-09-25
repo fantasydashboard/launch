@@ -630,10 +630,25 @@ export function buildWeeklyBoard(input: {
   /*
    * Every injury tag we can see, rostered players and free agents alike. Free agents carry it
    * on `status`; pool players on `status` too, with `onIL` as the reserve-slot flag.
+   *
+   * ONLY A STATUS THE BOARD ACTS ON. The platforms send ACTIVE on nearly every player, and
+   * carrying any non-empty status through put a small "A" beside almost every name on the
+   * weekly list — the same claim repeated four hundred times, which the reader then has to
+   * scan past to find the rows it does not apply to. Those are the only rows that matter.
+   * ESPN's own feed drops ACTIVE for exactly this reason.
+   *
+   * A status we neither discount nor zero was never changing a number, so dropping it here
+   * changes only the badge. Absence of a designation IS the healthy state; it does not need
+   * announcing.
    */
+  const acted = (s: string) => s in WEEKLY_INJURY_DISCOUNT || RULED_OUT.has(s)
   const tagByKey = new Map<string, string>()
-  for (const p of pool) if (p.status) tagByKey.set(p.playerKey, String(p.status).toUpperCase().trim())
-  for (const fa of freeAgents) if (fa.status) tagByKey.set(faKey(fa), String(fa.status).toUpperCase().trim())
+  const tag = (key: string, raw: unknown) => {
+    const t = String(raw).toUpperCase().trim()
+    if (acted(t)) tagByKey.set(key, t)
+  }
+  for (const p of pool) if (p.status) tag(p.playerKey, p.status)
+  for (const fa of freeAgents) if (fa.status) tag(faKey(fa), fa.status)
   const injuryFactor = (key: string): number =>
     WEEKLY_INJURY_DISCOUNT[tagByKey.get(key) ?? ''] ?? 1
 
