@@ -39,6 +39,15 @@ const {
 /* The grid is long — 22 rounds — and most of it is empty early on. Collapsed by default so
    the board stays the thing you look at, with the rounds that have happened shown first. */
 const showGrid = ref(false)
+/* Which of the two panels is on screen. The grid used to live past every player at the foot of
+   the page; during a draft that is a scroll in each direction to answer "who went where". */
+const PANES = ['players', 'draft board'] as const
+const pane = ref<(typeof PANES)[number]>('players')
+/* One number for both modes — following an ESPN draft and marking picks by hand ask the reader
+   exactly the same question, and it should not look different depending on which they chose. */
+const untilMine = computed<number | null>(() => (
+  live.value ? clock.value?.picksUntilMine ?? null : position.value?.picksUntilMine ?? null
+))
 
 /*
  * POINT THE BOARD AT ANY LEAGUE YOU CAN SEE, INCLUDING A MOCK.
@@ -647,10 +656,8 @@ const POS_TONE: Record<string, string> = {
           <span class="text-dark-text">
             Pick {{ clock.nextOverall }} &middot; <span class="text-primary">{{ onTheClockName }}</span> on the clock
           </span>
-          <span v-if="clock.picksUntilMine === 0" class="font-semibold text-primary">You're up.</span>
-          <span v-else-if="clock.picksUntilMine !== null" class="text-dark-textMuted">
-            {{ clock.picksUntilMine }} pick{{ clock.picksUntilMine === 1 ? '' : 's' }} until yours
-            (#{{ clock.myNextOverall }}<span v-if="clock.myFollowingOverall">, then #{{ clock.myFollowingOverall }}</span>)
+          <span v-if="clock.picksUntilMine !== null && clock.picksUntilMine > 0" class="text-dark-textMuted">
+            #{{ clock.myNextOverall }}<span v-if="clock.myFollowingOverall">, then #{{ clock.myFollowingOverall }}</span>
           </span>
           <span v-else-if="myTeamId === null" class="text-dark-textMuted">Pick your team to see when you're up.</span>
           <span class="text-dark-textMuted/60">{{ drafted.size }} of {{ liveState.picks.length }} gone</span>
@@ -668,13 +675,36 @@ const POS_TONE: Record<string, string> = {
               &middot; seat {{ position.onTheClockSlot }} on the clock
             </span>
           </span>
-          <span v-if="position.picksUntilMine === 0" class="font-semibold text-primary">You're up.</span>
-          <span v-else-if="position.picksUntilMine !== null" class="text-dark-textMuted">
-            {{ position.picksUntilMine }} until yours (#{{ position.myNextPick }}<span
-              v-if="position.myFollowingPick">, then #{{ position.myFollowingPick }}</span>)
+          <span v-if="position.picksUntilMine !== null && position.picksUntilMine > 0" class="text-dark-textMuted">
+            #{{ position.myNextPick }}<span v-if="position.myFollowingPick">, then #{{ position.myFollowingPick }}</span>
           </span>
           <span v-else-if="mySlot === null" class="text-dark-textMuted">Set your pick to see when you're up.</span>
         </template>
+      </div>
+
+      <!--
+        HOW LONG HAVE I GOT, at the size the question is actually asked.
+        It was a clause in a monospace sentence beside four other clauses, which is the wrong
+        weight for the only number on the page with a clock attached to it. Two states: a count
+        you can read from across the room, and an unmissable one when the room is waiting on you.
+        The pulse is dropped for anyone who has asked for reduced motion — the colour and the
+        border carry the same message without it.
+      -->
+      <div v-if="untilMine !== null"
+           class="mb-3 rounded-xl border px-4 py-3"
+           :class="untilMine === 0
+             ? 'border-primary bg-primary/15 shadow-[0_0_28px_-6px] shadow-primary/60 motion-safe:animate-pulse'
+             : 'border-dark-border bg-dark-card'">
+        <div v-if="untilMine === 0" class="flex items-baseline gap-3">
+          <span class="font-display text-3xl font-extrabold tracking-tight text-primary">You're on the clock</span>
+          <span class="font-mono text-[11px] text-primary/70">take someone</span>
+        </div>
+        <div v-else class="flex items-baseline gap-3">
+          <span class="font-display text-3xl font-extrabold tabular-nums text-dark-text">{{ untilMine }}</span>
+          <span class="font-mono text-[11px] uppercase tracking-widest text-dark-textMuted">
+            pick{{ untilMine === 1 ? '' : 's' }} until you're up
+          </span>
+        </div>
       </div>
 
       <!-- Type, Enter, gone. A draft room moves faster than scroll-and-click. -->
@@ -770,11 +800,23 @@ const POS_TONE: Record<string, string> = {
                   :title="sopt.hint" @click="sortBy = sopt.key">{{ sopt.label }}</button>
         </span>
         <span class="flex-1"></span>
+        <!--
+          THE GRID WAS AT THE BOTTOM OF THE PAGE, past every player, which meant checking who
+          went where cost a scroll in each direction while the clock ran. Same panel, promoted
+          to a switch: one of the two is what you are looking at right now.
+        -->
+        <span v-if="grid.length && mockOrder.length" class="flex rounded-lg border border-dark-border">
+          <button v-for="v in PANES" :key="v"
+                  class="px-2.5 py-1 font-mono text-[10px] transition-colors first:rounded-l-lg last:rounded-r-lg"
+                  :class="pane === v ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+                  @click="pane = v">{{ v }}</button>
+        </span>
         <span class="font-mono text-[11px] text-dark-textMuted">{{ drafted.size }} taken</span>
         <button v-if="!live && takenList.length" class="rounded-lg border border-dark-border px-2.5 py-1 font-mono text-[11px] text-dark-textMuted hover:text-dark-text"
                 @click="reset()">reset</button>
       </div>
 
+      <template v-if="pane === 'players'">
       <p class="mb-1 flex items-center gap-3 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/60">
         <span class="w-7"></span><span class="w-8">pos</span><span class="flex-1">player</span>
         <span class="w-14 text-right" :title="valueHint">vor</span>
@@ -842,12 +884,14 @@ const POS_TONE: Record<string, string> = {
       <p v-if="rows.length > LIMIT" class="mt-2 font-mono text-[10px] text-dark-textMuted">
         showing {{ shown.length }} of {{ rows.length }}
       </p>
+      </template>
 
       <!--
         THE BOARD AS EVERYONE PICTURES IT. A column is a team and stays that team all the way
         down; snake rounds fill right to left, which is what the pick numbers show.
       -->
-      <div v-if="!live && grid.length && mockOrder.length" class="mt-5 rounded-xl border border-dark-border bg-dark-card p-3">
+      <div v-if="!live && grid.length && mockOrder.length && pane === 'draft board'"
+           class="mt-5 rounded-xl border border-dark-border bg-dark-card p-3">
         <div class="mb-2 flex items-baseline gap-3">
           <p class="font-mono text-[9px] uppercase tracking-widest text-dark-textMuted/70">the board</p>
           <button class="font-mono text-[10px] text-dark-textMuted underline decoration-dotted hover:text-dark-text"
