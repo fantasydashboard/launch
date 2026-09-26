@@ -115,12 +115,12 @@ async function readLeagues(cookies) {
  * So nothing changes for anyone until they ask for draft sync, and asking is what grants the
  * permission.
  */
+/* `*.fantasy.espn.com` requires a subdomain BEFORE "fantasy" and so never matches
+   fantasy.espn.com itself, which is where the draft room lives. The same mistake in the Yahoo
+   patterns would have matched nothing either. Caught only by looking at a real draft URL. */
 const DRAFT_HOSTS = [
-  'https://*.fantasy.espn.com/*',
-  'https://*.football.fantasysports.yahoo.com/*',
-  'https://*.basketball.fantasysports.yahoo.com/*',
-  'https://*.hockey.fantasysports.yahoo.com/*',
-  'https://*.baseball.fantasysports.yahoo.com/*',
+  'https://fantasy.espn.com/*',
+  'https://*.fantasysports.yahoo.com/*',
 ]
 const DRAFT_SCRIPT_ID = 'ufd-draft'
 
@@ -129,32 +129,59 @@ async function draftEnabled() {
 }
 
 /**
- * Put the readers in place. Idempotent: re-registering an existing id throws, and a service
- * worker restarts often enough that this is the normal path rather than the exception.
+ * Put the readers in place. Safe to call from anywhere, any number of times, concurrently.
+ *
+ * It is called from four places — worker start, onStartup, onInstalled and the moment
+ * permission is granted — because any of them can be the first to happen and none of them is
+ * guaranteed. That made it race: two callers both saw nothing registered, both registered, and
+ * the second threw "Duplicate script ID 'ufd-draft-main'". Registration still succeeded, so the
+ * symptom was an error in the extensions page rather than a broken reader, which is the kind of
+ * thing that gets cleared and forgotten until the ordering changes and it does not succeed.
+ *
+ * Single-flight: concurrent callers share one attempt. A duplicate-id rejection is then treated
+ * as success, because it can only mean somebody else registered the same scripts.
  */
-async function registerDraftScripts() {
-  const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [DRAFT_SCRIPT_ID, DRAFT_SCRIPT_ID + '-main'] })
-  if (existing.length === 2) return
-  if (existing.length) await chrome.scripting.unregisterContentScripts({ ids: existing.map((e) => e.id) })
-  await chrome.scripting.registerContentScripts([
-    {
-      id: DRAFT_SCRIPT_ID + '-main',
-      matches: DRAFT_HOSTS,
-      js: ['inject-socket.js'],
-      world: 'MAIN',
-      runAt: 'document_start',
-    },
-    {
-      id: DRAFT_SCRIPT_ID,
-      matches: DRAFT_HOSTS,
-      js: ['content-draft.js'],
-      runAt: 'document_start',
-    },
-  ])
+let registering = null
+function registerDraftScripts() {
+  if (registering) return registering
+  registering = (async () => {
+    const want = [
+      {
+        id: DRAFT_SCRIPT_ID + '-main',
+        matches: DRAFT_HOSTS,
+        js: ['inject-socket.js'],
+        world: 'MAIN',
+        runAt: 'document_start',
+      },
+      {
+        id: DRAFT_SCRIPT_ID,
+        matches: DRAFT_HOSTS,
+        js: ['content-draft.js'],
+        runAt: 'document_start',
+      },
+    ]
+    const ids = want.map((w) => w.id)
+    const existing = await chrome.scripting.getRegisteredContentScripts({ ids }).catch(() => [])
+    if (existing.length === want.length) return
+    if (existing.length) {
+      await chrome.scripting.unregisterContentScripts({ ids: existing.map((e) => e.id) }).catch(() => {})
+    }
+    try {
+      await chrome.scripting.registerContentScripts(want)
+    } catch (e) {
+      /* Another caller won the race. That is the outcome we wanted, not a failure. */
+      if (!/duplicate script id/i.test(String(e?.message || e))) throw e
+    }
+  })().finally(() => { registering = null })
+  return registering
 }
 
-/* Survive the worker being shut down and restarted mid-draft, which Chrome does freely. */
+/* Survive the worker being shut down and restarted mid-draft, which Chrome does freely.
+   Registration is per-profile and persists, but the worker cannot assume it: checking on every
+   start is cheap and getting it wrong means a draft silently records nothing. */
+draftEnabled().then((ok) => ok && registerDraftScripts()).catch(() => {})
 chrome.runtime.onStartup?.addListener(() => { draftEnabled().then((ok) => ok && registerDraftScripts()) })
+chrome.runtime.onInstalled?.addListener(() => { draftEnabled().then((ok) => ok && registerDraftScripts()) })
 chrome.permissions.onAdded?.addListener(() => { draftEnabled().then((ok) => ok && registerDraftScripts()) })
 
 /**
@@ -213,14 +240,56 @@ chrome.runtime.onMessageExternal.addListener((msg, _sender, sendResponse) => {
   /* ── draft sync, from the board tab ─────────────────────────────────────────────────── */
 
   if (action === 'draftStatus') {
-    draftEnabled().then((enabled) => sendResponse({
+    Promise.all([
+      draftEnabled(),
+      /* Whether the readers are actually in place, which is not the same question as whether
+         permission was granted — registration can be granted and still not have run, and a
+         dynamically registered script only reaches pages loaded AFTER it is registered. */
+      chrome.scripting.getRegisteredContentScripts().catch(() => []),
+    ]).then(([enabled, scripts]) => sendResponse({
       enabled,
+      registered: (scripts || []).map((x) => x.id),
       picks: session.picks.length,
       /* The age of the newest pick, so the board can go red rather than quietly showing a
          stale list. A sync that stops at pick 40 and says nothing is worse than no sync. */
       lastPickAgoMs: session.lastPickAt ? Date.now() - session.lastPickAt : null,
       href: session.href,
     }))
+    return true
+  }
+
+  /*
+   * Reach into the draft tab and ask what it has seen.
+   *
+   * The board is in a different tab and pages cannot talk to each other, so every question
+   * about the draft room is relayed through here. Also the only way to get the recorded frames
+   * off the machine while the adapters are still being written.
+   */
+  if (action === 'getDraftCapture') {
+    chrome.tabs.query({}, (tabs) => {
+      /* A draft ROOM, not the lobby that led to it. Both live on the same host and a user who
+         entered a mock from the lobby has both tabs open — picking the first match found the
+         lobby, which has no socket and no picks, and reported the reader missing. */
+      const candidates = (tabs || []).filter((x) => {
+        const u = x.url || ''
+        if (!/fantasy\.espn\.com|fantasysports\.yahoo\.com/.test(u)) return false
+        if (/lobby/i.test(u)) return false
+        return /\/draft/i.test(u)
+      })
+      const t = candidates[0]
+      if (!t) {
+        return sendResponse({
+          error: 'no_draft_tab',
+          /* Say what WAS open, so "no draft tab" is diagnosable rather than just a refusal. */
+          sawTabs: (tabs || []).map((x) => x.url).filter((u) => /espn|yahoo/i.test(u || '')).slice(0, 6),
+        })
+      }
+      chrome.tabs.sendMessage(t.id, { action: 'draftCapture', limit: msg?.limit ?? 300 }, (r) => {
+        sendResponse(chrome.runtime.lastError
+          ? { error: chrome.runtime.lastError.message, tabUrl: t.url }
+          : { ...r, tabUrl: t.url })
+      })
+    })
     return true
   }
 

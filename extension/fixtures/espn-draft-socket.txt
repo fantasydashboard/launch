@@ -1,0 +1,19 @@
+# Captured from a live ESPN hockey mock draft, 2026-09-25, fantasydraft.espn.com.
+# One frame per line, verbatim except that the INIT blob is elided (it is a base64 snapshot
+# of league state and contains member identifiers).
+#
+# The point of this file: the parser in content-draft.js is written against these lines and
+# nothing else. If ESPN changes the protocol, the adapter test fails here rather than during
+# somebody's draft.
+INIT <elided base64 league snapshot>
+AUTODRAFT 2 false
+CLOCK 0 29208
+SELECTING 5 30000
+AUTOSUGGEST 3041969
+SELECTED 5 4233875 1
+CLOCK 6 29749 6
+SELECTING 6 30000
+AUTOSUGGEST 4565257
+SELECTED 6 3899937 2
+PONG PING%1790386431623
+SELECTED 7 4697393 3

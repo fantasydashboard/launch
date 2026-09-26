@@ -23,14 +23,47 @@
   const frames = []
 
   /**
-   * Per-platform parsers, keyed by what they match in the URL.
+   * Per-platform parsers, keyed by what they match in the socket URL.
    *
-   * Each returns picks from one frame, or [] when the frame is not about picks — which most
-   * frames are not. Empty until fixtures exist; the recorder below is how they get written.
+   * ESPN, captured from a live mock on 2026-09-25. Its draft socket is not JSON — it is a
+   * newline-terminated line protocol on fantasydraft.espn.com, quite separate from the
+   * bamgrid edge socket the page also opens (that one carries only transport acknowledgements
+   * and was the first thing a capture found, which is why guessing would have cost an evening):
+   *
+   *   SELECTED 5 4233875 1      team 5 drafted player 4233875
+   *   SELECTING 5 30000         team 5 on the clock, 30s
+   *   CLOCK 6 29749 6
+   *   AUTOSUGGEST 3041969       what the client would pick for you
+   *   AUTODRAFT 2 false
+   *   PONG PING%1790386431623
+   *   INIT <base64>
+   *
+   * THE NUMBER IS AN ESPN PLAYER ID, and that is the whole prize: 4233875 is Jason Robertson
+   * and 3041969 is Nathan MacKinnon in our own projection feed. The board is keyed by the same
+   * ids, so an ESPN pick needs no name matching at all — no abbreviations, no accents, no two
+   * men called Elias Pettersson. The name matcher stays for Yahoo and for the DOM fallback.
+   *
+   * ONLY `SELECTED` COUNTS. AUTOSUGGEST is a suggestion the user may never take, and treating
+   * it as a pick would cross off a player who is still available — the exact error that makes
+   * a board worse than no board.
    */
   const adapters = [
-    // { matches: (url) => /espn/.test(url), picks: (frame) => [...] },
-    // { matches: (url) => /yahoo/.test(url), picks: (frame) => [...] },
+    {
+      matches: (url) => /fantasydraft\.espn\.com/i.test(url),
+      picks: (data) => String(data).split('\n').flatMap((line) => {
+        const m = /^SELECTED\s+(\d+)\s+(\d+)(?:\s+(\d+))?/.exec(line.trim())
+        if (!m) return []
+        return [{
+          /* The id IS the board's key for ESPN. Carried as playerKey so the app can cross the
+             player off directly and never has to guess from a name. */
+          playerKey: m[2],
+          playerName: '',
+          byTeam: m[1],
+          pickNumber: m[3] ? Number(m[3]) : undefined,
+        }]
+      }),
+    },
+    // Yahoo: not yet captured. Its adapter lands the same way this one did — from a mock draft.
   ]
 
   function parse(url, data) {

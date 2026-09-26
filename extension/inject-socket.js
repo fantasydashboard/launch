@@ -47,4 +47,58 @@
   window.WebSocket.OPEN = Native.OPEN
   window.WebSocket.CLOSING = Native.CLOSING
   window.WebSocket.CLOSED = Native.CLOSED
+
+  /*
+   * HTTP TOO, because the socket may not be where the picks are.
+   *
+   * The first capture from an ESPN draft room returned eight frames and every one was transport
+   * plumbing — authenticated, received, delivered.async — from the edge connection service.
+   * Acknowledgements, not picks. Either picks ride that socket in a type nobody has seen yet, or
+   * the client polls for them over HTTP, and guessing between those is how a whole evening gets
+   * spent on the wrong one.
+   *
+   * So both are watched. Whichever carries the picks shows up in one draft instead of two.
+   * Only responses from the platform's own API are reported, and only JSON: this is looking for
+   * a pick, not reading the user's traffic.
+   */
+  const INTERESTING = /espn\.com|bamgrid|yahoo\.com/i
+  const nativeFetch = window.fetch
+  if (nativeFetch && !window.__ufdFetchWrapped) {
+    window.__ufdFetchWrapped = true
+    window.fetch = function (...args) {
+      const req = args[0]
+      const url = typeof req === 'string' ? req : (req && req.url) || ''
+      const p = nativeFetch.apply(this, args)
+      if (INTERESTING.test(String(url))) {
+        p.then((res) => {
+          const ct = res.headers?.get?.('content-type') || ''
+          if (!/json/i.test(ct)) return
+          res.clone().text().then((body) => report('http:' + url, body)).catch(() => {})
+        }).catch(() => {})
+      }
+      return p
+    }
+  }
+
+  const NativeXHR = window.XMLHttpRequest
+  if (NativeXHR && !window.__ufdXhrWrapped) {
+    window.__ufdXhrWrapped = true
+    const open = NativeXHR.prototype.open
+    NativeXHR.prototype.open = function (method, url, ...rest) {
+      this.__ufdUrl = url
+      return open.call(this, method, url, ...rest)
+    }
+    const send = NativeXHR.prototype.send
+    NativeXHR.prototype.send = function (...a) {
+      this.addEventListener('load', () => {
+        try {
+          const u = String(this.__ufdUrl || '')
+          if (!INTERESTING.test(u)) return
+          if (typeof this.responseText !== 'string') return
+          report('xhr:' + u, this.responseText)
+        } catch {}
+      })
+      return send.apply(this, a)
+    }
+  }
 })()

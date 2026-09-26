@@ -6,17 +6,17 @@
   "permissions": [
     "cookies",
     "scripting",
-    "storage"
+    "storage",
+    "tabs"
   ],
   "host_permissions": [
-    "https://*.espn.com/*"
+    "https://*.espn.com/*",
+    "https://fantasy.espn.com/*",
+    "https://*.fantasysports.yahoo.com/*"
   ],
   "optional_host_permissions": [
-    "https://*.fantasy.espn.com/*",
-    "https://*.football.fantasysports.yahoo.com/*",
-    "https://*.basketball.fantasysports.yahoo.com/*",
-    "https://*.hockey.fantasysports.yahoo.com/*",
-    "https://*.baseball.fantasysports.yahoo.com/*"
+    "https://fantasy.espn.com/*",
+    "https://*.fantasysports.yahoo.com/*"
   ],
   "background": {
     "service_worker": "background.js"
