@@ -54,6 +54,13 @@ async function fetchAllRows<T>(path: string, seasonId: string): Promise<T[]> {
 
   const res = await fetch(`${RELAY}?report=${encodeURIComponent(path)}&seasonId=${encodeURIComponent(seasonId)}`)
   if (!res.ok) throw new Error(`${path} responded ${res.status}`)
+  /* A 200 carrying something other than JSON means the relay is not running, not that the NHL
+     had nothing — every caller here degrades to an empty list, so an unnamed parse failure
+     becomes an empty board with a healthy-looking network tab. Say which it was. */
+  const type = res.headers.get('content-type') ?? ''
+  if (!/json/i.test(type)) {
+    throw new Error(`${path} responded 200 with '${type}', not JSON — is the API running?`)
+  }
   const json = await res.json()
   const rows: T[] = Array.isArray(json?.data) ? json.data : []
 

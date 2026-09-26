@@ -49,9 +49,26 @@ export function clearNhlFeedCache(): void {
 }
 
 async function fetchEspn(season: number): Promise<EspnHockeyPlayer[]> {
+  const url = `${PROJECTIONS_URL}?season=${season}`
   try {
-    const res = await fetch(`${PROJECTIONS_URL}?season=${season}`)
-    if (!res.ok) return []
+    const res = await fetch(url)
+    if (!res.ok) {
+      console.warn(`[useNhlFeed] ${url} -> ${res.status}`)
+      return []
+    }
+    /*
+     * A 200 that is not JSON is a DIFFERENT failure from an upstream with nothing to say, and
+     * it has to be named. The dev server used to answer this path with the handler's own
+     * source — 200, text/javascript — so `res.ok` passed, `res.json()` threw on the leading
+     * comment, and an empty list came back looking exactly like a quiet ESPN. The board then
+     * reported "could not load projections" about an endpoint that was perfectly healthy in
+     * production, and nothing on screen or in the console pointed at the server.
+     */
+    const type = res.headers.get('content-type') ?? ''
+    if (!/json/i.test(type)) {
+      console.error(`[useNhlFeed] ${url} answered 200 with '${type}', not JSON — is the API running?`)
+      return []
+    }
     const payload = await res.json()
     return (payload?.players ?? []) as EspnHockeyPlayer[]
   } catch (e) {
