@@ -18,6 +18,8 @@ import { suggestPunts } from '@/hockey/puntAdvisor'
 import { picksByTeamFromOrder } from '@/hockey/picksByTeam'
 import { loadNhlFeed } from '@/composables/useNhlFeed'
 import { mergeHockeyProjections } from '@/hockey/hockeyProjectionSource'
+import { draftSyncStatus, draftPicks, enableDraftSync as requestDraftSync, type DraftSyncStatus } from '@/services/draftExtension'
+import { matchPicks } from '@/draft/extensionPicks'
 
 /**
  * A hockey draft board for the active ESPN league.
@@ -380,6 +382,68 @@ export function useHockeyBoard() {
 
   /* No-ops in live mode rather than silent writes to a set nothing reads — the surface hides
      these controls there, and this is the second line of defence. */
+  /* ── live picks from the extension ───────────────────────────────────────────────────
+   *
+   * They land in mockOrder, the same place a hand-marked pick does, and that is the whole
+   * design. The roster panel, the grid, VONA and "who is still on the board" all read from
+   * there already, so none of them need to know a pick arrived by socket rather than by
+   * keyboard — and marking one yourself keeps working alongside, with no mode to switch.
+   *
+   * ESPN sends its own player ids, which ARE our keys, so nothing is matched. A platform that
+   * sends only a name goes through the matcher, which refuses to guess between two players
+   * rather than crossing off the wrong one.
+   */
+  const syncStatus = ref<DraftSyncStatus | null>(null)
+  let syncTimer: ReturnType<typeof setInterval> | null = null
+
+  async function pullExtensionPicks() {
+    const status = await draftSyncStatus()
+    syncStatus.value = status
+    if (!status.present || !status.enabled || !status.picks) return
+
+    const raw = await draftPicks()
+    const known = new Set(Object.keys(projections.value))
+    const direct: string[] = []
+    const needMatching: { playerName: string; position?: string; team?: string }[] = []
+
+    for (const p of raw) {
+      if (p.playerKey && known.has(String(p.playerKey))) direct.push(String(p.playerKey))
+      else if (p.playerName) needMatching.push({ playerName: p.playerName, position: p.position, team: p.team })
+    }
+
+    /* Only the named ones cost a match. ESPN's whole draft comes through `direct`. */
+    const matched = needMatching.length
+      ? matchPicks(needMatching, Object.entries(projections.value).map(([key, pr]) => ({
+          playerKey: key,
+          name: namesByKey.value[key] ?? '',
+          position: pr.position,
+          team: teamsByKey.value[key],
+        }))).keys
+      : []
+
+    /* Appended in arrival order, never reordered, and never twice — `take` refuses a repeat,
+       which matters because a socket replays and a reconnect resends its backlog. */
+    for (const key of [...direct, ...matched]) take(key)
+  }
+
+  /** Turn it on. The permission prompt is the consent and needs this click to appear. */
+  async function enableSync(): Promise<boolean> {
+    const ok = await requestDraftSync()
+    if (ok) await pullExtensionPicks()
+    return ok
+  }
+
+  function startSync() {
+    if (syncTimer) return
+    void pullExtensionPicks()
+    /* Two seconds. A draft pick takes thirty, so this is fast enough to feel immediate and
+       slow enough that the extension is not asked three hundred times a minute. */
+    syncTimer = setInterval(() => { void pullExtensionPicks() }, 2000)
+  }
+  function stopSync() {
+    if (syncTimer) { clearInterval(syncTimer); syncTimer = null }
+  }
+
   function take(playerKey: string) {
     if (!playerKey || live.value) return
     if (mockOrder.value.includes(playerKey)) return
@@ -628,6 +692,9 @@ export function useHockeyBoard() {
     // live draft
     live, liveError, liveState, lastSyncedAt, myTeamId, teamNames,
     goLive, goMock, syncDraft,
+    // extension-driven live picks
+    syncStatus: computed(() => syncStatus.value),
+    enableSync, startSync, stopSync, pullExtensionPicks,
     roster: computed(() => {
       const players = myPlayerKeys()
         .map((k) => ({ playerKey: k, position: projections.value[k]?.position ?? '' }))

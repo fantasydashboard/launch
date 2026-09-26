@@ -17,7 +17,7 @@
  * can rank above forwards who outscore him. Both numbers are on every row so the
  * disagreement is visible rather than something to take on faith.
  */
-import { computed, onUnmounted, ref, watchEffect } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue'
 import { useHockeyBoard } from '@/composables/useHockeyBoard'
 import CategoryLedgerPanel from '@/components/draft/CategoryLedgerPanel.vue'
 import { parseEspnLeagueUrl, otherPlatformFromUrl } from '@/hockey/espnLeagueUrl'
@@ -33,6 +33,7 @@ const {
   punted, togglePunt, clearPunts,
   drafted, take, undo, undoLast, reset, load,
   live, liveError, liveState, lastSyncedAt, myTeamId, teamNames, clock, goLive, goMock, syncDraft,
+  syncStatus, enableSync, startSync, stopSync,
   mockOrder, mySlot, draftKind, position, myPlayers, roster, vona, grid,
 } = useHockeyBoard()
 
@@ -248,6 +249,27 @@ const benchSpots = computed(() => {
 const manualStarters = computed(() =>
   MANUAL_SLOTS.reduce((n, pos) => n + (Number(mSlots.value[pos]) || 0), 0))
 const manualBench = computed(() => (Number(mRosterSize.value) || 0) - manualStarters.value)
+
+/*
+ * Quiet for longer than a pick takes, while there is a draft to follow.
+ *
+ * Ninety seconds against a thirty-second clock: long enough that a slow room or a paused draft
+ * does not cry wolf, short enough that three rounds cannot go by unnoticed. Only meaningful
+ * once a pick has actually arrived — before that, silence is just a draft that has not started.
+ */
+const syncStale = computed(() => {
+  const s = syncStatus.value
+  if (!s?.enabled || !s.picks) return false
+  return (s.lastPickAgoMs ?? 0) > 90000
+})
+
+async function turnOnSync() {
+  const ok = await enableSync()
+  if (ok) startSync()
+}
+
+onMounted(() => { startSync() })
+onUnmounted(() => { stopSync() })
 
 const marketTag = (r: any) => {
   if (!r?.marketFlag) return ''
@@ -679,6 +701,37 @@ const POS_TONE: Record<string, string> = {
             #{{ position.myNextPick }}<span v-if="position.myFollowingPick">, then #{{ position.myFollowingPick }}</span>
           </span>
           <span v-else-if="mySlot === null" class="text-dark-textMuted">Set your pick to see when you're up.</span>
+        </template>
+      </div>
+
+      <!--
+        THE SYNC, SAYING WHETHER IT IS WORKING.
+
+        A sync that silently stops on pick 40 is worse than no sync at all: the user trusts a
+        stale board for three rounds and drafts against a pool that has moved. So it is never
+        just "on" — it reports the count and the age of the newest pick, and goes red the
+        moment a draft that should be moving has gone quiet. Marking picks by hand keeps
+        working underneath either way, with no mode to switch.
+      -->
+      <div v-if="syncStatus?.present" class="mb-3 flex flex-wrap items-center gap-3 rounded-xl border px-3 py-2 font-mono text-[11px]"
+           :class="syncStale ? 'border-[#FF5C5C]/40 bg-[#FF5C5C]/5' : 'border-dark-border bg-dark-card/60'">
+        <template v-if="!syncStatus.enabled">
+          <span class="text-dark-textMuted">Your extension can follow the draft room and mark picks for you.</span>
+          <button class="rounded-lg border border-primary/50 px-2.5 py-1 text-primary transition-colors hover:bg-primary/10"
+                  @click="turnOnSync">turn on draft sync</button>
+        </template>
+        <template v-else-if="syncStale">
+          <span class="text-[#FF5C5C]">
+            Draft sync has gone quiet &mdash; {{ syncStatus.picks }} picks, nothing for
+            {{ Math.round((syncStatus.lastPickAgoMs ?? 0) / 1000) }}s. Mark picks yourself below.
+          </span>
+        </template>
+        <template v-else>
+          <span class="text-[#7ee787]">
+            synced {{ syncStatus.picks }} pick{{ syncStatus.picks === 1 ? '' : 's' }}<template
+              v-if="syncStatus.lastPickAgoMs !== null"> &middot; {{ Math.round(syncStatus.lastPickAgoMs / 1000) }}s ago</template>
+          </span>
+          <span class="text-dark-textMuted/60">you can still mark picks yourself</span>
         </template>
       </div>
 
