@@ -33,7 +33,7 @@ const {
   punted, togglePunt, clearPunts,
   drafted, take, undo, undoLast, reset, load,
   live, liveError, liveState, lastSyncedAt, myTeamId, teamNames, clock, goLive, goMock, syncDraft,
-  syncStatus, enableSync, startSync, stopSync,
+  syncStatus, enableSync, startSync, stopSync, extensionPicks, unplacedPicks,
   mockOrder, mySlot, draftKind, position, myPlayers, roster, vona, grid,
 } = useHockeyBoard()
 
@@ -727,11 +727,19 @@ const POS_TONE: Record<string, string> = {
           </span>
         </template>
         <template v-else>
+          <!--
+            THE NUMBER THAT IS CHECKABLE IS THE ONE CROSSED OFF, not the one received. A board
+            that said "synced 161 picks" over a completely full pool is the failure this line
+            is supposed to catch, so it reports what actually landed and names any remainder.
+          -->
           <span class="text-[#7ee787]">
-            synced {{ syncStatus.picks }} pick{{ syncStatus.picks === 1 ? '' : 's' }}<template
+            {{ extensionPicks }} pick{{ extensionPicks === 1 ? '' : 's' }} off the board<template
               v-if="syncStatus.lastPickAgoMs !== null"> &middot; {{ Math.round(syncStatus.lastPickAgoMs / 1000) }}s ago</template>
           </span>
-          <span class="text-dark-textMuted/60">you can still mark picks yourself</span>
+          <span v-if="unplacedPicks" class="text-[#FFA657]">
+            {{ unplacedPicks }} the board doesn't carry &mdash; mark those yourself
+          </span>
+          <span v-else class="text-dark-textMuted/60">you can still mark picks yourself</span>
         </template>
       </div>
 

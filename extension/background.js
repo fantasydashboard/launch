@@ -191,13 +191,70 @@ chrome.permissions.onAdded?.addListener(() => { draftEnabled().then((ok) => ok &
  * cannot read another page's memory. The worker is the only thing both tabs can reach.
  */
 const session = { picks: [], lastPickAt: 0, href: '' }
+const SESSION_KEY = 'ufd:draftSession'
+
+/*
+ * WHY THIS IS WRITTEN TO STORAGE AND NOT JUST HELD HERE.
+ *
+ * A manifest-v3 service worker is terminated after roughly thirty seconds of inactivity, and
+ * a draft pick clock is thirty seconds. Held only in memory, `session` is therefore a coin
+ * flip: the worker naps between picks and every pick so far is gone.
+ *
+ * Polling from the board masks it — a request every two seconds keeps the worker alive — but
+ * that is exactly the case that does not hold during a real draft. The user is looking at the
+ * ESPN tab, not at us, and Chrome throttles a background tab's timers to about once a minute.
+ * So the one configuration where the board is unattended is the one where the worker dies,
+ * and the picks it loses are the picks nobody is watching it lose.
+ *
+ * chrome.storage.session is the right store: it survives a worker restart and is cleared when
+ * the browser closes, which is the exact lifetime of a draft.
+ */
+const ready = (async () => {
+  try {
+    const got = await chrome.storage.session.get(SESSION_KEY)
+    const saved = got?.[SESSION_KEY]
+    if (saved && Array.isArray(saved.picks)) {
+      session.picks = saved.picks
+      session.lastPickAt = saved.lastPickAt || 0
+      session.href = saved.href || ''
+    }
+  } catch {
+    /* No store is survivable — it degrades to the old in-memory behaviour. A throw here would
+       take the whole worker down and lose the sync outright, which is far worse. */
+  }
+})()
+
+/* Written on every pick rather than debounced: a pick is at most one small object every thirty
+   seconds, and a debounce is a window in which the worker can die holding the only copy. */
+function persist() {
+  chrome.storage.session.set({ [SESSION_KEY]: session }).catch(() => {})
+}
+
+/** Forget the draft. Used when a new draft room is opened, so two drafts cannot merge. */
+async function resetSession(href) {
+  await ready
+  session.picks = []
+  session.lastPickAt = 0
+  session.href = href || ''
+  persist()
+}
 
 chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   if (msg?.action === 'draftPicks') {
-    session.href = msg.href || sender?.tab?.url || ''
-    for (const p of msg.picks || []) session.picks.push(p)
-    session.lastPickAt = Date.now()
-    respond({ ok: true, total: session.picks.length })
+    ready.then(() => {
+      const href = msg.href || sender?.tab?.url || ''
+      /* A different draft room means a different draft. Without this, leaving one mock and
+         starting another shows the board a pool with both drafts' picks missing from it. */
+      if (session.href && href && href !== session.href) {
+        session.picks = []
+        session.lastPickAt = 0
+      }
+      session.href = href
+      for (const p of msg.picks || []) session.picks.push(p)
+      session.lastPickAt = Date.now()
+      persist()
+      respond({ ok: true, total: session.picks.length })
+    })
     return true
   }
   return false
@@ -246,6 +303,9 @@ chrome.runtime.onMessageExternal.addListener((msg, _sender, sendResponse) => {
          permission was granted — registration can be granted and still not have run, and a
          dynamically registered script only reaches pages loaded AFTER it is registered. */
       chrome.scripting.getRegisteredContentScripts().catch(() => []),
+      /* Hydration, for the same reason getDraftPicks waits on it: this request can be what
+         wakes a cold worker, and an unhydrated count reads as "the draft has not started". */
+      ready,
     ]).then(([enabled, scripts]) => sendResponse({
       enabled,
       registered: (scripts || []).map((x) => x.id),
@@ -294,8 +354,10 @@ chrome.runtime.onMessageExternal.addListener((msg, _sender, sendResponse) => {
   }
 
   if (action === 'getDraftPicks') {
-    sendResponse({ picks: session.picks, lastPickAt: session.lastPickAt })
-    return false
+    /* Awaited: a cold worker woken BY this very request would otherwise answer "no picks"
+       from an unhydrated session and tell the board the draft had not started. */
+    ready.then(() => sendResponse({ picks: session.picks, lastPickAt: session.lastPickAt }))
+    return true
   }
 
   /* Asking turns it on: the permission prompt IS the consent, and it cannot be requested

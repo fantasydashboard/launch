@@ -20,6 +20,7 @@ import { loadNhlFeed } from '@/composables/useNhlFeed'
 import { mergeHockeyProjections } from '@/hockey/hockeyProjectionSource'
 import { draftSyncStatus, draftPicks, enableDraftSync as requestDraftSync, type DraftSyncStatus } from '@/services/draftExtension'
 import { matchPicks } from '@/draft/extensionPicks'
+import { draftedFrom } from '@/hockey/draftedFrom'
 
 /**
  * A hockey draft board for the active ESPN league.
@@ -74,7 +75,16 @@ export function useHockeyBoard() {
    * A set threw that away and left the board unable to say anything except who was gone.
    */
   const mockOrder = ref<string[]>([])
-  const mockDrafted = computed(() => new Set(mockOrder.value))
+
+  /**
+   * Players the EXTENSION read out of the draft room, kept apart from hand-marked picks.
+   *
+   * Its own list because it is its own source with its own authority. The extension did not
+   * infer these: it read a SELECTED frame off the draft socket, carrying ESPN's own player id.
+   * So it can only ever add somebody who is genuinely gone, which is why these count in live
+   * mode as well as mock — see `drafted`.
+   */
+  const extensionOrder = ref<string[]>([])
 
   /* Your seat in the order, ONE-based to match pickOrder and the grid. Null until set — the
      clock works without it, and everything about YOUR draft stays silent rather than
@@ -101,7 +111,12 @@ export function useHockeyBoard() {
    * sources of truth for "is this player gone" is how a board ends up recommending somebody
    * who was taken four picks ago.
    */
-  const drafted = computed(() => (live.value && liveState.value ? liveState.value.drafted : mockDrafted.value))
+  const drafted = computed(() => draftedFrom({
+    live: live.value,
+    liveDrafted: liveState.value?.drafted ?? null,
+    handMarked: mockOrder.value,
+    fromExtension: extensionOrder.value,
+  }))
 
   /**
    * Columns this manager is conceding. Category leagues only.
@@ -394,6 +409,8 @@ export function useHockeyBoard() {
    * rather than crossing off the wrong one.
    */
   const syncStatus = ref<DraftSyncStatus | null>(null)
+  /** Picks the extension delivered that this board could not place. See pullExtensionPicks. */
+  const unplacedPicks = ref(0)
   let syncTimer: ReturnType<typeof setInterval> | null = null
 
   async function pullExtensionPicks() {
@@ -405,11 +422,20 @@ export function useHockeyBoard() {
     const known = new Set(Object.keys(projections.value))
     const direct: string[] = []
     const needMatching: { playerName: string; position?: string; team?: string }[] = []
+    /*
+     * Picks that reached us and could not be placed: an id the board does not carry, and no
+     * name to fall back on. Counted rather than dropped, because "synced 174" over a board
+     * showing 140 crossed off is the difference between a working sync and a silently
+     * lossy one, and only the second number is checkable against the room.
+     */
+    let unplaced = 0
 
     for (const p of raw) {
       if (p.playerKey && known.has(String(p.playerKey))) direct.push(String(p.playerKey))
       else if (p.playerName) needMatching.push({ playerName: p.playerName, position: p.position, team: p.team })
+      else unplaced += 1
     }
+    unplacedPicks.value = unplaced
 
     /* Only the named ones cost a match. ESPN's whole draft comes through `direct`. */
     const matched = needMatching.length
@@ -421,9 +447,9 @@ export function useHockeyBoard() {
         }))).keys
       : []
 
-    /* Appended in arrival order, never reordered, and never twice — `take` refuses a repeat,
-       which matters because a socket replays and a reconnect resends its backlog. */
-    for (const key of [...direct, ...matched]) take(key)
+    /* Appended in arrival order, never reordered, and never twice — a socket replays and a
+       reconnect resends its backlog. */
+    for (const key of [...direct, ...matched]) takeFromExtension(key)
   }
 
   /** Turn it on. The permission prompt is the consent and needs this click to appear. */
@@ -449,16 +475,51 @@ export function useHockeyBoard() {
     if (mockOrder.value.includes(playerKey)) return
     mockOrder.value = [...mockOrder.value, playerKey]
   }
+
+  /**
+   * A pick the extension read, which lands in EITHER mode.
+   *
+   * Deliberately not `take`: that one refuses while live, because a hand-marked pick competing
+   * with ESPN's own draft state is how a board ends up disagreeing with itself. This is the
+   * other case — a pick read off the wire, with the platform's own id on it.
+   *
+   * In mock mode it also joins `mockOrder`, because there the pick SEQUENCE is what drives the
+   * clock, the grid and which picks were yours; in live mode ESPN owns the sequence and this
+   * contributes only the fact that somebody is gone.
+   */
+  function takeFromExtension(playerKey: string) {
+    if (!playerKey) return
+    if (!extensionOrder.value.includes(playerKey)) {
+      extensionOrder.value = [...extensionOrder.value, playerKey]
+    }
+    if (!live.value && !mockOrder.value.includes(playerKey)) {
+      mockOrder.value = [...mockOrder.value, playerKey]
+    }
+  }
+
+  /*
+   * Undo reaches the extension's list too, or it would not be an undo: the row would grey out
+   * again within two seconds and look like a broken button rather than a refused one. If the
+   * draft room really did take that player, the next poll puts him back — which is correct,
+   * and is the board disagreeing with the click rather than with the draft.
+   */
   function undo(playerKey: string) {
     if (live.value) return
     mockOrder.value = mockOrder.value.filter((k) => k !== playerKey)
+    extensionOrder.value = extensionOrder.value.filter((k) => k !== playerKey)
   }
   /** Undo the last pick, which is the one a misclick actually needs. */
   function undoLast() {
     if (live.value) return
+    const last = mockOrder.value[mockOrder.value.length - 1]
     mockOrder.value = mockOrder.value.slice(0, -1)
+    if (last) extensionOrder.value = extensionOrder.value.filter((k) => k !== last)
   }
-  function reset() { if (!live.value) mockOrder.value = [] }
+  function reset() {
+    if (live.value) return
+    mockOrder.value = []
+    extensionOrder.value = []
+  }
 
   /** Concede a column, or take it back. Re-prices the whole board either way. */
   function togglePunt(key: string) {
@@ -695,6 +756,9 @@ export function useHockeyBoard() {
     // extension-driven live picks
     syncStatus: computed(() => syncStatus.value),
     enableSync, startSync, stopSync, pullExtensionPicks,
+    /** How many of the synced picks are actually crossed off, and how many were not placed. */
+    extensionPicks: computed(() => extensionOrder.value.length),
+    unplacedPicks: computed(() => unplacedPicks.value),
     roster: computed(() => {
       const players = myPlayerKeys()
         .map((k) => ({ playerKey: k, position: projections.value[k]?.position ?? '' }))
