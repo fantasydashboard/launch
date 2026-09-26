@@ -263,6 +263,18 @@ const syncStale = computed(() => {
   return (s.lastPickAgoMs ?? 0) > 90000
 })
 
+/**
+ * The extension is reading the draft room AND picks are arriving.
+ *
+ * Requires a pick to have landed, not merely permission to be granted: enabled-but-silent is
+ * indistinguishable from "the reader is not on that tab" until the first pick proves it. So
+ * the copy only claims to be following a draft once it demonstrably is.
+ */
+const syncFeeding = computed(() => !!syncStatus.value?.enabled && extensionPicks.value > 0 && !syncStale.value)
+
+/** Watching, permission granted, but nothing has come through yet. */
+const syncWatching = computed(() => !!syncStatus.value?.enabled && !extensionPicks.value)
+
 async function turnOnSync() {
   const ok = await enableSync()
   if (ok) startSync()
@@ -414,11 +426,13 @@ const POS_TONE: Record<string, string> = {
       <p v-if="urlError" class="mt-1.5 font-mono text-[10px] text-[#FF5C5C]">{{ urlError }}</p>
       <p v-else-if="override" class="mt-1.5 font-mono text-[10px] text-primary/80">
         tracking league {{ override.leagueId }} &middot; {{ override.season }}
-        <!-- Said plainly, because the banner above says ESPN publishes nothing mid-draft
-             and a promise here that picks "sync when you go live" contradicts it on the
-             same screen. Settings and the board load; the picks do not. -->
-        <span class="text-dark-textMuted"> &mdash; settings and board loaded; ESPN won't
-          publish picks until the draft ends, so mark them yourself as they go</span>
+        <!-- Said plainly, and kept in step with the banner below: whichever source is
+             really supplying picks is the one named here. Settings and the board always come
+             from ESPN; the picks come from the extension when it is running. -->
+        <span class="text-dark-textMuted"> &mdash; settings and board loaded<template
+          v-if="syncFeeding">; picks are coming from your draft room</template><template
+          v-else>; ESPN won't publish picks until the draft ends, so mark them yourself as
+          they go</template></span>
       </p>
       <p v-else class="mt-1.5 font-mono text-[10px] text-dark-textMuted/60">
         a practice draft works for the board &mdash; ESPN reads without a login
@@ -654,12 +668,28 @@ const POS_TONE: Record<string, string> = {
         SAID PLAINLY, BECAUSE THE FAILURE IS INVISIBLE OTHERWISE. A live draft returns
         inProgress:true with every pick empty, so this tab looks like it is working and simply
         never removes anybody. That is worse than an error.
+
+        BUT IT IS ONLY TRUE WHEN NOTHING ELSE IS READING THE DRAFT. Once the extension is
+        feeding picks the warning is not merely redundant, it is wrong — it sat directly above
+        a green line reading "118 picks off the board" and told the user to go and mark them
+        by hand. A stale instruction that contradicts the screen costs more trust than no
+        instruction at all, so the banner now says which source is actually in force.
       -->
-      <p v-if="live"
-         class="mb-3 rounded-lg border border-[#e69a4a]/30 bg-[#e69a4a]/5 px-3 py-2 font-mono text-[11px] text-[#e69a4a]">
-        ESPN does not publish picks while a draft is running &mdash; its API reports the draft
-        in progress with every pick empty. This tab will fill in once the draft is over. During
-        one, use &ldquo;I'll mark picks&rdquo;.
+      <p v-if="live && !syncFeeding"
+         class="mb-3 rounded-lg border px-3 py-2 font-mono text-[11px]"
+         :class="syncWatching
+           ? 'border-dark-border bg-dark-card/60 text-dark-textMuted'
+           : 'border-[#e69a4a]/30 bg-[#e69a4a]/5 text-[#e69a4a]'">
+        <template v-if="syncWatching">
+          ESPN publishes nothing while a draft runs, so your extension is reading the draft
+          room instead &mdash; picks will cross off here as they happen. If they don't, mark
+          them yourself below.
+        </template>
+        <template v-else>
+          ESPN does not publish picks while a draft is running &mdash; its API reports the draft
+          in progress with every pick empty. This tab will fill in once the draft is over. During
+          one, use &ldquo;I'll mark picks&rdquo;.
+        </template>
       </p>
 
       <p v-if="live && liveError"

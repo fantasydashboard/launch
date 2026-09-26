@@ -435,7 +435,12 @@ export function useHockeyBoard() {
       else if (p.playerName) needMatching.push({ playerName: p.playerName, position: p.position, team: p.team })
       else unplaced += 1
     }
-    unplacedPicks.value = unplaced
+    /*
+     * An EMPTY board carries nobody, so every pick counts as unplaceable and the line reads
+     * "174 the board doesn't carry" — which blames the picks for a board that has not loaded
+     * a league yet. Only a real pool can tell us a pick is genuinely missing from it.
+     */
+    unplacedPicks.value = known.size ? unplaced : 0
 
     /* Only the named ones cost a match. ESPN's whole draft comes through `direct`. */
     const matched = needMatching.length
