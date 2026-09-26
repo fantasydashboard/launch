@@ -63,6 +63,46 @@ export const PRIOR_GAMES = 5
  */
 export const FORWARD_WEIGHT = 0.5
 
+/**
+ * ...but one number is wrong for three of the four positions, and QB is the worst of them.
+ *
+ * Re-measured 2026-09-25 over weeks 2-9 of 2025, same no-lookahead method, sweeping the weight
+ * rather than testing 0 / 0.5 / 1. Mean Spearman against rest-of-season actual:
+ *
+ *            w=0.00  w=0.15  w=0.25  w=0.35  w=0.50  w=0.65  w=1.00
+ *     QB      .569    .576*   .567    .571    .556    .540    .430
+ *     RB      .759    .765    .767*   .759    .751    .740    .715
+ *     WR      .643    .652    .657    .664    .671    .674*   .669
+ *     TE      .622    .626*   .619    .615    .591    .576    .551
+ *
+ * Quarterback and tight end want the forward term SMALL; receiver is the only position that
+ * wants it large. The earlier note above has tight end gaining from the forward rate, which is
+ * the opposite of what a swept measurement says — that reading came from comparing 0 against
+ * 1 and picking the midpoint, which hides an optimum that is not at either end.
+ *
+ * WR stays at 0.50 rather than the measured 0.65: three thousandths of Spearman over one
+ * season is not a result, and the house rule is to widen the pool before believing a sweep.
+ * QB, RB and TE move, because those gaps are an order of magnitude larger.
+ *
+ * A separate MAE sweep over the same window put the all-position optimum at 0.25, which is
+ * what a single number has to be when it is averaging these four. That agreement is the reason
+ * to split them rather than to retune the one.
+ */
+export const FORWARD_WEIGHT_BY_POS: Record<string, number> = {
+  QB: 0.15,
+  RB: 0.25,
+  WR: 0.5,
+  TE: 0.15,
+}
+
+/**
+ * The weight for a position, for callers building `forwardWeightByKey`. rosBlend itself still
+ * knows nothing about positions — same division of labour as `priorGamesByKey`.
+ */
+export function forwardWeightFor(position: string | undefined): number {
+  return FORWARD_WEIGHT_BY_POS[(position || '').toUpperCase()] ?? FORWARD_WEIGHT
+}
+
 /** Regular season length, for turning a per-game rate back into a remaining total. */
 export const SEASON_GAMES = 17
 
@@ -99,6 +139,12 @@ export interface RosInput {
    * never "worthless".
    */
   forwardRateByKey?: Record<string, number>
+  /**
+   * Per-player override of how much that forward rate counts, for callers that vary it by
+   * position — and they should, because the right weight is not one number. Built with
+   * `forwardWeightFor`. A player absent from the map uses `FORWARD_WEIGHT`.
+   */
+  forwardWeightByKey?: Record<string, number>
 }
 
 export interface RosRow {
@@ -132,7 +178,8 @@ export function observedFromLines(lines: SeasonLine[]): Record<string, { points:
  * simply has not filed.
  */
 export function buildRosPoints(input: RosInput): Record<string, RosRow> {
-  const { seasonProjection, lines, currentWeek, byeWeekByKey, priorGamesByKey, forwardRateByKey } = input
+  const { seasonProjection, lines, currentWeek, byeWeekByKey, priorGamesByKey, forwardRateByKey,
+          forwardWeightByKey } = input
   const observed = observedFromLines(lines)
   /* Weeks still to play. Clamped at one so a late-season board never multiplies by zero and
      reports every player as worthless. */
@@ -156,15 +203,20 @@ export function buildRosPoints(input: RosInput): Record<string, RosRow> {
   }
 
   /*
-   * Half and half. The pure forward rate scored better at receiver on its own, but one week of
-   * projection is a thin thing to hang a season on; an even blend was positive at ALL FOUR
-   * positions in the 2025 backtest where the pure version was noise at quarterback and back.
-   * The two sources know different things, so averaging beats picking.
+   * The two sources know different things, so averaging beats picking — but HOW MUCH to
+   * average is position-specific, and a single 0.5 is wrong for three of the four. See
+   * FORWARD_WEIGHT_BY_POS above for the swept 2025 numbers. Callers that know a player's
+   * position pass `forwardWeightByKey`; callers that do not still get the old behaviour.
    */
+  const weightFor = (key: string): number => {
+    const w = forwardWeightByKey?.[key]
+    return typeof w === 'number' && Number.isFinite(w) && w >= 0 && w <= 1 ? w : FORWARD_WEIGHT
+  }
   const withForward = (key: string, perGame: number): number => {
     const fwd = forwardRateByKey?.[key]
     if (typeof fwd !== 'number' || !Number.isFinite(fwd) || fwd <= 0) return perGame
-    return perGame * (1 - FORWARD_WEIGHT) + fwd * FORWARD_WEIGHT
+    const w = weightFor(key)
+    return perGame * (1 - w) + fwd * w
   }
 
   const out: Record<string, RosRow> = {}
