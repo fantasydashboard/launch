@@ -116,3 +116,17 @@ export async function enableDraftSync(): Promise<boolean> {
   const r = await send<any>({ action: 'enableDraftSync' }, 60000)
   return !!r?.granted
 }
+
+/**
+ * Forget every pick seen so far.
+ *
+ * Called when the board is pointed at a different league. Picks deliberately survive a
+ * service-worker restart, which is what a live draft needs — and is exactly what makes a
+ * LEFTOVER draft dangerous: open the board before tonight's draft with this afternoon's mock
+ * still in the session and it crosses off players who are not gone, confidently, with a number
+ * beside them. One draft, one slate.
+ */
+export async function resetDraftSync(): Promise<boolean> {
+  const r = await send<any>({ action: 'resetDraftSession' })
+  return !!r?.ok
+}

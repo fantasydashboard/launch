@@ -353,6 +353,21 @@ chrome.runtime.onMessageExternal.addListener((msg, _sender, sendResponse) => {
     return true
   }
 
+  /*
+   * Forget the draft, on demand.
+   *
+   * The board calls this when the user points it at a different league. Picks survive a
+   * service-worker restart by design, which is what a draft needs — and is exactly what makes
+   * a LEFTOVER draft dangerous: open the board before tonight's draft with a lunchtime mock
+   * still in the session and the board crosses off players who are not gone. The href check on
+   * incoming picks catches this too, but only once a NEW pick arrives; until then the stale
+   * list is live and the board has already swallowed it.
+   */
+  if (action === 'resetDraftSession') {
+    resetSession(msg?.href || '').then(() => sendResponse({ ok: true, cleared: true }))
+    return true
+  }
+
   if (action === 'getDraftPicks') {
     /* Awaited: a cold worker woken BY this very request would otherwise answer "no picks"
        from an unhydrated session and tell the board the draft had not started. */

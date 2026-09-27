@@ -18,7 +18,7 @@ import { suggestPunts } from '@/hockey/puntAdvisor'
 import { picksByTeamFromOrder } from '@/hockey/picksByTeam'
 import { loadNhlFeed } from '@/composables/useNhlFeed'
 import { mergeHockeyProjections } from '@/hockey/hockeyProjectionSource'
-import { draftSyncStatus, draftPicks, enableDraftSync as requestDraftSync, type DraftSyncStatus } from '@/services/draftExtension'
+import { draftSyncStatus, draftPicks, enableDraftSync as requestDraftSync, resetDraftSync, type DraftSyncStatus } from '@/services/draftExtension'
 import { matchPicks } from '@/draft/extensionPicks'
 import { draftedFrom } from '@/hockey/draftedFrom'
 
@@ -210,6 +210,15 @@ export function useHockeyBoard() {
     override.value = next
     resolvedSeason.value = 0
     mockOrder.value = []
+    /*
+     * A different league is a different draft, so the slate is wiped on BOTH sides — the
+     * board's own list and the extension's. Without this, pointing the board at tonight's
+     * league while this afternoon's mock is still in the extension's session crosses off
+     * players who are not gone, and nothing on screen says anything is wrong.
+     */
+    extensionOrder.value = []
+    unplacedPicks.value = 0
+    void resetDraftSync()
     if (!next) { goMock(); load(); return }
     /*
      * "Track it" means track it. Loading the league and then sitting in mock mode is the
