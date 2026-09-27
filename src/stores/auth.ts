@@ -6,6 +6,7 @@
  */
 
 import { defineStore } from 'pinia'
+import { classifySignUp } from '@/lib/signUpOutcome'
 import { ref, computed } from 'vue'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { readStoredSession } from '@/lib/authSession'
@@ -285,6 +286,21 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Sign up with email/password
+/**
+ * What we say when the address already has an account.
+ *
+ * THIS NAMES THE ACCOUNT, which is technically email enumeration — somebody can learn whether
+ * an address is registered here. That is a real trade and it is made deliberately: the cost of
+ * hiding it was a person who believes they signed up, never receives the link they were
+ * promised, and never returns. For a fantasy sports dashboard that is the far more expensive
+ * failure, and every consumer product of this shape makes the same call.
+ *
+ * To trade back, say "If that address isn't already registered, you'll get a link" and keep
+ * returning success — but then the modal must stop claiming an email is on its way.
+ */
+const ALREADY_REGISTERED =
+  'That email already has an account. Try signing in, or reset your password.'
+
   async function signUp(email: string, password: string, fullName?: string) {
     if (!supabase) {
       error.value = 'Authentication not configured'
@@ -320,6 +336,32 @@ export const useAuthStore = defineStore('auth', () => {
       })
 
       if (signUpError) throw signUpError
+
+      /*
+       * A SIGNUP THAT SENDS NO EMAIL AND REPORTS NO ERROR.
+       *
+       * When the address already has an account, Supabase deliberately does not fail: it
+       * returns 200 with an obfuscated user carrying an EMPTY `identities` array, and sends
+       * nothing. That is anti-enumeration working as designed — but this code read "no error"
+       * as "account created", so the modal said "Check your email for a confirmation link"
+       * and no link was ever coming. The person waits, finds nothing, and does not come back.
+       * Nothing is logged, nothing is thrown, and no row appears anywhere to count.
+       *
+       * `identities: []` is the documented signal. An identity is created for a genuinely new
+       * user, so an empty array on a 200 means exactly one thing.
+       */
+      const outcome = classifySignUp(data as any)
+      if (outcome.kind === 'already_registered') {
+        error.value = ALREADY_REGISTERED
+        return { success: false, error: error.value, reason: 'already_registered' as const }
+      }
+      /* No user at all is not success either. Nothing on this path should produce it, which is
+         precisely why it must not be swallowed: the previous version reported a cheerful
+         "check your email" for anything that was not an outright error. */
+      if (outcome.kind === 'no_user') {
+        error.value = 'Sign up did not complete. Please try again.'
+        return { success: false, error: error.value }
+      }
 
       // Meta Pixel - Account Created
       if (typeof window !== 'undefined' && (window as any).fbq) {
