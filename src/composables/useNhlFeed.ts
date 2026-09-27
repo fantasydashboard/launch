@@ -3,6 +3,7 @@ import {
   fetchSkaterSummary, fetchSkaterIce, fetchSkaterRealtime, fetchGoalieSummary, type GoalieRow,
 } from '@/services/nhlStats'
 import { rateSkaters, type SkaterRate } from '@/hockey/nhlRates'
+import { blendSeasons, PRIOR_WEIGHTS } from '@/hockey/blendSeasons'
 import type { EspnHockeyPlayer } from '@/hockey/hockeyProjectionSource'
 
 /**
@@ -87,7 +88,8 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
    * transition itself, so there is no date logic here deciding when to "switch over". A rule
    * like that is wrong for a week every year and nobody notices.
    */
-  const [current, currentIce, prior, priorIce, curG, priorG, curRt, priorRt, espn] =
+  const [current, currentIce, prior, priorIce, curG, priorG, curRt, priorRt, espn,
+         prior2, prior2Rt, prior3, prior3Rt] =
     await Promise.all([
       fetchSkaterSummary(seasonId(year)),
       fetchSkaterIce(seasonId(year)),
@@ -98,6 +100,22 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
       fetchSkaterRealtime(seasonId(year)),
       fetchSkaterRealtime(seasonId(year - 1)),
       fetchEspn(espnSeason),
+      /*
+       * Two more seasons, for the prior only.
+       *
+       * Before a puck is dropped a player's rate IS his prior, and one season of it made a
+       * down year his new true talent — Matthews rated 0.88 P/GP off an injured 60-game
+       * season against the 1.03 his last two say, and ranked 123rd where consensus had 17th.
+       * Measured over the DailyFaceoff top 250, every multi-year weighting beat one year on
+       * every metric; see src/hockey/blendSeasons.ts for the sweep.
+       *
+       * Failure here is soft by construction: these come back [] on error and blendSeasons
+       * simply weights the seasons it was given, so a bad read costs accuracy, never a board.
+       */
+      fetchSkaterSummary(seasonId(year - 2)),
+      fetchSkaterRealtime(seasonId(year - 2)),
+      fetchSkaterSummary(seasonId(year - 3)),
+      fetchSkaterRealtime(seasonId(year - 3)),
     ])
 
   /* Hits and blocks arrive on their own report, merged on before rating so the rate model
@@ -112,6 +130,33 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
   }
   const currentFull = mergeRt(current, curRt)
   const priorFull = mergeRt(prior, priorRt)
+  const prior2Full = mergeRt(prior2, prior2Rt)
+  const prior3Full = mergeRt(prior3, prior3Rt)
+
+  /*
+   * The prior the rate model regresses toward: the last three seasons, most recent heaviest.
+   *
+   * Weighted totals over weighted games, so a 20-game season cannot count the same as an
+   * 82-game one. A player missing from a season contributes to neither side, which is what
+   * keeps a rookie rated on the season he actually played instead of diluted toward zero.
+   */
+  const blended = blendSeasons(
+    [priorFull, prior2Full, prior3Full] as any,
+    PRIOR_WEIGHTS,
+  ) as unknown as typeof priorFull
+
+  /*
+   * ...FOR THE PLAYERS WHO ARE STILL HERE. Older seasons contain hundreds of men who have
+   * since retired or gone back to the minors, and letting them into the pool is not a small
+   * cosmetic problem: it grew the rated roster from ~940 to 1,196, which moves every
+   * positional replacement level and re-prices the entire board against players nobody can
+   * draft. Connor Bedard fell 121 places on that alone.
+   *
+   * So the extra seasons inform the RATE of a current player and never add a player. The
+   * roster is the most recent season's; anyone absent from it is not in this league any more.
+   */
+  const activeIds = new Set(priorFull.map((p) => p.playerId))
+  const blendedPrior = blended.filter((p) => activeIds.has(p.playerId))
 
   /*
    * Before a puck is dropped the current season returns NOTHING — not thin data, an empty list
@@ -126,14 +171,14 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
    * throw away its best column.
    */
   const started = currentFull.length > 0
-  const roster = started ? currentFull : priorFull.map((p) => ({
+  const roster = started ? currentFull : blendedPrior.map((p) => ({
     ...p, gamesPlayed: 0, goals: 0, assists: 0, points: 0,
     plusMinus: 0, penaltyMinutes: 0, ppPoints: 0, shots: 0,
     hits: 0, blockedShots: 0, ppGoals: 0, shGoals: 0, shPoints: 0,
   }))
 
   return {
-    rates: rateSkaters(roster, started ? currentIce : priorIce, priorFull),
+    rates: rateSkaters(roster, started ? currentIce : priorIce, blendedPrior),
     goalies: curG.length ? curG : priorG,
     espn,
     season: started ? seasonId(year) : seasonId(year - 1),
