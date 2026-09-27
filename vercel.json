@@ -7,6 +7,10 @@
     {
       "path": "/api/betting/refresh-odds",
       "schedule": "0 15 * * 0,1,4"
+    },
+    {
+      "path": "/api/admin/signup-canary",
+      "schedule": "0 * * * *"
     }
   ],
   "rewrites": [
