@@ -18,6 +18,7 @@ import { rateSkaters } from '@/hockey/nhlRates'
 import { mergeHockeyProjections, normalizeName } from '@/hockey/hockeyProjectionSource'
 import { buildHockeyBoard } from '@/hockey/hockeyBoard'
 import { YAHOO_DEFAULT_CATEGORIES } from '@/hockey/manualRules'
+import { blendSeasons } from '@/hockey/blendSeasons'
 
 const S = process.env.S ?? '.'
 const sort = encodeURIComponent(JSON.stringify([{ property: 'playerId', direction: 'ASC' }]))
@@ -71,24 +72,12 @@ for (const [i, s] of SEASONS.entries()) {
 }
 process.stderr.write(`  seasons available: ${data.length}\n`)
 
-/* Blend: weighted totals over weighted games. A player absent from a season simply contributes
-   nothing to either side, so a rookie is unaffected rather than diluted toward zero. */
-function blend(weights: number[]) {
-  const acc = new Map<number, any>()
-  data.forEach((d, i) => {
-    const w = weights[i] ?? 0
-    if (!w) return
-    for (const r of d.full) {
-      const cur = acc.get(r.playerId) ?? { ...r, ...Object.fromEntries(CATS.map(c => [c, 0])) }
-      for (const c of CATS) cur[c] = (cur[c] ?? 0) + (r[c] ?? 0) * w
-      /* Identity from the most recent season the player appears in. */
-      if (i === data.findIndex(dd => dd.full.some((x: any) => x.playerId === r.playerId))) {
-        cur.skaterFullName = r.skaterFullName; cur.positionCode = r.positionCode
-      }
-      acc.set(r.playerId, cur)
-    }
-  })
-  return [...acc.values()]
+/* The SHIPPED blend, not a copy of it. A sweep that measures a local reimplementation is
+   measuring something that will never run for a user. */
+function blend(weights: number[], trend: boolean) {
+  const rows = blendSeasons(data.map(d => d.full) as any, weights, { trend }) as any[]
+  const activeIds = new Set(data[0].full.map((r: any) => r.playerId))
+  return rows.filter(r => activeIds.has(r.playerId))
 }
 
 const espn = JSON.parse(readFileSync(S + '/espn2027.json', 'utf8')).players
@@ -99,8 +88,8 @@ const rerank = (vals: number[]) => {
   const o = new Array(vals.length); idx.forEach(([, i], k) => { o[i] = k + 1 }); return o
 }
 
-function score(weights: number[]) {
-  const rows = blend(weights)
+function score(weights: number[], trend = false) {
+  const rows = blend(weights, trend)
   /* Pre-season: no current games. Counters zeroed so the rate IS the blended prior, which is
      exactly what the live app does on opening night. */
   const zeroed = rows.map(r => ({ ...r, ...Object.fromEntries(CATS.filter(c => c !== 'gamesPlayed').map(c => [c, 0])), gamesPlayed: 0 }))
@@ -133,20 +122,18 @@ function score(weights: number[]) {
   return { wmae, rho, t12: top(12), t25: top(25), t50: top(50), n }
 }
 
-const GRID: [string, number[]][] = [
-  ['1yr  (current)   ', [1, 0, 0]],
-  ['2yr  6/4         ', [6, 4, 0]],
-  ['2yr  7/3         ', [7, 3, 0]],
-  ['2yr  8/2         ', [8, 2, 0]],
-  ['3yr  5/4/3       ', [5, 4, 3]],
-  ['3yr  6/3/1       ', [6, 3, 1]],
-  ['3yr  7/2/1       ', [7, 2, 1]],
-  ['3yr  5/3/2       ', [5, 3, 2]],
+const GRID: [string, number[], boolean][] = [
+  ['1yr  (original)  ', [1, 0, 0], false],
+  ['3yr  6/3/1       ', [6, 3, 1], false],
+  ['3yr  6/3/1 +trend', [6, 3, 1], true],
+  ['2yr  6/4   +trend', [6, 4, 0], true],
+  ['3yr  5/3/2 +trend', [5, 3, 2], true],
+  ['3yr  5/4/3 +trend', [5, 4, 3], true],
 ]
 console.log(`seasons available: ${data.length} of ${SEASONS.length}`)
 console.log(`${'prior'.padEnd(18)} wMAE   rho    top12  top25  top50`)
-for (const [label, w] of GRID) {
+for (const [label, w, tr] of GRID) {
   if (w.filter(x => x > 0).length > data.length) continue
-  const r = score(w)
+  const r = score(w, tr)
   console.log(`${label} ${r.wmae.toFixed(1).padStart(5)}  ${r.rho.toFixed(3)}  ${(r.t12*100).toFixed(0).padStart(4)}%  ${(r.t25*100).toFixed(0).padStart(4)}%  ${(r.t50*100).toFixed(0).padStart(4)}%`)
 }
