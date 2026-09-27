@@ -3,7 +3,8 @@ import { sleeperService } from '@/services/sleeper'
 import { useLeagueStore } from '@/stores/league'
 import { fetchSeasonProjectionStats, fetchWeekProjectionStats } from '@/services/footballProjections'
 import { getSeasonLines } from '@/services/playerUsage'
-import { buildRosPoints } from '@/football/rosBlend'
+import { buildRosPoints, forwardWeightFor, priorGamesFor } from '@/football/rosBlend'
+import { rescoreObserved } from '@/football/observedPoints'
 import {
   buildFootballProjectionsByKey,
   type ProjPlayer,
@@ -171,9 +172,24 @@ export function useFootballVor(inputs: {
         for (const [k, v] of Object.entries(wkProj)) forwardRateByKey[k] = v.points
       } catch { /* no forward week, no second opinion */ }
 
+      /* How much that second opinion counts is position-specific: quarterback and tight end
+         want it small, receiver large. rosBlend stays position-blind, so the map is built
+         here, where the positions are. */
+      const forwardWeightByKey: Record<string, number> = {}
+      const priorGamesByKey: Record<string, number> = {}
+      for (const p of projPlayers.value) {
+        forwardWeightByKey[p.key] = forwardWeightFor(p.position)
+        priorGamesByKey[p.key] = priorGamesFor(p.position)
+      }
+
+      /* The season so far, in the SAME currency as the forecast it is about to be blended
+         with, and with touchdowns regressed to what each player's yardage implies. Both
+         reasons are set out in observedPoints.ts. */
+      const scoredLines = rescoreObserved(lines, scoring)
+
       const ros = buildRosPoints({
-        seasonProjection: projectedByKey, lines, currentWeek,
-        byeWeekByKey: byeByKey, forwardRateByKey,
+        seasonProjection: projectedByKey, lines: scoredLines, currentWeek,
+        byeWeekByKey: byeByKey, forwardRateByKey, forwardWeightByKey, priorGamesByKey,
       })
       const points: Record<string, number> = {}
       for (const [k, v] of Object.entries(ros)) points[k] = v.pointsRos

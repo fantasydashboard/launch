@@ -19,6 +19,7 @@
  */
 import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue'
 import { useHockeyBoard } from '@/composables/useHockeyBoard'
+import RankingPicker from '@/components/RankingPicker.vue'
 import CategoryLedgerPanel from '@/components/draft/CategoryLedgerPanel.vue'
 import { parseEspnLeagueUrl, otherPlatformFromUrl } from '@/hockey/espnLeagueUrl'
 import { CATEGORY_CHOICES, YAHOO_DEFAULT_CATEGORIES, rulesFromManual } from '@/hockey/manualRules'
@@ -887,6 +888,7 @@ const POS_TONE: Record<string, string> = {
                 class="rounded-lg border px-2.5 py-1 font-mono text-[11px] uppercase transition-colors"
                 :class="filter === p ? 'border-primary text-primary' : 'border-dark-border text-dark-textMuted hover:text-dark-text'"
                 @click="filter = p">{{ p }}</button>
+        <RankingPicker kind="draft" />
         <span v-if="hasVona || hasMarginal" class="ml-2 flex rounded-lg border border-dark-border">
           <button v-for="sopt in SORTS" :key="sopt.key"
                   v-show="sopt.key !== 'vona' ? (sopt.key !== 'forMe' || hasMarginal) : hasVona"

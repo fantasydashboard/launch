@@ -14,6 +14,8 @@ import { buildDraftGrid, type GridPick } from '@/draft/room/draftGrid'
 import { buildHockeyVona } from '@/hockey/hockeyVona'
 import { createLedgerEngine } from '@/hockey/categoryLedger'
 import { buildCategoryMarginal } from '@/hockey/categoryMarginal'
+import { applyRankingOrder } from '@/draft/room/customRankings'
+import { useCustomRankings } from '@/composables/useCustomRankings'
 import { suggestPunts } from '@/hockey/puntAdvisor'
 import { picksByTeamFromOrder } from '@/hockey/picksByTeam'
 import { loadNhlFeed } from '@/composables/useNhlFeed'
@@ -402,11 +404,14 @@ export function useHockeyBoard() {
      board rather than a ranking; the other half is that `drafted` reaches the replacement
      calculation, which for a while it did not — this comment claimed the levels moved and
      they did not budge. */
+  /* 'draft' is the kind a draft board reads; the ROS kind drives the rankings page. */
+  const draftRankings = useCustomRankings('draft')
+
   watch(
-    [rules, projections, drafted, punted],
+    [rules, projections, drafted, punted, () => draftRankings.activeId.value],
     () => {
       if (!rules.value || !Object.keys(projections.value).length) { result.value = null; return }
-      result.value = buildHockeyBoard({
+      const built = buildHockeyBoard({
         projections: projections.value,
         rules: rules.value,
         namesByKey: namesByKey.value,
@@ -414,6 +419,31 @@ export function useHockeyBoard() {
         drafted: drafted.value,
         punted: punted.value,
       })
+
+      /*
+       * AN UPLOADED LIST RE-SEATS THE ORDER, AND KEEPS OUR VALUE CURVE.
+       *
+       * The same treatment football's wire gives it: the author's ORDER is adopted, our own
+       * value slots are handed out in that order, and nothing is invented. Re-seating happens
+       * inside a position, so a list that ranks forwards says nothing about goalies, and the
+       * players it never mentions keep our order relative to each other below the ones it does.
+       *
+       * Without this the hockey draft board was the only board in the product that could not
+       * read a list somebody had uploaded — the picker offered it and the board ignored it.
+       */
+      const rankByKey = draftRankings.match(
+        built.rows.map((r) => ({ playerKey: r.playerKey, name: r.name, position: r.position })),
+      ).rankByKey
+      if (Object.keys(rankByKey).length) {
+        const reseated = applyRankingOrder(
+          built.rows.map((r) => ({ playerKey: r.playerKey, value: r.value, position: r.position })),
+          rankByKey,
+        )
+        built.rows = built.rows
+          .map((r) => ({ ...r, value: reseated[r.playerKey] ?? r.value }))
+          .sort((a, b) => b.value - a.value)
+      }
+      result.value = built
     },
     { deep: true, immediate: true },
   )

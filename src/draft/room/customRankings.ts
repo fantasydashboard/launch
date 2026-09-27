@@ -20,7 +20,29 @@ export interface ParsedRanking {
 }
 
 const SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'v'])
-const POSITIONS = new Set(['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DST', 'D/ST', 'PK'])
+/*
+ * Every sport's position codes, because the parser is shared and a list it cannot recognise
+ * does not fail loudly — it silently folds the code into the player's name ("Nathan MacKinnon
+ * C") and then matches nobody. Hockey's wings also arrive as "C,LW" on published lists, so a
+ * multi-position cell resolves to its FIRST code: that is the one the ranker led with, and it
+ * is the pool the player is being ranked in.
+ */
+const POSITIONS = new Set([
+  'QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DST', 'D/ST', 'PK',   // football
+  'C', 'LW', 'RW', 'D', 'G',                                  // hockey
+])
+
+/** "C,LW" and "LW/RW" both mean "a left wing who also qualifies elsewhere". Take the first. */
+function primaryPosition(raw: string | undefined): string | undefined {
+  if (!raw) return undefined
+  const up = String(raw).toUpperCase().trim()
+  /* Football's defence is checked WHOLE and first: "D/ST" contains the slash this function
+     splits on, so splitting it yields "D" — a hockey defenceman. That regression reached a
+     test before it reached a user. */
+  if (up === 'D/ST' || up === 'DST' || up === 'DEF') return 'DEF'
+  const first = up.split(/[,/|]/)[0].trim()
+  return POSITIONS.has(first) ? first : undefined
+}
 
 /**
  * Normalize a player name for matching across sources: case, punctuation,
@@ -50,6 +72,18 @@ export function normalizeName(raw: string): string {
 export function parseRankings(text: string): ParsedRanking[] {
   const out: ParsedRanking[] = []
   if (!text || typeof text !== 'string') return out
+
+  /*
+   * "C,LW" IS ONE CELL, NOT TWO.
+   *
+   * Hockey lists publish dual eligibility comma-separated, which collides head-on with the CSV
+   * branch below: "5 Leon Draisaitl C,LW" split into ["5 Leon Draisaitl C", "LW"], leaving the
+   * centre code inside the player's name and the rank unread. Slashes survive the split and
+   * `primaryPosition` already accepts them, so the commas are converted before anything else
+   * looks at the line. Only sequences of real position codes match, so a name containing a
+   * comma is untouched.
+   */
+  text = text.replace(/\b(C|LW|RW|D|G)(\s*,\s*(C|LW|RW|D|G))+\b/g, (m) => m.replace(/\s*,\s*/g, '/'))
 
   const HEADER_WORDS = /\b(overall|rank|rk|player|name|position|pos|tier|adp|bye|team|auction|value)\b/i
   const isNum = (v: string) => /^\d+(\.\d+)?$/.test(v.replace(/[$,]/g, ''))
@@ -133,7 +167,7 @@ export function parseRankings(text: string): ParsedRanking[] {
       out.push({
         rank: rawRank && isNum(rawRank) ? num(rawRank) : implicitRank,
         name,
-        position: POSITIONS.has(up) ? (up === 'D/ST' || up === 'DST' ? 'DEF' : up) : undefined,
+        position: primaryPosition(up),
         tier: rawTier && isNum(rawTier) ? num(rawTier) : undefined,
       })
       continue
@@ -157,8 +191,8 @@ export function parseRankings(text: string): ParsedRanking[] {
 
     const takeToken = (tok: string): boolean => {
       const up = tok.toUpperCase()
-      if (!position && POSITIONS.has(up)) {
-        position = up === 'D/ST' || up === 'DST' ? 'DEF' : up
+      if (!position && primaryPosition(up)) {
+        position = primaryPosition(up)
         return true
       }
       if (!team && /^[A-Z]{2,4}$/.test(up) && !POSITIONS.has(up)) { team = up; return true }

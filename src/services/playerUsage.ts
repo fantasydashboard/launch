@@ -113,9 +113,27 @@ export interface SeasonLine {
   team: string
   opponent: string
   position: string
+  /**
+   * HALF PPR, because the defence-allowed table has always read it that way and comparing
+   * defences only needs one consistent currency.
+   *
+   * It is the wrong currency for anything blended against a LEAGUE-scored projection, and was
+   * silently used that way: see `src/football/observedPoints.ts`. Re-score through
+   * `rescoreObserved` before feeding these to a ranking.
+   */
   points: number
   week: number
+  /** The raw components, so a caller can re-score under its own weights. */
+  stats?: Record<string, number>
 }
+
+/** The components worth carrying — everything the football scoring table can price. */
+const LINE_STAT_KEYS = [
+  'pass_yd', 'pass_td', 'pass_int', 'pass_2pt',
+  'rush_yd', 'rush_td', 'rush_2pt',
+  'rec', 'rec_yd', 'rec_td', 'rec_2pt',
+  'fum_lost', 'fum_rec_td',
+] as const
 
 export function linesFromStats(payload: unknown, week: number): SeasonLine[] {
   const rows = Array.isArray(payload)
@@ -132,10 +150,17 @@ export function linesFromStats(payload: unknown, week: number): SeasonLine[] {
     const opponent = String(r.opponent ?? '').toUpperCase()
     const position = String(player.position ?? r.position ?? '').toUpperCase()
     if (!key || !team || !opponent || !position) continue
+    const rawStats = (r.stats ?? {}) as Record<string, unknown>
+    const stats: Record<string, number> = {}
+    for (const k of LINE_STAT_KEYS) {
+      const v = Number(rawStats[k])
+      if (Number.isFinite(v) && v !== 0) stats[k] = v
+    }
     out.push({
       playerKey: key, team, opponent, position,
-      points: Number((r.stats ?? {}).pts_half_ppr) || 0,
+      points: Number(rawStats.pts_half_ppr) || 0,
       week,
+      stats,
     })
   }
   return out

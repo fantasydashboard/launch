@@ -2,7 +2,8 @@ import { ref, watch, type Ref } from 'vue'
 import { sleeperService } from '@/services/sleeper'
 import { fetchSeasonProjectionStats, fetchWeekProjectionStats } from '@/services/footballProjections'
 import { getSeasonLines } from '@/services/playerUsage'
-import { buildRosPoints } from '@/football/rosBlend'
+import { buildRosPoints, forwardWeightFor, priorGamesFor } from '@/football/rosBlend'
+import { rescoreObserved } from '@/football/observedPoints'
 import {
   buildFootballProjectionsByKey,
   resolveSleeperIds,
@@ -101,12 +102,26 @@ export function useFootballProjections(inputs: {
         for (const [k, v] of Object.entries(wkProj)) forwardRateByKey[k] = v.points
       } catch { /* no forward week, no second opinion */ }
 
+      /* Position-specific, for the reason set out on FORWARD_WEIGHT_BY_POS: one weight is
+         wrong for three of the four positions. Built here because rosBlend is position-blind. */
+      const forwardWeightByKey: Record<string, number> = {}
+      const priorGamesByKey: Record<string, number> = {}
+      for (const p of inputs.players.value) {
+        forwardWeightByKey[p.key] = forwardWeightFor(p.position)
+        priorGamesByKey[p.key] = priorGamesFor(p.position)
+      }
+
+      /* Same currency as the forecast, touchdowns regressed — see observedPoints.ts. */
+      const scoredLines = rescoreObserved(lines, inputs.scoring.value)
+
       const ros = buildRosPoints({
         seasonProjection: Object.fromEntries(Object.entries(built).map(([k, v]) => [k, v.points])),
-        lines,
+        lines: scoredLines,
         currentWeek,
         byeWeekByKey,
         forwardRateByKey,
+        forwardWeightByKey,
+        priorGamesByKey,
       })
       for (const [k, v] of Object.entries(built)) {
         const r = ros[k]

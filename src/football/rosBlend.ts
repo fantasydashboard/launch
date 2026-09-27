@@ -89,10 +89,53 @@ export const FORWARD_WEIGHT = 0.5
  * to split them rather than to retune the one.
  */
 export const FORWARD_WEIGHT_BY_POS: Record<string, number> = {
-  QB: 0.15,
+  QB: 0,
   RB: 0.25,
-  WR: 0.5,
-  TE: 0.15,
+  WR: 0.25,
+  TE: 0.25,
+}
+
+/**
+ * ...and the prior is not one number either, for the same reason and a bigger effect.
+ *
+ * HOW MUCH A GAME TELLS YOU DEPENDS ON THE POSITION. A running back gets twenty touches a week,
+ * so two games is forty data points and his rate stabilises fast. A tight end gets three to six
+ * targets; two games is nine targets, which is almost nothing, and treating it as evidence
+ * moves a tight end board eight to ten slots on noise.
+ *
+ * Swept jointly with FORWARD_WEIGHT on 2025 (weeks 2-9, no lookahead, observed sample
+ * TD-regressed exactly as `observedPoints.ts` does it), scored as mean absolute error against
+ * what each player actually averaged for the rest of that season:
+ *
+ *              live (5, own fwd)      best        MAE       gain
+ *      QB           3.675        prior 12, fwd 0.00   3.412   +0.263
+ *      WR           3.171        prior  8, fwd 0.25   3.115   +0.056
+ *      TE           2.508        prior 12, fwd 0.25   2.470   +0.038
+ *      RB           3.170        prior  3, fwd 0.25   3.160   +0.010
+ *
+ * Adopted values sit mid-plateau rather than at the sweep's best cell: QB and TE both minimise
+ * at prior=35, the edge of the grid, on a surface that is flat from 12 upward — one season
+ * fitting its own boundary is not a constant. Twelve captures ~90% of the available gain at
+ * both and is defensible from the middle of the curve.
+ *
+ * THE FORWARD TERM IS GONE AT QUARTERBACK. It is monotonically harmful there at every prior
+ * tested, which it was not before touchdown regression shipped: the forecast's value was
+ * largely in smoothing touchdown noise, and that noise is now removed upstream.
+ *
+ * Arrived at independently, but it is also the principle a trusted outside ranker is following.
+ * His order correlates 0.855 with observed production at running back and 0.094 at tight end —
+ * the exact inverse of the prior weight each position wants.
+ */
+export const PRIOR_GAMES_BY_POS: Record<string, number> = {
+  QB: 12,
+  RB: 3,
+  WR: 8,
+  TE: 12,
+}
+
+/** The prior for a position, for callers building `priorGamesByKey`. */
+export function priorGamesFor(position: string | undefined): number {
+  return PRIOR_GAMES_BY_POS[(position || '').toUpperCase()] ?? PRIOR_GAMES
 }
 
 /**
