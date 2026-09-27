@@ -497,16 +497,26 @@ export function useHockeyBoard() {
    * with ESPN's own draft state is how a board ends up disagreeing with itself. This is the
    * other case — a pick read off the wire, with the platform's own id on it.
    *
-   * In mock mode it also joins `mockOrder`, because there the pick SEQUENCE is what drives the
-   * clock, the grid and which picks were yours; in live mode ESPN owns the sequence and this
-   * contributes only the fact that somebody is gone.
+   * It also joins `mockOrder`, which is the pick SEQUENCE — what drives the clock, the grid,
+   * your roster and "picks until you're up".
+   *
+   * THAT USED TO BE SKIPPED IN LIVE MODE, on the reasoning that ESPN owns the sequence there.
+   * ESPN does not: it publishes NOTHING while a draft runs, which is the entire reason this
+   * extension exists. So in live mode nothing owned the sequence and mockOrder stayed empty —
+   * the board crossed players off correctly, reported "49 of 220 gone", and still said "4
+   * picks until you're up" and showed an empty roster through fifty picks.
+   *
+   * The real condition is whether ESPN has actually published a sequence, not which mode a
+   * toggle is in. Once a draft ends and ESPN backfills its picks, liveState takes over and
+   * this stops contributing.
    */
   function takeFromExtension(playerKey: string) {
     if (!playerKey) return
     if (!extensionOrder.value.includes(playerKey)) {
       extensionOrder.value = [...extensionOrder.value, playerKey]
     }
-    if (!live.value && !mockOrder.value.includes(playerKey)) {
+    const espnHasSequence = !!liveState.value?.picks?.length
+    if (!espnHasSequence && !mockOrder.value.includes(playerKey)) {
       mockOrder.value = [...mockOrder.value, playerKey]
     }
   }
