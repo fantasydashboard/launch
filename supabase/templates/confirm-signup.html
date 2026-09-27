@@ -1,0 +1,133 @@
+<!--
+  Supabase → Authentication → Email Templates → "Confirm signup".
+
+  THIS FILE IS THE SOURCE, THE DASHBOARD IS THE DEPLOY. The template lived only in Supabase's
+  admin UI, so nothing in review could see that it still carried the old gold shield and a
+  voice the site stopped using months ago. Edit here, paste there, commit.
+
+  Palette and type are taken from tailwind.config.js so this cannot drift again silently:
+  primary #C6FF3A, bg #0B0E13, card #12161F, border #222835, text #E6EAF2, muted #8A93A6.
+
+  EMAIL RULES THAT DRIVE THE ODD MARKUP. Tables, not flex — Outlook renders on Word's engine
+  and ignores modern layout. Every style inline; <style> blocks are stripped by Gmail's web
+  client. Web fonts do not load, so Space Grotesk is named for the clients that have it and
+  falls back to the same system stack the site uses. The button is a table cell with a
+  background colour rather than a styled <a>, because Outlook drops padding on inline anchors.
+
+  {{ .ConfirmationURL }} is Supabase's variable. Leave it exactly as written.
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background-color:#0B0E13;margin:0;padding:24px 12px;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="max-width:520px;background-color:#12161F;border:1px solid #222835;border-radius:16px;">
+
+        <!-- Wordmark -->
+        <tr>
+          <td align="center" style="padding:32px 32px 8px 32px;">
+            <img src="https://www.ultimatefantasydashboard.com/brand/ufd-primary-dark.png"
+                 alt="Ultimate Fantasy Dashboard" width="150"
+                 style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-width:150px;" />
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:16px 32px 0 32px;">
+            <h1 style="margin:0 0 12px 0;font-family:'Space Grotesk',Inter,system-ui,-apple-system,'Segoe UI',sans-serif;font-size:26px;line-height:1.2;font-weight:700;color:#E6EAF2;">
+              Confirm your email
+            </h1>
+            <p style="margin:0 0 24px 0;font-family:Inter,system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;color:#A6AEC0;">
+              One click and your account is live. Then connect a league and the board fills in —
+              rankings, matchups, waivers, the lot.
+            </p>
+          </td>
+        </tr>
+
+        <!-- CTA. A table cell, not a padded anchor: Outlook drops padding on inline links. -->
+        <tr>
+          <td style="padding:0 32px 24px 32px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td align="center" bgcolor="#C6FF3A" style="border-radius:12px;">
+                  <a href="{{ .ConfirmationURL }}"
+                     style="display:block;padding:15px 24px;font-family:'Space Grotesk',Inter,system-ui,-apple-system,sans-serif;font-size:15px;font-weight:700;color:#0B0E13;text-decoration:none;border-radius:12px;">
+                    Confirm email address
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- The raw link. Kept because corporate mail clients rewrite or strip buttons. -->
+        <tr>
+          <td style="padding:0 32px 8px 32px;">
+            <p style="margin:0 0 6px 0;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:12px;color:#8A93A6;">
+              Button not working? Paste this into your browser:
+            </p>
+            <p style="margin:0 0 20px 0;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.5;word-break:break-all;">
+              <a href="{{ .ConfirmationURL }}" style="color:#C6FF3A;text-decoration:none;">{{ .ConfirmationURL }}</a>
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:0 32px;">
+            <div style="height:1px;background-color:#222835;font-size:0;line-height:0;">&nbsp;</div>
+          </td>
+        </tr>
+
+        <!-- What they get. Concrete, because "unlock your dashboard" tells a stranger nothing. -->
+        <tr>
+          <td style="padding:20px 32px 8px 32px;">
+            <p style="margin:0 0 14px 0;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#8A93A6;">
+              What you get
+            </p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td style="padding:0 0 12px 0;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;color:#E6EAF2;">
+                  <span style="color:#C6FF3A;font-weight:700;">&rarr;</span>&nbsp;&nbsp;Connect ESPN, Sleeper or Yahoo &mdash; football, baseball, basketball, hockey
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 0 12px 0;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;color:#E6EAF2;">
+                  <span style="color:#C6FF3A;font-weight:700;">&rarr;</span>&nbsp;&nbsp;Start/sit calls, waiver targets and trade values, ranked by what they add to your team
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 0 4px 0;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;color:#E6EAF2;">
+                  <span style="color:#C6FF3A;font-weight:700;">&rarr;</span>&nbsp;&nbsp;Power rankings, matchup plans and draft tools built on the same numbers
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:20px 32px 28px 32px;">
+            <p style="margin:0 0 6px 0;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:12px;line-height:1.6;color:#8A93A6;">
+              This link expires in 24 hours. If you didn't create an account, ignore this email &mdash;
+              nothing was set up and no one can use the link but you.
+            </p>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Footer, outside the card -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
+        <tr>
+          <td align="center" style="padding:20px 32px 8px 32px;">
+            <p style="margin:0 0 4px 0;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:12px;color:#8A93A6;">
+              <a href="https://www.ultimatefantasydashboard.com" style="color:#8A93A6;text-decoration:none;">ultimatefantasydashboard.com</a>
+            </p>
+            <p style="margin:0;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:11px;font-style:italic;color:#8A93A6;opacity:0.7;">
+              Built by fantasy managers, for fantasy managers.
+            </p>
+          </td>
+        </tr>
+      </table>
+
+    </td>
+  </tr>
+</table>
