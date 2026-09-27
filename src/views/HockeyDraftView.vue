@@ -32,7 +32,7 @@ const {
   manual, setManualRules,
   punted, togglePunt, clearPunts,
   drafted, take, undo, undoLast, reset, load,
-  live, liveError, liveState, lastSyncedAt, myTeamId, teamNames, clock, goLive, goMock, syncDraft,
+  live, liveError, liveState, lastSyncedAt, myTeamId, teamNames, clock, goLive, goMock, syncDraft, espnHasSequence,
   syncStatus, enableSync, startSync, stopSync, extensionPicks, unplacedPicks,
   mockOrder, mySlot, draftKind, position, myPlayers, roster, vona, grid,
 } = useHockeyBoard()
@@ -47,7 +47,9 @@ const pane = ref<(typeof PANES)[number]>('players')
 /* One number for both modes — following an ESPN draft and marking picks by hand ask the reader
    exactly the same question, and it should not look different depending on which they chose. */
 const untilMine = computed<number | null>(() => (
-  live.value ? clock.value?.picksUntilMine ?? null : position.value?.picksUntilMine ?? null
+  /* Whoever actually knows the order. In live mode ESPN publishes 220 empty rows and no picks,
+     so following `live` here froze this at its opening value for the whole draft. */
+  espnHasSequence.value ? clock.value?.picksUntilMine ?? null : position.value?.picksUntilMine ?? null
 ))
 
 /*
@@ -698,7 +700,7 @@ const POS_TONE: Record<string, string> = {
       </p>
 
       <!-- The draft clock. picksUntilMine is the number a drafter actually plans against. -->
-      <div v-if="live && liveState && liveState.picks.length"
+      <div v-if="espnHasSequence && liveState"
            class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 font-mono text-[11px]">
         <span v-if="liveState.complete" class="text-dark-textMuted">
           Draft complete &middot; {{ drafted.size }} players off the board. Everyone below is a
@@ -716,8 +718,10 @@ const POS_TONE: Record<string, string> = {
         </template>
       </div>
 
-      <!-- The clock, derived from the picks marked. No feed involved. -->
-      <div v-if="!live && rules?.teams"
+      <!-- The clock, derived from the picks we know about — marked by hand or read from the
+           draft room. Used whenever ESPN has not published an order, which during a live draft
+           is the whole time. -->
+      <div v-if="!espnHasSequence && rules?.teams"
            class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 font-mono text-[11px]">
         <span v-if="position.complete" class="text-dark-textMuted">Draft complete &middot; {{ mockOrder.length }} picks marked.</span>
         <template v-else>
@@ -981,7 +985,7 @@ const POS_TONE: Record<string, string> = {
         THE BOARD AS EVERYONE PICTURES IT. A column is a team and stays that team all the way
         down; snake rounds fill right to left, which is what the pick numbers show.
       -->
-      <div v-if="!live && grid.length && mockOrder.length && pane === 'draft board'"
+      <div v-if="grid.length && mockOrder.length && pane === 'draft board'"
            class="mt-5 rounded-xl border border-dark-border bg-dark-card p-3">
         <div class="mb-2 flex items-baseline gap-3">
           <p class="font-mono text-[9px] uppercase tracking-widest text-dark-textMuted/70">the board</p>

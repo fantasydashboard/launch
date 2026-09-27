@@ -111,6 +111,20 @@ export function useHockeyBoard() {
    * sources of truth for "is this player gone" is how a board ends up recommending somebody
    * who was taken four picks ago.
    */
+  /**
+   * Whether ESPN has actually published who was drafted.
+   *
+   * NOT `picks.length`. ESPN publishes all 220 pick ROWS before a draft begins, every one of
+   * them empty, so a length check is true the entire time and says nothing. It is the reason
+   * the clock sat on "Pick 1" through fifty real picks while the board beside it correctly
+   * read "49 of 220 gone" — the rows existed, the picks did not.
+   *
+   * `drafted` is only populated by rows that actually name a player, so it answers the
+   * question the surfaces are really asking: does ESPN know this draft's order, or are we the
+   * only ones who do?
+   */
+  const espnHasSequence = computed(() => !!liveState.value?.drafted?.size)
+
   const drafted = computed(() => draftedFrom({
     live: live.value,
     liveDrafted: liveState.value?.drafted ?? null,
@@ -515,8 +529,7 @@ export function useHockeyBoard() {
     if (!extensionOrder.value.includes(playerKey)) {
       extensionOrder.value = [...extensionOrder.value, playerKey]
     }
-    const espnHasSequence = !!liveState.value?.picks?.length
-    if (!espnHasSequence && !mockOrder.value.includes(playerKey)) {
+    if (!espnHasSequence.value && !mockOrder.value.includes(playerKey)) {
       mockOrder.value = [...mockOrder.value, playerKey]
     }
   }
@@ -776,6 +789,8 @@ export function useHockeyBoard() {
     myPlayers: computed(() => myPlayerKeys()),
     // live draft
     live, liveError, liveState, lastSyncedAt, myTeamId, teamNames,
+    /* Whether ESPN owns the pick order, or we do. Surfaces must follow this, not `live`. */
+    espnHasSequence,
     goLive, goMock, syncDraft,
     // extension-driven live picks
     syncStatus: computed(() => syncStatus.value),
