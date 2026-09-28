@@ -70,7 +70,7 @@ if ((feed.agesKnown ?? 0) < 500) {
 }
 process.stderr.write(`[export] rates=${feed.rates.length} espn=${feed.espn.length} ages=${feed.agesKnown} mode=${MODE}\n`)
 
-const merged = mergeHockeyProjections({ espn: feed.espn as any, rates: feed.rates as any, historyGames: feed.historyGames })
+const merged = mergeHockeyProjections({ espn: feed.espn as any, rates: feed.rates as any, historyGames: feed.historyGames, goalieProjections: feed.goalieProjections })
 const projections = Object.fromEntries(Object.entries(merged.projections).filter(([k]) => !k.startsWith('nhl:')))
 
 const rules: any = {

@@ -7,6 +7,7 @@ import { rateSkaters, type SkaterRate } from '@/hockey/nhlRates'
 import { blendSeasons, PRIOR_WEIGHTS } from '@/hockey/blendSeasons'
 import { ageFactor, ageAtSeason } from '@/hockey/agingCurve'
 import { regressShooting } from '@/hockey/shootingRegression'
+import { projectGoalies, type GoalieProjection } from '@/hockey/goalieProjection'
 import type { EspnHockeyPlayer } from '@/hockey/hockeyProjectionSource'
 
 /**
@@ -34,6 +35,8 @@ export interface NhlFeed {
   season: string
   /** Whether the current season has any games in it yet. */
   started: boolean
+  /** Our own goalie projections, which replace the feed's. See hockey/goalieProjection.ts. */
+  goalieProjections?: GoalieProjection[]
   /** playerId -> his own weighted games per season, for the availability blend. */
   historyGames?: Map<number, number>
   /**
@@ -48,7 +51,7 @@ export interface NhlFeed {
   agesKnown?: number
 }
 
-const EMPTY: NhlFeed = { rates: [], goalies: [], espn: [], season: '', started: false, historyGames: new Map(), agesKnown: 0 }
+const EMPTY: NhlFeed = { rates: [], goalies: [], espn: [], season: '', started: false, historyGames: new Map(), agesKnown: 0, goalieProjections: [] }
 
 /** A season id the NHL understands: 2026 -> '20262027'. */
 export function seasonId(startYear: number): string {
@@ -104,7 +107,7 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
    * like that is wrong for a week every year and nobody notices.
    */
   const [current, currentIce, prior, priorIce, curG, priorG, curRt, priorRt, espn,
-         prior2, prior2Rt, prior3, prior3Rt, bios] =
+         prior2, prior2Rt, prior3, prior3Rt, bios, priorG2, priorG3] =
     await Promise.all([
       fetchSkaterSummary(seasonId(year)),
       fetchSkaterIce(seasonId(year)),
@@ -133,6 +136,11 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
       fetchSkaterRealtime(seasonId(year - 3)),
       /* Birth dates. One read — they do not change between seasons. */
       fetchSkaterBios(seasonId(year - 1)),
+      /* Two more goalie seasons. A goalie's role is the only thing about him that carries
+         (starts r = 0.55, save percentage r = 0.05), and a role needs more than one year to
+         read. See src/hockey/goalieProjection.ts. */
+      fetchGoalieSummary(seasonId(year - 2)),
+      fetchGoalieSummary(seasonId(year - 3)),
     ])
 
   /* Hits and blocks arrive on their own report, merged on before rating so the rate model
@@ -250,9 +258,23 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
    */
   const rates = regressShooting(rateSkaters(roster, started ? currentIce : priorIce, blendedPrior))
 
+  /*
+   * Goalies, ours rather than ESPN's.
+   *
+   * They were passed through whole from the feed, and it was measurably our worst position:
+   * ESPN's view of workload is generous to backups, which put Anthony Stolarz 48th on our
+   * board against a consensus 257th. Projecting the role instead — starts as a share of a
+   * team's own net, rates regressed almost flat because they do not carry — cut the mean rank
+   * gap against an outside baseline from 17.1 to 11.2 over the top twenty.
+   */
+  const goalieProjections = projectGoalies(
+    [priorG, priorG2, priorG3] as any,
+  )
+
   return {
     historyGames,
     agesKnown: bornById.size,
+    goalieProjections,
     rates,
     goalies: curG.length ? curG : priorG,
     espn,

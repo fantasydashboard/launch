@@ -39,7 +39,7 @@ const { AGE_STRENGTH } = await import('@/hockey/agingCurve')
 
 const feed = await loadNhlFeed(2027)
 if (feed.rates.length < 500) throw new Error(`feed has only ${feed.rates.length} rated skaters — upstream degraded, refusing to report`)
-const merged = mergeHockeyProjections({ espn: feed.espn as any, rates: feed.rates as any, historyGames: feed.historyGames })
+const merged = mergeHockeyProjections({ espn: feed.espn as any, rates: feed.rates as any, historyGames: feed.historyGames, goalieProjections: feed.goalieProjections })
 const projections = Object.fromEntries(Object.entries(merged.projections).filter(([k]) => !k.startsWith('nhl:')))
 const rules: any = {
   leagueId: 'x', season: 2027, name: 'cat', teams: 12, scoringType: 'H2H_CATEGORY', weights: {},

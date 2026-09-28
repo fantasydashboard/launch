@@ -105,6 +105,14 @@ export interface MergeInput {
    * feed's number stands alone, which is the behaviour this replaced.
    */
   historyGames?: Map<number, number>
+  /**
+   * Our own goalie projections, keyed by NHL player id, replacing the feed's.
+   *
+   * Goalies were the one position taken from ESPN whole, and the one we measured worst. Absent,
+   * the feed's numbers still stand — losing this costs accuracy, never a board.
+   */
+  goalieProjections?: { playerId: number; name: string; starts: number; wins: number; saves: number;
+                        goalsAgainst: number; shutouts: number; savePct: number; shotsAgainst: number }[]
 }
 
 export interface MergeResult {
@@ -163,7 +171,7 @@ function matchKey(name: string, position: string): string {
 }
 
 export function mergeHockeyProjections(input: MergeInput): MergeResult {
-  const { espn, rates, leagueKeys = [], fullSeason = 82, historyGames } = input
+  const { espn, rates, leagueKeys = [], fullSeason = 82, historyGames, goalieProjections } = input
 
   const espnByMatch = new Map<string, EspnHockeyPlayer>()
   for (const p of espn) espnByMatch.set(matchKey(p.name, p.position), p)
@@ -216,6 +224,9 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
   const rateByKey: Record<string, SkaterRate> = {}
   const teamByKey: Record<string, string> = {}
   const claimed = new Set<string>()
+  /* Keyed by name: our goalie projections carry NHL ids and ESPN's rows carry ESPN's. */
+  const ourGoalies = new Map<string, NonNullable<typeof goalieProjections>[number]>()
+  for (const g of goalieProjections ?? []) if (g.name) ourGoalies.set(normalizeName(g.name), g)
 
   for (const r of rates) {
     const built = projections[String(r.playerId)]
@@ -255,8 +266,26 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
      * this branch was passing the number through untouched, so a handful of players carried a
      * season nobody can play.
      */
-    const stats = { ...(p.stats ?? {}) }
+    let stats = { ...(p.stats ?? {}) }
     if (Number.isFinite(stats.GP)) stats.GP = Math.min(fullSeason, stats.GP as number)
+
+    /*
+     * OUR GOALIE NUMBERS WIN WHERE WE HAVE THEM.
+     *
+     * Matched on name because the two feeds are different id spaces. Everything a league can
+     * score is replaced together — a board half ours and half ESPN's would rank goalies on two
+     * models at once, which is worse than either.
+     */
+    const mine = ourGoalies.get(normalizeName(p.name))
+    if (mine) {
+      stats = {
+        ...stats,
+        GP: mine.starts, GS: mine.starts,
+        W: mine.wins, SV: mine.saves, GA: mine.goalsAgainst, SHO: mine.shutouts,
+        SA: mine.shotsAgainst, SVPCT: mine.savePct,
+        GAA: mine.starts > 0 ? mine.goalsAgainst / mine.starts : 0,
+      }
+    }
     out[p.playerKey] = {
       playerKey: p.playerKey,
       position: p.position,
