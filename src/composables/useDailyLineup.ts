@@ -472,6 +472,45 @@ export function useDailyLineup() {
   })
 
   /**
+   * FREE AND BETTER THAN SOMEONE YOU ARE STARTING.
+   *
+   * Football's weekly page closes with this block and the daily page had no equivalent, which
+   * left `upgrades` — a bench player who beats a starter — as the only move it would suggest.
+   * That is the cheap half of the answer. The expensive half is that on most nights the best
+   * available body at a position is not on anybody's roster, and in a league with daily
+   * transactions he is claimable this morning.
+   *
+   * THE DROP IS THE OTHER HALF OF THE DECISION, which is the line football's block carries and
+   * the reason it is honest. An add nobody can make is not advice, so the weakest startable
+   * body on the roster is named alongside it. Players who are out or on IL are not offered as
+   * the cut: they occupy a different kind of seat and dropping one is usually wrong.
+   */
+  const wireAdds = computed(() => {
+    const free = rankings.value.filter((r) => r.owner === 'free')
+    if (!free.length) return []
+
+    /* Who leaves. The cheapest man who could have played tonight — not the lowest score on
+       the roster, which on any given night is whoever happens to be idle. */
+    const droppable = bench.value
+      .filter((b) => availability(b.status) !== 'out' && b.playsToday)
+      .sort((a, b) => a.today - b.today)[0] ?? null
+
+    const taken = new Set<string>()
+    const out: { add: RankedRow; over: DailyRow; gain: number; slot: string; drop: DailyRow | null }[] = []
+    for (const seat of lineup.value) {
+      const better = free.find(
+        (f) => !taken.has(f.playerKey)
+          && f.today > seat.today
+          && positionsFit(f.position, seat.slot ?? ''),
+      )
+      if (!better) continue
+      taken.add(better.playerKey)
+      out.push({ add: better, over: seat, gain: better.today - seat.today, slot: seat.slot ?? '', drop: droppable })
+    }
+    return out.sort((a, b) => b.gain - a.gain).slice(0, 3)
+  })
+
+  /**
    * TONIGHT'S RANKINGS — everybody with a game, wherever they are rostered.
    *
    * The same list football puts at the foot of its weekly page, asking the daily question
@@ -564,7 +603,7 @@ export function useDailyLineup() {
   }
 
   return {
-    rows, current, lineup, bench, deadSeats, upgrades, rankings,
+    rows, current, lineup, bench, deadSeats, upgrades, wireAdds, rankings,
     closestCalls, scarcity,
     loading, gamesTonight, playsToday, load,
     myTeamName: source.myTeamName,

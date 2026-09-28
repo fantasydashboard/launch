@@ -12,6 +12,9 @@ import { useDailyMatchup } from '@/composables/useDailyMatchup'
 import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import PreseasonPanel from '@/components/today/PreseasonPanel.vue'
+import WireAddsPanel from '@/components/today/WireAddsPanel.vue'
+import MatchupWinProbChart from '@/components/matchup/MatchupWinProbChart.vue'
+import { useWinProbTrend } from '@/composables/useWinProbTrend'
 import { useSeasonPhase } from '@/composables/useSeasonPhase'
 import { showsHockeyBoardTab } from '@/lib/navTabs'
 
@@ -89,6 +92,39 @@ const isFootball = computed(() => leagueStore.activeSport === 'football')
 const season = useSeasonPhase()
 onMounted(() => season.load())
 const isPreseason = computed(() => season.phase.value === 'before')
+
+/*
+ * HOW THE WEEK HAS MOVED, which football already draws and this page did not.
+ *
+ * The same composable football uses, asked the daily question — and a hockey week suits it
+ * better than a football one does. Football records four points, Friday to Monday, because
+ * that is when its games are; a hockey week has games on most nights, so the line actually
+ * describes a path rather than joining up a handful of dots.
+ *
+ * It only draws once the number has genuinely moved. A flat line across a week is not a
+ * trend, and drawing one implies a story the data does not contain.
+ */
+const liveWinPct = computed(() =>
+  isCategoryLeague.value
+    ? (thisWeek.snapshot.value?.winPct ?? 0)
+    : (matchup.snapshot.value?.winPct ?? 0))
+const trend = useWinProbTrend({
+  leagueId: computed(() => leagueStore.activeLeagueId),
+  week: computed(() => leagueStore.currentWeek ?? 1),
+  my: liveWinPct,
+  opp: computed(() => 100 - liveWinPct.value),
+  daysRemaining: computed(() => thisWeek.snapshot.value?.daysRemaining ?? 0),
+  ready: computed(() => !isPreseason.value && liveWinPct.value > 0),
+})
+const trendMoved = computed(() => {
+  const vals = trend.points.map((pt) => pt.my)
+  if (vals.length < 2) return false
+  return Math.max(...vals) - Math.min(...vals) >= 1
+})
+const myName = computed(() =>
+  matchup.snapshot.value?.me.name || daily.myTeamName.value || teamSource.myTeamName.value || 'You')
+const oppName = computed(() =>
+  matchup.snapshot.value?.opp.name || thisWeek.snapshot.value?.opponentName || 'Opponent')
 const hasDraftBoard = computed(() => showsHockeyBoardTab({
   sport: leagueStore.activeSport,
   platform: leagueStore.activePlatform,
@@ -165,6 +201,19 @@ const showFailed = computed(() => error.value === 'failed')
         :my-team-logo="daily.myTeamLogo.value || teamSource.myTeamLogo.value"
         :is-category="isCategoryLeague" />
 
+      <!-- 1a. THE PATH THE WEEK HAS TAKEN. Drawn only once it has actually moved. -->
+      <section v-if="!isPreseason && trendMoved"
+               class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
+        <div class="mb-1 flex items-baseline justify-between">
+          <h2 class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+            Win-probability trend
+          </h2>
+          <p class="font-mono text-[9px] text-dark-textMuted">solid = recorded &middot; dotted = projected</p>
+        </div>
+        <MatchupWinProbChart :points="trend.points" :projected="trend.projected"
+                             :me-name="myName" :opp-name="oppName" />
+      </section>
+
       <!-- 1b. SEAT BY SEAT — the section football leans on, asked about tonight. -->
       <TodayMatchupSpots v-if="matchup.snapshot.value"
                          :spots="matchup.snapshot.value.spots"
@@ -211,6 +260,11 @@ const showFailed = computed(() => error.value === 'failed')
           <span class="shrink-0 font-mono text-[11px] text-dark-textMuted">by {{ c.by.toFixed(1) }}</span>
         </div>
       </section>
+
+      <!-- 2c. THE WIRE, asked about tonight. Football's closing block, which this page lacked. -->
+      <WireAddsPanel v-if="!isPreseason"
+                     :adds="daily.wireAdds.value"
+                     :value-label="daily.valueLabel.value" />
 
       <DailyRankingsPanel v-if="!isPreseason && daily.canValue.value"
                           :rows="daily.rankings.value"
