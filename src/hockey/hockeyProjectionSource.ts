@@ -73,6 +73,14 @@ export interface EspnHockeyPlayer {
   name: string
   /** C | LW | RW | D | G */
   position: string
+  /**
+   * EVERY position he can be started at, his default first.
+   *
+   * Hockey players routinely have more than one and we were ranking each at exactly one, so a
+   * left-wing board silently excluded anybody ESPN files under centre. 74 of 454 projected
+   * players are multi-eligible. Absent or empty means "just his default" — never assume.
+   */
+  eligible?: string[]
   /** ESPN's own projection. Read for GP; otherwise used only for goalies. */
   stats: Record<string, number>
   adp?: number | null
@@ -229,6 +237,7 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
       ...built,
       playerKey: key,
       position: e?.position ?? ESPN_POSITION[r.position] ?? r.position,
+      eligible: e?.eligible,
       adp: e?.adp ?? null,
       auctionValue: e?.auctionValue ?? null,
       percentOwned: e?.percentOwned ?? null,

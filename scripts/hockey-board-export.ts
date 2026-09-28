@@ -97,6 +97,8 @@ const out = board.rows.map((r: any) => {
   }
   return {
     sid: r.playerKey, name: r.name, pos: r.position,
+    /* Every position he can be started at — a per-position card filters on this. */
+    eligible: (r as any).eligible ?? [r.position],
     /* `value` orders the board (VOR); `projected` is the player's own total. A points card
        prints the total a reader can check against a stat line; ordering stays ours. */
     value: r.value, projected: r.projected, adp: r.adp ?? null, tag,

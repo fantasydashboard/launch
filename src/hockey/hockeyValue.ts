@@ -51,6 +51,8 @@ export const NHL_SEASON_GAMES = 82
 export interface HockeyProjection {
   playerKey: string
   position: string
+  /** Every position he can be started at, his default first. See hockeyProjectionSource. */
+  eligible?: string[]
   /** Unified stat key -> projected season total. */
   stats: Record<string, number>
   /**

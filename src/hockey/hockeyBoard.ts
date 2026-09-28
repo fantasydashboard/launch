@@ -54,6 +54,14 @@ export interface HockeyBoardInput {
 
 /** A board row, plus the two things hockey adds: the market's price and an injury flag. */
 export interface HockeyBoardRow extends AvailablePlayerRow {
+  /**
+   * Every position he can be started at, his default first.
+   *
+   * A per-position list must filter on THIS, not on `position`: 74 of 454 projected players
+   * are eligible somewhere else as well, and filtering on the default drops each of them from
+   * every list but one.
+   */
+  eligible?: string[]
   adp?: number | null
   /** Rounds of disagreement with ADP. Positive means we rank him higher than the room. */
   marketRounds?: number
@@ -178,6 +186,10 @@ export function buildHockeyBoard(input: HockeyBoardInput): HockeyBoardResult {
       playerKey: r.playerKey,
       name: namesByKey[r.playerKey] ?? r.playerKey,
       position: r.position,
+      /* Every position he can be started at. A per-position board must filter on this and not
+         on `position`, or a multi-eligible player appears on one list and vanishes from the
+         other he is equally draftable in. */
+      eligible: projections[r.playerKey]?.eligible ?? [r.position],
       proTeam: teamsByKey[r.playerKey],
       /* `value` is the ordering quantity and `projected` is the player's own points, which is
          the same split the football board uses — so a points column stays meaningful when a

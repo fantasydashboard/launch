@@ -56,6 +56,21 @@ const STAT_BY_ID = {
 const POSITION_BY_ID = { 1: 'C', 2: 'LW', 3: 'RW', 4: 'D', 5: 'G' }
 
 /*
+ * EVERY POSITION A PLAYER CAN BE STARTED AT, not just the one ESPN lists him under.
+ *
+ * `defaultPositionId` is a single position and hockey players routinely have several: Leon
+ * Draisaitl is a centre AND a left wing, Calle Jarnkrok is LW and RW. Carrying only the
+ * default meant our left-wing board was drawn from a smaller pool than anybody else's — it
+ * had no Draisaitl and no Kyle Connor, who are the first and fifth left wings on an outside
+ * baseline, and then reported the position as unusually flat. That flatness was our own
+ * missing players, not a fact about left wings.
+ *
+ * `eligibleSlots` is the lineup slot ids he can fill. 3 is the forward flex and 6, 7 and 8 are
+ * utility, bench and injured reserve — none of them a position, all of them dropped.
+ */
+const POSITION_BY_SLOT = { 0: 'C', 1: 'LW', 2: 'RW', 4: 'D', 5: 'G' }
+
+/*
  * AN ADP IS ONLY A PRICE IF THE ROOM ACTUALLY DRAFTS HIM.
  *
  * ESPN gives EVERY projected player an averageDraftPosition, and 218 of 456 of them sit in a
@@ -99,6 +114,13 @@ export default async function handler(req, res) {
       const p = row?.player ?? row
       const position = POSITION_BY_ID[p?.defaultPositionId]
       if (!position) continue           // unknown position: absent, never defaulted
+      /* His default first, then anything else he is eligible for, no duplicates. Ordered so a
+         reader scanning the field sees the position he is best known for. */
+      const eligible = [position]
+      for (const slot of (Array.isArray(p?.eligibleSlots) ? p.eligibleSlots : [])) {
+        const pos = POSITION_BY_SLOT[slot]
+        if (pos && !eligible.includes(pos)) eligible.push(pos)
+      }
       const split = (p.stats ?? []).find(
         (s) => s?.statSourceId === 1 && s?.statSplitTypeId === 0,
       )
@@ -130,6 +152,7 @@ export default async function handler(req, res) {
         playerKey: String(p.id),
         name: p.fullName || `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim(),
         position,
+        eligible,
         proTeamId: p.proTeamId ?? null,
         stats,
         adp: Number.isFinite(own.averageDraftPosition)
