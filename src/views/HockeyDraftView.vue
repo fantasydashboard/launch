@@ -30,7 +30,7 @@ const {
   loading, problem, rules, rows, replacement, unnamedScoredStatIds,
   mode, categoryKeys, contestedKeys, perCategoryByKey,
   ledger, marginalByKey, puntAdvice, override, setLeagueOverride,
-  manual, setManualRules,
+  manual, manualInUse, setManualRules,
   punted, togglePunt, clearPunts,
   drafted, take, undo, undoLast, reset, load,
   live, liveError, liveState, lastSyncedAt, myTeamId, teamNames, clock, goLive, goMock, syncDraft, espnHasSequence,
@@ -451,7 +451,10 @@ const POS_TONE: Record<string, string> = {
         <button type="button"
                 class="font-mono text-[10px] text-dark-textMuted underline decoration-dotted underline-offset-2 hover:text-dark-text"
                 @click="showManual = !showManual">
-          {{ showManual ? 'hide' : (manual ? 'using hand-entered rules — edit' : 'Yahoo, Sleeper or a private league? enter the rules by hand') }}
+          {{ showManual ? 'hide'
+            : manualInUse ? 'using hand-entered rules — edit'
+            : manual ? "using your league's own settings — hand-entered rules saved, edit"
+            : 'Yahoo, Sleeper or a private league? enter the rules by hand' }}
         </button>
 
         <div v-if="showManual" class="mt-3 space-y-3">

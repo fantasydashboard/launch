@@ -201,6 +201,41 @@ export function useHockeyBoard() {
    * moment should not cost somebody their settings while the clock is running.
    */
   const MANUAL_KEY = 'ufd:hockey:manualRules'
+  /*
+   * AND THE DRAFT ITSELF, FOR THE SAME REASON THE RULES ARE.
+   *
+   * The comment above says a reload at the wrong moment should not cost somebody their
+   * settings while the clock is running. It protected half the state. On 2026-09-27 a reload
+   * mid-draft cost a live draft every pick on the board: the rules came back, the picks did
+   * not, and the extension only ever sends what happens AFTER it reconnects — there is no
+   * backfill, so nothing could restore them but typing forty names by hand.
+   *
+   * Scoped per league and season, because a key that outlived the draft would cross off
+   * players in next week's league. Dropped after a day for the same reason: a draft does not
+   * run for two.
+   */
+  const DRAFT_KEY = 'ufd:hockey:draftState'
+  const DRAFT_TTL_MS = 24 * 60 * 60 * 1000
+
+  interface StoredDraft {
+    scope: string
+    at: number
+    mockOrder: string[]
+    extensionOrder: string[]
+    mySlot: number | null
+    myTeamId: number | null
+  }
+
+  function readDraft(): StoredDraft | null {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY)
+      if (!raw) return null
+      const v = JSON.parse(raw) as StoredDraft
+      if (!v || typeof v.scope !== 'string') return null
+      if (!Number.isFinite(v.at) || Date.now() - v.at > DRAFT_TTL_MS) return null
+      return v
+    } catch { return null }
+  }
   const manual = ref<ManualLeagueInput | null>(readManual())
   function readManual(): ManualLeagueInput | null {
     try {
@@ -234,6 +269,8 @@ export function useHockeyBoard() {
      */
     extensionOrder.value = []
     unplacedPicks.value = 0
+    clearDraft()
+    restoredScope = ''
     void resetDraftSync()
     if (!next) { goMock(); load(); return }
     /*
@@ -254,6 +291,52 @@ export function useHockeyBoard() {
 
   /** The season a retry actually succeeded at, so every later fetch uses the same one. */
   const resolvedSeason = ref(0)
+
+  /* One draft is one league in one season. Mock mode gets its own scope so a mock never
+     crosses players off a real board, which is the failure setLeagueOverride already guards. */
+  const draftScope = computed(() => `${leagueId.value || 'mock'}:${resolvedSeason.value || 0}`)
+
+  let restoredScope = ''
+  function saveDraft() {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        scope: draftScope.value,
+        at: Date.now(),
+        mockOrder: mockOrder.value,
+        extensionOrder: extensionOrder.value,
+        mySlot: mySlot.value,
+        myTeamId: myTeamId.value,
+      } satisfies StoredDraft))
+    } catch { /* private mode — the board still works for this session */ }
+  }
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY) } catch { /* nothing to clear */ }
+  }
+
+  /*
+   * Restore once per scope, and only into an EMPTY board.
+   *
+   * Writing stored picks over a board the extension has already populated would double-count
+   * the reconnect: the extension re-sends what it can see, and a blind merge crosses off
+   * players twice and corrupts the pick sequence the clock reads.
+   */
+  watch([draftScope, rules], () => {
+    if (!rules.value || restoredScope === draftScope.value) return
+    const v = readDraft()
+    restoredScope = draftScope.value
+    if (!v || v.scope !== draftScope.value) return
+    if (mockOrder.value.length || extensionOrder.value.length) return
+    mockOrder.value = v.mockOrder ?? []
+    extensionOrder.value = v.extensionOrder ?? []
+    if (mySlot.value === null && typeof v.mySlot === 'number') mySlot.value = v.mySlot
+    if (myTeamId.value === null && typeof v.myTeamId === 'number') myTeamId.value = v.myTeamId
+  }, { immediate: true })
+
+  /* Every mutation, not a save button: the state worth keeping is the state as it stands when
+     the tab dies, and nobody presses save while they are on the clock. */
+  watch([mockOrder, extensionOrder, mySlot, myTeamId], () => {
+    if (restoredScope === draftScope.value) saveDraft()
+  }, { deep: true })
 
   /**
    * The season ESPN names this one by.
@@ -347,9 +430,19 @@ export function useHockeyBoard() {
     resolvedSeason.value = 0
     if (!isHockey.value && !manual.value) { problem.value = 'This board is for hockey leagues.'; return }
 
-    /* Hand-entered rules answer everything a platform would have been asked, so nothing is
-       fetched from one. This is the only path a Yahoo league has. */
-    if (manual.value) {
+    /*
+     * Hand-entered rules answer everything a platform would have been asked, so nothing is
+     * fetched from one. This is the only path a Yahoo league has.
+     *
+     * BUT THE PLATFORM WINS WHEN IT CAN ANSWER. Manual rules used to short-circuit this
+     * unconditionally, so anyone who had ever typed rules kept them forever — including for an
+     * ESPN league that reads perfectly. On 2026-09-27 that had a points league drafting off a
+     * board priced in category standard deviations, under a banner that said, one line above,
+     * that ESPN's settings had loaded. We read the truth and threw it away.
+     *
+     * Manual is now what it was always meant to be: the fallback for a league we cannot read.
+     */
+    if (manual.value && !isEspn.value) {
       loading.value = true
       problem.value = ''
       try {
@@ -788,6 +881,9 @@ export function useHockeyBoard() {
     ledger, marginal, marginalByKey, puntAdvice, picksByTeam,
     isCategoryBoard, override, setLeagueOverride,
     manual, setManualRules,
+    /* Stored is not the same as in use: ESPN wins when it can be read, and the surface has to
+       say which one the numbers came from rather than naming whichever exists. */
+    manualInUse: computed(() => !!manual.value && !isEspn.value),
     rows: computed(() => result.value?.rows ?? []),
     replacement: computed(() => result.value?.replacement ?? {}),
     unnamedScoredStatIds: computed(() => result.value?.unnamedScoredStatIds ?? []),
