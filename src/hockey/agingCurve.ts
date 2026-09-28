@@ -42,9 +42,30 @@ const MAX_AGE = 35
 /**
  * How far the curve is applied. 0 ignores age entirely; 1 applies it as measured.
  *
- * Swept against two independent outside boards rather than chosen.
+ * HALF, AND HALF IS NOT A HEDGE — it is where two independent outside boards agree.
+ *
+ *   against a CATEGORY consensus (weighted rank error / Spearman)
+ *     0     32.6 / 0.729      bands 1-10 4.0   51-100 40.3
+ *     0.5   31.8 / 0.743      bands 1-10 4.6   51-100 36.3    <- best on both measures
+ *     1     33.3 / 0.731      bands 1-10 5.5   51-100 34.8
+ *
+ *   against a POINTS baseline (mean rank error by band)
+ *     0     1-10 3.4   11-20 7.5   21-30 18.7   41-50 31.7
+ *     0.5   1-10 3.4   11-20 8.3   21-30 16.6   41-50 30.9
+ *     1     1-10 4.7   11-20 11.6  21-30 16.5   41-50 32.8
+ *
+ * At half the points board's top ten is untouched and its middle improves; the category board
+ * improves outright. At full strength both get worse, which is the interesting part.
+ *
+ * WHY FULL STRENGTH OVER-CORRECTS. Two reasons, and both argue for less than the measured
+ * curve rather than against the curve. Survivor bias: a player who collapses is not re-signed
+ * and never appears in the second season of a pair, so the measured decline is gentler than
+ * the true one — which would argue for MORE. Against it, and evidently winning: the projection
+ * this is applied to is not age-blind to begin with. ESPN's games-played already discounts the
+ * old and the fragile, and the market ADP the board is compared against has aging priced into
+ * it by thousands of drafters. Applying the full curve on top counts it twice.
  */
-export const AGE_STRENGTH = 1
+export const AGE_STRENGTH = 0.5
 
 const stepFor = (age: number) => AGE_CURVE[Math.min(MAX_AGE, Math.max(MIN_AGE, Math.round(age)))] ?? 1
 
