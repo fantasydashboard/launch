@@ -43,8 +43,12 @@ describe('mergeHockeyProjections', () => {
       espn: [espnPlayer({ stats: { GP: 82, PTS: 120, G: 60 } })],
       rates: [rate()],
     })
-    expect(projections['3900'].stats.G).toBeCloseTo(41, 5)    // 0.5 * 82, ours — not ESPN's 60
-    expect(projections['3900'].stats.PTS).toBeCloseTo(123, 5) // 1.5 * 82, not ESPN's 120
+    /* Rates are ours; only the GAMES they are multiplied over come from the feed, and even
+       those are now an expectation rather than the feed's number — see gamesProjection. The
+       ratio is what this test is about: 3 points for every goal, whatever the games. */
+    const p = projections['3900']
+    expect(p.stats.PTS / p.stats.G).toBeCloseTo(3, 5)   // 1.5 / 0.5, ours — not ESPN's 120/60
+    expect(p.stats.G).not.toBeCloseTo(60, 0)            // and emphatically not ESPN's own
   })
 
   it('carries the market and the injury, which only ESPN knows', () => {
@@ -63,29 +67,41 @@ describe('mergeHockeyProjections', () => {
    * The horizon, which is the one number borrowed from ESPN. Bedard at 64 expected games is a
    * different asset from Bedard at 82, and the difference is a quarter of his season.
    */
-  it('projects a skater over the games ESPN expects him to play', () => {
+  /*
+   * GAMES ARE AN EXPECTATION NOW, NOT THE FEED'S NUMBER.
+   *
+   * These used to assert that a skater was projected over exactly the games ESPN listed, that
+   * an unlisted skater got a full 82, and that a nonsense count clamped to 82. All three are
+   * superseded: ESPN answers "if healthy" and had 32% of the board at a full season against a
+   * real 19-21%, so the column is now centred and narrowed across the pool. Rewritten to the
+   * new contract rather than deleted, because the old intent — games must be a real season,
+   * and the stats must scale with them — still holds.
+   */
+  it('scales a skater\'s stats by the games it projects for him', () => {
     const { projections } = mergeHockeyProjections({
       espn: [espnPlayer({ stats: { GP: 41 } })],
       rates: [rate()],
     })
-    expect(projections['3900'].stats.GP).toBe(41)
-    expect(projections['3900'].stats.G).toBeCloseTo(20.5, 5)
+    const p = projections['3900']
+    expect(p.stats.G).toBeCloseTo(0.5 * p.stats.GP, 5)   // his rate, over whatever games we expect
   })
 
-  it('gives a skater ESPN never listed a full season rather than inventing an injury', () => {
+  it('never projects a season nobody could play', () => {
+    for (const gp of [0, 41, 200, undefined]) {
+      const { projections } = mergeHockeyProjections({
+        espn: [espnPlayer({ stats: gp === undefined ? {} : { GP: gp } })], rates: [rate()],
+      })
+      const out = projections['3900'].stats.GP
+      expect(out).toBeGreaterThan(0)
+      expect(out).toBeLessThanOrEqual(82)
+    }
+  })
+
+  it('still rates a skater ESPN never listed', () => {
     const { projections } = mergeHockeyProjections({ espn: [], rates: [rate()] })
-    expect(projections['nhl:8478402'].stats.GP).toBe(82)
-  })
-
-  it('refuses a games count outside a real season', () => {
-    const zero = mergeHockeyProjections({
-      espn: [espnPlayer({ stats: { GP: 0 } })], rates: [rate()],
-    })
-    expect(zero.projections['3900'].stats.GP).toBe(82)
-    const huge = mergeHockeyProjections({
-      espn: [espnPlayer({ stats: { GP: 200 } })], rates: [rate()],
-    })
-    expect(huge.projections['3900'].stats.GP).toBe(82)
+    const gp = projections['nhl:8478402'].stats.GP
+    expect(gp).toBeGreaterThan(0)
+    expect(gp).toBeLessThanOrEqual(82)
   })
 
   /*
@@ -113,8 +129,12 @@ describe('mergeHockeyProjections', () => {
       rates: [centre, dman],
     })
     expect(Object.keys(projections).sort()).toEqual(['4233563', '5148146'])
-    expect(projections['4233563'].stats.G).toBeCloseTo(41, 5)    // the centre's 0.5/gm
-    expect(projections['5148146'].stats.G).toBeCloseTo(3.28, 5)  // the defenceman's 0.04/gm
+    /* Each keeps his OWN rate, which is the point — asserted as a rate rather than a total,
+       because the games they are multiplied over are now projected rather than a fixed 82 and
+       are not what this test is about. */
+    const c = projections['4233563'], d = projections['5148146']
+    expect(c.stats.G / c.stats.GP).toBeCloseTo(0.5, 5)     // the centre's
+    expect(d.stats.G / d.stats.GP).toBeCloseTo(0.04, 5)    // the defenceman's
   })
 
   it('matches across accents and punctuation, which the two feeds spell differently', () => {

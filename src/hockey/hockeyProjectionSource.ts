@@ -1,5 +1,6 @@
 import type { SkaterRate } from './nhlRates'
 import { regressPlusMinusTotals } from './plusMinusRegression'
+import { projectGames } from './gamesProjection'
 import { ratesToProjection } from './ratesToProjection'
 import type { HockeyProjection } from './hockeyValue'
 
@@ -185,6 +186,22 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
     if (hit) espnFor.set(r.playerId, hit)
   }
 
+  /*
+   * Expected games for the whole pool at once — see src/hockey/gamesProjection.ts. Pool-wide
+   * because the centring and the spread are defined by the pool, which a per-player function
+   * cannot see. ESPN's number and the player's own record are both inputs: the feed knows this
+   * year's role, the record knows his durability.
+   */
+  const gamesByPlayer = new Map<number, number>()
+  {
+    const ids = rates.map((r) => r.playerId)
+    const projected = projectGames(rates.map((r) => ({
+      feedGames: espnFor.get(r.playerId)?.stats?.GP,
+      historyGames: historyGames?.get(r.playerId),
+    })), { fullSeason })
+    ids.forEach((id, i) => gamesByPlayer.set(id, projected[i]))
+  }
+
   const gamesFor = (r: SkaterRate) => {
     const gp = espnFor.get(r.playerId)?.stats?.GP
     /* Clamped to a real season. A feed that publishes 0 or 90 games for somebody should not be
@@ -210,6 +227,10 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
      * promoted to a starting job is exactly the case his own record gets wrong. AVAILABILITY_W
      * is how far toward his record we move, and it is swept, not chosen.
      */
+    const projected = gamesByPlayer.get(r.playerId)
+    if (Number.isFinite(projected) && (projected as number) > 0) return projected as number
+
+    /* AVAILABILITY_W is the older, rejected lever; kept at 0 and documented where it lives. */
     const history = historyGames?.get(r.playerId)
     if (!Number.isFinite(history) || !(history! > 0)) return espnGames
     const blended = espnGames * (1 - AVAILABILITY_W) + (history as number) * AVAILABILITY_W
