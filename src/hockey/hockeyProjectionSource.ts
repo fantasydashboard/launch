@@ -2,6 +2,10 @@ import type { SkaterRate } from './nhlRates'
 import { regressPlusMinusTotals } from './plusMinusRegression'
 import { projectGames } from './gamesProjection'
 import { ratesToProjection } from './ratesToProjection'
+import { joinEspnRows, ESPN_POSITION } from './espnRateJoin'
+/* Re-exported below: it was defined here first and the rest of the app imports it from here. */
+import { normalizeName } from './normalizeName'
+export { normalizeName }
 import type { HockeyProjection } from './hockeyValue'
 
 /**
@@ -134,29 +138,14 @@ export interface MergeResult {
   teamByKey: Record<string, string>
   /** League categories the feed cannot fill. */
   missing: string[]
+  /** How the join reached each match, and what it refused. See src/hockey/espnRateJoin.ts. */
+  joinRungs?: import('./espnRateJoin').JoinRungs
   /** How many rate rows found an ESPN row. The join's own health, reportable. */
   matched: number
 }
 
 /** NHL position codes as ESPN spells them. */
-const ESPN_POSITION: Record<string, string> = { C: 'C', L: 'LW', R: 'RW', D: 'D' }
 
-/**
- * A name reduced to what two feeds can agree on.
- *
- * Diacritics because one feed writes Nazem Kadri's teammates with them and the other does not;
- * punctuation because "T.J. Oshie" and "TJ Oshie" are the same man. Nothing clever beyond that
- * — a fuzzy matcher here would join two different players under one key, which is a worse
- * failure than leaving one unmatched.
- */
-export function normalizeName(name: string): string {
-  return String(name ?? '')
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z ]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
 
 /**
  * Name AND position, never name alone.
@@ -167,24 +156,17 @@ export function normalizeName(name: string): string {
  * could be shown a third-pairing defenceman's value under the right name, with nothing on the
  * page to suggest anything had gone wrong.
  */
-function matchKey(name: string, position: string): string {
-  return `${normalizeName(name)}|${position}`
-}
-
 export function mergeHockeyProjections(input: MergeInput): MergeResult {
   const { espn, rates, leagueKeys = [], fullSeason = 82, historyGames, goalieProjections } = input
 
-  const espnByMatch = new Map<string, EspnHockeyPlayer>()
-  for (const p of espn) espnByMatch.set(matchKey(p.name, p.position), p)
-
-  /* The join, done once so the games lookup and the metadata lookup cannot disagree. */
-  const espnFor = new Map<number, EspnHockeyPlayer>()
-  for (const r of rates) {
-    const pos = ESPN_POSITION[r.position]
-    if (!pos) continue
-    const hit = espnByMatch.get(matchKey(r.name, pos))
-    if (hit) espnFor.set(r.playerId, hit)
-  }
+  /*
+   * The join, done once so the games lookup and the metadata lookup cannot disagree — and done
+   * by a tested rule rather than by a Map literal. See src/hockey/espnRateJoin.ts: a key of
+   * `name|position` missed 66 skaters the two feeds put on different wings, and every one of
+   * them then showed ESPN's projection instead of ours.
+   */
+  const join = joinEspnRows(rates, espn)
+  const espnFor = join.byPlayerId
 
   /*
    * Expected games for the whole pool at once — see src/hockey/gamesProjection.ts. Pool-wide
@@ -337,5 +319,6 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
    */
   regressPlusMinusTotals(out as any)
 
-  return { projections: out, keyByName, namesByKey, rateByKey, teamByKey, missing, matched: espnFor.size }
+  return { projections: out, keyByName, namesByKey, rateByKey, teamByKey, missing,
+           matched: espnFor.size, joinRungs: join.rungs }
 }
