@@ -185,6 +185,10 @@ const router = createRouter({
       path: '/hockeyrankings',
       name: 'hockey-rankings',
       component: () => import('@/views/HockeyRankingsView.vue'),
+      /* The FREE board: default scoring, nobody's league. Without this the page re-scores
+         against whatever league the reader has connected and stops matching the card that
+         linked them here. */
+      props: { publicBoard: true },
       meta: { public: true, publicLayout: 'marketing' }
     },
     {

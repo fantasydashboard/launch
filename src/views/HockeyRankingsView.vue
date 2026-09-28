@@ -22,6 +22,10 @@
           Every skater ranked by the points he is projected to score under your league's own
           scoring, for the rest of the season.
         </template>
+        <template v-else-if="publicBoard">
+          Every skater ranked by what he contributes across the standard categories, measured in
+          standard deviations rather than points. A player can rank here on volume alone.
+        </template>
         <template v-else>
           Every skater ranked by what he contributes across the categories your league counts,
           measured in standard deviations rather than points. A player can rank here on volume
@@ -44,6 +48,17 @@
         </template>
         <template v-else-if="fromLeague">
           Scored on your league's columns: {{ categories.map((c) => c.key).join(' · ') }}.
+        </template>
+        <!--
+          THE PUBLIC BOARD IS NOT A FAILED PRIVATE ONE.
+          "because we could not read your league's own columns" is the right sentence when a
+          reader HAS a league and we could not reach it. On the free board it is a plain
+          falsehood dressed as an apology — nobody asked for a league here, nothing failed, and
+          it invites a reader to think the page is broken rather than deliberately general.
+        -->
+        <template v-else-if="publicBoard">
+          {{ categories.map((c) => c.key).join(' · ') }} — the standard set. Connect a league
+          and this re-scores on its columns.
         </template>
         <template v-else>
           {{ categories.map((c) => c.key).join(' · ') }} — the standard set, because we could
@@ -177,7 +192,14 @@
 import { computed, ref, watch } from 'vue'
 import { useHockeyRankings } from '@/composables/useHockeyRankings'
 
-const { rows, goalies, loading, ready, missing, categories, fromLeague, mode } = useHockeyRankings()
+/*
+ * `publicBoard` is set by the /hockeyrankings route: the free board, default scoring, the same
+ * for everyone who opens it. Without it this page re-scores against whatever league the reader
+ * happens to have connected, and then disagrees with the card that linked them here.
+ */
+const props = defineProps<{ publicBoard?: boolean }>()
+const { rows, goalies, loading, ready, missing, categories, fromLeague, mode } =
+  useHockeyRankings({ publicBoard: props.publicBoard })
 
 /* Skater positions as the NHL spells them, plus goalies as their own list. */
 const POSITIONS = ['ALL', 'C', 'L', 'R', 'D', 'G'] as const

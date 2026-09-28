@@ -128,7 +128,23 @@ export interface HockeyRankRow {
   rank: number
 }
 
-export function useHockeyRankings(): {
+export interface HockeyRankingsOptions {
+  /**
+   * The public board: default scoring, nobody's league.
+   *
+   * /hockeyrankings is the FREE board — the one every card and tier post links to — and a free
+   * board has to be the same board for everyone who opens it. Left to itself this composable
+   * reads the reader's connected league and re-scores against ITS categories, and flips between
+   * points and category mode on its say-so. A signed-in manager would then land on a page that
+   * silently disagrees with the card that sent him there, and neither of them would be wrong.
+   *
+   * The league-scoped board is not being withheld as a paid feature; it is on the pages that
+   * are about his league. This one is about the sport.
+   */
+  publicBoard?: boolean
+}
+
+export function useHockeyRankings(options: HockeyRankingsOptions = {}): {
   rows: ComputedRef<HockeyRankRow[]>
   goalies: ComputedRef<HockeyRankRow[]>
   /** The columns actually being scored, and whether they came from the league or a default. */
@@ -216,7 +232,8 @@ export function useHockeyRankings(): {
   })
   const { feed, loading: loadingRef } = useNhlFeed(espnSeason)
 
-  void loadLeagueCategories()
+  /* The public board never asks whose league it is. See HockeyRankingsOptions.publicBoard. */
+  if (!options.publicBoard) void loadLeagueCategories()
 
   const activeCats = computed<HockeyCategory[]>(() => leagueCats.value ?? DEFAULT_CATEGORIES)
 
