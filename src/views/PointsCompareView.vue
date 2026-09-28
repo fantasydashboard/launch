@@ -358,7 +358,7 @@
                 @click="$router.push('/pricing')"
                 class="w-full px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-gray-900 font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg"
               >
-                Get League Pass
+                Get the Season Pass
               </button>
               <p class="text-xs text-dark-textMuted">One-time payment • Your whole league gets access</p>
             </div>

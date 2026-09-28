@@ -81,16 +81,18 @@ const title = computed(() => {
   if (props.lockedItemCount > 0) {
     return `${props.lockedItemCount} More ${props.lockedItemLabel}`
   }
-  return props.isUltimateTier ? 'Ultimate Feature' : 'League Pass Required'
+  return props.isUltimateTier ? 'Ultimate Feature' : 'Season Pass Required'
 })
 
 const description = computed(() => {
   if (props.customDescription) return props.customDescription
-  return 'Unlock full access to this feature for your entire league.'
+  /* The League Pass is no longer sold, so a wall promising access "for your entire
+     league" was describing a product the pricing page will not offer when they arrive. */
+  return 'Unlock this with the Season Pass — every league you are in, all four sports.'
 })
 
 const buttonText = computed(() => {
-  return 'Get League Pass'
+  return 'Get the Season Pass'
 })
 
 function handleUpgrade() {

@@ -37,13 +37,12 @@ const icon = computed(() => isLeagueFeature.value ? '🔒' : '⭐')
 
 const label = computed(() => {
   if (props.label) return props.label
-  return isLeagueFeature.value ? 'League Pass' : 'Premium'
+  /* One plan now, so both feature types name the same thing. */
+  return 'Season Pass'
 })
 
 const tooltip = computed(() => {
-  return isLeagueFeature.value
-    ? 'Requires League Pass - Click to upgrade'
-    : 'Requires Premium - Click to upgrade'
+  return 'Requires the Season Pass - Click to upgrade'
 })
 
 const badgeClass = computed(() => {

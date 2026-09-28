@@ -25,7 +25,7 @@
 
           <!-- Title -->
           <h3 class="text-xl font-bold text-dark-text mb-2">
-            {{ title || 'League Pass Required' }}
+            {{ title || 'Season Pass Required' }}
           </h3>
 
           <!-- Description -->
@@ -39,15 +39,13 @@
           <button
             @click="handleUpgradeClick"
             class="px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105"
-            :class="isLeagueFeature ? 'bg-primary hover:bg-primary/90 text-white' : 'bg-yellow-500 hover:bg-yellow-400 text-black'"
+            :class="isLeagueFeature ? 'bg-primary hover:brightness-110 text-black' : 'bg-yellow-500 hover:bg-yellow-400 text-black'"
           >
-            {{ buttonText || 'Get League Pass' }}
+            {{ buttonText || 'Get the Season Pass' }}
           </button>
 
-          <!-- Secondary link -->
-          <p v-if="isLeagueFeature" class="text-xs text-dark-textMuted mt-3">
-            Ask your commissioner if your league is already unlocked
-          </p>
+          <!-- No commissioner line: it pointed at a league-wide unlock that is no longer
+               sold, so it sent people to ask for something nobody can buy them. -->
         </div>
       </div>
     </Transition>
