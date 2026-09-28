@@ -29,11 +29,25 @@
 /**
  * How much of a skater's plus-minus edge survives into next season.
  *
- * Measured, not chosen: r = 0.293 (2023-24 -> 2024-25) and r = 0.342 (2024-25 -> 2025-26),
- * over ~500 skaters with 40+ games in both. Taken as the average rather than the kinder of
- * the two.
+ * THE MEASUREMENT IS r = 0.32 AND THE CONSTANT IS 0.47, which is not a fudge — it is what the
+ * measurement means once you notice what it is being applied to.
+ *
+ * r = 0.293 (2023-24 -> 2024-25) and 0.342 (2024-25 -> 2025-26), over ~500 skaters with 40+
+ * games in both, is how much of ONE SEASON's plus-minus survives into the next. What this
+ * regresses is not one season: it is a three-year weighted blend, which is already narrower
+ * than any single year because averaging has done some of the work. Feeding a single-season
+ * coefficient to an already-blended input regresses twice, and it did: the projected column
+ * came out at a mean |x| of 2.8 against an observed-season 12.5 — well under the 4.0 that
+ * r x 12.5 calls for, and under the 4.2 an analyst baseline independently lands on.
+ *
+ * So the constant is set by the OUTPUT rather than copied from the input: 0.47 puts the
+ * projected column at 4.0-4.2, which is the spread the measurement says a projection of this
+ * stat should have. Swept: 0.32 -> 2.8, 0.45 -> 4.0, 0.50 -> 4.4, 0.55 -> 4.9.
+ *
+ * Same trap as the aging curve, which also over-corrected when the measured single-year
+ * effect was applied to an input that had already absorbed part of it.
  */
-export const PLUS_MINUS_PERSISTENCE = 0.32
+export const PLUS_MINUS_PERSISTENCE = 0.47
 
 /**
  * Pull every value toward the mean of the set, keeping `persistence` of the distance.

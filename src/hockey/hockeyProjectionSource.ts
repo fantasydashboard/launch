@@ -210,14 +210,6 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
 
   const { projections, missing } = ratesToProjection(rates, gamesFor, leagueKeys)
 
-  /*
-   * Plus-minus, regressed on the TOTALS — see src/hockey/plusMinusRegression.ts for why this
-   * is the column that needs it (year-over-year r of 0.32) and why it belongs here rather than
-   * on the rates (a per-player games factor stops it being a uniform transform, which a
-   * category board's z-scores then feel).
-   */
-  regressPlusMinusTotals(projections as any)
-
   const out: Record<string, HockeyProjection> = {}
   const keyByName: Record<string, string> = {}
   const namesByKey: Record<string, string> = {}
@@ -257,10 +249,19 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
    */
   for (const p of espn) {
     if (claimed.has(p.playerKey)) continue
+    /*
+     * ESPN'S OWN GAMES, CLAMPED. Its projections run to 84 for nineteen players, which is two
+     * more than the schedule has. The rate-model branch clamps because it multiplies by games;
+     * this branch was passing the number through untouched, so a handful of players carried a
+     * season nobody can play.
+     */
+    const stats = { ...(p.stats ?? {}) }
+    if (Number.isFinite(stats.GP)) stats.GP = Math.min(fullSeason, stats.GP as number)
     out[p.playerKey] = {
       playerKey: p.playerKey,
       position: p.position,
-      stats: p.stats ?? {},
+      eligible: p.eligible,
+      stats,
       adp: p.adp ?? null,
       auctionValue: p.auctionValue ?? null,
       percentOwned: p.percentOwned ?? null,
@@ -271,6 +272,20 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
     if (!keyByName[n]) keyByName[n] = p.playerKey
     namesByKey[p.playerKey] = p.name
   }
+
+  /*
+   * Plus-minus regressed LAST, over the whole merged board.
+   *
+   * It ran earlier on the rate-derived projections alone, which is every skater the rate model
+   * claimed — and not the players who come straight from ESPN, who are added after it. Those
+   * kept a raw column: Cole Caufield at +24 and Jake Guentzel at +17 while the pool he is
+   * standardised against averaged 4.2. A regression that covers most of a board is worse than
+   * none, because the players it misses are now the extremes of it.
+   *
+   * See src/hockey/plusMinusRegression.ts for why this column needs it (year-over-year r of
+   * 0.32) and why it belongs on totals rather than rates.
+   */
+  regressPlusMinusTotals(out as any)
 
   return { projections: out, keyByName, namesByKey, rateByKey, teamByKey, missing, matched: espnFor.size }
 }
