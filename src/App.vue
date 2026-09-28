@@ -1488,7 +1488,12 @@ const sectionTabs = computed(() => tabs.value.filter((t: any) => !t.isTool))
  * does not yank the page out from under someone mid-task.
  */
 async function leaveLegacyHome() {
-  if (router.currentRoute.value.path === '/') await router.push(homePath.value)
+  if (router.currentRoute.value.path !== '/') return
+  /* Only once a league is actually active. Signing in on a device with nothing in
+     localStorage reaches here before the account's leagues arrive, and pushing to the
+     sport home with no league loaded just trades the old dashboard for an empty new one. */
+  if (!leagueStore.activeLeagueId) return
+  await router.push(homePath.value)
 }
 
 // Tool tabs (Tier 1 utility bar). The League Beat link sits beside these in the template.
@@ -1756,6 +1761,11 @@ async function handleAuthSuccess() {
   if (authStore.user?.id) {
     await leagueStore.loadSavedLeagues(authStore.user.id)
     // If no leagues, user will be prompted to add one on the pages
+    /* The "/" guard reads localStorage synchronously, before Pinia and before Supabase.
+       On a fresh sign-in there is nothing there yet, so the guard sees no league, declines
+       to redirect, and the account's leagues then arrive with nobody left to act on them —
+       which is how someone lands on the pre-redesign dashboard immediately after logging in. */
+    await leaveLegacyHome()
   }
 }
 
@@ -1931,6 +1941,8 @@ onMounted(async () => {
     if (leagueStore.activeSport) {
       sportStore.setSport(leagueStore.activeSport as Sport)
     }
+    // After the sport is known, so we leave for the right tab rather than football's.
+    await leaveLegacyHome()
   }
 })
 
@@ -1954,6 +1966,8 @@ watch(() => authStore.isAuthenticated, async (isAuth) => {
     if (leagueStore.activeSport) {
       sportStore.setSport(leagueStore.activeSport as Sport)
     }
+    // After the sport is known, so we leave for the right tab rather than football's.
+    await leaveLegacyHome()
   }
 })
 
