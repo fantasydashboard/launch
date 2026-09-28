@@ -1473,6 +1473,24 @@ const tabs = computed(() => [
    that opens a page nobody can navigate back to is its own small trap. */
 const homePath = computed(() => (leagueStore.activeSport === 'football' ? '/this-week' : '/today'))
 const sectionTabs = computed(() => tabs.value.filter((t: any) => !t.isTool))
+
+/*
+ * Leave the pre-redesign home after a league lands.
+ *
+ * "/" renders UnifiedHomeComponent, which is the dashboard the redesign replaced. The router
+ * guard that carries a connected user past it only fires on a NAVIGATION to "/", and adding a
+ * league from the modal happens while already standing on "/" — a signed-in user without a
+ * league is already there. No navigation, so no guard, so the first screen a brand new user
+ * sees is the single page the redesign did not rebuild, and it only corrects itself when they
+ * happen to click a tab.
+ *
+ * Conditional on actually being on "/", so adding a second league from Settings or the Wire
+ * does not yank the page out from under someone mid-task.
+ */
+async function leaveLegacyHome() {
+  if (router.currentRoute.value.path === '/') await router.push(homePath.value)
+}
+
 // Tool tabs (Tier 1 utility bar). The League Beat link sits beside these in the template.
 const toolTabs = computed(() => tabs.value.filter((t: any) => (t as any).isTool))
 
@@ -1661,6 +1679,8 @@ async function selectLeague(leagueId: string) {
     sportStore.setSport(sport as Sport)
     leagueStore.setActiveSport(sport as Sport)
   }
+  /* Switching leagues from the header while sitting on "/" left the old dashboard up too. */
+  await leaveLegacyHome()
 }
 
 function confirmRemoveLeague(league: any) {
@@ -1761,6 +1781,7 @@ async function handleLeagueAdded(league: any) {
     sportStore.setSport(sport)
     leagueStore.setActiveSport(sport)
 
+    await leaveLegacyHome()
     maybeShowTour()
   }
 }
@@ -1786,6 +1807,7 @@ async function handleYahooLeagueAdded(league: any) {
     sportStore.setSport(sport as Sport)
     leagueStore.setActiveSport(sport as Sport)
 
+    await leaveLegacyHome()
     maybeShowTour()
   } catch (err) {
     console.error('Failed to add Yahoo league:', err)
@@ -1825,6 +1847,7 @@ async function handleEspnLeagueAdded(data: { leagueId: string; sport: string; se
     sportStore.setSport(sport)
     leagueStore.setActiveSport(sport)
 
+    await leaveLegacyHome()
     maybeShowTour()
     
     console.log('[ESPN] League activated:', leagueKey)

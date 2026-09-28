@@ -31,11 +31,17 @@ const router = createRouter({
        */
       beforeEnter: (_to, _from, next) => {
         let hasLeague = false
+        let sport = 'football'
         try {
           hasLeague = !!localStorage.getItem('fd_active_league')
             || JSON.parse(localStorage.getItem('fd_saved_leagues') || '[]').length > 0
+          /* The landing tab is not the same in every sport: football leads with the week,
+             the daily sports lead with today. This used to send every connected user to
+             /this-week, so a hockey or baseball manager arrived at the football weekly view
+             — a tab that is not even in their nav bar. */
+          sport = localStorage.getItem('fd_active_sport') || 'football'
         } catch { /* private mode — fall through to the old home rather than crash */ }
-        next(hasLeague ? { path: '/this-week' } : undefined)
+        next(hasLeague ? { path: sport === 'football' ? '/this-week' : '/today' } : undefined)
       },
     },
     // Sport-specific landing pages (public)
