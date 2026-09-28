@@ -6,6 +6,7 @@ import {
 import { rateSkaters, type SkaterRate } from '@/hockey/nhlRates'
 import { blendSeasons, PRIOR_WEIGHTS } from '@/hockey/blendSeasons'
 import { ageFactor, ageAtSeason } from '@/hockey/agingCurve'
+import { regressPlusMinus } from '@/hockey/plusMinusRegression'
 import type { EspnHockeyPlayer } from '@/hockey/hockeyProjectionSource'
 
 /**
@@ -229,10 +230,20 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
     hits: 0, blockedShots: 0, ppGoals: 0, shGoals: 0, shPoints: 0,
   }))
 
+  /*
+   * Plus-minus regressed to what it can predict — see src/hockey/plusMinusRegression.ts.
+   *
+   * Applied to the RATES, so every surface that reads this feed gets the same column: a board
+   * and a wire disagreeing about a player's plus-minus would be worse than either being wrong.
+   * Done here rather than inside rateSkaters because the regression needs the whole pool to
+   * find the mean it pulls toward, and that function is written one player at a time.
+   */
+  const rates = regressPlusMinus(rateSkaters(roster, started ? currentIce : priorIce, blendedPrior))
+
   return {
     historyGames,
     agesKnown: bornById.size,
-    rates: rateSkaters(roster, started ? currentIce : priorIce, blendedPrior),
+    rates,
     goalies: curG.length ? curG : priorG,
     espn,
     season: started ? seasonId(year) : seasonId(year - 1),
