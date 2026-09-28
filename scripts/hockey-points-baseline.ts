@@ -64,14 +64,25 @@ globalThis.fetch = ((i: any, init?: any) => {
 const { loadNhlFeed } = await import('@/composables/useNhlFeed')
 
 const feed = await loadNhlFeed(2027)
-const merged = mergeHockeyProjections({ espn: feed.espn as any, rates: feed.rates as any })
+const merged = mergeHockeyProjections({ espn: feed.espn as any, rates: feed.rates as any, historyGames: feed.historyGames })
 const projections = Object.fromEntries(Object.entries(merged.projections).filter(([k]) => !k.startsWith('nhl:')))
 
+/*
+ * SLOTS MATCHED TO THE BASELINE, not invented. Comparing against a roster it does not use
+ * measures the roster. Its own replacement levels give it away: solving Points - VAR back into
+ * its ranked pools puts the forward bar at the 74th forward, the defence bar at the 26th D and
+ * the goalie bar at the 25th G — 6.2 F, 2.2 D and 2.1 G per team across twelve.
+ *
+ * A first pass used 2C/2LW/2RW/4D/2G/1UTIL, and the "defence replacement is 49 points too low"
+ * it produced was that config, not the board.
+ */
+const SLOTS = JSON.parse(process.env.SLOTS ?? '{"F":6,"D":2,"G":2}')
 const rules: any = {
   leagueId: 'x', season: 2027, name: 'pts', teams: TEAMS, scoringType: 'H2H_POINTS',
-  weights: WEIGHTS, categories: [], slots: { C: 2, LW: 2, RW: 2, D: 4, G: 2, UTIL: 1 },
+  weights: WEIGHTS, categories: [], slots: SLOTS,
   rosterSize: 20, unnamedScoredStatIds: [],
 }
+console.log('slots:', JSON.stringify(SLOTS))
 const board = buildHockeyBoard({ projections, rules, namesByKey: merged.namesByKey, teamsByKey: merged.teamByKey, drafted: new Set<string>() })
 console.log(`board mode: ${board.mode}   rows: ${board.rows.length}`)
 

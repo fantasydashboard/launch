@@ -31,9 +31,11 @@ export interface NhlFeed {
   season: string
   /** Whether the current season has any games in it yet. */
   started: boolean
+  /** playerId -> his own weighted games per season, for the availability blend. */
+  historyGames?: Map<number, number>
 }
 
-const EMPTY: NhlFeed = { rates: [], goalies: [], espn: [], season: '', started: false }
+const EMPTY: NhlFeed = { rates: [], goalies: [], espn: [], season: '', started: false, historyGames: new Map() }
 
 /** A season id the NHL understands: 2026 -> '20262027'. */
 export function seasonId(startYear: number): string {
@@ -158,6 +160,12 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
   const activeIds = new Set(priorFull.map((p) => p.playerId))
   const blendedPrior = blended.filter((p) => activeIds.has(p.playerId))
 
+  /* Each player's own games per season, for the availability blend in the projection source.
+     ESPN answers "if healthy"; this is what he has actually managed. */
+  const historyGames = new Map<number, number>(
+    blendedPrior.map((p) => [p.playerId, Number((p as any).typicalGames) || 0]),
+  )
+
   /*
    * Before a puck is dropped the current season returns NOTHING — not thin data, an empty list
    * — and there is no roster to rate, so a board renders its "feed is not answering" state on
@@ -178,6 +186,7 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
   }))
 
   return {
+    historyGames,
     rates: rateSkaters(roster, started ? currentIce : priorIce, blendedPrior),
     goalies: curG.length ? curG : priorG,
     espn,

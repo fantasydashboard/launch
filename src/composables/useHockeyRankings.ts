@@ -232,6 +232,7 @@ export function useHockeyRankings(): {
       espn: feed.value.espn,
       rates: feed.value.rates,
       leagueKeys: skaterCats.map((c) => c.key),
+      historyGames: feed.value.historyGames,
     })
     const { missing, rateByKey } = merged
     /* Goalies are ranked in their own list below, so they are kept out of the skater pool

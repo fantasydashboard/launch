@@ -87,6 +87,8 @@ const COUNTING = [
 
 export interface SeasonRow {
   playerId: number
+  /** Weighted games per season, set by blendSeasons. See the note where it is computed. */
+  typicalGames?: number
   skaterFullName?: string
   positionCode?: string
   gamesPlayed: number
@@ -129,6 +131,9 @@ export function blendSeasons(
 ): SeasonRow[] {
   const acc = new Map<number, SeasonRow>()
   const seen = new Set<number>()
+  /* Weight actually applied per player, so a caller can turn the weighted sums back into
+     per-season averages. A man in one season of three must not be divided by all three. */
+  const weightUsed = new Map<number, number>()
 
   /* Per-player index, so a trend can be read before anything is accumulated. */
   const bySeason = seasons.map((rows) => new Map(rows.map((r) => [r.playerId, r])))
@@ -150,6 +155,7 @@ export function blendSeasons(
       const cur = acc.get(id) ?? ({ playerId: id, gamesPlayed: 0 } as SeasonRow)
       for (const cat of COUNTING) cur[cat] = (cur[cat] ?? 0) + (Number(row[cat]) || 0) * weight
       cur.gamesPlayed = (cur.gamesPlayed ?? 0) + (Number(row.gamesPlayed) || 0) * weight
+      weightUsed.set(id, (weightUsed.get(id) ?? 0) + weight)
       /* First season that names him wins, and seasons arrive newest-first. */
       if (!seen.has(id)) {
         cur.skaterFullName = row.skaterFullName
@@ -160,5 +166,21 @@ export function blendSeasons(
     }
   })
 
+  /*
+   * TYPICAL GAMES PER SEASON, which is a different question from total weighted games.
+   *
+   * It exists because "how many games will he play" was being answered entirely by ESPN, and
+   * ESPN answers it optimistically: 32% of skaters projected at a full 82 against an actual
+   * 14-16% over each of the last three seasons. The cap makes it worse — everyone ESPN puts at
+   * 82 or more piles onto exactly 82 — and the players who collect that bonus volume are the
+   * established veterans a drafter pays most for.
+   *
+   * A player's own record is the correction. Somebody who has played 61, 62 and 60 games is
+   * not an 82-game player because a feed says so.
+   */
+  for (const [id, row] of acc) {
+    const w = weightUsed.get(id) ?? 0
+    row.typicalGames = w > 0 ? (row.gamesPlayed ?? 0) / w : 0
+  }
   return [...acc.values()]
 }

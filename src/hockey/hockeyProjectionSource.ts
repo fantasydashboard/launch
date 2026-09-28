@@ -43,6 +43,30 @@ import type { HockeyProjection } from './hockeyValue'
  */
 
 /** A row from `/api/hockey-projections`. */
+/**
+ * How far a games-played projection moves toward the player's own record.
+ *
+ * ZERO, MEASURED. The premise was sound: ESPN answers "if healthy", putting 32% of our skaters
+ * at a full 82 games when the last three completed seasons delivered 14%, 16% and 15%. The cap
+ * concentrates it further, since everyone projected at 82 or more lands on exactly 82.
+ *
+ * Correcting it toward each player's own games-per-season made the board WORSE, monotonically,
+ * exactly where it matters — swept against a points-league baseline, mean rank error over its
+ * top ten went 3.4 / 3.7 / 3.8 / 4.5 as this moved 0 / 0.25 / 0.5 / 1, and the top thirty
+ * moved the same way.
+ *
+ * WHY, AND IT IS WORTH KNOWING: a roughly uniform inflation in games cancels out of a RANKING.
+ * Every player gains volume together and the order survives. The gaps that looked like
+ * availability were not — Ovechkin is 82 games against the baseline's 78, a rounding error,
+ * while his projected points are 71 against their 54. That is a RATE disagreement, which is
+ * an aging curve, not an availability model.
+ *
+ * SO THE RANKING IS FINE AND THE TOTALS ARE NOT. Anything that shows a projected season total
+ * is overstating it for the durable veterans, even though their position on the board is
+ * right. Left at 0 with the lever intact because that second problem is real and unfixed.
+ */
+export const AVAILABILITY_W = 0
+
 export interface EspnHockeyPlayer {
   playerKey: string
   name: string
@@ -67,6 +91,11 @@ export interface MergeInput {
    * invents an injury out of an absence.
    */
   fullSeason?: number
+  /**
+   * playerId -> his own weighted games per season, from blendSeasons. Optional: without it the
+   * feed's number stands alone, which is the behaviour this replaced.
+   */
+  historyGames?: Map<number, number>
 }
 
 export interface MergeResult {
@@ -125,7 +154,7 @@ function matchKey(name: string, position: string): string {
 }
 
 export function mergeHockeyProjections(input: MergeInput): MergeResult {
-  const { espn, rates, leagueKeys = [], fullSeason = 82 } = input
+  const { espn, rates, leagueKeys = [], fullSeason = 82, historyGames } = input
 
   const espnByMatch = new Map<string, EspnHockeyPlayer>()
   for (const p of espn) espnByMatch.set(matchKey(p.name, p.position), p)
@@ -143,9 +172,31 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
     const gp = espnFor.get(r.playerId)?.stats?.GP
     /* Clamped to a real season. A feed that publishes 0 or 90 games for somebody should not be
        able to erase him from the board or hand him a tenth of a season nobody else gets. */
-    return Number.isFinite(gp) && (gp as number) > 0
+    const espnGames = Number.isFinite(gp) && (gp as number) > 0
       ? Math.min(fullSeason, gp as number)
       : fullSeason
+
+    /*
+     * ESPN ANSWERS "IF HEALTHY", AND A DRAFTER IS NOT BUYING "IF".
+     *
+     * Measured against the last three completed seasons, 14%, 16% and 15% of skaters who
+     * played at all reached 82 games. ESPN's projections put 32% of our board there — twice
+     * reality — and the clamp concentrates it, since everyone it projects at 82 or more piles
+     * onto exactly 82. The players collecting that free volume are the established veterans a
+     * drafter pays most for, and every counting stat they own is scaled by it.
+     *
+     * The player's own record is the correction: somebody who has played 61, 62 and 60 games
+     * is not an 82-game player because a feed says so. `typicalGames` is his weighted games
+     * per season over the same three years the rate prior uses.
+     *
+     * Blended rather than substituted, because history is not destiny either — a career backup
+     * promoted to a starting job is exactly the case his own record gets wrong. AVAILABILITY_W
+     * is how far toward his record we move, and it is swept, not chosen.
+     */
+    const history = historyGames?.get(r.playerId)
+    if (!Number.isFinite(history) || !(history! > 0)) return espnGames
+    const blended = espnGames * (1 - AVAILABILITY_W) + (history as number) * AVAILABILITY_W
+    return Math.max(1, Math.min(fullSeason, blended))
   }
 
   const { projections, missing } = ratesToProjection(rates, gamesFor, leagueKeys)

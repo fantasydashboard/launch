@@ -419,7 +419,7 @@ export function useHockeyBoard() {
   async function loadProjections(forSeason: number): Promise<string> {
     const feed = await loadNhlFeed(forSeason)
     if (!feed.espn.length) return 'Could not load projections.'
-    const merged = mergeHockeyProjections({ espn: feed.espn, rates: feed.rates })
+    const merged = mergeHockeyProjections({ espn: feed.espn, rates: feed.rates, historyGames: feed.historyGames })
     allProjections.value = merged.projections
     namesByKey.value = merged.namesByKey
     teamsByKey.value = merged.teamByKey
