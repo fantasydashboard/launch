@@ -153,6 +153,12 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
       blockedShots: by.get(r.playerId)?.blockedShots ?? 0,
     }))
   }
+  /*
+   * Expected goals are deliberately NOT read here. MoneyPuck's xG was measured through this
+   * exact pipeline and does not improve it — the three-season blend and the shooting regression
+   * already remove the finishing noise it identifies. See src/hockey/expectedGoals.ts for the
+   * numbers and scripts/hockey-xg-sweep.ts for the run.
+   */
   const currentFull = mergeRt(current, curRt)
   const priorFull = mergeRt(prior, priorRt)
   const prior2Full = mergeRt(prior2, prior2Rt)

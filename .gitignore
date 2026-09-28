@@ -66,3 +66,8 @@ NOTES.md
 
 # Supabase CLI transient state
 supabase/.temp/
+
+# Measurement-script caches (scripts/hockey-xg-sweep.ts and friends). Season feeds, fetched
+# once so a sweep is not re-run against a throttled relay — and never committed, because a
+# stale one is how three experiments this month reported confident no-ops.
+.cache/
