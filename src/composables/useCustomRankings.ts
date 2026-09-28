@@ -1,5 +1,7 @@
 import { computed, ref, type Ref } from 'vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import { useSportStore } from '@/stores/sport'
+import type { SportType } from '@/config/sports/types'
 import {
   parseRankings,
   splitWideRankings,
@@ -12,7 +14,9 @@ import {
 } from '@/draft/room/customRankings'
 
 const SETS_KEY = 'ufd:rankingSets'
-const ACTIVE_KEY = 'ufd:activeRankingByKind'
+/* Keyed by sport AND kind since 2026-09-27; the old single-record value is migrated on read. */
+const ACTIVE_KEY = 'ufd:activeRankingBySportKind'
+const OLD_ACTIVE_BY_KIND = 'ufd:activeRankingByKind'
 
 // Superseded keys, migrated on first load so existing uploads survive.
 const OLD_SETS = 'ufd:draftRoom:rankingSets'
@@ -52,6 +56,19 @@ export interface RankingSet {
   text: string
   updatedAt: string
   kind: RankingKind
+  /**
+   * WHICH SPORT'S LIST THIS IS.
+   *
+   * Absent until 2026-09-27, and the omission was not harmless: a kind is not unique across
+   * sports. Football's draft room and hockey's draft board both read kind 'draft', so a hockey
+   * consensus list uploaded for a draft was offered in the football picker and, once selected,
+   * was the active list for BOTH. It would have mostly no-opped there — no name matches — but
+   * the picker would have named it as the source in use, which is the worst kind of wrong: a
+   * board that says whose numbers it is showing, and is lying.
+   *
+   * Absent means football, because every list that existed before this field did was one.
+   */
+  sport?: SportType
   /**
    * Extra single-position files folded into the same set.
    *
@@ -111,32 +128,58 @@ function loadSets(): RankingSet[] {
       text: legacy,
       updatedAt: read(LEGACY_UPDATED) || new Date().toISOString(),
       kind: 'draft',
+      sport: 'football',   // everything that predates the field was football
     }
     write(SETS_KEY, JSON.stringify([one]))
-    if (read(LEGACY_ON) === '1') write(ACTIVE_KEY, JSON.stringify({ draft: one.id }))
+    if (read(LEGACY_ON) === '1') write(ACTIVE_KEY, JSON.stringify({ 'football:draft': one.id }))
     for (const k of [LEGACY_TEXT, LEGACY_LABEL, LEGACY_UPDATED, LEGACY_ON]) drop(k)
     return [one]
   }
   return []
 }
 
-function loadActive(): Record<RankingKind, string> {
-  const base: Record<RankingKind, string> = { draft: UFD, ros: UFD, week: UFD, dynasty: UFD }
+/** One selection per sport per kind: `football:draft`, `hockey:draft`, and so on. */
+type ActiveMap = Record<string, string>
+
+export const activeKey = (sport: SportType, kind: RankingKind) => `${sport}:${kind}`
+
+function loadActive(): ActiveMap {
+  const base: ActiveMap = {}
   try {
     const raw = read(ACTIVE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
       if (parsed && typeof parsed === 'object') {
-        for (const k of ['draft', 'ros', 'week', 'dynasty'] as RankingKind[]) {
-          if (typeof parsed[k] === 'string') base[k] = parsed[k]
+        for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+          if (typeof v === 'string' && k.includes(':')) base[k] = v
         }
         return base
       }
     }
   } catch { /* fall through */ }
-  // A single active id from before kinds existed was a draft selection.
+
+  /*
+   * Migration, in two steps back.
+   *
+   * Selections used to be keyed by kind alone, and before that a single id meant a draft list.
+   * Both are football by definition — hockey could not select anything until the board could
+   * read a list at all, which shipped the same day this key changed.
+   */
+  try {
+    const byKind = read(OLD_ACTIVE_BY_KIND)
+    if (byKind) {
+      const parsed = JSON.parse(byKind)
+      if (parsed && typeof parsed === 'object') {
+        for (const k of ['draft', 'ros', 'week', 'dynasty'] as RankingKind[]) {
+          if (typeof parsed[k] === 'string' && parsed[k]) base[activeKey('football', k)] = parsed[k]
+        }
+      }
+      drop(OLD_ACTIVE_BY_KIND)
+    }
+  } catch { /* fall through */ }
   const old = read(OLD_ACTIVE)
-  if (old) { base.draft = old; drop(OLD_ACTIVE); write(ACTIVE_KEY, JSON.stringify(base)) }
+  if (old) { base[activeKey('football', 'draft')] = old; drop(OLD_ACTIVE) }
+  if (Object.keys(base).length) write(ACTIVE_KEY, JSON.stringify(base))
   return base
 }
 
@@ -160,7 +203,7 @@ function loadActive(): Record<RankingKind, string> {
  * never re-read it. One store per tab keeps them honest.
  */
 const sharedSets = ref<RankingSet[] | null>(null)
-const sharedActive = ref<Record<RankingKind, string> | null>(null)
+const sharedActive = ref<ActiveMap | null>(null)
 
 /**
  * Accepts a getter as well as a literal, because one caller's kind CHANGES.
@@ -172,9 +215,22 @@ const sharedActive = ref<Record<RankingKind, string> | null>(null)
  * been reachable, setActive would have written the choice against 'ros'. One captured string,
  * both halves broken.
  */
-export function useCustomRankings(kindInput: RankingKind | (() => RankingKind) = 'draft') {
+export function useCustomRankings(
+  kindInput: RankingKind | (() => RankingKind) = 'draft',
+  sportInput?: SportType | (() => SportType),
+) {
   const kindRef = computed<RankingKind>(() =>
     typeof kindInput === 'function' ? kindInput() : kindInput,
+  )
+  /*
+   * A kind is not unique across sports — football's draft room and hockey's draft board both
+   * read 'draft'. Callers on a single-sport surface name their sport; everyone else follows
+   * whatever the app is currently showing.
+   */
+  const sportStore = useSportStore()
+  const sportRef = computed<SportType>(() =>
+    typeof sportInput === 'function' ? sportInput()
+      : sportInput ?? ((sportStore.activeSport as SportType) || 'football'),
   )
   /*
    * Season Pass, not admin.
@@ -191,13 +247,16 @@ export function useCustomRankings(kindInput: RankingKind | (() => RankingKind) =
   if (sharedSets.value === null) sharedSets.value = loadSets()
   if (sharedActive.value === null) sharedActive.value = loadActive()
   const sets = sharedSets as Ref<RankingSet[]>
-  const activeByKind = sharedActive as Ref<Record<RankingKind, string>>
+  const activeByKind = sharedActive as Ref<ActiveMap>
 
   const persistSets = () => write(SETS_KEY, JSON.stringify(sets.value))
   const persistActive = () => write(ACTIVE_KEY, JSON.stringify(activeByKind.value))
 
-  const setsOfKind = computed(() => sets.value.filter((s) => s.kind === kindRef.value))
-  const activeId = computed(() => activeByKind.value[kindRef.value] ?? UFD)
+  /* A list with no sport predates the field and is football, per the note on RankingSet. */
+  const setsOfKind = computed(() => sets.value.filter(
+    (s) => s.kind === kindRef.value && (s.sport ?? 'football') === sportRef.value,
+  ))
+  const activeId = computed(() => activeByKind.value[activeKey(sportRef.value, kindRef.value)] ?? UFD)
   const activeSet = computed<RankingSet | null>(
     () => sets.value.find((s) => s.id === activeId.value && s.kind === kindRef.value) ?? null,
   )
@@ -251,19 +310,28 @@ export function useCustomRankings(kindInput: RankingKind | (() => RankingKind) =
   /** What a surface should say its order came from. */
   const sourceName = computed(() => (enabled.value ? activeSet.value!.name : UFD_LABEL))
 
-  function setActive(id: string, forKind: RankingKind = kindRef.value) {
-    const ok = sets.value.some((s) => s.id === id && s.kind === forKind)
-    activeByKind.value = { ...activeByKind.value, [forKind]: ok ? id : UFD }
+  function setActive(id: string, forKind: RankingKind = kindRef.value,
+                     forSport: SportType = sportRef.value) {
+    /* A set only becomes active for the sport it belongs to: selecting a hockey list could
+       otherwise be recorded against football and re-seat a board it says nothing about. */
+    const ok = sets.value.some(
+      (s) => s.id === id && s.kind === forKind && (s.sport ?? 'football') === forSport,
+    )
+    activeByKind.value = { ...activeByKind.value, [activeKey(forSport, forKind)]: ok ? id : UFD }
     persistActive()
   }
 
-  function addSet(name: string, text: string, forKind: RankingKind = kindRef.value): RankingSet {
+  function addSet(name: string, text: string, forKind: RankingKind = kindRef.value,
+                  forSport: SportType = sportRef.value): RankingSet {
     const set: RankingSet = {
       id: `r${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`,
       name: name?.trim() || `${KIND_LABELS[forKind]} ${sets.value.length + 1}`,
       text: text ?? '',
       updatedAt: new Date().toISOString(),
       kind: forKind,
+      /* Stamped at upload from the sport on screen — a list is for the board you were
+         looking at when you added it, and nothing else should offer it. */
+      sport: forSport,
     }
     sets.value = [...sets.value, set]
     persistSets()
@@ -318,7 +386,9 @@ export function useCustomRankings(kindInput: RankingKind | (() => RankingKind) =
     const gone = sets.value.find((s) => s.id === id)
     sets.value = sets.value.filter((s) => s.id !== id)
     persistSets()
-    if (gone && activeByKind.value[gone.kind] === id) setActive(UFD, gone.kind)
+    if (gone && activeByKind.value[activeKey(gone.sport ?? 'football', gone.kind)] === id) {
+      setActive(UFD, gone.kind, gone.sport ?? 'football')
+    }
   }
 
   /** Upload a file as a new list of a kind, or replace an existing one. */

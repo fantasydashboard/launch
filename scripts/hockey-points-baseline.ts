@@ -23,7 +23,7 @@
  * goalie out-scores every skater and a defenceman trails every forward — so the baseline's own
  * value-above-replacement column is the like-for-like comparison against our VOR.
  */
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
 import { mergeHockeyProjections, normalizeName } from '@/hockey/hockeyProjectionSource'
 import { buildHockeyBoard } from '@/hockey/hockeyBoard'
 
@@ -56,14 +56,52 @@ function parseCsv(text: string) {
   return out
 }
 
+/* BASE defaults to the local dev server, which is the only one running unreleased API changes.
+   Pointed at production, a relay that has not shipped a new report answers 400, the service
+   degrades softly to [], and a sweep of the feature depending on it reports NO EFFECT at every
+   setting — which is what happened, and reads exactly like a negative result. */
+const BASE = process.env.BASE ?? 'http://localhost:5173'
+
+/*
+ * UPSTREAM CACHED TO DISK, because a sweep re-runs this a dozen times and the NHL host starts
+ * answering 429 partway through. When it does, the service layer degrades softly to [] — by
+ * design, so a user never loses a board — and the sweep then reports a full set of plausible
+ * numbers computed from a feed with ZERO rates in it. Every setting scores identically and it
+ * reads exactly like "this feature does nothing", which is the most expensive way to be wrong
+ * about an experiment. Cache the reads; the seasons being compared are long finished.
+ */
+const CACHE = process.env.CACHE_DIR ?? `${process.env.S ?? '.'}/nhlcache`
+mkdirSync(CACHE, { recursive: true })
 const orig = globalThis.fetch
-globalThis.fetch = ((i: any, init?: any) => {
+globalThis.fetch = (async (i: any, init?: any) => {
   const u = typeof i === 'string' ? i : i.url
-  return orig(u.startsWith('/') ? `https://www.ultimatefantasydashboard.com${u}` : u, init)
+  const full = u.startsWith('/') ? `${BASE}${u}` : u
+  if (!/\/api\/nhl-stats|\/api\/hockey-projections/.test(full)) return orig(full, init)
+  /* Keyed on path+query, NOT the full URL, so a cache filled from one host is usable from
+     another — which is how an entry fetched via production serves a run pointed at localhost. */
+  const rel = full.replace(/^https?:\/\/[^/]+/, '')
+  const key = `${CACHE}/${Buffer.from(rel).toString('base64url').slice(-120)}.json`
+  if (existsSync(key)) {
+    return new Response(readFileSync(key), { status: 200, headers: { 'content-type': 'application/json' } })
+  }
+  const r = await orig(full, init)
+  if (r.ok && /json/i.test(r.headers.get('content-type') ?? '')) {
+    const text = await r.text()
+    writeFileSync(key, text)
+    return new Response(text, { status: 200, headers: { 'content-type': 'application/json' } })
+  }
+  return r
 }) as any
 const { loadNhlFeed } = await import('@/composables/useNhlFeed')
 
 const feed = await loadNhlFeed(2027)
+/*
+ * A degraded feed must not be measured. Softly-empty upstreams still produce a board — from
+ * ESPN alone — and every number below would be real-looking and meaningless.
+ */
+if (feed.rates.length < 500) {
+  throw new Error(`feed has only ${feed.rates.length} rated skaters — upstream degraded, refusing to report`)
+}
 const merged = mergeHockeyProjections({ espn: feed.espn as any, rates: feed.rates as any, historyGames: feed.historyGames })
 const projections = Object.fromEntries(Object.entries(merged.projections).filter(([k]) => !k.startsWith('nhl:')))
 

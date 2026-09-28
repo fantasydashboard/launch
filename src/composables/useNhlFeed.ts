@@ -1,9 +1,11 @@
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import {
-  fetchSkaterSummary, fetchSkaterIce, fetchSkaterRealtime, fetchGoalieSummary, type GoalieRow,
+  fetchSkaterSummary, fetchSkaterIce, fetchSkaterRealtime, fetchGoalieSummary, fetchSkaterBios,
+  type GoalieRow,
 } from '@/services/nhlStats'
 import { rateSkaters, type SkaterRate } from '@/hockey/nhlRates'
 import { blendSeasons, PRIOR_WEIGHTS } from '@/hockey/blendSeasons'
+import { ageFactor, ageAtSeason } from '@/hockey/agingCurve'
 import type { EspnHockeyPlayer } from '@/hockey/hockeyProjectionSource'
 
 /**
@@ -91,7 +93,7 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
    * like that is wrong for a week every year and nobody notices.
    */
   const [current, currentIce, prior, priorIce, curG, priorG, curRt, priorRt, espn,
-         prior2, prior2Rt, prior3, prior3Rt] =
+         prior2, prior2Rt, prior3, prior3Rt, bios] =
     await Promise.all([
       fetchSkaterSummary(seasonId(year)),
       fetchSkaterIce(seasonId(year)),
@@ -118,6 +120,8 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
       fetchSkaterRealtime(seasonId(year - 2)),
       fetchSkaterSummary(seasonId(year - 3)),
       fetchSkaterRealtime(seasonId(year - 3)),
+      /* Birth dates. One read — they do not change between seasons. */
+      fetchSkaterBios(seasonId(year - 1)),
     ])
 
   /* Hits and blocks arrive on their own report, merged on before rating so the rate model
@@ -136,6 +140,34 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
   const prior3Full = mergeRt(prior3, prior3Rt)
 
   /*
+   * AGE EACH SEASON FORWARD TO THE ONE BEING PROJECTED.
+   *
+   * Without this the prior asserts that a 22-year-old and a 35-year-old are both exactly what
+   * they were, and the error runs opposite ways at the two ends — which is why it survived so
+   * long, since it cancels in any aggregate mixing them. Measured over 986 player-pairs; see
+   * src/hockey/agingCurve.ts.
+   *
+   * Applied to the counting stats and NOT to games played: the curve measures scoring RATE,
+   * and scaling games here would silently turn it into an availability model as well.
+   */
+  const bornById = new Map<number, string>()
+  for (const b of bios) if (b.birthDate) bornById.set(b.playerId, b.birthDate)
+  const targetYear = year
+
+  const agedForSeason = (rows: typeof priorFull, seasonStartYear: number) => rows.map((p) => {
+    const was = ageAtSeason(bornById.get(p.playerId), seasonStartYear)
+    if (was == null) return p
+    const f = ageFactor(was, was + (targetYear - seasonStartYear))
+    if (f === 1) return p
+    const out: any = { ...p }
+    for (const k of ['goals', 'assists', 'points', 'plusMinus', 'penaltyMinutes', 'ppPoints',
+                     'shots', 'hits', 'blockedShots', 'ppGoals', 'shGoals', 'shPoints']) {
+      if (typeof out[k] === 'number') out[k] = out[k] * f
+    }
+    return out
+  })
+
+  /*
    * The prior the rate model regresses toward: the last three seasons, most recent heaviest.
    *
    * Weighted totals over weighted games, so a 20-game season cannot count the same as an
@@ -143,7 +175,9 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
    * keeps a rookie rated on the season he actually played instead of diluted toward zero.
    */
   const blended = blendSeasons(
-    [priorFull, prior2Full, prior3Full] as any,
+    [agedForSeason(priorFull, year - 1),
+     agedForSeason(prior2Full, year - 2),
+     agedForSeason(prior3Full, year - 3)] as any,
     PRIOR_WEIGHTS,
   ) as unknown as typeof priorFull
 

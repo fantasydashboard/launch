@@ -105,6 +105,26 @@ export async function fetchSkaterIce(seasonId: string): Promise<IceRow[]> {
 }
 
 /** Every goalie's season totals. The rate model for these belongs to a later task. */
+export interface BioRow { playerId: number; birthDate?: string }
+
+/**
+ * Birth dates, which is the only route to a player's age.
+ *
+ * Its own report and its own call because it is the one thing here that does not change
+ * between seasons — a single read of the most recent year names everybody currently playing.
+ * Note the plural in `skater/bios`: `skater/bio` answers 500 with an HTML body.
+ */
+export async function fetchSkaterBios(seasonId: string): Promise<BioRow[]> {
+  try {
+    return await fetchAllRows<BioRow>('skater/bios', seasonId)
+  } catch (err) {
+    /* Soft: without ages the aging curve is skipped and the board is what it was before it
+       existed. Losing it costs accuracy, never a board. */
+    console.warn('[nhlStats] fetchSkaterBios failed, ages unavailable', err)
+    return []
+  }
+}
+
 export async function fetchGoalieSummary(seasonId: string): Promise<GoalieRow[]> {
   try {
     return await fetchAllRows<GoalieRow>('goalie/summary', seasonId)

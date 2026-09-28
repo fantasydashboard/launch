@@ -51,8 +51,9 @@
 
           <label v-for="set in setsFor(k)" :key="set.id"
                  class="mb-2 flex cursor-pointer items-center gap-3 rounded-lg border p-3"
-                 :class="activeFor(k) === set.id ? 'border-primary bg-primary/5' : 'border-dark-border'">
-            <input type="radio" :checked="activeFor(k) === set.id" @change="customRankings.setActive(set.id, k)" />
+                 :class="isActive(set) ? 'border-primary bg-primary/5' : 'border-dark-border'">
+            <input type="radio" :checked="isActive(set)" @change="customRankings.setActive(set.id, k, sportOf(set))" />
+            <span class="mr-1 rounded bg-dark-border px-1 text-[10px] uppercase">{{ sportOf(set) }}</span>
             <span class="min-w-0 flex-1">
               <input
                 :value="set.name"
@@ -390,7 +391,8 @@ import { useAuthStore } from '@/stores/auth'
 import { supabase } from '@/lib/supabase'
 import { cache } from '@/services/cache'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
-import { useCustomRankings, KIND_LABELS, KIND_STALE_DAYS, UFD_LABEL, type RankingKind } from '@/composables/useCustomRankings'
+import { useCustomRankings, KIND_LABELS, KIND_STALE_DAYS, UFD_LABEL, activeKey, type RankingKind } from '@/composables/useCustomRankings'
+import type { SportType } from '@/config/sports/types'
 import { parseRankings, inferRankingPosition } from '@/draft/room/customRankings'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
@@ -437,11 +439,21 @@ async function openBillingPortal() {
 // belongs beside the other standing settings rather than inside a draft tool.
 const customRankings = useCustomRankings()
 const KINDS: RankingKind[] = ['draft', 'ros', 'week', 'dynasty']
-const newName = ref<Record<RankingKind, string>>({ draft: '', ros: '', week: '' })
+const newName = ref<Record<RankingKind, string>>({ draft: '', ros: '', week: '', dynasty: '' })
 const rankingsFileMsg = ref('')
 
+/*
+ * This page manages every sport's lists, not just the one on screen, so it does NOT filter by
+ * sport — it labels instead. What it must not do is read the active selection by kind alone:
+ * selections are keyed by sport AND kind, because football's draft room and hockey's draft
+ * board both use 'draft' and a shared selection had one list driving both.
+ */
 const setsFor = (k: RankingKind) => customRankings.sets.value.filter((s) => s.kind === k)
-const activeFor = (k: RankingKind) => customRankings.activeByKind.value[k] ?? ''
+const sportOf = (set: { sport?: SportType }): SportType => set.sport ?? 'football'
+const activeFor = (k: RankingKind, sport: SportType = 'football') =>
+  customRankings.activeByKind.value[activeKey(sport, k)] ?? ''
+const isActive = (set: { id: string; kind: RankingKind; sport?: SportType }) =>
+  activeFor(set.kind, sportOf(set)) === set.id
 const countOf = (text: string) => parseRankings(text).length
 const ageLabel = (iso: string) => {
   const d = customRankings.ageDaysOf(iso)

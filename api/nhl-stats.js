@@ -27,7 +27,11 @@ const WEB = 'https://api-web.nhle.com/v1'
 
 /* Only the reports this product reads. An open relay would let anyone point our origin at
    arbitrary NHL paths, and the allowlist costs one line per legitimate addition. */
-const ALLOWED = new Set(['skater/summary', 'skater/timeonice', 'skater/realtime', 'goalie/summary'])
+/* `skater/bios` carries birth dates, which is the only way the board can know a player's age —
+   and without age there is no aging curve, so a 22-year-old and a 35-year-old are both
+   projected as exactly what they were last year. Note the plural: `skater/bio` returns a 500
+   with an HTML body, which a bare .json() reports as "Unexpected token '<'". */
+const ALLOWED = new Set(['skater/summary', 'skater/timeonice', 'skater/realtime', 'goalie/summary', 'skater/bios'])
 
 /*
  * The load-bearing query parameter.
