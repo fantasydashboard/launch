@@ -479,6 +479,8 @@ export function useCustomRankings(
     hasRankings,
     hasOwnTiers,
     enabled,
+    /* Surfaced so a picker can name the sport its empty state is about. */
+    sport: sportRef,
     sourceName,
     ageDays,
     ageDaysOf,
