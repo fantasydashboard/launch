@@ -35,9 +35,19 @@ export interface NhlFeed {
   started: boolean
   /** playerId -> his own weighted games per season, for the availability blend. */
   historyGames?: Map<number, number>
+  /**
+   * How many players the aging curve could actually be applied to.
+   *
+   * Reported rather than assumed because the birth-date read degrades softly like everything
+   * else here: a relay that does not serve `skater/bios` returns nothing, the ages map is
+   * empty, and the board is silently built with NO aging at all. That produced a confident
+   * wrong answer three separate times — a sweep that showed "no effect at any setting", and a
+   * social card whose numbers quietly reverted. Anything that cares can now check.
+   */
+  agesKnown?: number
 }
 
-const EMPTY: NhlFeed = { rates: [], goalies: [], espn: [], season: '', started: false, historyGames: new Map() }
+const EMPTY: NhlFeed = { rates: [], goalies: [], espn: [], season: '', started: false, historyGames: new Map(), agesKnown: 0 }
 
 /** A season id the NHL understands: 2026 -> '20262027'. */
 export function seasonId(startYear: number): string {
@@ -221,6 +231,7 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
 
   return {
     historyGames,
+    agesKnown: bornById.size,
     rates: rateSkaters(roster, started ? currentIce : priorIce, blendedPrior),
     goalies: curG.length ? curG : priorG,
     espn,
