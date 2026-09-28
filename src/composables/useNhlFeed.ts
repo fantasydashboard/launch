@@ -6,7 +6,7 @@ import {
 import { rateSkaters, type SkaterRate } from '@/hockey/nhlRates'
 import { blendSeasons, PRIOR_WEIGHTS } from '@/hockey/blendSeasons'
 import { ageFactor, ageAtSeason } from '@/hockey/agingCurve'
-import { regressPlusMinus } from '@/hockey/plusMinusRegression'
+import { regressShooting } from '@/hockey/shootingRegression'
 import type { EspnHockeyPlayer } from '@/hockey/hockeyProjectionSource'
 
 /**
@@ -238,7 +238,17 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
    * Done here rather than inside rateSkaters because the regression needs the whole pool to
    * find the mean it pulls toward, and that function is written one player at a time.
    */
-  const rates = regressPlusMinus(rateSkaters(roster, started ? currentIce : priorIce, blendedPrior))
+  /*
+   * Shooting regressed here, on the rates, because it rebuilds a goal RATE from a shot rate
+   * and a finishing percentage — all per-game quantities.
+   *
+   * Plus-minus is NOT done here. It regresses on the projected totals instead, in
+   * hockeyProjectionSource: applied to rates, the per-player games factor stops it being a
+   * uniform transform of the column, which a category board's z-scores feel directly. Measured:
+   * on rates it moved the category board from a weighted gap of 31.8 to 32.9; on totals it
+   * leaves it untouched and still fixes the magnitudes.
+   */
+  const rates = regressShooting(rateSkaters(roster, started ? currentIce : priorIce, blendedPrior))
 
   return {
     historyGames,

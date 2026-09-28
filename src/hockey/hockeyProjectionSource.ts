@@ -1,4 +1,5 @@
 import type { SkaterRate } from './nhlRates'
+import { regressPlusMinusTotals } from './plusMinusRegression'
 import { ratesToProjection } from './ratesToProjection'
 import type { HockeyProjection } from './hockeyValue'
 
@@ -200,6 +201,14 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
   }
 
   const { projections, missing } = ratesToProjection(rates, gamesFor, leagueKeys)
+
+  /*
+   * Plus-minus, regressed on the TOTALS — see src/hockey/plusMinusRegression.ts for why this
+   * is the column that needs it (year-over-year r of 0.32) and why it belongs here rather than
+   * on the rates (a per-player games factor stops it being a uniform transform, which a
+   * category board's z-scores then feel).
+   */
+  regressPlusMinusTotals(projections as any)
 
   const out: Record<string, HockeyProjection> = {}
   const keyByName: Record<string, string> = {}

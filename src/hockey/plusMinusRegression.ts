@@ -67,3 +67,29 @@ export function regressPlusMinus<T extends HasPlusMinus>(
   const regressed = regressToMean(rates.map((r) => r.perGame?.plusMinus ?? 0), persistence)
   return rates.map((r, i) => ({ ...r, perGame: { ...r.perGame, plusMinus: regressed[i] } }))
 }
+
+/**
+ * The same regression, applied to projected TOTALS rather than rates.
+ *
+ * WHERE IT IS APPLIED TURNS OUT TO MATTER, and not for a reason I expected. Regressing the
+ * RATE and then multiplying by each player's games leaves a shift that varies with his games:
+ *
+ *     total' = games x (m + r(rate - m)) = r x total + games x m x (1 - r)
+ *
+ * The intercept is per-player, so it is not a uniform transform of the column — and a category
+ * board standardises that column, where a uniform transform would have cancelled out exactly.
+ * Applied to rates it moved the category board measurably worse (weighted gap 31.8 -> 32.9);
+ * applied to totals it cannot, because z-scores are invariant under it.
+ *
+ * The magnitudes it fixes are the same either way. This is the version that fixes them without
+ * disturbing anything else.
+ */
+export function regressPlusMinusTotals(
+  projections: Record<string, { stats?: Record<string, number> }>,
+  persistence = PLUS_MINUS_PERSISTENCE,
+): void {
+  const keys = Object.keys(projections).filter((k) => typeof projections[k]?.stats?.PLUSMINUS === 'number')
+  if (!keys.length) return
+  const out = regressToMean(keys.map((k) => projections[k].stats!.PLUSMINUS), persistence)
+  keys.forEach((k, i) => { projections[k].stats!.PLUSMINUS = out[i] })
+}
