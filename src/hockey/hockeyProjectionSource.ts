@@ -3,6 +3,7 @@ import { regressPlusMinusTotals } from './plusMinusRegression'
 import { projectGames } from './gamesProjection'
 import { ratesToProjection } from './ratesToProjection'
 import { joinEspnRows, ESPN_POSITION } from './espnRateJoin'
+import { goalieMatcher } from './goalieNameMatch'
 /* Re-exported below: it was defined here first and the rest of the app imports it from here. */
 import { normalizeName } from './normalizeName'
 export { normalizeName }
@@ -227,9 +228,13 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
   const rateByKey: Record<string, SkaterRate> = {}
   const teamByKey: Record<string, string> = {}
   const claimed = new Set<string>()
-  /* Keyed by name: our goalie projections carry NHL ids and ESPN's rows carry ESPN's. */
-  const ourGoalies = new Map<string, NonNullable<typeof goalieProjections>[number]>()
-  for (const g of goalieProjections ?? []) if (g.name) ourGoalies.set(normalizeName(g.name), g)
+  /*
+   * Matched by name, because our goalie projections carry NHL ids and ESPN's rows carry ESPN's —
+   * and by a tested matcher rather than a bare Map, because a bare Map missed "Sam" against
+   * "Samuel" and thereby put a tandem goalie top of the board on ESPN's 33 wins. See
+   * src/hockey/goalieNameMatch.ts.
+   */
+  const ourGoalies = goalieMatcher(goalieProjections ?? [])
 
   for (const r of rates) {
     const built = projections[String(r.playerId)]
@@ -279,7 +284,7 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
      * score is replaced together — a board half ours and half ESPN's would rank goalies on two
      * models at once, which is worse than either.
      */
-    const mine = ourGoalies.get(normalizeName(p.name))
+    const mine = ourGoalies.find(p.name)
     if (mine) {
       stats = {
         ...stats,
