@@ -163,6 +163,30 @@ const router = createRouter({
       component: () => import('@/views/RankingsWrapper.vue'),
       meta: { public: true, publicLayout: 'marketing' }
     },
+    /*
+     * The hockey board, at a link that can be printed on something.
+     *
+     * /rankings picks its sport from `leagueStore.activeSport`, which DEFAULTS TO FOOTBALL and
+     * only becomes hockey once a reader has loaded a hockey league. So every hockey card and
+     * tier post we publish was sending strangers to a football page — the one audience most
+     * certain not to have a hockey league already connected is the one arriving from a hockey
+     * post. There is no ?sport= override on that route either.
+     *
+     * Renders HockeyRankingsView directly rather than routing through the wrapper, and
+     * deliberately does NOT write activeSport: a reader with a football league who follows a
+     * hockey link should see the hockey board, not have their session quietly switched sport
+     * underneath them. The board's only use of activeSport is reading a connected league's own
+     * categories, which a visitor arriving cold does not have and does not need — they get the
+     * public default, which is what the card was scored on anyway.
+     *
+     * One word, no slash, because it goes in post copy and gets read aloud.
+     */
+    {
+      path: '/hockeyrankings',
+      name: 'hockey-rankings',
+      component: () => import('@/views/HockeyRankingsView.vue'),
+      meta: { public: true, publicLayout: 'marketing' }
+    },
     {
       path: '/trades',
       name: 'trades',
