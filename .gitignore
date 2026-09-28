@@ -71,3 +71,4 @@ supabase/.temp/
 # once so a sweep is not re-run against a throttled relay — and never committed, because a
 # stale one is how three experiments this month reported confident no-ops.
 .cache/
+.env*
