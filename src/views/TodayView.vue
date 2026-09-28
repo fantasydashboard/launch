@@ -11,6 +11,9 @@ import TodayMatchupSpots from '@/components/today/TodayMatchupSpots.vue'
 import { useDailyMatchup } from '@/composables/useDailyMatchup'
 import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
+import PreseasonPanel from '@/components/today/PreseasonPanel.vue'
+import { useSeasonPhase } from '@/composables/useSeasonPhase'
+import { showsHockeyBoardTab } from '@/lib/navTabs'
 
 const leagueStore = useLeagueStore()
 const words = computed(() => wordsFor(leagueStore.activeSport))
@@ -70,6 +73,28 @@ onMounted(() => {
 // show a graceful, sport-appropriate message instead of the baseball framing.
 const isFootball = computed(() => leagueStore.activeSport === 'football')
 
+/*
+ * BEFORE THE SEASON IS NOT THE SAME STATE AS A DARK NIGHT.
+ *
+ * Both have no games, so every block below renders nothing and the page falls through to
+ * "the board lights up when games resume" — a sentence that is true in February and a lie in
+ * September. See useSeasonPhase: this reads the NHL's own regularSeasonStartDate rather than
+ * guessing from an empty slate, so a failed fetch stays 'unknown' and renders what shipped
+ * before instead of hiding a live board.
+ *
+ * Note App.vue has its own `nhlSeasonStarted`, which answers a DIFFERENT question — does the
+ * stats feed have rows yet — for a different purpose, whether to offer the Draft Board. It is
+ * deliberately not unified here: that flag gates navigation and this one gates a page.
+ */
+const season = useSeasonPhase()
+onMounted(() => season.load())
+const isPreseason = computed(() => season.phase.value === 'before')
+const hasDraftBoard = computed(() => showsHockeyBoardTab({
+  sport: leagueStore.activeSport,
+  platform: leagueStore.activePlatform,
+  seasonStarted: false,
+}))
+
 onMounted(() => load())
 watch(() => leagueStore.activeLeagueId, () => load())
 
@@ -126,6 +151,12 @@ const showFailed = computed(() => error.value === 'failed')
       the same morning saw structurally different products.
     -->
     <template v-else>
+      <PreseasonPanel v-if="isPreseason"
+                      :starts-when="season.startsWhen.value"
+                      :start-date-label="season.startDateLabel.value"
+                      :opening-games="season.openingGames.value"
+                      :has-draft-board="hasDraftBoard" />
+
       <!-- 1. WHERE THE WEEK STANDS -->
       <TodayMatchupHeader
         :daily="matchup.snapshot.value"
@@ -140,14 +171,17 @@ const showFailed = computed(() => error.value === 'failed')
                          :opp-name="matchup.snapshot.value.opp.name"
                          :my-name="matchup.snapshot.value.me.name" />
 
-      <!-- Dark night is a real answer, and it belongs inside the page rather than instead of it. -->
-      <p v-if="noGames"
+      <!-- Dark night is a real answer, and it belongs inside the page rather than instead of it.
+           "Resume" is only honest once the season has started; before it, say so. -->
+      <p v-if="noGames && !isPreseason"
          class="mb-5 rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-center font-mono text-[11px] text-dark-textMuted">
         No {{ words.league }} games today &mdash; the board lights up when games resume.
       </p>
 
-      <!-- 2. YOUR LINEUP, AND THE ONE WE'D SET -->
-      <DailyLineupPanel
+      <!-- 2. YOUR LINEUP, AND THE ONE WE'D SET
+           Suppressed before opening night: with no slate every seat reads "no game", which is
+           a screen of grey that teaches nothing and buries the one thing worth saying. -->
+      <DailyLineupPanel v-if="!isPreseason"
         :current="daily.current.value" :optimal="daily.lineup.value"
         :bench="daily.bench.value"
         :value-label="daily.valueLabel.value"
@@ -156,7 +190,7 @@ const showFailed = computed(() => error.value === 'failed')
       <!-- ── TONIGHT'S RANKINGS ──────────────────────────────────────────── -->
       <!-- 2b. CLOSEST CALLS — the decisions where we do NOT have a real opinion, which is
            worth more daily than weekly because the same call returns every night. -->
-      <section v-if="daily.closestCalls.value.length"
+      <section v-if="!isPreseason && daily.closestCalls.value.length"
                class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
           Closest calls
@@ -178,15 +212,15 @@ const showFailed = computed(() => error.value === 'failed')
         </div>
       </section>
 
-      <DailyRankingsPanel v-if="daily.canValue.value"
+      <DailyRankingsPanel v-if="!isPreseason && daily.canValue.value"
                           :rows="daily.rankings.value"
                           :scarcity="daily.scarcity.value"
                           :opp-name="matchup.snapshot.value?.opp.name"
                           :slot-order="Object.keys(teamSource.rosterSlots.value ?? {})" />
       <!-- Absent with a reason. A panel that simply disappears reads as a page still loading,
            and a board of zeroes reads as a ranking — so say which of the two this is. -->
-      <p v-else class="mt-5 rounded-xl border border-dark-border bg-dark-bg/40 px-4 py-6 text-center font-mono text-[11px] text-dark-textMuted">
-        Still reading the projection universe tonight's category values are measured against.
+      <p v-else-if="!isPreseason" class="mt-5 rounded-xl border border-dark-border bg-dark-bg/40 px-4 py-6 text-center font-mono text-[11px] text-dark-textMuted">
+        Still reading the projection universe that tonight's category values are measured against.
       </p>
     </template>
   </div>

@@ -79,6 +79,25 @@ const contested = computed(() =>
 )
 
 const days = computed(() => props.daysRemaining ?? props.snapshot?.daysRemaining ?? null)
+
+/*
+ * GAMES LEFT, WHICH IS THE NUMBER THIS SPORT IS ACTUALLY PLAYED ON.
+ *
+ * Football's page counts seats, because football gives every roster nine of them and one game
+ * each. A daily league hands one roster twenty-eight skater games this week and its opponent
+ * twenty-two, and that gap decides more weeks than any single start/sit on the page. It is
+ * the whole reason streaming an off-night works.
+ *
+ * Shown only with both sides present and a real slate behind them: one side alone is a number
+ * without a scale, and "0 games left" on a failed schedule read would be a confident lie in
+ * the same shape as a true one.
+ */
+const games = computed(() => {
+  const mine = props.daily?.myGames
+  const theirs = props.daily?.oppGames
+  if (!mine || !theirs || (!mine.games && !theirs.games)) return null
+  return { mine: mine.games, theirs: theirs.games, edge: mine.games - theirs.games }
+})
 </script>
 
 <template>
@@ -134,6 +153,22 @@ const days = computed(() => props.daysRemaining ?? props.snapshot?.daysRemaining
         <img v-if="oppLogo" :src="oppLogo" alt="" @error="onImgErr"
              class="h-8 w-8 shrink-0 rounded-full object-cover" />
       </div>
+    </div>
+
+    <!-- The volume edge. Its own line, under the scoreboard and above the columns, because it
+         is the state of the WEEK rather than of tonight. -->
+    <div v-if="games" class="mt-3 flex items-center justify-center gap-2 border-t border-dark-border/50 pt-2.5">
+      <span class="font-mono text-[10px] uppercase tracking-widest text-dark-textMuted/70">games left</span>
+      <span class="font-mono text-sm font-bold"
+            :class="games.edge > 0 ? 'text-primary' : games.edge < 0 ? 'text-[#e69a4a]' : 'text-dark-text'">
+        {{ games.mine }}<span class="text-dark-textMuted/50">&ndash;</span>{{ games.theirs }}
+      </span>
+      <span v-if="games.edge !== 0" class="font-mono text-[10px]"
+            :class="games.edge > 0 ? 'text-primary/70' : 'text-[#e69a4a]/70'">
+        {{ games.edge > 0 ? '+' : '' }}{{ games.edge }} {{ Math.abs(games.edge) === 1 ? 'game' : 'games' }}
+        {{ games.edge > 0 ? 'for you' : 'against you' }}
+      </span>
+      <span v-else class="font-mono text-[10px] text-dark-textMuted/70">dead even</span>
     </div>
 
     <!-- One sentence, and only when it changes what you do tonight. -->

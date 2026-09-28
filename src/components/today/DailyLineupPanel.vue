@@ -35,8 +35,24 @@ const one = (n: number) => n.toFixed(1)
 function onLogoErr(e: Event) { (e.target as HTMLImageElement).style.display = 'none' }
 
 const mode = ref<'current' | 'optimal'>('current')
-const rows = computed(() => (mode.value === 'optimal' ? props.optimal : props.current))
-const slotOf = (r: DailyRow) => (mode.value === 'optimal' ? r.slot : r.startedSlot)
+/*
+ * A DEAD END IS NOT AN ANSWER.
+ *
+ * Some platforms will not publish a set daily lineup, and the page used to respond by telling
+ * the reader to go and press the other button himself: "we can't read your set lineup —
+ * switch to optimal for our pick". That is the app asking the user to do the app's job, in
+ * the one state where it already knows exactly what it would show him. Football never does
+ * this; it just computes the best lineup and puts it up.
+ *
+ * So when there is no readable lineup we fall through to ours and say which one he is looking
+ * at, rather than leaving him on an empty panel holding an instruction.
+ */
+const canShowCurrent = computed(() => props.current.length > 0)
+const fellBack = computed(() => !canShowCurrent.value && props.optimal.length > 0)
+const activeMode = computed<'current' | 'optimal'>(() =>
+  fellBack.value ? 'optimal' : mode.value)
+const rows = computed(() => (activeMode.value === 'optimal' ? props.optimal : props.current))
+const slotOf = (r: DailyRow) => (activeMode.value === 'optimal' ? r.slot : r.startedSlot)
 
 /*
  * TWO SIDES, TWO TOTALS — BECAUSE ONE TOTAL BURIES EVERY DECISION THE TOGGLE EXISTS FOR.
@@ -109,6 +125,26 @@ const rankTone = (r: DailyRow) => {
 const dead = computed(() => rows.value.filter((r) => !r.playsToday))
 
 /*
+ * SAY IT ONCE.
+ *
+ * On a night nobody plays, this banner named all seventeen starters, and then every one of
+ * those seventeen rows said "no game" underneath it. Three statements of the same fact, the
+ * longest of which was a wall of names carrying no information — because when the answer is
+ * "everybody", the list of who is not the point.
+ *
+ * A PARTIAL slate is the opposite: there the names ARE the decision, because those are the
+ * seats to fill. So the banner keeps the list exactly when it discriminates, caps it when it
+ * would run long, and drops it when it covers the whole lineup.
+ */
+const NAME_CAP = 6
+const allDark = computed(() => dead.value.length > 0 && dead.value.length === rows.value.length)
+const deadNames = computed(() => {
+  const names = dead.value.map((d) => d.name)
+  if (names.length <= NAME_CAP) return names.join(', ')
+  return `${names.slice(0, NAME_CAP).join(', ')} and ${names.length - NAME_CAP} more`
+})
+
+/*
  * Starters who CANNOT PLAY, which is not the same as starters who are carrying something.
  *
  * The first version warned on any designation, so a day-to-day outfielder who will almost
@@ -147,10 +183,10 @@ const canValue = computed(() =>
     <div class="mb-3 flex flex-wrap items-center gap-3">
       <div class="flex rounded-lg border border-dark-border">
         <button class="rounded-l-lg px-3 py-1 font-mono text-[11px] transition-colors"
-                :class="mode === 'current' ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
-                @click="mode = 'current'">your lineup</button>
+                :class="activeMode === 'current' ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+                :disabled="fellBack" @click="mode = 'current'">your lineup</button>
         <button v-if="canValue" class="rounded-r-lg px-3 py-1 font-mono text-[11px] transition-colors"
-                :class="mode === 'optimal' ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
+                :class="activeMode === 'optimal' ? 'bg-primary/15 text-primary' : 'text-dark-textMuted hover:text-dark-text'"
                 @click="mode = 'optimal'">optimal</button>
       </div>
       <span v-if="canValue" class="font-mono text-[11px] text-dark-textMuted">
@@ -178,9 +214,17 @@ const canValue = computed(() =>
       points forfeited outright, and the native lineup screen will never tell you.
     -->
     <p v-if="dead.length"
-       class="mb-3 rounded-lg border border-[#FF5C5C]/30 bg-[#FF5C5C]/5 px-3 py-2 font-mono text-[11px] text-[#FF5C5C]">
-      {{ dead.length }} {{ dead.length === 1 ? 'seat has' : 'seats have' }} no game tonight
-      &mdash; {{ dead.map((d) => d.name).join(', ') }}
+       class="mb-3 rounded-lg px-3 py-2 font-mono text-[11px]"
+       :class="allDark
+         ? 'border border-dark-border bg-dark-bg/40 text-dark-textMuted'
+         : 'border border-[#FF5C5C]/30 bg-[#FF5C5C]/5 text-[#FF5C5C]'">
+      <template v-if="allDark">
+        Nobody in your lineup has a game tonight &mdash; there is nothing to set.
+      </template>
+      <template v-else>
+        {{ dead.length }} {{ dead.length === 1 ? 'seat has' : 'seats have' }} no game tonight
+        &mdash; {{ deadNames }}
+      </template>
     </p>
 
     <p v-if="injuredStarters.length"
@@ -190,14 +234,16 @@ const canValue = computed(() =>
       {{ injuredStarters.map((r) => r.name).join(', ') }}
     </p>
 
-    <p v-if="!rows.length" class="py-6 text-center font-mono text-xs text-dark-textMuted">
-      <template v-if="mode === 'current'">
-        We can't read your set lineup from the platform &mdash; switch to optimal for our pick.
-      </template>
-      <template v-else>No lineup slots to fill &mdash; the league published none.</template>
+    <!-- Stated, not demanded: he is already looking at our lineup. -->
+    <p v-if="fellBack" class="mb-3 font-mono text-[11px] text-dark-textMuted">
+      Your platform doesn't publish a set lineup, so this is ours.
     </p>
 
-    <div v-for="r in rows" :key="mode + r.playerKey"
+    <p v-if="!rows.length" class="py-6 text-center font-mono text-xs text-dark-textMuted">
+      No lineup slots to fill &mdash; the league published none.
+    </p>
+
+    <div v-for="r in rows" :key="activeMode + r.playerKey"
          class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
       <span class="w-10 shrink-0 font-mono text-[10px] uppercase text-dark-textMuted">{{ slotOf(r) }}</span>
       <img v-if="r.headshot" :src="r.headshot" :alt="r.name" loading="lazy" @error="onLogoErr"

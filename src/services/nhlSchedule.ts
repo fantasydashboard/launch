@@ -117,3 +117,61 @@ export async function getNhlSchedule(from: string, to: string): Promise<WeekSche
     return { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
   }
 }
+
+/**
+ * Where the season itself stands, from the same payload the slate comes from.
+ *
+ * WHY THIS EXISTS. The daily board is built entirely around tonight, so on a night with no
+ * games it collapses to a single line — "no games today, the board lights up when games
+ * resume". In the regular season that sentence is true and useful. In September it is a lie
+ * of omission: the season has not started, nothing is going to resume, and a manager reading
+ * it concludes the product is broken rather than that opening night is a week out.
+ *
+ * The schedule endpoint already carries the answer and `parseNhlSchedule` throws it away.
+ * `regularSeasonStartDate`, `preSeasonStartDate` and `regularSeasonEndDate` come back on
+ * every call, so knowing which side of opening night we are on costs nothing extra.
+ *
+ * Cached by date because the page asks for the slate and the phase separately, and these
+ * milestones move roughly never.
+ */
+export interface NhlSeasonWindow {
+  preSeasonStart: string | null
+  regularSeasonStart: string | null
+  regularSeasonEnd: string | null
+  /** Each date in the returned week and how many games it holds. */
+  days: { date: string; games: number }[]
+}
+
+const windowCache = new Map<string, Promise<NhlSeasonWindow | null>>()
+
+export async function getNhlSeasonWindow(from: string): Promise<NhlSeasonWindow | null> {
+  const hit = windowCache.get(from)
+  if (hit) return hit
+  const p = (async () => {
+    try {
+      const res = await fetch(`${API}?schedule=${encodeURIComponent(from)}`)
+      if (!res.ok) return null
+      const j: any = await res.json()
+      return {
+        preSeasonStart: j?.preSeasonStartDate ?? null,
+        regularSeasonStart: j?.regularSeasonStartDate ?? null,
+        regularSeasonEnd: j?.regularSeasonEndDate ?? null,
+        days: Array.isArray(j?.gameWeek)
+          ? j.gameWeek.map((d: any) => ({ date: String(d?.date ?? ''), games: Number(d?.numberOfGames ?? 0) }))
+              .filter((d: { date: string }) => d.date)
+          : [],
+      }
+    } catch {
+      /* Null, not a fabricated window. A failed fetch must not be reported as "the season has
+         not started" — that is the same class of confident-wrong the relay comment warns
+         about, and it would hide the live board on a night games are actually being played. */
+      return null
+    }
+  })()
+  windowCache.set(from, p)
+  return p
+}
+
+export function clearNhlSeasonWindowCache(): void {
+  windowCache.clear()
+}

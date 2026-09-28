@@ -6,6 +6,7 @@ import type { WeekSchedule } from '@/services/mlbSchedule'
 import type { ValueByKey } from '@/myteam/playerValue'
 import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { availability, DOUBTFUL_DISCOUNT, type DailyRow } from '@/composables/useDailyLineup'
+import { gamesRemaining, type GamesSide } from '@/today/gamesRemaining'
 
 /**
  * Who you are playing, and whether you are winning — on the page where you act on it.
@@ -58,6 +59,13 @@ export interface DailyMatchupSnapshot {
   level: number
   /** One plain sentence about what to do, or empty when we have nothing worth saying. */
   verdict: string
+  /*
+   * Games left this week, each side. The lever football has no equivalent for: nine seats and
+   * nine games every week there, an uneven number here that decides weeks on its own. Null
+   * when the slate could not be read, never a confident zero.
+   */
+  myGames: GamesSide | null
+  oppGames: GamesSide | null
 }
 
 /** A pool player reduced to what a spot row shows. */
@@ -208,6 +216,15 @@ export function useDailyMatchup(inputs: {
       verdict = `You are ahead in ${won} of ${s.length} seats tonight.`
     }
 
+    /* Roster-wide and week-long, not tonight's starters: in a daily league a bench skater
+       with four games left is a startable asset, so counting only the set lineup would
+       understate exactly the edge this number exists to show. */
+    const gbt = inputs.weekSchedule.value.gamesByTeam ?? {}
+    const myGames = inputs.myTeamKey.value
+      ? gamesRemaining(inputs.pool.value, inputs.myTeamKey.value, gbt) : null
+    const oppGames = opp.opponentKey
+      ? gamesRemaining(inputs.pool.value, opp.opponentKey, gbt) : null
+
     return {
       me: {
         name: inputs.myTeamName.value || 'Your team',
@@ -223,6 +240,7 @@ export function useDailyMatchup(inputs: {
       spots: s,
       won, lost, level,
       verdict,
+      myGames, oppGames,
     }
   })
 

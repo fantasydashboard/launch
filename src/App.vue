@@ -455,7 +455,7 @@
                 v-if="leagueStore.currentLeague"
                 class="ml-2 px-2 py-0.5 rounded-full bg-dark-card/50 border border-dark-border/50 text-[11px] font-medium text-dark-textMuted whitespace-nowrap"
               >
-                Week {{ leagueStore.currentWeek }} · {{ leagueStore.currentSeason }}
+                Week {{ leagueStore.currentWeek }} · {{ seasonChip }}
               </span>
 
             <!-- User Menu -->
@@ -1209,6 +1209,7 @@ import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { useLeagueShape } from '@/composables/useLeagueShape'
 import { useRouter, useRoute } from 'vue-router'
+import { seasonLabel } from '@/lib/seasonLabel'
 import { useLeagueStore } from '@/stores/league'
 import { useDarkModeStore } from '@/stores/darkMode'
 import { useAuthStore } from '@/stores/auth'
@@ -1472,6 +1473,12 @@ const tabs = computed(() => [
 /* Today, not My Team — the tab it used to land on is no longer in the bar, and a home link
    that opens a page nobody can navigate back to is its own small trap. */
 const homePath = computed(() => (leagueStore.activeSport === 'football' ? '/this-week' : '/today'))
+
+/* Hockey and basketball straddle the New Year, and the two platforms number that season from
+   opposite ends — so the same NHL season showed as 2026 in a Yahoo league and 2027 in an ESPN
+   one. See seasonLabel. */
+const seasonChip = computed(() =>
+  seasonLabel(leagueStore.activeSport, leagueStore.activePlatform, leagueStore.currentSeason))
 const sectionTabs = computed(() => tabs.value.filter((t: any) => !t.isTool))
 
 /*
