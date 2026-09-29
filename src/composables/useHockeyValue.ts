@@ -57,9 +57,13 @@ export interface HockeyValueInputs {
    * the league was priced with an empty weight map. buildHockeyValue prices nothing without
    * weights, which is why a Yahoo hockey points league showed no number beside any player.
    *
-   * Defaults to espn so existing callers are unchanged.
+   * REQUIRED, NOT DEFAULTED, and that is the point. It was optional-defaulting-to-espn "so
+   * existing callers are unchanged", and one of those unchanged callers — useToday — was
+   * already passing a raw Yahoo league key, so it kept the exact bug this field was added to
+   * fix for another two weeks. A default that silently makes a wrong call is worse than a
+   * compiler error at three call sites.
    */
-  platform?: Ref<string>
+  platform: Ref<string>
   season: Ref<number>
   enabled: Ref<boolean>
   /** Weeks left in the season, from the shared trajectory. */
@@ -95,7 +99,7 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
     loading.value = true
     problem.value = ''
     try {
-      if ((inputs.platform?.value ?? 'espn') === 'yahoo') {
+      if (inputs.platform.value === 'yahoo') {
         /* Yahoo publishes its scoring as stat_categories + stat_modifiers, in its own column
            names. See src/hockey/yahooHockeyWeights.ts. */
         const { yahooService } = await import('@/services/yahoo')
@@ -192,8 +196,7 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
     }
   }
 
-  watch([inputs.enabled, inputs.leagueId, inputs.season,
-         computed(() => inputs.platform?.value ?? 'espn')], load, { immediate: true })
+  watch([inputs.enabled, inputs.leagueId, inputs.season, inputs.platform], load, { immediate: true })
 
   /** Nights the season has left, from the calendar — a ceiling, not a per-player estimate. */
   const gamesLeft = computed(() => {

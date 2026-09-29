@@ -401,6 +401,50 @@ describe('hockey slot eligibility', () => {
   })
 })
 
+describe('parseRosterSlots, on a league we could not read', () => {
+  /*
+   * NO HOCKEY DEFAULT, and the sport has to be PASSED for that to hold. parseRosterSlots
+   * defaults its sport to baseball, so a caller that omits it hands a hockey league a lineup
+   * of catchers, shortstops and outfielders — the same failure the ESPN_NHL_SLOT_TO_POS
+   * comment records happening twice: empty baseball seats above a bench holding the whole
+   * roster, because no hockey player can fill a shortstop. useYahooLeaguePool omitted it.
+   */
+  it('invents nothing for a hockey league, and baseball only when asked for baseball', () => {
+    expect(parseRosterSlots('yahoo', null, 'hockey')).toEqual({})
+    expect(parseRosterSlots('espn', null, 'hockey')).toEqual({})
+    expect(Object.keys(parseRosterSlots('yahoo', null, 'baseball')).length).toBeGreaterThan(0)
+  })
+
+  /* The trap: omitting the sport is not a neutral act, it is a vote for baseball. */
+  it('falls to baseball when the sport is omitted, which is why callers must pass it', () => {
+    expect(parseRosterSlots('yahoo', null)).toEqual(DEFAULT_SLOTS)
+  })
+
+  it('reads a real Yahoo hockey roster without needing the sport at all', () => {
+    const slots = parseRosterSlots('yahoo', {
+      roster_positions: [
+        { roster_position: { position: 'C', count: 2 } },
+        { roster_position: { position: 'LW', count: 2 } },
+        { roster_position: { position: 'RW', count: 2 } },
+        { roster_position: { position: 'D', count: 4 } },
+        { roster_position: { position: 'G', count: 2 } },
+        { roster_position: { position: 'Util', count: 1 } },
+        { roster_position: { position: 'BN', count: 4 } },
+        { roster_position: { position: 'IR', count: 2 } },
+      ],
+    }, 'hockey')
+    expect(slots).toEqual({ C: 2, LW: 2, RW: 2, D: 4, G: 2, Util: 1 })
+  })
+
+  /* Yahoo writes it "Util"; the flex table is keyed "UTIL". The seats must still be allocated,
+     which is why flexEligibility upper-cases the slot before looking it up. */
+  it('allocates a Yahoo-cased utility seat to the skaters', () => {
+    const c = startableCounts({ C: 2, LW: 2, RW: 2, D: 4, G: 2, Util: 1 }, 12, 'hockey')
+    expect(c.Util).toBeUndefined()
+    expect(c.D).toBe(4 * 12 + 3)
+  })
+})
+
 describe('flexEligibility', () => {
   it('resolves UTIL by sport and leaves every other slot alone', () => {
     expect(flexEligibility('UTIL', 'hockey')).toEqual(['C', 'LW', 'RW', 'D'])

@@ -53,16 +53,27 @@ export function useYahooLeaguePool() {
   const loading = ref(false)
   const loaded = ref(false)
 
-  // League roster requirements + waiver/FAAB mode; baseball defaults if the call fails.
+  /*
+   * League roster requirements + waiver/FAAB mode.
+   *
+   * THE SPORT IS NOT OPTIONAL. parseRosterSlots defaults it to baseball, and the comment here
+   * used to say "baseball defaults if the call fails" — written when baseball was the only
+   * sport, and left standing through three more. A Yahoo HOCKEY league whose settings failed
+   * to read was therefore handed catchers, shortstops and outfielders, and every consumer
+   * reported a lineup of empty baseball seats above a bench holding the whole roster, because
+   * no hockey player can fill a shortstop. parseRosterSlots deliberately returns NOTHING for a
+   * hockey league it cannot read; omitting the sport was what bypassed that.
+   */
   async function loadRosterSlots() {
     if (Object.keys(rosterSlots.value).length) return
+    const sport = leagueStore.activeSport
     try {
       const { yahooService } = await import('@/services/yahoo')
       const settings = await yahooService.getLeagueSettings(String(leagueStore.activeLeagueId ?? ''))
-      rosterSlots.value = parseRosterSlots('yahoo', settings)
+      rosterSlots.value = parseRosterSlots('yahoo', settings, sport)
       acquisition.value = parseYahooAcquisition(settings)
     } catch {
-      rosterSlots.value = parseRosterSlots('yahoo', null)
+      rosterSlots.value = parseRosterSlots('yahoo', null, sport)
     }
   }
 

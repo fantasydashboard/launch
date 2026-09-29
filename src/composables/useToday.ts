@@ -19,6 +19,7 @@ import type { BenchPlayer } from '@/myteam/yourMove/generators/startSitGenerator
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { getNhlSchedule } from '@/services/nhlSchedule'
 import { useHockeyValue } from '@/composables/useHockeyValue'
+import { platformFromLeagueId } from '@/hockey/platformFromLeagueId'
 import { isDailySport } from '@/today/dailySports'
 import { buildPlayerMatchers, type FGProjection } from '@/services/projectionService'
 import { findOpenSlots, type LineupSlot, type OpenSlot } from '@/today/openSlots'
@@ -467,6 +468,16 @@ export function useToday(): {
   })
   const hockeyValue = useHockeyValue({
     leagueId: hockeyLeagueId,
+    /*
+     * THE CALL SITE THIS WAS ADDED FOR, AND THE ONE THAT DID NOT GET IT. `platform` exists
+     * because useHockeyValue used to read scoring from ESPN unconditionally; this caller was
+     * already handing it a raw Yahoo league key (see hockeyLeagueId above, which falls through
+     * to activeLeagueId) and then letting it default to espn. A Yahoo key against ESPN's
+     * settings endpoint resolves to nothing, so the weights came back empty and every Yahoo
+     * hockey league on this page was priced at nothing — the same absence-not-error failure
+     * the input was introduced to end.
+     */
+    platform: computed(() => platformFromLeagueId(leagueStore.activeLeagueId)),
     season: hockeySeason,
     enabled: isHockey,
     /* From the season's own elapsed fraction, which the store already tracks, rather than a

@@ -154,14 +154,16 @@ export function useMyRoster() {
       fgByKey.value = fg
       statcastByKey.value = sc
 
-      // League roster-slot requirements for the positional dimension. Best-effort: a settings
-      // failure must not break the roster load, and parseRosterSlots falls back to baseball
-      // defaults when settings are missing.
+      /* League roster-slot requirements for the positional dimension. Best-effort: a settings
+         failure must not break the roster load. The sport is passed because omitting it is a
+         vote for baseball, not a neutral act — see useYahooLeaguePool for what that did to a
+         hockey league. */
+      const sport = leagueStore.activeSport
       try {
         const settings = await yahooService.getLeagueSettings(String(leagueKey))
-        if (leagueStore.activeLeagueId === requestedId) rosterSlots.value = parseRosterSlots('yahoo', settings)
+        if (leagueStore.activeLeagueId === requestedId) rosterSlots.value = parseRosterSlots('yahoo', settings, sport)
       } catch {
-        rosterSlots.value = parseRosterSlots('yahoo', null)
+        rosterSlots.value = parseRosterSlots('yahoo', null, sport)
       }
 
       // Filter to the logged-in user's team via fantasy_team_key (the full Yahoo

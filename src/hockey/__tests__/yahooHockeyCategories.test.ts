@@ -97,3 +97,74 @@ describe('yahooHockeyCategories', () => {
     }
   })
 })
+
+/*
+ * THE SEAM, TESTED. Every silent failure in this area has been two shapes meeting with nothing
+ * checking the join: a reader that produces plausible output and an engine that consumes
+ * nothing of it, failing as absence rather than error. yahooHockeyCategories emits the
+ * HockeyCategory shape ESPN's reader emits, and the only proof of that is running the engine
+ * on its output.
+ */
+describe('a Yahoo category league, end to end', () => {
+  /* Yahoo's default NHL head-to-head set, as manualRules already documents it. */
+  const YAHOO_SETTINGS = {
+    stats: [
+      { stat: { stat_id: 0, abbr: 'GP', display_name: 'Games Played', is_only_display_stat: '1' } },
+      { stat: { stat_id: 1, abbr: 'G', display_name: 'Goals' } },
+      { stat: { stat_id: 2, abbr: 'A', display_name: 'Assists' } },
+      { stat: { stat_id: 4, abbr: '+/-', display_name: 'Plus/Minus' } },
+      { stat: { stat_id: 5, abbr: 'PIM', display_name: 'Penalty Minutes' } },
+      { stat: { stat_id: 8, abbr: 'PPP', display_name: 'Powerplay Points' } },
+      { stat: { stat_id: 14, abbr: 'SOG', display_name: 'Shots on Goal' } },
+      { stat: { stat_id: 31, abbr: 'HIT', display_name: 'Hits' } },
+      { stat: { stat_id: 32, abbr: 'BLK', display_name: 'Blocks' } },
+      { stat: { stat_id: 19, abbr: 'W', display_name: 'Wins' } },
+      { stat: { stat_id: 22, abbr: 'GAA', display_name: 'Goals Against Average' } },
+      { stat: { stat_id: 25, abbr: 'SV%', display_name: 'Save Percentage' } },
+      { stat: { stat_id: 26, abbr: 'SHO', display_name: 'Shutouts' } },
+      { stat: { stat_id: 34, abbr: 'FW', display_name: 'Faceoffs Won' } },
+    ],
+  }
+
+  it('reads exactly the set the app already calls Yahoo default', async () => {
+    const { YAHOO_DEFAULT_CATEGORIES } = await import('../manualRules')
+    const { categories } = yahooHockeyCategories(YAHOO_SETTINGS)
+    expect(categories.map((c) => c.key)).toEqual(YAHOO_DEFAULT_CATEGORIES)
+  })
+
+  it('produces values the daily category engine can actually price', async () => {
+    const { hockeyDailyCategoryValue } = await import('@/today/hockeyDailyCategory')
+    const { categories } = yahooHockeyCategories(YAHOO_SETTINGS)
+    const skater = (k: string, g: number, a: number, sog: number) => [k, {
+      playerKey: k, position: 'C', stats: { GP: 82, G: g, A: a, PLUSMINUS: 5, PIM: 20, PPP: 20, SOG: sog, HITS: 50, BLK: 30 },
+    }] as const
+    const goalie = (k: string, w: number, sv: number) => [k, {
+      playerKey: k, position: 'G',
+      /* TOI and SA are the volumes GAA and SV% are earned over — 57 of 58 real goalies carry
+         TOI and all 58 carry SA, so both columns are live rather than silently empty. */
+      stats: { GP: 60, W: w, GAA: 2.5, SVPCT: sv, SHO: 4, TOI: 60 * 3600, SA: 1700 },
+    }] as const
+    const projections = Object.fromEntries([
+      skater('a', 50, 60, 300), skater('b', 30, 40, 220), skater('c', 10, 15, 90),
+      goalie('g1', 35, 0.92), goalie('g2', 20, 0.905),
+    ]) as any
+
+    const values = hockeyDailyCategoryValue({ projections, categories })
+    expect(Object.keys(values).sort()).toEqual(['a', 'b', 'c', 'g1', 'g2'])
+    /* Not merely present — actually differentiated. A column list the engine cannot read
+       returns a value for everyone and the same one, which is the bug this test exists for. */
+    const perGame = (k: string) => values[k].total / values[k].games
+    expect(perGame('a')).toBeGreaterThan(perGame('b'))
+    expect(perGame('b')).toBeGreaterThan(perGame('c'))
+    expect(perGame('g1')).toBeGreaterThan(perGame('g2'))
+    expect(values.g1.side).toBe('pit')
+    expect(values.a.side).toBe('hit')
+  })
+
+  /* The column we cannot price must not quietly become a column worth nothing to everybody. */
+  it('leaves faceoffs out and says so, rather than scoring them zero', () => {
+    const { categories, unmatched } = yahooHockeyCategories(YAHOO_SETTINGS)
+    expect(categories.some((c) => c.key === 'FW')).toBe(false)
+    expect(unmatched).toEqual(['Faceoffs Won'])
+  })
+})
