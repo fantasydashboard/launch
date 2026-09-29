@@ -2299,19 +2299,21 @@ export const useLeagueStore = defineStore('league', () => {
         }
       }
       
-      // Save any newly discovered leagues not yet in savedLeagues (e.g. basketball/hockey on first mobile load)
-      const savedNames = new Set(savedLeagues.value.filter(l => l.platform === 'yahoo').map(l => l.league_name))
-      for (const result of results) {
-        if (result.status !== 'fulfilled') continue
-        const { sport, leagues: sportLeagues } = (result as any).value
-        for (const league of sportLeagues) {
-          if (!savedNames.has(league.name) && userId) {
-            console.log(`[Yahoo Refresh] New league found: "${league.name}" (${sport}) — saving to Supabase`)
-            await saveYahooLeague(league, userId, sport)
-            savedNames.add(league.name)
-          }
-        }
-      }
+      /*
+       * A REFRESH UPDATES WHAT THE USER KEEPS. IT DOES NOT DECIDE WHAT HE KEEPS.
+       *
+       * This used to save every Yahoo league on the account that was not already in
+       * savedLeagues — added to discover basketball and hockey on a first mobile load. The
+       * effect was that removing a league could not stick: deleting it made it "not saved", so
+       * the next refresh rediscovered it and wrote it straight back, along with every dormant
+       * league from every season the account has ever played. A user with ten years of Yahoo
+       * history got ten years of leagues, repeatedly, and no amount of deleting helped.
+       *
+       * Adding is now only ever an explicit act — the Add a League modal lists every league on
+       * the account from a live fetch, so nothing is harder to find; it just no longer arrives
+       * uninvited. Which leagues a person wants is theirs to say, and a delete that does not
+       * stay deleted is not a delete.
+       */
 
       if (updatedCount > 0) {
         console.log(`✅ Updated ${updatedCount} Yahoo league(s) to latest season`)
