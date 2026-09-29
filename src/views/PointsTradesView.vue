@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
+import ScheduleTicks from '@/components/football/ScheduleTicks.vue'
+import { useScheduleDifficulty } from '@/composables/useScheduleDifficulty'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { usePointsValue } from '@/composables/usePointsValue'
@@ -28,6 +30,12 @@ import { teamLogoFor } from '@/players/teamLogo'
 import type { AvailablePlayer } from '@/players/types'
 
 const leagueStore = useLeagueStore()
+
+/* Rest-of-season and next-four difficulty for the head-to-head, rated at each player's OWN
+   position — a schedule is kind to a back and brutal to a tight end in the same breath. Shared
+   with the rankings board rather than recomputed, so the two pages cannot disagree about how
+   hard a run is. */
+const sched = useScheduleDifficulty()
 const { hasFullAccess, accessKnown, accessCheckFailed, isAdmin } = useFeatureAccess()
 const isFootball = computed(() => leagueStore.activeSport === 'football')
 const teamLogo = (abbr?: string) => teamLogoFor(leagueStore.activeSport, abbr)
@@ -1040,8 +1048,16 @@ function fairness(myGain: number, theirGain: number): string {
         <div v-for="row in compare.positions" :key="'cmp-' + row.position" class="mb-3 last:mb-0">
           <div class="mb-1 flex items-baseline justify-between font-mono text-[10px] uppercase tracking-wider">
             <span class="text-dark-textMuted">{{ row.position }}</span>
-            <span :class="row.edge > 0 ? 'text-primary' : row.edge < 0 ? 'text-[#FF5C5C]' : 'text-dark-textMuted'">
-              {{ row.edge > 0 ? 'you +' : row.edge < 0 ? 'them +' : 'even ' }}{{ Math.abs(round(row.edge)) }}
+            <span class="flex items-center gap-2">
+              <!-- Named once, at the top, rather than on every row. -->
+              <span v-if="sched.hasData.value && row.position === compare.positions[0]?.position"
+                    class="hidden items-center gap-1 normal-case tracking-normal text-dark-textMuted/50 sm:flex">
+                <ScheduleTicks :ros="4" :next4="30" />
+                <span>schedule &middot; ros, next 4</span>
+              </span>
+              <span :class="row.edge > 0 ? 'text-primary' : row.edge < 0 ? 'text-[#FF5C5C]' : 'text-dark-textMuted'">
+                {{ row.edge > 0 ? 'you +' : row.edge < 0 ? 'them +' : 'even ' }}{{ Math.abs(round(row.edge)) }}
+              </span>
             </span>
           </div>
           <div class="grid grid-cols-2 gap-2">
@@ -1070,6 +1086,10 @@ function fairness(myGain: number, theirGain: number): string {
                       :title="readAge(row.position, dynRow(b.playerKey)!.age)?.detail ?? ''">
                   {{ Math.floor(dynRow(b.playerKey)!.age!) }}
                 </span>
+                <ScheduleTicks v-if="sched.hasData.value"
+                               :ros="sched.difficultyFor(b.proTeam, row.position)?.ros ?? null"
+                               :next4="sched.difficultyFor(b.proTeam, row.position)?.next4 ?? null"
+                               :position="row.position" />
                 <span class="w-10 shrink-0 text-right font-mono text-[10px]" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted/70'">
                   {{ b.value >= 0 ? '+' : '' }}{{ round(b.value) }}
                 </span>
@@ -1100,6 +1120,10 @@ function fairness(myGain: number, theirGain: number): string {
                       :title="readAge(row.position, dynRow(b.playerKey)!.age)?.detail ?? ''">
                   {{ Math.floor(dynRow(b.playerKey)!.age!) }}
                 </span>
+                <ScheduleTicks v-if="sched.hasData.value"
+                               :ros="sched.difficultyFor(b.proTeam, row.position)?.ros ?? null"
+                               :next4="sched.difficultyFor(b.proTeam, row.position)?.next4 ?? null"
+                               :position="row.position" />
                 <span class="w-10 shrink-0 text-right font-mono text-[10px]" :class="b.starter ? 'text-dark-text' : 'text-dark-textMuted/70'">
                   {{ b.value >= 0 ? '+' : '' }}{{ round(b.value) }}
                 </span>
