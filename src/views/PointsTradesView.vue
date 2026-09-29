@@ -1048,16 +1048,8 @@ function fairness(myGain: number, theirGain: number): string {
         <div v-for="row in compare.positions" :key="'cmp-' + row.position" class="mb-3 last:mb-0">
           <div class="mb-1 flex items-baseline justify-between font-mono text-[10px] uppercase tracking-wider">
             <span class="text-dark-textMuted">{{ row.position }}</span>
-            <span class="flex items-center gap-2">
-              <!-- Named once, at the top, rather than on every row. -->
-              <span v-if="sched.hasData.value && row.position === compare.positions[0]?.position"
-                    class="hidden items-center gap-1 normal-case tracking-normal text-dark-textMuted/50 sm:flex">
-                <ScheduleTicks :ros="4" :next4="30" />
-                <span>schedule &middot; ros, next 4</span>
-              </span>
-              <span :class="row.edge > 0 ? 'text-primary' : row.edge < 0 ? 'text-[#FF5C5C]' : 'text-dark-textMuted'">
-                {{ row.edge > 0 ? 'you +' : row.edge < 0 ? 'them +' : 'even ' }}{{ Math.abs(round(row.edge)) }}
-              </span>
+            <span :class="row.edge > 0 ? 'text-primary' : row.edge < 0 ? 'text-[#FF5C5C]' : 'text-dark-textMuted'">
+              {{ row.edge > 0 ? 'you +' : row.edge < 0 ? 'them +' : 'even ' }}{{ Math.abs(round(row.edge)) }}
             </span>
           </div>
           <div class="grid grid-cols-2 gap-2">
@@ -1148,6 +1140,17 @@ function fairness(myGain: number, theirGain: number): string {
             = the same two in the dynasty market, then age ·
           </template>
           then {{ isFootball ? 'value over replacement, rest of season' : 'projected points, rest of season' }}
+          <!-- The ticks belong in the notation key, not floating beside one column's total,
+               where they read as a fact about that team rather than about every row. -->
+          <template v-if="sched.hasData.value">
+            &middot;
+            <span class="inline-flex translate-y-[3px] items-end gap-[2px]">
+              <ScheduleTicks :ros="4" :next4="30" />
+            </span>
+            = his schedule at that position, rest of season then next 4 &mdash;
+            <span class="text-[#7ee787]">green is a kind run</span>,
+            <span class="text-[#FF5C5C]">red is brutal</span>, hover for the rank
+          </template>
           <br />
           you on the left, {{ comparePartnerName }} on the right ·
           bright = starts for that roster, dim = depth
