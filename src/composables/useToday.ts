@@ -19,6 +19,7 @@ import type { BenchPlayer } from '@/myteam/yourMove/generators/startSitGenerator
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { getNhlSchedule } from '@/services/nhlSchedule'
 import { useHockeyValue } from '@/composables/useHockeyValue'
+import { isDailySport } from '@/today/dailySports'
 import { buildPlayerMatchers, type FGProjection } from '@/services/projectionService'
 import { findOpenSlots, type LineupSlot, type OpenSlot } from '@/today/openSlots'
 import { scoreToday } from '@/today/scoreToday'
@@ -436,11 +437,14 @@ export function useToday(): {
    *
    * Football never does, and it has its own weekly surface for exactly that reason.
    */
-  const DAILY_SPORTS = new Set(['baseball', 'hockey'])
-  const isDaily = computed(() => DAILY_SPORTS.has(leagueStore.activeSport))
-  /* Kept for the baseball-only branches below — probable starters, FanGraphs matching and the
-     opposing-pitcher adjustment are real baseball concepts with no hockey equivalent. */
-  const isBaseball = computed(() => leagueStore.activeSport === 'baseball')
+  const isDaily = computed(() => isDailySport(leagueStore.activeSport))
+  /*
+   * `isBaseball` USED TO LIVE HERE and is deliberately gone. Its comment claimed it was kept for
+   * the baseball-only branches — probable starters, the FanGraphs join, the opposing-pitcher
+   * adjustment — and none of those referenced it; its only two remaining callers were the Yahoo
+   * loader gates, where it silently excluded hockey and hung the page. A predicate that claims a
+   * purpose it does not serve is how the next person reaches for the wrong one.
+   */
   const isHockey = computed(() => leagueStore.activeSport === 'hockey')
 
   /*
@@ -749,9 +753,17 @@ export function useToday(): {
     const id = leagueStore.activeLeagueId
     if (id && isYahooCategoryLeague.value) loadSeasonData(id)
   }
-  // Today is baseball-only, so no roster/FA loader should fire for a non-baseball active league —
-  // gate every trigger on isBaseball (the broadened points triggers otherwise fetch full rosters
-  // for football/hockey/etc. leagues that render an empty board anyway).
+  /*
+   * EVERY PLATFORM LOADER GATES ON isDaily, and the reason is a deadlock rather than a
+   * preference. `boardInputsReady` waits on this platform's roster and free-agent flags, and
+   * those flags are set only by these loaders — so a loader that declines to fire does not
+   * produce an empty board, it produces a page that loads forever. That is exactly what a Yahoo
+   * hockey league did while this said `isBaseball`: no error, nothing in the console, just
+   * "Reading today's slate…" until the tab was closed.
+   *
+   * The old comment here read "Today is baseball-only", which stopped being true when hockey was
+   * added to DAILY_SPORTS and is why the ESPN gate below was migrated and this one was not.
+   */
   function maybeLoadEspn() {
     if (!isDaily.value) return
     if (leagueStore.activePlatform === 'espn') {
@@ -760,7 +772,7 @@ export function useToday(): {
     }
   }
   function maybeLoadYahoo() {
-    if (!isBaseball.value || leagueStore.activePlatform !== 'yahoo') return
+    if (!isDaily.value || leagueStore.activePlatform !== 'yahoo') return
     if (!yahooRosterPlayers.value.length) loadYahooRoster()
     if (!yahooFreeAgentsRaw.value.length) loadYahooFreeAgents()
   }
@@ -770,7 +782,7 @@ export function useToday(): {
   // half-ready store — otherwise an early load can resolve empty and clobber a
   // later good load.
   const yahooRosterReady = computed(
-    () => isBaseball.value && leagueStore.activePlatform === 'yahoo' && !!leagueStore.yahooTeams?.find((t: any) => t.is_my_team)?.team_key,
+    () => isDaily.value && leagueStore.activePlatform === 'yahoo' && !!leagueStore.yahooTeams?.find((t: any) => t.is_my_team)?.team_key,
   )
   watch(yahooRosterReady, (ready) => { if (ready) maybeLoadYahoo() }, { immediate: true })
 
