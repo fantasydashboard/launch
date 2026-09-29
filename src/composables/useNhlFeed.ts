@@ -8,6 +8,7 @@ import { blendSeasons, PRIOR_WEIGHTS } from '@/hockey/blendSeasons'
 import { ageFactor, ageAtSeason } from '@/hockey/agingCurve'
 import { regressShooting } from '@/hockey/shootingRegression'
 import { projectGoalies, type GoalieProjection } from '@/hockey/goalieProjection'
+import { goalieMatcher } from '@/hockey/goalieNameMatch'
 import type { EspnHockeyPlayer } from '@/hockey/hockeyProjectionSource'
 
 /**
@@ -273,8 +274,48 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
    * team's own net, rates regressed almost flat because they do not carry — cut the mean rank
    * gap against an outside baseline from 17.1 to 11.2 over the top twenty.
    */
+  /*
+   * ESPN'S PROJECTED GAMES, AS THE DEPTH CHART.
+   *
+   * goalieProjection.ts has always said a published depth chart beats anything history can
+   * infer, and left the seam empty. Measured, history cannot do this job at all: projecting a
+   * season from the three before it, our starts correlate with the truth at r = 0.60, and no
+   * setting of any constant in the model moves it — persistence from 0.70 to 1.00 and every
+   * weighting from one season to three all land between rho 0.45 and 0.52 on the resulting
+   * board. Handed the starts a goalie ACTUALLY made, the same model scores 0.92. The rate model
+   * is fine; the job projection is the whole error.
+   *
+   * And the distribution says why. A real season gives 18-20 goalies fifty or more starts:
+   *
+   *     actual 2024-25    20 goalies at 50+   top five 63 62 61 60 60
+   *     actual 2025-26    18 goalies at 50+   top five 63 59 58 58 57
+   *     ESPN projects     20 goalies at 50+   top five 62 61 60 59 59
+   *     we projected       6 goalies at 50+   top five 55 55 53 52 51
+   *
+   * Ours spread 82 starts a club across every goalie who ever appeared, which is why the board
+   * was flat exactly where a draft needs it steep. ESPN's number carries something history
+   * cannot see — who won the job in camp — and it lands on reality's distribution.
+   *
+   * Matched by name because ESPN carries its own ids and the rate model carries the NHL's, and
+   * by the tested matcher rather than a bare Map: ESPN writes "Sam Montembeault" where the NHL
+   * writes "Samuel", and that one miss once made a tandem goalie the best goalie on the board.
+   */
+  const espnStarts = new Map<number, number>()
+  {
+    const espnGoalies = espn.filter((p: any) => p.position === 'G')
+    const byName = goalieMatcher(espnGoalies.map((p: any) => ({ name: p.name, gp: p.stats?.GP })))
+    for (const g of priorG as any[]) {
+      const hit: any = byName.find(g.goalieFullName ?? '')
+      const gp = Number(hit?.gp)
+      /* Clamped to a real season. A feed that publishes 90 games for somebody must not be able
+         to hand him more starts than his club plays. */
+      if (Number.isFinite(gp) && gp > 0) espnStarts.set(g.playerId, Math.min(82, gp))
+    }
+  }
   const goalieProjections = projectGoalies(
     [priorG, priorG2, priorG3] as any,
+    undefined,
+    espnStarts.size ? espnStarts : undefined,
   )
 
   return {

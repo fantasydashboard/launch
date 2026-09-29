@@ -77,6 +77,15 @@ export const SHOTS_PERSISTENCE = 0.35
 /** And his win rate, which is the team again. */
 export const WIN_RATE_PERSISTENCE = 0.30
 
+/**
+ * Starts, in the blended prior, that make a goalie part of his club's competition for the net.
+ *
+ * Zero was the old behaviour and it was not a decision — every goalie who appeared counted,
+ * which set the regression target for a genuine starter to an even split with men who played
+ * once. Swept in scripts/hockey-goalie-backtest.ts.
+ */
+export const MIN_STARTS_FOR_POOL = 0
+
 export interface GoalieSeason {
   playerId: number
   goalieFullName?: string
@@ -138,11 +147,43 @@ const toward = (own: number, mean: number, persistence: number) => mean + (own -
  * published depth chart plugs into, which is better information than history and the thing
  * this model most wants. Without it, history is the best available answer.
  */
+/**
+ * The knobs, so they can be swept rather than asserted.
+ *
+ * Every other constant in this model was measured; these were not exposed, so the backtest in
+ * scripts/hockey-goalie-backtest.ts could only report the shipped numbers and never ask whether
+ * a different set was better. Defaults are the module constants, so an unchanged caller behaves
+ * exactly as before.
+ */
+export interface GoalieProjectionOptions {
+  startPersistence?: number
+  savePctPersistence?: number
+  shotsPersistence?: number
+  winRatePersistence?: number
+  /**
+   * Starts a goalie needs, in the blended prior, to count as competing for his club's net.
+   *
+   * The regression target is an even split among the goalies on a team, and that set was every
+   * goalie who appeared at all across three seasons — injury fill-ins and one-game call-ups
+   * included. A club that used five goalies therefore regressed its starter toward a FIFTH of
+   * the net, and the 82-start rescale then spread the season across all five. That is why the
+   * model projected a mean of 30 starts for goalies who went on to make 37, and why its board
+   * was flat exactly where a draft needs it to be steep.
+   */
+  minStartsForPool?: number
+}
+
 export function projectGoalies(
   seasons: GoalieSeason[][],
   weights: number[] = [6, 3, 1],
   expectedStarts?: Map<number, number>,
+  options: GoalieProjectionOptions = {},
 ): GoalieProjection[] {
+  const startP = options.startPersistence ?? START_PERSISTENCE
+  const saveP = options.savePctPersistence ?? SAVE_PCT_PERSISTENCE
+  const shotsP = options.shotsPersistence ?? SHOTS_PERSISTENCE
+  const winP = options.winRatePersistence ?? WIN_RATE_PERSISTENCE
+  const minPool = options.minStartsForPool ?? MIN_STARTS_FOR_POOL
   const acc = blend(seasons, weights)
   if (!acc.size) return []
 
@@ -171,7 +212,11 @@ export function projectGoalies(
   for (const v of acc.values()) {
     if (!v.team) continue
     teamStarts.set(v.team, (teamStarts.get(v.team) ?? 0) + (v.row.gamesStarted ?? 0))
-    teamGoalies.set(v.team, (teamGoalies.get(v.team) ?? 0) + 1)
+    /* Only goalies with a real workload count toward the even split. See minStartsForPool: a
+       one-game call-up is not competing for next season's net, and counting him as though he
+       were is what diluted every genuine starter. */
+    const blendedStarts = v.w > 0 ? (v.row.gamesStarted ?? 0) / v.w : 0
+    if (blendedStarts >= minPool) teamGoalies.set(v.team, (teamGoalies.get(v.team) ?? 0) + 1)
   }
 
   type Row = GoalieProjection & { _team: string }
@@ -187,15 +232,15 @@ export function projectGoalies(
     if (clubStarts > 0) {
       const share = (v.row.gamesStarted ?? 0) / clubStarts
       const evenShare = 1 / Math.max(1, teamGoalies.get(v.team) ?? 1)
-      starts = Math.max(0, toward(share, evenShare, START_PERSISTENCE)) * TEAM_STARTS
+      starts = Math.max(0, toward(share, evenShare, startP)) * TEAM_STARTS
     } else {
-      starts = Math.max(0, toward(ownStarts, meanStarts, START_PERSISTENCE))
+      starts = Math.max(0, toward(ownStarts, meanStarts, startP))
     }
-    const shotsPerStart = toward(own('shotsAgainst', leagueShotsPerStart), leagueShotsPerStart, SHOTS_PERSISTENCE)
+    const shotsPerStart = toward(own('shotsAgainst', leagueShotsPerStart), leagueShotsPerStart, shotsP)
     const ownSvPct = (v.row.shotsAgainst ?? 0) > 0 ? (v.row.saves ?? 0) / (v.row.shotsAgainst ?? 1) : leagueSvPct
-    const savePct = toward(ownSvPct, leagueSvPct, SAVE_PCT_PERSISTENCE)
-    const winRate = toward(own('wins', leagueWinRate), leagueWinRate, WIN_RATE_PERSISTENCE)
-    const soRate = toward(own('shutouts', leagueSoRate), leagueSoRate, WIN_RATE_PERSISTENCE)
+    const savePct = toward(ownSvPct, leagueSvPct, saveP)
+    const winRate = toward(own('wins', leagueWinRate), leagueWinRate, winP)
+    const soRate = toward(own('shutouts', leagueSoRate), leagueSoRate, winP)
 
     rows.push({
       playerId, name: v.name, team: v.team, _team: v.team,
