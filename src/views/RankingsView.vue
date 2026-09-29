@@ -109,10 +109,8 @@
                class="mb-2 flex items-center gap-2.5 border-b border-dark-border/40 pb-1.5 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted/60 sm:gap-3">
             <span class="h-7 w-7 shrink-0 sm:h-8 sm:w-8" />
             <span class="min-w-0 flex-1"></span>
-            <template v-if="active !== 'ALL'">
-              <span class="hidden w-9 shrink-0 text-right lg:block" title="Rest-of-season schedule rank at this position">ROS</span>
-              <span class="hidden w-9 shrink-0 text-right lg:block" title="Next four games, same scale">NEXT4</span>
-            </template>
+            <span class="hidden w-9 shrink-0 text-right lg:block" title="Rest-of-season schedule rank at this player's position">ROS</span>
+            <span class="hidden w-9 shrink-0 text-right lg:block" title="Next four games, same scale">NEXT4</span>
             <span class="hidden w-10 shrink-0 text-right sm:block" title="What this add is worth to your starting lineup">ADD</span>
             <span class="hidden w-10 shrink-0 text-right sm:block" title="Points per game this season">PPG</span>
             <span class="hidden w-8 shrink-0 text-right lg:block" title="Bye week">BYE</span>
@@ -207,20 +205,18 @@
                 squeeze the name to nothing, and the name is the thing the rest are attributes of.
               -->
               <template v-if="access.showsPaidColumns">
-                <template v-if="active !== 'ALL'">
-                  <span v-if="difficulty[row.team ?? '']"
-                        class="hidden w-9 shrink-0 text-right font-mono text-[10px] lg:block"
-                        :class="sosTone(difficulty[row.team!].ros)"
-                        :title="`Rest-of-season ${active} schedule: 1 is the easiest run of defences in the league, 32 the hardest`"
-                  >{{ difficulty[row.team!].ros ?? '—' }}</span>
-                  <span v-else class="hidden w-9 shrink-0 lg:block" />
-                  <span v-if="difficulty[row.team ?? '']"
-                        class="hidden w-9 shrink-0 text-right font-mono text-[10px] lg:block"
-                        :class="sosTone(difficulty[row.team!].next4)"
-                        :title="`Next four games at ${active}, same 1-32 scale`"
-                  >{{ difficulty[row.team!].next4 ?? '—' }}</span>
-                  <span v-else class="hidden w-9 shrink-0 lg:block" />
-                </template>
+                <span v-if="difficultyFor(row.team, row.position)"
+                      class="hidden w-9 shrink-0 text-right font-mono text-[10px] lg:block"
+                      :class="sosTone(difficultyFor(row.team, row.position)!.ros)"
+                      :title="`Rest-of-season ${row.position} schedule: 1 is the easiest run of defences in the league, 32 the hardest`"
+                >{{ difficultyFor(row.team, row.position)!.ros ?? '—' }}</span>
+                <span v-else class="hidden w-9 shrink-0 lg:block" />
+                <span v-if="difficultyFor(row.team, row.position)"
+                      class="hidden w-9 shrink-0 text-right font-mono text-[10px] lg:block"
+                      :class="sosTone(difficultyFor(row.team, row.position)!.next4)"
+                      :title="`Next four games at ${row.position}, same 1-32 scale`"
+                >{{ difficultyFor(row.team, row.position)!.next4 ?? '—' }}</span>
+                <span v-else class="hidden w-9 shrink-0 lg:block" />
 
                 <!-- Only for a player you can actually add. What it would cost to claim
                      somebody already rostered is a number about nothing. -->
@@ -236,10 +232,10 @@
                 >{{ ppgByKey[row.playerKey].toFixed(1) }}</span>
                 <span v-else class="hidden w-10 shrink-0 sm:block" />
 
-                <span v-if="difficulty[row.team ?? '']?.bye"
+                <span v-if="byeByTeam[row.team ?? '']"
                       class="hidden w-8 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/60 lg:block"
                       title="Bye week"
-                >{{ difficulty[row.team!].bye }}</span>
+                >{{ byeByTeam[row.team!] }}</span>
                 <span v-else class="hidden w-8 shrink-0 lg:block" />
               </template>
 
@@ -309,7 +305,7 @@ import { useFeatureAccess } from '@/composables/useFeatureAccess'
 const { isAdmin } = useFeatureAccess()
 
 const { board, positions, loading, ready, access, scoringSource,
-        difficulty, ppgByKey, addCost, setPosition } = useRankings()
+        difficultyFor, byeByTeam, ppgByKey, addCost, setPosition } = useRankings()
 
 const active = ref('ALL')
 const expanded = ref(false)

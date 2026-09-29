@@ -95,3 +95,60 @@ describe('byes', () => {
     expect(byeWeeks({ A: { 1: 'B', 2: 'B' } }, 2).A).toBeNull()
   })
 })
+
+/*
+ * The mixed-board regression.
+ *
+ * ROS and NEXT4 were computed for the OPEN TAB only and returned nothing on "ALL", so the two
+ * columns were blank on the board most people land on. The reasoning was that a schedule reads
+ * differently per position — true, and an argument for rating each row against its OWN
+ * position, not for printing nothing.
+ *
+ * The bye week came along for the ride. It lives inside DifficultyRow, so an empty difficulty
+ * map blanked a column that has nothing to do with position at all.
+ */
+describe('difficulty on a mixed board', () => {
+  const schedule = {
+    AAA: { 1: 'BBB', 2: 'CCC', 3: 'BBB' },            // no week 4 -> bye 4
+    BBB: { 1: 'AAA', 2: 'CCC', 3: 'AAA', 4: 'CCC' },
+    CCC: { 1: 'DDD', 2: 'AAA', 3: 'DDD', 4: 'BBB' },
+    DDD: { 1: 'CCC', 2: 'BBB', 3: 'CCC', 4: 'AAA' },
+  }
+  /* BBB is generous to backs and miserly to receivers; CCC is the reverse. A team facing them
+     should therefore not get the same difficulty at both positions. */
+  const lines = [
+    { team: 'X', opponent: 'BBB', position: 'RB', points: 30 },
+    { team: 'Y', opponent: 'BBB', position: 'RB', points: 28 },
+    { team: 'X', opponent: 'BBB', position: 'WR', points: 2 },
+    { team: 'Y', opponent: 'BBB', position: 'WR', points: 3 },
+    { team: 'X', opponent: 'CCC', position: 'RB', points: 2 },
+    { team: 'Y', opponent: 'CCC', position: 'RB', points: 3 },
+    { team: 'X', opponent: 'CCC', position: 'WR', points: 30 },
+    { team: 'Y', opponent: 'CCC', position: 'WR', points: 28 },
+  ]
+  const build = (position: string) =>
+    buildDifficulty({ schedule, allowed: buildAllowed(lines), position, fromWeek: 1, throughWeek: 4 })
+
+  it('gives the same team different answers at different positions', () => {
+    const rb = build('RB')
+    const wr = build('WR')
+    /* AAA plays BBB twice and CCC once. Backs feast on BBB and starve against CCC, so AAA's
+       schedule cannot rank the same for a back as for a receiver — which is exactly why one
+       number for a mixed list would have been wrong, and why per-row is right. */
+    expect(rb.AAA?.ros).not.toBe(wr.AAA?.ros)
+  })
+
+  it('still produces a rank for every position, not just one', () => {
+    for (const pos of ['QB', 'RB', 'WR', 'TE']) {
+      expect(Object.keys(build(pos)).length).toBeGreaterThan(0)
+    }
+  })
+
+  it('reads the bye off the calendar, with no position involved', () => {
+    const byes = byeWeeks(schedule, 4)
+    expect(byes.AAA).toBe(4)
+    expect(byes.BBB).toBeNull()
+    /* The point of the fix: identical whichever board you are on. */
+    expect(byeWeeks(schedule, 4)).toEqual(byes)
+  })
+})

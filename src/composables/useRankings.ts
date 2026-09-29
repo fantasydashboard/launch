@@ -7,7 +7,7 @@ import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { usePublicRankings, publicWeeksLeft } from '@/composables/usePublicRankings'
 import { rankingsAccess, type RankingsAccess } from '@/football/rankingsAccess'
 import { buildAllowed } from '@/football/defenseAllowed'
-import { buildDifficulty, type DifficultyRow } from '@/football/scheduleDifficulty'
+import { buildDifficulty, byeWeeks, type DifficultyRow } from '@/football/scheduleDifficulty'
 import { getSeasonSchedule, REGULAR_SEASON_WEEKS, type SeasonSchedule } from '@/services/nflSchedule'
 import { getSeasonLines, type SeasonLine } from '@/services/playerUsage'
 import type { BoardRow } from '@/football/footballWire'
@@ -79,6 +79,8 @@ export function useRankings(): {
   accessKnown: ComputedRef<boolean>
   scoringSource: ComputedRef<FootballScoringSource>
   difficulty: ComputedRef<Record<string, DifficultyRow>>
+  difficultyFor: (team: string | null | undefined, position: string | null | undefined) => DifficultyRow | null
+  byeByTeam: ComputedRef<Record<string, number | null>>
   ppgByKey: ComputedRef<Record<string, number>>
   addCost: ComputedRef<Record<string, { marginal: number; dropName: string }>>
   setPosition: (pos: string) => void
@@ -192,19 +194,61 @@ export function useRankings(): {
   /* Schedule strength is a PER-POSITION fact — the same run of defences is easy for a back and
      hard for a receiver — so there is no answer on the overall board, and an empty map is the
      honest one there rather than a blended number nobody asked for. */
-  const difficulty = computed<Record<string, DifficultyRow>>(() => {
-    const pos = activePosition.value === 'ALL' ? '' : activePosition.value
-    if (!pos || !Object.keys(seasonSchedule.value).length || !seasonLines.value.length) return {}
-    return buildDifficulty({
-      schedule: seasonSchedule.value,
-      allowed: buildAllowed(seasonLines.value.map((l) => ({
-        team: l.team, opponent: l.opponent, position: l.position, points: l.points,
-      }))),
-      position: pos,
-      fromWeek: leagueStore.currentWeek ?? 1,
-      throughWeek: REGULAR_SEASON_WEEKS,
-    })
+  /*
+   * SCHEDULE DIFFICULTY FOR EVERY POSITION, NOT JUST THE TAB THAT IS OPEN.
+   *
+   * This used to compute one position — whichever tab was selected — and return {} on the
+   * mixed board, so ROS and NEXT4 were simply absent there. The reasoning was sound as far as
+   * it went: a schedule reads differently for a back and a tight end, so one number for a
+   * mixed list would be meaningless. But the conclusion did not follow. Every row on the
+   * mixed board HAS a position; the right number for it is the one for THAT position, not no
+   * number at all.
+   *
+   * `allowed` is built once and shared — it is a table of what each defence has given up by
+   * position, which is the expensive part, and rankAllowed picks the column.
+   */
+  const SOS_POSITIONS = ['QB', 'RB', 'WR', 'TE']
+
+  const difficultyByPosition = computed<Record<string, Record<string, DifficultyRow>>>(() => {
+    if (!Object.keys(seasonSchedule.value).length || !seasonLines.value.length) return {}
+    const allowed = buildAllowed(seasonLines.value.map((l) => ({
+      team: l.team, opponent: l.opponent, position: l.position, points: l.points,
+    })))
+    const out: Record<string, Record<string, DifficultyRow>> = {}
+    for (const pos of SOS_POSITIONS) {
+      out[pos] = buildDifficulty({
+        schedule: seasonSchedule.value,
+        allowed,
+        position: pos,
+        fromWeek: leagueStore.currentWeek ?? 1,
+        throughWeek: REGULAR_SEASON_WEEKS,
+      })
+    }
+    return out
   })
+
+  /** The rows for the open tab. Empty on ALL, where the lookup is per row instead. */
+  const difficulty = computed<Record<string, DifficultyRow>>(() =>
+    difficultyByPosition.value[activePosition.value] ?? {})
+
+  /** One row's own schedule, whichever board it is being read on. */
+  function difficultyFor(team: string | null | undefined, position: string | null | undefined) {
+    if (!team || !position) return null
+    return difficultyByPosition.value[String(position).toUpperCase()]?.[team] ?? null
+  }
+
+  /*
+   * A BYE WEEK IS NOT A POSITIONAL FACT, and it was being served as one.
+   *
+   * `bye` rides inside DifficultyRow, so on the mixed board — where the difficulty map was
+   * empty — the BYE column rendered blank for every player on the page. Nothing about a bye
+   * depends on whether a man is a tight end; it is a property of his club's calendar. Read
+   * straight from the schedule, it is right on every tab.
+   */
+  const byeByTeam = computed<Record<string, number | null>>(() =>
+    Object.keys(seasonSchedule.value).length
+      ? byeWeeks(seasonSchedule.value, REGULAR_SEASON_WEEKS)
+      : {})
 
   return {
     board,
@@ -215,6 +259,8 @@ export function useRankings(): {
     accessKnown,
     scoringSource: fbScoring.source,
     difficulty,
+    difficultyFor,
+    byeByTeam,
     ppgByKey,
     addCost,
     setPosition,
