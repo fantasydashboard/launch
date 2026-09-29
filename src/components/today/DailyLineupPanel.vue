@@ -26,6 +26,8 @@ const props = defineProps<{
   valueLabel?: string
   /** False while the league's values are still all zero — a total of 0.0 is not a total. */
   canValue?: boolean
+  /** True when no source can ever price this league — a different fact from "not yet". */
+  valuesUnsupported?: boolean
 }>()
 
 const leagueStore = useLeagueStore()
@@ -193,7 +195,7 @@ const canValue = computed(() =>
         {{ one(total) }} {{ valueLabel || 'projected' }}
       </span>
       <span v-else class="font-mono text-[11px] text-dark-textMuted/70">
-        still reading tonight's values
+        {{ valuesUnsupported ? 'no value model for this league yet' : "still reading tonight's values" }}
       </span>
       <span class="flex-1"></span>
       <!--

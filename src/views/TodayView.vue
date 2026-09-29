@@ -11,7 +11,7 @@ import TodayMatchupSpots from '@/components/today/TodayMatchupSpots.vue'
 import { useDailyMatchup } from '@/composables/useDailyMatchup'
 import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
-import PreseasonPanel from '@/components/today/PreseasonPanel.vue'
+import SeasonBreakPanel from '@/components/today/SeasonBreakPanel.vue'
 import WireAddsPanel from '@/components/today/WireAddsPanel.vue'
 import MatchupWinProbChart from '@/components/matchup/MatchupWinProbChart.vue'
 import { useWinProbTrend } from '@/composables/useWinProbTrend'
@@ -92,6 +92,12 @@ const isFootball = computed(() => leagueStore.activeSport === 'football')
 const season = useSeasonPhase()
 onMounted(() => season.load())
 const isPreseason = computed(() => season.phase.value === 'before')
+/* Both ends of the calendar suppress the same blocks: with no slate coming, a lineup, a set
+   of closest calls and a ranking of tonight are all descriptions of nothing. */
+const onBreak = computed(() => isPreseason.value || season.phase.value === 'after')
+const platformName = computed(() => ({
+  yahoo: 'Yahoo', espn: 'ESPN', sleeper: 'Sleeper',
+}[String(leagueStore.activePlatform ?? '')] ?? 'this platform'))
 
 /*
  * HOW THE WEEK HAS MOVED, which football already draws and this page did not.
@@ -114,7 +120,7 @@ const trend = useWinProbTrend({
   my: liveWinPct,
   opp: computed(() => 100 - liveWinPct.value),
   daysRemaining: computed(() => thisWeek.snapshot.value?.daysRemaining ?? 0),
-  ready: computed(() => !isPreseason.value && liveWinPct.value > 0),
+  ready: computed(() => !onBreak.value && liveWinPct.value > 0),
 })
 const trendMoved = computed(() => {
   const vals = trend.points.map((pt) => pt.my)
@@ -187,11 +193,13 @@ const showFailed = computed(() => error.value === 'failed')
       the same morning saw structurally different products.
     -->
     <template v-else>
-      <PreseasonPanel v-if="isPreseason"
-                      :starts-when="season.startsWhen.value"
-                      :start-date-label="season.startDateLabel.value"
-                      :opening-games="season.openingGames.value"
-                      :has-draft-board="hasDraftBoard" />
+      <SeasonBreakPanel v-if="onBreak"
+                        :phase="isPreseason ? 'before' : 'after'"
+                        :starts-when="season.startsWhen.value"
+                        :start-date-label="season.startDateLabel.value"
+                        :end-date-label="season.endDateLabel.value"
+                        :opening-games="season.openingGames.value"
+                        :has-draft-board="hasDraftBoard" />
 
       <!-- 1. WHERE THE WEEK STANDS -->
       <TodayMatchupHeader
@@ -202,7 +210,7 @@ const showFailed = computed(() => error.value === 'failed')
         :is-category="isCategoryLeague" />
 
       <!-- 1a. THE PATH THE WEEK HAS TAKEN. Drawn only once it has actually moved. -->
-      <section v-if="!isPreseason && trendMoved"
+      <section v-if="!onBreak && trendMoved"
                class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
         <div class="mb-1 flex items-baseline justify-between">
           <h2 class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
@@ -222,7 +230,7 @@ const showFailed = computed(() => error.value === 'failed')
 
       <!-- Dark night is a real answer, and it belongs inside the page rather than instead of it.
            "Resume" is only honest once the season has started; before it, say so. -->
-      <p v-if="noGames && !isPreseason"
+      <p v-if="noGames && !onBreak"
          class="mb-5 rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-center font-mono text-[11px] text-dark-textMuted">
         No {{ words.league }} games today &mdash; the board lights up when games resume.
       </p>
@@ -230,16 +238,17 @@ const showFailed = computed(() => error.value === 'failed')
       <!-- 2. YOUR LINEUP, AND THE ONE WE'D SET
            Suppressed before opening night: with no slate every seat reads "no game", which is
            a screen of grey that teaches nothing and buries the one thing worth saying. -->
-      <DailyLineupPanel v-if="!isPreseason"
+      <DailyLineupPanel v-if="!onBreak"
         :current="daily.current.value" :optimal="daily.lineup.value"
         :bench="daily.bench.value"
         :value-label="daily.valueLabel.value"
-        :can-value="daily.canValue.value" />
+        :can-value="daily.canValue.value"
+        :values-unsupported="daily.categoryUnsupported.value" />
 
       <!-- ── TONIGHT'S RANKINGS ──────────────────────────────────────────── -->
       <!-- 2b. CLOSEST CALLS — the decisions where we do NOT have a real opinion, which is
            worth more daily than weekly because the same call returns every night. -->
-      <section v-if="!isPreseason && daily.closestCalls.value.length"
+      <section v-if="!onBreak && daily.closestCalls.value.length"
                class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
           Closest calls
@@ -262,19 +271,28 @@ const showFailed = computed(() => error.value === 'failed')
       </section>
 
       <!-- 2c. THE WIRE, asked about tonight. Football's closing block, which this page lacked. -->
-      <WireAddsPanel v-if="!isPreseason"
+      <WireAddsPanel v-if="!onBreak"
                      :adds="daily.wireAdds.value"
                      :value-label="daily.valueLabel.value" />
 
-      <DailyRankingsPanel v-if="!isPreseason && daily.canValue.value"
+      <DailyRankingsPanel v-if="!onBreak && daily.canValue.value"
                           :rows="daily.rankings.value"
                           :scarcity="daily.scarcity.value"
                           :opp-name="matchup.snapshot.value?.opp.name"
                           :slot-order="Object.keys(teamSource.rosterSlots.value ?? {})" />
       <!-- Absent with a reason. A panel that simply disappears reads as a page still loading,
            and a board of zeroes reads as a ranking — so say which of the two this is. -->
-      <p v-else-if="!isPreseason" class="mt-5 rounded-xl border border-dark-border bg-dark-bg/40 px-4 py-6 text-center font-mono text-[11px] text-dark-textMuted">
-        Still reading the projection universe that tonight's category values are measured against.
+      <!-- Two different facts, and they were printing as one. "Still reading" is true while a
+           fetch is in flight; on a platform we cannot price categories for, nothing is in
+           flight and that sentence never stops being on screen. -->
+      <p v-else-if="!onBreak" class="mt-5 rounded-xl border border-dark-border bg-dark-bg/40 px-4 py-6 text-center font-mono text-[11px] text-dark-textMuted">
+        <template v-if="daily.categoryUnsupported.value">
+          We can't price category leagues on {{ platformName }} yet, so there are no rankings
+          tonight &mdash; your lineup and who plays are still right.
+        </template>
+        <template v-else>
+          Still reading the projection universe that tonight's category values are measured against.
+        </template>
       </p>
     </template>
   </div>

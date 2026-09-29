@@ -61,3 +61,30 @@ describe('localYmd', () => {
     expect(localYmd(new Date(2026, 0, 1, 0, 5))).toBe('2026-01-01')
   })
 })
+
+/*
+ * Baseball's calendar is the mirror image of hockey's: on 29 September 2026 the NHL season is
+ * a day old and the MLB regular season is two days dead. The same page was telling both sets
+ * of managers that the board would light up when games resumed.
+ */
+describe('phaseOf across the two daily sports on the same day', () => {
+  const NHL = { preSeasonStart: '2026-09-19', regularSeasonStart: '2026-09-29',
+                regularSeasonEnd: '2027-04-10', days: [] } as any
+  const MLB = { preSeasonStart: '2026-01-01', regularSeasonStart: '2026-03-25',
+                regularSeasonEnd: '2026-09-27', days: [] } as any
+
+  it('has hockey live and baseball finished on 2026-09-29', () => {
+    expect(phaseOf('2026-09-29', NHL)).toBe('regular')
+    expect(phaseOf('2026-09-29', MLB)).toBe('after')
+  })
+
+  it('had both of them out of season a week earlier', () => {
+    expect(phaseOf('2026-09-22', NHL)).toBe('before')
+    expect(phaseOf('2026-09-22', MLB)).toBe('regular')
+  })
+
+  it('treats the final day of the regular season as still in it', () => {
+    expect(phaseOf('2026-09-27', MLB)).toBe('regular')
+    expect(phaseOf('2026-09-28', MLB)).toBe('after')
+  })
+})

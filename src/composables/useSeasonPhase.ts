@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { getNhlSeasonWindow, type NhlSeasonWindow } from '@/services/nhlSchedule'
+import { getMlbSeasonWindow } from '@/services/mlbSchedule'
 
 /**
  * Which part of the season it is, so the daily page can stop pretending it is always October.
@@ -15,10 +16,12 @@ import { getNhlSeasonWindow, type NhlSeasonWindow } from '@/services/nhlSchedule
  * A dark night inside the season and a night before the season has started are different
  * states that happen to have the same number of games, and they deserve different pages.
  *
- * SCOPE. Hockey only, deliberately. Baseball's daily board has the same shape and the same
- * latent problem, but its milestones come from a different feed (mlbSchedule), and inventing
- * a phase for it from the NHL's calendar would be worse than leaving it alone. `phase` is
- * 'unknown' for every other sport, and 'unknown' renders exactly what shipped before.
+ * SCOPE. Both daily sports, each from its own calendar — the NHL's through the relay it needs
+ * (the league blocks browsers), MLB's straight from statsapi, which sends CORS headers. They
+ * are NOT interchangeable: baseball's 2026 regular season ended on 27 September, so on the
+ * 29th every baseball league in the product was being told the board would light up when
+ * games resumed. Football is weekly and never reaches this page; it stays 'unknown', which
+ * renders exactly what shipped before.
  */
 export type SeasonPhase = 'before' | 'regular' | 'after' | 'unknown'
 
@@ -48,18 +51,26 @@ export function useSeasonPhase() {
   const loaded = ref(false)
   const today = ref(localYmd())
 
-  const isHockey = computed(() => leagueStore.activeSport === 'hockey')
+  const sport = computed(() => leagueStore.activeSport)
+  const isDaily = computed(() => sport.value === 'hockey' || sport.value === 'baseball')
 
   async function load() {
-    if (!isHockey.value) { loaded.value = true; return }
-    window.value = await getNhlSeasonWindow(today.value)
+    if (!isDaily.value) { loaded.value = true; return }
+    window.value = sport.value === 'hockey'
+      ? await getNhlSeasonWindow(today.value)
+      /* MLB seasons are named by their calendar year, so the current one is simply this year —
+         spring training and the World Series both sit inside it. */
+      : await getMlbSeasonWindow(new Date().getFullYear())
     loaded.value = true
   }
 
   const phase = computed<SeasonPhase>(() =>
-    isHockey.value ? phaseOf(today.value, window.value) : 'unknown')
+    isDaily.value ? phaseOf(today.value, window.value) : 'unknown')
 
   /** Days until the first regular-season game. 0 means it starts today. */
+  /** True once the regular season is behind us — a different page from "not yet". */
+  const isOver = computed(() => phase.value === 'after')
+
   const daysUntilStart = computed(() => {
     const start = window.value?.regularSeasonStart
     return start && phase.value === 'before' ? daysBetween(today.value, start) : null
@@ -91,5 +102,14 @@ export function useSeasonPhase() {
 
   watch(() => leagueStore.activeLeagueId, () => { loaded.value = false; load() })
 
-  return { phase, window, loaded, load, daysUntilStart, startsWhen, startDateLabel, openingGames, today }
+  /** Long form of the last day of the regular season, for the offseason line. */
+  const endDateLabel = computed(() => {
+    const e = window.value?.regularSeasonEnd
+    if (!e) return ''
+    return new Date(`${e}T12:00:00`).toLocaleDateString('en-US',
+      { weekday: 'long', month: 'long', day: 'numeric' })
+  })
+
+  return { phase, window, loaded, load, isOver, daysUntilStart, startsWhen, startDateLabel,
+           endDateLabel, openingGames, today }
 }

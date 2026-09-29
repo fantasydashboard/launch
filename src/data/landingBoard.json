@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-09-28",
+  "generatedAt": "2026-09-29",
   "season": "2026",
   "teams": 12,
   "rows": [
     {
       "name": "Malik Nabers",
       "pos": "WR",
-      "adp": "3.02",
+      "adp": "3.01",
       "ours": "3.01",
-      "rounds": 0.1,
+      "rounds": 0,
       "flag": ""
     },
     {

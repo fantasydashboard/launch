@@ -136,25 +136,47 @@ export function useDailyLineup() {
   const pointsSource = useActivePointsSource()
   const catSource = useEspnCategoryTeamData()
 
+  /*
+   * THE CATEGORY SOURCE IS ESPN-ONLY, AND `isCategory` IS NOT.
+   *
+   * `isCategory` reads the league's scoring type on any platform, but useEspnCategoryTeamData
+   * bails the moment parseEspnKey fails. So a YAHOO category league chose that source and got
+   * an empty one — no pool, no roster slots, no team id, nothing in flight. What the page
+   * rendered was a team called "Your team", a win chance that never arrived, and a projection
+   * universe permanently "still reading". Nothing was loading; there was nothing to load.
+   *
+   * Identity and roster do not depend on scoring type — useYahooLeaguePool reads both for any
+   * Yahoo league — so on a platform the category source cannot serve, they come from the
+   * points source and the page works. Only the category VALUES are genuinely missing there,
+   * and `canValue` reports that as a fact instead of staging a load that will never finish.
+   */
+  const catSourceServes = computed(() =>
+    isCategory.value && leagueStore.activePlatform === 'espn')
+  /** True when the league scores by category but we have no source that can price it. */
+  const categoryUnsupported = computed(() => isCategory.value && !catSourceServes.value)
+
   const source = {
-    pool: computed(() => (isCategory.value ? catSource.pool.value : pointsSource.pool.value)),
+    pool: computed(() => (catSourceServes.value ? catSource.pool.value : pointsSource.pool.value)),
     fgByKey: pointsSource.fgByKey,
     rosterSlots: computed(() =>
-      isCategory.value ? catSource.rosterSlots.value : pointsSource.rosterSlots.value),
+      catSourceServes.value ? catSource.rosterSlots.value : pointsSource.rosterSlots.value),
     myTeamKey: computed(() =>
-      isCategory.value ? (catSource.myTeamId.value ?? '') : pointsSource.myTeamKey.value),
+      catSourceServes.value ? (catSource.myTeamId.value ?? '') : pointsSource.myTeamKey.value),
     freeAgents: computed(() =>
-      isCategory.value ? (catSource.freeAgents.value ?? []) : (pointsSource.freeAgents?.value ?? [])),
+      catSourceServes.value ? (catSource.freeAgents.value ?? []) : (pointsSource.freeAgents?.value ?? [])),
     teamNames: pointsSource.teamNames,
     /* Wired for pool, slots and team key and forgotten here, so a category league kept the
        "My Team" placeholder — the same miss as the load() one. */
-    myTeamName: computed(() => (isCategory.value
-      ? (catSource.standings.value?.find((r: any) => `espn_${r.team?.teamId}` === catSource.myTeamId.value)?.team?.name ?? '')
+    myTeamName: computed(() => (catSourceServes.value
+      ? (catSource.standings.value?.find((r: any) => `espn_${r.team?.teamId}` === catSource.myTeamId.value)?.team?.name
+         /* Even on ESPN the standings match can miss; the points source knows the name too,
+            and a real name beats the "Your team" placeholder that miss produced. */
+         ?? pointsSource.myTeamName.value ?? '')
       : pointsSource.myTeamName.value)),
-    myTeamLogo: computed(() => (isCategory.value ? '' : pointsSource.myTeamLogo.value)),
-    loading: computed(() => (isCategory.value ? catSource.loading.value : pointsSource.loading.value)),
-    load: () => { if (isCategory.value) catSource.load(); else pointsSource.load() },
-    loadFreeAgents: () => { if (!isCategory.value) pointsSource.loadFreeAgents?.() },
+    myTeamLogo: computed(() => (catSourceServes.value ? '' : pointsSource.myTeamLogo.value)),
+    loading: computed(() => (catSourceServes.value ? catSource.loading.value : pointsSource.loading.value)),
+    load: () => { if (catSourceServes.value) catSource.load(); else pointsSource.load() },
+    loadFreeAgents: () => { if (!catSourceServes.value) pointsSource.loadFreeAgents?.() },
   }
   const pointsValue = usePointsValue({
     pool: pointsSource.pool,
@@ -189,7 +211,8 @@ export function useDailyLineup() {
 
   /** Whether the numbers on this page mean anything yet — false is a real answer, not 0.0. */
   const canValue = computed(() =>
-    isCategory.value ? categoryValue.ready.value : true)
+    categoryUnsupported.value ? false
+      : isCategory.value ? categoryValue.ready.value : true)
 
   const schedule = ref<WeekSchedule>({ ...EMPTY })
   /*
@@ -620,6 +643,9 @@ export function useDailyLineup() {
     weekSchedule,
     /** False when the league publishes nothing we can price players with. */
     canValue,
+    /* Distinguishes "the numbers are still loading" from "there will never be numbers here",
+       which the page was rendering as the same permanent sentence. */
+    categoryUnsupported,
     /** Points, or standard deviations — the panels say which so a number is never bare. */
     valueLabel: computed(() => (isCategory.value ? 'category value' : 'projected points')),
   }

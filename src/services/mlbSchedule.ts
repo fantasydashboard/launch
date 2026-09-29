@@ -148,3 +148,57 @@ export async function getWeekSchedule(startDate: string, endDate: string): Promi
     return EMPTY
   }
 }
+
+/**
+ * Where the baseball season stands, for the same reason hockey needed it.
+ *
+ * The daily board is built around tonight, so outside the season it collapses to one line:
+ * "no games today — the board lights up when games resume". On 29 September 2026 that line
+ * is on screen for every baseball league in the product, and the 2026 regular season ended
+ * on the 27th. Nothing is going to resume. The page is describing a pause that is actually
+ * an ending.
+ *
+ * Unlike the NHL, statsapi sends `access-control-allow-origin: *` — the schedule call above
+ * already reads it straight from the page — so this needs no relay.
+ *
+ * `days` stays empty: the seasons endpoint carries milestones, not fixtures, and the opening
+ * night game count is not worth a second request for a line that reads fine without it.
+ */
+export interface MlbSeasonWindow {
+  preSeasonStart: string | null
+  regularSeasonStart: string | null
+  regularSeasonEnd: string | null
+  days: { date: string; games: number }[]
+}
+
+const mlbWindowCache = new Map<number, Promise<MlbSeasonWindow | null>>()
+
+export async function getMlbSeasonWindow(seasonYear: number): Promise<MlbSeasonWindow | null> {
+  const hit = mlbWindowCache.get(seasonYear)
+  if (hit) return hit
+  const p = (async () => {
+    try {
+      const res = await fetch(`https://statsapi.mlb.com/api/v1/seasons?sportId=1&season=${seasonYear}`)
+      if (!res.ok) return null
+      const j: any = await res.json()
+      const s = (j?.seasons ?? [])[0]
+      if (!s) return null
+      return {
+        preSeasonStart: s.preSeasonStartDate ?? null,
+        regularSeasonStart: s.regularSeasonStartDate ?? null,
+        regularSeasonEnd: s.regularSeasonEndDate ?? null,
+        days: [],
+      }
+    } catch {
+      /* Null, never a fabricated window: reporting "the season has not started" from a dropped
+         request would hide a live board on a day games are being played. */
+      return null
+    }
+  })()
+  mlbWindowCache.set(seasonYear, p)
+  return p
+}
+
+export function clearMlbSeasonWindowCache(): void {
+  mlbWindowCache.clear()
+}
