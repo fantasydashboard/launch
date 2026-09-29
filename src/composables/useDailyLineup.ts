@@ -1,8 +1,9 @@
 import { computed, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
-import { useActivePointsSource } from '@/composables/useActivePointsSource'
+import { useActivePointsSource, resolveLeagueSize } from '@/composables/useActivePointsSource'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
+import { startableCounts } from '@/trades/rosterSlots'
 import { getNhlSchedule } from '@/services/nhlSchedule'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
@@ -109,6 +110,18 @@ export interface DailyRow {
   posRank: number | null
   /** How many players share that position pool tonight, so the rank has a denominator. */
   posCount: number | null
+  /**
+   * How many at that position START across the whole league — the line between a start and a
+   * reach.
+   *
+   * SEPARATE FROM posCount ON PURPOSE. posCount is how many are AVAILABLE tonight, which is
+   * an accident of how many players resolved and how many teams have a game; this is how many
+   * the league SEATS, which is a property of its settings. The panel used to colour the rank
+   * by its share of posCount, so when a name-matching fix doubled the hockey pool from 39
+   * defencemen to 87, the green line slid from rank 8 to rank 17 and every colour on the
+   * board changed without one projection moving. Null when the league publishes no slots.
+   */
+  posStartable: number | null
 }
 
 const ymd = (d: Date) => {
@@ -329,6 +342,29 @@ export function useDailyLineup() {
     return pointsValue.valueOf.value({ name: p.name, position: p.position, team: p.proTeam ?? p.team } as any) ?? null
   }
 
+  /*
+   * League size for the startable pool. The points source publishes one, but it is derived
+   * from ITS pool — which is empty on a category league, where useEspnPointsTeamData bails on
+   * sight of H2H_CATEGORY. Resolving it here from the shim's pool means both kinds of league
+   * count the same teams.
+   */
+  const leagueSize = computed(() => resolveLeagueSize(
+    source.teamNames.value,
+    (leagueStore.currentLeague as any)?.total_rosters,
+    source.pool.value as any,
+  ).size)
+
+  /**
+   * How many players at each position the league actually starts.
+   *
+   * The denominator a positional rank needs, and the one the panel's own comment said it did
+   * not have: "the number of seats that position fills across the league, which we do not
+   * know here". startableCounts has known it since the football board shipped — the Today
+   * board simply never asked.
+   */
+  const startableByPos = computed(() =>
+    startableCounts(source.rosterSlots.value, leagueSize.value, leagueStore.activeSport))
+
   const posRankByKey = computed(() => {
     const byPos = new Map<string, { key: string; today: number }[]>()
     /* Through valueFor, not a bare key lookup: on Yahoo the key misses for every rostered
@@ -388,6 +424,7 @@ export function useDailyLineup() {
            position, he is not a play at that position at all. */
         posRank: plays ? (posRankByKey.value.get(p.playerKey)?.rank ?? null) : null,
         posCount: plays ? (posRankByKey.value.get(p.playerKey)?.count ?? null) : null,
+        posStartable: plays ? (startableByPos.value[primaryPosition(p.position ?? '')] ?? null) : null,
       }
     })
   })
@@ -721,6 +758,8 @@ export function useDailyLineup() {
     valueByKey: value.valueByKey,
     myTeamKey: source.myTeamKey,
     rosterSlots: source.rosterSlots,
+    leagueSize,
+    startableByPos,
     schedule,
     weekSchedule,
     /** False when the league publishes nothing we can price players with. */

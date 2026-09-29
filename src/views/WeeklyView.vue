@@ -8,6 +8,7 @@ import MatchupWinProbChart from '@/components/matchup/MatchupWinProbChart.vue'
 import { useLeagueStore } from '@/stores/league'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { startableCounts, startableFraction } from '@/trades/rosterSlots'
+import { startableRankTone } from '@/lib/startableRankTone'
 import RankingPicker from '@/components/RankingPicker.vue'
 import SeasonPassGate from '@/components/SeasonPassGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
@@ -213,7 +214,8 @@ const posBadge = (r: { position: string; posRank: number }): string =>
  * otherwise, and the pool is derived from this league's own slots.
  */
 const source = useActivePointsSource()
-const startable = computed(() => startableCounts(source.rosterSlots.value, source.leagueSize.value))
+const startable = computed(() =>
+  startableCounts(source.rosterSlots.value, source.leagueSize.value, leagueStore.activeSport))
 /*
  * One decimal, everywhere a start/sit gain is printed.
  *
@@ -223,14 +225,6 @@ const startable = computed(() => startableCounts(source.rosterSlots.value, sourc
  */
 const gainLabel = (n: number) => (Math.round(n * 10) / 10).toFixed(1)
 
-function toneForFraction(f: number | null): string {
-  if (f === null) return 'text-dark-textMuted/60'
-  if (f <= 1 / 3) return 'text-[#7ee787]'
-  if (f <= 2 / 3) return 'text-[#3fb950]'
-  if (f <= 1) return 'text-dark-textMuted'
-  if (f <= 1.5) return 'text-[#d29922]'
-  return 'text-[#f85149]'
-}
 /*
  * Matchup tone, on the same scale The Wire uses for rest-of-season and next-four difficulty —
  * deliberately identical, so a green 4 means the same thing on both pages.
@@ -252,7 +246,7 @@ const matchupTitle = (row: { oppRank?: number | null; opponent?: string; positio
     : `${row.opponent || 'His opponent'} ranks ${row.oppRank} of 32 in points allowed to ${row.position}s — 1 gives up the most`
 
 const posTone = (r: { position: string; posRank: number }) =>
-  toneForFraction(startableFraction(r.posRank, normPos(r.position), startable.value))
+  startableRankTone(startableFraction(r.posRank, normPos(r.position), startable.value))
 /* A flex badge is measured against every body that could fill a flex seat, so the pool is
    the flex-eligible positions added together. */
 const flexPool = computed(() =>
@@ -261,7 +255,7 @@ const flexPool = computed(() =>
     .reduce((sum, [, n]) => sum + n, 0),
 )
 const flexTone = (flexRank: number) =>
-  toneForFraction(flexRank && flexPool.value ? flexRank / flexPool.value : null)
+  startableRankTone(flexRank && flexPool.value ? flexRank / flexPool.value : null)
 const normPos = (p: string) => (p || '').toUpperCase().split(/[,/|]/)[0].trim()
 const posLabel = (r: { position: string; posRank: number }) =>
   r.posRank ? `${normPos(r.position)}${r.posRank}` : ''

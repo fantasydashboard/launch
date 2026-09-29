@@ -17,6 +17,7 @@ import { computed, ref } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { teamLogoFor } from '@/players/teamLogo'
 import { wordsFor } from '@/lib/sportWords'
+import { startableRankTone, startableRankLabel } from '@/lib/startableRankTone'
 import { availability, type DailyRow } from '@/composables/useDailyLineup'
 
 const props = defineProps<{
@@ -125,23 +126,39 @@ const gainParts = computed(() => {
   return out
 })
 
+const posOf = (r: DailyRow) => (r.position || '').split(/[,/|]/)[0]?.trim().toUpperCase() ?? ''
+
 /** How he ranks tonight at his position — the chip that turns a quantity into a judgement. */
-const rankChip = (r: DailyRow) =>
-  r.posRank != null ? `${(r.position || '').split(/[,/|]/)[0]?.trim().toUpperCase()}${r.posRank}` : ''
-/*
- * Green while he is a player you would start at his position, amber once he is past the last
- * starting seat, and muted below that — the same read football's rank colours give. The
- * cut-off is the number of seats that position fills across the league, which we do not know
- * here, so it is approximated by the top third of tonight's pool at that position: enough to
- * separate "obvious start" from "you are reaching" without claiming a precision we lack.
+const rankChip = (r: DailyRow) => (r.posRank != null ? `${posOf(r)}${r.posRank}` : '')
+
+/**
+ * The denominator, and it is the number of SEATS rather than the number of bodies.
+ *
+ * WHAT THIS REPLACED. The chip read "D60 of 87" and was coloured by rank's share of that 87 —
+ * green in the top fifth, amber past 45%. Both halves were wrong in the same way, because 87
+ * is how many defencemen were AVAILABLE tonight, and that moves for reasons that have nothing
+ * to do with any player: how many teams have a game, and how many names our own matching
+ * managed to resolve. When a name-fallback fix doubled the hockey pool from 39 to 87, the
+ * green line slid from rank 8 to rank 17 and every colour on this board changed while not one
+ * projection moved. The pool-dependence was the bug, the same shape as the one projectGames
+ * was rewritten for.
+ *
+ * "48 start" is a property of the league's settings, so it holds still, and it is the line a
+ * manager is actually asking about. Falls back to the available count when the league
+ * publishes no roster slots — a denominator that drifts still beats none.
  */
-const rankTone = (r: DailyRow) => {
-  if (r.posRank == null || !r.posCount) return 'text-dark-textMuted/50'
-  const share = r.posRank / r.posCount
-  if (share <= 0.2) return 'text-[#7ee787]'
-  if (share <= 0.45) return 'text-dark-textMuted'
-  return 'text-[#e69a4a]'
-}
+const rankDenom = (r: DailyRow) =>
+  r.posStartable ? `· ${r.posStartable} start` : r.posCount ? `of ${r.posCount}` : ''
+
+const rankTone = (r: DailyRow) =>
+  startableRankTone(
+    r.posRank != null && r.posStartable ? r.posRank / r.posStartable : null,
+  )
+
+/* The colour in words, because a reader should be able to check our arithmetic rather than
+   infer a five-band scale from five shades. */
+const rankTitle = (r: DailyRow) =>
+  r.posRank == null ? '' : startableRankLabel(r.posRank, r.posStartable, posOf(r))
 
 /** Seats filled by somebody with no game — points forfeited outright. */
 const dead = computed(() => rows.value.filter((r) => !r.playsToday))
@@ -282,13 +299,14 @@ const canValue = computed(() =>
                 class="rounded px-1 font-bold" :class="tagTone(r.status)">{{ r.status }}</span>
         </span>
       </span>
-      <span v-if="canValue" class="w-20 shrink-0 text-right">
+      <span v-if="canValue" class="w-24 shrink-0 text-right">
         <span class="block font-mono text-sm"
               :class="r.playsToday ? 'text-dark-text' : 'text-dark-textMuted/40'">{{ one(r.today) }}</span>
         <!-- A bare number says nothing: nobody knows whether 2.8 is a good night for a
              catcher. The rank is what turns it into a judgement. -->
-        <span v-if="r.posRank != null" class="block font-mono text-[10px]" :class="rankTone(r)">
-          {{ rankChip(r) }}<span class="text-dark-textMuted/40"> of {{ r.posCount }}</span>
+        <span v-if="r.posRank != null" class="block font-mono text-[10px]"
+              :class="rankTone(r)" :title="rankTitle(r)">
+          {{ rankChip(r) }}<span class="text-dark-textMuted/40"> {{ rankDenom(r) }}</span>
         </span>
       </span>
     </div>

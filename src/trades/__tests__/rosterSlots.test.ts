@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { startableCounts, startableFraction, startablePositions, parseRosterSlots, FLEX_ELIGIBILITY, DEFAULT_SLOTS, canonicalPosition } from '../rosterSlots'
+import { startableCounts, startableFraction, startablePositions, parseRosterSlots, flexEligibility, FLEX_ELIGIBILITY, DEFAULT_SLOTS, canonicalPosition } from '../rosterSlots'
 
 describe('parseRosterSlots', () => {
   it('parses Yahoo roster_positions, dropping bench/IL', () => {
@@ -143,7 +143,7 @@ describe('startableCounts', () => {
 
   it('scales each position by how many the league actually starts', () => {
     // 10 teams, 3 flex allocated by real usage (RB .40 / WR .45 / TE .10 normalised).
-    const c = startableCounts(slots, 10)
+    const c = startableCounts(slots, 10, 'football')
     expect(c.QB).toBe(10)
     expect(c.RB).toBeGreaterThan(30)
     expect(c.WR).toBeGreaterThan(30)
@@ -157,7 +157,7 @@ describe('startableCounts', () => {
    * onesie positions, two different scales, visible on screen as one green and one grey.
    */
   it('keeps the two onesie positions on comparable scales', () => {
-    const c = startableCounts(slots, 10)
+    const c = startableCounts(slots, 10, 'football')
     // Both are one-per-team positions, so the 10th and the 7th should read alike.
     expect(startableFraction(10, 'TE', c)!).toBeGreaterThan(2 / 3)
     expect(startableFraction(7, 'QB', c)!).toBeGreaterThan(2 / 3)
@@ -172,12 +172,12 @@ describe('startableCounts', () => {
       { roster_positions: ['QB','RB','RB','WR','WR','TE','SUPER_FLEX','BN','BN'] },
       'football',
     )
-    const c = startableCounts(sf, 10)
+    const c = startableCounts(sf, 10, 'football')
     // A superflex seat goes to a quarterback almost every time, so ~15 QBs start, not 10.
     expect(c.QB).toBeGreaterThan(13)
     expect(startableFraction(12, 'QB', c)!).toBeLessThan(1) // QB12 still a starter here
     // Same player in a standard league is not.
-    expect(startableFraction(12, 'QB', startableCounts(slots, 10))!).toBeGreaterThan(1)
+    expect(startableFraction(12, 'QB', startableCounts(slots, 10, 'football'))!).toBeGreaterThan(1)
   })
 
   it('adjusts for a two-tight-end league', () => {
@@ -186,40 +186,86 @@ describe('startableCounts', () => {
       { roster_positions: ['QB','RB','RB','WR','WR','TE','TE','FLEX','BN'] },
       'football',
     )
-    const c = startableCounts(twoTe, 10)
+    const c = startableCounts(twoTe, 10, 'football')
     expect(c.TE).toBeGreaterThan(20)
     // TE18 is a fringe starter with two TE slots, and nowhere near one with a single slot.
     expect(startableFraction(18, 'TE', c)!).toBeLessThan(1)
-    expect(startableFraction(18, 'TE', startableCounts(slots, 10))!).toBeGreaterThan(1)
+    expect(startableFraction(18, 'TE', startableCounts(slots, 10, 'football'))!).toBeGreaterThan(1)
   })
 
   it('still gives a flex-only position a share rather than a pool of zero', () => {
     // No dedicated TE slot: TE exists solely through the flex.
     const flexOnly = { QB: 1, RB: 2, WR: 2, FLEX: 2 }
-    expect(startableCounts(flexOnly, 10).TE).toBeGreaterThan(0)
+    expect(startableCounts(flexOnly, 10, 'football').TE).toBeGreaterThan(0)
   })
 
   it('needs no special case for onesie positions — the pool encodes it', () => {
-    const c = startableCounts(slots, 10)
+    const c = startableCounts(slots, 10, 'football')
     // QB5 is mid-pack among starters; RB5 is elite. Same rank, different meaning.
     expect(startableFraction(5, 'QB', c)).toBeCloseTo(0.5, 5)
     expect(startableFraction(5, 'RB', c)!).toBeLessThan(0.2)
   })
 
   it('marks anyone past the pool as unstartable', () => {
-    const c = startableCounts(slots, 10)
+    const c = startableCounts(slots, 10, 'football')
     expect(startableFraction(36, 'RB', c)!).toBeGreaterThan(1)
     expect(startableFraction(c.RB, 'RB', c)!).toBeCloseTo(1, 5)
   })
 
   it('scales with league size rather than hardcoding thresholds', () => {
-    expect(startableCounts(slots, 14).QB).toBe(14)
-    expect(startableCounts(slots, 14).RB).toBeGreaterThan(startableCounts(slots, 10).RB)
+    expect(startableCounts(slots, 14, 'football').QB).toBe(14)
+    expect(startableCounts(slots, 14, 'football').RB).toBeGreaterThan(startableCounts(slots, 10, 'football').RB)
+  })
+
+  /*
+   * THE MERGED UTIL LIST IS ONLY SAFE WHERE A PLAYER IS ON THE OTHER SIDE.
+   *
+   * FLEX_ELIGIBILITY.UTIL merges baseball's hitters with hockey's skaters, and the comment
+   * there argues the merge is harmless because the two vocabularies are disjoint apart from C.
+   * That argument holds for coversSlot, which compares the list against a real player — no
+   * hockey player is shortstop-eligible, so the baseball half is discarded for free.
+   *
+   * startableCounts walks the same list with NO player to discard anything, and a hockey
+   * league came back reporting a startable pool of one shortstop, one first baseman and one
+   * designated hitter — while its own defencemen split the utility seat thirteen ways instead
+   * of four. The sport is required here for that reason.
+   */
+  it('never invents a position the sport does not have', () => {
+    const hockey = { C: 2, LW: 2, RW: 2, D: 4, G: 2, UTIL: 1 }
+    const c = startableCounts(hockey, 12, 'hockey')
+    for (const absent of ['1B', '2B', '3B', 'SS', 'OF', 'LF', 'CF', 'RF', 'DH']) {
+      expect(c[absent]).toBeUndefined()
+    }
+    expect(Object.keys(c).sort()).toEqual(['C', 'D', 'G', 'LW', 'RW'])
+  })
+
+  it('splits a hockey utility seat among the skaters, not the whole merged list', () => {
+    const hockey = { C: 2, LW: 2, RW: 2, D: 4, G: 2, UTIL: 1 }
+    const c = startableCounts(hockey, 12, 'hockey')
+    /* Four skater positions share twelve utility seats: three each, on top of the dedicated
+       ones. The merged list gave defence 0.9 of those twelve. */
+    expect(c.D).toBe(4 * 12 + 3)
+    expect(c.C).toBe(2 * 12 + 3)
+    expect(c.G).toBe(2 * 12)
+  })
+
+  it('leaves a baseball utility seat to the hitters', () => {
+    const c = startableCounts({ C: 1, '1B': 1, SS: 1, OF: 3, UTIL: 2, SP: 5 }, 12, 'baseball')
+    expect(c.LW).toBeUndefined()
+    expect(c.D).toBeUndefined()
+    expect(c.SS).toBeGreaterThan(12)
+  })
+
+  it('reads the hockey forward slot as the three forward positions', () => {
+    const c = startableCounts({ C: 1, LW: 1, RW: 1, F: 3, D: 4, G: 2 }, 12, 'hockey')
+    /* One dedicated seat plus a third of the three forward seats: two per team. */
+    expect(c.C).toBe(12 + 12)
+    expect(c.D).toBe(48)
   })
 
   it('returns null when the rank cannot be placed', () => {
-    expect(startableFraction(0, 'RB', startableCounts(slots, 10))).toBeNull()
-    expect(startableFraction(5, 'K', startableCounts(slots, 10))).toBeNull()
+    expect(startableFraction(0, 'RB', startableCounts(slots, 10, 'football'))).toBeNull()
+    expect(startableFraction(5, 'K', startableCounts(slots, 10, 'football'))).toBeNull()
   })
 })
 
@@ -352,5 +398,25 @@ describe('hockey slot eligibility', () => {
      utility-eligible in both sports. Baseball must be untouched by it. */
   it('leaves baseball utility working', () => {
     for (const pos of ['1B', '2B', 'SS', 'OF', 'DH']) expect(FLEX_ELIGIBILITY.UTIL).toContain(pos)
+  })
+})
+
+describe('flexEligibility', () => {
+  it('resolves UTIL by sport and leaves every other slot alone', () => {
+    expect(flexEligibility('UTIL', 'hockey')).toEqual(['C', 'LW', 'RW', 'D'])
+    expect(flexEligibility('UTIL', 'baseball')).not.toContain('LW')
+    expect(flexEligibility('FLEX', 'football')).toEqual(FLEX_ELIGIBILITY.FLEX)
+    expect(flexEligibility('F', 'hockey')).toEqual(['C', 'LW', 'RW'])
+  })
+
+  it('is undefined for a concrete position', () => {
+    expect(flexEligibility('D', 'hockey')).toBeUndefined()
+    expect(flexEligibility('QB', 'football')).toBeUndefined()
+  })
+
+  /* A sport with no UTIL of its own keeps the merged list rather than silently losing the
+     slot — wrong is recoverable, absent reads as "this league has no utility seat". */
+  it('falls back to the merged list for a sport it has no table for', () => {
+    expect(flexEligibility('UTIL', 'basketball')).toEqual(FLEX_ELIGIBILITY.UTIL)
   })
 })

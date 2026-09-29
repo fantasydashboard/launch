@@ -89,6 +89,42 @@ export const FLEX_ELIGIBILITY: Record<string, string[]> = {
   F: ['C', 'LW', 'RW'],
 }
 
+/**
+ * UTIL, resolved by sport.
+ *
+ * THE MERGE ABOVE IS ONLY SAFE WHERE A PLAYER IS ON THE OTHER SIDE OF THE COMPARISON. Its own
+ * comment argues the baseball and hockey vocabularies are disjoint apart from C, so neither
+ * sport can match the other's entries — true for `coversSlot` and `slotAccepts`, which hold
+ * the list up against a real player: no hockey player is shortstop-eligible, so the baseball
+ * half is discarded for free, and those two keep using the merged list.
+ *
+ * `startableCounts` walks the list with NO player, so nothing discards anything. A hockey
+ * league came back reporting a startable pool of one shortstop, one first baseman and one
+ * designated hitter, while its own defencemen split the utility seat thirteen ways instead of
+ * four. A baseball league had the same three phantoms at LW, RW and D.
+ *
+ * So the safety argument was never about the vocabularies being disjoint — it was about a
+ * player being there to do the discarding. Where there is no player, the sport has to be
+ * passed, which is what the FLEX_ELIGIBILITY comment predicted basketball would force.
+ */
+const UTIL_BY_SPORT: Record<string, string[]> = {
+  hockey: ['C', 'LW', 'RW', 'D'],
+  baseball: ['C', '1B', '2B', '3B', 'SS', 'OF', 'LF', 'CF', 'RF', 'DH'],
+}
+
+/**
+ * Which concrete positions may fill a slot, for a caller that has no player to compare.
+ *
+ * Undefined for a concrete position, which is how callers tell a flex seat from a real one.
+ * A sport with no UTIL table of its own keeps the merged list: wrong is recoverable and
+ * visible, where an empty list would read as "this league has no utility seat".
+ */
+export function flexEligibility(slot: string, sport: string): string[] | undefined {
+  const up = String(slot || '').toUpperCase()
+  if (up === 'UTIL' && UTIL_BY_SPORT[sport]) return UTIL_BY_SPORT[sport]
+  return FLEX_ELIGIBILITY[up]
+}
+
 /** Standard 12-team mixed-league baseball roster when settings are unavailable. */
 export const DEFAULT_SLOTS: Record<string, number> = {
   C: 1, '1B': 1, '2B': 1, '3B': 1, SS: 1, OF: 3, UTIL: 2, SP: 5, RP: 3,
@@ -253,15 +289,21 @@ export function startablePositions(slots: Record<string, number>): Set<string> {
  * produces the right answer for standard, superflex, and two-tight-end leagues alike.
  */
 const FLEX_USAGE: Record<string, number> = { QB: 1.0, RB: 0.4, WR: 0.45, TE: 0.1 }
+/**
+ * `sport` is required rather than defaulted because every wrong answer this function has
+ * given came from a flex list that meant one sport while the league was another, and a
+ * default would put that mistake back one call site at a time.
+ */
 export function startableCounts(
   slots: Record<string, number>,
   leagueSize: number,
+  sport: string,
 ): Record<string, number> {
   const perTeam: Record<string, number> = {}
   for (const [slot, rawCount] of Object.entries(slots ?? {})) {
     const count = Number(rawCount)
     if (!Number.isFinite(count) || count <= 0) continue
-    if (!FLEX_ELIGIBILITY[slot]) perTeam[slot] = (perTeam[slot] ?? 0) + count
+    if (!flexEligibility(slot, sport)) perTeam[slot] = (perTeam[slot] ?? 0) + count
   }
 
   /* Flex is allocated after the dedicated slots are known, so the weights exist to divide by.
@@ -269,7 +311,7 @@ export function startableCounts(
      share, so weights floor at a token amount rather than at zero. */
   for (const [slot, rawCount] of Object.entries(slots ?? {})) {
     const count = Number(rawCount)
-    const eligible = FLEX_ELIGIBILITY[slot]
+    const eligible = flexEligibility(slot, sport)
     if (!eligible?.length || !Number.isFinite(count) || count <= 0) continue
     const weights = eligible.map((pos) => FLEX_USAGE[pos] ?? 0.25)
     const total = weights.reduce((a, b) => a + b, 0)

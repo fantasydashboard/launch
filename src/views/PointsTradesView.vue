@@ -26,6 +26,7 @@ import { reseatRos, reseatValues } from '@/composables/useFootballWire'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { leagueRankTone, leagueRankBar, leagueRankWidth, leagueRankLabel } from '@/lib/leagueRankTone'
 import { startableCounts, startableFraction } from '@/trades/rosterSlots'
+import { startableRankTone } from '@/lib/startableRankTone'
 import { teamLogoFor } from '@/players/teamLogo'
 import type { AvailablePlayer } from '@/players/types'
 
@@ -307,38 +308,19 @@ const rankBar = (rank: number, teams: number) => leagueRankWidth(rank, teams)
  * gets different thresholds with no extra code — and onesie positions need no special case,
  * because "only ten quarterbacks start" is already the denominator.
  */
-const startable = computed(() => startableCounts(rosterSlots.value, leagueSize.value))
+const startable = computed(() =>
+  startableCounts(rosterSlots.value, leagueSize.value, leagueStore.activeSport))
 
-/**
- * One five-band scale, fed a fraction of "how far through the field are you". Both callers
- * below hand it a different kind of fraction — rank within the startable pool, or rank among
- * the league's teams at a slot — and get the same colours, so a green on one block means the
- * same thing as a green on the other.
- */
-function toneForFraction(f: number | null): string {
-  if (f === null) return 'text-dark-textMuted/60'
-  if (f <= 1 / 3) return 'text-[#7ee787]'   // top third
-  if (f <= 2 / 3) return 'text-[#3fb950]'   // comfortably in
-  if (f <= 1) return 'text-dark-textMuted'  // last third — replaceable
-  if (f <= 1.5) return 'text-[#d29922]'     // just off the pool
-  return 'text-[#f85149]'                   // well outside
-}
-function barForFraction(f: number | null): string {
-  if (f === null) return 'bg-dark-textMuted/40'
-  if (f <= 1 / 3) return 'bg-[#7ee787]'
-  if (f <= 2 / 3) return 'bg-[#3fb950]'
-  if (f <= 1) return 'bg-dark-textMuted/50'
-  if (f <= 1.5) return 'bg-[#d29922]/70'
-  return 'bg-[#f85149]/70'
-}
+/* Shared with The Weekly and the Today board, so a green D at one position means the same
+   thing on all three. */
 const rankTone = (posRank: number, position: string) =>
-  toneForFraction(startableFraction(posRank, position, startable.value))
-/* The slot spine ranks you against the other teams at that seat, so the fraction is rank over
-   league size — a different measurement, deliberately shown on the same scale. */
-/* Even fifths of the league, shared with My Team so the same slot cannot be green on one page
-   and neutral on the other. The old call fed rank/teams to a scale built for a startable-pool
-   fraction, whose amber and red bands only trigger above 1 — unreachable here, so sixth of ten
-   came out green and last of ten looked the same as seventh. */
+  startableRankTone(startableFraction(posRank, position, startable.value))
+/* THE SLOT SPINE IS A DIFFERENT MEASUREMENT and needs a different scale, which is the whole
+   reason there are two modules. It ranks you against the other TEAMS at that seat, so the
+   fraction is rank over league size and can never exceed 1 — feeding it to the startable
+   scale left that scale's amber and red bands unreachable, so sixth of ten came out green and
+   last of ten looked the same as seventh. Even fifths of the league instead, shared with My
+   Team so the same slot cannot be green on one page and neutral on the other. */
 const slotTone = (rank: number, teams: number) => leagueRankTone(rank, teams)
 const slotBar = (rank: number, teams: number) => leagueRankBar(rank, teams)
 
