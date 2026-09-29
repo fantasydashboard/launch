@@ -194,6 +194,62 @@ describe('getNhlSchedule caching', () => {
     expect(calls).toBe(2)
   })
 
+  /*
+   * THE REQUEST THAT WAS SENT TWICE, EVERY TIME.
+   *
+   * The URL carries only the FROM date — the endpoint answers with the whole week from it —
+   * but the cache was keyed `from..to`, so the daily board's two calls (today..today for
+   * tonight, today..Sunday for the week) missed each other and fired two byte-identical
+   * requests at once. Against an endpoint that rate-limits, and whose own comment records it
+   * answering 429 three times running, doubling every load is how one transient throttle
+   * turned into a page reading "no game" beside every player.
+   */
+  it('asks the endpoint once when two ranges share a start date', async () => {
+    let calls = 0
+    globalThis.fetch = (async () => { calls++; return ok('BOS') }) as any
+    await Promise.all([
+      getNhlSchedule('2026-09-29', '2026-09-29'),
+      getNhlSchedule('2026-09-29', '2026-10-04'),
+    ])
+    expect(calls).toBe(1)
+  })
+
+  it('still filters each range correctly off the one payload', async () => {
+    globalThis.fetch = (async () => new Response(JSON.stringify({
+      gameWeek: [
+        { date: '2026-09-29', games: [{ gameType: 2, awayTeam: { abbrev: 'BOS' }, homeTeam: { abbrev: 'XXX' } }] },
+        { date: '2026-10-01', games: [{ gameType: 2, awayTeam: { abbrev: 'NYR' }, homeTeam: { abbrev: 'YYY' } }] },
+      ],
+    }), { status: 200, headers: { 'content-type': 'application/json' } })) as any
+    const [day, week] = await Promise.all([
+      getNhlSchedule('2026-09-29', '2026-09-29'),
+      getNhlSchedule('2026-09-29', '2026-10-04'),
+    ])
+    expect(day.gamesByTeam.BOS).toBe(1)
+    expect(day.gamesByTeam.NYR).toBeUndefined()
+    expect(week.gamesByTeam.BOS).toBe(1)
+    expect(week.gamesByTeam.NYR).toBe(1)
+  })
+
+  /* Sharing the in-flight request must not share a FAILURE into the cache — both callers see
+     the failure, and the next call is still free to succeed. */
+  it('fails both concurrent callers without poisoning the next attempt', async () => {
+    let calls = 0
+    globalThis.fetch = (async () => {
+      calls++
+      return calls === 1 ? new Response('', { status: 429 }) : ok('BOS')
+    }) as any
+    const [day, week] = await Promise.all([
+      getNhlSchedule('2026-09-29', '2026-09-29'),
+      getNhlSchedule('2026-09-29', '2026-10-04'),
+    ])
+    expect(day.failed).toBe(true)
+    expect(week.failed).toBe(true)
+    expect(calls).toBe(1)
+    const retry = await getNhlSchedule('2026-09-29', '2026-09-29')
+    expect(retry.failed).toBeFalsy()
+  })
+
   /* One 429 must not break the page for the rest of the session. */
   it('never caches a failure, so a later call can still succeed', async () => {
     let calls = 0

@@ -124,27 +124,63 @@ export function parseNhlSchedule(data: unknown, from: string, to: string): WeekS
  */
 const cache = new Map<string, WeekSchedule>()
 
+/**
+ * The RAW payload, per start date, including the one currently in flight.
+ *
+ * THE REQUEST THAT WENT OUT TWICE, EVERY SINGLE LOAD. The URL carries nothing but the start
+ * date — the endpoint answers with the whole week from it — so `today..today` and
+ * `today..Sunday` are the identical request, differing only in how the answer is filtered.
+ * The parsed cache above is keyed by both ends, so the two missed each other, and the daily
+ * board fired them CONCURRENTLY through Promise.all: two byte-identical requests, at once, at
+ * an endpoint that rate-limits. Its own comment records it answering 429 three times running
+ * while this file was being written.
+ *
+ * That is how one transient throttle became a page reading "no game" beside every player,
+ * every time, on whichever league happened to be opened first — and why switching leagues
+ * appeared to fix it. Sharing the in-flight promise makes one load one request.
+ *
+ * A FAILURE IS EVICTED rather than cached, for the same reason the parsed cache stores only
+ * successes: both concurrent callers see the failure, and the next attempt is still free to
+ * succeed.
+ */
+const payloads = new Map<string, Promise<unknown | null>>()
+
 /** For tests, and for anything that needs to force a re-read. */
 export function clearNhlScheduleCache(): void {
   cache.clear()
+  payloads.clear()
+}
+
+function weekPayload(from: string): Promise<unknown | null> {
+  const inflight = payloads.get(from)
+  if (inflight) return inflight
+  const p = (async () => {
+    try {
+      /* Through the relay: the NHL blocks browsers, and the empty-schedule fallback below
+         renders a blocked request as "nobody plays tonight" — a plausible sentence that is
+         not an error, which is the worst way for this to fail. */
+      const res = await fetch(`${API}?schedule=${encodeURIComponent(from)}`)
+      return res.ok ? await res.json() : null
+    } catch {
+      return null
+    }
+  })()
+  payloads.set(from, p)
+  /* Evict a failure once it resolves, so it is never served to a later caller. The entry
+     stays in place while in flight, which is the whole point of sharing it. */
+  void p.then((v) => { if (v == null) payloads.delete(from) })
+  return p
 }
 
 export async function getNhlSchedule(from: string, to: string): Promise<WeekSchedule> {
   const key = `${from}..${to}`
   const hit = cache.get(key)
   if (hit) return hit
-  try {
-    /* Through the relay: the NHL blocks browsers, and the empty-schedule fallback below
-       renders a blocked request as "nobody plays tonight" — a plausible sentence that is not
-       an error, which is the worst way for this to fail. */
-    const res = await fetch(`${API}?schedule=${encodeURIComponent(from)}`)
-    if (!res.ok) return { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {}, failed: true }
-    const parsed = parseNhlSchedule(await res.json(), from, to)
-    cache.set(key, parsed)
-    return parsed
-  } catch {
-    return { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {}, failed: true }
-  }
+  const payload = await weekPayload(from)
+  if (payload == null) return { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {}, failed: true }
+  const parsed = parseNhlSchedule(payload, from, to)
+  cache.set(key, parsed)
+  return parsed
 }
 
 /**

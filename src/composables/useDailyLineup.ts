@@ -323,7 +323,23 @@ export function useDailyLineup() {
   const weekSchedule = ref<WeekSchedule>({ ...EMPTY })
   const scheduleLoading = ref(false)
 
+  /*
+   * A SCHEDULE THAT FAILED ONCE USED TO STAY FAILED FOR THE WHOLE VISIT.
+   *
+   * loadSchedule reruns only when the sport or the league id changes, and the catch below
+   * blanked the slate and gave up. So one throttled response left every seat reading "no game"
+   * until the manager happened to switch leagues — which is precisely why the failure looked
+   * like it belonged to whichever league was opened FIRST, and why opening a second league
+   * appeared to cure it. Two retries, backing off, because the endpoint that throttles us
+   * recovers in seconds.
+   */
+  const SCHEDULE_BACKOFF_MS = [700, 1800]
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+  /* A league switch mid-retry must not have its slate overwritten by the old one landing. */
+  let scheduleRun = 0
+
   async function loadSchedule() {
+    const run = ++scheduleRun
     scheduleLoading.value = true
     try {
       const now = new Date()
@@ -334,14 +350,27 @@ export function useDailyLineup() {
       end.setDate(now.getDate() + ((7 - now.getDay()) % 7))
       const isHockey = leagueStore.activeSport === 'hockey'
       const fetch = isHockey ? getNhlSchedule : getWeekSchedule
-      const [day, week] = await Promise.all([fetch(today, today), fetch(today, ymd(end))])
-      schedule.value = day
-      weekSchedule.value = week
+      for (let attempt = 0; attempt <= SCHEDULE_BACKOFF_MS.length; attempt++) {
+        if (attempt) await sleep(SCHEDULE_BACKOFF_MS[attempt - 1])
+        if (run !== scheduleRun) return
+        const [day, week] = await Promise.all([fetch(today, today), fetch(today, ymd(end))])
+        if (run !== scheduleRun) return
+        const ok = !day.failed && !week.failed
+        /* Published on success, or once we have stopped trying. Publishing a failure between
+           attempts would flash "we couldn't read the schedule" at a reader we are still
+           reading it for; `scheduleLoading` keeps the page honestly on "still reading". */
+        if (ok || attempt === SCHEDULE_BACKOFF_MS.length) {
+          schedule.value = day
+          weekSchedule.value = week
+          if (ok) return
+        }
+      }
     } catch {
+      if (run !== scheduleRun) return
       schedule.value = { ...EMPTY }
       weekSchedule.value = { ...EMPTY }
     } finally {
-      scheduleLoading.value = false
+      if (run === scheduleRun) scheduleLoading.value = false
     }
   }
   watch(() => [leagueStore.activeSport, leagueStore.activeLeagueId], loadSchedule, { immediate: true })
