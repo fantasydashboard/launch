@@ -4,6 +4,8 @@ import { buildHockeyValue } from '@/hockey/hockeyValue'
 import { weightsFromScoringItems } from '@/hockey/hockeyLeague'
 import { useNhlFeed } from '@/composables/useNhlFeed'
 import { mergeHockeyProjections, normalizeName } from '@/hockey/hockeyProjectionSource'
+import { categoriesFromScoringItems, type HockeyCategory } from '@/hockey/hockeyCategoryValue'
+import { hockeyDailyCategoryValue } from '@/today/hockeyDailyCategory'
 
 /**
  * Rest-of-season hockey value, for every surface that is not the draft board.
@@ -51,10 +53,22 @@ export interface HockeyValueInputs {
   weeksLeft: Ref<number>
 }
 
+/**
+ * The pool the daily category pass standardises against.
+ *
+ * The same figure the rankings board uses, deliberately: a player's value on the Today page and
+ * his value on /hockeyrankings have to be the same number, and the standardising pool is half of
+ * what decides it. Two pages that disagree about who is good is worse than one that says nothing.
+ */
+const DRAFTABLE = 168
+
 export function useHockeyValue(inputs: HockeyValueInputs) {
   const loading = ref(false)
   const problem = ref('')
   const weights = ref<Record<string, number>>({})
+  /* The league's own columns, for a category league. Read from the same settings payload the
+     weights come from — it was already being fetched and only half of it was being used. */
+  const categories = ref<HockeyCategory[]>([])
 
   const { feed, loading: feedLoading } = useNhlFeed(inputs.season)
 
@@ -77,6 +91,7 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
          myteam/pointsScoring is baseball-and-football shaped and would name none of these. */
       const items = settings?.settings?.scoringSettings?.scoringItems
       weights.value = items ? weightsFromScoringItems(items).weights : {}
+      categories.value = items ? categoriesFromScoringItems(items).categories : []
       if (!Object.keys(weights.value).length) {
         problem.value = 'This league published no scoring weights, so nothing can be priced.'
       }
@@ -126,6 +141,28 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
   })
 
   /**
+   * The same projections priced as a CATEGORY league prices them, per night.
+   *
+   * The daily page had no hockey category path at all: it went through the baseball engine,
+   * which divides a season value by a FanGraphs projection's games, and hockey has no FanGraphs
+   * row — so every player divided by zero and the board read 0.0 for everyone while claiming to
+   * still be loading. See src/today/hockeyDailyCategory.ts.
+   */
+  const categoryValueByKey = computed<ValueByKey>(() =>
+    hockeyDailyCategoryValue({
+      projections: merged.value.projections,
+      categories: categories.value,
+      draftablePlayers: DRAFTABLE,
+    }),
+  )
+
+  /* False is a real answer here, not a spinner: a league whose columns we cannot read has no
+     category value, and saying so beats printing 0.0 beside every name. */
+  const categoryReady = computed(() =>
+    categories.value.length > 0 && Object.keys(merged.value.projections).length > 0,
+  )
+
+  /**
    * By name, for a free agent the roster pool has no key for.
    *
    * Normalised rather than merely lower-cased, so "T.J. Oshie" and "TJ Oshie" resolve to the
@@ -140,6 +177,9 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
 
   return {
     valueByKey,
+    categoryValueByKey,
+    categoryReady,
+    categories,
     valueOf,
     loading: computed(() => loading.value || feedLoading.value),
     problem,

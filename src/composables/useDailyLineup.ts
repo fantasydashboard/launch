@@ -6,6 +6,7 @@ import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
 import { getNhlSchedule } from '@/services/nhlSchedule'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
+import { useHockeyValue } from '@/composables/useHockeyValue'
 import { useDailyCategoryValue } from '@/composables/useDailyCategoryValue'
 import { getLeagueType } from '@/config/sports'
 
@@ -152,8 +153,45 @@ export function useDailyLineup() {
    */
   const catSourceServes = computed(() =>
     isCategory.value && leagueStore.activePlatform === 'espn')
+
+  /*
+   * HOCKEY PRICES ITS OWN CATEGORIES.
+   *
+   * The baseball category engine divides a season value by a FanGraphs projection's games, and
+   * hockey has no FanGraphs row — so every player divided by zero, the whole board read 0.0, and
+   * the panel sat on "still reading tonight's values" for data that was never coming. The points
+   * path has had a hockey branch since hockey shipped; this is the same branch for categories.
+   *
+   * ESPN only, for the same reason the baseball one is: the VALUES come from our own NHL feed on
+   * any platform, but the COLUMNS come from the league's settings, and only ESPN's are readable
+   * today. A Yahoo hockey category league keeps the honest "no value model for this league yet"
+   * rather than being scored on columns it may not count.
+   */
+  const isHockey = computed(() => leagueStore.activeSport === 'hockey')
+  const hockeyLeagueId = computed(() => {
+    const parts = String(leagueStore.activeLeagueId ?? '').split('_')
+    return parts.length >= 4 && parts[0] === 'espn' ? parts[2] : ''
+  })
+  const hockeySeason = computed(() => {
+    const parts = String(leagueStore.activeLeagueId ?? '').split('_')
+    const fromKey = parts.length >= 4 ? parseInt(parts[3], 10) : NaN
+    if (Number.isFinite(fromKey) && fromKey > 2000) return fromKey
+    const now = new Date()
+    return now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear()
+  })
+  const hockeyCatServes = computed(() =>
+    isCategory.value && isHockey.value && !!hockeyLeagueId.value)
+  const hockeyValue = useHockeyValue({
+    leagueId: hockeyLeagueId,
+    season: hockeySeason,
+    enabled: hockeyCatServes,
+    weeksLeft: computed(() =>
+      Math.max(1, Math.round(26 * (1 - (leagueStore.seasonFractionComplete ?? 0))))),
+  })
+
   /** True when the league scores by category but we have no source that can price it. */
-  const categoryUnsupported = computed(() => isCategory.value && !catSourceServes.value)
+  const categoryUnsupported = computed(() =>
+    isCategory.value && !catSourceServes.value && !hockeyCatServes.value)
 
   const source = {
     pool: computed(() => (catSourceServes.value ? catSource.pool.value : pointsSource.pool.value)),
@@ -206,13 +244,16 @@ export function useDailyLineup() {
 
   const value = {
     valueByKey: computed(() =>
-      isCategory.value ? categoryValue.valueByKey.value : pointsValue.valueByKey.value),
+      hockeyCatServes.value ? hockeyValue.categoryValueByKey.value
+        : isCategory.value ? categoryValue.valueByKey.value
+          : pointsValue.valueByKey.value),
   }
 
   /** Whether the numbers on this page mean anything yet — false is a real answer, not 0.0. */
   const canValue = computed(() =>
     categoryUnsupported.value ? false
-      : isCategory.value ? categoryValue.ready.value : true)
+      : hockeyCatServes.value ? hockeyValue.categoryReady.value
+        : isCategory.value ? categoryValue.ready.value : true)
 
   const schedule = ref<WeekSchedule>({ ...EMPTY })
   /*
