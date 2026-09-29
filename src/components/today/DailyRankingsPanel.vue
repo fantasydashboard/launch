@@ -103,7 +103,15 @@ const positions = computed(() => {
  * Football's board draws tier lines for exactly this reason and I ported the list without the
  * thing that makes it readable. Same function it uses.
  */
-const tiers = computed(() => assignTiers(shown.value.map((r) => ({ playerKey: r.playerKey, value: r.today }))))
+/*
+ * The caption under every divider is `-{{ drop.toFixed(1) }}`, so a gap below 0.05 renders as
+ * "-0.0" — a line whose own evidence says there is no drop. The category board drew four of
+ * them, because a z-sum board is flat by construction where a points board is not. A tier is
+ * only worth drawing when the number that justifies it can be shown.
+ */
+const MIN_TIER_DROP = 0.05
+const tiers = computed(() =>
+  assignTiers(shown.value.map((r) => ({ playerKey: r.playerKey, value: r.today })), MIN_TIER_DROP))
 const tierOf = (key: string) => tiers.value[key] ?? 1
 /** True on the first row of a new tier, which is where the divider is drawn. */
 const startsTier = (i: number) => i > 0 && tierOf(shown.value[i].playerKey) !== tierOf(shown.value[i - 1].playerKey)

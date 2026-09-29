@@ -78,7 +78,20 @@ const TARGET_TIER_SIZE = 5
  *
  * Deterministic, needs no tuning constant, and cannot fragment.
  */
-export function assignTiers(rows: { playerKey: string; value: number }[]): Record<string, number> {
+export function assignTiers(
+  rows: { playerKey: string; value: number }[],
+  /**
+   * The smallest drop worth drawing a line for.
+   *
+   * A tier divider claims a cliff, and this function accepted any gap above zero — so a flat
+   * board got lines anyway. The hockey category page drew four of them captioned "-0.0": the
+   * caption rounds to one decimal and the gaps were hundredths. A divider whose own evidence
+   * rounds to nothing is asserting a drop between 0.65 and 0.64.
+   *
+   * Zero keeps every existing caller exactly as it was.
+   */
+  minGap = 0,
+): Record<string, number> {
   const out: Record<string, number> = {}
   if (!rows.length) return out
   const sorted = [...rows].sort((a, b) => b.value - a.value)
@@ -98,7 +111,7 @@ export function assignTiers(rows: { playerKey: string; value: number }[]): Recor
   const gaps = sorted.slice(0, -1).map((p, i) => ({ i, gap: p.value - sorted[i + 1].value }))
   const boundaries = new Set(
     gaps
-      .filter((g) => g.gap > 0)
+      .filter((g) => g.gap > 0 && g.gap >= minGap)
       .sort((a, b) => b.gap - a.gap)
       .slice(0, cuts)
       .map((g) => g.i),

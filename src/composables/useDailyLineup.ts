@@ -331,19 +331,23 @@ export function useDailyLineup() {
 
   const posRankByKey = computed(() => {
     const byPos = new Map<string, { key: string; today: number }[]>()
-    const add = (key: string, position: string, team: string, status: string) => {
-      const v = value.valueByKey.value[key]
+    /* Through valueFor, not a bare key lookup: on Yahoo the key misses for every rostered
+       player, and this is where the `LW1 of 13` chip comes from — so a Yahoo league showed a
+       projection with no rank beside it, which is the half of the number that makes it mean
+       something. */
+    const add = (p: any, key: string, team: string) => {
+      const v = valueFor(p)
       const perGame = v && v.games > 0 ? v.total / v.games : 0
-      const avail = availability(status)
+      const avail = availability(p.status ?? '')
       if (!perGame || avail === 'out' || !playsToday(team)) return
-      const pos = primaryPosition(position)
+      const pos = primaryPosition(p.position ?? '')
       if (!pos) return
       const today = perGame * (avail === 'doubtful' ? DOUBTFUL_DISCOUNT : 1)
       byPos.set(pos, [...(byPos.get(pos) ?? []), { key, today }])
     }
-    for (const p of source.pool.value) add(p.playerKey, p.position, p.proTeam ?? '', p.status ?? '')
+    for (const p of source.pool.value) add(p, p.playerKey, p.proTeam ?? '')
     for (const fa of source.freeAgents.value ?? []) {
-      add(fa.playerKey ?? `fa:${fa.name}`, fa.position ?? '', fa.team ?? '', fa.status ?? '')
+      add(fa, fa.playerKey ?? `fa:${fa.name}`, fa.team ?? '')
     }
 
     const rank = new Map<string, { rank: number; count: number }>()

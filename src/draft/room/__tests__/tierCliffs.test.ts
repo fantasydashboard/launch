@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { tierCliffs } from '../tierCliffs'
+import { tierCliffs, assignTiers } from '../tierCliffs'
 
 type Row = { name: string; projected: number; value: number; tier: number }
 const row = (name: string, projected: number, tier: number, value = projected): Row =>
@@ -88,5 +88,55 @@ describe('tierCliffs', () => {
 
   it('handles an empty list', () => {
     expect(tierCliffs([], tierOf, read)).toEqual([])
+  })
+})
+
+/*
+ * A TIER LINE IS A CLAIM THAT THERE IS A CLIFF.
+ *
+ * assignTiers cuts at the N largest gaps and accepted any gap above zero, so a flat board got
+ * tier lines anyway — the hockey category page drew four of them captioned "-0.0", because the
+ * caption rounds to one decimal and the gaps were a hundredth of a point. A divider whose own
+ * evidence rounds to nothing tells a reader there is a meaningful drop between 0.65 and 0.64.
+ *
+ * minGap is the smallest drop worth drawing a line for. Default zero keeps every existing
+ * caller unchanged.
+ */
+describe('assignTiers minGap', () => {
+  const flat = [
+    { playerKey: 'a', value: 0.66 }, { playerKey: 'b', value: 0.65 },
+    { playerKey: 'c', value: 0.64 }, { playerKey: 'd', value: 0.63 },
+    { playerKey: 'e', value: 0.62 }, { playerKey: 'f', value: 0.61 },
+  ]
+
+  it('still tiers a flat board when no minimum is asked for', () => {
+    const t = assignTiers(flat)
+    expect(new Set(Object.values(t)).size).toBeGreaterThan(1)
+  })
+
+  it('draws no line on a board with no drop worth showing', () => {
+    const t = assignTiers(flat, 0.05)
+    expect(new Set(Object.values(t)).size).toBe(1)
+  })
+
+  it('still cuts where there is a real cliff', () => {
+    const t = assignTiers([
+      { playerKey: 'a', value: 5.0 }, { playerKey: 'b', value: 4.9 },
+      { playerKey: 'c', value: 3.0 }, { playerKey: 'd', value: 2.9 },
+    ], 0.05)
+    expect(t['a']).toBe(1)
+    expect(t['b']).toBe(1)
+    expect(t['c']).toBe(2)
+    expect(t['d']).toBe(2)
+  })
+
+  it('cuts only at gaps that clear the bar, not the largest N regardless', () => {
+    /* One real cliff and several rounding-level gaps: exactly two tiers, not four. */
+    const t = assignTiers([
+      { playerKey: 'a', value: 9.00 }, { playerKey: 'b', value: 8.99 },
+      { playerKey: 'c', value: 8.98 }, { playerKey: 'd', value: 5.00 },
+      { playerKey: 'e', value: 4.99 }, { playerKey: 'f', value: 4.98 },
+    ], 0.05)
+    expect(new Set(Object.values(t)).size).toBe(2)
   })
 })
