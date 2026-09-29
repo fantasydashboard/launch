@@ -17,6 +17,9 @@
  * ones, and there is no way for a reader to tell which they are looking at.
  */
 
+import { LOWER_IS_BETTER } from './hockeyPositions'
+import type { HockeyCategory } from './hockeyCategoryValue'
+
 /** Yahoo's column names, in every spelling seen, to the stat keys a projection carries. */
 const BY_NAME: Record<string, string> = {
   // Skaters
@@ -46,8 +49,53 @@ const BY_NAME: Record<string, string> = {
   GS: 'GS', 'GAMES STARTED': 'GS',
 }
 
-export interface YahooStatCategory {
-  stat?: { stat_id?: string | number; name?: string; display_name?: string }
+/**
+ * One entry of Yahoo's stat_categories, in either of the two shapes it arrives in.
+ *
+ * `stat` is how the Fantasy API documents it and how it usually comes back; the bare form is
+ * how some responses send it, which is why both proven readers of this payload write
+ * `cat?.stat ?? cat`. `abbr` is the only field that is reliably short — "SOG" where
+ * display_name can be "Shots on Goal Total" — so it is tried first.
+ */
+export interface YahooStatEntry {
+  stat_id?: string | number
+  name?: string
+  display_name?: string
+  abbr?: string
+  /** '1' or 1 means Yahoo shows the column and nobody competes in it. */
+  is_only_display_stat?: string | number
+}
+export interface YahooStatCategory extends YahooStatEntry {
+  stat?: YahooStatEntry
+}
+
+/** The entry itself, whichever way it is wrapped. */
+function statOf(entry: unknown): YahooStatEntry {
+  if (!entry || typeof entry !== 'object') return {}
+  const inner = (entry as YahooStatCategory).stat
+  return (inner && typeof inner === 'object' ? inner : (entry as YahooStatEntry))
+}
+
+/** True for a column Yahoo displays but does not score — games played, innings, H/AB. */
+function isDisplayOnly(stat: YahooStatEntry): boolean {
+  const d = stat.is_only_display_stat
+  return d === '1' || d === 1
+}
+
+/**
+ * The stat key this column maps to, trying every name Yahoo gives it.
+ *
+ * abbr first because it is the short one, then the display name, then the internal name. A
+ * league whose display_name is spelled long still resolves, which reading one field could not.
+ */
+function keyOf(stat: YahooStatEntry): { key: string; label: string } {
+  const label = String(stat.display_name || stat.name || stat.abbr || '')
+  for (const candidate of [stat.abbr, stat.display_name, stat.name]) {
+    if (!candidate) continue
+    const key = BY_NAME[String(candidate).toUpperCase().trim()]
+    if (key) return { key, label }
+  }
+  return { key: '', label }
 }
 
 export interface YahooHockeyWeights {
@@ -101,7 +149,8 @@ function modifierEntries(
  */
 function categoryList(statCategories: unknown): YahooStatCategory[] {
   if (Array.isArray(statCategories)) return statCategories as YahooStatCategory[]
-  const wrapped = (statCategories as any)?.stats
+  if (!statCategories || typeof statCategories !== 'object') return []
+  const wrapped = (statCategories as any).stats
   return Array.isArray(wrapped) ? wrapped as YahooStatCategory[] : []
 }
 
@@ -114,11 +163,11 @@ export function yahooHockeyWeights(
   const cats = categoryList(statCategories)
   if (!cats.length || !statModifiers) return { weights, unmatched }
 
-  const nameById = new Map<string, string>()
+  const byId = new Map<string, { key: string; label: string }>()
   for (const c of cats) {
-    const id = c?.stat?.stat_id
-    if (id == null) continue
-    nameById.set(String(id), String(c.stat?.display_name || c.stat?.name || ''))
+    const stat = statOf(c)
+    if (stat.stat_id == null) continue
+    byId.set(String(stat.stat_id), keyOf(stat))
   }
 
   for (const [id, raw] of modifierEntries(statModifiers)) {
@@ -127,11 +176,48 @@ export function yahooHockeyWeights(
     /* Zero is "this league does not score it", not "it is worth nothing" — Yahoo lists every
        stat it could score and zeroes the rest. */
     if (!Number.isFinite(value) || value === 0) continue
-    const display = nameById.get(String(id))
-    if (!display) continue
-    const key = BY_NAME[display.toUpperCase().trim()]
-    if (key) weights[key] = value
-    else unmatched.push(display)
+    const named = byId.get(String(id))
+    if (!named || !named.label) continue
+    if (named.key) weights[named.key] = value
+    else unmatched.push(named.label)
   }
   return { weights, unmatched: [...new Set(unmatched)] }
+}
+
+/**
+ * A Yahoo hockey league's CATEGORY columns.
+ *
+ * WHY THIS IS A SEPARATE READ. A points league publishes stat_categories AND stat_modifiers,
+ * and the weights are the whole answer. A category league publishes the categories and no
+ * modifiers at all — so useHockeyValue, which demanded weights, reported "this league
+ * published no scoring weights, so nothing can be priced" and set categories to empty. That
+ * was true of the weights and false of the league: the columns were sitting in the same
+ * payload, unread. Yahoo hockey category leagues were the last unpriceable kind.
+ *
+ * Nothing downstream joins on `statId` — it is a Vue key on the matchup header and an
+ * explanation of where a column came from — so Yahoo's own ids can go in the field ESPN's
+ * ids occupy without the two id spaces ever having to meet.
+ *
+ * Direction comes from hockey's own LOWER_IS_BETTER, not from players/direction.ts, whose set
+ * is baseball's (ERA, WHIP, L, CS) and would call goals-against a good thing. Yahoo does
+ * publish a sort_order per stat, and it is deliberately not read here: it cannot be verified
+ * from this side, and a wrong direction silently inverts a whole column of the board.
+ */
+export function yahooHockeyCategories(
+  statCategories: YahooStatCategory[] | unknown,
+): { categories: HockeyCategory[]; unmatched: string[] } {
+  const categories: HockeyCategory[] = []
+  const unmatched: string[] = []
+  const seen = new Set<string>()
+
+  for (const c of categoryList(statCategories)) {
+    const stat = statOf(c)
+    if (stat.stat_id == null || isDisplayOnly(stat)) continue
+    const { key, label } = keyOf(stat)
+    if (!key) { if (label) unmatched.push(label); continue }
+    if (seen.has(key)) continue
+    seen.add(key)
+    categories.push({ key, statId: Number(stat.stat_id), reverse: LOWER_IS_BETTER.has(key) })
+  }
+  return { categories, unmatched: [...new Set(unmatched)] }
 }

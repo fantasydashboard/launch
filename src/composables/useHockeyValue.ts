@@ -6,7 +6,8 @@ import { useNhlFeed } from '@/composables/useNhlFeed'
 import { mergeHockeyProjections, normalizeName } from '@/hockey/hockeyProjectionSource'
 import { categoriesFromScoringItems, type HockeyCategory } from '@/hockey/hockeyCategoryValue'
 import { hockeyDailyCategoryValue } from '@/today/hockeyDailyCategory'
-import { yahooHockeyWeights } from '@/hockey/yahooHockeyWeights'
+import { getLeagueType } from '@/config/sports'
+import { yahooHockeyWeights, yahooHockeyCategories } from '@/hockey/yahooHockeyWeights'
 
 /**
  * Rest-of-season hockey value, for every surface that is not the draft board.
@@ -96,8 +97,7 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
     try {
       if ((inputs.platform?.value ?? 'espn') === 'yahoo') {
         /* Yahoo publishes its scoring as stat_categories + stat_modifiers, in its own column
-           names. See src/hockey/yahooHockeyWeights.ts. Categories stay empty: a Yahoo category
-           league still cannot be priced, and inventing columns would be worse than saying so. */
+           names. See src/hockey/yahooHockeyWeights.ts. */
         const { yahooService } = await import('@/services/yahoo')
         const settings = await yahooService.getLeagueSettings(inputs.leagueId.value).catch(() => null)
         /* The same shape useLeagueScoring already consumes for baseball and football: the
@@ -106,14 +106,44 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
           settings?.stat_categories, settings?.stat_modifiers,
         )
         weights.value = w
-        categories.value = []
+        /*
+         * THE COLUMNS WERE IN THE PAYLOAD ALL ALONG.
+         *
+         * This line used to be `categories.value = []`, with a comment saying a Yahoo category
+         * league could not be priced and that inventing columns would be worse than saying so.
+         * The second half of that was right and the first half was never true: a category
+         * league publishes its columns in the same stat_categories array a points league does,
+         * and only the modifiers are missing. We were fetching them and throwing them away.
+         */
+        const cats = yahooHockeyCategories(settings?.stat_categories)
+        categories.value = cats.categories
+        if (cats.unmatched.length) {
+          console.warn(
+            '[useHockeyValue] Yahoo category columns we cannot name:', cats.unmatched,
+          )
+        }
         if (unmatched.length) {
           /* Named rather than swallowed: a column we cannot price ranks the board on rules
              nobody plays by, and looks exactly like a board that is right. */
           console.warn('[useHockeyValue] Yahoo columns this league scores and we cannot name:', unmatched)
         }
-        if (!Object.keys(weights.value).length) {
-          problem.value = 'This league published no scoring weights, so nothing can be priced.'
+        /*
+         * WHAT COUNTS AS MISSING DEPENDS ON HOW THE LEAGUE SCORES.
+         *
+         * A points league is unpriceable without weights. A category league has no modifiers
+         * at all and is unpriceable without COLUMNS — so the old unconditional weights check
+         * reported "this league published no scoring weights" to every Yahoo category league,
+         * which was a true sentence about a thing that did not matter and hid the fact that
+         * its columns had been read and discarded. The scoring type is in the same payload.
+         */
+        const wantsPoints = getLeagueType(settings?.scoring_type) === 'points'
+        const missing = wantsPoints
+          ? !Object.keys(weights.value).length
+          : !categories.value.length
+        if (missing) {
+          problem.value = wantsPoints
+            ? 'This league published no scoring weights, so nothing can be priced.'
+            : 'This league published no scoring categories, so nothing can be priced.'
           /*
            * SAY WHERE IT BROKE, not just that it did. An empty weight map has several causes —
            * the settings call failed, the response has different field names, the modifiers
@@ -122,8 +152,11 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
            * shape we actually received is what turns a silent dead end into a five-second
            * diagnosis.
            */
-          console.warn('[useHockeyValue] Yahoo scoring produced no weights.', {
+          console.warn('[useHockeyValue] Yahoo scoring produced nothing usable.', {
             leagueKey: inputs.leagueId.value,
+            scoringType: settings?.scoring_type,
+            wantsPoints,
+            categoriesRead: categories.value.length,
             gotSettings: !!settings,
             settingsKeys: settings ? Object.keys(settings) : null,
             statCategories: Array.isArray(settings?.stat_categories)
@@ -233,9 +266,24 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
     return key ? valueByKey.value[key] ?? null : null
   })
 
+  /**
+   * The same lookup for CATEGORY value, and on Yahoo it is the only one that ever hits.
+   *
+   * These projections are keyed by ESPN player id (or `nhl:<id>` for a man ESPN does not
+   * carry). A Yahoo roster player arrives with a Yahoo player key, so the direct lookup misses
+   * for every single one of them — the name map is not a fallback there, it is the whole
+   * bridge. Without this a Yahoo hockey category league would read the columns correctly and
+   * still show nothing beside any player.
+   */
+  const categoryValueOf = computed(() => (p: { name?: string }): PlayerValue | null => {
+    const key = merged.value.keyByName[normalizeName(String(p?.name ?? ''))]
+    return key ? categoryValueByKey.value[key] ?? null : null
+  })
+
   return {
     valueByKey,
     categoryValueByKey,
+    categoryValueOf,
     categoryReady,
     categories,
     valueOf,

@@ -11,6 +11,7 @@ import { useHockeyValue } from '@/composables/useHockeyValue'
 import { valueState, type ValueState } from '@/today/valueState'
 import { useDailyCategoryValue } from '@/composables/useDailyCategoryValue'
 import { getLeagueType } from '@/config/sports'
+import { platformFromLeagueId } from '@/hockey/platformFromLeagueId'
 
 /**
  * Who to start tonight, out of the players you already have.
@@ -182,8 +183,17 @@ export function useDailyLineup() {
    * rather than being scored on columns it may not count.
    */
   const isHockey = computed(() => leagueStore.activeSport === 'hockey')
+  /*
+   * The id useHockeyValue should read this league's settings with, which is not the same
+   * string on both platforms: ESPN wants the bare numeric league id dug out of our composite
+   * key, Yahoo wants the whole league key exactly as it came. Sending one to the other's
+   * endpoint resolves to nothing, and a hockey league with no settings is priced at nothing.
+   */
+  const hockeyPlatform = computed(() => platformFromLeagueId(leagueStore.activeLeagueId))
   const hockeyLeagueId = computed(() => {
-    const parts = String(leagueStore.activeLeagueId ?? '').split('_')
+    const raw = String(leagueStore.activeLeagueId ?? '')
+    if (hockeyPlatform.value === 'yahoo') return raw
+    const parts = raw.split('_')
     return parts.length >= 4 && parts[0] === 'espn' ? parts[2] : ''
   })
   const hockeySeason = computed(() => {
@@ -193,10 +203,20 @@ export function useDailyLineup() {
     const now = new Date()
     return now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear()
   })
+  /*
+   * ESPN ONLY WAS NEVER ABOUT THE VALUES. The comment above said the columns come from the
+   * league's settings "and only ESPN's are readable today", which was true of the reader and
+   * not of Yahoo: a Yahoo category league publishes its columns in the same stat_categories
+   * array a points league does. yahooHockeyCategories reads them, so both platforms serve.
+   *
+   * Sleeper does not — it has no hockey — and falls out of this on the id shape.
+   */
   const hockeyCatServes = computed(() =>
-    isCategory.value && isHockey.value && !!hockeyLeagueId.value)
+    isCategory.value && isHockey.value && !!hockeyLeagueId.value
+    && hockeyPlatform.value !== 'sleeper')
   const hockeyValue = useHockeyValue({
     leagueId: hockeyLeagueId,
+    platform: hockeyPlatform,
     season: hockeySeason,
     enabled: hockeyCatServes,
     weeksLeft: computed(() =>
@@ -338,8 +358,17 @@ export function useDailyLineup() {
   const valueFor = (p: { playerKey?: string; name?: string; position?: string; proTeam?: string; team?: string }) => {
     const direct = value.valueByKey.value[p.playerKey ?? '']
     if (direct) return direct
-    if (isCategory.value && !hockeyCatServes.value) return null
-    return pointsValue.valueOf.value({ name: p.name, position: p.position, team: p.proTeam ?? p.team } as any) ?? null
+    const byName = { name: p.name, position: p.position, team: p.proTeam ?? p.team }
+    /*
+     * A CATEGORY BOARD MUST NOT FALL BACK TO A POINTS VALUE. The name lookup used to go
+     * straight to pointsValue, which prices a player in the league's POINTS — a number from a
+     * different scale entirely, silently mixed in among standard deviations wherever the key
+     * missed. On ESPN that was rare, because both sides carry ESPN keys. On Yahoo the key
+     * misses for every rostered player, so it would have been the number for all of them.
+     */
+    if (hockeyCatServes.value) return hockeyValue.categoryValueOf.value(byName) ?? null
+    if (isCategory.value) return null
+    return pointsValue.valueOf.value(byName as any) ?? null
   }
 
   /*

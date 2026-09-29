@@ -134,3 +134,30 @@ describe('yahooHockeyWeights category shapes', () => {
   it('yields nothing for a category shape it does not recognise', () =>
     expect(yahooHockeyWeights('nonsense' as any, mods).weights).toEqual({}))
 })
+
+/*
+ * THE UNWRAP THIS FILE GOT HALF RIGHT. `categoryList` was taught that stat_categories arrives
+ * either bare or as `{ stats: [...] }`, but each ENTRY was still read as `c.stat.stat_id` only.
+ * Two proven consumers of the same payload — useFullSeasonCategoryData and the editorial Yahoo
+ * adapter — both write `cat?.stat ?? cat`, because Yahoo sends the entries bare in some
+ * responses. Read one way only and every entry is skipped, nameById comes back empty, and no
+ * modifier can be named: an empty weight map, indistinguishable from a league that published
+ * no scoring.
+ */
+describe('yahooHockeyWeights entry shapes', () => {
+  it('reads an entry whether or not it is wrapped in `stat`', () => {
+    const wrapped = yahooHockeyWeights([{ stat: { stat_id: 1, display_name: 'G' } }], { 1: 3 })
+    const bare = yahooHockeyWeights([{ stat_id: 1, display_name: 'G' }] as any, { 1: 3 })
+    expect(wrapped.weights).toEqual({ G: 3 })
+    expect(bare.weights).toEqual({ G: 3 })
+  })
+
+  /* Yahoo's own short spelling, and the only field that is reliably an abbreviation. */
+  it('matches on abbr when the display name is one we do not carry', () => {
+    const { weights } = yahooHockeyWeights(
+      [{ stat: { stat_id: 14, abbr: 'SOG', display_name: 'Shots on Goal Total' } }] as any,
+      { 14: 0.3 },
+    )
+    expect(weights).toEqual({ SOG: 0.3 })
+  })
+})

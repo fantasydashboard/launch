@@ -152,7 +152,24 @@
               laptop and clips its best players on the device most people open it on has not
               been improved, it has been traded.
             -->
-            <div class="flex items-center gap-2.5 border-b border-dark-border/40 py-2.5 text-base text-dark-text last:border-0 sm:gap-3">
+            <div class="relative flex items-center gap-2.5 border-b border-dark-border/40 py-2.5 text-base text-dark-text last:border-0 sm:gap-3">
+              <!--
+                WHICH WAY HE MOVED, as colour and nothing else.
+
+                A number here would be a fifth figure on a row that already carries four, and
+                the reader does not want the amount — he wants to know whether anything
+                happened. Green rose, red fell, brighter means further, and half the board is
+                deliberately unmarked so the marked half is legible.
+
+                Measured on value rather than places: see football/rankingMovement.ts. Places
+                are cheap where the board is dense, so colouring on them leaves the top twenty
+                grey and sets fire to the hundreds.
+              -->
+              <span v-if="mv(row.playerKey)" aria-hidden="true"
+                    class="absolute left-0 top-1 bottom-1 w-[3px] rounded-full"
+                    :class="mv(row.playerKey)!.dir === 'up' ? 'bg-[#7ee787]' : 'bg-[#FF5C5C]'"
+                    :style="{ opacity: 0.25 + 0.75 * mv(row.playerKey)!.intensity }"
+                    :title="`${mv(row.playerKey)!.dir === 'up' ? 'Up' : 'Down'} since last week`" />
               <img v-if="row.headshot" :src="row.headshot" :alt="row.name" loading="lazy" @error="onImgErr"
                    class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover sm:h-8 sm:w-8" />
               <span v-else class="h-7 w-7 shrink-0 rounded-full bg-dark-border sm:h-8 sm:w-8" />
@@ -287,6 +304,8 @@ import { scoringLabel } from '@/composables/useFootballScoring'
 import type { BoardRow } from '@/football/footballWire'
 import RankingPicker from '@/components/RankingPicker.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import { useRankingMovement } from '@/composables/useRankingMovement'
+import { useLeagueStore } from '@/stores/league'
 
 /*
  * `access.scopedToLeague` is the one fact "does this reader have a football league" resolves
@@ -306,6 +325,26 @@ const { isAdmin } = useFeatureAccess()
 
 const { board, positions, loading, ready, access, scoringSource,
         difficultyFor, byeByTeam, ppgByKey, addCost, setPosition } = useRankings()
+
+/* Week-over-week movement, as a colour bar at the left edge of each row. Only rows that moved
+   more than the board's own median get one — see useRankingMovement for why it stores a
+   snapshot rather than recomputing history it cannot have. */
+const leagueStore = useLeagueStore()
+/* `board` is keyed by position, so the snapshot flattens it — a player's value is his value
+   whichever list he is being read on, and a per-position snapshot would record the same man
+   several times under keys that drift apart. */
+const allRows = computed(() => Object.values(board.value ?? {}).flat())
+const rankMovement = useRankingMovement({
+  rows: computed(() => allRows.value.map((r) => ({
+    playerKey: r.playerKey, vorRos: Number(r.vorRos) || 0 }))),
+  week: computed(() => leagueStore.currentWeek ?? 1),
+  sport: computed(() => String(leagueStore.activeSport ?? 'football')),
+  ready: computed(() => !!ready.value && allRows.value.length > 0),
+})
+const mv = (key: string) => {
+  const m = rankMovement.movement.value[key]
+  return m && m.intensity > 0 ? m : null
+}
 
 const active = ref('ALL')
 const expanded = ref(false)
