@@ -103,3 +103,34 @@ describe('yahooHockeyWeights modifier shapes', () => {
   it('yields nothing for a shape it does not recognise, rather than guessing', () =>
     expect(yahooHockeyWeights(cats, 'nonsense').weights).toEqual({}))
 })
+
+/*
+ * THE SAME WRAPPER, ON THE OTHER SIDE.
+ *
+ * The modifiers were taught to accept Yahoo's `{ stats: [...] }` wrapper and the CATEGORIES
+ * were not — so `statCategories.length` read undefined on the real response and the function
+ * bailed with an empty map before looking at anything. Handling one side of a symmetric API
+ * and not the other is its own bug, and it presents identically to a league with no scoring.
+ */
+describe('yahooHockeyWeights category shapes', () => {
+  const mods = { 1: 3, 2: 2 }
+  const expected = { G: 3, A: 2 }
+  const stats = [
+    { stat: { stat_id: 1, display_name: 'G' } },
+    { stat: { stat_id: 2, display_name: 'A' } },
+  ]
+
+  it('accepts a bare array of categories', () =>
+    expect(yahooHockeyWeights(stats, mods).weights).toEqual(expected))
+
+  it('accepts the { stats: [...] } wrapper the Fantasy API returns', () =>
+    expect(yahooHockeyWeights({ stats } as any, mods).weights).toEqual(expected))
+
+  it('handles both sides wrapped at once, which is the real response', () =>
+    expect(yahooHockeyWeights({ stats } as any, {
+      stats: [{ stat: { stat_id: 1, value: '3' } }, { stat: { stat_id: 2, value: '2' } }],
+    }).weights).toEqual(expected))
+
+  it('yields nothing for a category shape it does not recognise', () =>
+    expect(yahooHockeyWeights('nonsense' as any, mods).weights).toEqual({}))
+})

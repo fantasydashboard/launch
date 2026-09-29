@@ -91,16 +91,31 @@ function modifierEntries(
   return Object.entries(statModifiers as Record<string, unknown>)
 }
 
+/**
+ * The categories, whatever Yahoo wrapped them in.
+ *
+ * The modifiers were taught to accept `{ stats: [...] }` and this side was not, so
+ * `statCategories.length` read undefined on the real response and the whole function bailed
+ * before looking at anything — an empty weight map, indistinguishable from a league that
+ * publishes no scoring at all. Handling one half of a symmetric API is its own bug.
+ */
+function categoryList(statCategories: unknown): YahooStatCategory[] {
+  if (Array.isArray(statCategories)) return statCategories as YahooStatCategory[]
+  const wrapped = (statCategories as any)?.stats
+  return Array.isArray(wrapped) ? wrapped as YahooStatCategory[] : []
+}
+
 export function yahooHockeyWeights(
-  statCategories: YahooStatCategory[] | undefined,
+  statCategories: YahooStatCategory[] | unknown,
   statModifiers: Record<string, number> | unknown,
 ): YahooHockeyWeights {
   const weights: Record<string, number> = {}
   const unmatched: string[] = []
-  if (!statCategories?.length || !statModifiers) return { weights, unmatched }
+  const cats = categoryList(statCategories)
+  if (!cats.length || !statModifiers) return { weights, unmatched }
 
   const nameById = new Map<string, string>()
-  for (const c of statCategories) {
+  for (const c of cats) {
     const id = c?.stat?.stat_id
     if (id == null) continue
     nameById.set(String(id), String(c.stat?.display_name || c.stat?.name || ''))
