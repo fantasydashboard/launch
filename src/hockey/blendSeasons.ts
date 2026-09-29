@@ -89,6 +89,15 @@ export interface SeasonRow {
   playerId: number
   /** Weighted games per season, set by blendSeasons. See the note where it is computed. */
   typicalGames?: number
+  /**
+   * Games the player actually played, unweighted — his real sample size.
+   *
+   * `gamesPlayed` is weighted so the rate is a ratio of weighted sums, which makes it about ten
+   * times his real games at PRIOR_WEIGHTS of [6,3,1]. Anything deciding how much EVIDENCE he
+   * represents has to use this instead, or it believes a twelve-game rookie as readily as a
+   * three-season regular. See the shrinkage in src/hockey/nhlRates.ts.
+   */
+  sampleGames?: number
   skaterFullName?: string
   positionCode?: string
   gamesPlayed: number
@@ -152,9 +161,11 @@ export function blendSeasons(
       const id = row.playerId
       /* Only the most recent season is boosted. Scaling the others would just renormalise. */
       const weight = i === 0 ? w * (boost.get(id) ?? 1) : w
-      const cur = acc.get(id) ?? ({ playerId: id, gamesPlayed: 0 } as SeasonRow)
+      const cur = acc.get(id) ?? ({ playerId: id, gamesPlayed: 0, sampleGames: 0 } as SeasonRow)
       for (const cat of COUNTING) cur[cat] = (cur[cat] ?? 0) + (Number(row[cat]) || 0) * weight
       cur.gamesPlayed = (cur.gamesPlayed ?? 0) + (Number(row.gamesPlayed) || 0) * weight
+      /* Unweighted, because this one answers "how much did we see", not "what is the rate". */
+      cur.sampleGames = (cur.sampleGames ?? 0) + (Number(row.gamesPlayed) || 0)
       weightUsed.set(id, (weightUsed.get(id) ?? 0) + weight)
       /* First season that names him wins, and seasons arrive newest-first. */
       if (!seen.has(id)) {

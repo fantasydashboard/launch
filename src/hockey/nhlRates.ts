@@ -204,13 +204,31 @@ function priorRates(prior: SkaterRow[]): Map<number, CatTotals> {
       leaveOneOut(isDefenceman(row.positionCode) ? d : f, row)
       ?? leaveOneOut(all, row)
       ?? DEFAULT_BASELINE[isDefenceman(row.positionCode) ? 'D' : 'F']
+    /*
+     * TWO DIFFERENT NUMBERS, and using one for both jobs is what broke this.
+     *
+     * `gamesPlayed` is weighted — blendSeasons multiplies each season's games by its weight so
+     * the rate is a ratio of weighted sums. It is the right denominator for the RATE and the
+     * wrong one for the EVIDENCE: at PRIOR_WEIGHTS of [6,3,1] it is roughly ten times what a
+     * man actually played, so a twelve-game rookie arrived carrying seventy-two and the
+     * baseline got 8% of the say where it had earned 35%. The k values in SHRINK_GAMES were
+     * measured over single player-seasons; the multi-season blend came afterwards and nothing
+     * reconciled the two.
+     *
+     * Anton Frondell — one twelve-game season at 0.75 points a game — came out projected above
+     * his own small-sample rate and twenty-ninth on a nightly board.
+     *
+     * `sampleGames` is the unweighted count. Absent it (an unweighted caller) the two are the
+     * same number and this is arithmetically identical to what it did before.
+     */
     const gp = row.gamesPlayed
+    const sample = Number((row as any).sampleGames) || gp
     const shrink = SHRINK_GAMES[isDefenceman(row.positionCode) ? 'D' : 'F']
     const rate = zeroTotals()
     for (const cat of CATEGORIES) {
-      const own = gp > 0 ? row[cat] : 0
+      const ownRate = gp > 0 ? row[cat] / gp : 0
       const k = shrink[cat]
-      rate[cat] = (own + base[cat] * k) / (gp + k)
+      rate[cat] = sample > 0 ? (ownRate * sample + base[cat] * k) / (sample + k) : base[cat]
     }
     out.set(row.playerId, rate)
   }

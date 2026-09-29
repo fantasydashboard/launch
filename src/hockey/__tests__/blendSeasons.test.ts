@@ -129,3 +129,38 @@ describe('the trajectory term (opt-in)', () => {
     expect(small).toBeGreaterThan(1)
   })
 })
+
+/*
+ * HOW MUCH THE PLAYER ACTUALLY PLAYED, as distinct from his weighted games.
+ *
+ * `gamesPlayed` is multiplied by each season's weight so that the rate is a proper ratio of
+ * weighted sums. That figure is not a sample size: with PRIOR_WEIGHTS of [6,3,1] it is about
+ * ten times the games a man actually played, and anything using it to decide how much evidence
+ * he represents will believe him ten times more than it should.
+ */
+describe('blendSeasons sampleGames', () => {
+  const row = (playerId: number, gamesPlayed: number, points: number) =>
+    ({ playerId, gamesPlayed, points, skaterFullName: 'X', positionCode: 'C' } as any)
+
+  it('reports the games actually played, unweighted', () => {
+    const [out] = blendSeasons([[row(1, 10, 5)], [row(1, 20, 10)], [row(1, 30, 15)]], [6, 3, 1])
+    expect((out as any).sampleGames).toBe(60)
+  })
+
+  it('leaves the weighted games alone, because the rate depends on them', () => {
+    const [out] = blendSeasons([[row(1, 10, 5)], [row(1, 20, 10)], [row(1, 30, 15)]], [6, 3, 1])
+    expect(out.gamesPlayed).toBe(10 * 6 + 20 * 3 + 30 * 1)
+  })
+
+  /* The case that matters: one short season must not look like most of a career. */
+  it('does not inflate a single short season', () => {
+    const [out] = blendSeasons([[row(1, 12, 9)]], [6, 3, 1])
+    expect((out as any).sampleGames).toBe(12)
+    expect(out.gamesPlayed).toBe(72)
+  })
+
+  it('counts only the seasons a player appears in', () => {
+    const [out] = blendSeasons([[row(1, 82, 60)], [], [row(1, 40, 20)]], [6, 3, 1])
+    expect((out as any).sampleGames).toBe(122)
+  })
+})

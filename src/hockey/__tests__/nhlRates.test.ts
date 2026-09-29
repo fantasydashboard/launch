@@ -197,3 +197,63 @@ describe('rateSkaters', () => {
     expect(withEmpty.perGame.goals).toBeCloseTo(without.perGame.goals, 6)
   })
 })
+
+/*
+ * HOW HARD A THIN SAMPLE IS PULLED TOWARD THE POPULATION.
+ *
+ * priorRates shrinks a player's prior-season rate toward the baseline, weighting his own rate by
+ * the games behind it — and it read `gamesPlayed`, which blendSeasons multiplies by each season's
+ * weight. At PRIOR_WEIGHTS of [6,3,1] a twelve-game rookie arrives carrying seventy-two, so the
+ * prior got 8% of the say where it should have had 35%, and a cup of coffee was treated as most
+ * of a season. The k values were measured over single player-seasons; the blend came later.
+ *
+ * Anton Frondell, one 12-game season at 0.75 points a game, came out projected ABOVE his own
+ * small-sample rate and 29th on a nightly board.
+ */
+describe('rateSkaters thin-sample shrinkage', () => {
+  const skater = (over: any = {}) => ({
+    playerId: 1, skaterFullName: 'Rookie', positionCode: 'C', teamAbbrevs: 'CHI',
+    gamesPlayed: 0, goals: 0, assists: 0, points: 0, plusMinus: 0, penaltyMinutes: 0,
+    ppPoints: 0, shots: 0, hits: 0, blockedShots: 0, ppGoals: 0, shGoals: 0, shPoints: 0,
+    ...over,
+  })
+  /* A population for the baseline to be drawn from. */
+  const crowd = Array.from({ length: 40 }, (_, i) =>
+    skater({ playerId: 100 + i, skaterFullName: `P${i}`, gamesPlayed: 82, points: 41, goals: 16, assists: 25, shots: 140 }))
+
+  const rateOf = (prior: any[]) => {
+    const roster = prior.map((p) => skater({ ...p, gamesPlayed: 0, points: 0, goals: 0, assists: 0, shots: 0 }))
+    const out = rateSkaters(roster as any, [] as any, prior as any)
+    return out.find((r) => r.playerId === 1)!.perGame.points
+  }
+
+  it('pulls a twelve-game sample well toward the population', () => {
+    /* Weighted like blendSeasons does: 12 games at weight 6, with sampleGames telling the truth. */
+    const thin = skater({ gamesPlayed: 72, sampleGames: 12, points: 9 * 6, goals: 3 * 6, assists: 6 * 6, shots: 30 * 6 })
+    const r = rateOf([thin, ...crowd])
+    /* His raw rate is 0.75 and the crowd's is 0.5; a 12-game sample must land nearer the middle
+       than his own number. */
+    expect(r).toBeLessThan(0.70)
+    expect(r).toBeGreaterThan(0.50)
+  })
+
+  it('barely moves a player with three full seasons behind him', () => {
+    const thick = skater({ gamesPlayed: 820, sampleGames: 240, points: 0.75 * 820, goals: 0.25 * 820, assists: 0.5 * 820, shots: 2.5 * 820 })
+    const r = rateOf([thick, ...crowd])
+    expect(r).toBeGreaterThan(0.72)
+  })
+
+  /* The thin man must be pulled harder than the thick one, which is the whole point. */
+  it('trusts a long record more than a short one at the same rate', () => {
+    const thin = skater({ gamesPlayed: 72, sampleGames: 12, points: 9 * 6, goals: 3 * 6, assists: 6 * 6, shots: 30 * 6 })
+    const thick = skater({ gamesPlayed: 820, sampleGames: 240, points: 0.75 * 820, goals: 0.25 * 820, assists: 0.5 * 820, shots: 2.5 * 820 })
+    expect(rateOf([thin, ...crowd])).toBeLessThan(rateOf([thick, ...crowd]))
+  })
+
+  /* Unweighted input must behave exactly as it did before sampleGames existed. */
+  it('is unchanged when no weighting was applied', () => {
+    const plain = skater({ gamesPlayed: 12, points: 9, goals: 3, assists: 6, shots: 30 })
+    const withSample = skater({ gamesPlayed: 12, sampleGames: 12, points: 9, goals: 3, assists: 6, shots: 30 })
+    expect(rateOf([plain, ...crowd])).toBeCloseTo(rateOf([withSample, ...crowd]), 10)
+  })
+})
