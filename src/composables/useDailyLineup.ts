@@ -309,6 +309,26 @@ export function useDailyLineup() {
    * two surfaces on one page disagreeing about what position a man plays is worse than
    * either being slightly coarse.
    */
+  /*
+   * A PLAYER'S VALUE, BY KEY AND THEN BY NAME.
+   *
+   * The key lookup alone works on ESPN and fails on Yahoo, because `playerKey` is the
+   * PLATFORM's id and our hockey projections are keyed by ESPN's. A Yahoo roster therefore
+   * missed on every single player, while free agents resolved — they already had a name
+   * fallback here and rostered players did not. The visible result was a Today page whose
+   * rankings contained nothing but free agents and whose lineup showed no numbers at all,
+   * on a league where the values had been computed perfectly well.
+   *
+   * Name resolution is the same path the free-agent branch has always used, and it is
+   * position-aware upstream, which is what keeps the two Elias Petterssons apart.
+   */
+  const valueFor = (p: { playerKey?: string; name?: string; position?: string; proTeam?: string; team?: string }) => {
+    const direct = value.valueByKey.value[p.playerKey ?? '']
+    if (direct) return direct
+    if (isCategory.value && !hockeyCatServes.value) return null
+    return pointsValue.valueOf.value({ name: p.name, position: p.position, team: p.proTeam ?? p.team } as any) ?? null
+  }
+
   const posRankByKey = computed(() => {
     const byPos = new Map<string, { key: string; today: number }[]>()
     const add = (key: string, position: string, team: string, status: string) => {
@@ -338,7 +358,7 @@ export function useDailyLineup() {
   const myPlayers = computed<DailyRow[]>(() => {
     const mine = source.pool.value.filter((p) => p.teamKey === source.myTeamKey.value)
     return mine.map((p) => {
-      const v = value.valueByKey.value[p.playerKey]
+      const v = valueFor(p)
       const perGame = v && v.games > 0 ? v.total / v.games : 0
       const avail = availability(p.status)
       /* His team having a game is not the same as him having one. */
@@ -604,7 +624,7 @@ export function useDailyLineup() {
     const out: RankedRow[] = []
 
     for (const p of source.pool.value) {
-      const v = value.valueByKey.value[p.playerKey]
+      const v = valueFor(p)
       const perGame = v && v.games > 0 ? v.total / v.games : 0
       const avail = availability(p.status)
       /* Out is out: he is absent from the board entirely, for the same reason a man on a dark
