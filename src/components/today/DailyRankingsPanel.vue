@@ -128,10 +128,23 @@ const shown = computed(() => {
   return list.slice(0, LIMIT)
 })
 
-/* Yours, somebody else's, or free — the same three states the football board marks, because
-   "can I have him" is the first thing a reader asks of any name on this list. */
+/*
+ * Yours, somebody else's, or free — the same three states the football board marks, because
+ * "can I have him" is the first thing a reader asks of any name on this list.
+ *
+ * AND THE SAME TEAL IT MARKS THEM IN. This said #7ee787, a light green, which is the exact
+ * mistake RankingsView.vue had already made and documented: it "sat one hue from the lime that
+ * means mine and the two blurred at this text size". Amber is not available either — it means
+ * ROSTERED on the waiver card and in the dynasty columns, so it would say the opposite of free
+ * in a hundred-odd other places. Teal is far from both. The reasoning was written down; this
+ * panel simply did not inherit it.
+ *
+ * The green on the "cheap here" line above is deliberately untouched: it pairs with the amber
+ * "bare here" as a scarcity signal, and says nothing about who owns anybody.
+ */
+const FREE_AGENT_TONE = 'text-[#2dd4bf]'
 const OWNER_TONE: Record<string, string> = {
-  mine: 'text-primary', free: 'text-[#7ee787]', rostered: 'text-dark-textMuted/60',
+  mine: 'text-primary', free: FREE_AGENT_TONE, rostered: 'text-dark-textMuted/60',
 }
 /** Fourth state: the man you are actually playing this week. */
 const isOpp = (r: RankedRow) =>
@@ -197,7 +210,7 @@ const hasScarcity = computed(() =>
         <span class="text-primary">&#9733; yours</span> &middot;
         <span v-if="oppName" class="text-[#e69a4a]">&#9670; your opponent</span>
         <span v-if="oppName"> &middot; </span>
-        <span class="text-[#7ee787]">free agent</span> &middot;
+        <span :class="FREE_AGENT_TONE">free agent</span> &middot;
         <span class="text-dark-textMuted/60">rostered</span>
       </span>
     </div>
