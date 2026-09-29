@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { parseNhlSchedule, nhlAbbrVariants } from '../nhlSchedule'
+import { describe, it, expect, afterEach } from 'vitest'
+import { parseNhlSchedule, nhlAbbrVariants, getNhlSchedule } from '../nhlSchedule'
 
 /*
  * `gameType: 2` on every fixture, because the live endpoint puts it on every fixture. These
@@ -115,5 +115,44 @@ describe('parseNhlSchedule game types', () => {
     )
     expect(out.gamesByTeam.BOS).toBeUndefined()
     expect(out.gamesByTeam.COL).toBe(1)
+  })
+})
+
+/*
+ * A FAILED FETCH IS NOT A DARK NIGHT.
+ *
+ * getNhlSchedule returned the same empty schedule for "the NHL did not answer" and "nobody
+ * plays tonight", and the Today page renders the second: "No NHL games today — the board lights
+ * up when games resume", with every player greyed to "no game". On a night ten teams were
+ * playing, a Yahoo hockey league showed exactly that — a confident sentence that was false.
+ *
+ * The file's own comment already said this was the worst way for it to fail. It just never
+ * carried the flag that lets a caller tell the two apart.
+ */
+describe('getNhlSchedule failure reporting', () => {
+  const realFetch = globalThis.fetch
+  afterEach(() => { globalThis.fetch = realFetch })
+
+  it('flags a non-ok response as failed rather than empty', async () => {
+    globalThis.fetch = (async () => new Response('', { status: 503 })) as any
+    const s = await getNhlSchedule('2026-09-29', '2026-09-29')
+    expect(s.failed).toBe(true)
+    expect(Object.keys(s.gamesByTeam)).toHaveLength(0)
+  })
+
+  it('flags a thrown fetch as failed', async () => {
+    globalThis.fetch = (async () => { throw new Error('network down') }) as any
+    const s = await getNhlSchedule('2026-09-29', '2026-09-29')
+    expect(s.failed).toBe(true)
+  })
+
+  /* A real night with no games is NOT failed — that distinction is the whole point. */
+  it('does not flag a genuinely empty slate as failed', async () => {
+    globalThis.fetch = (async () => new Response(JSON.stringify({ gameWeek: [] }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    })) as any
+    const s = await getNhlSchedule('2026-09-29', '2026-09-29')
+    expect(s.failed).toBeFalsy()
+    expect(Object.keys(s.gamesByTeam)).toHaveLength(0)
   })
 })

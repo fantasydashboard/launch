@@ -828,10 +828,17 @@ export function useToday(): {
       schedule.value = leagueStore.activeSport === 'hockey'
         ? await getNhlSchedule(today, today)
         : await getWeekSchedule(today, today)
-      error.value = Object.keys(schedule.value.gamesByTeam).length ? null : 'no-games'
+      /*
+       * "Could not read the slate" and "nobody plays tonight" are different sentences, and the
+       * page says the second one out loud. A schedule that failed to load renders as every seat
+       * greyed to "no game" under "the board lights up when games resume" — which on a night ten
+       * teams are playing is confident and false. See WeekSchedule.failed.
+       */
+      error.value = schedule.value.failed ? 'schedule-unavailable'
+        : Object.keys(schedule.value.gamesByTeam).length ? null : 'no-games'
     } catch {
       schedule.value = { ...EMPTY_SCHEDULE }
-      error.value = 'no-games'
+      error.value = 'schedule-unavailable'
     } finally {
       scheduleLoaded.value = true
       loading.value = false

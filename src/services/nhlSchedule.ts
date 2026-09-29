@@ -102,8 +102,14 @@ export function parseNhlSchedule(data: unknown, from: string, to: string): WeekS
  * The slate between two dates, inclusive. Dates are YYYY-MM-DD.
  *
  * Returns an empty schedule rather than throwing: a daily board with no slate should say
- * "nobody plays tonight", which is a real answer in a sport with dark days, and is
- * indistinguishable to the reader from a fetch that failed only if we let it be.
+ * "nobody plays tonight", which is a real answer in a sport with dark days.
+ *
+ * AND IT SAYS WHICH KIND OF EMPTY IT IS. This comment used to end "...and is indistinguishable
+ * to the reader from a fetch that failed only if we let it be", and then let it be: both a dark
+ * night and a dead endpoint returned the same bare object. The Today page renders that as "No
+ * NHL games today — the board lights up when games resume", every seat greyed to "no game" —
+ * which is a confident, specific, false sentence on a night ten teams are playing. `failed`
+ * is what lets a caller tell the two apart.
  */
 export async function getNhlSchedule(from: string, to: string): Promise<WeekSchedule> {
   try {
@@ -111,10 +117,10 @@ export async function getNhlSchedule(from: string, to: string): Promise<WeekSche
        renders a blocked request as "nobody plays tonight" — a plausible sentence that is not
        an error, which is the worst way for this to fail. */
     const res = await fetch(`${API}?schedule=${encodeURIComponent(from)}`)
-    if (!res.ok) return { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
+    if (!res.ok) return { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {}, failed: true }
     return parseNhlSchedule(await res.json(), from, to)
   } catch {
-    return { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {} }
+    return { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {}, failed: true }
   }
 }
 

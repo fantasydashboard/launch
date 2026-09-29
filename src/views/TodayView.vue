@@ -155,6 +155,10 @@ const hasNothing = computed(
 // nothing to change" — keep the two apart so the copy doesn't imply a lineup is optimized
 // on a day nobody plays.
 const noGames = computed(() => error.value === 'no-games')
+/* Distinct from noGames on purpose: one is a fact about the league's calendar, the other is a
+   fact about us, and telling the reader the first when we mean the second is how the page came
+   to announce a dark night on an evening ten teams were playing. */
+const scheduleUnavailable = computed(() => error.value === 'schedule-unavailable')
 const showFailed = computed(() => error.value === 'failed')
 </script>
 
@@ -233,6 +237,15 @@ const showFailed = computed(() => error.value === 'failed')
       <p v-if="noGames && !onBreak"
          class="mb-5 rounded-xl border border-dark-border bg-dark-card px-4 py-3 text-center font-mono text-[11px] text-dark-textMuted">
         No {{ words.league }} games today &mdash; the board lights up when games resume.
+      </p>
+
+      <!-- Our failure, said as ours. The seats below still read "no game" because we could not
+           find out otherwise, and a reader who knows that can go and look rather than trusting
+           a night off that isn't one. -->
+      <p v-if="scheduleUnavailable && !onBreak"
+         class="mb-5 rounded-xl border border-[#e69a4a]/40 bg-[#e69a4a]/10 px-4 py-3 text-center font-mono text-[11px] text-[#e69a4a]">
+        We couldn't read tonight's {{ words.league }} schedule, so every seat below reads
+        &ldquo;no game&rdquo; whether or not it is one. This is our end &mdash; try refreshing.
       </p>
 
       <!-- 2. YOUR LINEUP, AND THE ONE WE'D SET

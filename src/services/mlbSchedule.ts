@@ -10,6 +10,17 @@ export interface ProbableStart {
 }
 
 export interface WeekSchedule {
+  /**
+   * The fetch did not answer, as distinct from a night with no games.
+   *
+   * Both used to come back as the same empty object, and the Today page renders an empty
+   * schedule as "no games today — the board lights up when games resume" with every player
+   * greyed out. On a night ten NHL teams were playing, a league showed exactly that. A reader
+   * cannot tell a dark night from a broken one unless the schedule says which it is.
+   *
+   * Absent means "this is a real answer". Only a failure sets it.
+   */
+  failed?: boolean
   // MLB team abbr -> number of games in the date range.
   gamesByTeam: Record<string, number>
   // normalized pitcher name -> their probable starts in the range.
