@@ -207,8 +207,7 @@
             <div v-else class="space-y-3 max-h-80 overflow-y-auto">
               <!-- Football Leagues -->
               <div v-if="footballYahooLeagues.length > 0">
-                <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2 sticky top-0 bg-dark-card">
-                  <span class="text-base">🏈</span>
+                <div class="px-2 py-1 flex items-center gap-2 sticky top-0 bg-dark-card font-mono text-[10px] uppercase tracking-[0.18em] text-dark-textMuted">
                   <span>Football</span>
                   <span class="text-green-400 ml-auto">{{ footballYahooLeagues.length }}</span>
                 </div>
@@ -222,7 +221,14 @@
                     <span class="text-sm font-bold text-green-400">{{ league.name.substring(0, 2).toUpperCase() }}</span>
                   </div>
                   <div class="flex-1 min-w-0">
-                    <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
+                    <div class="flex items-center gap-2 min-w-0">
+                      <span class="font-semibold text-dark-text truncate">{{ league.name }}</span>
+                      <!-- Which of these you already have. Adding used to be automatic, so a
+                           picker never had to say; now that it is a choice, the list is long and
+                           mostly historical and this is the one thing it has to tell you. -->
+                      <span v-if="alreadyAdded(league)"
+                            class="flex-shrink-0 font-mono text-[9px] uppercase tracking-wider text-primary">added</span>
+                    </div>
                     <div class="text-xs text-dark-textMuted">
                       {{ formatScoringType(league, 'football') }} • {{ league.num_teams }} teams
                     </div>
@@ -235,8 +241,7 @@
               
               <!-- Baseball Leagues -->
               <div v-if="baseballYahooLeagues.length > 0" :class="footballYahooLeagues.length > 0 ? 'border-t border-dark-border/50 pt-3' : ''">
-                <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2 sticky top-0 bg-dark-card">
-                  <span class="text-base">⚾</span>
+                <div class="px-2 py-1 flex items-center gap-2 sticky top-0 bg-dark-card font-mono text-[10px] uppercase tracking-[0.18em] text-dark-textMuted">
                   <span>Baseball</span>
                   <span class="text-blue-400 ml-auto">{{ baseballYahooLeagues.length }}</span>
                 </div>
@@ -250,7 +255,14 @@
                     <span class="text-sm font-bold text-blue-400">{{ league.name.substring(0, 2).toUpperCase() }}</span>
                   </div>
                   <div class="flex-1 min-w-0">
-                    <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
+                    <div class="flex items-center gap-2 min-w-0">
+                      <span class="font-semibold text-dark-text truncate">{{ league.name }}</span>
+                      <!-- Which of these you already have. Adding used to be automatic, so a
+                           picker never had to say; now that it is a choice, the list is long and
+                           mostly historical and this is the one thing it has to tell you. -->
+                      <span v-if="alreadyAdded(league)"
+                            class="flex-shrink-0 font-mono text-[9px] uppercase tracking-wider text-primary">added</span>
+                    </div>
                     <div class="text-xs text-dark-textMuted">
                       {{ formatScoringType(league, 'baseball') }} • {{ league.num_teams }} teams
                     </div>
@@ -263,8 +275,7 @@
               
               <!-- Basketball Leagues -->
               <div v-if="basketballYahooLeagues.length > 0" :class="(footballYahooLeagues.length > 0 || baseballYahooLeagues.length > 0) ? 'border-t border-dark-border/50 pt-3' : ''">
-                <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2 sticky top-0 bg-dark-card">
-                  <span class="text-base">🏀</span>
+                <div class="px-2 py-1 flex items-center gap-2 sticky top-0 bg-dark-card font-mono text-[10px] uppercase tracking-[0.18em] text-dark-textMuted">
                   <span>Basketball</span>
                   <span class="text-orange-400 ml-auto">{{ basketballYahooLeagues.length }}</span>
                 </div>
@@ -278,7 +289,14 @@
                     <span class="text-sm font-bold text-orange-400">{{ league.name.substring(0, 2).toUpperCase() }}</span>
                   </div>
                   <div class="flex-1 min-w-0">
-                    <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
+                    <div class="flex items-center gap-2 min-w-0">
+                      <span class="font-semibold text-dark-text truncate">{{ league.name }}</span>
+                      <!-- Which of these you already have. Adding used to be automatic, so a
+                           picker never had to say; now that it is a choice, the list is long and
+                           mostly historical and this is the one thing it has to tell you. -->
+                      <span v-if="alreadyAdded(league)"
+                            class="flex-shrink-0 font-mono text-[9px] uppercase tracking-wider text-primary">added</span>
+                    </div>
                     <div class="text-xs text-dark-textMuted">
                       {{ formatScoringType(league, 'basketball') }} • {{ league.num_teams }} teams
                     </div>
@@ -291,8 +309,7 @@
               
               <!-- Hockey Leagues -->
               <div v-if="hockeyYahooLeagues.length > 0" :class="(footballYahooLeagues.length > 0 || baseballYahooLeagues.length > 0 || basketballYahooLeagues.length > 0) ? 'border-t border-dark-border/50 pt-3' : ''">
-                <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2 sticky top-0 bg-dark-card">
-                  <span class="text-base">🏒</span>
+                <div class="px-2 py-1 flex items-center gap-2 sticky top-0 bg-dark-card font-mono text-[10px] uppercase tracking-[0.18em] text-dark-textMuted">
                   <span>Hockey</span>
                   <span class="text-blue-500 ml-auto">{{ hockeyYahooLeagues.length }}</span>
                 </div>
@@ -306,7 +323,11 @@
                     <span class="text-sm font-bold text-blue-500">{{ league.name.substring(0, 2).toUpperCase() }}</span>
                   </div>
                   <div class="flex-1 min-w-0">
-                    <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
+                    <div class="flex items-center gap-2 min-w-0">
+                      <span class="font-semibold text-dark-text truncate">{{ league.name }}</span>
+                      <span v-if="alreadyAdded(league)"
+                            class="flex-shrink-0 font-mono text-[9px] uppercase tracking-wider text-primary">added</span>
+                    </div>
                     <div class="text-xs text-dark-textMuted">
                       {{ formatScoringType(league, 'hockey') }} • {{ league.num_teams }} teams
                     </div>
@@ -958,9 +979,8 @@
             <div class="space-y-3 max-h-80 overflow-y-auto">
               <!-- NFL Leagues -->
               <div v-if="sleeperNflLeagues.length > 0">
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="text-lg">🏈</span>
-                  <span class="text-sm font-medium text-dark-text">NFL</span>
+                <div class="flex items-center gap-2 mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-dark-textMuted">
+                  <span>NFL</span>
                   <span class="text-green-400 ml-auto">{{ sleeperNflLeagues.length }}</span>
                 </div>
                 <div class="space-y-2">
@@ -974,7 +994,14 @@
                       <span class="text-sm font-bold text-green-400">{{ league.name.substring(0, 2).toUpperCase() }}</span>
                     </div>
                     <div class="flex-1 min-w-0">
-                      <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
+                      <div class="flex items-center gap-2 min-w-0">
+                      <span class="font-semibold text-dark-text truncate">{{ league.name }}</span>
+                      <!-- Which of these you already have. Adding used to be automatic, so a
+                           picker never had to say; now that it is a choice, the list is long and
+                           mostly historical and this is the one thing it has to tell you. -->
+                      <span v-if="alreadyAdded(league, 'sleeper')"
+                            class="flex-shrink-0 font-mono text-[9px] uppercase tracking-wider text-primary">added</span>
+                    </div>
                       <div class="text-xs text-dark-textMuted">
                         H2H Points • {{ league.total_rosters }} teams
                       </div>
@@ -988,9 +1015,8 @@
               
               <!-- NBA Leagues -->
               <div v-if="sleeperNbaLeagues.length > 0" :class="sleeperNflLeagues.length > 0 ? 'border-t border-dark-border/50 pt-3' : ''">
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="text-lg">🏀</span>
-                  <span class="text-sm font-medium text-dark-text">NBA</span>
+                <div class="flex items-center gap-2 mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-dark-textMuted">
+                  <span>NBA</span>
                   <span class="text-orange-400 ml-auto">{{ sleeperNbaLeagues.length }}</span>
                 </div>
                 <div class="space-y-2">
@@ -1004,7 +1030,14 @@
                       <span class="text-sm font-bold text-orange-400">{{ league.name.substring(0, 2).toUpperCase() }}</span>
                     </div>
                     <div class="flex-1 min-w-0">
-                      <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
+                      <div class="flex items-center gap-2 min-w-0">
+                      <span class="font-semibold text-dark-text truncate">{{ league.name }}</span>
+                      <!-- Which of these you already have. Adding used to be automatic, so a
+                           picker never had to say; now that it is a choice, the list is long and
+                           mostly historical and this is the one thing it has to tell you. -->
+                      <span v-if="alreadyAdded(league, 'sleeper')"
+                            class="flex-shrink-0 font-mono text-[9px] uppercase tracking-wider text-primary">added</span>
+                    </div>
                       <div class="text-xs text-dark-textMuted">
                         H2H Points • {{ league.total_rosters }} teams
                       </div>
@@ -1018,9 +1051,8 @@
 
               <!-- MLB Leagues -->
               <div v-if="sleeperMlbLeagues.length > 0" :class="(sleeperNflLeagues.length > 0 || sleeperNbaLeagues.length > 0) ? 'border-t border-dark-border/50 pt-3' : ''">
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="text-lg">⚾</span>
-                  <span class="text-sm font-medium text-dark-text">MLB</span>
+                <div class="flex items-center gap-2 mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-dark-textMuted">
+                  <span>MLB</span>
                   <span class="text-blue-400 ml-auto">{{ sleeperMlbLeagues.length }}</span>
                 </div>
                 <div class="space-y-2">
@@ -1034,7 +1066,14 @@
                       <span class="text-sm font-bold text-blue-400">{{ league.name.substring(0, 2).toUpperCase() }}</span>
                     </div>
                     <div class="flex-1 min-w-0">
-                      <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
+                      <div class="flex items-center gap-2 min-w-0">
+                      <span class="font-semibold text-dark-text truncate">{{ league.name }}</span>
+                      <!-- Which of these you already have. Adding used to be automatic, so a
+                           picker never had to say; now that it is a choice, the list is long and
+                           mostly historical and this is the one thing it has to tell you. -->
+                      <span v-if="alreadyAdded(league, 'sleeper')"
+                            class="flex-shrink-0 font-mono text-[9px] uppercase tracking-wider text-primary">added</span>
+                    </div>
                       <div class="text-xs text-dark-textMuted">{{ league.total_rosters }} teams</div>
                     </div>
                     <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1046,9 +1085,8 @@
 
               <!-- NHL Leagues -->
               <div v-if="sleeperNhlLeagues.length > 0" :class="(sleeperNflLeagues.length > 0 || sleeperNbaLeagues.length > 0 || sleeperMlbLeagues.length > 0) ? 'border-t border-dark-border/50 pt-3' : ''">
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="text-lg">🏒</span>
-                  <span class="text-sm font-medium text-dark-text">NHL</span>
+                <div class="flex items-center gap-2 mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-dark-textMuted">
+                  <span>NHL</span>
                   <span class="text-purple-400 ml-auto">{{ sleeperNhlLeagues.length }}</span>
                 </div>
                 <div class="space-y-2">
@@ -1062,7 +1100,14 @@
                       <span class="text-sm font-bold text-purple-400">{{ league.name.substring(0, 2).toUpperCase() }}</span>
                     </div>
                     <div class="flex-1 min-w-0">
-                      <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
+                      <div class="flex items-center gap-2 min-w-0">
+                      <span class="font-semibold text-dark-text truncate">{{ league.name }}</span>
+                      <!-- Which of these you already have. Adding used to be automatic, so a
+                           picker never had to say; now that it is a choice, the list is long and
+                           mostly historical and this is the one thing it has to tell you. -->
+                      <span v-if="alreadyAdded(league, 'sleeper')"
+                            class="flex-shrink-0 font-mono text-[9px] uppercase tracking-wider text-primary">added</span>
+                    </div>
                       <div class="text-xs text-dark-textMuted">{{ league.total_rosters }} teams</div>
                     </div>
                     <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1093,6 +1138,7 @@
 import { YAHOO_API_AVAILABLE, YAHOO_UNAVAILABLE_MESSAGE, YAHOO_UNAVAILABLE_SHORT } from '@/lib/yahooStatus'
 import { ref, watch, computed, onMounted } from 'vue'
 import { useLeagueStore } from '@/stores/league'
+import { isAlreadyAdded } from '@/lib/alreadyAdded'
 import { usePlatformsStore } from '@/stores/platforms'
 import { useSportStore } from '@/stores/sport'
 import { yahooService } from '@/services/yahoo'
@@ -1144,6 +1190,17 @@ const emit = defineEmits<{
 }>()
 
 const leagueStore = useLeagueStore()
+
+/**
+ * Whether this league is already on the dashboard.
+ *
+ * Yahoo is matched by NAME rather than key, because that is how saveYahooLeague matches when it
+ * rolls a league forward to a new season — keyed on the id, this season's copy of a league the
+ * user already has would look new. See src/lib/alreadyAdded.ts.
+ */
+function alreadyAdded(league: any, platform = 'yahoo'): boolean {
+  return isAlreadyAdded(league, (leagueStore.savedLeagues ?? []) as any, platform)
+}
 const platformsStore = usePlatformsStore()
 const sportStore = useSportStore()
 const authStore = useAuthStore()
@@ -1216,10 +1273,10 @@ const espnExtensionCredentials = ref<{ espn_s2: string; swid: string } | null>(n
 
 // Available sports for ESPN
 const availableSports = [
-  { id: 'football' as Sport, label: 'NFL', icon: '🏈' },
-  { id: 'baseball' as Sport, label: 'MLB', icon: '⚾' },
-  { id: 'basketball' as Sport, label: 'NBA', icon: '🏀' },
-  { id: 'hockey' as Sport, label: 'NHL', icon: '🏒' }
+  { id: 'football' as Sport, label: 'NFL' },
+  { id: 'baseball' as Sport, label: 'MLB' },
+  { id: 'basketball' as Sport, label: 'NBA' },
+  { id: 'hockey' as Sport, label: 'NHL' }
 ]
 
 // Calculate current season year based on sport
