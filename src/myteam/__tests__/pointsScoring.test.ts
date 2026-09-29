@@ -10,8 +10,19 @@ describe('defaultWeights(sport)', () => {
   it('football returns football config defaults (pass_td present)', () => {
     const w = defaultWeights('football')
     expect(w.pass_td).toBe(4)
-    expect(w.rec).toBe(1)
     expect(w.HR).toBeUndefined()
+  })
+
+  /*
+   * Half PPR, and asserted deliberately rather than incidentally.
+   *
+   * The free board and the social cards have to agree on this or the same player reads 20.1 in
+   * one place and 16.6 in the other, which has already been reported as a bug once — in the
+   * other direction. If this assertion is ever changed, every card in ufd-graphics has to move
+   * with it; see the comment on `rec` in config/sports/football.ts.
+   */
+  it('scores a reception at half a point, matching the cards', () => {
+    expect(defaultWeights('football').rec).toBe(0.5)
   })
 })
 

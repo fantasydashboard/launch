@@ -172,7 +172,21 @@ const pointsConfig = {
     rush_2pt: 2,
     
     // Receiving
-    rec: 1, // PPR
+    /*
+     * HALF PPR, which is the default the free board is scored on.
+     *
+     * It was full PPR, and the choice is close to invisible in the RANKING — measured over the
+     * 2026 projections, the top 36 at every position holds exactly the same players either
+     * way, and the largest move inside a top 36 is Rashee Rice from WR12 to WR18. What it does
+     * change is every printed number: Puka Nacua reads 20.1 at a full point and 16.6 at a half.
+     *
+     * So this is a presentation decision rather than a modelling one, and the only thing that
+     * genuinely matters is that the site and the social cards agree. They previously disagreed
+     * in the other direction and it was reported as a bug — see the comment in
+     * ufd-graphics/position-tiers.py, which moved the cards to full PPR to fix it. Both are
+     * half now. Change one and you must change the other.
+     */
+    rec: 0.5,
     rec_yd: 0.1,
     rec_td: 6,
     rec_2pt: 2,
