@@ -31,6 +31,14 @@ export interface LeaguePoolPlayer {
   onIL: boolean // sits in an IL/NA reserve slot (not an active roster spot)
   status?: string // raw Yahoo injury status ('IL10' / 'DTD' / …)
   stats: Record<string, number> // empty; the FG projection in fgByKey drives totals
+  /**
+   * The slot his manager actually has him in, 'BN' when benched.
+   *
+   * Named to match ESPN's pool field rather than Yahoo's `selected_position`, because every
+   * consumer reads one pool and should not have to know which platform filled it. Absent when
+   * Yahoo did not say — which is not the same as benched.
+   */
+  lineupSlot?: string
 }
 
 interface PoolRow {
@@ -41,6 +49,7 @@ interface PoolRow {
   proTeam: string
   headshot: string
   status: string // Yahoo injury status ('IL10' / 'IL60' / 'NA' / 'DTD' / '')
+  lineupSlot: string // Yahoo's selected_position: 'BN', 'IR', or a starting slot
 }
 
 export function useYahooLeaguePool() {
@@ -77,8 +86,10 @@ export function useYahooLeaguePool() {
     }
   }
 
-  // v2: rows now carry injury `status` (for onIL) — bump invalidates pre-status caches.
-  const cacheKey = () => `ufd_wirepool2_${leagueStore.activeLeagueId ?? ''}`
+  /* v3: rows now carry `lineupSlot` (Yahoo's selected_position) as well as injury `status`.
+     The bump matters: a v2 entry has no slot on any row, and a cached pool is indistinguishable
+     from a league that publishes no lineup — which is the exact false claim this change fixes. */
+  const cacheKey = () => `ufd_wirepool3_${leagueStore.activeLeagueId ?? ''}`
 
   function readCache(): PoolRow[] | null {
     if (typeof sessionStorage === 'undefined') return null
@@ -107,6 +118,7 @@ export function useYahooLeaguePool() {
         onIL: isYahooIL(r.status),
         status: r.status ?? '',
         stats: {},
+        lineupSlot: r.lineupSlot || undefined,
       })
       try {
         nextFg[r.playerKey] = matchFG({ full_name: r.name, mlb_team: r.proTeam })
@@ -167,6 +179,7 @@ export function useYahooLeaguePool() {
               proTeam: String(p?.team_abbr ?? ''),
               headshot: String(p?.headshot ?? ''),
               status: String(p?.status ?? ''),
+              lineupSlot: String(p?.selected_position ?? ''),
             })
           }
         }

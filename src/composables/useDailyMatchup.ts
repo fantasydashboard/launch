@@ -1,4 +1,5 @@
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
+import { opponentStartersBySeat } from '@/today/opponentStarters'
 import { useLeagueStore } from '@/stores/league'
 import { useThisWeekOpponent } from '@/composables/useThisWeekOpponent'
 import { buildPointsMatchup } from '@/myteam/pointsMatchup'
@@ -53,10 +54,18 @@ export interface DailyMatchupSnapshot {
   /** 0..100, or null when we genuinely could not compute it — never a confident zero. */
   winPct: number | null
   spots: DailySpot[]
-  /** Seats won / lost / level tonight. */
+  /** Seats won / lost / level tonight. All zero when their lineup could not be read. */
   won: number
   lost: number
   level: number
+  /**
+   * Whether we could actually see the opponent's set lineup.
+   *
+   * False is a real answer and the panel must render it as one. An unseen lineup used to
+   * arrive as a row of empty seats, which score zero, which made every seat of yours a seat
+   * you were winning — "10 up · 0 down" against a team nobody had read.
+   */
+  oppLineupKnown: boolean
   /** One plain sentence about what to do, or empty when we have nothing worth saying. */
   verdict: string
   /*
@@ -73,9 +82,14 @@ function spotSide(
   p: PointsPoolPlayer | undefined,
   valueByKey: ValueByKey,
   playsToday: (team: string) => boolean,
+  valueFor?: (p: any) => { total: number; games: number } | null,
 ) {
   if (!p) return null
-  const v = valueByKey[p.playerKey]
+  /* The board's own resolver first — it falls back to a name lookup, which on Yahoo is not a
+     fallback but the only thing that ever hits: the projections are keyed by ESPN id and a
+     Yahoo roster is not. Without it both sides of a Yahoo matchup scored 0.0 while the lineup
+     panel directly above showed real numbers for the same men. */
+  const v = valueFor?.(p) ?? valueByKey[p.playerKey]
   const perGame = v && v.games > 0 ? v.total / v.games : 0
   const avail = availability(p.status)
   /* His team having a game is not the same as him having one — the distinction that once put
@@ -106,6 +120,8 @@ export function useDailyMatchup(inputs: {
   weekSchedule: Ref<WeekSchedule>
   playsToday: (team: string) => boolean
   isCategory: ComputedRef<boolean>
+  /** The board's value resolver; without it a Yahoo matchup scores every seat zero. */
+  valueFor?: (p: any) => { total: number; games: number } | null
 }): {
   snapshot: ComputedRef<DailyMatchupSnapshot | null>
   loading: Ref<boolean>
@@ -164,14 +180,36 @@ export function useDailyMatchup(inputs: {
    * lineup. My side is my SET lineup for the same reason the opponent's is theirs: the
    * comparison is between what is actually on the field.
    */
+  /**
+   * Their starters, from the platform's own list where there is one and from the pool where
+   * there is not.
+   *
+   * Sleeper publishes a positional array and it wins, because it is what the platform says.
+   * ESPN and Yahoo publish nothing here — `opponentStarters` is a hardcoded `[]` in
+   * useThisWeekOpponent — but both carry every team's slot assignment in the league-wide pool
+   * this composable is already handed, so the lineup is derivable without another request.
+   */
+  const theirStarters = computed<string[]>(() => {
+    const opp = oppSvc.opponent.value
+    if (!opp) return []
+    if (opp.opponentStarters?.length) return opp.opponentStarters
+    const seats = inputs.current.value.map((m) => ({ slot: m.startedSlot ?? m.slot ?? '' }))
+    return opponentStartersBySeat(seats, inputs.pool.value as any, opp.opponentKey)
+  })
+
+  /** False when nothing we have can tell us what they set. Never scored. */
+  const oppLineupKnown = computed(() => theirStarters.value.length > 0)
+
   const spots = computed<DailySpot[]>(() => {
     const opp = oppSvc.opponent.value
     if (!opp) return []
     const byKey = new Map(inputs.pool.value.map((p) => [p.playerKey, p]))
-    const theirStarters = opp.opponentStarters ?? []
+    const theirs = theirStarters.value
+    const known = oppLineupKnown.value
 
     return inputs.current.value.map((mine, i) => {
-      const them = spotSide(byKey.get(theirStarters[i] ?? ''), inputs.valueByKey.value, inputs.playsToday)
+      const them = spotSide(
+        byKey.get(theirs[i] ?? ''), inputs.valueByKey.value, inputs.playsToday, inputs.valueFor)
       const ours = {
         name: mine.name, position: mine.position, team: mine.team,
         headshot: mine.headshot, playsToday: mine.playsToday, today: mine.today,
@@ -180,7 +218,9 @@ export function useDailyMatchup(inputs: {
         slot: mine.startedSlot ?? mine.slot ?? '',
         mine: ours,
         theirs: them,
-        edge: ours.today - (them?.today ?? 0),
+        /* An unread lineup has no edge. Subtracting zero from your own projection is not a
+           comparison, it is your projection wearing a comparison's clothes. */
+        edge: known ? ours.today - (them?.today ?? 0) : 0,
       }
     })
   })
@@ -194,9 +234,10 @@ export function useDailyMatchup(inputs: {
     if (!opp) return null
 
     const s = spots.value
-    const won = s.filter((x) => x.edge > LEVEL).length
-    const lost = s.filter((x) => x.edge < -LEVEL).length
-    const level = s.length - won - lost
+    const known = oppLineupKnown.value
+    const won = known ? s.filter((x) => x.edge > LEVEL).length : 0
+    const lost = known ? s.filter((x) => x.edge < -LEVEL).length : 0
+    const level = known ? s.length - won - lost : 0
 
     const winPct = pointsMatchup.value ? pointsMatchup.value.myWinPct : null
 
@@ -212,7 +253,7 @@ export function useDailyMatchup(inputs: {
       verdict = `${dead} of your seats ${dead === 1 ? 'has' : 'have'} no game tonight — fill ${dead === 1 ? 'it' : 'them'} before anything else.`
     } else if (worst && worst.edge < -LEVEL) {
       verdict = `Your ${worst.slot || 'lineup'} spot is the gap tonight (${worst.edge.toFixed(1)}).`
-    } else if (s.length && won > lost) {
+    } else if (known && s.length && won > lost) {
       verdict = `You are ahead in ${won} of ${s.length} seats tonight.`
     }
 
@@ -239,6 +280,7 @@ export function useDailyMatchup(inputs: {
       winPct,
       spots: s,
       won, lost, level,
+      oppLineupKnown: known,
       verdict,
       myGames, oppGames,
     }

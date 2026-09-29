@@ -138,8 +138,16 @@ const games = computed(() => {
           <template v-else-if="winPct != null">to win</template>
           <template v-else>so far</template>
         </p>
-        <p v-if="daily && daily.spots.length" class="font-mono text-[9px] text-dark-textMuted/60">
+        <!-- Only when we have actually read their lineup. An unread one used to arrive as a
+             row of empty seats, which score zero, which made every seat of yours a seat you
+             were winning: "10 up, 0 down" against a team nobody had looked at. -->
+        <p v-if="daily && daily.spots.length && daily.oppLineupKnown"
+           class="font-mono text-[9px] text-dark-textMuted/60">
           {{ daily.won }} up &middot; {{ daily.lost }} down tonight
+        </p>
+        <p v-else-if="daily && daily.spots.length"
+           class="font-mono text-[9px] text-dark-textMuted/50">
+          their lineup isn't published yet
         </p>
       </div>
 

@@ -159,6 +159,9 @@ interface YahooPlayer {
   team_abbr: string
   position: string
   status: string
+  /** The slot his manager has him in this period — 'BN' for a benched man, else a position. */
+  selected_position?: string
+  headshot?: string
 }
 
 interface YahooMatchup {
@@ -599,6 +602,22 @@ export class YahooFantasyService {
           if (part && typeof part === 'object' && !Array.isArray(part)) Object.assign(flat, part)
         }
       }
+      /*
+       * THE SLOT IS IN player[1], AND THIS METHOD ONLY EVER READ player[0].
+       *
+       * player[0] is the man; player[1] is the ROSTER CONTEXT — what his manager did with him
+       * this period. getAllRosteredPlayers has parsed it for years; this lighter per-team call
+       * never looked, so every consumer built on it believed Yahoo publishes no set lineup and
+       * said so on screen: "Your platform doesn't publish a set lineup, so this is ours."
+       * Yahoo published it in the same response we already had.
+       */
+      let selectedPosition = ''
+      const sp = playerWrapper.player[1]?.selected_position
+      if (Array.isArray(sp)) {
+        for (const item of sp) if (item?.position) selectedPosition = String(item.position)
+      } else if (sp?.position) {
+        selectedPosition = String(sp.position)
+      }
       players.push({
         player_key: flat.player_key,
         player_id: flat.player_id,
@@ -610,7 +629,8 @@ export class YahooFantasyService {
         team_abbr: flat.editorial_team_abbr,
         position: flat.display_position,
         status: flat.status || '',
-        headshot: flat.headshot?.url || flat.image_url || ''
+        headshot: flat.headshot?.url || flat.image_url || '',
+        selected_position: selectedPosition,
       })
     }
 

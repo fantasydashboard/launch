@@ -50,6 +50,10 @@ const isCategoryLeague = computed(() => !isPoints.value)
 const matchup = useDailyMatchup({
   pool: daily.pool,
   valueByKey: daily.valueByKey,
+  /* The board's own resolver, because a bare key lookup misses every rostered player on Yahoo
+     — the projections are keyed by ESPN id and a Yahoo roster is not. Without this the seats
+     read 0.0 on both sides of a Yahoo matchup while the lineup above them showed real values. */
+  valueFor: daily.valueFor,
   myTeamKey: daily.myTeamKey,
   myTeamName: daily.myTeamName,
   myTeamLogo: daily.myTeamLogo,
@@ -230,7 +234,8 @@ const showFailed = computed(() => error.value === 'failed')
       <TodayMatchupSpots v-if="matchup.snapshot.value"
                          :spots="matchup.snapshot.value.spots"
                          :opp-name="matchup.snapshot.value.opp.name"
-                         :my-name="matchup.snapshot.value.me.name" />
+                         :my-name="matchup.snapshot.value.me.name"
+                         :opp-lineup-known="matchup.snapshot.value.oppLineupKnown" />
 
       <!-- Dark night is a real answer, and it belongs inside the page rather than instead of it.
            "Resume" is only honest once the season has started; before it, say so. -->

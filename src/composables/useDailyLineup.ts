@@ -236,7 +236,29 @@ export function useDailyLineup() {
       catSourceServes.value ? (catSource.myTeamId.value ?? '') : pointsSource.myTeamKey.value),
     freeAgents: computed(() =>
       catSourceServes.value ? (catSource.freeAgents.value ?? []) : (pointsSource.freeAgents?.value ?? [])),
-    teamNames: pointsSource.teamNames,
+    /*
+     * THE OWNER COLUMN WAS BLANK ON EVERY ESPN CATEGORY LEAGUE.
+     *
+     * This read pointsSource.teamNames unconditionally, and useEspnPointsTeamData returns
+     * nothing at all for a category league — it sets supported = false the moment it sees
+     * H2H_CATEGORY, which is the same reason `pool` and `rosterSlots` are swapped above. So
+     * tonight's board labelled every rostered player with an empty string: no "Matthew's
+     * Team", no "The Blades", just a blank column where the answer to "who has him" goes.
+     * The category source has had the names all along, in the standings its own myTeamName
+     * already digs through.
+     */
+    teamNames: computed<Record<string, string>>(() => {
+      if (!catSourceServes.value) return pointsSource.teamNames.value
+      const out: Record<string, string> = {}
+      for (const row of catSource.standings.value ?? []) {
+        const id = (row as any)?.team?.teamId
+        const name = (row as any)?.team?.name
+        if (id != null && name) out[`espn_${id}`] = String(name)
+      }
+      /* The points source can still be the better answer when the category standings have not
+         arrived, and an empty map is never worse than the one we would otherwise print. */
+      return Object.keys(out).length ? out : pointsSource.teamNames.value
+    }),
     /* Wired for pool, slots and team key and forgotten here, so a category league kept the
        "My Team" placeholder — the same miss as the load() one. */
     myTeamName: computed(() => (catSourceServes.value
@@ -785,6 +807,10 @@ export function useDailyLineup() {
        different matchups on the same screen. */
     pool: source.pool,
     valueByKey: value.valueByKey,
+    /* Exposed so the matchup panel resolves a player the same way the board does. A bare
+       valueByKey lookup misses every rostered player on Yahoo, where the projections are
+       keyed by ESPN id and the roster is not. */
+    valueFor,
     myTeamKey: source.myTeamKey,
     rosterSlots: source.rosterSlots,
     leagueSize,

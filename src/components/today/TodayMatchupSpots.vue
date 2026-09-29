@@ -21,6 +21,15 @@ const props = defineProps<{
   spots: DailySpot[]
   oppName: string
   myName: string
+  /**
+   * Whether their set lineup could be read at all.
+   *
+   * False is a real state, not a degraded one: ESPN and Yahoo publish the opponent's lineup
+   * on a roster this page derives rather than fetches, and before that derivation existed the
+   * column was empty. An empty seat scores zero, so every seat of yours read as a seat you
+   * were winning. The column says "not published" now rather than "0.0".
+   */
+  oppLineupKnown: boolean
 }>()
 
 const leagueStore = useLeagueStore()
@@ -52,6 +61,10 @@ const toneOf = (edge: number) =>
         &middot; seat by seat vs {{ oppName || 'your opponent' }} &middot; tonight only
       </span>
     </h2>
+    <p v-if="!oppLineupKnown" class="mb-3 rounded-lg border border-dark-border bg-dark-bg px-3 py-2 font-mono text-[10px] text-[#e69a4a]">
+      {{ oppName || 'Your opponent' }} hasn't set a lineup we can read yet, so only your side
+      is scored here. Nobody is ahead until there is something to be ahead of.
+    </p>
     <p class="mb-3 font-mono text-[10px] text-dark-textMuted/60">
       their lineup as they set it, not the one we'd have picked
     </p>
@@ -90,15 +103,17 @@ const toneOf = (edge: number) =>
       <!-- The seat, and who is winning it -->
       <span class="w-14 shrink-0 text-center">
         <span class="block font-mono text-[10px] uppercase text-dark-textMuted/70">{{ s.slot }}</span>
-        <span class="block font-mono text-[10px] font-bold" :class="toneOf(s.edge)">
+        <span v-if="oppLineupKnown" class="block font-mono text-[10px] font-bold" :class="toneOf(s.edge)">
           {{ s.edge > 0 ? '+' : '' }}{{ one(s.edge) }}
         </span>
+        <span v-else class="block font-mono text-[10px] text-dark-textMuted/30">&middot;</span>
       </span>
 
       <!-- Theirs -->
       <span class="w-10 shrink-0 font-mono text-sm"
             :class="s.theirs?.playsToday ? 'text-dark-text' : 'text-dark-textMuted/40'">
-        {{ one(s.theirs?.today ?? 0) }}
+        <template v-if="oppLineupKnown">{{ one(s.theirs?.today ?? 0) }}</template>
+        <span v-else class="text-dark-textMuted/30">&mdash;</span>
       </span>
       <div class="flex min-w-0 flex-1 items-center justify-end gap-2">
         <span class="min-w-0 text-right">
