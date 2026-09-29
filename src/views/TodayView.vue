@@ -256,7 +256,8 @@ const showFailed = computed(() => error.value === 'failed')
         :bench="daily.bench.value"
         :value-label="daily.valueLabel.value"
         :can-value="daily.canValue.value"
-        :values-unsupported="daily.categoryUnsupported.value" />
+        :values-unsupported="daily.categoryUnsupported.value"
+        :value-state="daily.valueState.value" />
 
       <!-- ── TONIGHT'S RANKINGS ──────────────────────────────────────────── -->
       <!-- 2b. CLOSEST CALLS — the decisions where we do NOT have a real opinion, which is

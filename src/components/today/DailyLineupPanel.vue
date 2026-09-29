@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ValueState } from '@/today/valueState'
 /**
  * Your lineup tonight — what you are starting, and what we would start.
  *
@@ -28,12 +29,31 @@ const props = defineProps<{
   canValue?: boolean
   /** True when no source can ever price this league — a different fact from "not yet". */
   valuesUnsupported?: boolean
+  /**
+   * WHY there is no number. "still reading tonight's values" is a promise, and it was being made
+   * in situations where nothing was loading and nothing ever would. See src/today/valueState.ts.
+   */
+  valueState?: ValueState
 }>()
 
 const leagueStore = useLeagueStore()
 const words = computed(() => wordsFor(leagueStore.activeSport))
 const logo = (abbr?: string) => teamLogoFor(leagueStore.activeSport, abbr)
 const one = (n: number) => n.toFixed(1)
+
+/*
+ * One sentence per reason, and none of them a promise we cannot keep. "Still reading" is only
+ * honest while something is actually in flight; the other two are dead ends and say so, because
+ * a reader who knows the page will never price this league can stop waiting for it to.
+ */
+const NO_VALUE_REASON: Record<string, string> = {
+  loading: "still reading tonight's values",
+  unsupported: 'no value model for this league yet',
+  none: 'no projection for tonight in this league',
+}
+const noValueReason = computed(() =>
+  NO_VALUE_REASON[props.valueState ?? (props.valuesUnsupported ? 'unsupported' : 'loading')]
+  ?? "still reading tonight's values")
 function onLogoErr(e: Event) { (e.target as HTMLImageElement).style.display = 'none' }
 
 const mode = ref<'current' | 'optimal'>('current')
@@ -194,9 +214,7 @@ const canValue = computed(() =>
       <span v-if="canValue" class="font-mono text-[11px] text-dark-textMuted">
         {{ one(total) }} {{ valueLabel || 'projected' }}
       </span>
-      <span v-else class="font-mono text-[11px] text-dark-textMuted/70">
-        {{ valuesUnsupported ? 'no value model for this league yet' : "still reading tonight's values" }}
-      </span>
+      <span v-else class="font-mono text-[11px] text-dark-textMuted/70">{{ noValueReason }}</span>
       <span class="flex-1"></span>
       <!--
         The whole reason to look: what the optimal is worth over what is set — reported per

@@ -7,6 +7,7 @@ import { getNhlSchedule } from '@/services/nhlSchedule'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { useHockeyValue } from '@/composables/useHockeyValue'
+import { valueState, type ValueState } from '@/today/valueState'
 import { useDailyCategoryValue } from '@/composables/useDailyCategoryValue'
 import { getLeagueType } from '@/config/sports'
 
@@ -254,6 +255,7 @@ export function useDailyLineup() {
     categoryUnsupported.value ? false
       : hockeyCatServes.value ? hockeyValue.categoryReady.value
         : isCategory.value ? categoryValue.ready.value : true)
+
 
   const schedule = ref<WeekSchedule>({ ...EMPTY })
   /*
@@ -653,6 +655,21 @@ export function useDailyLineup() {
     || scheduleLoading.value)
   const gamesTonight = computed(() => Object.keys(schedule.value.gamesByTeam).length > 0)
 
+  /*
+   * WHY there is no number, not merely that there isn't one. `canValue` false collapsed three
+   * situations into the words "still reading tonight's values" — a promise of data that, in two
+   * of them, was never coming. See src/today/valueState.ts.
+   *
+   * Note `loading` above is `!categoryValue.ready` for a category league, so a league that can
+   * never be priced reports itself as loading forever. That is exactly why the chip span, and
+   * why `unsupported` is checked before `loading` rather than after.
+   */
+  const valueState_ = computed<ValueState>(() => valueState({
+    unsupported: categoryUnsupported.value,
+    loading: loading.value,
+    hasValues: canValue.value && Object.keys(value.valueByKey.value).length > 0,
+  }))
+
   function load() {
     source.load()
     /* The rankings mix free agents in with rostered players, and that pool is a separate
@@ -669,7 +686,7 @@ export function useDailyLineup() {
   return {
     rows, current, lineup, bench, deadSeats, upgrades, wireAdds, rankings,
     closestCalls, scarcity,
-    loading, gamesTonight, playsToday, load,
+    loading, gamesTonight, playsToday, load, valueState: valueState_,
     myTeamName: source.myTeamName,
     myTeamLogo: source.myTeamLogo,
     isCategory,
