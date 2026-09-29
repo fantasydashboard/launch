@@ -111,14 +111,37 @@ export function parseNhlSchedule(data: unknown, from: string, to: string): WeekS
  * which is a confident, specific, false sentence on a night ten teams are playing. `failed`
  * is what lets a caller tell the two apart.
  */
+/**
+ * Successful slates, per date range, for the life of the tab.
+ *
+ * A date's fixtures do not change while somebody is reading the page, and Today refetched them
+ * on every mount and every league switch. Against an endpoint that rate-limits — it answered 429
+ * three times running while this was being written — that turns one throttle into a page that
+ * stays broken for as long as the user keeps clicking.
+ *
+ * ONLY SUCCESSES GO IN HERE. Caching a failure would take a single 429 and make it permanent for
+ * the session, which is worse than not caching at all.
+ */
+const cache = new Map<string, WeekSchedule>()
+
+/** For tests, and for anything that needs to force a re-read. */
+export function clearNhlScheduleCache(): void {
+  cache.clear()
+}
+
 export async function getNhlSchedule(from: string, to: string): Promise<WeekSchedule> {
+  const key = `${from}..${to}`
+  const hit = cache.get(key)
+  if (hit) return hit
   try {
     /* Through the relay: the NHL blocks browsers, and the empty-schedule fallback below
        renders a blocked request as "nobody plays tonight" — a plausible sentence that is not
        an error, which is the worst way for this to fail. */
     const res = await fetch(`${API}?schedule=${encodeURIComponent(from)}`)
     if (!res.ok) return { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {}, failed: true }
-    return parseNhlSchedule(await res.json(), from, to)
+    const parsed = parseNhlSchedule(await res.json(), from, to)
+    cache.set(key, parsed)
+    return parsed
   } catch {
     return { gamesByTeam: {}, startsByPitcher: {}, homeTeamByTeam: {}, failed: true }
   }

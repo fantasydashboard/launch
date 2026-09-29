@@ -63,8 +63,23 @@ export default async function handler(req, res) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(String(schedule))) {
         return res.status(400).json({ error: 'schedule must be YYYY-MM-DD' })
       }
-      const r = await fetch(`${WEB}/schedule/${schedule}`)
+      /*
+       * ONE RETRY ON A THROTTLE, then the edge cache.
+       *
+       * A date's fixtures are effectively immutable once the day starts, and this was proxied
+       * fresh on every page load with no caching at any layer. The NHL rate-limits: it answered
+       * 429 three times in a row during development, and every one of those became "no games
+       * today" on somebody's lineup page. A single retry clears a momentary burst; s-maxage
+       * means the next reader is served from the edge instead of asking again at all.
+       */
+      let r = await fetch(`${WEB}/schedule/${schedule}`)
+      if (r.status === 429) {
+        await new Promise((done) => setTimeout(done, 600))
+        r = await fetch(`${WEB}/schedule/${schedule}`)
+      }
       if (!r.ok) return res.status(r.status).json({ error: `NHL schedule ${r.status}` })
+      /* Only a good answer is cached — caching the 429 would serve the outage to everyone. */
+      res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=3600')
       return res.status(200).json(await r.json())
     }
 

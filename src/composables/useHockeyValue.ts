@@ -114,6 +114,27 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
         }
         if (!Object.keys(weights.value).length) {
           problem.value = 'This league published no scoring weights, so nothing can be priced.'
+          /*
+           * SAY WHERE IT BROKE, not just that it did. An empty weight map has several causes —
+           * the settings call failed, the response has different field names, the modifiers
+           * arrived in a shape we do not read — and they are indistinguishable from the page,
+           * which shows the same "no projection for tonight" for all of them. Printing the
+           * shape we actually received is what turns a silent dead end into a five-second
+           * diagnosis.
+           */
+          console.warn('[useHockeyValue] Yahoo scoring produced no weights.', {
+            leagueKey: inputs.leagueId.value,
+            gotSettings: !!settings,
+            settingsKeys: settings ? Object.keys(settings) : null,
+            statCategories: Array.isArray(settings?.stat_categories)
+              ? `array(${settings.stat_categories.length})`
+              : typeof settings?.stat_categories,
+            statModifiers: Array.isArray(settings?.stat_modifiers)
+              ? `array(${settings.stat_modifiers.length})`
+              : typeof settings?.stat_modifiers,
+            modifierSample: JSON.stringify(settings?.stat_modifiers)?.slice(0, 300),
+            categorySample: JSON.stringify(settings?.stat_categories)?.slice(0, 300),
+          })
         }
         return
       }

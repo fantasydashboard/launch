@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { parseNhlSchedule, nhlAbbrVariants, getNhlSchedule } from '../nhlSchedule'
+import { parseNhlSchedule, nhlAbbrVariants, getNhlSchedule, clearNhlScheduleCache } from '../nhlSchedule'
 
 /*
  * `gameType: 2` on every fixture, because the live endpoint puts it on every fixture. These
@@ -131,7 +131,9 @@ describe('parseNhlSchedule game types', () => {
  */
 describe('getNhlSchedule failure reporting', () => {
   const realFetch = globalThis.fetch
-  afterEach(() => { globalThis.fetch = realFetch })
+  /* The cache is module-level, so a successful case here would otherwise be served to the
+     caching tests below and make them pass without fetching anything. */
+  afterEach(() => { globalThis.fetch = realFetch; clearNhlScheduleCache() })
 
   it('flags a non-ok response as failed rather than empty', async () => {
     globalThis.fetch = (async () => new Response('', { status: 503 })) as any
@@ -154,5 +156,55 @@ describe('getNhlSchedule failure reporting', () => {
     const s = await getNhlSchedule('2026-09-29', '2026-09-29')
     expect(s.failed).toBeFalsy()
     expect(Object.keys(s.gamesByTeam)).toHaveLength(0)
+  })
+})
+
+/*
+ * CACHING, AND WHAT MUST NEVER BE CACHED.
+ *
+ * The slate for a date does not change while a tab is open, and Today re-fetched it on every
+ * mount and every league switch. Against an endpoint that rate-limits — it answered 429 three
+ * times in a row while this was being written — that turns one throttle into a page that is
+ * broken for as long as the user keeps clicking.
+ *
+ * A FAILURE IS NEVER CACHED. Caching one would take a single 429 and make it permanent for the
+ * session, which is strictly worse than not caching at all.
+ */
+describe('getNhlSchedule caching', () => {
+  const realFetch = globalThis.fetch
+  afterEach(() => { globalThis.fetch = realFetch; clearNhlScheduleCache() })
+
+  const ok = (abbr: string) => new Response(JSON.stringify({
+    gameWeek: [{ date: '2026-09-29', games: [{ gameType: 2, awayTeam: { abbrev: abbr }, homeTeam: { abbrev: 'XXX' } }] }],
+  }), { status: 200, headers: { 'content-type': 'application/json' } })
+
+  it('fetches a date range once and reuses it', async () => {
+    let calls = 0
+    globalThis.fetch = (async () => { calls++; return ok('BOS') }) as any
+    await getNhlSchedule('2026-09-29', '2026-09-29')
+    await getNhlSchedule('2026-09-29', '2026-09-29')
+    expect(calls).toBe(1)
+  })
+
+  it('keeps different ranges apart', async () => {
+    let calls = 0
+    globalThis.fetch = (async () => { calls++; return ok('BOS') }) as any
+    await getNhlSchedule('2026-09-29', '2026-09-29')
+    await getNhlSchedule('2026-09-30', '2026-09-30')
+    expect(calls).toBe(2)
+  })
+
+  /* One 429 must not break the page for the rest of the session. */
+  it('never caches a failure, so a later call can still succeed', async () => {
+    let calls = 0
+    globalThis.fetch = (async () => {
+      calls++
+      return calls === 1 ? new Response('', { status: 429 }) : ok('BOS')
+    }) as any
+    const first = await getNhlSchedule('2026-09-29', '2026-09-29')
+    expect(first.failed).toBe(true)
+    const second = await getNhlSchedule('2026-09-29', '2026-09-29')
+    expect(second.failed).toBeFalsy()
+    expect(Object.keys(second.gamesByTeam).length).toBeGreaterThan(0)
   })
 })
