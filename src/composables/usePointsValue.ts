@@ -2,6 +2,7 @@ import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { FGProjection } from '@/services/projectionService'
 import { useHockeyValue } from '@/composables/useHockeyValue'
+import { platformFromLeagueId } from '@/hockey/platformFromLeagueId'
 import type { FootballProjection, ProjPlayer } from '@/football/buildFootballProjections'
 import { normalizeNflName } from '@/football/buildFootballProjections'
 import {
@@ -98,6 +99,9 @@ export function usePointsValue(inputs: {
     season: hockeySeason,
     enabled: isHockey,
     weeksLeft,
+    /* Without this a Yahoo league key was sent to ESPN's settings endpoint, which resolved to
+       nothing — an empty weight map, and therefore no number beside any player. */
+    platform: computed(() => platformFromLeagueId(inputs.leagueId?.value)),
   })
 
   // Baseball free-agent matcher (name+team → FGProjection), lazy-loaded.

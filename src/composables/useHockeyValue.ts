@@ -6,6 +6,7 @@ import { useNhlFeed } from '@/composables/useNhlFeed'
 import { mergeHockeyProjections, normalizeName } from '@/hockey/hockeyProjectionSource'
 import { categoriesFromScoringItems, type HockeyCategory } from '@/hockey/hockeyCategoryValue'
 import { hockeyDailyCategoryValue } from '@/today/hockeyDailyCategory'
+import { yahooHockeyWeights } from '@/hockey/yahooHockeyWeights'
 
 /**
  * Rest-of-season hockey value, for every surface that is not the draft board.
@@ -45,8 +46,19 @@ export const NHL_SEASON_WEEKS = 26
 export const NHL_SEASON_GAMES = 82
 
 export interface HockeyValueInputs {
-  /** ESPN league key or id, for reading the league's own scoring. */
+  /** ESPN league id, or the full Yahoo league key — see `platform`. */
   leagueId: Ref<string>
+  /**
+   * Which platform's settings to read the scoring from.
+   *
+   * It used to be ESPN unconditionally, and usePointsValue handed this whatever league was
+   * active — so a Yahoo league key went to ESPN's settings endpoint, resolved to nothing, and
+   * the league was priced with an empty weight map. buildHockeyValue prices nothing without
+   * weights, which is why a Yahoo hockey points league showed no number beside any player.
+   *
+   * Defaults to espn so existing callers are unchanged.
+   */
+  platform?: Ref<string>
   season: Ref<number>
   enabled: Ref<boolean>
   /** Weeks left in the season, from the shared trajectory. */
@@ -82,6 +94,30 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
     loading.value = true
     problem.value = ''
     try {
+      if ((inputs.platform?.value ?? 'espn') === 'yahoo') {
+        /* Yahoo publishes its scoring as stat_categories + stat_modifiers, in its own column
+           names. See src/hockey/yahooHockeyWeights.ts. Categories stay empty: a Yahoo category
+           league still cannot be priced, and inventing columns would be worse than saying so. */
+        const { yahooService } = await import('@/services/yahoo')
+        const settings = await yahooService.getLeagueSettings(inputs.leagueId.value).catch(() => null)
+        /* The same shape useLeagueScoring already consumes for baseball and football: the
+           categories array and the modifier map straight off settings, not nested under .stats. */
+        const { weights: w, unmatched } = yahooHockeyWeights(
+          settings?.stat_categories, settings?.stat_modifiers,
+        )
+        weights.value = w
+        categories.value = []
+        if (unmatched.length) {
+          /* Named rather than swallowed: a column we cannot price ranks the board on rules
+             nobody plays by, and looks exactly like a board that is right. */
+          console.warn('[useHockeyValue] Yahoo columns this league scores and we cannot name:', unmatched)
+        }
+        if (!Object.keys(weights.value).length) {
+          problem.value = 'This league published no scoring weights, so nothing can be priced.'
+        }
+        return
+      }
+
       const { espnService } = await import('@/services/espn')
       const settings = await espnService
         .getRawLeagueViews('hockey', inputs.leagueId.value, inputs.season.value, ['mSettings'])
@@ -102,7 +138,8 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
     }
   }
 
-  watch([inputs.enabled, inputs.leagueId, inputs.season], load, { immediate: true })
+  watch([inputs.enabled, inputs.leagueId, inputs.season,
+         computed(() => inputs.platform?.value ?? 'espn')], load, { immediate: true })
 
   /** Nights the season has left, from the calendar — a ceiling, not a per-player estimate. */
   const gamesLeft = computed(() => {
