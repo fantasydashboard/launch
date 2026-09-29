@@ -212,3 +212,39 @@ describe('normalizeName', () => {
     expect(normalizeName('Connor McDavid')).not.toBe(normalizeName('Connor McMichael'))
   })
 })
+
+/*
+ * THE SHAPE THE FEED ACTUALLY SENDS.
+ *
+ * The two tests above hand the merge a rate row carrying `team`, and proved the comma handling
+ * against it for as long as they have existed. The live feed sends no team field on a rate row
+ * at all — {playerId, name, position, gamesPlayed, perGame} — so teamByKey was built empty on
+ * every production run while the suite stayed green. Nobody saw it, because an absent crest
+ * looks like a design choice.
+ */
+describe('teamByKey against the payload production actually receives', () => {
+  it('falls back to ESPN proTeamId when the rate row has no team', () => {
+    const { teamByKey } = mergeHockeyProjections({
+      espn: [{ ...espnPlayer(), proTeamId: 6 } as any],
+      rates: [rate({ team: undefined } as any)],
+    })
+    expect(teamByKey['3900']).toBe('EDM')
+  })
+
+  it('still prefers the rate feed when it does carry one', () => {
+    const { teamByKey } = mergeHockeyProjections({
+      espn: [{ ...espnPlayer(), proTeamId: 6 } as any],
+      rates: [rate({ team: 'COL,CAR' })],
+    })
+    expect(teamByKey['3900']).toBe('CAR')
+  })
+
+  /* A free agent is not a club, and a crest for one is worse than none. */
+  it('treats ESPN team 0 as no club rather than "FA"', () => {
+    const { teamByKey } = mergeHockeyProjections({
+      espn: [{ ...espnPlayer(), proTeamId: 0 } as any],
+      rates: [rate({ team: undefined } as any)],
+    })
+    expect(teamByKey['3900']).toBeUndefined()
+  })
+})

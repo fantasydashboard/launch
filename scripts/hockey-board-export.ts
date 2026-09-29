@@ -105,11 +105,23 @@ const out = board.rows.map((r: any) => {
   }
   return {
     sid: r.playerKey, name: r.name, pos: r.position,
+    /* His NHL club. Any card that asks "who plays tonight" has to join on it, and the daily
+       streamers board is exactly that question — without it the export can rank players and
+       cannot tell you which of them are on the ice. */
+    team: (r as any).proTeam ?? '',
     /* Every position he can be started at — a per-position card filters on this. */
     eligible: (r as any).eligible ?? [r.position],
     /* `value` orders the board (VOR); `projected` is the player's own total. A points card
        prints the total a reader can check against a stat line; ordering stays ours. */
     value: r.value, projected: r.projected, adp: r.adp ?? null, tag,
+    /* Share of ESPN leagues he is rostered in. ADP says where he was drafted in August; this
+       says whether he is on a waiver wire tonight, which is the only question a streaming
+       card is asking. */
+    owned: (r as any).percentOwned ?? null,
+    /* Expected games. A season total ranks a durable player above an equal-rate one who misses
+       a fortnight — correct for a draft board and wrong for tonight, where both play once. A
+       nightly card divides by this. */
+    games: projections[r.playerKey]?.stats?.GP ?? null,
   }
 })
 process.stdout.write(JSON.stringify(out))

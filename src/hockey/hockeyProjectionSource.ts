@@ -8,6 +8,7 @@ import { goalieMatcher } from './goalieNameMatch'
 import { normalizeName } from './normalizeName'
 export { normalizeName }
 import type { HockeyProjection } from './hockeyValue'
+import { NHL_TEAMS } from '@/services/espn'
 
 /**
  * The single hockey projection every surface reads, assembled from the two feeds that each
@@ -93,6 +94,8 @@ export interface EspnHockeyPlayer {
   auctionValue?: number | null
   percentOwned?: number | null
   injuryStatus?: string | null
+  /** ESPN's numeric club id. Resolved to an abbreviation in teamByKey — see below. */
+  proTeamId?: number | null
 }
 
 export interface MergeInput {
@@ -257,8 +260,24 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
     keyByName[normalizeName(r.name)] = key
     namesByKey[key] = r.name
     rateByKey[key] = r
-    const team = String(r.team ?? '').split(',').pop()?.trim()
-    if (team) teamByKey[key] = team
+    /*
+     * TWO SOURCES, BECAUSE THE ONE THIS USED WAS NOT IN THE PAYLOAD.
+     *
+     * This read `r.team` and took the last comma-separated entry, which is right for a rate
+     * row that carries `teamAbbrevs` — and the live feed carries no team field at all. A rate
+     * row is {playerId, name, position, gamesPlayed, perGame}. So teamByKey was built EMPTY on
+     * every production run, 0 of 382 joined players, and every consumer of it silently had no
+     * club: no crest, and no way to write a card that asks who is playing tonight.
+     *
+     * Nothing failed loudly because the tests supply a fixture WITH a team, so the comma
+     * handling was proven against a shape the feed does not send. Both paths are kept: the
+     * rate feed wins when it actually has one, since that is the trade-aware answer, and
+     * ESPN's numeric proTeamId is the fallback that production actually runs on.
+     */
+    const fromRates = String((r as any).team ?? '').split(',').pop()?.trim()
+    const fromEspn = e?.proTeamId != null ? NHL_TEAMS[e.proTeamId] : undefined
+    const team = fromRates || fromEspn
+    if (team && team !== 'FA') teamByKey[key] = team
   }
 
   /*
@@ -308,6 +327,10 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
     /* A rate-model row wins the name slot: it is the same player with a better number. */
     if (!keyByName[n]) keyByName[n] = p.playerKey
     namesByKey[p.playerKey] = p.name
+    /* Goalies and unrated players arrive on this branch and need a club just as much — they
+       are most of the daily streaming question. */
+    const t = p.proTeamId != null ? NHL_TEAMS[p.proTeamId] : undefined
+    if (t && t !== 'FA') teamByKey[p.playerKey] = t
   }
 
   /*

@@ -63,6 +63,14 @@ export interface HockeyBoardRow extends AvailablePlayerRow {
    */
   eligible?: string[]
   adp?: number | null
+  /**
+   * Share of leagues he is rostered in.
+   *
+   * ADP says where he went in August; this says whether he is on a wire tonight. They answer
+   * different questions and a streaming board needs the second one — the board does not rank
+   * on it, because availability is not value.
+   */
+  percentOwned?: number | null
   /** Rounds of disagreement with ADP. Positive means we rank him higher than the room. */
   marketRounds?: number
   marketFlag?: 'value' | 'fade' | ''
@@ -199,6 +207,9 @@ export function buildHockeyBoard(input: HockeyBoardInput): HockeyBoardResult {
       adp: projections[r.playerKey]?.adp ?? null,
       /* Flagged, never discounted: the projection already accounts for missed games. */
       injuryStatus: projections[r.playerKey]?.injuryStatus ?? null,
+      /* How widely he is rostered. The board does not rank on it — it is the availability
+         half of a waiver or streaming question, which is a different question from value. */
+      percentOwned: projections[r.playerKey]?.percentOwned ?? null,
     })
   }
   rows.sort((a, b) => b.value - a.value)

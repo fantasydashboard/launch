@@ -159,7 +159,7 @@ const HOCKEY_LINEUP_SLOTS: Record<number, string> = {
   0: 'C', 1: 'LW', 2: 'RW', 3: 'F', 4: 'D', 5: 'G', 6: 'UTIL', 7: 'BE', 8: 'IR',
 }
 
-const NHL_TEAMS: Record<number, string> = {
+export const NHL_TEAMS: Record<number, string> = {
   0: 'FA', 1: 'BOS', 2: 'BUF', 3: 'CGY', 4: 'CHI', 5: 'DET', 6: 'EDM',
   7: 'CAR', 8: 'LA', 9: 'DAL', 10: 'MTL', 11: 'NJ', 12: 'NYI', 13: 'NYR',
   14: 'OTT', 15: 'PHI', 16: 'PIT', 17: 'COL', 18: 'SJ', 19: 'STL', 20: 'TB',
