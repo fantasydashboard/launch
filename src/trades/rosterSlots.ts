@@ -131,8 +131,39 @@ export const DEFAULT_SLOTS: Record<string, number> = {
 }
 
 /** Standard 10-team football starting roster when settings are unavailable. */
+/**
+ * The lineup the free board is priced for, and the fallback for a league we could not read.
+ *
+ * THREE RECEIVERS, NOT TWO, AND THE REASON IS COHERENCE. The slot count is what sets
+ * replacement level, and replacement level is the entire cross-position shape of the board.
+ * At two, the replacement receiver sits around WR24-30, everyone past that prices below
+ * replacement and sinks — and because the flex is then pulled toward running backs, deep
+ * backs sink with them.
+ *
+ * Measured against an analyst rest-of-season baseline at week 4 of 2026, moving this one
+ * number from 2 to 3 lifted overall Spearman from 0.880 to 0.907 and shrank the positional
+ * bias at EVERY position at once: QB -22.8 to -8.5, RB +29.0 to +16.5, WR +13.1 to +9.9,
+ * TE -12.2 to -4.8. Nothing else available touches four positions with one edit.
+ *
+ * But the argument for shipping it is not that it matches somebody: it is that the free board
+ * is now scored at HALF PPR, which is Sleeper's default, and Sleeper's default lineup carries
+ * three receivers. ESPN and Yahoo pair two receivers with full PPR. We were running Sleeper's
+ * scoring on ESPN's lineup, and whichever default we choose both halves should come from the
+ * same place.
+ *
+ * AND THE ONE REAL LEAGUE WE HAVE ON RECORD IS DEEPER STILL. League of Record starts
+ * QB/RB/RB/WR/WR/TE/FLEX/FLEX/FLEX — NINE skill seats, against the seven this default used to
+ * price for. Three flex slots push the effective receiver and back replacement far past a
+ * two-receiver lineup, in the same direction this change moves and further. So three is a
+ * conservative correction rather than an aggressive one.
+ *
+ * It remains a judgement about the typical league rather than a measurement of many: nothing
+ * here samples connected leagues. If our users run two, it is one character back, and `SLOTS`
+ * on scripts/football-board-export.ts shows what any lineup shape does to the board before
+ * anybody ships it.
+ */
 export const DEFAULT_NFL_SLOTS: Record<string, number> = {
-  QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, K: 1, DEF: 1,
+  QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, K: 1, DEF: 1,
 }
 
 /**

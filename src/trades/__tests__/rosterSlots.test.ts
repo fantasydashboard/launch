@@ -96,9 +96,18 @@ describe('parseRosterSlots — football', () => {
     })
   })
 
+  /*
+   * THE FALLBACK IS A PRICING DECISION, NOT A PARSING ONE, so it is asserted on its own.
+   *
+   * These slot counts set replacement level, which sets the whole cross-position shape of the
+   * free board. Three receivers rather than two lifted agreement with an analyst baseline from
+   * 0.880 to 0.907 and shrank the positional bias at every position at once. If this number
+   * changes, the board changes for every anonymous visitor — see the comment on
+   * DEFAULT_NFL_SLOTS, and note the tests above still expect two where a league PUBLISHES two.
+   */
   it('football fallback when settings are empty', () => {
     expect(parseRosterSlots('sleeper', null, 'football')).toEqual({
-      QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, K: 1, DEF: 1,
+      QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, K: 1, DEF: 1,
     })
   })
 })
