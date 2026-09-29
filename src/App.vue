@@ -294,9 +294,12 @@
                       <div v-if="sportIndex > 0 && hasPreviousSportLeagues(sportIndex)" class="border-t border-dark-border"></div>
                       
                       <div class="p-2">
-                        <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
-                          <span>{{ getSportEmoji(sport) }}</span>
-                          <span>{{ sport }}</span>
+                        <!-- The sport, in the app's own monospace label treatment. It used to
+                             carry an OS emoji, which rendered in Apple's colour font beside the
+                             platform's actual brand mark — three visual languages in one row,
+                             and the only one the design system did not choose. -->
+                        <div class="px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-dark-textMuted">
+                          {{ sport }}
                         </div>
                         <div
                           v-for="league in getLeaguesBySport(sport)"
@@ -318,6 +321,12 @@
                           <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2">
                               <span class="font-medium text-dark-text text-sm truncate">{{ league.league_name || league.name }}</span>
+                              <!-- Which one you are in, said rather than only tinted: the
+                                   active row already had a faint primary wash, which is easy to
+                                   miss on a dark theme when you are scanning for the league you
+                                   are already looking at. -->
+                              <span v-if="leagueStore.activeLeagueId === league.league_id"
+                                    class="font-mono text-[9px] uppercase tracking-wider text-primary">current</span>
                               <!-- League Pass indicator -->
                               <span 
                                 v-if="hasLeaguePass(league)" 
@@ -327,7 +336,7 @@
                               </span>
                             </div>
                             <div class="text-xs text-dark-textMuted">
-                              {{ formatScoringType(league) }} · {{ league.num_teams || league.total_rosters }} teams<template v-if="league.season"> · {{ league.season }}</template>
+                              {{ formatScoringType(league) }} · {{ league.num_teams || league.total_rosters }} teams<template v-if="seasonFor(league)"> · {{ seasonFor(league) }}</template>
                             </div>
                           </div>
                           <button
@@ -634,7 +643,6 @@
                           
                           <div class="p-2">
                             <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
-                              <span>{{ getSportEmoji(sport) }}</span>
                               <span>{{ sport }}</span>
                             </div>
                             <div
@@ -664,7 +672,7 @@
                                   </span>
                                 </div>
                                 <div class="text-xs text-dark-textMuted">
-                                  {{ formatScoringType(league) }} · {{ league.num_teams || league.total_rosters }} teams<template v-if="league.season"> · {{ league.season }}</template>
+                                  {{ formatScoringType(league) }} · {{ league.num_teams || league.total_rosters }} teams<template v-if="seasonFor(league)"> · {{ seasonFor(league) }}</template>
                                 </div>
                               </div>
                             </div>
@@ -782,7 +790,6 @@
                           <div v-if="sportIndex > 0 && hasPreviousSportLeagues(sportIndex)" class="border-t border-dark-border"></div>
                           <div class="p-2">
                             <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
-                              <span>{{ getSportEmoji(sport) }}</span>
                               <span>{{ sport }}</span>
                             </div>
                             <div
@@ -812,7 +819,7 @@
                                   </span>
                                 </div>
                                 <div class="text-xs text-dark-textMuted">
-                                  {{ formatScoringType(league) }} · {{ league.num_teams || league.total_rosters }} teams<template v-if="league.season"> · {{ league.season }}</template>
+                                  {{ formatScoringType(league) }} · {{ league.num_teams || league.total_rosters }} teams<template v-if="seasonFor(league)"> · {{ seasonFor(league) }}</template>
                                 </div>
                               </div>
                             </div>
@@ -1209,7 +1216,7 @@ import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { useLeagueShape } from '@/composables/useLeagueShape'
 import { useRouter, useRoute } from 'vue-router'
-import { seasonLabel } from '@/lib/seasonLabel'
+import { seasonLabel, staleSeasonLabel, newestSeasonBySport } from '@/lib/seasonLabel'
 import { useLeagueStore } from '@/stores/league'
 import { useDarkModeStore } from '@/stores/darkMode'
 import { useAuthStore } from '@/stores/auth'
@@ -1669,6 +1676,16 @@ const activeLeagueHasPass = computed(() =>
 // ─────────────────────────────────────────────────────────────────────────
 
 // Get sport emoji
+/**
+ * The season beside a league, or nothing when it is the newest that sport has.
+ *
+ * Computed off the leagues the user actually holds rather than a calendar, because "current
+ * season" is a different year in every sport and this list spans all of them.
+ */
+function seasonFor(league: any): string | null {
+  return staleSeasonLabel(league, newestSeasonBySport(leagueStore.savedLeagues ?? []))
+}
+
 function getSportEmoji(sport: string): string {
   const emojis: Record<string, string> = {
     football: '🏈',
