@@ -7,6 +7,7 @@ import { normalizeName } from '@/hockey/hockeyProjectionSource'
 import { categoriesFromScoringItems, type HockeyCategory } from '@/hockey/hockeyCategoryValue'
 import { hockeyDailyCategoryValue } from '@/today/hockeyDailyCategory'
 import { mergeFeed } from '@/hockey/mergeFeed'
+import { seasonHorizon } from '@/hockey/seasonHorizon'
 import { getLeagueType } from '@/config/sports'
 import { yahooHockeyWeights, yahooHockeyCategories } from '@/hockey/yahooHockeyWeights'
 
@@ -43,7 +44,9 @@ import { yahooHockeyWeights, yahooHockeyCategories } from '@/hockey/yahooHockeyW
  */
 
 /** NHL regular season: early October to mid April, about twenty-six weeks. */
-export const NHL_SEASON_WEEKS = 26
+/* Moved to src/hockey/seasonHorizon.ts, beside the rule that uses it; re-exported so the
+   existing importers of this module keep working. */
+export { NHL_SEASON_WEEKS } from '@/hockey/seasonHorizon'
 /** And eighty-two games inside them. */
 export const NHL_SEASON_GAMES = 82
 
@@ -199,31 +202,15 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
 
   watch([inputs.enabled, inputs.leagueId, inputs.season, inputs.platform], load, { immediate: true })
 
-  /** Nights the season has left, from the calendar — a ceiling, not a per-player estimate. */
-  const gamesLeft = computed(() => {
-    const weeks = Math.max(0, Math.min(NHL_SEASON_WEEKS, inputs.weeksLeft.value))
-    return Math.round(NHL_SEASON_GAMES * (weeks / NHL_SEASON_WEEKS))
-  })
-
-  /**
-   * Games already gone, PER PLAYER, measured rather than estimated.
-   *
-   * Skaters come from the rate model, which carries each man's real games played. Goalies
-   * have no rate row — there is no goalie rate model — so they keep the calendar share, and
-   * that fallback is named here rather than left to look like a measurement.
-   */
-  const gamesPlayed = computed<Record<string, number>>(() => {
-    const elapsed = 1 - gamesLeft.value / NHL_SEASON_GAMES
-    if (elapsed <= 0) return {}          // preseason: the full projection is what remains
-    const out: Record<string, number> = {}
-    for (const [key, p] of Object.entries(merged.value.projections)) {
-      const rate = merged.value.rateByKey[key]
-      if (rate) { out[key] = rate.gamesPlayed; continue }
-      const total = p.position === 'G' ? (p.stats.DEC || p.stats.GP || 0) : (p.stats.GP || 0)
-      out[key] = total * elapsed
-    }
-    return out
-  })
+  /* The horizon is shared with the rankings board — see src/hockey/seasonHorizon.ts for why
+     it stopped living in this file. */
+  const horizon = computed(() => seasonHorizon({
+    weeksLeft: inputs.weeksLeft.value,
+    projections: merged.value.projections,
+    rateByKey: merged.value.rateByKey,
+  }))
+  const gamesLeft = computed(() => horizon.value.gamesLeft)
+  const gamesPlayed = computed(() => horizon.value.gamesPlayed)
 
   const valueByKey = computed<ValueByKey>(() => {
     if (!Object.keys(weights.value).length) return {}

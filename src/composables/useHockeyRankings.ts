@@ -1,6 +1,8 @@
 import { computed, ref, type ComputedRef } from 'vue'
 import { useNhlFeed } from '@/composables/useNhlFeed'
 import { mergeFeed } from '@/hockey/mergeFeed'
+import { seasonHorizon } from '@/hockey/seasonHorizon'
+import { usePowerTrajectory } from '@/composables/usePowerTrajectory'
 import {
   buildHockeyCategoryValue, categoriesFromScoringItems, type HockeyCategory,
 } from '@/hockey/hockeyCategoryValue'
@@ -9,6 +11,7 @@ import { isCategoryLeague, weightsFromScoringItems } from '@/hockey/hockeyLeague
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { usePlatformsStore } from '@/stores/platforms'
+import { yahooHockeyWeights, yahooHockeyCategories } from '@/hockey/yahooHockeyWeights'
 
 /**
  * The rest-of-season hockey board, in the currency a category league actually settles in.
@@ -180,6 +183,42 @@ export function useHockeyRankings(options: HockeyRankingsOptions = {}): {
     if (leagueStore.activeSport !== 'hockey') return
     const key = String(leagueStore.activeLeagueId ?? '')
     const parts = key.split('_')          // espn_{sport}_{leagueId}_{season}
+
+    /*
+     * YAHOO PUBLISHES ITS SCORING TOO, and this function only ever asked ESPN.
+     *
+     * The early return below was `parts[0] !== 'espn'`, so every Yahoo hockey league fell
+     * straight past it with `mode` still at its default. A Yahoo POINTS league therefore got
+     * the standard six-category board — standard deviations, under a line admitting "we could
+     * not read your league's own columns" — while the same league's Trades page priced it in
+     * points perfectly well. Two pages, one league, two different questions answered.
+     *
+     * This is the same gap yahooHockeyWeights.ts was written to close for useHockeyValue; that
+     * fix reached the value engine and never reached this board. The helpers already exist and
+     * are tested, so this is wiring, not a new model.
+     */
+    if (parts[0] === 'yahoo' || key.includes('.l.')) {
+      try {
+        const { yahooService } = await import('@/services/yahoo')
+        const settings = await yahooService.getLeagueSettings(key).catch(() => null)
+        const { weights } = yahooHockeyWeights(settings?.stat_categories, settings?.stat_modifiers)
+        if (weights && Object.keys(weights).length) {
+          /* Modifiers present means the league pays per stat: a points league. */
+          mode.value = 'points'
+          leagueWeights.value = weights
+          return
+        }
+        const cats = yahooHockeyCategories(settings?.stat_categories)
+        if (cats.categories.length >= 3) {
+          mode.value = 'categories'
+          leagueCats.value = cats.categories
+        }
+      } catch (e) {
+        console.warn('[useHockeyRankings] Yahoo league scoring unavailable', e)
+      }
+      return
+    }
+
     if (parts[0] !== 'espn' || parts.length < 4) return
     try {
       const authStore = useAuthStore()
@@ -235,6 +274,25 @@ export function useHockeyRankings(options: HockeyRankingsOptions = {}): {
   /* The public board never asks whose league it is. See HockeyRankingsOptions.publicBoard. */
   if (!options.publicBoard) void loadLeagueCategories()
 
+  /*
+   * HOW MUCH SEASON IS LEFT, which this board never asked.
+   *
+   * It built values with no horizon at all — a FULL-SEASON total under a heading that reads
+   * "REST OF SEASON". In preseason those coincide and nothing looks wrong. In January they do
+   * not: a player forty games into his year reads at his whole season here and at his
+   * remaining games on Trades, and the same league's two pages disagree about what he is
+   * worth.
+   *
+   * Applied only once the horizon is KNOWN. weeksLeft starts at 0 meaning "unknown", and a
+   * zero horizon would price every player at nothing — so an unknown one keeps the old
+   * full-season behaviour rather than briefly emptying the board. The public board has no
+   * league to ask and stays on the full season, which is the honest reading of a board that
+   * belongs to nobody.
+   */
+  const trajectory = usePowerTrajectory()
+  if (!options.publicBoard) void trajectory.load?.()
+  const weeksLeft = computed(() => (options.publicBoard ? 0 : (trajectory.weeksLeft?.value ?? 0)))
+
   const activeCats = computed<HockeyCategory[]>(() => leagueCats.value ?? DEFAULT_CATEGORIES)
 
   const built = computed(() => {
@@ -261,7 +319,14 @@ export function useHockeyRankings(options: HockeyRankingsOptions = {}): {
     let totalByKey: Record<string, number>
     let perCategoryByKey: Record<string, Record<string, number>>
     if (mode.value === 'points' && leagueWeights.value) {
-      const { valueByKey } = buildHockeyValue({ projections, weights: leagueWeights.value })
+      const horizon = weeksLeft.value > 0
+        ? seasonHorizon({ weeksLeft: weeksLeft.value, projections, rateByKey })
+        : null
+      const { valueByKey } = buildHockeyValue({
+        projections,
+        weights: leagueWeights.value,
+        ...(horizon ? { gamesPlayed: horizon.gamesPlayed, gamesLeft: horizon.gamesLeft } : {}),
+      })
       totalByKey = {}
       for (const [k, v] of Object.entries(valueByKey)) totalByKey[k] = (v as any).total ?? 0
       /* No per-category chips in a points league: the columns are not columns, they are terms
