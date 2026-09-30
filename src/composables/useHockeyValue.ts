@@ -227,13 +227,56 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
 
   const valueByKey = computed<ValueByKey>(() => {
     if (!Object.keys(weights.value).length) return {}
-    return buildHockeyValue({
+    const built = buildHockeyValue({
       projections: merged.value.projections,
       weights: weights.value,
       gamesPlayed: gamesPlayed.value,
       gamesLeft: gamesLeft.value,
-    }).valueByKey
+    })
+    auditValues(built.valueByKey)
+    return built.valueByKey
   })
+
+  /**
+   * `?valueaudit=1` — what each stat contributed, for the men the board ranks highest.
+   *
+   * WHY IT IS WORTH A FEW LINES. A points board is a weight map applied to a projection, and
+   * when a number comes out absurd — a shutdown defenceman at fifty-six a night against an
+   * elite one at three point seven — the projection and the arithmetic can both be checked
+   * from outside, and the WEIGHTS cannot. They are read from the league's own settings through
+   * a stat-id map this codebase has carried as unverified since it was written.
+   *
+   * buildHockeyValue already keeps `perStat`, the points each stat contributed, and threw it
+   * away at the door. Printing it beside the weights turns "that number is wrong" into "that
+   * number is wrong BECAUSE blocked shots are being paid twenty-three points each", which is
+   * the difference between a report and a diagnosis.
+   *
+   * Behind a query parameter and off by default: this is a tool for whoever is holding the
+   * bug, not a thing every reader's console should carry.
+   */
+  function auditValues(byKey: ValueByKey) {
+    if (typeof window === 'undefined') return
+    if (!new URLSearchParams(window.location.search).has('valueaudit')) return
+    const rows = Object.entries(byKey)
+      .map(([key, v]) => ({ key, name: merged.value.namesByKey[key] ?? key, v }))
+      .filter((r) => r.v.games > 0)
+      .sort((a, b) => b.v.total / b.v.games - a.v.total / a.v.games)
+      .slice(0, 8)
+    console.warn('[valueaudit] weights this league published:', weights.value)
+    for (const r of rows) {
+      const proj = merged.value.projections[r.key]
+      const perStat = (r.v as any).perStat ?? {}
+      const worst = Object.entries(perStat)
+        .sort((a: any, b: any) => Math.abs(b[1]) - Math.abs(a[1]))
+        .slice(0, 5)
+        .map(([k, pts]: any) => `${k} ${Number(pts).toFixed(0)} (${Number(proj?.stats?.[k] ?? 0).toFixed(1)} x ${weights.value[k] ?? '?'})`)
+      console.warn(
+        `[valueaudit] ${r.name}  perGame=${(r.v.total / r.v.games).toFixed(1)}  ` +
+        `projGP=${Number(proj?.stats?.GP ?? 0).toFixed(1)}  games=${r.v.games.toFixed(1)}  ` +
+        `|  ${worst.join('  ')}`,
+      )
+    }
+  }
 
   /**
    * The same projections priced as a CATEGORY league prices them, per night.
