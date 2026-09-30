@@ -86,3 +86,74 @@ describe('buildPointsTradeLandscape — football VOR strength', () => {
     expect(ls.myStrong).toContain('RB') // A is top-third at RB
   })
 })
+
+describe('the FLEX row', () => {
+  /*
+   * Football, VOR-ranked, with the slot shape this was built for: QB/RB2/WR2/TE/FLEX3.
+   *
+   * The whole point of the row is that it separates teams the concrete rows cannot. Both
+   * teams below field an identical top two at running back and receiver — so RB and WR tie —
+   * and one of them has three more startable bodies behind them while the other has nothing.
+   * That is the team with three fillable flex seats against the team starting warm bodies in
+   * three of its nine, and before this row the grid showed them as the same roster.
+   */
+  const SLOTS = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 3 }
+
+  function nfl(key: string, team: string, pos: string) {
+    return { playerKey: key, name: key, position: pos, teamKey: team, eligiblePositions: [pos] } as PointsPoolPlayer
+  }
+  // identical starters for DEEP and SHALLOW; only the bench behind them differs
+  const shared = [
+    ['QB', 100], ['RB', 90], ['RB', 80], ['WR', 85], ['WR', 75], ['TE', 60],
+  ] as [string, number][]
+  const pool: PointsPoolPlayer[] = []
+  const vor: Record<string, { vorRos: number }> = {}
+  for (const team of ['DEEP', 'SHALLOW']) {
+    shared.forEach(([pos, v], i) => {
+      const k = `${team}_${pos}${i}`
+      pool.push(nfl(k, team, pos)); vor[k] = { vorRos: v }
+    })
+  }
+  // DEEP alone carries three more startable bodies
+  ;[['RB', 70], ['WR', 65], ['TE', 55]].forEach(([pos, v], i) => {
+    const k = `DEEP_SPARE${i}`
+    pool.push(nfl(k, 'DEEP', pos as string)); vor[k] = { vorRos: v as number }
+  })
+  const names = { DEEP: 'Deep', SHALLOW: 'Shallow' }
+  const ls = buildPointsTradeLandscape(pool, {}, {}, 'DEEP', names, 'football', vor, SLOTS)!
+
+  it('appears as its own row when the league fills flex seats', () => {
+    expect(ls.positions).toContain('FLEX')
+  })
+
+  it('separates two teams the concrete rows call identical', () => {
+    // the rows that already existed cannot tell these apart …
+    expect(ls.rank.RB.DEEP).toBe(ls.rank.RB.SHALLOW)
+    expect(ls.rank.WR.DEEP).toBe(ls.rank.WR.SHALLOW)
+    // … and the new one can.
+    expect(ls.rank.FLEX.DEEP).toBe(1)
+    expect(ls.rank.FLEX.SHALLOW).not.toBe(1)
+  })
+
+  it('counts leftovers, not the best body — otherwise it just restates RB', () => {
+    /*
+     * DEEP's best flex-eligible player is his RB1 at 90, who is already in a committed seat.
+     * The row must be scored on the 70/65/55 behind him, not on 90.
+     */
+    expect(ls.rank.FLEX.DEEP).toBe(1)
+    const shallowHasNoSpare = ls.rank.FLEX.SHALLOW
+    expect(shallowHasNoSpare === 0 || shallowHasNoSpare === 2).toBe(true)
+  })
+
+  it('stays off the grid for a league with no flex seats', () => {
+    const noFlex = buildPointsTradeLandscape(
+      pool, {}, {}, 'DEEP', names, 'football', vor, { QB: 1, RB: 2, WR: 2, TE: 1 },
+    )!
+    expect(noFlex.positions).not.toContain('FLEX')
+  })
+
+  it('reads a bare flex bench as a hole worth trading for', () => {
+    const shallow = buildPointsTradeLandscape(pool, {}, {}, 'SHALLOW', names, 'football', vor, SLOTS)!
+    expect(shallow.myWeak).toContain('FLEX')
+  })
+})

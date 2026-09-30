@@ -6,11 +6,15 @@
  * scaffolding.
  */
 import { coversSlot, positionRowsFor } from '@/trades/positionalLandscape'
+import { FLEX_ELIGIBILITY } from '@/trades/rosterSlots'
 import { lineupEligFor } from '@/trades/lineupEligibility'
 import { type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { FGProjection } from '@/services/projectionService'
 import { type ValueByKey } from '@/myteam/playerValue'
 
+
+/** The synthetic row for the seats a league fills from leftovers. */
+export const FLEX_ROW = 'FLEX'
 
 export interface TradePartner {
   teamKey: string
@@ -75,7 +79,63 @@ export function buildPointsTradeLandscape(
    * actually starts asks the question the manager is actually asking.
    */
   const depthFor = (pos: string): number => Math.max(1, Math.floor(Number(slots?.[pos] ?? 1)) || 1)
+
+  /*
+   * THE FLEX SEATS, WHICH THIS GRID USED TO PRETEND DID NOT EXIST.
+   *
+   * The rows are the concrete positions, and flex was left out as "overflow, not a target
+   * position". But a league running QB/RB/RB/WR/WR/TE/FLEX x3 starts NINE skill players, and
+   * this grid was reading five of those seats. Two teams whose RB and WR rows are identical
+   * are not the same team when one has a fourth startable back and the other starts a warm
+   * body three times — and that difference is the trade, not a detail about it.
+   *
+   * Which slots count as flex is derived rather than listed: a slot the league starts, that
+   * names the positions it accepts, and that is not itself one of the ranked rows. That picks
+   * up FLEX and SUPER_FLEX without naming them, ignores K and DEF (no eligibility entry), and
+   * will pick up whatever a future league calls its flex.
+   */
+  const rowSet = new Set(positionRowsFor(sport))
+  const flexSlots = Object.keys(slots ?? {}).filter(
+    (slot) => !rowSet.has(slot) && !!FLEX_ELIGIBILITY[slot] && depthFor(slot) > 0 && Number(slots?.[slot]) > 0,
+  )
+  const flexOpenings = flexSlots.reduce((n, slot) => n + Math.floor(Number(slots?.[slot]) || 0), 0)
+
+  /**
+   * A team's flex strength: the bodies it has LEFT OVER once its committed seats are filled.
+   *
+   * Measured after assignment rather than as "best RB/WR/TE", because otherwise it would
+   * simply restate the rows above it — a team's best flex body is its RB1, who is already
+   * counted. The question this row answers is the one a manager actually has: once everybody
+   * is in a seat, who still has startable surplus and who is filling three seats with filler.
+   *
+   * Greedy and scarcity-blind, unlike assignSlots: the committed football seats here are
+   * single-position (QB, RB, WR, TE) so there is no contention to resolve, and borrowing
+   * assignSlots would also borrow its startable bar and its injury rule, which answer a
+   * different question than "how deep is this roster".
+   */
+  const flexStrengthAt = (team: string): number | null => {
+    if (!flexOpenings) return null
+    const squad = (byTeam.get(team) ?? []).map((pl, i) => ({ ...pl, i }))
+    const used = new Set<number>()
+    for (const pos of positionRowsFor(sport)) {
+      const need = Math.floor(Number(slots?.[pos]) || 0)
+      if (need <= 0) continue
+      const pick = squad
+        .filter((pl) => !used.has(pl.i) && coversSlot(pl.eligible, pos))
+        .sort((a, b) => b.points - a.points)
+        .slice(0, need)
+      for (const pl of pick) used.add(pl.i)
+    }
+    const spare = squad
+      .filter((pl) => !used.has(pl.i) && flexSlots.some((slot) => coversSlot(pl.eligible, slot)))
+      .sort((a, b) => b.points - a.points)
+      .slice(0, flexOpenings)
+    if (!spare.length) return null
+    return spare.reduce((sum, pl) => sum + pl.points, 0)
+  }
+
   const strengthAt = (team: string, pos: string): number | null => {
+    if (pos === FLEX_ROW) return flexStrengthAt(team)
     const vals: number[] = []
     for (const pl of byTeam.get(team) ?? []) {
       if (coversSlot(pl.eligible, pos)) vals.push(pl.points)
@@ -91,7 +151,8 @@ export function buildPointsTradeLandscape(
     const v = strengthAt(t, pos)
     return useVor ? v !== null : v !== null && v > 0
   }
-  const positions = positionRowsFor(sport).filter((pos) => teamKeys.some((t) => present(t, pos)))
+  const positions = [...positionRowsFor(sport), ...(flexOpenings ? [FLEX_ROW] : [])]
+    .filter((pos) => teamKeys.some((t) => present(t, pos)))
   const rank: Record<string, Record<string, number>> = {}
   for (const pos of positions) {
     const rows = teamKeys
