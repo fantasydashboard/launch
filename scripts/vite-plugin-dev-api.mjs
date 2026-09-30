@@ -74,6 +74,23 @@ export default function devApi({ dir = 'api' } = {}) {
       const apiDir = path.resolve(server.config.root, dir)
       const cache = createDevApiCache()
 
+      /*
+       * EDITING A HANDLER MUST INVALIDATE ITS ANSWERS. A ten-minute s-maxage is right for the
+       * upstream and completely wrong for a file the developer is changing — saving
+       * api/nhl-stats.js and watching the old response come back for the next ten minutes is
+       * precisely the sort of thing this plugin exists to stop the dev server doing. Vite
+       * already watches the tree; clearing on any change under api/ is coarse and correct.
+       */
+      const invalidate = (file) => {
+        if (String(file).startsWith(apiDir) && cache.size) {
+          cache.clear()
+          server.config.logger.info('[dev-api] handler changed — cache cleared')
+        }
+      }
+      server.watcher.on('change', invalidate)
+      server.watcher.on('add', invalidate)
+      server.watcher.on('unlink', invalidate)
+
       server.middlewares.use(async (req, res, next) => {
         if (!req.url?.startsWith('/api/')) return next()
 
