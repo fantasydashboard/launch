@@ -12,6 +12,11 @@ import { supabase } from '@/lib/supabase'
 import { YAHOO_UNAVAILABLE_MESSAGE } from '@/lib/yahooStatus'
 import type { Sport } from '@/types/supabase'
 import { cache, CACHE_TTL, CACHE_KEYS } from './cache'
+import {
+  YAHOO_PLAYERS_PAGE,
+  collectFreeAgents,
+  parseEligiblePositions,
+} from './yahooFreeAgents'
 
 // Yahoo sport keys
 const SPORT_KEYS: Record<Sport, string> = {
@@ -172,20 +177,6 @@ interface YahooMatchup {
   is_consolation: boolean
   winner_team_key?: string
   is_tied?: boolean
-}
-
-/**
- * Normalize Yahoo's eligible_positions (an array or object-indexed map of
- * {position} entries, sometimes bare strings) into an array of position codes,
- * dropping bench/IL/utility pseudo-slots.
- */
-function parseEligiblePositions(raw: any): string[] {
-  if (!raw) return []
-  const entries = Array.isArray(raw) ? raw : typeof raw === 'object' ? Object.values(raw) : []
-  const skip = new Set(['BN', 'IL', 'IL+', 'NA', 'DL', 'UTIL', 'Util'])
-  return entries
-    .map((e: any) => (typeof e === 'string' ? e : e?.position))
-    .filter((p: any): p is string => typeof p === 'string' && p.length > 0 && !skip.has(p))
 }
 
 export class YahooFantasyService {
@@ -1562,97 +1553,38 @@ export class YahooFantasyService {
   }
 
   /**
-   * Get top available free agents in a league
+   * The league's most-owned free agents, `count` deep.
+   *
+   * Paged, because Yahoo's players collection caps at 25 per request and says nothing about
+   * it — asking for 200 returned 25 for as long as this function has existed. See
+   * ./yahooFreeAgents.ts for what that did to a short-slate daily board.
    */
   async getTopFreeAgents(leagueKey: string, count: number = 100): Promise<any[]> {
-    const freeAgents: any[] = []
-    
+    /* Sorted by ownership, so the earliest pages are the names worth having if a later one
+       fails. `status=FA` excludes waivers, which a manager cannot add today anyway. */
+    const freeAgents = await collectFreeAgents(
+      (offset) => this.apiRequest(
+        `/league/${leagueKey}/players;status=FA;sort=OR;start=${offset};count=${YAHOO_PLAYERS_PAGE}?format=json`,
+      ),
+      count,
+    )
+    if (!freeAgents.length) return freeAgents
+
+    const playerKeys: string[] = freeAgents.map((p) => p.player_key)
+
+    /* Stats are a bonus: a board that knows who is available beats no board at all, so a
+       failure here returns the names rather than throwing the pool away. */
     try {
-      // Get free agents sorted by percent owned (most owned first)
-      const data = await this.apiRequest(
-        `/league/${leagueKey}/players;status=FA;sort=OR;count=${count}?format=json`
-      )
-      
-      console.log('Free agents response:', JSON.stringify(data, null, 2).substring(0, 2000))
-      
-      const playersData = data.fantasy_content?.league?.[1]?.players
-      if (!playersData) return freeAgents
-      
-      const playerKeys: string[] = []
-      
-      for (const playerWrapper of Object.values(playersData) as any[]) {
-        if (typeof playerWrapper !== 'object' || !playerWrapper.player) continue
-        
-        const playerInfo = playerWrapper.player[0]
-        if (!Array.isArray(playerInfo)) continue
-        
-        let playerKey = ''
-        let playerId = ''
-        let name = ''
-        let team = ''
-        let position = ''
-        let headshot = ''
-        let percentOwned = 0
-        let percentDelta = 0
-        let status = ''
-        let injury_note = ''
-        let eligible_positions: string[] = []
-
-        for (const item of playerInfo) {
-          if (item?.player_key) playerKey = item.player_key
-          if (item?.player_id) playerId = item.player_id
-          if (item?.name) name = item.name.full || `${item.name.first} ${item.name.last}`
-          if (item?.editorial_team_abbr) team = item.editorial_team_abbr
-          if (item?.display_position) position = item.display_position
-          if (item?.eligible_positions) eligible_positions = parseEligiblePositions(item.eligible_positions)
-          if (item?.headshot) headshot = item.headshot.url || ''
-          if (item?.percent_owned) {
-            percentOwned = parseFloat(item.percent_owned.value || '0')
-            percentDelta = parseFloat(item.percent_owned.delta || '0')
-          }
-          if (item?.status) status = item.status
-          if (item?.status_full) status = item.status_full || status
-          if (item?.injury_note) injury_note = item.injury_note
-        }
-
-        if (playerKey) {
-          playerKeys.push(playerKey)
-          freeAgents.push({
-            player_key: playerKey,
-            player_id: playerId,
-            full_name: name,
-            position,
-            eligible_positions,
-            mlb_team: team,
-            headshot,
-            percent_owned: percentOwned,
-            percent_change: percentDelta,
-            fantasy_team: null,
-            fantasy_team_key: null,
-            manager_name: null,
-            status,
-            injury_note
-          })
-        }
+      const playerStats = await this.getPlayerStats(leagueKey, playerKeys)
+      for (const player of freeAgents) {
+        const stats = playerStats.get(player.player_key)
+        player.total_points = stats?.total_points || 0
+        player.stats = stats?.stats || {}
       }
-      
-      // Get stats for free agents
-      if (playerKeys.length > 0) {
-        const playerStats = await this.getPlayerStats(leagueKey, playerKeys)
-        
-        for (const player of freeAgents) {
-          const stats = playerStats.get(player.player_key)
-          player.total_points = stats?.total_points || 0
-          player.stats = stats?.stats || {}
-        }
-      }
-      
-      return freeAgents
-      
     } catch (e) {
-      console.error('Error fetching free agents:', e)
-      return freeAgents
+      console.error('[yahoo] free-agent stats failed; returning names only', e)
     }
+    return freeAgents
   }
 
   /**
