@@ -1,6 +1,6 @@
 import { computed, ref, type ComputedRef } from 'vue'
 import { useNhlFeed } from '@/composables/useNhlFeed'
-import { mergeHockeyProjections } from '@/hockey/hockeyProjectionSource'
+import { mergeFeed } from '@/hockey/mergeFeed'
 import {
   buildHockeyCategoryValue, categoriesFromScoringItems, type HockeyCategory,
 } from '@/hockey/hockeyCategoryValue'
@@ -245,13 +245,7 @@ export function useHockeyRankings(options: HockeyRankingsOptions = {}): {
     /* Our rates over ESPN's expected games. Eighty-two for everybody says every player will be
        healthy all year, which is false about a predictable fraction of them and most false
        about exactly the players a manager is deciding between. */
-    const merged = mergeHockeyProjections({
-      espn: feed.value.espn,
-      rates: feed.value.rates,
-      leagueKeys: skaterCats.map((c) => c.key),
-      historyGames: feed.value.historyGames,
-      goalieProjections: feed.value.goalieProjections,
-    })
+    const merged = mergeFeed(feed.value, skaterCats.map((c) => c.key))
     const { missing, rateByKey } = merged
     /* Goalies are ranked in their own list below, so they are kept out of the skater pool
        here — the merge carries them through for the surfaces that do want them. */

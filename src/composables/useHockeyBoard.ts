@@ -19,7 +19,7 @@ import { useCustomRankings } from '@/composables/useCustomRankings'
 import { suggestPunts } from '@/hockey/puntAdvisor'
 import { picksByTeamFromOrder } from '@/hockey/picksByTeam'
 import { loadNhlFeed } from '@/composables/useNhlFeed'
-import { mergeHockeyProjections } from '@/hockey/hockeyProjectionSource'
+import { mergeFeed } from '@/hockey/mergeFeed'
 import { draftSyncStatus, draftPicks, enableDraftSync as requestDraftSync, resetDraftSync, type DraftSyncStatus } from '@/services/draftExtension'
 import { matchPicks } from '@/draft/extensionPicks'
 import { draftedFrom } from '@/hockey/draftedFrom'
@@ -419,7 +419,7 @@ export function useHockeyBoard() {
   async function loadProjections(forSeason: number): Promise<string> {
     const feed = await loadNhlFeed(forSeason)
     if (!feed.espn.length) return 'Could not load projections.'
-    const merged = mergeHockeyProjections({ espn: feed.espn, rates: feed.rates, historyGames: feed.historyGames, goalieProjections: feed.goalieProjections })
+    const merged = mergeFeed(feed)
     allProjections.value = merged.projections
     namesByKey.value = merged.namesByKey
     teamsByKey.value = merged.teamByKey

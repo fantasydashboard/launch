@@ -2,7 +2,7 @@ import { computed, ref, watch, type ComputedRef } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { useNhlFeed } from '@/composables/useNhlFeed'
-import { mergeHockeyProjections } from '@/hockey/hockeyProjectionSource'
+import { mergeFeed } from '@/hockey/mergeFeed'
 import { aggregateTeamCatTotals } from '@/trades/standings'
 import { buildHockeyCategoryValue, type HockeyCategory } from '@/hockey/hockeyCategoryValue'
 import { rankUpgrades, type WireFreeAgent, type WireDropOption, type WireUpgrade } from '@/wire/wireUpgrades'
@@ -71,10 +71,9 @@ export function useHockeyWire(): {
   })
   const { feed, loading: feedLoading } = useNhlFeed(espnSeason)
 
-  const merged = computed(() => mergeHockeyProjections({
-    espn: feed.value.espn,
-    rates: feed.value.rates,
-  }))
+  /* The WHOLE feed — see src/hockey/mergeFeed.ts. The Wire had the same gap the Today page
+     did: espn and rates only, so its numbers disagreed with the rankings board's. */
+  const merged = computed(() => mergeFeed(feed.value))
 
   const loadedFor = ref('')
   function refresh() {

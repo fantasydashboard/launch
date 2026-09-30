@@ -3,9 +3,10 @@ import type { ValueByKey, PlayerValue } from '@/myteam/playerValue'
 import { buildHockeyValue } from '@/hockey/hockeyValue'
 import { weightsFromScoringItems } from '@/hockey/hockeyLeague'
 import { useNhlFeed } from '@/composables/useNhlFeed'
-import { mergeHockeyProjections, normalizeName } from '@/hockey/hockeyProjectionSource'
+import { normalizeName } from '@/hockey/hockeyProjectionSource'
 import { categoriesFromScoringItems, type HockeyCategory } from '@/hockey/hockeyCategoryValue'
 import { hockeyDailyCategoryValue } from '@/today/hockeyDailyCategory'
+import { mergeFeed } from '@/hockey/mergeFeed'
 import { getLeagueType } from '@/config/sports'
 import { yahooHockeyWeights, yahooHockeyCategories } from '@/hockey/yahooHockeyWeights'
 
@@ -89,10 +90,10 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
 
   const { feed, loading: feedLoading } = useNhlFeed(inputs.season)
 
-  const merged = computed(() => mergeHockeyProjections({
-    espn: feed.value.espn,
-    rates: feed.value.rates,
-  }))
+  /* The WHOLE feed. This used to pass espn and rates only, so the Today page projected games
+     from the pool's centre instead of each player's record, and never saw the goalie model at
+     all — it priced goalies off ESPN's raw numbers while the rankings board used ours. */
+  const merged = computed(() => mergeFeed(feed.value))
 
   async function load() {
     if (!inputs.enabled.value || !inputs.leagueId.value) return
