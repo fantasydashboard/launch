@@ -262,7 +262,7 @@ export function buildPointsTeam(
   const assignedByTeam = new Map<string, Record<string, string[]>>()
   const standings: TeamStanding[] = []
   for (const [teamKey, players] of byTeam) {
-    const a = assignSlots(players, slots, 0)
+    const a = assignSlots(players, slots, 0, opts.sport)
     assignedByTeam.set(teamKey, a.assignedByPos)
     let startingPoints = 0
     for (const keys of Object.values(a.assignedByPos)) for (const k of keys) startingPoints += pointsOf(k)

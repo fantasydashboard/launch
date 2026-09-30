@@ -1,6 +1,19 @@
 /** Slots that don't require a started player — excluded from need/surplus math. */
 const NON_STARTING = new Set(['BN', 'BE', 'IL', 'NA', 'IR', 'DL', 'TAXI', 'BENCH'])
 
+/**
+ * A seat nobody starts anyone from.
+ *
+ * The bare set above missed Yahoo's "IR+" and "IL+" — the extra injured-reserve seats it gives
+ * some leagues. They survived into the slot map, so the Trades panel headed "your starter vs
+ * every team's" drew two rows reading "open slot": holes in a lineup that has no such holes.
+ * Stripping the suffix is enough, and it is the only thing these spellings vary by.
+ */
+function isNonStarting(pos: string): boolean {
+  const up = String(pos || '').trim().toUpperCase()
+  return NON_STARTING.has(up) || NON_STARTING.has(up.replace(/\+$/, ''))
+}
+
 /** ESPN MLB lineup slot id -> position label. Bench(16)/IL(17) intentionally absent. */
 const ESPN_SLOT_TO_POS: Record<string, string> = {
   '0': 'C', '1': '1B', '2': '2B', '3': '3B', '4': 'SS', '5': 'OF',
@@ -132,6 +145,32 @@ export const FLEX_ELIGIBILITY: Record<string, string[]> = {
 const UTIL_BY_SPORT: Record<string, string[]> = {
   hockey: ['C', 'LW', 'RW', 'D'],
   baseball: ['C', '1B', '2B', '3B', 'SS', 'OF', 'LF', 'CF', 'RF', 'DH'],
+  basketball: ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F'],
+}
+
+/**
+ * Flex slots whose meaning depends on the sport, resolved before the merged table.
+ *
+ * FLEX_ELIGIBILITY predicted this in its own comment — "Basketball will not get this luxury:
+ * its F and C mean different things again, and it will need the sport passed in rather than
+ * another merge." Both collisions are real and both fail as silence:
+ *
+ *   F  is the hockey forward seat (C/LW/RW) and the basketball forward seat (SF/PF). A
+ *      basketball F seat accepted centres, left wings and right wings — and no forward the
+ *      league actually has.
+ *   G  is not in the merged table at all, because in hockey it is the goalie: a concrete
+ *      position. So a basketball G seat was read as concrete "G", and a point guard, whose
+ *      position is "PG", could not fill it. Every guard seat in every basketball league read
+ *      as permanently open.
+ *
+ * C is deliberately absent here: it is a concrete position in all three sports, and leaving it
+ * out of this table is what keeps it concrete.
+ */
+const FLEX_BY_SPORT: Record<string, Record<string, string[]>> = {
+  basketball: {
+    G: ['PG', 'SG', 'G'],
+    F: ['SF', 'PF', 'F'],
+  },
 }
 
 /**
@@ -143,6 +182,10 @@ const UTIL_BY_SPORT: Record<string, string[]> = {
  */
 export function flexEligibility(slot: string, sport: string): string[] | undefined {
   const up = String(slot || '').toUpperCase()
+  /* A sport that redefines this seat wins outright — the merged table below cannot be made
+     right for it, which is the whole reason this exists. */
+  const own = FLEX_BY_SPORT[String(sport || '').toLowerCase()]?.[up]
+  if (own) return own
   if (up === 'UTIL' && UTIL_BY_SPORT[sport]) return UTIL_BY_SPORT[sport]
   return FLEX_ELIGIBILITY[up]
 }
@@ -209,7 +252,7 @@ export function startingSlotOrder(
   if (platform === 'sleeper' && Array.isArray(settings?.roster_positions)) {
     for (const slot of settings.roster_positions as string[]) {
       const raw = String(slot || '').trim()
-      if (!raw || NON_STARTING.has(raw)) continue
+      if (!raw || isNonStarting(raw)) continue
       out.push(SLEEPER_NFL_FLEX_ALIASES[raw] ?? canonicalPosition(raw))
     }
   } else if (platform === 'yahoo' && Array.isArray(settings?.roster_positions)) {
@@ -218,7 +261,7 @@ export function startingSlotOrder(
       const raw = String(node?.position ?? '').trim()
       const pos = YAHOO_NFL_FLEX_ALIASES[raw] ?? canonicalPosition(raw)
       const count = Number(node?.count ?? 0)
-      if (!pos || NON_STARTING.has(pos) || count <= 0) continue
+      if (!pos || isNonStarting(pos) || count <= 0) continue
       for (let i = 0; i < count; i++) out.push(pos)
     }
   } else if (platform === 'espn' && settings?.rosterSettings?.lineupSlotCounts) {
@@ -230,7 +273,7 @@ export function startingSlotOrder(
     for (const id of ids) {
       const pos = map[id]
       const n = Number(settings.rosterSettings.lineupSlotCounts[id])
-      if (!pos || NON_STARTING.has(pos) || !Number.isFinite(n) || n <= 0) continue
+      if (!pos || isNonStarting(pos) || !Number.isFinite(n) || n <= 0) continue
       for (let i = 0; i < n; i++) out.push(pos)
     }
   }
@@ -257,13 +300,13 @@ export function parseRosterSlots(
       const raw = String(node?.position ?? '').trim()
       const pos = YAHOO_NFL_FLEX_ALIASES[raw] ?? raw
       const count = Number(node?.count ?? 0)
-      if (!pos || NON_STARTING.has(pos) || count <= 0) continue
+      if (!pos || isNonStarting(pos) || count <= 0) continue
       out[pos] = (out[pos] ?? 0) + count
     }
   } else if (platform === 'sleeper' && Array.isArray(settings?.roster_positions)) {
     for (const slot of settings.roster_positions as string[]) {
       const raw = String(slot || '').trim()
-      if (!raw || NON_STARTING.has(raw)) continue
+      if (!raw || isNonStarting(raw)) continue
       const pos = SLEEPER_NFL_FLEX_ALIASES[raw] ?? raw
       out[pos] = (out[pos] ?? 0) + 1
     }
@@ -271,7 +314,7 @@ export function parseRosterSlots(
     for (const [slotId, count] of Object.entries(settings.rosterSettings.lineupSlotCounts)) {
       const pos = espnMap[slotId]
       const n = Number(count)
-      if (!pos || NON_STARTING.has(pos) || n <= 0) continue
+      if (!pos || isNonStarting(pos) || n <= 0) continue
       out[pos] = (out[pos] ?? 0) + n
     }
   }

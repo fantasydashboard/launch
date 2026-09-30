@@ -101,3 +101,44 @@ describe('positionRowsFor', () => {
     expect(positionRowsFor('hockey')).toEqual(['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'])
   })
 })
+
+describe('the seating engine has to know the sport too', () => {
+  /*
+   * Giving basketball its own flex table in rosterSlots is only half the job: assignSlots
+   * judges eligibility through coversSlot, which read the merged table with no sport at all.
+   *
+   * So a basketball G seat resolved to the concrete letter "G" — the hockey goalie — and a
+   * point guard, whose position is "PG", could not fill it. Every guard seat in every
+   * basketball league sat open while guards rode the bench as surplus.
+   */
+  const P2 = (key: string, elig: string[], value: number): DepthPlayer =>
+    ({ playerKey: key, teamKey: 't1', eligiblePositions: elig, value, status: '' })
+
+  it('seats a point guard in a basketball G slot', () => {
+    const a = assignSlots([P2('pg', ['PG'], 90)], { G: 1 }, 45, 'basketball')
+    expect(a.assignedByPos.G).toEqual(['pg'])
+    expect(a.unfilled).toHaveLength(0)
+  })
+
+  it('seats a power forward in a basketball F slot', () => {
+    const a = assignSlots([P2('pf', ['PF'], 90)], { F: 1 }, 45, 'basketball')
+    expect(a.assignedByPos.F).toEqual(['pf'])
+  })
+
+  /* A goalie must still be the only thing that fills a hockey G seat. */
+  it('does not let a hockey winger into the goalie seat', () => {
+    const a = assignSlots([P2('lw', ['LW'], 90)], { G: 1 }, 45, 'hockey')
+    expect(a.assignedByPos.G).toBeUndefined()
+    expect(a.unfilled).toEqual([{ position: 'G' }])
+  })
+
+  it('still seats a hockey goalie there', () => {
+    const a = assignSlots([P2('g', ['G'], 90)], { G: 1 }, 45, 'hockey')
+    expect(a.assignedByPos.G).toEqual(['g'])
+  })
+
+  it('coversSlot answers the same question the same way', () => {
+    expect(coversSlot(['PG'], 'G', 'basketball')).toBe(true)
+    expect(coversSlot(['LW'], 'G', 'hockey')).toBe(false)
+  })
+})

@@ -520,7 +520,82 @@ describe('flexEligibility', () => {
 
   /* A sport with no UTIL of its own keeps the merged list rather than silently losing the
      slot — wrong is recoverable, absent reads as "this league has no utility seat". */
+  /* This used basketball as its example of an untabled sport. Basketball now has a table —
+     see the block below — so the example moves to a sport we genuinely do not serve. The rule
+     it pins is unchanged: an unknown sport keeps the merged list, because wrong-and-visible
+     beats an empty list reading as "this league has no utility seat". */
   it('falls back to the merged list for a sport it has no table for', () => {
-    expect(flexEligibility('UTIL', 'basketball')).toEqual(FLEX_ELIGIBILITY.UTIL)
+    expect(flexEligibility('UTIL', 'cricket')).toEqual(FLEX_ELIGIBILITY.UTIL)
+  })
+})
+
+describe('slots you do not start from', () => {
+  /*
+   * Yahoo spells injured reserve "IR+" as well as "IR", and NON_STARTING carried only the bare
+   * forms. So a Yahoo hockey league handed the Trades page two IR+ openings, and the panel
+   * titled "your starter vs every team's" drew two rows reading "open slot" — seats nobody
+   * starts anyone from, presented as holes in the lineup.
+   */
+  const yahoo = (positions: Array<[string, number]>) => ({
+    roster_positions: positions.map(([position, count]) => ({ roster_position: { position, count } })),
+  })
+
+  it('drops the plus-suffixed injured-reserve slots Yahoo uses', () => {
+    const slots = parseRosterSlots('yahoo', yahoo([['C', 2], ['IR+', 2], ['IL+', 1]]), 'hockey')
+    expect(slots['IR+']).toBeUndefined()
+    expect(slots['IL+']).toBeUndefined()
+    expect(slots.C).toBe(2)
+  })
+
+  it('still drops the bare forms', () => {
+    const slots = parseRosterSlots('yahoo', yahoo([['C', 1], ['BN', 4], ['IR', 1]]), 'hockey')
+    expect(slots.BN).toBeUndefined()
+    expect(slots.IR).toBeUndefined()
+    expect(slots.C).toBe(1)
+  })
+})
+
+describe('basketball, the sport FLEX_ELIGIBILITY predicted would break the merge', () => {
+  /*
+   * FLEX_ELIGIBILITY's own comment called this: "Basketball will not get this luxury: its F and
+   * C mean different things again, and it will need the sport passed in rather than another
+   * merge." Both collisions are real and both fail silently.
+   *
+   * F is the hockey forward slot (C/LW/RW) and the basketball forward slot (SF/PF). A
+   * basketball league's F seat therefore accepted centres, left wings and right wings, and no
+   * forward it actually has.
+   *
+   * G is worse, because it is not in the flex table at all — in hockey it is the goalie, a
+   * concrete position. So a basketball G seat was read as concrete "G", and a point guard,
+   * whose position is "PG", could not fill it. Every guard seat in every basketball league
+   * read as permanently open.
+   */
+  it('gives a basketball G slot the guards', () => {
+    expect(flexEligibility('G', 'basketball')).toContain('PG')
+    expect(flexEligibility('G', 'basketball')).toContain('SG')
+  })
+
+  it('gives a basketball F slot the forwards, not the hockey ones', () => {
+    const f = flexEligibility('F', 'basketball')!
+    expect(f).toContain('SF')
+    expect(f).toContain('PF')
+    expect(f).not.toContain('LW')
+  })
+
+  it('gives a basketball UTIL every basketball position and no others', () => {
+    const u = flexEligibility('UTIL', 'basketball')!
+    expect(u).toEqual(expect.arrayContaining(['PG', 'SG', 'SF', 'PF', 'C']))
+    expect(u).not.toContain('LW')
+    expect(u).not.toContain('SS')
+  })
+
+  it('leaves a basketball C concrete, because it is a real position there', () => {
+    expect(flexEligibility('C', 'basketball')).toBeUndefined()
+  })
+
+  /* The hockey meanings must survive untouched — G stays the goalie, a concrete seat. */
+  it('keeps the hockey G concrete and the hockey F a forward seat', () => {
+    expect(flexEligibility('G', 'hockey')).toBeUndefined()
+    expect(flexEligibility('F', 'hockey')).toEqual(['C', 'LW', 'RW'])
   })
 })

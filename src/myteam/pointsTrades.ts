@@ -86,8 +86,10 @@ interface Dp extends DepthPlayer {
 }
 
 /** Optimal starting-lineup point total + the set of players who start. */
-function optimal(players: Dp[], slots: Record<string, number>): { total: number; started: Set<string> } {
-  const a = assignSlots(players, slots, 0)
+function optimal(
+  players: Dp[], slots: Record<string, number>, sport?: string,
+): { total: number; started: Set<string> } {
+  const a = assignSlots(players, slots, 0, sport)
   const valByKey = new Map(players.map((p) => [p.playerKey, p.points]))
   const started = new Set<string>()
   let total = 0
@@ -136,7 +138,7 @@ export function buildPointsTrades(
 
   const myDp = byTeam.get(myTeamKey)
   if (!myDp) return []
-  const myBase = optimal(myDp, slots)
+  const myBase = optimal(myDp, slots, sport)
   const sideOf = (key: string): TradeSide => {
     const p = meta.get(key)!
     return { playerKey: key, name: p.name, position: p.position, proTeam: p.proTeam, headshot: p.headshot, points: ptsByKey.get(key) ?? 0, vor: vorByKey[key]?.vorRos }
@@ -214,7 +216,7 @@ export function buildPointsTrades(
 
     const myKeys = new Set(outMine.map((p) => p.playerKey))
     const theirKeys = new Set(outTheirs.map((p) => p.playerKey))
-    const myNew = optimal([...myDp.filter((p) => !myKeys.has(p.playerKey)), ...outTheirs], slots)
+    const myNew = optimal([...myDp.filter((p) => !myKeys.has(p.playerKey)), ...outTheirs], slots, sport)
     const myGain = myNew.total - myBase.total
     /*
      * A gain that rounds to zero is not a deal.
@@ -229,7 +231,7 @@ export function buildPointsTrades(
      */
     const spots = outMine.length - outTheirs.length
     if (myGain < MIN_GAIN_PER_WEEK) return
-    const theirNew = optimal([...theirDp.filter((p) => !theirKeys.has(p.playerKey)), ...outMine], slots)
+    const theirNew = optimal([...theirDp.filter((p) => !theirKeys.has(p.playerKey)), ...outMine], slots, sport)
     const theirGain = theirNew.total - theirBase.total
 
     /*
@@ -311,7 +313,7 @@ export function buildPointsTrades(
   const needsByTeam = new Map<string, Record<string, PositionNeed>>()
   for (const [oppKey, theirDp] of byTeam) {
     if (oppKey === myTeamKey) continue
-    const base = optimal(theirDp, slots)
+    const base = optimal(theirDp, slots, sport)
     needsByTeam.set(oppKey, readNeedsForSport(
       [...base.started].map((k) => ({ position: posOf(k), vor: vorByKey[k]?.vorRos ?? 0 })),
       slots,
@@ -320,7 +322,7 @@ export function buildPointsTrades(
 
   for (const [oppKey, theirDp] of byTeam) {
     if (oppKey === myTeamKey) continue
-    const theirBase = optimal(theirDp, slots)
+    const theirBase = optimal(theirDp, slots, sport)
     /* Two different questions, two different lists: who they would part with, and who I would
        ask about. Using the first for both is what left the board empty. */
     const theirSurplus = offerCandidates(theirDp, theirBase.started)

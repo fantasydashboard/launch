@@ -1,4 +1,4 @@
-import { FLEX_ELIGIBILITY } from './rosterSlots'
+import { FLEX_ELIGIBILITY, flexEligibility } from './rosterSlots'
 
 /** A pool player reduced to what positional depth needs. value = cross-role 0..100. */
 export interface DepthPlayer {
@@ -50,23 +50,26 @@ const isInjured = (s?: string): boolean => {
 /** Which concrete sub-positions a slot accepts (flex slots expand; concrete slots are themselves).
  *  Case-normalized to UPPER so a Yahoo "Util"/"IF" slot matches the uppercase eligibility table
  *  (ESPN sends "UTIL"; without this, Yahoo flex slots matched nobody and read as always-open). */
-export function slotAccepts(slot: string): string[] {
+export function slotAccepts(slot: string, sport?: string): string[] {
   const key = slot.toUpperCase()
-  return FLEX_ELIGIBILITY[key] ?? [key]
+  /* The sport decides where it disagrees with the merged table — basketball's G is the guard
+     seat, hockey's G is the goalie and concrete. Omitted, the merged table stands, which is
+     what every sport but basketball wants. */
+  return flexEligibility(key, String(sport ?? '')) ?? FLEX_ELIGIBILITY[key] ?? [key]
 }
 /** Whether a player's eligible positions can fill the given slot. Shared so the landscape and the
  *  generator judge eligibility identically (no drift between "who's a hole" and "who can fill it").
  *  Comparison is case-insensitive (Yahoo vs ESPN tokens differ in case). */
-export function coversSlot(eligiblePositions: string[], slot: string): boolean {
-  const accepted = slotAccepts(slot) // already upper
+export function coversSlot(eligiblePositions: string[], slot: string, sport?: string): boolean {
+  const accepted = slotAccepts(slot, sport) // already upper
   const slotU = slot.toUpperCase()
   return eligiblePositions.some((p) => {
     const u = p.toUpperCase()
     return accepted.includes(u) || u === slotU
   })
 }
-function eligibleForSlot(player: DepthPlayer, slot: string): boolean {
-  return coversSlot(player.eligiblePositions, slot)
+function eligibleForSlot(player: DepthPlayer, slot: string, sport?: string): boolean {
+  return coversSlot(player.eligiblePositions, slot, sport)
 }
 
 export interface SlotAssignment {
@@ -89,6 +92,9 @@ export function assignSlots(
   players: DepthPlayer[],
   slots: Record<string, number>,
   bar: number = STARTABLE_BAR,
+  /* Only basketball needs this today — its G and F seats mean something the merged
+     eligibility table cannot express. See slotAccepts. */
+  sport?: string,
 ): SlotAssignment {
   const startable = players.filter((p) => p.value >= bar)
   const healthy = startable.filter((p) => !isInjured(p.status))
@@ -98,7 +104,7 @@ export function assignSlots(
   for (const [pos, count] of Object.entries(slots)) for (let i = 0; i < count; i++) openings.push(pos)
 
   // Scarcity of an opening = how many healthy bodies are eligible for it (fewer = fill first).
-  const eligCount = (pos: string) => healthy.filter((p) => eligibleForSlot(p, pos)).length
+  const eligCount = (pos: string) => healthy.filter((p) => eligibleForSlot(p, pos, sport)).length
   openings.sort((a, b) => eligCount(a) - eligCount(b))
 
   const used = new Set<string>()
@@ -107,7 +113,7 @@ export function assignSlots(
   let filledSlots = 0
   for (const pos of openings) {
     const pick = healthy
-      .filter((p) => !used.has(p.playerKey) && eligibleForSlot(p, pos))
+      .filter((p) => !used.has(p.playerKey) && eligibleForSlot(p, pos, sport))
       .sort((a, b) => b.value - a.value)[0]
     if (pick) {
       used.add(pick.playerKey)
@@ -127,6 +133,7 @@ export function buildPositionalLandscape(
   pool: DepthPlayer[],
   slots: Record<string, number>,
   bar: number = STARTABLE_BAR,
+  sport?: string,
 ): PositionalLandscape {
   const byTeam = new Map<string, DepthPlayer[]>()
   for (const p of pool) (byTeam.get(p.teamKey) ?? byTeam.set(p.teamKey, []).get(p.teamKey)!).push(p)
@@ -137,11 +144,11 @@ export function buildPositionalLandscape(
   const countByPos = new Map<string, { teamKey: string; count: number }[]>()
 
   for (const [teamKey, players] of byTeam) {
-    const a = assignSlots(players, slots, bar)
+    const a = assignSlots(players, slots, bar, sport)
     const m = new Map<string, PosStanding>()
     for (const pos of positions) {
       const eligibleStartable = players.filter(
-        (p) => p.value >= bar && coversSlot(p.eligiblePositions, pos),
+        (p) => p.value >= bar && coversSlot(p.eligiblePositions, pos, sport),
       )
       const startableCount = eligibleStartable.length
       const unmet = a.unfilled.filter((u) => u.position === pos).length
