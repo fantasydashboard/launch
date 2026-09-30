@@ -302,8 +302,17 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
      * Matched on name because the two feeds are different id spaces. Everything a league can
      * score is replaced together — a board half ours and half ESPN's would rank goalies on two
      * models at once, which is worse than either.
+     *
+     * GOALIES ONLY, and the guard is the whole point. goalieMatcher falls back to SURNAME when
+     * the full names disagree, which is what joins ESPN's "Sam Montembeault" to the NHL's
+     * "Samuel Montembeault". Its contract is an ESPN GOALIE row; this loop runs over every
+     * player, so the fallback was reaching across positions. Defenceman Alexander Romanov
+     * surname-matched goalie Georgii Romanov and took his 4 starts as GP — and since value is
+     * seasonTotal / GP, a real season of scoring divided by four games put him top of the
+     * board at 47.7 a night, ahead of Cale Makar at 3.7, and free, so the page advised adding
+     * him. A skater cannot be scored on save percentage; there is nothing to match here.
      */
-    const mine = ourGoalies.find(p.name)
+    const mine = p.position === 'G' ? ourGoalies.find(p.name) : undefined
     if (mine) {
       stats = {
         ...stats,

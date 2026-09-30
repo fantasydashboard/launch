@@ -30,6 +30,62 @@ const espnPlayer = (over: Partial<EspnHockeyPlayer> = {}): EspnHockeyPlayer => (
 })
 
 describe('mergeHockeyProjections', () => {
+  /*
+   * A SKATER MUST NEVER BE HANDED A GOALIE'S PROJECTION.
+   *
+   * goalieMatcher falls back to surname when the full names disagree, which is what joins
+   * ESPN's "Sam Montembeault" to the NHL's "Samuel Montembeault". Its contract says it answers
+   * for an ESPN GOALIE row — and the merge called it for every player, skaters included.
+   *
+   * So defenceman Alexander Romanov surname-matched goalie Georgii Romanov and inherited his
+   * numbers: GP replaced by the goalie's 4 starts, plus a full set of W/SV/GA/SA/SVPCT/GAA on
+   * a defenceman. Value is seasonTotal / GP, so his real season of scoring was divided by four
+   * games and he came out at 47.7 points a night — first on the board, ahead of Cale Makar at
+   * 3.7, and free, so the page advised picking him up.
+   */
+  it('does not give a skater a goalie projection that only matches by surname', () => {
+    const { projections } = mergeHockeyProjections({
+      espn: [espnPlayer({
+        playerKey: '4587854', name: 'Alexander Romanov', position: 'D',
+        stats: { GP: 74, G: 6, A: 17, SOG: 106, HITS: 168, BLK: 166 },
+      })],
+      rates: [],
+      goalieProjections: [{
+        playerId: 5000, name: 'Georgii Romanov',
+        starts: 4, wins: 1, saves: 112, goalsAgainst: 14, shutouts: 0, shotsAgainst: 126,
+        savePct: 0.888,
+      }],
+    })
+
+    const romanov = projections['4587854']
+    expect(romanov.position).toBe('D')
+    /* His own games, not the goalie's starts — this is the divisor the board ranks on. */
+    expect(romanov.stats.GP).toBe(74)
+    expect(romanov.stats.W).toBeUndefined()
+    expect(romanov.stats.SV).toBeUndefined()
+    expect(romanov.stats.SVPCT).toBeUndefined()
+    expect(romanov.stats.GAA).toBeUndefined()
+  })
+
+  /* The surname fallback still has to work where it was meant to: goalie to goalie. */
+  it('still joins a goalie whose given name is spelled differently', () => {
+    const { projections } = mergeHockeyProjections({
+      espn: [espnPlayer({
+        playerKey: '2560', name: 'Sam Montembeault', position: 'G',
+        stats: { GP: 40, W: 33 },
+      })],
+      rates: [],
+      goalieProjections: [{
+        playerId: 6000, name: 'Samuel Montembeault',
+        starts: 38, wins: 17.9, saves: 1000, goalsAgainst: 95, shutouts: 2, shotsAgainst: 1095,
+        savePct: 0.913,
+      }],
+    })
+
+    expect(projections['2560'].stats.W).toBeCloseTo(17.9)
+    expect(projections['2560'].stats.GP).toBe(38)
+  })
+
   it('keys a matched skater by ESPN id, because the draft feed does', () => {
     const { projections } = mergeHockeyProjections({ espn: [espnPlayer()], rates: [rate()] })
     expect(Object.keys(projections)).toEqual(['3900'])
