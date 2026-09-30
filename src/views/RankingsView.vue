@@ -278,7 +278,7 @@
                 so the two read as one fact rather than two.
               -->
               <span v-if="access.showsPaidColumns && !row.owned && row.free"
-                    class="shrink-0 rounded bg-[#2dd4bf]/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-[#2dd4bf]"
+                    :class="`shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide ${FREE_BADGE}`"
               >free</span>
               <span v-else-if="access.scopedToLeague && !access.showsPaidColumns && !row.owned" aria-hidden="true"
                     class="shrink-0 select-none rounded bg-dark-bg px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-dark-textMuted/40"
@@ -379,6 +379,7 @@ import {
   ALL_BUCKETS, RANKINGS_DEFAULT, BUCKET_LABEL, ownerBucket, showsBucket, toggleBucket,
   loadBuckets, saveBuckets, type OwnerBucket,
 } from '@/lib/ownerFilter'
+import { OWNER_TONE, FREE_BADGE, OWNER_CHIP_FILLED } from '@/lib/ownerTone'
 import { RouterLink } from 'vue-router'
 import { useRankings } from '@/composables/useRankings'
 import { scoringLabel } from '@/composables/useFootballScoring'
@@ -502,11 +503,7 @@ const visible = computed(() => byOwner.value.slice(0, expanded.value ? FULL_DEPT
 
 /* Selected chips, in the row colours. Filled like the position chips they sit beside, so the
    two groups read as one control rather than two conventions. */
-const OWNER_CHIP_ON: Record<OwnerBucket, string> = {
-  mine: 'bg-primary font-bold text-dark-bg',
-  free: 'bg-[#2dd4bf] font-bold text-dark-bg',
-  taken: 'bg-dark-textMuted/70 font-bold text-dark-bg',
-}
+const OWNER_CHIP_ON = OWNER_CHIP_FILLED
 /** How many the owner filter is holding back, so a shortened board is never silent. */
 const hiddenByOwner = computed(() => rows.value.length - byOwner.value.length)
 
@@ -523,7 +520,7 @@ const hiddenByOwner = computed(() => rows.value.length - byOwner.value.length)
  */
 function nameTone(row: BoardRow): string {
   if (access.value.scopedToLeague && row.owned) return 'text-primary'
-  if (access.value.showsPaidColumns && row.free) return 'text-[#2dd4bf]'
+  if (access.value.showsPaidColumns && row.free) return OWNER_TONE.free
   return ''
 }
 

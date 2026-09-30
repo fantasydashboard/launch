@@ -20,6 +20,7 @@ import {
   ALL_BUCKETS, TODAY_DEFAULT, BUCKET_LABEL, ownerBucket, showsBucket, toggleBucket,
   loadBuckets, saveBuckets, type OwnerBucket,
 } from '@/lib/ownerFilter'
+import { OWNER_TONE as SHARED_TONE, OWNER_CHIP_OUTLINE } from '@/lib/ownerTone'
 import { assignTiers } from '@/draft/room/tierCliffs'
 import { teamLogoFor } from '@/players/teamLogo'
 import { availability, type RankedRow } from '@/composables/useDailyLineup'
@@ -180,18 +181,16 @@ const hiddenByOwner = computed(() => byPosition.value.length - byOwner.value.len
  * The green on the "cheap here" line above is deliberately untouched: it pairs with the amber
  * "bare here" as a scarcity signal, and says nothing about who owns anybody.
  */
-const FREE_AGENT_TONE = 'text-[#2dd4bf]'
+/* Shared with the rankings board — see src/lib/ownerTone.ts for why a free agent is bright
+   plain text rather than a colour. This panel is where the last drift happened. */
+const FREE_AGENT_TONE = SHARED_TONE.free
 const OWNER_TONE: Record<string, string> = {
-  mine: 'text-primary', free: FREE_AGENT_TONE, rostered: 'text-dark-textMuted/60',
+  mine: SHARED_TONE.mine, free: SHARED_TONE.free, rostered: SHARED_TONE.taken,
 }
 
 /* Selected chips, in the colours the rows already use. Border and text together so a chosen
    chip reads as filled without a background fighting the row beneath it. */
-const OWNER_CHIP_ON: Record<OwnerBucket, string> = {
-  mine: 'border-primary text-primary',
-  free: 'border-[#2dd4bf] text-[#2dd4bf]',
-  taken: 'border-dark-textMuted/60 text-dark-text',
-}
+const OWNER_CHIP_ON = OWNER_CHIP_OUTLINE
 /** Fourth state: the man you are actually playing this week. */
 const isOpp = (r: RankedRow) =>
   !!props.oppName && r.owner === 'rostered' && r.ownerName === props.oppName
