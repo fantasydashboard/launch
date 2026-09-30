@@ -144,24 +144,27 @@ const bucketOf = (r: RankedRow) => ownerBucket({ mine: r.owner === 'mine', free:
 
 const bySide = computed(() =>
   props.rows.filter((r) => (side.value === 'goalies') === isScarce(r.position)))
-const shown = computed(() => {
+const byPosition = computed(() => {
   const f = filter.value
-  const list = f === 'ALL'
+  return f === 'ALL'
     ? bySide.value
     : bySide.value.filter((r) => (r.position || '').toUpperCase().split(/[,/|]/).map((t) => t.trim()).includes(f))
-  /* Filtered BEFORE the cap, or hiding the other teams would leave you short of a full board
-     rather than showing you more of the men you can actually have. */
-  return list.filter((r) => showsBucket(owners.value, bucketOf(r))).slice(0, LIMIT)
 })
+/*
+ * THE OWNER CUT, AND WHY IT HAS TO COME BEFORE THE CAP.
+ *
+ * This board is handed every rostered player in the league plus every free agent, sorted by
+ * tonight's value. Free agents are by construction the men nobody drafted, so they sort below
+ * almost all two hundred-odd rostered ones and fall clean off the end of a forty-row board —
+ * which is why they were invisible. Raising the cap does not fix that, it just puts more
+ * rostered players above them. Cutting the owners you cannot act on does, immediately.
+ */
+const byOwner = computed(() =>
+  byPosition.value.filter((r) => showsBucket(owners.value, bucketOf(r))))
+const shown = computed(() => byOwner.value.slice(0, LIMIT))
 
 /** How many the owner filter is holding back, so the cut is visible rather than silent. */
-const hiddenByOwner = computed(() => {
-  const f = filter.value
-  const list = f === 'ALL'
-    ? bySide.value
-    : bySide.value.filter((r) => (r.position || '').toUpperCase().split(/[,/|]/).map((t) => t.trim()).includes(f))
-  return list.filter((r) => !showsBucket(owners.value, bucketOf(r))).length
-})
+const hiddenByOwner = computed(() => byPosition.value.length - byOwner.value.length)
 
 /*
  * Yours, somebody else's, or free — the same three states the football board marks, because
@@ -320,8 +323,11 @@ const hasScarcity = computed(() =>
       {{ hiddenByOwner }} more hidden by the filter above
     </p>
 
-    <p v-if="bySide.length > LIMIT" class="mt-2 font-mono text-[10px] text-dark-textMuted">
-      showing {{ shown.length }} of {{ bySide.length }} {{ words[side] }} playing tonight
+    <!-- Counted against the list actually being capped, not the whole slate: with the other
+         teams filtered out, "showing 40 of 214" would be measuring the cut against a number
+         the reader had already chosen to stop looking at. -->
+    <p v-if="byOwner.length > LIMIT" class="mt-2 font-mono text-[10px] text-dark-textMuted">
+      showing {{ shown.length }} of {{ byOwner.length }} {{ words[side] }} playing tonight
     </p>
   </section>
 </template>

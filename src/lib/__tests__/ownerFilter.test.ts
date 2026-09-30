@@ -114,3 +114,46 @@ describe('remembering the choice', () => {
     expect(loadBuckets('ufd_b', TODAY_DEFAULT)).toEqual(['mine', 'free', 'taken'])
   })
 })
+
+/*
+ * THE COMPLAINT THAT PROMPTED THIS, KEPT AS A TEST.
+ *
+ * "I see no free agents with the way it's designed because they are too far down." The daily
+ * board is handed every rostered player in the league plus every free agent, sorted by
+ * tonight's value, then cut at forty rows. Free agents are by construction the men nobody
+ * drafted, so they sort below almost all of the rostered ones and fall clean off the end.
+ *
+ * Raising the cap is the obvious fix and the wrong one — it only puts more rostered players
+ * above them. Cutting the owners a lineup decision cannot reach is what actually surfaces
+ * them, and it does it immediately.
+ */
+describe('why the daily board defaults the way it does', () => {
+  const CAP = 40
+  const board = [
+    ...Array.from({ length: 200 }, (_, i) => ({ id: `taken${i}`, mine: false, free: false })),
+    ...Array.from({ length: 14 }, (_, i) => ({ id: `mine${i}`, mine: true, free: false })),
+    ...Array.from({ length: 60 }, (_, i) => ({ id: `free${i}`, mine: false, free: true })),
+  ]
+  const capped = (active: readonly OwnerBucket[]) =>
+    board.filter((r) => showsBucket(active, ownerBucket(r))).slice(0, CAP)
+
+  it('buries every free agent when the whole league is shown', () => {
+    const rows = capped(ALL_BUCKETS)
+    expect(rows).toHaveLength(CAP)
+    expect(rows.filter((r) => r.free)).toHaveLength(0)
+  })
+
+  it('surfaces them the moment the men you cannot act on are cut', () => {
+    const rows = capped(TODAY_DEFAULT)
+    expect(rows).toHaveLength(CAP)
+    expect(rows.filter((r) => r.free).length).toBeGreaterThan(20)
+    /* And your own men are still all there — they are the other half of the decision. */
+    expect(rows.filter((r) => r.mine)).toHaveLength(14)
+  })
+
+  /* The fix that suggests itself, shown not to be one. */
+  it('is not fixed by a bigger board', () => {
+    const roomier = board.filter((r) => showsBucket(ALL_BUCKETS, ownerBucket(r))).slice(0, 150)
+    expect(roomier.filter((r) => r.free)).toHaveLength(0)
+  })
+})
