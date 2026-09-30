@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useActivePointsSource, resolveLeagueSize } from '@/composables/useActivePointsSource'
 import { usePointsValue } from '@/composables/usePointsValue'
@@ -382,6 +382,50 @@ export function useDailyLineup() {
     }
   }
   watch(() => [leagueStore.activeSport, leagueStore.activeLeagueId], loadSchedule, { immediate: true })
+
+  /**
+   * A FAILED SLATE HAS TO BE ABLE TO HEAL, AND MINE COULD NOT.
+   *
+   * The first version of this never retried at all, so one throttled response left every seat
+   * reading "no game" until the manager happened to switch leagues. The retry above fixed the
+   * wrong half of that: three attempts over two and a half seconds, and then the same dead end
+   * for the rest of the visit. Anything that outlasts the backoff — a server restart, a ten
+   * second blip, a laptop opened on a dropped connection — lands in exactly the old state, and
+   * the banner's advice to refresh only works if the reader happens to be looking.
+   *
+   * So a board that could not read the slate tries again when the tab comes back. Coming back
+   * to a page is the moment a reader expects it to be current, it costs one request and only
+   * when we are already broken, and it is the same instinct as the pull-to-refresh nobody has
+   * to be taught. `retrySchedule` is the same door with a handle on it, for the banner.
+   */
+  const scheduleFailed = computed(() => schedule.value.failed === true)
+  const retrySchedule = () => { loadSchedule() }
+
+  /*
+   * A COOLDOWN, because the endpoint this retries is the one that rate-limits us. Each attempt
+   * is already three requests over two and a half seconds, and a reader alt-tabbing while the
+   * NHL is down would otherwise fire that burst every time the window regained focus —
+   * answering a throttle by knocking harder. The button is deliberately exempt: a person who
+   * clicks "try again" has asked, and is watching the result.
+   */
+  const HEAL_COOLDOWN_MS = 30_000
+  let lastHeal = 0
+
+  const healOnReturn = () => {
+    if (document.visibilityState !== 'visible' || !scheduleFailed.value) return
+    const now = Date.now()
+    if (now - lastHeal < HEAL_COOLDOWN_MS) return
+    lastHeal = now
+    loadSchedule()
+  }
+  onMounted(() => {
+    document.addEventListener('visibilitychange', healOnReturn)
+    window.addEventListener('focus', healOnReturn)
+  })
+  onUnmounted(() => {
+    document.removeEventListener('visibilitychange', healOnReturn)
+    window.removeEventListener('focus', healOnReturn)
+  })
 
   const playsToday = (team: string) => (schedule.value.gamesByTeam[String(team || '').toUpperCase()] ?? 0) > 0
 
@@ -855,6 +899,10 @@ export function useDailyLineup() {
     leagueSize,
     startableByPos,
     schedule,
+    /** True when the slate could not be read — the page says so rather than showing a dark night. */
+    scheduleFailed,
+    /** Try the slate again now. The banner's button; the tab also does it on its own. */
+    retrySchedule,
     weekSchedule,
     /** False when the league publishes nothing we can price players with. */
     canValue,

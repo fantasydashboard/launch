@@ -249,10 +249,21 @@ const showFailed = computed(() => error.value === 'failed')
       <!-- Our failure, said as ours. The seats below still read "no game" because we could not
            find out otherwise, and a reader who knows that can go and look rather than trusting
            a night off that isn't one. -->
+      <!--
+        A BUTTON, NOT AN INSTRUCTION. "Try refreshing" asks the reader to fix our problem with
+        the bluntest tool he has — one that throws away every other thing this page has loaded
+        to re-attempt the one that failed. The board also retries by itself when the tab comes
+        back; this is for the reader who is looking at it right now and would rather not wait.
+      -->
       <p v-if="scheduleUnavailable && !onBreak"
          class="mb-5 rounded-xl border border-[#e69a4a]/40 bg-[#e69a4a]/10 px-4 py-3 text-center font-mono text-[11px] text-[#e69a4a]">
         We couldn't read tonight's {{ words.league }} schedule, so every seat below reads
-        &ldquo;no game&rdquo; whether or not it is one. This is our end &mdash; try refreshing.
+        &ldquo;no game&rdquo; whether or not it is one. This is our end.
+        <button type="button" @click="daily.retrySchedule()"
+                :disabled="daily.loading.value"
+                class="ml-1 rounded border border-[#e69a4a]/50 px-2 py-0.5 font-mono text-[11px] text-[#e69a4a] transition-colors hover:bg-[#e69a4a]/15 disabled:opacity-50">
+          {{ daily.loading.value ? 'trying…' : 'try again' }}
+        </button>
       </p>
 
       <!-- 2. YOUR LINEUP, AND THE ONE WE'D SET
