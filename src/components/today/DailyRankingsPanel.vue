@@ -16,6 +16,10 @@
 import { computed, ref } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { wordsFor } from '@/lib/sportWords'
+import {
+  ALL_BUCKETS, TODAY_DEFAULT, BUCKET_LABEL, ownerBucket, showsBucket, toggleBucket,
+  loadBuckets, saveBuckets, type OwnerBucket,
+} from '@/lib/ownerFilter'
 import { assignTiers } from '@/draft/room/tierCliffs'
 import { teamLogoFor } from '@/players/teamLogo'
 import { availability, type RankedRow } from '@/composables/useDailyLineup'
@@ -121,6 +125,23 @@ const startsTier = (i: number) => i === 0 || tierOf(shown.value[i].playerKey) !=
 const tierDrop = (i: number) => (shown.value[i - 1]?.today ?? 0) - (shown.value[i]?.today ?? 0)
 
 const filter = ref('ALL')
+
+/*
+ * WHO YOU ARE LOOKING AT, which on a nightly board is a different question from who is good.
+ *
+ * Tonight's list opens on your own men and the free agents, because those are the only two
+ * groups a lineup decision can reach: the other ten rosters can be neither started nor signed
+ * before puck drop. They are one click away rather than gone — "who has him" is still worth
+ * asking, just not while you are filling seats. See src/lib/ownerFilter.ts.
+ */
+const OWNERS_KEY = 'ufd_today_owners'
+const owners = ref<OwnerBucket[]>(loadBuckets(OWNERS_KEY, TODAY_DEFAULT))
+const toggleOwner = (b: OwnerBucket) => {
+  owners.value = toggleBucket(owners.value, b)
+  saveBuckets(OWNERS_KEY, owners.value)
+}
+const bucketOf = (r: RankedRow) => ownerBucket({ mine: r.owner === 'mine', free: r.owner === 'free' })
+
 const bySide = computed(() =>
   props.rows.filter((r) => (side.value === 'goalies') === isScarce(r.position)))
 const shown = computed(() => {
@@ -128,7 +149,18 @@ const shown = computed(() => {
   const list = f === 'ALL'
     ? bySide.value
     : bySide.value.filter((r) => (r.position || '').toUpperCase().split(/[,/|]/).map((t) => t.trim()).includes(f))
-  return list.slice(0, LIMIT)
+  /* Filtered BEFORE the cap, or hiding the other teams would leave you short of a full board
+     rather than showing you more of the men you can actually have. */
+  return list.filter((r) => showsBucket(owners.value, bucketOf(r))).slice(0, LIMIT)
+})
+
+/** How many the owner filter is holding back, so the cut is visible rather than silent. */
+const hiddenByOwner = computed(() => {
+  const f = filter.value
+  const list = f === 'ALL'
+    ? bySide.value
+    : bySide.value.filter((r) => (r.position || '').toUpperCase().split(/[,/|]/).map((t) => t.trim()).includes(f))
+  return list.filter((r) => !showsBucket(owners.value, bucketOf(r))).length
 })
 
 /*
@@ -148,6 +180,14 @@ const shown = computed(() => {
 const FREE_AGENT_TONE = 'text-[#2dd4bf]'
 const OWNER_TONE: Record<string, string> = {
   mine: 'text-primary', free: FREE_AGENT_TONE, rostered: 'text-dark-textMuted/60',
+}
+
+/* Selected chips, in the colours the rows already use. Border and text together so a chosen
+   chip reads as filled without a background fighting the row beneath it. */
+const OWNER_CHIP_ON: Record<OwnerBucket, string> = {
+  mine: 'border-primary text-primary',
+  free: 'border-[#2dd4bf] text-[#2dd4bf]',
+  taken: 'border-dark-textMuted/60 text-dark-text',
 }
 /** Fourth state: the man you are actually playing this week. */
 const isOpp = (r: RankedRow) =>
@@ -208,6 +248,19 @@ const hasScarcity = computed(() =>
               class="rounded-lg border px-2 py-1 font-mono text-[10px] uppercase transition-colors"
               :class="filter === p ? 'border-primary text-primary' : 'border-dark-border text-dark-textMuted hover:text-dark-text'"
               @click="filter = p">{{ p }}</button>
+      <span class="mx-1 h-4 w-px bg-dark-border"></span>
+      <!--
+        WHO, not just where. Each chip wears the colour that state already has on the rows
+        below, so the control and the list say the same thing; an unselected chip drops to the
+        muted border every other inactive chip on this row uses.
+      -->
+      <button v-for="b in ALL_BUCKETS" :key="b"
+              class="rounded-lg border px-2 py-1 font-mono text-[10px] lowercase transition-colors"
+              :class="owners.includes(b) ? OWNER_CHIP_ON[b] : 'border-dark-border text-dark-textMuted hover:text-dark-text'"
+              :title="owners.includes(b) && owners.length === 1
+                ? 'The only group showing — turn another on before hiding this one'
+                : (owners.includes(b) ? `Hide ${BUCKET_LABEL[b]}` : `Show ${BUCKET_LABEL[b]}`)"
+              @click="toggleOwner(b)">{{ BUCKET_LABEL[b] }}</button>
       <span class="flex-1"></span>
       <span class="font-mono text-[10px] text-dark-textMuted/60">
         <span class="text-primary">&#9733; yours</span> &middot;
@@ -260,6 +313,12 @@ const hasScarcity = computed(() =>
       <span class="w-14 shrink-0 text-right font-display text-base font-bold tabular-nums text-dark-text sm:text-lg">{{ one(r.today) }}</span>
     </div>
     </template>
+
+    <!-- Named rather than left to be inferred from a short list: a board that is quietly
+         hiding half the league looks the same as a thin slate. -->
+    <p v-if="hiddenByOwner" class="mt-2 font-mono text-[10px] text-dark-textMuted/60">
+      {{ hiddenByOwner }} more hidden by the filter above
+    </p>
 
     <p v-if="bySide.length > LIMIT" class="mt-2 font-mono text-[10px] text-dark-textMuted">
       showing {{ shown.length }} of {{ bySide.length }} {{ words[side] }} playing tonight

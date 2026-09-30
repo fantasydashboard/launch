@@ -84,6 +84,28 @@
             :class="active === pos ? 'bg-primary font-bold text-dark-bg' : 'bg-dark-card text-dark-textMuted hover:text-dark-text'"
             @click="active = pos"
           >{{ pos }}</button>
+
+          <!--
+            WHO HOLDS HIM, as a filter rather than only a badge.
+
+            Each chip wears the colour that state already has on the rows below — lime for
+            yours, teal for free, plain for somebody else's — so the control and the list say
+            the same thing. Shown only to a reader whose league we know, because ownership is
+            what the pass sells and without it these would govern nothing.
+          -->
+          <template v-if="showsOwnerFilter">
+            <span class="mx-1 h-4 w-px bg-dark-border"></span>
+            <button
+              v-for="b in ALL_BUCKETS"
+              :key="b"
+              class="rounded px-2.5 py-1 font-mono text-[11px] lowercase tracking-wide transition-colors"
+              :class="owners.includes(b) ? OWNER_CHIP_ON[b] : 'bg-dark-card text-dark-textMuted hover:text-dark-text'"
+              :title="owners.includes(b) && owners.length === 1
+                ? 'The only group showing — turn another on before hiding this one'
+                : (owners.includes(b) ? `Hide ${BUCKET_LABEL[b]}` : `Show ${BUCKET_LABEL[b]}`)"
+              @click="toggleOwner(b)"
+            >{{ BUCKET_LABEL[b] }}</button>
+          </template>
           <!--
             Admin only, and the whole board is what it re-seats — not one card.
 
@@ -319,10 +341,15 @@
           </template>
 
           <button
-            v-if="!expanded && rows.length > visible.length"
+            v-if="!expanded && byOwner.length > visible.length"
             class="mt-3 w-full rounded-lg border border-dark-border bg-dark-bg/60 py-2 font-mono text-[11px] text-dark-textSecondary transition-colors hover:text-dark-text"
             @click="expanded = true"
-          >Show all {{ Math.min(rows.length, FULL_DEPTH) }} {{ active }}</button>
+          >Show all {{ Math.min(byOwner.length, FULL_DEPTH) }} {{ active }}</button>
+          <!-- Named rather than left to be inferred from a short board: a list quietly hiding
+               most of the league looks the same as a league with nobody in it. -->
+          <p v-if="showsOwnerFilter && hiddenByOwner" class="mt-2 font-mono text-[10px] text-dark-textMuted/60">
+            {{ hiddenByOwner }} hidden by the filter above
+          </p>
         </div>
 
         <!--
@@ -348,6 +375,10 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import {
+  ALL_BUCKETS, RANKINGS_DEFAULT, BUCKET_LABEL, ownerBucket, showsBucket, toggleBucket,
+  loadBuckets, saveBuckets, type OwnerBucket,
+} from '@/lib/ownerFilter'
 import { RouterLink } from 'vue-router'
 import { useRankings } from '@/composables/useRankings'
 import { scoringLabel } from '@/composables/useFootballScoring'
@@ -397,6 +428,30 @@ const mv = (key: string) => {
 }
 
 const active = ref('ALL')
+
+/*
+ * WHO YOU ARE LOOKING AT.
+ *
+ * This board answers two questions at once — who is good, and can I have him — and a reader
+ * rarely wants both audiences at once. It opens on the whole league, because unlike the daily
+ * board this is a view OF the league rather than of your evening; the other teams' rosters are
+ * the point here, not noise.
+ *
+ * ONLY WHERE OWNERSHIP EXISTS. `owned` and `free` are what the Season Pass sells, and a reader
+ * with no league connected has neither on any row — three toggles over a distinction that does
+ * not exist for him would be a control that governs nothing. He gets the board exactly as
+ * before. See src/lib/ownerFilter.ts.
+ */
+const OWNERS_KEY = 'ufd_rankings_owners'
+const owners = ref<OwnerBucket[]>(loadBuckets(OWNERS_KEY, RANKINGS_DEFAULT))
+const showsOwnerFilter = computed(() => access.value.scopedToLeague)
+const toggleOwner = (b: OwnerBucket) => {
+  owners.value = toggleBucket(owners.value, b)
+  saveBuckets(OWNERS_KEY, owners.value)
+}
+/* `owned` on these rows means MINE — see footballWire, where it is `p.teamKey === myTeamKey`. */
+const ownerOf = (row: { owned?: boolean; free?: boolean }) =>
+  ownerBucket({ mine: !!row.owned, free: !!row.free })
 const expanded = ref(false)
 
 /* A new position starts at the top again — carrying an expanded state across positions means
@@ -438,7 +493,22 @@ const DEPTH = 50
    between, and rendering the whole column is a scroll nobody wanted and several hundred
    images nobody looked at. */
 const FULL_DEPTH = 200
-const visible = computed(() => rows.value.slice(0, expanded.value ? FULL_DEPTH : DEPTH))
+/* Filtered BEFORE the depth cut, or hiding the other teams would leave a short board rather
+   than showing more of the men the reader asked to see. */
+const byOwner = computed(() => (showsOwnerFilter.value
+  ? rows.value.filter((r: any) => showsBucket(owners.value, ownerOf(r)))
+  : rows.value))
+const visible = computed(() => byOwner.value.slice(0, expanded.value ? FULL_DEPTH : DEPTH))
+
+/* Selected chips, in the row colours. Filled like the position chips they sit beside, so the
+   two groups read as one control rather than two conventions. */
+const OWNER_CHIP_ON: Record<OwnerBucket, string> = {
+  mine: 'bg-primary font-bold text-dark-bg',
+  free: 'bg-[#2dd4bf] font-bold text-dark-bg',
+  taken: 'bg-dark-textMuted/70 font-bold text-dark-bg',
+}
+/** How many the owner filter is holding back, so a shortened board is never silent. */
+const hiddenByOwner = computed(() => rows.value.length - byOwner.value.length)
 
 /**
  * What colour a player's name is, which is the same question as "can I have him".
