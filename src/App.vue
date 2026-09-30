@@ -563,16 +563,15 @@
                 It read as a rendering fault because it is one — the backdrop is 160px wide for
                 a 90px logo, and everything to its right has to sit above it.
               -->
+              <!--
+                NO HAMBURGER HERE ANY MORE. Primary navigation moved to a bottom bar, whose
+                "More" opens the same sheet this button did — so keeping it would be a second
+                door to one room, in the hardest corner of a large phone to reach. Removing it
+                also gives the league picker the width it was being truncated out of
+                ("League of..."), and retires the gradient-fade bug at the source rather than
+                layering another z-index over it.
+              -->
               <div class="relative z-10 flex items-center gap-2">
-                <button 
-                  @click="showMobileMenu = true"
-                  class="flex items-center gap-2 px-3 py-2 bg-black/20 rounded-lg text-white font-semibold text-sm"
-                >
-                  <span>Dashboards</span>
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </button>
                 <!-- Mobile League Dropdown -->
                 <div class="relative" ref="mobileLeagueDropdownRef">
                   <!-- League Helper Tooltip (Mobile) -->
@@ -942,6 +941,61 @@
         <div v-if="isScrolled" class="h-14 hidden lg:block"></div>
       </div>
 
+      <!--
+        THE BOTTOM BAR — primary navigation on a phone.
+
+        What it replaces: seven flat links behind a full-screen takeover, opened from the
+        top-right corner. That is the heaviest interaction available spent on the simplest
+        possible IA — two taps and a total loss of context to do what desktop does in one tap
+        with none, on the device where orientation is hardest and that corner is the furthest
+        point from a thumb. Desktop had a persistent tab bar and mobile did not, which is the
+        priority exactly backwards.
+
+        FOUR FROM THE EXISTING LIST, not a hardcoded four. `tabs` is already ordered by what
+        matters and already changes with the league — This Week or Today by cadence, Draft Room
+        only while a draft is live, Roto Race only for roto. Slicing it keeps the bar honest
+        during a draft, when Draft Room IS the page, instead of burying it under More.
+
+        The fifth slot opens the sheet, which keeps League, History, Free Tools and the account
+        block. Nothing is lost; it is one tap deeper, which is where a destination you visit
+        weekly belongs relative to one you visit daily.
+
+        No chevrons. The old cards carried a "›" on every row, which conventionally promises a
+        drill-down — none of them had one.
+
+        min-h-48 because the labels alone lay the row out at 40px, which is under the 44px
+        every touch guideline asks for and under what a thumb hits reliably on a moving train.
+      -->
+      <nav class="fixed inset-x-0 bottom-0 z-[90] border-t border-dark-border bg-dark-bg/95 backdrop-blur lg:hidden"
+           style="padding-bottom: env(safe-area-inset-bottom, 0px)"
+           aria-label="Primary">
+        <div class="flex items-stretch">
+          <router-link
+            v-for="tab in bottomTabs"
+            :key="'bt-' + tab.path"
+            :to="tab.path"
+            class="flex min-h-[48px] min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2.5 transition-colors"
+            :class="$route.path === tab.path ? 'text-primary' : 'text-dark-textMuted'"
+          >
+            <!-- The active marker is a bar at the top edge, mirroring the underline the
+                 desktop tabs use, so the two read as one system. -->
+            <span class="h-0.5 w-8 rounded-full transition-colors"
+                  :class="$route.path === tab.path ? 'bg-primary' : 'bg-transparent'"></span>
+            <span class="w-full truncate text-center font-mono text-[10px] leading-tight">{{ tab.name }}</span>
+          </router-link>
+          <button
+            type="button"
+            @click="showMobileMenu = true"
+            class="flex min-h-[48px] min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2.5 text-dark-textMuted transition-colors"
+            :class="moreIsActive ? 'text-primary' : ''"
+          >
+            <span class="h-0.5 w-8 rounded-full transition-colors"
+                  :class="moreIsActive ? 'bg-primary' : 'bg-transparent'"></span>
+            <span class="w-full truncate text-center font-mono text-[10px] leading-tight">More</span>
+          </button>
+        </div>
+      </nav>
+
       <!-- Mobile Full-Screen Menu Overlay -->
       <Teleport to="body">
         <div 
@@ -995,17 +1049,12 @@
               >
                 {{ tab.name }}
               </span>
-              <svg 
-                class="w-5 h-5"
-                :class="[
-                  tab.isUltimate ? 'text-primary' : ($route.path === tab.path ? 'text-primary' : 'text-dark-textMuted')
-                ]"
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
+              <!--
+                NO CHEVRON. A "›" conventionally says this row drills into something; every one
+                of these is a flat destination, so seven of them promised a depth the menu does
+                not have. The current page is marked by its border and tint instead, which is a
+                fact rather than a suggestion.
+              -->
             </router-link>
           </div>
           
@@ -1036,7 +1085,8 @@
       </Teleport>
 
       <!-- Main Content -->
-      <main class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8">
+      <!-- pb-24 on mobile clears the fixed bottom bar; lg drops it, there being no bar. -->
+      <main class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 pb-24 lg:pb-8">
         <!--
           The reconnect prompt fires on a FACT the store establishes — Yahoo refused the refresh
           and named the grant dead — not on words that happen to appear in an error. The string
@@ -1353,6 +1403,18 @@ const hasIndividualTier = computed(() => {
 })
 const isActivePaidUser = computed(() => isPaid.value || hasIndividualTier.value)
 const showMobileMenu = ref(false)
+
+/*
+ * The four that get a seat on the bottom bar, taken from the head of `tabs` so the bar
+ * inherits its ordering and its per-league shape rather than duplicating either.
+ */
+const bottomTabs = computed(() => tabs.value.slice(0, 4))
+/* "More" owns the current page when it is a real destination that did not make the bar —
+   otherwise the bar would show nothing active on a page the reader is standing on, which is
+   how the old sheet came to highlight none of its seven rows. */
+const moreIsActive = computed(
+  () => !bottomTabs.value.some((t) => t.path === route.path),
+)
 const leagueDropdownRef = ref<HTMLElement | null>(null)
 const mobileLeagueDropdownRef = ref<HTMLElement | null>(null)
 const scrolledLeagueDropdownRef = ref<HTMLElement | null>(null)
