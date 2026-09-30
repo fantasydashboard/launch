@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
 import { computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useToday } from '@/composables/useToday'
@@ -178,41 +177,12 @@ const showFailed = computed(() => error.value === 'failed')
       </p>
     </header>
 
-    <!--
-      FOOTBALL STOPS HERE.
-
-      `isFootball` used to change one line of copy and nothing else, so this page told a
-      football manager "football lives on This Week" and then rendered the entire daily board
-      underneath it — a seat-by-seat matchup for tonight, a lineup panel announcing that eight
-      of his starters have no game TONIGHT, and a nightly streamer board. Every one of those is
-      true of the evening and irrelevant to his week: his starters play Sunday, and a page that
-      says so in red as though something were wrong is worse than a page that says nothing.
-
-      The nav already hides this tab for football, but a league switch keeps the route, so a
-      manager who was on Today with his hockey league lands here the moment he picks a football
-      one — which is exactly how this was found, on a phone. So the state has to be real rather
-      than unreachable: say what this page is, point at the one that answers his question, and
-      render none of the daily machinery.
-    -->
-    <section v-if="isFootball" class="rounded-xl border border-dark-border bg-dark-card px-4 py-10 text-center">
-      <p class="font-mono text-sm text-dark-textSecondary">
-        Football is a weekly game &mdash; there is no daily slate to set.
-      </p>
-      <p class="mx-auto mt-2 max-w-md font-mono text-xs text-dark-textMuted">
-        Your starters play on the week, not tonight. This Week has the lineup, the matchup and
-        the board.
-      </p>
-      <RouterLink to="/this-week"
-                  class="mt-5 inline-block rounded-lg border border-primary/40 bg-primary/10 px-4 py-2 font-mono text-xs text-primary transition-colors hover:bg-primary/20">
-        Go to This Week &rarr;
-      </RouterLink>
-    </section>
 
     <!-- ── LOADING ─────────────────────────────────────────────────────────── -->
     <!-- `loading` now reflects the full board inputs (schedule + roster + free agents),
          not just the schedule fetch — so this stays up until the board is genuinely ready
          and the empty "you're set" copy can't flash in the gap. -->
-    <div v-else-if="loading && hasNothing && !showFailed" class="py-16 text-center">
+    <div v-if="loading && hasNothing && !showFailed" class="py-16 text-center">
       <div class="inline-flex items-center gap-2 font-mono text-xs text-dark-textMuted">
         <span class="h-1.5 w-1.5 animate-ping rounded-full bg-primary"></span>
         Reading today's slate…
