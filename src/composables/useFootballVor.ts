@@ -18,6 +18,7 @@ import { byeWeeks } from '@/football/scheduleDifficulty'
 import { getSeasonSchedule, REGULAR_SEASON_WEEKS } from '@/services/nflSchedule'
 import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { AvailablePlayer } from '@/players/types'
+import { expectedGamesMissed, consecutiveMissed } from '@/football/availability'
 
 const WEEKLY_HORIZON = 4 // next N weeks for streamability
 
@@ -187,9 +188,35 @@ export function useFootballVor(inputs: {
          reasons are set out in observedPoints.ts. */
       const scoredLines = rescoreObserved(lines, scoring)
 
+      /*
+       * HOW MANY OF THE REMAINING GAMES HE IS EXPECTED TO MISS.
+       *
+       * Nothing upstream will tell us. The season projection is frozen at August, its `gp`
+       * field is the constant 18.0 for every player including men on injured reserve, and the
+       * weekly projection had a ruled-Out receiver at 15.8 points. So a hurt player kept a
+       * healthy player's horizon, and a rest-of-season board ranked him accordingly.
+       *
+       * The designation alone is not enough — "Out" is a weekly flag that can mean one game or
+       * ten — so the streak of games he has actually missed is counted from his own log and the
+       * two are read together. See football/availability.ts for the measured table.
+       */
+      const playedByKey: Record<string, Set<number>> = {}
+      for (const l of lines) {
+        (playedByKey[l.playerKey] ??= new Set<number>()).add(l.week)
+      }
+      const expectedMissedByKey: Record<string, number> = {}
+      const weeksLeft = Math.max(1, REGULAR_SEASON_WEEKS - Math.max(0, currentWeek - 1))
+      for (const p of projPlayers.value) {
+        const status = (playersMap as any)[p.key]?.injury_status ?? null
+        const k = consecutiveMissed(playedByKey[p.key] ?? [], currentWeek, byeByKey[p.key] ?? null)
+        const missed = expectedGamesMissed(status, k, weeksLeft)
+        if (missed > 0) expectedMissedByKey[p.key] = missed
+      }
+
       const ros = buildRosPoints({
         seasonProjection: projectedByKey, lines: scoredLines, currentWeek,
         byeWeekByKey: byeByKey, forwardRateByKey, forwardWeightByKey, priorGamesByKey,
+        expectedMissedByKey,
       })
       const points: Record<string, number> = {}
       for (const [k, v] of Object.entries(ros)) points[k] = v.pointsRos

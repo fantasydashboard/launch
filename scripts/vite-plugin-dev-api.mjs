@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { createDevApiCache } from './dev-api-cache.mjs'
 
 /**
  * Run the `api/*` serverless handlers inside the Vite dev server.
@@ -14,6 +15,14 @@ import path from 'node:path'
  * A 404 would have been survivable. Serving JavaScript with a 200 is what made it a mystery,
  * and it meant no API-backed page could be checked in a browser at all — every verification
  * had to go through vite-node instead.
+ *
+ * IT ALSO HONOURS `Cache-Control`, because not doing so was misleading in the same way. The
+ * handlers set `s-maxage` and production's CDN obeys it — one fetch of the NHL slate serves
+ * every user for ten minutes. `s-maxage` addresses a shared cache; a dev server is not one, so
+ * it ignored the header and every league opened locally went straight to the upstream. Four
+ * leagues meant eight requests at an endpoint that rate-limits, and the throttled answer
+ * rendered as "no game" beside every player — indistinguishable from a product bug production
+ * does not have. See ./dev-api-cache.mjs.
  *
  * WHAT IT DOES NOT DO. It is not a Vercel emulator: no edge runtime, no regions, no streaming,
  * no `vercel.json` rewrites. It maps a path to a file, shims the four response methods the
@@ -63,6 +72,7 @@ export default function devApi({ dir = 'api' } = {}) {
     apply: 'serve',
     configureServer(server) {
       const apiDir = path.resolve(server.config.root, dir)
+      const cache = createDevApiCache()
 
       server.middlewares.use(async (req, res, next) => {
         if (!req.url?.startsWith('/api/')) return next()
@@ -74,6 +84,70 @@ export default function devApi({ dir = 'api' } = {}) {
 
         /* Vercel merges the query string and the route's own params into one object. */
         req.query = { ...Object.fromEntries(url.searchParams), ...hit.params }
+
+        /* Only reads are cacheable, and only reads are safe to replay. */
+        const cacheable = ['GET', 'HEAD'].includes(req.method ?? 'GET')
+        const cacheKey = `${req.method} ${req.url}`
+
+        /*
+         * `end` is passed in rather than read off `res`, because the stale path replays from
+         * INSIDE the wrapped res.end below — calling res.end there would re-enter the wrapper
+         * and recurse until the stack gave out.
+         */
+        const replay = (entry, state, end) => {
+          if (!res.headersSent) {
+            for (const [k, v] of Object.entries(entry.headers ?? {})) res.setHeader(k, v)
+            res.setHeader('x-dev-api-cache', state)
+            res.statusCode = entry.status
+          }
+          end(entry.body)
+        }
+
+        if (cacheable) {
+          const hitCache = cache.lookup(cacheKey)
+          if (hitCache?.fresh) return replay(hitCache, 'HIT', res.end.bind(res))
+        }
+
+        /*
+         * The body, captured on its way out, so a successful answer can be stored.
+         *
+         * The handlers reply through res.json, res.send and res.end in roughly equal measure,
+         * and all three bottom out in end/write — so those two are where the copy is taken
+         * rather than shimming each caller separately.
+         */
+        const chunks = []
+        const realWrite = res.write.bind(res)
+        const realEnd = res.end.bind(res)
+        const collect = (chunk) => {
+          if (chunk == null) return
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)))
+        }
+        res.write = (chunk, ...rest) => { collect(chunk); return realWrite(chunk, ...rest) }
+        res.end = (chunk, ...rest) => {
+          if (typeof chunk !== 'function') collect(chunk)
+          if (cacheable) {
+            const headers = Object.fromEntries(
+              Object.entries(res.getHeaders?.() ?? {}).map(([k, v]) => [k, v]),
+            )
+            const body = Buffer.concat(chunks)
+            const stored = cache.store(cacheKey, { status: res.statusCode, headers, body })
+            if (stored && !res.headersSent) res.setHeader('x-dev-api-cache', 'MISS')
+            else if (!(res.statusCode >= 200 && res.statusCode < 300)) {
+              /*
+               * THE UPSTREAM JUST FAILED AND WE HAVE A SLIGHTLY OLD ANSWER. Serving it is what
+               * stale-while-revalidate means at the edge, and here it is the difference
+               * between a throttled NHL and a board reading "no game" beside every player. A
+               * ten-minute-old slate is not wrong; it is yesterday's news about tonight.
+               */
+              const stale = cache.lookup(cacheKey)
+              if (stale) {
+                server.config.logger.info(`[dev-api] ${req.url} ${res.statusCode} — serving stale`)
+                return replay(stale, 'STALE', realEnd)
+              }
+            }
+          }
+          return realEnd(chunk, ...rest)
+        }
 
         if (req.method && !['GET', 'HEAD'].includes(req.method)) {
           const raw = await readBody(req)

@@ -188,6 +188,13 @@ export interface RosInput {
    * `forwardWeightFor`. A player absent from the map uses `FORWARD_WEIGHT`.
    */
   forwardWeightByKey?: Record<string, number>
+  /**
+   * playerKey -> games he is expected to MISS of those remaining.
+   *
+   * Optional, so a caller that knows nothing about injuries gets exactly the old behaviour
+   * rather than a silent zero that looks like health.
+   */
+  expectedMissedByKey?: Record<string, number>
 }
 
 export interface RosRow {
@@ -222,7 +229,7 @@ export function observedFromLines(lines: SeasonLine[]): Record<string, { points:
  */
 export function buildRosPoints(input: RosInput): Record<string, RosRow> {
   const { seasonProjection, lines, currentWeek, byeWeekByKey, priorGamesByKey, forwardRateByKey,
-          forwardWeightByKey } = input
+          forwardWeightByKey, expectedMissedByKey } = input
   const observed = observedFromLines(lines)
   /* Weeks still to play. Clamped at one so a late-season board never multiplies by zero and
      reports every player as worthless. */
@@ -237,7 +244,25 @@ export function buildRosPoints(input: RosInput): Record<string, RosRow> {
   const gamesFor = (key: string): number => {
     const bye = byeWeekByKey?.[key]
     const ahead = typeof bye === 'number' && Number.isFinite(bye) && bye >= currentWeek
-    return Math.max(1, remaining - (ahead ? 1 : 0))
+    const afterBye = Math.max(1, remaining - (ahead ? 1 : 0))
+    /*
+     * ...and nor is a week remaining a game he will play.
+     *
+     * This counted every remaining week for a man on injured reserve, because the feed gives
+     * us nothing to say otherwise: the season projection is frozen at August, `gp` is the
+     * constant 18.0 for everybody, and the weekly projection had a ruled-Out receiver at 15.8.
+     * So a hurt player kept a healthy player's horizon and ranked accordingly. See
+     * football/availability.ts for how many games a designation and an absence streak are
+     * actually worth.
+     *
+     * Floored at one rather than zero: a board that prices somebody at nothing has stopped
+     * ranking him, and the question here is how much he is worth, not whether to show him.
+     */
+    const missed = expectedMissedByKey?.[key]
+    if (typeof missed === 'number' && Number.isFinite(missed) && missed > 0) {
+      return Math.max(1, afterBye - missed)
+    }
+    return afterBye
   }
 
   const priorFor = (key: string): number => {
