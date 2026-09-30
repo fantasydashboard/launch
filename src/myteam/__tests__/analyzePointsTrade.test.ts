@@ -90,3 +90,55 @@ describe('analyzePointsTrade', () => {
     })).toBeNull()
   })
 })
+
+describe('the before/after lineup', () => {
+  it('returns every opening, not only the ones that moved', () => {
+    /*
+     * The point of the panel this feeds: three changed seats out of nine leave a reader unable
+     * to tell whether the rest are strong or whether we never looked. slotMoves answers "what
+     * changed" and is deliberately a different list.
+     */
+    const a = run(['A2'], ['B1'])
+    expect(a.lineup.length).toBe(Object.values(slots).reduce((n, v) => n + v, 0))
+    expect(a.lineup.length).toBeGreaterThanOrEqual(a.slotMoves.length)
+  })
+
+  it('names who sits in the seat on each side of the deal', () => {
+    const a = run(['A2'], ['B1'])   // B1 is the best bat in the league
+    const of = a.lineup.find((s) => s.slot === 'OF')!
+    expect(of.beforeName).toBe('A1')
+    expect(of.afterName).toBe('B1')
+    expect(of.changed).toBe(true)
+  })
+
+  it('carries the league rank of the body in the seat, both ways', () => {
+    const a = run(['A2'], ['B1'])
+    const of = a.lineup.find((s) => s.slot === 'OF')!
+    // A1 was the 3rd-best OF starter in a three-team league; B1 is the best.
+    expect(of.beforeRank).toBeGreaterThan(of.afterRank)
+    expect(of.afterRank).toBe(1)
+  })
+
+  it('marks a seat unchanged when the deal never reaches the lineup', () => {
+    /*
+     * The case the panel exists to expose. Receiving a body worse than the one already seated
+     * changes nothing, and the old copy said so in a sentence nobody could check.
+     */
+    const a = run(['A2'], ['B2'])   // their bench body for mine
+    const of = a.lineup.find((s) => s.slot === 'OF')!
+    expect(of.changed).toBe(false)
+    expect(of.beforeName).toBe(of.afterName)
+    expect(a.lineup.some((s) => s.changed)).toBe(false)
+  })
+
+  it('agrees with slotMoves wherever both speak', () => {
+    // One solve, two views of it — they must not be able to disagree.
+    const a = run(['A2'], ['B1'])
+    for (const m of a.slotMoves) {
+      const seat = a.lineup.find((s) => s.slot === m.slot && s.afterName === m.starterName)
+      expect(seat).toBeDefined()
+      expect(seat!.beforeRank).toBe(m.before)
+      expect(seat!.afterRank).toBe(m.after)
+    }
+  })
+})

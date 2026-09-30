@@ -47,6 +47,23 @@ export interface SlotMove {
   after: number
 }
 
+/** One lineup opening, as it stands before the deal and as it would stand after. */
+export interface SeatChange {
+  slot: string
+  beforeName: string
+  afterName: string
+  /** Null when nobody can fill the seat — a hole is a real state, not a missing value. */
+  beforeKey: string | null
+  afterKey: string | null
+  beforePoints: number
+  afterPoints: number
+  /** League rank of the body in this seat, 1 = best in the league at that opening. */
+  beforeRank: number
+  afterRank: number
+  /** A different body sits here afterwards. */
+  changed: boolean
+}
+
 export interface PointsTradeAnalysis {
   myGain: number
   theirGain: number
@@ -61,6 +78,16 @@ export interface PointsTradeAnalysis {
   bystanders: RankMove[]
   /** Per-slot league rank, before and after — only the openings that actually moved. */
   slotMoves: SlotMove[]
+  /**
+   * EVERY opening, moved or not, with who sits in it either way.
+   *
+   * `slotMoves` answers "what changed", which is the right input to a verdict and the wrong
+   * input to a picture: a reader shown three changed seats out of nine cannot tell whether the
+   * other six are strong or whether we simply did not look. "Your starting lineup does not
+   * improve" is unfalsifiable until the lineup is on the screen — this is the sentence made
+   * checkable. Unchanged seats are context, which is why they are here and not filtered out.
+   */
+  lineup: SeatChange[]
   klass: TradeClass
   accept: AcceptOdds
   /** Named upgrades and named costs, in roster terms rather than points. */
@@ -185,6 +212,30 @@ export function analyzePointsTrade(input: {
     }
   })
 
+  /*
+   * The whole lineup, paired opening by opening. Same index pairing the slotMoves map above
+   * relies on — both models are solved from the same slot config, so position i is the same
+   * opening in each; the slot name is checked rather than assumed so a shape mismatch drops
+   * the row instead of comparing a running back against a tight end.
+   */
+  const lineup: SeatChange[] = []
+  after.slotRanks.forEach((s, i) => {
+    const bs = before.slotRanks[i]
+    if (!bs || bs.slot !== s.slot) return
+    lineup.push({
+      slot: s.slot,
+      beforeName: bs.starterName,
+      afterName: s.starterName,
+      beforeKey: bs.starterKey,
+      afterKey: s.starterKey,
+      beforePoints: bs.points,
+      afterPoints: s.points,
+      beforeRank: bs.rank,
+      afterRank: s.rank,
+      changed: bs.starterKey !== s.starterKey,
+    })
+  })
+
   /* Roster terms, not points. "Your RB1 goes from 5th-best to 1st-best" is the sentence a
      manager can act on; "+6.1" is the one every calculator already prints. */
   const helps = slotMoves.filter((m) => m.after < m.before)
@@ -279,6 +330,7 @@ export function analyzePointsTrade(input: {
   }
 
   return {
+    lineup,
     myGain, theirGain, myMove, theirMove, bystanders, slotMoves,
     klass, accept, helps, costs, warnings, hasUnpricedAssets, assets,
   }

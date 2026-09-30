@@ -727,6 +727,58 @@ function fairness(myGain: number, theirGain: number): string {
             <p v-for="h in analysis.helps" :key="h" class="mt-1 font-mono text-[10px] text-[#7ee787]">&uarr; {{ h }}</p>
             <p v-for="c in analysis.costs" :key="c" class="mt-1 font-mono text-[10px] text-[#e69a4a]">&darr; {{ c }}</p>
 
+            <!--
+              YOUR LINEUP, BEFORE AND AFTER — the verdict made checkable.
+
+              Everything above this is an assertion. "Your starting lineup does not improve"
+              names no seat and shows no body, so a reader who disagrees has nowhere to look and
+              no way to tell a correct verdict from a broken one. This is the same solve the
+              verdict came from, seat by seat, with the bodies named.
+
+              EVERY SEAT, not only the ones that moved. Three changed rows out of nine leave a
+              reader unable to tell whether the other six are strong or whether we simply did
+              not look at them — and the unchanged seats are what make the changed ones read as
+              a lineup rather than a list of edits.
+
+              Rank travels beside the name because it is the half a manager cannot work out for
+              himself. "Kenneth Walker" is a fact he already has; "3rd-best RB1 in this league,
+              up from 6th" is the one he is paying us for.
+            -->
+            <div class="mt-3 rounded-lg border border-dark-border/60 bg-dark-card/40 p-3">
+              <p class="mb-2 font-mono text-[9px] uppercase tracking-widest text-dark-textMuted">
+                Your starting lineup &middot; before &rarr; after
+              </p>
+              <div class="grid grid-cols-[2.6rem_1fr_1fr] gap-x-2 gap-y-1">
+                <span></span>
+                <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/60">now</span>
+                <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/60">after the deal</span>
+                <template v-for="(seat, i) in analysis.lineup" :key="'seat-' + i">
+                  <span class="self-center font-mono text-[10px] uppercase text-dark-textMuted">{{ seat.slot }}</span>
+                  <!-- The seat as it stands. Dimmed when it is about to change, so the eye
+                       lands on the right-hand column where the decision lives. -->
+                  <span class="min-w-0 truncate text-sm" :class="seat.changed ? 'text-dark-textMuted/60 line-through decoration-dark-textMuted/30' : 'text-dark-textSecondary'">
+                    {{ seat.beforeName || '—' }}
+                    <span class="ml-1 font-mono text-[9px] text-dark-textMuted/60">{{ ordinal(seat.beforeRank) }}</span>
+                  </span>
+                  <span class="min-w-0 truncate text-sm"
+                        :class="seat.changed ? 'font-semibold text-dark-text' : 'text-dark-textMuted/50'">
+                    {{ seat.afterName || '—' }}
+                    <!-- Rank moves are coloured on the DIRECTION a manager cares about: a
+                         smaller number is a better body, so green is a fall in the figure. -->
+                    <span class="ml-1 font-mono text-[9px]"
+                          :class="seat.afterRank < seat.beforeRank ? 'text-[#7ee787]'
+                                : seat.afterRank > seat.beforeRank ? 'text-[#FF5C5C]' : 'text-dark-textMuted/60'">
+                      {{ ordinal(seat.afterRank) }}
+                    </span>
+                  </span>
+                </template>
+              </div>
+              <p v-if="!analysis.lineup.some((s) => s.changed)" class="mt-2 font-mono text-[10px] text-[#e69a4a]">
+                Not one seat changes &mdash; every body you would receive is outranked by
+                somebody you already start.
+              </p>
+            </div>
+
             <p v-for="b in analysis.bystanders" :key="b.teamKey" class="mt-1 font-mono text-[10px] text-dark-textMuted">
               {{ b.teamName }} {{ ordinal(b.before) }} &rarr; {{ ordinal(b.after) }} as a side effect
             </p>
