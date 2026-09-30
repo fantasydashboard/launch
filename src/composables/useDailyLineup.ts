@@ -112,6 +112,14 @@ export interface DailyRow {
   /** How many players share that position pool tonight, so the rank has a denominator. */
   posCount: number | null
   /**
+   * Whether a projection was found for him at all.
+   *
+   * Distinct from `today` being zero. A man with no game scores nothing and we know it; a man
+   * on the ice we could not price is a hole in what we know, and the matchup must not score
+   * his seat as a loss for him. See src/today/seatEdge.ts.
+   */
+  priced: boolean
+  /**
    * How many at that position START across the whole league — the line between a start and a
    * reach.
    *
@@ -479,7 +487,8 @@ export function useDailyLineup() {
     const mine = source.pool.value.filter((p) => p.teamKey === source.myTeamKey.value)
     return mine.map((p) => {
       const v = valueFor(p)
-      const perGame = v && v.games > 0 ? v.total / v.games : 0
+      const priced = !!v && v.games > 0
+      const perGame = priced ? v!.total / v!.games : 0
       const avail = availability(p.status)
       /* His team having a game is not the same as him having one. */
       const plays = playsToday(p.proTeam ?? '') && avail !== 'out'
@@ -505,6 +514,7 @@ export function useDailyLineup() {
         posRank: plays ? (posRankByKey.value.get(p.playerKey)?.rank ?? null) : null,
         posCount: plays ? (posRankByKey.value.get(p.playerKey)?.count ?? null) : null,
         posStartable: plays ? (startableByPos.value[primaryPosition(p.position ?? '')] ?? null) : null,
+        priced,
       }
     })
   })

@@ -82,3 +82,91 @@ describe('opponentStartersBySeat', () => {
     expect(opponentStartersBySeat(seats, pool, '')).toEqual([])
   })
 })
+
+/*
+ * A FULL SLATE, WHICH IS THE NIGHT THIS HAS NEVER RUN ON.
+ *
+ * Every screenshot of this feature so far came from a five-game night, where most of both
+ * lineups is idle and the pairing is barely exercised — a seat whose occupant is not playing
+ * looks the same whether we paired it right or not. On a twelve-game night every seat is live
+ * and a mispairing is a wrong verdict on a real decision, so the cases below are the ones a
+ * quiet night cannot show.
+ */
+describe('a full slate, every seat live', () => {
+  /* A standard ESPN hockey lineup, in the order the platform publishes it. */
+  const SEATS = ['C', 'C', 'LW', 'LW', 'RW', 'RW', 'D', 'D', 'D', 'D', 'UTIL', 'G', 'G']
+    .map((slot) => ({ slot }))
+
+  const them = (pairs: [string, string][]) =>
+    pairs.map(([playerKey, lineupSlot]) => ({ playerKey, teamKey: 'espn_9', lineupSlot } as any))
+
+  it('fills all thirteen seats from a full opposing lineup, in slot order', () => {
+    const pool = them([
+      ['c1', 'C'], ['c2', 'C'], ['lw1', 'LW'], ['lw2', 'LW'], ['rw1', 'RW'], ['rw2', 'RW'],
+      ['d1', 'D'], ['d2', 'D'], ['d3', 'D'], ['d4', 'D'], ['u1', 'UTIL'], ['g1', 'G'], ['g2', 'G'],
+      ['bench1', 'BN'], ['bench2', 'BN'],
+    ])
+    expect(opponentStartersBySeat(SEATS, pool, 'espn_9')).toEqual([
+      'c1', 'c2', 'lw1', 'lw2', 'rw1', 'rw2', 'd1', 'd2', 'd3', 'd4', 'u1', 'g1', 'g2',
+    ])
+  })
+
+  /*
+   * THE ONE THAT WOULD BITE. Two seats share a slot, and if the queue were re-read rather than
+   * consumed, the better of their two centres would be handed to BOTH of my centre seats —
+   * inventing an opponent stronger than the one they set, twice over, on the seats a manager
+   * is actually deciding.
+   */
+  it('never hands the same man to two seats that share a slot', () => {
+    const pool = them([['c1', 'C'], ['c2', 'C'], ['d1', 'D'], ['d2', 'D'], ['d3', 'D'], ['d4', 'D']])
+    const out = opponentStartersBySeat(SEATS, pool, 'espn_9')
+    const filled = out.filter(Boolean)
+    expect(filled).toEqual(['c1', 'c2', 'd1', 'd2', 'd3', 'd4'])
+    expect(new Set(filled).size).toBe(filled.length)
+  })
+
+  /* Their lineup is deeper than mine at a position — the extras belong to no seat of mine. */
+  it('drops their surplus rather than pushing it into a slot it does not belong to', () => {
+    const pool = them([['c1', 'C'], ['c2', 'C'], ['c3', 'C'], ['lw1', 'LW']])
+    const out = opponentStartersBySeat(SEATS, pool, 'espn_9')
+    expect(out).not.toContain('c3')
+    expect(out[2]).toBe('lw1')
+  })
+
+  /*
+   * A SEAT I LEFT EMPTY. My lineup is the list of seats, so a hole in mine shortens it — and
+   * their man in that slot must not slide up into the seat above him and be scored against a
+   * player he is not opposite.
+   */
+  it('keeps their men against the right seats when my lineup is short a body', () => {
+    const myShortLineup = [{ slot: 'C' }, { slot: 'LW' }, { slot: 'G' }]
+    const pool = them([['c1', 'C'], ['c2', 'C'], ['lw1', 'LW'], ['g1', 'G']])
+    expect(opponentStartersBySeat(myShortLineup, pool, 'espn_9')).toEqual(['c1', 'lw1', 'g1'])
+  })
+
+  /* A utility seat is filled by whoever their manager put IN it, not by our idea of who fits. */
+  it('reads a utility seat from their lineup rather than solving it', () => {
+    const pool = them([['star', 'UTIL'], ['c1', 'C']])
+    const out = opponentStartersBySeat(SEATS, pool, 'espn_9')
+    expect(out[10]).toBe('star')
+    expect(out[0]).toBe('c1')
+  })
+
+  it('is stable — the same pool and seats give the same pairing every time', () => {
+    const pool = them([['c1', 'C'], ['c2', 'C'], ['d1', 'D'], ['d2', 'D']])
+    const a = opponentStartersBySeat(SEATS, pool, 'espn_9')
+    const b = opponentStartersBySeat(SEATS, pool, 'espn_9')
+    expect(a).toEqual(b)
+  })
+
+  /* The pool is the whole league on a busy night; only the one opponent may be drawn from. */
+  it('ignores the other ten teams in the pool', () => {
+    const mine = them([['c1', 'C'], ['c2', 'C']])
+    const others = [
+      { playerKey: 'x1', teamKey: 'espn_3', lineupSlot: 'C' },
+      { playerKey: 'x2', teamKey: 'espn_4', lineupSlot: 'C' },
+    ] as any[]
+    const out = opponentStartersBySeat(SEATS, [...others, ...mine], 'espn_9')
+    expect(out.filter(Boolean)).toEqual(['c1', 'c2'])
+  })
+})

@@ -1,5 +1,6 @@
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import { opponentStartersBySeat } from '@/today/opponentStarters'
+import { seatEdge } from '@/today/seatEdge'
 import { useLeagueStore } from '@/stores/league'
 import { useThisWeekOpponent } from '@/composables/useThisWeekOpponent'
 import { buildPointsMatchup } from '@/myteam/pointsMatchup'
@@ -40,12 +41,26 @@ export interface DailyMatchupSide {
 }
 
 /** One seat, yours against theirs. */
+/** One man in a seat. `priced` false is "we have no number", never "his number is zero". */
+export interface SpotSide {
+  name: string; position: string; team: string; today: number
+  headshot?: string; playsToday: boolean; priced: boolean
+}
+
 export interface DailySpot {
   slot: string
-  mine: { name: string; position: string; team: string; today: number; headshot?: string; playsToday: boolean } | null
-  theirs: { name: string; position: string; team: string; today: number; headshot?: string; playsToday: boolean } | null
-  /** Mine minus theirs, tonight. Positive is a seat you are winning. */
+  mine: SpotSide | null
+  theirs: SpotSide | null
+  /** Mine minus theirs, tonight. Positive is a seat you are winning. Zero when `known` is false. */
   edge: number
+  /**
+   * Whether this seat can be called at all.
+   *
+   * False when a man is on the ice tonight and we have no projection for him. Scoring that as
+   * a zero handed his seat to his opposite number at full value and counted it as won — see
+   * src/today/seatEdge.ts.
+   */
+  known: boolean
 }
 
 export interface DailyMatchupSnapshot {
@@ -90,7 +105,10 @@ function spotSide(
      Yahoo roster is not. Without it both sides of a Yahoo matchup scored 0.0 while the lineup
      panel directly above showed real numbers for the same men. */
   const v = valueFor?.(p) ?? valueByKey[p.playerKey]
-  const perGame = v && v.games > 0 ? v.total / v.games : 0
+  /* Priced, not merely non-zero: a man we could not find is a hole in what we know, and the
+     seat arithmetic has to be able to tell that from a genuine nought. */
+  const priced = !!v && v.games > 0
+  const perGame = priced ? v!.total / v!.games : 0
   const avail = availability(p.status)
   /* His team having a game is not the same as him having one — the distinction that once put
      a player on the fifteen-day list at the top of the board. */
@@ -101,6 +119,7 @@ function spotSide(
     team: p.proTeam ?? '',
     headshot: p.headshot,
     playsToday: plays,
+    priced,
     today: plays ? perGame * (avail === 'doubtful' ? DOUBTFUL_DISCOUNT : 1) : 0,
   }
 }
@@ -213,14 +232,19 @@ export function useDailyMatchup(inputs: {
       const ours = {
         name: mine.name, position: mine.position, team: mine.team,
         headshot: mine.headshot, playsToday: mine.playsToday, today: mine.today,
+        /* Carried from the board rather than inferred from `today > 0`, which would have
+           called the single worst-projected man in a category league unpriced. */
+        priced: mine.priced,
       }
+      const seat = seatEdge(ours, them)
       return {
         slot: mine.startedSlot ?? mine.slot ?? '',
         mine: ours,
         theirs: them,
         /* An unread lineup has no edge. Subtracting zero from your own projection is not a
            comparison, it is your projection wearing a comparison's clothes. */
-        edge: known ? ours.today - (them?.today ?? 0) : 0,
+        edge: known ? seat.edge : 0,
+        known: known && seat.known,
       }
     })
   })
@@ -235,9 +259,12 @@ export function useDailyMatchup(inputs: {
 
     const s = spots.value
     const known = oppLineupKnown.value
-    const won = known ? s.filter((x) => x.edge > LEVEL).length : 0
-    const lost = known ? s.filter((x) => x.edge < -LEVEL).length : 0
-    const level = known ? s.length - won - lost : 0
+    /* Only seats we can actually call. A seat holding a man we could not price is not a draw,
+       it is a seat with no verdict, and counting it as level would pad the middle. */
+    const callable = known ? s.filter((x) => x.known) : []
+    const won = callable.filter((x) => x.edge > LEVEL).length
+    const lost = callable.filter((x) => x.edge < -LEVEL).length
+    const level = callable.length - won - lost
 
     const winPct = pointsMatchup.value ? pointsMatchup.value.myWinPct : null
 
@@ -246,7 +273,7 @@ export function useDailyMatchup(inputs: {
      * is a restatement of the number beside it; the useful version names the seat that is
      * actually costing you, because that is the one a bench move can fix.
      */
-    const worst = [...s].filter((x) => x.theirs).sort((a, b) => a.edge - b.edge)[0]
+    const worst = [...s].filter((x) => x.theirs && x.known).sort((a, b) => a.edge - b.edge)[0]
     const dead = s.filter((x) => x.mine && !x.mine.playsToday).length
     let verdict = ''
     if (dead > 0) {
