@@ -157,3 +157,67 @@ describe('the FLEX row', () => {
     expect(shallow.myWeak).toContain('FLEX')
   })
 })
+
+describe('the rows come from the league, not from us', () => {
+  function nfl(key: string, team: string, pos: string) {
+    return { playerKey: key, name: key, position: pos, teamKey: team, eligiblePositions: [pos] } as PointsPoolPlayer
+  }
+  /* Two teams, a spread of bodies at every football position including a kicker. */
+  const pool: PointsPoolPlayer[] = []
+  const vor: Record<string, { vorRos: number }> = {}
+  for (const team of ['A', 'B']) {
+    /* A third back and receiver, so there is something LEFT once the committed seats fill —
+       without them the roster exactly fills its lineup and a flex row would be describing an
+       empty bench, which is a fact about the fixture rather than about the feature. */
+    ;[['QB', 100], ['QB', 70], ['RB', 90], ['RB', 60], ['RB', 45], ['WR', 85], ['WR', 55],
+      ['WR', 40], ['TE', 50], ['K', 20]]
+      .forEach(([pos, v], i) => {
+        const k = `${team}_${pos}${i}`
+        pool.push(nfl(k, team, pos as string))
+        // KICKERS ARE DELIBERATELY UNPRICED: the projection feed is fetched for QB/RB/WR/TE only.
+        if (pos !== 'K') vor[k] = { vorRos: (v as number) + (team === 'A' ? 5 : 0) }
+      })
+  }
+  const names = { A: 'Me', B: 'Them' }
+  const build = (slots: Record<string, number>) =>
+    buildPointsTradeLandscape(pool, {}, {}, 'A', names, 'football', vor, slots)!
+
+  it('gives a superflex league its own row, because it changes what a QB is worth', () => {
+    const ls = build({ QB: 1, RB: 2, WR: 2, TE: 1, SUPER_FLEX: 1 })
+    expect(ls.positions).toContain('SUPER_FLEX')
+  })
+
+  it('keeps FLEX and SUPER_FLEX apart — they draw on different pools', () => {
+    const ls = build({ QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SUPER_FLEX: 1 })
+    expect(ls.positions).toContain('FLEX')
+    expect(ls.positions).toContain('SUPER_FLEX')
+  })
+
+  it('a superflex row counts the spare QB that a plain flex row cannot', () => {
+    // The second QB is startable in SUPER_FLEX and ineligible for FLEX.
+    const sf = build({ QB: 1, RB: 2, WR: 2, TE: 1, SUPER_FLEX: 1 })
+    const fl = build({ QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1 })
+    expect(sf.positions).toContain('SUPER_FLEX')
+    expect(fl.positions).toContain('FLEX')
+    // both rank someone first; the point is the row exists and is scored per its own pool
+    expect(sf.rank.SUPER_FLEX.A).toBe(1)
+    expect(fl.rank.FLEX.A).toBe(1)
+  })
+
+  it('leaves out a position the league starts but we cannot price', () => {
+    /*
+     * The kickers are on both rosters and in the slots. They carry no projection, so every
+     * team would tie at zero — a column of ties reads as a measurement rather than as the
+     * absence of one. The row stays off until a projection source exists.
+     */
+    const ls = build({ QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, K: 1 })
+    expect(ls.positions).not.toContain('K')
+    expect(ls.positions).toContain('QB')
+  })
+
+  it('drops a position the league does not start at all', () => {
+    const ls = build({ QB: 1, RB: 2, WR: 2 })
+    expect(ls.positions).not.toContain('TE')
+    expect(ls.positions).toEqual(expect.arrayContaining(['QB', 'RB', 'WR']))
+  })
+})

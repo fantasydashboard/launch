@@ -56,13 +56,16 @@ export function buildPointsTradeLandscape(
   // baseball keeps raw projected points (non-positive = no startable body).
   const useVor = !!vorByKey
   // Group players (with points + eligibility) by team.
-  interface P { eligible: string[]; points: number }
+  interface P { eligible: string[]; points: number; priced: boolean }
   const byTeam = new Map<string, P[]>()
   for (const p of pool) {
     const points = useVor ? (vorByKey![p.playerKey]?.vorRos ?? 0) : (valueByKey[p.playerKey]?.total ?? 0)
     // Role-based eligibility: a starter counts for SP, a reliever for RP — ESPN
     // lists most pitchers as eligible for BOTH, which made the SP/RP rows identical.
-    ;(byTeam.get(p.teamKey) ?? byTeam.set(p.teamKey, []).get(p.teamKey)!).push({ eligible: lineupEligFor(p, fgByKey), points })
+    /* `priced` is whether we hold a projection for him at all, which is NOT the same as his
+       being worth zero — see the row gate below. */
+    const priced = useVor ? !!vorByKey![p.playerKey] : !!valueByKey[p.playerKey]
+    ;(byTeam.get(p.teamKey) ?? byTeam.set(p.teamKey, []).get(p.teamKey)!).push({ eligible: lineupEligFor(p, fgByKey), points, priced })
   }
   const teamKeys = [...byTeam.keys()]
   if (!teamKeys.includes(myTeamKey)) return null
@@ -94,11 +97,31 @@ export function buildPointsTradeLandscape(
    * up FLEX and SUPER_FLEX without naming them, ignores K and DEF (no eligibility entry), and
    * will pick up whatever a future league calls its flex.
    */
-  const rowSet = new Set(positionRowsFor(sport))
-  const flexSlots = Object.keys(slots ?? {}).filter(
-    (slot) => !rowSet.has(slot) && !!FLEX_ELIGIBILITY[slot] && depthFor(slot) > 0 && Number(slots?.[slot]) > 0,
-  )
-  const flexOpenings = flexSlots.reduce((n, slot) => n + Math.floor(Number(slots?.[slot]) || 0), 0)
+  /*
+   * THE ROWS ARE THE LEAGUE'S OWN SLOTS, not a list we keep in this file.
+   *
+   * They used to be a hardcoded QB/RB/WR/TE, which is the same mistake The Wire made with its
+   * hardcoded kicker list — a tool describing YOUR roster off OUR idea of football. A league
+   * starting a kicker, a defence or a superflex was being shown a grid that silently omitted
+   * the seat. Superflex especially: it changes what a quarterback is worth, which is the whole
+   * trade, and the grid could not see it at all.
+   *
+   * Concrete rows are the non-flex slots the league starts; flex rows are one per distinct
+   * flex slot, so a league running both FLEX and SUPER_FLEX gets both — they draw on different
+   * pools and are not one row.
+   */
+  const slotNames = Object.keys(slots ?? {}).filter((slot) => Math.floor(Number(slots?.[slot]) || 0) > 0)
+  /*
+   * No slots supplied is baseball today, and the caller is telling us it does not know the
+   * league's shape — so fall back to the sport's standard rows rather than rendering an empty
+   * grid. Deriving from slots is an upgrade where we HAVE them, not a new requirement.
+   */
+  const flexSlots = slotNames.filter((slot) => !!FLEX_ELIGIBILITY[slot])
+  const concreteRows = slotNames.length
+    ? slotNames.filter((slot) => !FLEX_ELIGIBILITY[slot])
+    : positionRowsFor(sport)
+  const flexOpeningsFor = (slot: string): number => Math.floor(Number(slots?.[slot]) || 0)
+  const flexOpenings = flexSlots.reduce((n, slot) => n + flexOpeningsFor(slot), 0)
 
   /**
    * A team's flex strength: the bodies it has LEFT OVER once its committed seats are filled.
@@ -113,11 +136,12 @@ export function buildPointsTradeLandscape(
    * assignSlots would also borrow its startable bar and its injury rule, which answer a
    * different question than "how deep is this roster".
    */
-  const flexStrengthAt = (team: string): number | null => {
-    if (!flexOpenings) return null
+  const flexStrengthAt = (team: string, flexSlot: string): number | null => {
+    const openings = flexOpeningsFor(flexSlot)
+    if (!openings) return null
     const squad = (byTeam.get(team) ?? []).map((pl, i) => ({ ...pl, i }))
     const used = new Set<number>()
-    for (const pos of positionRowsFor(sport)) {
+    for (const pos of concreteRows) {
       const need = Math.floor(Number(slots?.[pos]) || 0)
       if (need <= 0) continue
       const pick = squad
@@ -127,15 +151,15 @@ export function buildPointsTradeLandscape(
       for (const pl of pick) used.add(pl.i)
     }
     const spare = squad
-      .filter((pl) => !used.has(pl.i) && flexSlots.some((slot) => coversSlot(pl.eligible, slot)))
+      .filter((pl) => !used.has(pl.i) && coversSlot(pl.eligible, flexSlot))
       .sort((a, b) => b.points - a.points)
-      .slice(0, flexOpenings)
+      .slice(0, openings)
     if (!spare.length) return null
     return spare.reduce((sum, pl) => sum + pl.points, 0)
   }
 
   const strengthAt = (team: string, pos: string): number | null => {
-    if (pos === FLEX_ROW) return flexStrengthAt(team)
+    if (flexSlots.includes(pos)) return flexStrengthAt(team, pos)
     const vals: number[] = []
     for (const pl of byTeam.get(team) ?? []) {
       if (coversSlot(pl.eligible, pos)) vals.push(pl.points)
@@ -151,7 +175,19 @@ export function buildPointsTradeLandscape(
     const v = strengthAt(t, pos)
     return useVor ? v !== null : v !== null && v > 0
   }
-  const positions = [...positionRowsFor(sport), ...(flexOpenings ? [FLEX_ROW] : [])]
+  /*
+   * A position only earns a row if we can PRICE it. Kickers and defences sit on real rosters
+   * but the projection feed is fetched for QB/RB/WR/TE only, so every kicker in the pool would
+   * score a flat zero — and a column of ties reads as a measurement rather than as the absence
+   * of one. Gated on holding a projection rather than on the value being non-zero, because a
+   * genuine replacement-level body IS worth about zero and deserves its row.
+   *
+   * This is a gate, not a list: the day kicker projections land, the row appears by itself.
+   */
+  const pricedAt = (pos: string): boolean =>
+    teamKeys.some((t) => (byTeam.get(t) ?? []).some((pl) => pl.priced && coversSlot(pl.eligible, pos)))
+  const positions = [...concreteRows, ...flexSlots]
+    .filter((pos) => pricedAt(pos))
     .filter((pos) => teamKeys.some((t) => present(t, pos)))
   const rank: Record<string, Record<string, number>> = {}
   for (const pos of positions) {
