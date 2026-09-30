@@ -556,7 +556,14 @@
                 ></div>
                 <img src="/brand/ufd-primary-dark.png" alt="UFD" class="h-9 object-contain relative z-10" />
               </div>
-              <div class="flex items-center gap-2">
+              <!--
+                ABOVE THE LOGO'S BACKDROP. The logo sits on a 160px opaque-to-transparent
+                gradient and lifts itself clear with z-10; these controls did not, so the tail
+                of that gradient fell across the start of "Dashboards" and washed the D out.
+                It read as a rendering fault because it is one — the backdrop is 160px wide for
+                a 90px logo, and everything to its right has to sit above it.
+              -->
+              <div class="relative z-10 flex items-center gap-2">
                 <button 
                   @click="showMobileMenu = true"
                   class="flex items-center gap-2 px-3 py-2 bg-black/20 rounded-lg text-white font-semibold text-sm"
