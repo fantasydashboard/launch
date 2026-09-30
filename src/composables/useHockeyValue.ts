@@ -256,12 +256,31 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
    */
   function auditValues(byKey: ValueByKey) {
     if (typeof window === 'undefined') return
-    if (!new URLSearchParams(window.location.search).has('valueaudit')) return
+    /*
+     * A QUERY PARAMETER IS NOT A RELIABLE SWITCH HERE. The router rewrites the URL on boot —
+     * /today?valueaudit=1 comes back as /today before this ever runs — so the parameter was
+     * eaten every time and the audit never fired once. That is also why `?fgaudit` on My Team
+     * has to be opened in a fresh tab to work. A stored flag survives the rewrite, survives a
+     * reload, and can be set from the console on a page that is already open:
+     *
+     *     localStorage.setItem('ufd_valueaudit', '1')
+     */
+    let on = false
+    try {
+      on = new URLSearchParams(window.location.search).has('valueaudit')
+        || localStorage.getItem('ufd_valueaudit') === '1'
+    } catch { /* private mode: the parameter alone still works */ }
+    if (!on) return
     const rows = Object.entries(byKey)
       .map(([key, v]) => ({ key, name: merged.value.namesByKey[key] ?? key, v }))
       .filter((r) => r.v.games > 0)
       .sort((a, b) => b.v.total / b.v.games - a.v.total / a.v.games)
       .slice(0, 8)
+    /* Stashed as well as logged. A console is a poor place to read a table from — it is
+       capped, it is shared with every other logger on the page, and this app writes thousands
+       of lines parsing ESPN players. The object is the same data, addressable. */
+    const stash: any = { weights: { ...weights.value }, players: [] }
+    ;(window as any).__ufdValueAudit = stash
     console.warn('[valueaudit] weights this league published:', weights.value)
     for (const r of rows) {
       const proj = merged.value.projections[r.key]
@@ -270,6 +289,10 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
         .sort((a: any, b: any) => Math.abs(b[1]) - Math.abs(a[1]))
         .slice(0, 5)
         .map(([k, pts]: any) => `${k} ${Number(pts).toFixed(0)} (${Number(proj?.stats?.[k] ?? 0).toFixed(1)} x ${weights.value[k] ?? '?'})`)
+      stash.players.push({
+        name: r.name, perGame: r.v.total / r.v.games, games: r.v.games,
+        projGP: Number(proj?.stats?.GP ?? 0), perStat: { ...perStat },
+      })
       console.warn(
         `[valueaudit] ${r.name}  perGame=${(r.v.total / r.v.games).toFixed(1)}  ` +
         `projGP=${Number(proj?.stats?.GP ?? 0).toFixed(1)}  games=${r.v.games.toFixed(1)}  ` +
