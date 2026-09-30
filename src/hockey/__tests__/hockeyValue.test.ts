@@ -252,3 +252,71 @@ describe('ESPN prices only the players it actually drafts', () => {
     expect(projectionsFromEspn([r]).a.injuryStatus).toBeNull()
   })
 })
+
+/*
+ * ALEXANDER ROMANOV AT 56.1 POINTS A NIGHT, against Cale Makar's 3.7, recommended as the best
+ * free-agent add in the league.
+ *
+ * Two faults in one row, and each alone would have been survivable. ESPN numbers a goalie's
+ * stats 0..12 and a skater's 13..39, and the map was applied to everybody regardless — so a
+ * defenceman whose low ids were populated came back with wins, saves and a save percentage.
+ * And his games came back as 4 beside 166 blocks and 168 hits, which is a season. A board
+ * showing season total over games then divides one by the other.
+ */
+describe('a skater must not be read through the goalie half of the map', () => {
+  /* Ids as ESPN sends them: 30/34 games, 13/14 goals and assists, 31/32 hits and blocks,
+     26/27 time on ice — and 1/3/4/6 populated, which for a skater are not wins and saves. */
+  const romanov = {
+    30: 4, 34: 74, 13: 6, 14: 17, 29: 106, 31: 168, 32: 166, 26: 96792, 27: 1308,
+    1: 1.4, 3: 126.9, 4: 14.3, 6: 112.6, 7: 0.1, 11: 0.9,
+  }
+
+  it('gives a defenceman no wins, no saves and no save percentage', () => {
+    const s = statsFromEspn(romanov, 'D')
+    for (const goalieOnly of ['W', 'SA', 'GA', 'SV', 'SHO', 'SVPCT', 'DEC']) {
+      expect(s[goalieOnly]).toBeUndefined()
+    }
+    expect(s.BLK).toBe(166)
+    expect(s.HITS).toBe(168)
+  })
+
+  /*
+   * The two games fields disagree, and time on ice settles it: 96,792 seconds over 1,308 a
+   * game is 74, not 4. Taking the 4 is what made him fourteen times the best player alive.
+   */
+  it('takes the games his production was actually accumulated over', () => {
+    expect(statsFromEspn(romanov, 'D').GP).toBe(74)
+  })
+
+  it('leaves a skater alone when his two games fields agree', () => {
+    const makar = { 30: 78, 34: 78, 13: 16, 14: 52, 32: 108 }
+    expect(statsFromEspn(makar, 'D').GP).toBe(78)
+  })
+
+  /* Small disagreements are the feed rounding, not a scale error — they must not move anything. */
+  it('does not second-guess a difference of a game or two', () => {
+    expect(statsFromEspn({ 30: 74, 34: 76 }, 'C').GP).toBe(74)
+  })
+
+  it('falls back to the larger when there is no time on ice to arbitrate', () => {
+    expect(statsFromEspn({ 30: 4, 34: 74 }, 'D').GP).toBe(74)
+  })
+
+  /* A goalie keeps his own id space, and games is the one id shared across both. */
+  it('reads a goalie through the goalie half, games included', () => {
+    const s = statsFromEspn({ 30: 50, 1: 28, 4: 120, 6: 1400, 7: 4, 3: 1520 }, 'G')
+    expect(s).toMatchObject({ GP: 50, W: 28, GA: 120, SV: 1400, SHO: 4, SA: 1520 })
+    /* 13 and 14 are goals and assists for a skater; for a goalie they are not. */
+    expect(statsFromEspn({ 13: 9, 14: 9 }, 'G').G).toBeUndefined()
+  })
+
+  /* The whole point, in the units the board renders. */
+  it('prices him like a defenceman rather than like a superstar', () => {
+    const weights = { G: 2, A: 1, SOG: 0.3, HITS: 0.4, BLK: 0.5, W: 4, GA: -1, SV: 0.2, SHO: 5 }
+    const stats = statsFromEspn(romanov, 'D')
+    const total = Object.entries(stats).reduce((s, [k, v]) => s + (weights[k as keyof typeof weights] ?? 0) * v, 0)
+    const perGame = total / stats.GP
+    expect(perGame).toBeGreaterThan(1.5)
+    expect(perGame).toBeLessThan(4)
+  })
+})

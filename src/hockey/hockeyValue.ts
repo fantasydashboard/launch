@@ -1,6 +1,6 @@
 import type { PlayerValue, ValueByKey } from '@/myteam/playerValue'
 import {
-  HOCKEY_STAT_BY_ID, HOCKEY_STAT_UNVERIFIED, hockeyPosition, FORWARD_POSITIONS,
+  HOCKEY_STAT_BY_ID, HOCKEY_STAT_UNVERIFIED, hockeyPosition, FORWARD_POSITIONS, statMapFor,
 } from './hockeyPositions'
 
 /**
@@ -24,15 +24,61 @@ import {
  * it for the same reason at both positions.
  */
 
-/** ESPN stat id -> unified key, applied to one projection's `stats` blob. */
-export function statsFromEspn(stats: Record<string, number> | null | undefined): Record<string, number> {
+/**
+ * ESPN stat id -> unified key, applied to one projection's `stats` blob.
+ *
+ * BY POSITION, because a skater's ids and a goalie's are different id spaces that overlap.
+ * Reading every player through the union gave defencemen wins and save percentages, and gave
+ * them the wrong GAMES — which is the denominator of every rate on every board. See
+ * statMapFor.
+ *
+ * AND THE GAMES ARE RECONCILED. ESPN publishes a skater's games twice, as id 30 and id 34, and
+ * the map's own note records that 34 "equals games played exactly" for all 398 skaters. They
+ * agree for almost everybody — Makar 78 and 78, Heineman 73 and 73 — and where they do not,
+ * the counting stats say which is right: Romanov's 166 blocks and 168 hits are a season, his
+ * id-30 of 4 is not, and his time on ice divided by time on ice per game is 74. A player whose
+ * two games fields disagree gets the one his own production is measured over, because the
+ * alternative is a rate with a season on top and four games underneath.
+ */
+export function statsFromEspn(
+  stats: Record<string, number> | null | undefined,
+  position?: string | null,
+): Record<string, number> {
+  const map = statMapFor(position)
   const out: Record<string, number> = {}
   for (const [id, v] of Object.entries(stats ?? {})) {
-    const key = HOCKEY_STAT_BY_ID[Number(id)]
+    const key = map[Number(id)]
     if (!key || !Number.isFinite(v)) continue
     out[key] = Number(v)
   }
-  return out
+  return reconcileGames(out)
+}
+
+/** How far apart the two games fields may sit before one of them is disbelieved. */
+const GAMES_DISAGREEMENT = 5
+
+/**
+ * One games number per player, chosen when the feed publishes two that disagree.
+ *
+ * Time on ice over time on ice per game is a third, independent answer, and it is the one that
+ * decides: whichever of the two published fields it is nearer to is the one the production was
+ * actually accumulated over. With no time on ice to arbitrate, the larger is taken — a rate is
+ * wrong by the ratio of the two, and dividing a season by four games is the direction that
+ * puts a fourth defenceman above every forward in the league.
+ */
+export function reconcileGames(stats: Record<string, number>): Record<string, number> {
+  const gp = stats.GP
+  const gp2 = stats.GP2
+  if (!Number.isFinite(gp) || !Number.isFinite(gp2)) return stats
+  if (Math.abs(gp - gp2) <= GAMES_DISAGREEMENT) return stats
+
+  const toi = stats.TOI
+  const toig = stats.TOIG
+  const fromIce = Number.isFinite(toi) && Number.isFinite(toig) && toig > 0 ? toi / toig : null
+  const truth = fromIce != null
+    ? (Math.abs(gp - fromIce) <= Math.abs(gp2 - fromIce) ? gp : gp2)
+    : Math.max(gp, gp2)
+  return { ...stats, GP: truth }
 }
 
 /**
@@ -113,7 +159,7 @@ export function projectionsFromEspn(rows: unknown[]): Record<string, HockeyProje
     if (!split) continue
     const own = (p.ownership ?? {}) as Record<string, any>
     out[key] = {
-      playerKey: key, position, stats: statsFromEspn(split.stats),
+      playerKey: key, position, stats: statsFromEspn(split.stats, position),
       adp: Number.isFinite(own.averageDraftPosition)
         && Number(own.percentOwned) >= ADP_MIN_OWNERSHIP
         ? Number(own.averageDraftPosition) : null,

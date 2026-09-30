@@ -42,16 +42,61 @@ const STAT_FILTER = JSON.stringify({
    losses — five stats this endpoint used to drop on the floor. Every total it served was
    short by all five, and a blocked shot at half a point is worth about 60 points a season
    to a defenceman, which is most of the gap between a good one and a replaceable one. */
-const STAT_BY_ID = {
-  // skaters
+/*
+ * SKATER IDS AND GOALIE IDS ARE DIFFERENT ID SPACES THAT OVERLAP, and these were one map.
+ *
+ * ESPN numbers a goalie's stats 0..12 and a skater's 13..39, and applying the union to every
+ * player meant any skater whose low ids were populated came back a part-time goalie. Alexander
+ * Romanov, a defenceman, arrived with 1.4 wins, 112.6 saves and a .900 save percentage — and,
+ * because id 30 is populated for him with something that is not games, with a GP of 4 beside
+ * 166 blocks and 168 hits, which is plainly a season.
+ *
+ * Every board here divides a season total by games. Four went underneath a season, and the
+ * Today page priced him at 56.1 points a night against Cale Makar's 3.7 and recommended him as
+ * the best free-agent add in the league.
+ */
+const SKATER_STAT_BY_ID = {
   13: 'G', 14: 'A', 15: 'PLUSMINUS', 16: 'PTS', 17: 'PIM',
   18: 'PPG', 19: 'PPA', 20: 'SHG', 21: 'SHA',
   26: 'TOI', 27: 'TOIG', 29: 'SOG', 30: 'GP',
   31: 'HITS', 32: 'BLK', 33: 'DPTS',
   35: 'STG', 36: 'STA', 37: 'STP', 38: 'PPP', 39: 'SHP',
-  // goalies
+  /* Games again. It equals games played exactly for all 398 skaters, which is what makes it
+     the arbiter when id 30 disagrees. It is ZERO for fifteen goalies projected 37 to 52
+     appearances, so it is not games for them and is deliberately absent below. */
+  34: 'GP2',
+}
+
+const GOALIE_STAT_BY_ID = {
+  /* Games is numbered the same at both positions and is the only id they share. */
+  30: 'GP',
   0: 'DEC', 1: 'W', 2: 'L', 3: 'SA', 4: 'GA', 6: 'SV', 7: 'SHO',
-  8: 'TOI', 9: 'OTL', 10: 'GAA', 11: 'SVPCT', 12: 'WINPCT', 34: 'GP2',
+  8: 'TOI', 9: 'OTL', 10: 'GAA', 11: 'SVPCT', 12: 'WINPCT',
+}
+
+/** Every id we can name, for anything not looking at one player. */
+const STAT_BY_ID = { ...GOALIE_STAT_BY_ID, ...SKATER_STAT_BY_ID }
+
+/** How far the two games fields may sit apart before one of them is disbelieved. */
+const GAMES_DISAGREEMENT = 5
+
+/**
+ * One games number, when the feed publishes two that disagree.
+ *
+ * Time on ice over time on ice per game is a third and independent answer, and it decides:
+ * Romanov's 96,792 seconds over 1,308 a game is 74, not 4. With no time on ice to arbitrate
+ * the larger wins — a rate is wrong by the ratio of the two, and dividing a season by four
+ * games is the direction that puts a fourth-pair defenceman above everybody alive.
+ */
+function reconcileGames(stats) {
+  const { GP: gp, GP2: gp2, TOI: toi, TOIG: toig } = stats
+  if (!Number.isFinite(gp) || !Number.isFinite(gp2)) return stats
+  if (Math.abs(gp - gp2) <= GAMES_DISAGREEMENT) return stats
+  const fromIce = Number.isFinite(toi) && Number.isFinite(toig) && toig > 0 ? toi / toig : null
+  stats.GP = fromIce != null
+    ? (Math.abs(gp - fromIce) <= Math.abs(gp2 - fromIce) ? gp : gp2)
+    : Math.max(gp, gp2)
+  return stats
 }
 const POSITION_BY_ID = { 1: 'C', 2: 'LW', 3: 'RW', 4: 'D', 5: 'G' }
 
@@ -126,11 +171,15 @@ export default async function handler(req, res) {
       )
       if (!split) continue              // no projection is no opinion — drop, do not zero
 
+      /* By POSITION: a skater read through the goalie half comes back with saves and the
+         wrong games. See the note on the two maps above. */
+      const map = position === 'G' ? GOALIE_STAT_BY_ID : SKATER_STAT_BY_ID
       const stats = {}
       for (const [id, v] of Object.entries(split.stats ?? {})) {
-        const key = STAT_BY_ID[Number(id)]
+        const key = map[Number(id)]
         if (key && Number.isFinite(v)) stats[key] = Number(v)
       }
+      reconcileGames(stats)
       if (!Object.keys(stats).length) continue
 
       /*

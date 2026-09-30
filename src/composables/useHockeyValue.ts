@@ -281,6 +281,27 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
        of lines parsing ESPN players. The object is the same data, addressable. */
     const stash: any = { weights: { ...weights.value }, players: [] }
     ;(window as any).__ufdValueAudit = stash
+    /*
+     * One player, by name, with the projection and the value side by side.
+     *
+     * The top-eight table cannot answer "why is THIS man wrong" — the men who are wrong are
+     * exactly the ones an aggregate hides. And the numbers that have to be compared are on
+     * opposite sides of the merge: what the feed says he will do, and what we divided it by.
+     */
+    ;(window as any).__ufdLookup = (name: string) => {
+      const key = merged.value.keyByName[normalizeName(String(name ?? ''))]
+      const proj = key ? merged.value.projections[key] : null
+      const v = key ? byKey[key] : null
+      return {
+        key: key ?? null,
+        position: proj?.position ?? null,
+        stats: proj?.stats ?? null,
+        value: v ? { total: v.total, games: v.games } : null,
+        perGame: v && v.games > 0 ? v.total / v.games : null,
+        gamesPlayedInput: key ? gamesPlayed.value[key] ?? 0 : null,
+        gamesLeft: gamesLeft.value,
+      }
+    }
     console.warn('[valueaudit] weights this league published:', weights.value)
     for (const r of rows) {
       const proj = merged.value.projections[r.key]

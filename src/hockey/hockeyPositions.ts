@@ -83,7 +83,21 @@ export const NON_STARTING_SLOTS = new Set(['BENCH', 'IR'])
  * families — a 2x2 of goals and assists crossed with power play and short handed, summing
  * two different ways to the same total. No single column identifies itself; the grid does.
  */
-export const HOCKEY_STAT_BY_ID: Record<number, string> = {
+/**
+ * SKATER ids and GOALIE ids are different id spaces that overlap, and reading one through the
+ * other is how a defenceman ends up with a save percentage.
+ *
+ * ESPN numbers a goalie's stats 0..12 and a skater's 13..39. The union below was applied to
+ * everybody regardless of position, so any skater whose low ids were populated came back with
+ * wins, shots against and saves — and, worse, with the wrong games. Alexander Romanov arrived
+ * carrying 166 blocks and 168 hits, plainly a full season, beside a GP of 4: his value is
+ * season total over games, so the board priced him at 56.1 a night against Makar's 3.7 and
+ * recommended him as a free-agent add above every player in the league.
+ *
+ * The union is kept because two callers legitimately want "every id we can name" — the manual
+ * category chooser and the unverified-id check — but nothing that reads a PLAYER may use it.
+ */
+const SKATER_STAT_BY_ID: Record<number, string> = {
   // ── skaters ──
   13: 'G',        // goals    — league scores it 2.0; MacKinnon 53
   14: 'A',        // assists  — league scores it 1.0; MacKinnon 80
@@ -108,7 +122,30 @@ export const HOCKEY_STAT_BY_ID: Record<number, string> = {
   39: 'SHP',      // short-handed points — 20 + 21;   311 league-wide, which is what fixes
                   //   the orientation: power play outnumbers short handed 16 to 1
 
-  // ── goalies ──
+  /*
+   * 34 IS NOT GAMES STARTED, WHICH IS WHAT THIS MAP USED TO CLAIM.
+   *
+   * For all 398 skaters it equals games played exactly, and a skater does not "start". For
+   * goalies it is zero for fifteen of them — including Lindgren, Demko and Stolarz, who are
+   * projected 37, 52 and 43 appearances — so read as starts it would call three starting
+   * goalies unstartable. Where it is nonzero it sits just under games played, so it is
+   * plausibly starts with a lot of gaps, but "plausibly" is not a basis for pricing a
+   * position. Goalie volume comes from GP, and DEC above is the verified alternative.
+   */
+  34: 'GP2',
+}
+
+const GOALIE_STAT_BY_ID: Record<number, string> = {
+  /*
+   * GAMES IS NUMBERED THE SAME AT BOTH POSITIONS, and splitting the map without noticing that
+   * left goalies with no games at all — caught by the test that fixes a goalie's appearances
+   * when ESPN publishes no record, which fell back to a full 82.
+   *
+   * Only id 30. Id 34 is games played for every skater but is ZERO for fifteen goalies who
+   * are projected 37 to 52 appearances, so it is not games for them and does not belong here
+   * under a name that says it is.
+   */
+  30: 'GP',
   0: 'DEC',       // decisions — 1 + 2 + 9 for 57 of 58 goalies
   1: 'W',         // wins     — league scores it 4.0
   2: 'L',         // losses
@@ -121,17 +158,16 @@ export const HOCKEY_STAT_BY_ID: Record<number, string> = {
   10: 'GAA',      // goals-against average — 121 / (TOI/3600) = 3.48
   11: 'SVPCT',    // save percentage — 6 / 3 for 57 of 57
   12: 'WINPCT',   // 1 / 0 for 56 of 57
-  /*
-   * 34 IS NOT GAMES STARTED, WHICH IS WHAT THIS MAP USED TO CLAIM.
-   *
-   * For all 398 skaters it equals games played exactly, and a skater does not "start". For
-   * goalies it is zero for fifteen of them — including Lindgren, Demko and Stolarz, who are
-   * projected 37, 52 and 43 appearances — so read as starts it would call three starting
-   * goalies unstartable. Where it is nonzero it sits just under games played, so it is
-   * plausibly starts with a lot of gaps, but "plausibly" is not a basis for pricing a
-   * position. Goalie volume comes from GP, and DEC above is the verified alternative.
-   */
-  34: 'GP2',
+}
+
+/** Every id we can name, for callers that are not looking at one player. */
+export const HOCKEY_STAT_BY_ID: Record<number, string> = {
+  ...GOALIE_STAT_BY_ID, ...SKATER_STAT_BY_ID,
+}
+
+/** The half of the map that applies to one player, by his position. */
+export function statMapFor(position: string | null | undefined): Record<number, string> {
+  return String(position ?? '').toUpperCase() === 'G' ? GOALIE_STAT_BY_ID : SKATER_STAT_BY_ID
 }
 
 /**
