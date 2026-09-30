@@ -54,7 +54,7 @@ const myTeamKey = computed<string>(() => (isCategory.value ? catStrength.myTeamK
 
 // Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
 const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
-const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season, leagueId: computed(() => String(leagueStore.activeLeagueId ?? '')) })
+const { poolValueByKey: valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season, leagueId: computed(() => String(leagueStore.activeLeagueId ?? '')) })
 
 // Abandoned-team detection. Yahoo auto-renames an unowned team to the literal
 // "Manager-less Team N" — a reliable signal that nobody's setting its lineup, so
@@ -117,6 +117,7 @@ const pointsRankings = computed(() => {
   const model = buildPointsTeam(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value, {
     basis: wl > 0 ? 'perWeek' : 'total',
     weeksLeft: wl,
+    sport: leagueStore.activeSport,
   })
   const meta = teamMeta.value
   const inputs: PowerTeamInput[] = model.standings.map((s) => {

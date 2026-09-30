@@ -42,12 +42,34 @@ const ESPN_NHL_SLOT_TO_POS: Record<string, string> = {
  *
  * Sleeper says DEF, Yahoo says DEF, ESPN says D/ST. One word downstream.
  */
-export const DEF_ALIASES = new Set(['D/ST', 'DST', 'D-ST', 'DEF', 'D', 'DEFENSE'])
+export const DEF_ALIASES = new Set(['D/ST', 'DST', 'D-ST', 'DEF', 'DEFENSE'])
+
+/**
+ * The one spelling that means two different positions.
+ *
+ * "D" is a team defence in football and a defenceman in hockey, and nothing about the token
+ * separates them — only the sport does. It lived in DEF_ALIASES because every football caller
+ * splits "D/ST" on the slash BEFORE normalising and hands this function a bare "D".
+ *
+ * The cost of keeping it there was that every defenceman in every hockey league came back as
+ * "DEF". coversSlot then asked whether a team defence can fill a D slot, which it cannot, so
+ * no defenceman was ever seated: the Trades page drew four or five empty D slots beside a
+ * roster full of them, on both platforms, while the forwards seated fine.
+ *
+ * src/hockey/hockeyVor.ts saw this and routed around it — it declines to reuse the football
+ * VOR engine for exactly this reason and says so in its header — which fixed one file and
+ * left the shared trade engine wrong.
+ */
+const BARE_D = 'D'
 
 /** Canonical position label: folds team-defence spellings, leaves everything else alone. */
-export function canonicalPosition(raw: string): string {
+export function canonicalPosition(raw: string, sport?: string): string {
   const up = String(raw || '').trim().toUpperCase()
-  return DEF_ALIASES.has(up) ? 'DEF' : up
+  if (DEF_ALIASES.has(up)) return 'DEF'
+  /* Only football folds the bare letter. The default is the safe one: a caller that does not
+     know its sport must not rename a hockey position after a football one. */
+  if (up === BARE_D && String(sport ?? '').toLowerCase() === 'football') return 'DEF'
+  return up
 }
 
 /** Sleeper NFL flex slot labels -> canonical bucket. Non-flex labels pass through. */

@@ -1,6 +1,50 @@
 import { describe, it, expect } from 'vitest'
 import { startableCounts, startableFraction, startablePositions, parseRosterSlots, flexEligibility, FLEX_ELIGIBILITY, DEFAULT_SLOTS, canonicalPosition } from '../rosterSlots'
 
+describe('canonicalPosition and the letter D', () => {
+  /*
+   * D IS TWO POSITIONS IN TWO SPORTS. In football it is a team defence, spelled "D/ST" by
+   * ESPN and reduced to "D" by every caller that splits on the slash before normalising. In
+   * hockey it is a defenceman, and it is spelled exactly "D".
+   *
+   * DEF_ALIASES carried a bare "D" for the football case, so every defenceman in every hockey
+   * league was relabelled a team defence. coversSlot then asked whether "DEF" fills a "D"
+   * slot, which it does not, so no defenceman could ever be seated: the Trades page drew four
+   * or five empty D slots on a roster full of defencemen, on BOTH platforms.
+   *
+   * src/hockey/hockeyVor.ts saw this coming and routed around it rather than fixing it here,
+   * which is why it stayed. The sport has to be passed; there is no spelling that separates
+   * the two.
+   */
+  it('reads a bare D as a defenceman for hockey', () => {
+    expect(canonicalPosition('D', 'hockey')).toBe('D')
+  })
+
+  it('still reads a bare D as a team defence for football', () => {
+    expect(canonicalPosition('D', 'football')).toBe('DEF')
+  })
+
+  it('folds the unambiguous football spellings whatever the sport', () => {
+    for (const sport of ['football', 'hockey', undefined] as const) {
+      expect(canonicalPosition('D/ST', sport)).toBe('DEF')
+      expect(canonicalPosition('DEF', sport)).toBe('DEF')
+      expect(canonicalPosition('DST', sport)).toBe('DEF')
+    }
+  })
+
+  /* The default must be the safe one: a caller that does not know its sport should not
+     silently rename a hockey position after a football one. */
+  it('leaves a bare D alone when no sport is given', () => {
+    expect(canonicalPosition('D')).toBe('D')
+  })
+
+  it('leaves every other position untouched', () => {
+    expect(canonicalPosition('LW', 'hockey')).toBe('LW')
+    expect(canonicalPosition('rb', 'football')).toBe('RB')
+  })
+})
+
+
 describe('parseRosterSlots', () => {
   it('parses Yahoo roster_positions, dropping bench/IL', () => {
     const settings = {
@@ -329,10 +373,17 @@ describe('ESPN football lineup slots', () => {
  * the slash eats the position.
  */
 describe('team defence has one name', () => {
-  it('folds every spelling to DEF', () => {
-    for (const raw of ['D/ST', 'DST', 'd-st', 'DEF', 'Defense', ' D ']) {
+  /* The bare ' D ' used to be in this list. It is not a spelling of a team defence — it is
+     the letter football and hockey both use, and it now needs the sport. See the
+     'canonicalPosition and the letter D' block above. */
+  it('folds every unambiguous spelling to DEF', () => {
+    for (const raw of ['D/ST', 'DST', 'd-st', 'DEF', 'Defense']) {
       expect(canonicalPosition(raw)).toBe('DEF')
     }
+  })
+
+  it('folds a bare D for football, which is the sport that means a team defence by it', () => {
+    expect(canonicalPosition(' D ', 'football')).toBe('DEF')
   })
 
   it('leaves every other position alone', () => {

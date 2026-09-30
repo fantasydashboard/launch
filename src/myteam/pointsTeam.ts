@@ -93,19 +93,19 @@ const PITCHER_SLOTS = new Set(['SP', 'RP', 'P', 'SP/RP', 'RP/SP'])
 const isPitcherSlot = (pos: string) => PITCHER_SLOTS.has(pos.toUpperCase())
 
 /** Split a comma/slash-delimited position string into eligible slots. */
-export function parseEligible(p: PointsPoolPlayer): string[] {
-  if (p.eligiblePositions?.length) return p.eligiblePositions.map(canonicalPosition)
+export function parseEligible(p: PointsPoolPlayer, sport?: string): string[] {
+  if (p.eligiblePositions?.length) return p.eligiblePositions.map((e) => canonicalPosition(e, sport))
   /*
    * Fold team defence BEFORE splitting. ESPN spells the position "D/ST", and this split is
    * there to handle multi-eligible players — so the slash ate the position and a defence came
    * out as "D", matching neither the DEF slot nor anything else on the page.
    */
   const raw = String(p.position || '')
-  const folded = canonicalPosition(raw)
+  const folded = canonicalPosition(raw, sport)
   if (folded === 'DEF') return ['DEF']
   return raw
     .split(/[,/|]/)
-    .map((s) => canonicalPosition(s))
+    .map((s) => canonicalPosition(s, sport))
     .filter(Boolean)
 }
 
@@ -126,7 +126,9 @@ export function buildPointsTeam(
   // = schedule-neutral weekly rate, so a late-season two-start week can't inflate a
   // team's strength. Only the optimal-lineup VALUE/standings honour this; the
   // roster-row tiers stay on totals (My Team's basis), which 'perWeek' callers ignore.
-  opts: { basis?: 'total' | 'perWeek'; weeksLeft?: number; vorByKey?: Record<string, { vorRos: number }> } = {},
+  /* `sport` decides whether a bare "D" is a team defence or a defenceman — see
+     canonicalPosition. Absent, it is read as a defenceman, which is the safe default. */
+  opts: { basis?: 'total' | 'perWeek'; weeksLeft?: number; vorByKey?: Record<string, { vorRos: number }>; sport?: string } = {},
 ): PointsTeamModel {
   const basis = opts.basis ?? 'total'
   const weeksLeft = opts.weeksLeft ?? 1
@@ -246,7 +248,7 @@ export function buildPointsTeam(
     const dp: DepthPlayer = {
       playerKey: p.playerKey,
       teamKey: p.teamKey,
-      eligiblePositions: parseEligible(p),
+      eligiblePositions: parseEligible(p, opts.sport),
       value: valueOf(p.playerKey),
       status: injuryByKey.get(p.playerKey) === 'il' ? 'IL' : '',
     }

@@ -172,14 +172,16 @@ export function analyzePointsTrade(input: {
   gives: TradeAsset[]
   gets: TradeAsset[]
   vorByKey?: Record<string, { vorRos: number }>
+  /** Decides whether a bare "D" is a defenceman or a team defence — see canonicalPosition. */
+  sport?: string
 }): PointsTradeAnalysis | null {
-  const { pool, valueByKey, slots, teamNames, myTeamKey, partnerKey, gives, gets, vorByKey } = input
+  const { pool, valueByKey, slots, teamNames, myTeamKey, partnerKey, gives, gets, vorByKey, sport } = input
   if (!myTeamKey || !partnerKey || (!gives.length && !gets.length)) return null
 
   const priced = (a: TradeAsset[]) => a.filter((x) => !x.unpriced).map((x) => x.playerKey)
   const hasUnpricedAssets = [...gives, ...gets].some((a) => a.unpriced)
 
-  const opts = { vorByKey }
+  const opts = { vorByKey, sport }
   const before = buildPointsTeam(pool, valueByKey, myTeamKey, slots, opts)
   const after = buildPointsTeam(
     applyTrade(pool, myTeamKey, partnerKey, priced(gives), priced(gets)),

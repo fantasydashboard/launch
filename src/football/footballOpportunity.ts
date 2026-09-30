@@ -14,7 +14,7 @@ const OUT_STATUSES = new Set(['OUT', 'IR', 'PUP', 'SUSP', 'NA', 'DNR', 'DOUBTFUL
 const isOut = (s?: string | null): boolean => OUT_STATUSES.has(String(s ?? '').toUpperCase())
 /* Folds team defence before splitting: ESPN spells the position "D/ST" and this split
    exists for multi-eligible players, so the slash turned a defence into "D". */
-const normPos = (pos: string): string => canonicalPosition((pos || '').split(/[,/|]/)[0])
+const normPos = (pos: string): string => canonicalPosition((pos || '').split(/[,/|]/)[0], 'football')
 
 /**
  * Surface an opportunity tag per player from depth-chart order + team injuries.

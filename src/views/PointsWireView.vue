@@ -150,7 +150,7 @@ const freeAgents = computed(() => {
 // Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
 // Free agents are fed in too so football FAs (not in the rostered pool) resolve through valueOf.
 const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
-const { valueByKey, valueOf, loading: valueLoading } = usePointsValue({
+const { poolValueByKey: valueByKey, valueOf, loading: valueLoading } = usePointsValue({
   pool,
   fgByKey,
   sport: computed(() => leagueStore.activeSport),
@@ -272,7 +272,7 @@ const cutCandidates = computed(() => {
 
 const teamModel = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
-  return buildPointsTeam(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value)
+  return buildPointsTeam(pool.value, valueByKey.value, myTeamKey.value, rosterSlots.value, { sport: leagueStore.activeSport })
 })
 const rosterBodies = computed(() =>
   (teamModel.value?.rosterRows ?? []).map((r) => ({

@@ -3,6 +3,33 @@ import { buildPointsTeam, parseEligible, type PointsPoolPlayer } from '../points
 import { buildBaseballValue } from '@/myteam/playerValue'
 import type { FGProjection } from '@/services/projectionService'
 
+describe('parseEligible for hockey', () => {
+  /*
+   * A defenceman has to be seatable at D. parseEligible normalises through canonicalPosition,
+   * which read a bare "D" as a football team defence — so every defenceman came out as "DEF",
+   * coversSlot said DEF cannot fill D, and the Trades page drew empty D slots beside a roster
+   * full of defencemen. See src/trades/__tests__/rosterSlots.test.ts for the root of it.
+   */
+  it('keeps a defenceman at D', () => {
+    expect(parseEligible({ position: 'D' } as any, 'hockey')).toEqual(['D'])
+  })
+
+  it('keeps a multi-eligible skater whole', () => {
+    expect(parseEligible({ position: 'C,LW,RW' } as any, 'hockey')).toEqual(['C', 'LW', 'RW'])
+  })
+
+  it('prefers the platform eligibility list when there is one', () => {
+    expect(parseEligible({ position: 'D', eligiblePositions: ['D', 'UTIL'] } as any, 'hockey'))
+      .toEqual(['D', 'UTIL'])
+  })
+
+  /* Football still has to fold, and it splits on the slash before normalising. */
+  it('still folds a football team defence', () => {
+    expect(parseEligible({ position: 'D/ST' } as any, 'football')).toEqual(['DEF'])
+  })
+})
+
+
 const weights = { HR: 4, R: 1, RBI: 1, K: 1, W: 5, IP: 3, ER: -2 }
 
 function bat(key: string, team: string, pos: string, hr: number, r: number, rbi: number): {

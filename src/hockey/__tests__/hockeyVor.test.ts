@@ -7,14 +7,23 @@ const SLOTS = { F: 9, D: 5, G: 2, UTIL: 1 }
 
 describe('why hockey needs its own VOR', () => {
   /*
-   * The reason this file exists, pinned so nobody reuses the football engine by mistake.
-   * Football's canonicalPosition maps D to DEF because there D means a team defence. Routed
-   * through it, every defenceman becomes a football defence, gets measured against a DEF slot
-   * no hockey league has, and ends up with a replacement level of zero — ranking as free.
+   * THE NORMALISER HAZARD IS FIXED AT THE SOURCE, and this test now pins the fix instead of
+   * the bug. canonicalPosition used to map a bare "D" to "DEF" unconditionally; this file's
+   * header warned that routing hockey through it would relabel every defenceman as a football
+   * team defence. It was right, and the warning was acted on only here — the shared trade
+   * engine went on doing exactly that, and drew empty D slots on every hockey Trades page
+   * until 2026-09-30. The letter now needs a sport.
+   *
+   * This file still exists for the OTHER reason its header gives, which nothing has changed:
+   * computeReplacementDetail computes startable counts for a hardcoded football position list,
+   * so a hockey pool falls through to index nought and replacement comes out as the best
+   * player alive. That is the reason not to reuse the football engine.
    */
-  it('proves the football normaliser would destroy defencemen', () => {
-    expect(canonicalPosition('D')).toBe('DEF')
-    expect(canonicalPosition('D')).not.toBe('D')
+  it('no longer relabels a defenceman as a team defence', () => {
+    expect(canonicalPosition('D', 'hockey')).toBe('D')
+    expect(canonicalPosition('D')).toBe('D')
+    /* Football keeps the fold it actually needs. */
+    expect(canonicalPosition('D', 'football')).toBe('DEF')
   })
 
   it('keeps a defenceman a defenceman', () => {

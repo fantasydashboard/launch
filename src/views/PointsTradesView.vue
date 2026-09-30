@@ -63,7 +63,7 @@ const myTeamLogo = source.myTeamLogo
 const teamLogos = source.teamLogos
 
 const season = computed(() => '')
-const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season, leagueId: computed(() => String(leagueStore.activeLeagueId ?? '')) })
+const { poolValueByKey: valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season, leagueId: computed(() => String(leagueStore.activeLeagueId ?? '')) })
 
 // Football VOR (shared engine). Replacement is calibrated on rostered players here
 // (empty free-agent list) — cross-team ranking is unaffected; Trades stays self-contained.
@@ -298,7 +298,7 @@ const landscape = computed(() => {
  */
 const teamModel = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
-  return buildPointsTeam(pool.value, tradeValues.value, myTeamKey.value, rosterSlots.value)
+  return buildPointsTeam(pool.value, tradeValues.value, myTeamKey.value, rosterSlots.value, { sport: leagueStore.activeSport })
 })
 const rankBar = (rank: number, teams: number) => leagueRankWidth(rank, teams)
 
@@ -567,6 +567,8 @@ const analysis = computed(() => {
     teamNames: teamNames.value, myTeamKey: myTeamKey.value, partnerKey: anPartner.value,
     gives: anGive.value.map((k) => ({ playerKey: k })), gets,
     vorByKey: tradeVor.value,
+    /* A bare "D" is a defenceman here, not a team defence — see canonicalPosition. */
+    sport: leagueStore.activeSport,
   })
 })
 const KLASS_STYLE: Record<string, { label: string; cls: string }> = {

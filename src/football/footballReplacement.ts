@@ -24,7 +24,7 @@ const FLEX_SLOTS = ['FLEX', 'SUPER_FLEX']
 
 /* Folds team defence before splitting: ESPN spells the position "D/ST" and this split
    exists for multi-eligible players, so the slash turned a defence into "D". */
-const normPos = (pos: string): string => canonicalPosition((pos || '').split(/[,/|]/)[0])
+const normPos = (pos: string): string => canonicalPosition((pos || '').split(/[,/|]/)[0], 'football')
 
 /**
  * Standard value-based-drafting replacement level, calibrated to the league.

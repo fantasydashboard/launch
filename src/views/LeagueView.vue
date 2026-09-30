@@ -53,7 +53,7 @@ const pointsMyTeamKey = computed<string>(() => source.myTeamKey.value)
 
 // Precomputed player value (baseball from FG, football from Sleeper) — the points engine's input.
 const season = computed(() => '') // useFootballProjections falls back to Sleeper NFL state season
-const { valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season, leagueId: computed(() => String(leagueStore.activeLeagueId ?? '')) })
+const { poolValueByKey: valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season, leagueId: computed(() => String(leagueStore.activeLeagueId ?? '')) })
 
 function detectManagerless(t: any): boolean {
   return /manager-?less/i.test(String(t?.name ?? ''))
@@ -127,6 +127,7 @@ const pointsRankings = computed(() => {
   const model = buildPointsTeam(pool.value, valueByKey.value, pointsMyTeamKey.value, rosterSlots.value, {
     basis: wl > 0 ? 'perWeek' : 'total',
     weeksLeft: wl,
+    sport: leagueStore.activeSport,
   })
   const meta = pointsTeamMeta.value
   const inputs: PowerTeamInput[] = model.standings.map((s) => {

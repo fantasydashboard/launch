@@ -95,7 +95,7 @@ const BOARD_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 const OVERALL_POSITIONS = new Set(['QB', 'RB', 'WR', 'TE'])
 /* Folds team defence before splitting: ESPN spells the position "D/ST" and this split
    exists for multi-eligible players, so the slash turned a defence into "D". */
-const normPos = (pos: string): string => canonicalPosition((pos || '').split(/[,/|]/)[0])
+const normPos = (pos: string): string => canonicalPosition((pos || '').split(/[,/|]/)[0], 'football')
 const faKey = (fa: { playerKey?: string; name: string }): string => fa.playerKey ?? `fa:${fa.name}`
 
 /**

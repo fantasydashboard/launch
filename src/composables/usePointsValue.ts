@@ -34,6 +34,37 @@ export function footballNamePosIndex(
   return idx
 }
 
+/**
+ * The same values, re-keyed by the POOL's own player keys.
+ *
+ * WHY. The hockey projections are keyed by ESPN player id; a Yahoo roster arrives with Yahoo
+ * player keys. Every consumer that reached straight into `valueByKey[player.playerKey]`
+ * therefore missed for every rostered player in every Yahoo league, and a miss is not an
+ * error — it is a zero. The Trades page rendered a whole board of 0s and then concluded "no
+ * swap right now raises both lineups", which is a confident finding computed from no data.
+ *
+ * `valueOf` is the bridge and it already exists: it resolves by name, position-aware upstream,
+ * which is what keeps the two Elias Petterssons apart. This applies it once, here, so no
+ * caller has to remember the seam — the Today board had to grow its own `valueFor` for
+ * exactly this, and five other views never did.
+ *
+ * A player who resolves neither way is OMITTED rather than zeroed. Absent and worthless are
+ * different claims, and a consumer that wants zero can still default to it.
+ */
+export function bridgePoolValues(
+  pool: Array<{ playerKey: string; name?: string; position?: string; team?: string }>,
+  direct: ValueByKey,
+  byName: (p: { name?: string; position?: string; team?: string }) => PlayerValue | null,
+): ValueByKey {
+  const out: ValueByKey = {}
+  for (const p of pool) {
+    const hit = direct[p.playerKey]
+      ?? byName({ name: p.name, position: p.position, team: (p as { team?: string }).team })
+    if (hit) out[p.playerKey] = hit
+  }
+  return out
+}
+
 export function usePointsValue(inputs: {
   pool: Ref<PointsPoolPlayer[]>
   fgByKey: Ref<Record<string, FGProjection | null>>
@@ -46,6 +77,8 @@ export function usePointsValue(inputs: {
   freeAgents?: Ref<Array<{ playerKey?: string; name: string; position: string; team?: string }>>
 }): {
   valueByKey: ComputedRef<ValueByKey>
+  /** valueByKey, keyed by the pool's own ids — see bridgePoolValues. Prefer this. */
+  poolValueByKey: ComputedRef<ValueByKey>
   valueOf: ComputedRef<(p: { name?: string; position?: string; team?: string }) => PlayerValue | null>
   loading: Ref<boolean>
   load: () => void
@@ -157,5 +190,8 @@ export function usePointsValue(inputs: {
     return scoring.loading.value
   })
 
-  return { valueByKey, valueOf, loading, load }
+  const poolValueByKey = computed<ValueByKey>(() =>
+    bridgePoolValues(inputs.pool.value, valueByKey.value, valueOf.value))
+
+  return { valueByKey, poolValueByKey, valueOf, loading, load }
 }

@@ -512,7 +512,7 @@ onRoster: Set<string>,
 
 /* Folds team defence before splitting: ESPN spells the position "D/ST" and this split
    exists for multi-eligible players, so the slash turned a defence into "D". */
-const normPosOf = (p: string) => canonicalPosition((p || '').split(/[,/|]/)[0])
+const normPosOf = (p: string) => canonicalPosition((p || '').split(/[,/|]/)[0], 'football')
 const slotIdx = (s: string) => { const i = SLOT_ORDER.indexOf(s.toUpperCase()); return i < 0 ? SLOT_ORDER.length : i }
 const faKey = (fa: { playerKey?: string; name: string }): string => fa.playerKey ?? `fa:${fa.name}`
 
@@ -853,7 +853,7 @@ export function buildWeeklyBoard(input: {
       const eff = streamerEffect(
         faKey(fa),
         v!.pointsNextWeek,
-        fa.position ? [canonicalPosition(fa.position)] : [],
+        fa.position ? [canonicalPosition(fa.position, 'football')] : [],
       )
       // Only a real upgrade counts: the streamer has to beat the body he would replace.
       const beatsDrop = droppable !== null && v!.pointsNextWeek > droppable.weekPoints
