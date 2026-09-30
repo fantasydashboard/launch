@@ -1408,7 +1408,7 @@ const showMobileMenu = ref(false)
  * The four that get a seat on the bottom bar, taken from the head of `tabs` so the bar
  * inherits its ordering and its per-league shape rather than duplicating either.
  */
-const bottomTabs = computed(() => tabs.value.slice(0, 4))
+const bottomTabs = computed(() => sectionTabs.value.slice(0, 4))
 /* "More" owns the current page when it is a real destination that did not make the bar —
    otherwise the bar would show nothing active on a page the reader is standing on, which is
    how the old sheet came to highlight none of its seven rows. */
@@ -1537,7 +1537,16 @@ const tabs = computed(() => [
      navigation. The route still resolves so old links and bookmarks land somewhere. */
   { name: 'League', path: '/league' },
   { name: 'History', path: '/history' },
-  { name: 'Free Tools', path: '/free-tools', isTool: true },
+  /*
+   * FREE TOOLS IS OFF THE NAV, on the same terms as My Team, Matchup and Ultimate Tools above:
+   * an older feature that no longer earns a permanent slot on either device. The route stays
+   * live, so anything linking to /free-tools still lands — this removes the signpost, not the
+   * page, and putting it back is one line.
+   *
+   * It was the only `isTool` entry, so `toolTabs` now renders nothing and the desktop utility
+   * bar collapses to the League Beat cross-link that sits beside it.
+   */
+  // { name: 'Free Tools', path: '/free-tools', isTool: true },
   /* "Ultimate Tools" is retired. Its four tabs (Rest of Season, Teams, Start/Sit, Trade
      Analyzer) were older duplicates of My Team, Power Rankings, This Week and Trades, and
      keeping it in the nav offered a second, worse answer to questions those pages already
