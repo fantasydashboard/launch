@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import ScheduleTicks from '@/components/football/ScheduleTicks.vue'
 import { useScheduleDifficulty } from '@/composables/useScheduleDifficulty'
@@ -432,7 +432,43 @@ const toggle = (side: 'give' | 'get', key: string) => {
   const r = side === 'give' ? anGive : anGet
   r.value = r.value.includes(key) ? r.value.filter((k) => k !== key) : [...r.value, key]
 }
-watch(anPartner, () => { anGive.value = []; anGet.value = [] })
+/*
+ * Changing the partner clears the picks, because a player from the last team cannot be in a
+ * deal with this one. Suspended while a suggestion is being loaded: that sets the partner and
+ * the two sides in the same breath, and the watcher would wipe the sides a moment later.
+ */
+const loadingDeal = ref(false)
+watch(anPartner, () => {
+  if (loadingDeal.value) return
+  anGive.value = []
+  anGet.value = []
+})
+
+const analyzerRef = ref<HTMLElement | null>(null)
+
+/**
+ * Open a suggested deal in the analyzer.
+ *
+ * The cards said "+23 pts to you" and stopped there — a number with no way to ask what it does
+ * to the nine seats it is a claim about. The analyzer could answer that the whole time and the
+ * reader's only route to it was to retype the deal by hand from memory.
+ *
+ * One analyzer, two doors: the suggestion becomes the analyzer's state rather than a second
+ * read-only view of the same trade. That matters beyond saving the typing — once it is loaded
+ * it is editable, so "what if I sent Skattebo instead" is one click from a suggestion instead
+ * of a blank form.
+ */
+async function openInAnalyzer(idea: { oppTeamKey: string; gives: { playerKey: string }[]; gets: { playerKey: string }[] }) {
+  loadingDeal.value = true
+  anPartner.value = idea.oppTeamKey
+  anGive.value = idea.gives.map((g) => g.playerKey)
+  anGet.value = idea.gets.map((g) => g.playerKey)
+  anPick.value = ''
+  anOpen.value = true
+  await nextTick()
+  loadingDeal.value = false
+  analyzerRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 const analysis = computed(() => {
   if (!anPartner.value || !pool.value.length || !myTeamKey.value) return null
@@ -661,7 +697,7 @@ function fairness(myGain: number, theirGain: number): string {
         calculator already prints and the least decision-relevant thing available.
       -->
       <section v-if="anRosterReady" class="mb-4 rounded-xl border border-dark-border bg-dark-card">
-        <button class="flex w-full items-center justify-between gap-3 p-4" @click="anOpen = !anOpen">
+        <button ref="analyzerRef" class="flex w-full items-center justify-between gap-3 p-4" @click="anOpen = !anOpen">
           <span class="min-w-0 text-left">
             <span class="font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
               Analyze a trade you were offered
@@ -983,6 +1019,21 @@ function fairness(myGain: number, theirGain: number): string {
               Frees {{ idea.spots }} roster spot{{ idea.spots > 1 ? 's' : '' }} you'll have to fill — thinner cover for byes.
             </template>
           </p>
+
+          <!--
+            THE WAY IN. Every card above states a number about a lineup and then offers no way
+            to see the lineup — a reader who wanted to know which of his nine seats moved had to
+            retype the deal into the analyzer below from memory.
+
+            It loads the deal rather than rendering a second read-only copy of it, so the trade
+            arrives editable: "what if I sent Skattebo instead" becomes one click from a
+            suggestion rather than a blank form.
+          -->
+          <button type="button"
+                  class="mt-3 w-full rounded-lg border border-dark-border bg-dark-bg/60 py-2 font-mono text-[10px] text-dark-textSecondary transition-colors hover:border-primary/40 hover:text-primary"
+                  @click="openInAnalyzer(idea)">
+            see what it does to your lineup &rarr;
+          </button>
         </div>
       </template>
 
