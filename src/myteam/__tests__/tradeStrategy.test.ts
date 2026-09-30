@@ -143,3 +143,69 @@ describe('the sendable floor', () => {
     expect(acceptOdds({ theirGain: 8, myGain: 10 })).toBeGreaterThan(MIN_SENDABLE_ODDS)
   })
 })
+
+describe('acceptOdds — calibrated against real deals off the board', () => {
+  const hole = { position: 'WR', worstStarterVor: -8, isHole: true, slots: 2 }
+  const pct = (p: number) => Math.round(p * 100)
+
+  it('refuses to call their best back for our worst one a third of a chance', () => {
+    /*
+     * OFF THE BOARD, and the deal that started this. "Ask The Juggernauts — get Jonathan
+     * Taylor (22), give Cam Skattebo (14)" read 35% they take it. They hand over eight points
+     * more than they receive, 57% of what they get, and no manager alive says yes to that. The
+     * old model could not see it, because Taylor sitting on their bench costs their optimal
+     * lineup nothing to give away.
+     */
+    const odds = acceptOdds({
+      theirGain: -2, myGain: 84, fills: { position: 'RB', worstStarterVor: -6, isHole: true, slots: 2 },
+      theirAssetDelta: 14 - 22, theirAssetIn: 14,
+    })
+    expect(pct(odds)).toBeLessThanOrEqual(10)
+  })
+
+  it('marks down two better names for two worse ones, even when it fills their hole', () => {
+    // "Nico Collins (18) + Jalen Hurts (11) for Josh Downs (14) + Emeka Egbuka (12)" read 90%.
+    const odds = acceptOdds({
+      theirGain: 2, myGain: 46, fills: hole,
+      theirAssetDelta: (14 + 12) - (18 + 11), theirAssetIn: 14 + 12,
+    })
+    expect(pct(odds)).toBeLessThan(45)
+    expect(pct(odds)).toBeGreaterThan(5)   // it does fix a real hole — not zero
+  })
+
+  it('still likes a deal that genuinely favours them', () => {
+    // "Joe Burrow (11) for Rome Odunze (11)" — even production, +18 to their lineup.
+    const odds = acceptOdds({ theirGain: 18, myGain: 7, fills: hole, theirAssetDelta: 0, theirAssetIn: 11 })
+    expect(pct(odds)).toBeGreaterThan(60)
+  })
+
+  it('tells a deal that barely helps them from one that transforms them', () => {
+    /* The flat 0.7 could not, which is why nearly every card on the board said the same thing. */
+    const barely = acceptOdds({ theirGain: 1, myGain: 20 })
+    const lots = acceptOdds({ theirGain: 30, myGain: 20 })
+    expect(lots - barely).toBeGreaterThan(0.2)
+  })
+
+  it('never claims ninety percent about a human being', () => {
+    const best = acceptOdds({
+      theirGain: 200, myGain: 1, fills: hole,
+      situation: { stakes: 'must-win', posture: 'contender' } as any,
+      theirAssetDelta: 500, theirAssetIn: 500,
+    })
+    expect(best).toBeLessThanOrEqual(0.85)
+  })
+
+  it('does not punish a deal where they receive the better players', () => {
+    const generous = acceptOdds({ theirGain: 10, myGain: 10, theirAssetDelta: +9, theirAssetIn: 30 })
+    const neutral = acceptOdds({ theirGain: 10, myGain: 10 })
+    expect(generous).toBeGreaterThanOrEqual(neutral)
+  })
+
+  it('scales the penalty against the size of the deal, not the raw points', () => {
+    /* Eight points surrendered is a different proposition in a deal for fourteen than in one
+       for eighty, and stating the term in points alone would call them the same. */
+    const small = acceptOdds({ theirGain: 5, myGain: 20, theirAssetDelta: -8, theirAssetIn: 14 })
+    const large = acceptOdds({ theirGain: 5, myGain: 20, theirAssetDelta: -8, theirAssetIn: 80 })
+    expect(large).toBeGreaterThan(small)
+  })
+})

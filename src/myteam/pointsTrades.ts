@@ -281,7 +281,18 @@ export function buildPointsTrades(
       kind: theirGain > 0 ? 'winWin' : 'ask',
       shape,
       spots,
-      odds: acceptOdds({ theirGain, myGain, fills, situation }),
+      /*
+       * Their side of the ledger in raw production: what lands on their roster minus what
+       * leaves it. `theirGain` above is lineup-marginal and blind to a stud they bench, which
+       * is how the board came to offer their best back for our worst one at a third of a
+       * chance. Read off the same TradeSide points the card prints, so a reader can check it.
+       */
+      odds: acceptOdds({
+        theirGain, myGain, fills, situation,
+        theirAssetDelta: outMine.reduce((n, pl) => n + (sideOf(pl.playerKey).points || 0), 0)
+          - outTheirs.reduce((n, pl) => n + (sideOf(pl.playerKey).points || 0), 0),
+        theirAssetIn: outMine.reduce((n, pl) => n + (sideOf(pl.playerKey).points || 0), 0),
+      }),
       rung: rungFor(theirGain, myGain),
       fills,
       pitch: pitchFor({ theirTeamName: oppTeamName, getNames, giveNames, fills, theirGain, situation }),

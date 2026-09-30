@@ -144,6 +144,17 @@ export function readNeeds(
  * will do; pretending to finer resolution than the inputs support would be the same error as
  * the confident numbers this page has already been corrected for.
  */
+/**
+ * How much more production a manager will hand over than he receives before the deal stops
+ * being a trade and starts being a favour.
+ *
+ * Past this the answer is no on sight, whatever the lineup arithmetic says, so the odds are
+ * capped rather than merely reduced. A quarter is deliberately generous — real managers do pay
+ * a premium to fix a hole — but "Jonathan Taylor for Cam Skattebo" is 57% and no amount of
+ * positional need makes that a third of a chance.
+ */
+const SURRENDER_CAP = 0.25
+
 export function acceptOdds(input: {
   /** Change to THEIR optimal lineup. Positive means the deal helps them on its own merits. */
   theirGain: number
@@ -152,13 +163,32 @@ export function acceptOdds(input: {
   /** Their hole at the position you are sending into, if any. */
   fills?: PositionNeed | null
   situation?: TeamSituation
+  /**
+   * Rest-of-season points they RECEIVE minus what they SEND, in raw production rather than
+   * lineup-marginal terms. Negative means they are handing over the better players.
+   *
+   * WITHOUT THIS THE MODEL WAS UNUSABLE, and the reason is worth keeping. `theirGain` is the
+   * change to their optimal STARTING LINEUP, so a stud on their bench — there because they are
+   * deep at his position — contributes nothing marginal and therefore costs them nothing to
+   * give away. The board duly offered "your Jonathan Taylor for my Cam Skattebo, 35% they take
+   * it", which no manager alive accepts. Nobody evaluates an offer by whether his optimal
+   * lineup ticks up; he evaluates it by what leaves his roster.
+   */
+  theirAssetDelta?: number
+  /** What they receive, in the same units — the scale the surrender is judged against. */
+  theirAssetIn?: number
 }): number {
   const { theirGain, myGain, fills, situation } = input
 
   let p: number
   if (theirGain > 0) {
-    // It improves their lineup unprompted. The only question is whether they notice.
-    p = 0.7
+    /*
+     * It improves their lineup unprompted — but by HOW MUCH is the question a flat number
+     * cannot answer. This was 0.7 regardless, so a deal lifting them half a point read exactly
+     * like one lifting them thirty, and with the hole bonus almost every card on the board
+     * said ninety percent. Two answers is not a model.
+     */
+    p = 0.35 + Math.min(0.3, theirGain / 20)
   } else {
     /* It costs them. How much, relative to what you are gaining, is the whole story: giving up
        a little to fix a hole is a normal trade, giving up as much as you gain is a donation. */
@@ -166,12 +196,12 @@ export function acceptOdds(input: {
     /* The band boundaries matter more than they look. A deal costing them roughly what it
        gains you is the "costs them 29" case — a request for a donation — so it sits BELOW the
        sendable floor rather than on it, where it would still have reached the board. */
-    p = ratio <= 0.25 ? 0.45 : ratio <= 0.6 ? 0.3 : ratio <= 1 ? 0.1 : 0.05
+    p = ratio <= 0.25 ? 0.3 : ratio <= 0.6 ? 0.2 : ratio <= 1 ? 0.08 : 0.04
   }
 
   // Filling a genuine hole is the strongest lever there is — they are starting someone
   // who should not be starting, and they know it.
-  if (fills?.isHole) p += 0.2
+  if (fills?.isHole) p += 0.15
 
   switch (situation?.stakes) {
     case 'must-win': p += 0.1; break   // will pay to fix this week
@@ -181,7 +211,27 @@ export function acceptOdds(input: {
   if (situation?.posture === 'contender' && theirGain > 0) p += 0.05
   if (situation?.posture === 'rebuilder') p -= 0.1
 
-  return Math.max(0.02, Math.min(0.95, p))
+  /*
+   * WHAT LEAVES THEIR ROSTER, which everything above this line is blind to.
+   *
+   * Scaled against what they receive rather than stated in points, because surrendering eight
+   * points more than you get is a different proposition in a deal for fourteen than in one for
+   * eighty. Past SURRENDER_CAP it is capped outright: those are refused on sight, and a model
+   * that merely discounted them would still float them near the top of a board sorted by what
+   * the deal is worth to US.
+   */
+  const { theirAssetDelta, theirAssetIn } = input
+  if (typeof theirAssetDelta === 'number' && theirAssetDelta < 0) {
+    const surrender = -theirAssetDelta / Math.max(1, theirAssetIn ?? -theirAssetDelta)
+    p *= 1 / (1 + 8 * surrender)
+    if (surrender > SURRENDER_CAP) p = Math.min(p, 0.1)
+  }
+
+  /*
+   * Ceiling at 0.85, not 0.95. Ninety percent is a falsifiable claim about a human being, and
+   * if nine in ten of these were accepted the manager reading it would be trading every week.
+   */
+  return Math.max(0.02, Math.min(0.85, p))
 }
 
 /** Where a deal sits on the ask ladder — what you open with, and where it probably lands. */
