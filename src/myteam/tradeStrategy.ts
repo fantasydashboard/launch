@@ -105,6 +105,9 @@ export function isZeroSumSwap(
 export function readNeeds(
   starters: { position: string; vor: number }[],
   slots: Record<string, number>,
+  /* This splits on the slash before normalising, so football arrives here as a bare "D".
+     canonicalPosition folds that letter only for football — see its note. */
+  sport?: string,
 ): Record<string, PositionNeed> {
   const seats: Record<string, number> = {}
   for (const [slot, raw] of Object.entries(slots ?? {})) {
@@ -117,7 +120,7 @@ export function readNeeds(
 
   const out: Record<string, PositionNeed> = {}
   for (const s of starters) {
-    const pos = canonicalPosition((s.position || '').split(/[,/|]/)[0])
+    const pos = canonicalPosition((s.position || '').split(/[,/|]/)[0], sport)
     if (!pos) continue
     const prev = out[pos]
     if (!prev || s.vor < prev.worstStarterVor) {

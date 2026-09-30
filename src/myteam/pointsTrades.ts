@@ -114,8 +114,14 @@ export function buildPointsTrades(
   /* Whether each rival is contending, rebuilding or already done. The engine treated every
      opponent as an identical bag of players; posture is most of what decides who says yes. */
   situations: Record<string, TeamSituation> = {},
+  /* Decides whether a bare "D" is a defenceman or a team defence — see canonicalPosition. */
+  sport?: string,
 ): TradeIdea[] {
   if (!myTeamKey || !pool.length || !Object.keys(slots).length) return []
+
+  const readNeedsForSport = (
+    starters: { position: string; vor: number }[], sl: Record<string, number>,
+  ) => readNeeds(starters, sl, sport)
 
   const meta = new Map<string, PointsPoolPlayer>()
   const ptsByKey = new Map<string, number>()
@@ -124,7 +130,7 @@ export function buildPointsTrades(
     const pts = valueByKey[p.playerKey]?.total ?? 0
     ptsByKey.set(p.playerKey, pts)
     meta.set(p.playerKey, p)
-    const dp: Dp = { playerKey: p.playerKey, teamKey: p.teamKey, eligiblePositions: parseEligible(p), value: pts, points: pts, status: p.onIL ? 'IL' : '' }
+    const dp: Dp = { playerKey: p.playerKey, teamKey: p.teamKey, eligiblePositions: parseEligible(p, sport), value: pts, points: pts, status: p.onIL ? 'IL' : '' }
     ;(byTeam.get(p.teamKey) ?? byTeam.set(p.teamKey, []).get(p.teamKey)!).push(dp)
   }
 
@@ -178,7 +184,7 @@ export function buildPointsTrades(
       .slice(0, CAND)
   /** A player's primary position, from the pool meta already indexed above. */
   const posOf = (key: string): string =>
-    canonicalPosition((meta.get(key)?.position || '').split(/[,/|]/)[0])
+    canonicalPosition((meta.get(key)?.position || '').split(/[,/|]/)[0], sport)
 
   const mySurplus = offerCandidates(myDp, myBase.started)
 
@@ -306,7 +312,7 @@ export function buildPointsTrades(
   for (const [oppKey, theirDp] of byTeam) {
     if (oppKey === myTeamKey) continue
     const base = optimal(theirDp, slots)
-    needsByTeam.set(oppKey, readNeeds(
+    needsByTeam.set(oppKey, readNeedsForSport(
       [...base.started].map((k) => ({ position: posOf(k), vor: vorByKey[k]?.vorRos ?? 0 })),
       slots,
     ))

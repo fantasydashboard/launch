@@ -170,7 +170,7 @@ const situations = computed<Record<string, TeamSituation>>(() => {
 
 const allIdeas = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return []
-  return buildPointsTrades(pool.value, tradeValues.value, myTeamKey.value, rosterSlots.value, teamNames.value, tradeVor.value, situations.value)
+  return buildPointsTrades(pool.value, tradeValues.value, myTeamKey.value, rosterSlots.value, teamNames.value, tradeVor.value, situations.value, leagueStore.activeSport)
 })
 // Deals proposable as-is, and deals worth chasing — never mixed, so a one-sided ask is
 // never presented as something the other manager should happily accept.

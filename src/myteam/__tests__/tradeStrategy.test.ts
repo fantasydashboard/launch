@@ -209,3 +209,25 @@ describe('acceptOdds — calibrated against real deals off the board', () => {
     expect(large).toBeGreaterThan(small)
   })
 })
+
+describe('readNeeds and the letter D', () => {
+  /*
+   * readNeeds splits a position on the slash BEFORE normalising, so football hands it a bare
+   * "D" from "D/ST". canonicalPosition now folds that letter only when told the sport — which
+   * is right, and means this caller has to say so or a team defence stops being a DEF need.
+   *
+   * The hockey case is the one that was broken all along: a defenceman keyed under DEF, a
+   * position no hockey league has a slot for, so his need never matched a seat.
+   */
+  const slots = { DEF: 1, D: 4 }
+
+  it('keys a football team defence as DEF', () => {
+    const needs = readNeeds([{ position: 'D/ST', vor: 1 }], slots, 'football')
+    expect(Object.keys(needs)).toEqual(['DEF'])
+  })
+
+  it('keys a hockey defenceman as D', () => {
+    const needs = readNeeds([{ position: 'D', vor: 1 }], slots, 'hockey')
+    expect(Object.keys(needs)).toEqual(['D'])
+  })
+})
