@@ -12,7 +12,7 @@
 -->
 <template>
   <div class="min-h-screen bg-dark-bg px-4 py-8">
-    <div class="mx-auto max-w-3xl">
+    <div class="mx-auto max-w-5xl">
       <div class="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Rest of season</div>
       <h1 class="mt-2 font-display text-3xl font-extrabold tracking-tight text-dark-text">
         Hockey rankings
@@ -109,15 +109,15 @@
       </div>
 
       <div v-if="ready" class="mt-3 rounded-xl border border-dark-border bg-dark-card p-4">
-        <div class="mb-2 flex items-center gap-2.5 border-b border-dark-border/40 pb-1.5 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted/60">
-          <span class="w-8 shrink-0"></span>
-          <span class="h-7 w-7 shrink-0"></span>
+        <div class="mb-2 flex items-center gap-2.5 border-b border-dark-border/40 pb-1.5 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted/60 sm:gap-3">
+          <span class="w-5 shrink-0 sm:w-7"></span>
+          <span class="h-7 w-7 shrink-0 sm:h-8 sm:w-8"></span>
           <span class="min-w-0 flex-1"></span>
           <span v-if="active !== 'G'" class="hidden w-12 shrink-0 text-right sm:block" title="Power-play minutes per game — where points are scored">PP</span>
           <span class="hidden w-12 shrink-0 text-right sm:block"
                 :title="active === 'G' ? 'Games started — the thing that decides a goalie' : 'Points per game'"
           >{{ active === 'G' ? 'GS' : 'PTS/G' }}</span>
-          <span class="w-12 shrink-0 text-right"
+          <span class="w-11 shrink-0 text-right sm:w-14"
                 :title="mode === 'points'
                   ? 'Projected points under your league\'s scoring'
                   : 'Total standard deviations across the scored categories'"
@@ -135,11 +135,11 @@
           </span>
           <span class="h-px flex-1 bg-[#e69a4a]/30"></span>
         </div>
-        <div class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm text-dark-text last:border-0">
-          <span class="w-8 shrink-0 text-right font-mono text-[11px] text-dark-textMuted/60">{{ row.rank }}</span>
+        <div class="flex items-center gap-2.5 border-b border-dark-border/40 py-2.5 text-base text-dark-text last:border-0 sm:gap-3">
+          <span class="ufd-rank">{{ row.rank }}</span>
           <img v-if="row.headshot" :src="row.headshot" :alt="row.name" loading="lazy" @error="onImgErr"
-               class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" />
-          <span v-else class="h-7 w-7 shrink-0 rounded-full bg-dark-border" />
+               class="ufd-face" />
+          <span v-else class="ufd-face" />
           <span class="min-w-0 flex-1">
             <span class="block truncate">{{ row.name }}
             <span class="ml-1 font-mono text-[10px] text-dark-textMuted/70">{{ row.position }} · {{ row.team }}</span>
@@ -198,7 +198,9 @@
           <span class="hidden w-12 shrink-0 text-right font-mono text-[10px] text-dark-textSecondary sm:block">
             {{ active === 'G' ? row.pointsPerGame.toFixed(0) : row.pointsPerGame.toFixed(2) }}
           </span>
-          <span class="w-12 shrink-0 text-right font-mono text-xs">
+          <!-- The number the board is SORTED by, at the scale the football board set: it
+               is the only thing besides the name a reader is meant to carry away. -->
+          <span class="w-11 shrink-0 text-right font-display text-base font-bold tabular-nums sm:w-14 sm:text-lg">
             {{ mode === 'points' ? Math.round(row.value) : row.value.toFixed(1) }}
           </span>
         </div>

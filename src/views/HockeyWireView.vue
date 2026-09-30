@@ -44,8 +44,8 @@
         </div>
 
         <div v-for="(row, i) in vm.rows.slice(0, shown)" :key="row.player.key"
-             class="flex items-center gap-2.5 border-b border-dark-border/40 py-2 text-sm text-dark-text last:border-0">
-          <span class="w-8 shrink-0 text-right font-mono text-[11px] text-dark-textMuted/60">{{ i + 1 }}</span>
+             class="flex items-center gap-2.5 border-b border-dark-border/40 py-2.5 text-base text-dark-text last:border-0 sm:gap-3">
+          <span class="ufd-rank">{{ i + 1 }}</span>
           <img v-if="row.player.headshot" :src="row.player.headshot" :alt="row.player.name"
                loading="lazy" @error="onImgErr"
                class="ufd-face" />
