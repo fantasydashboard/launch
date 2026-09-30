@@ -457,8 +457,18 @@ const anGrouped = (teamKey: string) => {
       return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.position.localeCompare(b.position)
     })
 }
-const anMyRoster = computed(() => anGrouped(myTeamKey.value))
-const anTheirRoster = computed(() => anGrouped(anPartner.value))
+/*
+ * FLAT, NOT GROUPED, now these are rows rather than chips.
+ *
+ * The position headings existed to give a chip cloud some order. A list carries the position on
+ * every row, so the headings became a second copy of information already there — and they broke
+ * the one thing a list is for, which is a single column of names an eye runs straight down.
+ * Ordering still runs QB, RB, WR, TE and then by projection inside each, which is what the
+ * headings were really providing.
+ */
+const anFlat = (teamKey: string) => anGrouped(teamKey).flatMap((g) => g.players)
+const anMyRoster = computed(() => anFlat(myTeamKey.value))
+const anTheirRoster = computed(() => anFlat(anPartner.value))
 const toggle = (side: 'give' | 'get', key: string) => {
   const r = side === 'give' ? anGive : anGet
   r.value = r.value.includes(key) ? r.value.filter((k) => k !== key) : [...r.value, key]
@@ -790,26 +800,53 @@ function fairness(myGain: number, theirGain: number): string {
             <option v-for="t in anPartnerOptions" :key="t.key" :value="t.key">{{ t.name }}</option>
           </select>
 
+          <!--
+            TWO ROSTERS AS LISTS, not as clouds of chips.
+
+            A chip cloud is the right shape for a handful of tags and the wrong one for forty
+            players: names of different lengths wrap into ragged rows, so there is no column to
+            scan, nothing lines up, and the eye has to re-find the left edge on every line. The
+            thing being done here is picking a body off a roster, which is a list.
+
+            Each row now carries what the decision needs and nothing else: whether it is in the
+            deal, the seat he fills, his face, his name, and how good he is at his position. The
+            positional rank is the addition that matters — "Josh Downs" is a fact the reader
+            already has, "WR31" is the one he is here for.
+          -->
           <div v-if="anPartner" class="grid gap-3 sm:grid-cols-2">
             <div class="rounded-lg bg-dark-bg/50 p-2">
-              <p class="mb-1 font-mono text-[9px] uppercase tracking-widest text-[#FF5C5C]">you give</p>
-              <div v-for="g in anMyRoster" :key="'gg' + g.position" class="mb-1.5">
-                <p class="mb-0.5 font-mono text-[9px] tracking-widest text-dark-textMuted/60">{{ g.position }}</p>
-                <button v-for="p in g.players" :key="'g' + p.key"
-                        class="mr-1 mb-1 rounded px-1.5 py-0.5 font-mono text-[10px] transition-colors"
-                        :class="anGive.includes(p.key) ? 'bg-[#FF5C5C]/20 text-[#FF5C5C]' : 'bg-dark-border/40 text-dark-textMuted hover:text-dark-text'"
-                        @click="toggle('give', p.key)">{{ p.name }}</button>
-              </div>
+              <p class="mb-1.5 font-mono text-[9px] uppercase tracking-widest text-[#FF5C5C]">you give</p>
+              <button v-for="p in anMyRoster" :key="'g' + p.key"
+                      class="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left transition-colors"
+                      :class="anGive.includes(p.key) ? 'bg-[#FF5C5C]/15' : 'hover:bg-dark-border/30'"
+                      @click="toggle('give', p.key)">
+                <!-- A box rather than a tint alone: selection has to survive being glanced at
+                     on a row that is already coloured by nothing in particular. -->
+                <span class="h-3 w-3 shrink-0 rounded-[3px] border transition-colors"
+                      :class="anGive.includes(p.key) ? 'border-[#FF5C5C] bg-[#FF5C5C]' : 'border-dark-border'"></span>
+                <span class="w-7 shrink-0 font-mono text-[9px] uppercase text-dark-textMuted/70">{{ p.position }}</span>
+                <img v-if="headshotOf(p.key)" :src="headshotOf(p.key)" :alt="p.name" loading="lazy" @error="onLogoErr" class="ufd-face" />
+                <span v-else class="ufd-face" />
+                <span class="min-w-0 flex-1 truncate text-sm"
+                      :class="anGive.includes(p.key) ? 'text-[#FF5C5C]' : 'text-dark-textSecondary'">{{ p.name }}</span>
+                <span class="shrink-0 font-mono text-[10px] text-dark-textMuted/60">{{ posRankByKey[p.key] }}</span>
+              </button>
             </div>
             <div class="rounded-lg bg-dark-bg/50 p-2">
-              <p class="mb-1 font-mono text-[9px] uppercase tracking-widest text-primary">you get</p>
-              <div v-for="g in anTheirRoster" :key="'tg' + g.position" class="mb-1.5">
-                <p class="mb-0.5 font-mono text-[9px] tracking-widest text-dark-textMuted/60">{{ g.position }}</p>
-                <button v-for="p in g.players" :key="'t' + p.key"
-                        class="mr-1 mb-1 rounded px-1.5 py-0.5 font-mono text-[10px] transition-colors"
-                        :class="anGet.includes(p.key) ? 'bg-primary/20 text-primary' : 'bg-dark-border/40 text-dark-textMuted hover:text-dark-text'"
-                        @click="toggle('get', p.key)">{{ p.name }}</button>
-              </div>
+              <p class="mb-1.5 font-mono text-[9px] uppercase tracking-widest text-primary">you get</p>
+              <button v-for="p in anTheirRoster" :key="'t' + p.key"
+                      class="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left transition-colors"
+                      :class="anGet.includes(p.key) ? 'bg-primary/15' : 'hover:bg-dark-border/30'"
+                      @click="toggle('get', p.key)">
+                <span class="h-3 w-3 shrink-0 rounded-[3px] border transition-colors"
+                      :class="anGet.includes(p.key) ? 'border-primary bg-primary' : 'border-dark-border'"></span>
+                <span class="w-7 shrink-0 font-mono text-[9px] uppercase text-dark-textMuted/70">{{ p.position }}</span>
+                <img v-if="headshotOf(p.key)" :src="headshotOf(p.key)" :alt="p.name" loading="lazy" @error="onLogoErr" class="ufd-face" />
+                <span v-else class="ufd-face" />
+                <span class="min-w-0 flex-1 truncate text-sm"
+                      :class="anGet.includes(p.key) ? 'text-primary' : 'text-dark-textSecondary'">{{ p.name }}</span>
+                <span class="shrink-0 font-mono text-[10px] text-dark-textMuted/60">{{ posRankByKey[p.key] }}</span>
+              </button>
               <input v-model="anPick" placeholder="+ a pick (named, not priced)"
                      class="mt-2 w-full rounded border border-dark-border bg-dark-card px-2 py-1 font-mono text-[10px] text-dark-text" />
             </div>
