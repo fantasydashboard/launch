@@ -18,6 +18,7 @@ import { readAge, AGE_TONE } from '@/football/positionalAge'
 import { readHorizons } from '@/football/dynastyValues'
 import { buildPowerRankings, type PowerTeamInput } from '@/league/powerRankings'
 import { MIN_SENDABLE_ODDS, type TeamSituation } from '@/myteam/tradeStrategy'
+import { oddsShift, pct as oddsPct, type OddsTeam } from '@/myteam/playoffOdds'
 import { analyzePointsTrade, type TradeAsset } from '@/myteam/analyzePointsTrade'
 import SeasonPassGate from '@/components/SeasonPassGate.vue'
 import RankingPicker from '@/components/RankingPicker.vue'
@@ -446,6 +447,49 @@ watch(anPartner, () => {
 
 const analyzerRef = ref<HTMLElement | null>(null)
 
+/*
+ * WHAT THE DEAL DOES TO YOUR SEASON, not just to your roster.
+ *
+ * Everything else the analyzer says is about strength — where you finish in the power order,
+ * which seat improves. That is the wrong question in October for a team whose record and whose
+ * roster disagree: the best roster in the league at 2-5 and the fourth-best at 5-2 are opposite
+ * decisions, and a verdict about strength calls them the same way round.
+ *
+ * ONLY TWO TEAMS MOVE, which is what makes this cheap and exact. A trade changes your optimal
+ * lineup and your partner's and nobody else's, so the after-state is the before-state with two
+ * means adjusted by the gains the analyzer already computed — no second solve, and no risk of
+ * the odds describing a lineup the verdict was not based on.
+ *
+ * The delta is the product, not the level: both runs share a seed, so the schedule we had to
+ * guess at and the spread we assumed are identical either side and cancel. See playoffOdds.ts.
+ */
+const playoffShift = computed(() => {
+  const a = analysis.value
+  const model = teamModel.value
+  if (!a || !model?.standings?.length || !myTeamKey.value) return null
+  const weeksLeft = Math.max(1, leagueStore.playoffWeekStart - leagueStore.currentWeek)
+  const meta: any = source.teamMeta.value ?? {}
+  const before: OddsTeam[] = model.standings.map((st) => {
+    const m: any = meta[st.teamKey] ?? {}
+    return {
+      teamKey: st.teamKey,
+      wins: m.wins ?? 0, losses: m.losses ?? 0, ties: m.ties ?? 0,
+      /* Rest-of-season points spread over the weeks that remain. */
+      weeklyMean: st.startingPoints / weeksLeft,
+    }
+  })
+  if (before.every((t) => t.wins + t.losses + t.ties === 0)) return null   // 0-0 says nothing
+  const after: OddsTeam[] = before.map((t) =>
+    t.teamKey === myTeamKey.value ? { ...t, weeklyMean: t.weeklyMean + a.myGain / weeksLeft }
+      : t.teamKey === anPartner.value ? { ...t, weeklyMean: t.weeklyMean + a.theirGain / weeksLeft }
+        : t)
+  /* Platforms do not all publish the bracket size; half the league is the near-universal
+     default and the same fallback the season-outlook read uses. */
+  const spots = Math.max(2, Math.round(before.length / 2))
+  const s = oddsShift({ teams: before, weeksLeft, playoffSpots: spots }, after, myTeamKey.value)
+  return { before: oddsPct(s.before), after: oddsPct(s.after), weeksLeft }
+})
+
 /**
  * Open a suggested deal in the analyzer.
  *
@@ -762,6 +806,37 @@ function fairness(myGain: number, theirGain: number): string {
 
             <p v-for="h in analysis.helps" :key="h" class="mt-1 font-mono text-[10px] text-[#7ee787]">&uarr; {{ h }}</p>
             <p v-for="c in analysis.costs" :key="c" class="mt-1 font-mono text-[10px] text-[#e69a4a]">&darr; {{ c }}</p>
+
+            <!--
+              THE SEASON, not the roster. Shown only when a record exists to reason from: at
+              0-0 every team is tied and any odds we printed would be a statement about the
+              schedule we do not have.
+
+              Whole points, deliberately. The tenth is inside the simulation's own sampling
+              error and under a schedule we approximate, and a reader shown "96.1" will
+              reasonably believe we can tell it from "96.0". The CHANGE is what this is for —
+              both runs share a seed, so what we guessed at cancels between them.
+            -->
+            <div v-if="playoffShift" class="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-lg border border-dark-border/60 bg-dark-card/40 px-3 py-2.5">
+              <span class="font-mono text-[9px] uppercase tracking-widest text-dark-textMuted">Playoff odds</span>
+              <span class="font-display text-lg font-bold tabular-nums text-dark-textMuted">{{ playoffShift.before }}%</span>
+              <span class="font-mono text-xs text-dark-textMuted">&rarr;</span>
+              <span class="font-display text-lg font-bold tabular-nums"
+                    :class="playoffShift.after > playoffShift.before ? 'text-[#7ee787]'
+                          : playoffShift.after < playoffShift.before ? 'text-[#FF5C5C]' : 'text-dark-text'">
+                {{ playoffShift.after }}%
+              </span>
+              <span v-if="playoffShift.after !== playoffShift.before"
+                    class="font-mono text-[10px]"
+                    :class="playoffShift.after > playoffShift.before ? 'text-[#7ee787]' : 'text-[#FF5C5C]'">
+                {{ playoffShift.after > playoffShift.before ? '+' : '' }}{{ playoffShift.after - playoffShift.before }} pts
+              </span>
+              <span v-else class="font-mono text-[10px] text-dark-textMuted">no measurable change</span>
+              <span class="w-full font-mono text-[9px] text-dark-textMuted/60">
+                {{ playoffShift.weeksLeft }} week{{ playoffShift.weeksLeft === 1 ? '' : 's' }} simulated ·
+                opponents drawn at random, because we do not hold your remaining schedule
+              </span>
+            </div>
 
             <!--
               YOUR LINEUP, BEFORE AND AFTER — the verdict made checkable.
