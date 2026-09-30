@@ -6,6 +6,7 @@ import { useScheduleDifficulty } from '@/composables/useScheduleDifficulty'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { usePointsValue } from '@/composables/usePointsValue'
+import { valueState } from '@/today/valueState'
 import { useFootballVor } from '@/composables/useFootballVor'
 import { useFootballScoring } from '@/composables/useFootballScoring'
 import { buildPointsTrades } from '@/myteam/pointsTrades'
@@ -63,7 +64,28 @@ const myTeamLogo = source.myTeamLogo
 const teamLogos = source.teamLogos
 
 const season = computed(() => '')
-const { poolValueByKey: valueByKey } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season, leagueId: computed(() => String(leagueStore.activeLeagueId ?? '')) })
+const { poolValueByKey: valueByKey, loading: valueLoading } = usePointsValue({ pool, fgByKey, sport: computed(() => leagueStore.activeSport), season, leagueId: computed(() => String(leagueStore.activeLeagueId ?? '')) })
+
+/*
+ * WHETHER THIS PAGE HAS NUMBERS AT ALL, which it never asked before.
+ *
+ * Every verdict here is a comparison of projected points, so with no values every comparison
+ * comes out even — and the page said so, in the voice of a finding: "No swap right now raises
+ * both lineups", "no position separates you two by enough to build a deal around". Both are
+ * conclusions about the league. Neither was; they were conclusions about an empty map.
+ *
+ * A Yahoo hockey league produced exactly that for as long as the page existed. The reader has
+ * no way to tell a real "nothing helps" from "we could not price anybody", and the two call
+ * for opposite actions. Same distinction, same helper, as the Today board.
+ */
+const valuesState = computed(() => valueState({
+  /* No unsupported case is detectable from here — usePointsValue does not report one — so a
+     league it cannot price lands on 'none', which says the honest thing anyway. */
+  unsupported: false,
+  loading: valueLoading.value || loading.value,
+  hasValues: Object.keys(valueByKey.value).length > 0,
+}))
+const valuesReady = computed(() => valuesState.value === 'ready')
 
 // Football VOR (shared engine). Replacement is calibrated on rostered players here
 // (empty free-agent list) — cross-team ranking is unaffected; Trades stays self-contained.
@@ -738,9 +760,9 @@ function fairness(myGain: number, theirGain: number): string {
           <div v-for="(sl, i) in teamModel.slotRanks" :key="'slot-' + i" class="flex items-center gap-3 py-0.5">
             <span class="w-10 shrink-0 font-mono text-xs text-dark-textMuted">{{ sl.slot }}</span>
             <span class="w-12 shrink-0 text-right font-display text-base font-bold tabular-nums"
-                  :class="sl.starterKey ? slotTone(sl.rank, sl.teams) : 'text-dark-textMuted/50'"
-                  :title="sl.starterKey ? leagueRankLabel(sl.rank, sl.teams) : ''">
-              {{ sl.starterKey ? ordinal(sl.rank) : '—' }}
+                  :class="sl.starterKey && valuesReady ? slotTone(sl.rank, sl.teams) : 'text-dark-textMuted/50'"
+                  :title="sl.starterKey && valuesReady ? leagueRankLabel(sl.rank, sl.teams) : ''">
+              {{ sl.starterKey && valuesReady ? ordinal(sl.rank) : '—' }}
             </span>
             <img v-if="sl.starterKey && headshotOf(sl.starterKey)" :src="headshotOf(sl.starterKey)" :alt="sl.starterName" loading="lazy" @error="onLogoErr" class="ufd-face" />
             <span v-else class="ufd-face" />
@@ -750,11 +772,13 @@ function fairness(myGain: number, theirGain: number): string {
               {{ sl.starterKey ? sl.starterName : 'open slot' }}
             </span>
             <div class="relative h-2 flex-1 overflow-hidden rounded-full bg-dark-bg">
-              <div v-if="sl.starterKey" class="absolute inset-y-0 left-0 rounded-full" :class="slotBar(sl.rank, sl.teams)"
+              <!-- A bar is a claim about where this seat stands. With no value behind it every
+                   seat ranked first and every bar drew full — maximum confidence, no data. -->
+              <div v-if="sl.starterKey && valuesReady && sl.points > 0" class="absolute inset-y-0 left-0 rounded-full" :class="slotBar(sl.rank, sl.teams)"
                    :style="{ width: rankBar(sl.rank, sl.teams) + '%' }" />
             </div>
             <span class="w-12 shrink-0 text-right font-display text-base font-bold tabular-nums text-dark-textSecondary sm:text-lg">
-              {{ sl.starterKey ? round(sl.points) : '' }}
+              {{ sl.starterKey && valuesReady ? round(sl.points) : '' }}
             </span>
           </div>
         </div>
@@ -1065,7 +1089,14 @@ function fairness(myGain: number, theirGain: number): string {
       <p v-if="ideas.length" class="mb-3 font-mono text-[11px] text-dark-textMuted">
         ★ Best deals — send a bench body, get one that <span class="text-primary">starts</span> for you. Both lineups improve.
       </p>
-      <div v-if="!ideas.length && !loading" class="mb-3 rounded-xl border border-dark-border bg-dark-card px-4 py-4 text-center text-sm text-dark-textMuted">
+      <div v-if="!ideas.length && !valuesReady" class="mb-3 rounded-xl border border-dark-border bg-dark-card px-4 py-4 text-center text-sm text-dark-textMuted">
+        <template v-if="valuesState === 'loading'">Still reading this league's projections…</template>
+        <template v-else>
+          We couldn't price this league, so there is nothing to compare deals with — this is
+          not a verdict that no trade helps.
+        </template>
+      </div>
+      <div v-else-if="!ideas.length && !loading" class="mb-3 rounded-xl border border-dark-border bg-dark-card px-4 py-4 text-center text-sm text-dark-textMuted">
         No swap right now raises both lineups.<template v-if="asks.length"> These do raise yours:</template>
       </div>
 
@@ -1298,6 +1329,7 @@ function fairness(myGain: number, theirGain: number): string {
               they're deeper at <span class="text-[#FF5C5C]">{{ compare.youBuy.join(', ') }}</span>
             </template>
           </template>
+          <template v-else-if="!valuesReady">we couldn't price these rosters, so nothing here is compared yet</template>
           <template v-else>no position separates you two by enough to build a deal around</template>
         </p>
 
