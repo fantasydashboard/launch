@@ -331,6 +331,36 @@ const poolByKey = computed(() => new Map(pool.value.map((pl) => [pl.playerKey, p
 const headshotOf = (key: string) => poolByKey.value.get(key)?.headshot ?? ''
 const proTeamOf = (key: string) => poolByKey.value.get(key)?.proTeam ?? ''
 
+/*
+ * A PLAYER'S OWN STANDING AT HIS POSITION — "QB2", the thing every other tool prints.
+ *
+ * Distinct from the seat rank beside it, and the pair is the point. "2nd" says YOUR quarterback
+ * seat is the second-best of the ten in this league; "QB2" says the man in it is the second-best
+ * quarterback anybody holds. They usually agree at a one-slot position and come apart wherever a
+ * league starts two — your RB2 seat can be third-best in the league while the body in it is the
+ * ninth-best back rostered, and a manager deciding whether to trade for depth needs both halves.
+ *
+ * Ranked on the same number the verdict is ranked on, so a reader cannot find the panel
+ * disagreeing with the math block below it. Rostered players only: a free agent is available to
+ * everyone and would make every rank in the league look worse than it plays.
+ */
+const posRankByKey = computed<Record<string, string>>(() => {
+  const byPos = new Map<string, { key: string; v: number }[]>()
+  for (const pl of pool.value) {
+    const pos = (pl.position || '').toUpperCase().split(/[,/|]/)[0].trim()
+    if (!pos) continue
+    const v = tradeVor.value?.[pl.playerKey]?.vorRos ?? tradeValues.value[pl.playerKey]?.total ?? 0
+    if (!byPos.has(pos)) byPos.set(pos, [])
+    byPos.get(pos)!.push({ key: pl.playerKey, v })
+  }
+  const out: Record<string, string> = {}
+  for (const [pos, rows] of byPos) {
+    rows.sort((a, b) => b.v - a.v)
+    rows.forEach((r, i) => { out[r.key] = `${pos}${i + 1}` })
+  }
+  return out
+})
+
 const ordinal = (n: number): string => {
   const s = ['th', 'st', 'nd', 'rd']
   const v = n % 100
@@ -859,24 +889,52 @@ function fairness(myGain: number, theirGain: number): string {
               <p class="mb-2 font-mono text-[9px] uppercase tracking-widest text-dark-textMuted">
                 Your starting lineup &middot; before &rarr; after
               </p>
-              <div class="grid grid-cols-[2.6rem_1fr_1fr] gap-x-2 gap-y-1">
+              <div class="grid grid-cols-[2.6rem_1fr_1fr] gap-x-3 gap-y-1.5">
                 <span></span>
                 <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/60">now</span>
                 <span class="font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/60">after the deal</span>
                 <template v-for="(seat, i) in analysis.lineup" :key="'seat-' + i">
                   <span class="self-center font-mono text-[10px] uppercase text-dark-textMuted">{{ seat.slot }}</span>
-                  <!-- The seat as it stands. Dimmed when it is about to change, so the eye
-                       lands on the right-hand column where the decision lives. -->
-                  <span class="min-w-0 truncate text-sm" :class="seat.changed ? 'text-dark-textMuted/60 line-through decoration-dark-textMuted/30' : 'text-dark-textSecondary'">
-                    {{ seat.beforeName || '—' }}
-                    <span class="ml-1 font-mono text-[9px] text-dark-textMuted/60">{{ ordinal(seat.beforeRank) }}</span>
+                  <!--
+                    A FACE, A NAME AND TWO RANKS THAT MEAN DIFFERENT THINGS.
+
+                    "QB2" is the man: second-best quarterback anybody in this league holds.
+                    "2nd" is the seat: your quarterback spot is the second-best of the ten. They
+                    agree at a one-slot position and come apart wherever a league starts two,
+                    which is exactly where a depth trade is decided — so both are here, the
+                    player's own standing quiet beside his name and the seat rank right-aligned
+                    where it forms a column you can run an eye down.
+
+                    The seat as it stands is dimmed and struck when it is about to change, so
+                    the eye lands on the right-hand column where the decision lives.
+                  -->
+                  <span class="flex min-w-0 items-center gap-2">
+                    <img v-if="seat.beforeKey && headshotOf(seat.beforeKey)" :src="headshotOf(seat.beforeKey)"
+                         :alt="seat.beforeName" loading="lazy" @error="onLogoErr"
+                         class="ufd-face" :class="seat.changed ? 'opacity-40 grayscale' : ''" />
+                    <span v-else class="ufd-face" />
+                    <span class="min-w-0 flex-1 truncate text-sm"
+                          :class="seat.changed ? 'text-dark-textMuted/60 line-through decoration-dark-textMuted/30' : 'text-dark-textSecondary'">
+                      {{ seat.beforeName || '—' }}
+                      <span v-if="seat.beforeKey && posRankByKey[seat.beforeKey]"
+                            class="ml-1 font-mono text-[9px] text-dark-textMuted/50">{{ posRankByKey[seat.beforeKey] }}</span>
+                    </span>
+                    <span class="shrink-0 font-mono text-[9px] text-dark-textMuted/60">{{ ordinal(seat.beforeRank) }}</span>
                   </span>
-                  <span class="min-w-0 truncate text-sm"
-                        :class="seat.changed ? 'font-semibold text-dark-text' : 'text-dark-textMuted/50'">
-                    {{ seat.afterName || '—' }}
-                    <!-- Rank moves are coloured on the DIRECTION a manager cares about: a
-                         smaller number is a better body, so green is a fall in the figure. -->
-                    <span class="ml-1 font-mono text-[9px]"
+                  <span class="flex min-w-0 items-center gap-2">
+                    <img v-if="seat.afterKey && headshotOf(seat.afterKey)" :src="headshotOf(seat.afterKey)"
+                         :alt="seat.afterName" loading="lazy" @error="onLogoErr"
+                         class="ufd-face" :class="seat.changed ? '' : 'opacity-40'" />
+                    <span v-else class="ufd-face" />
+                    <span class="min-w-0 flex-1 truncate text-sm"
+                          :class="seat.changed ? 'font-semibold text-dark-text' : 'text-dark-textMuted/50'">
+                      {{ seat.afterName || '—' }}
+                      <span v-if="seat.afterKey && posRankByKey[seat.afterKey]"
+                            class="ml-1 font-mono text-[9px] text-dark-textMuted/50">{{ posRankByKey[seat.afterKey] }}</span>
+                    </span>
+                    <!-- Coloured on the DIRECTION a manager cares about: a smaller number is a
+                         better body, so green is a fall in the figure. -->
+                    <span class="shrink-0 font-mono text-[9px]"
                           :class="seat.afterRank < seat.beforeRank ? 'text-[#7ee787]'
                                 : seat.afterRank > seat.beforeRank ? 'text-[#FF5C5C]' : 'text-dark-textMuted/60'">
                       {{ ordinal(seat.afterRank) }}
