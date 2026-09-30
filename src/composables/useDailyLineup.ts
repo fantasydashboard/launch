@@ -820,15 +820,17 @@ export function useDailyLineup() {
       const faAvail = availability(fa.status)
       if (faAvail === 'out' || !playsToday(fa.team ?? '')) continue
       /*
-       * Two ways to price a free agent, because the two league types know him differently.
-       * A category league already scored him by key — he was standardised alongside the
-       * rostered players, which is the only way his z-scores are comparable to theirs. A
-       * points league has to match him by name, because his projection lives in a feed the
-       * roster pool never touched.
+       * Through valueFor, exactly like the rostered pool above.
+       *
+       * This branch used to do its own lookup: by KEY for a category league, by NAME for a
+       * points one. The key half is an ESPN player id, and a Yahoo free agent arrives with a
+       * Yahoo player key — so on a Yahoo CATEGORY league it missed for every free agent
+       * alive, and the board showed nothing but the manager's own roster. The rostered pool
+       * never had this problem because valueFor already falls back to the name bridge, which
+       * is the only lookup that ever hits on Yahoo. Two lookups for the same question is what
+       * let one of them stay wrong.
        */
-      const v = isCategory.value
-        ? (value.valueByKey.value[fa.playerKey ?? ''] ?? null)
-        : pointsValue.valueOf.value({ name: fa.name, position: fa.position, team: fa.team })
+      const v = valueFor(fa)
       const perGame = v && v.games > 0 ? v.total / v.games : 0
       if (!perGame) continue
       out.push({
