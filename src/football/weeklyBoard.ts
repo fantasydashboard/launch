@@ -4,6 +4,7 @@ import type { PlayerVor } from './footballVor'
 import type { OpportunityTag } from './footballOpportunity'
 import type { AvailablePlayer } from '@/players/types'
 import { FLEX_ELIGIBILITY, startablePositions, canonicalPosition } from '@/trades/rosterSlots'
+import { startConfidencePair, isCloseCall, COIN_FLIP_MAX } from './startConfidence'
 
 export interface WeeklyStarter {
   slot: string
@@ -250,6 +251,14 @@ export interface WeeklyCloseCall {
   sitName: string
   sitPoints: number
   gap: number
+  /**
+   * How often the higher projection actually wins a gap this size, measured over 45,468 pairs
+   * of 2025 — see startConfidence.ts. This is the number the row should lead with: a gap of
+   * 1.4 means nothing to a reader, and "58%" means exactly the right thing.
+   */
+  confidence: number
+  /** Under 55%: there is no basis to choose, and the page says so rather than implying one. */
+  coinFlip: boolean
 }
 
 /**
@@ -872,7 +881,6 @@ export function buildWeeklyBoard(input: {
    * is confident about the top of your lineup and nearly indifferent at the bottom, and only
    * the second kind is worth a manager's attention.
    */
-  const CLOSE_PTS = 2.5
   const candidates: (WeeklyCloseCall & { altKey: string })[] = []
   for (const st of starters) {
     if (st.bye) continue
@@ -885,7 +893,14 @@ export function buildWeeklyBoard(input: {
     })
     if (!alt) continue
     const gap = st.weekPoints - alt.weekPoints
-    if (gap < 0 || gap > CLOSE_PTS) continue
+    /*
+     * The threshold is a CONFIDENCE, not a number of points. A flat 2.5 points called a tight
+     * end decision close when the measured curve puts it at 64%, and called a quarterback
+     * decision settled when it was really 60/40 — because a point of projection separates two
+     * tight ends far harder than it separates two quarterbacks.
+     */
+    if (gap < 0 || !isCloseCall(gap, st.position === alt.position ? st.position : undefined)) continue
+    const confidence = startConfidencePair(gap, st.position, alt.position)
     candidates.push({
       slot: st.slot,
       startName: st.name,
@@ -893,6 +908,8 @@ export function buildWeeklyBoard(input: {
       sitName: alt.name,
       sitPoints: alt.weekPoints,
       gap,
+      confidence,
+      coinFlip: confidence < COIN_FLIP_MAX,
       altKey: alt.playerKey,
     })
   }

@@ -679,7 +679,7 @@ const edgeArrow = (edge: 'up' | 'down' | 'even') =>
               <div class="mb-2 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Top keepers held</div>
               <div v-for="(k, i) in draft.report.value.topKeepers" :key="'kp' + i" class="flex items-center gap-3 py-1">
                 <img v-if="k.headshot" :src="k.headshot" alt="" @error="(e) => ((e.target as HTMLElement).style.display = 'none')"
-                  class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" />
+                  class="ufd-face" />
                 <span class="min-w-0 flex-1 truncate text-sm text-dark-text">{{ k.playerName }}
                   <span class="text-xs text-dark-textMuted">· {{ k.teamName }} · kept Rd {{ k.round }}</span></span>
                 <span class="ml-2 shrink-0 font-mono text-[11px] uppercase" :class="k.finishedTier === 'ELITE' ? 'text-primary' : 'text-dark-textMuted'">{{ k.finishedTier }}</span>

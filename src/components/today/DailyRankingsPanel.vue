@@ -114,7 +114,10 @@ const tiers = computed(() =>
   assignTiers(shown.value.map((r) => ({ playerKey: r.playerKey, value: r.today })), MIN_TIER_DROP))
 const tierOf = (key: string) => tiers.value[key] ?? 1
 /** True on the first row of a new tier, which is where the divider is drawn. */
-const startsTier = (i: number) => i > 0 && tierOf(shown.value[i].playerKey) !== tierOf(shown.value[i - 1].playerKey)
+/* The top row starts a tier as surely as any other. It never drew a line, because this test
+   asked whether the tier had CHANGED and the first row changes from nothing — leaving the best
+   players on the board in an unnamed group above a line that says "tier 2". */
+const startsTier = (i: number) => i === 0 || tierOf(shown.value[i].playerKey) !== tierOf(shown.value[i - 1].playerKey)
 const tierDrop = (i: number) => (shown.value[i - 1]?.today ?? 0) - (shown.value[i]?.today ?? 0)
 
 const filter = ref('ALL')
@@ -220,13 +223,14 @@ const hasScarcity = computed(() =>
       <div v-if="startsTier(i)" class="flex items-center gap-3 py-2">
         <span class="h-px flex-1 bg-gradient-to-r from-transparent to-[#e69a4a]/50"></span>
         <span class="font-mono text-[9px] uppercase tracking-widest text-[#e69a4a]/80">
-          tier {{ tierOf(r.playerKey) }} &middot; &minus;{{ tierDrop(i).toFixed(1) }}
+          <!-- No drop on the first tier: there is nothing above it to have dropped from. -->
+          tier {{ tierOf(r.playerKey) }}<template v-if="i > 0"> &middot; &minus;{{ tierDrop(i).toFixed(1) }}</template>
         </span>
         <span class="h-px flex-1 bg-gradient-to-l from-transparent to-[#e69a4a]/50"></span>
       </div>
 
-    <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 text-sm last:border-0">
-      <span class="w-7 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/50">{{ i + 1 }}</span>
+    <div class="flex items-center gap-3 border-b border-dark-border/40 py-2.5 text-base last:border-0">
+      <span class="w-7 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/50 sm:text-[11px]">{{ i + 1 }}</span>
       <img v-if="r.headshot" :src="r.headshot" :alt="r.name" loading="lazy" @error="onLogoErr"
            class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
       <span v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[9px] text-dark-textMuted">{{ r.position }}</span>
@@ -251,7 +255,9 @@ const hasScarcity = computed(() =>
       <span class="shrink-0 font-mono text-[10px]" :class="OWNER_TONE[r.owner]">
         {{ r.owner === 'free' ? 'free' : r.ownerName }}
       </span>
-      <span class="w-14 shrink-0 text-right font-mono text-sm font-semibold text-dark-text">{{ one(r.today) }}</span>
+      <!-- One loud number per row, as on the rankings board: this is the column the list is
+           sorted by and it was set no larger than the owner's name beside it. -->
+      <span class="w-14 shrink-0 text-right font-display text-base font-bold tabular-nums text-dark-text sm:text-lg">{{ one(r.today) }}</span>
     </div>
     </template>
 

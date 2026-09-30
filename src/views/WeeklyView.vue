@@ -144,6 +144,8 @@ const path = computed(() => {
 
 const teamLogo = (abbr?: string) => nflTeamLogo(abbr)
 const round = (n: number) => Math.round(n)
+/* The closest-calls number is a measured win rate, not a projection — see startConfidence.ts. */
+const pct = (n: number) => Math.round(n * 100)
 /* Position rank always; flex rank only when the league's flex can actually take him, so a QB
    in a non-superflex league doesn't get a meaningless number beside his name. */
 /* The weekly rankings board. Open by default: this is a reason to visit the page, not a
@@ -270,7 +272,13 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl px-4 py-6">
+  <!--
+    WIDTH FOLLOWS THE COLUMN COUNT, the same rule the rankings board states and for the same
+    reason. A row on this page carries a rank, a face, a name, an owner, a crest, a positional
+    rank, a matchup and a points total — eight things inside 768px, which is what made it read
+    as one grey block. 1024 is what the rankings board and the League page already use.
+  -->
+  <div class="mx-auto max-w-5xl px-4 py-8">
     <header class="mb-4">
       <h1 class="font-display text-2xl font-bold text-dark-text">This Week</h1>
       <p class="font-mono text-xs text-dark-textMuted">Set your lineup. Stream the edge.</p>
@@ -443,12 +451,17 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               <img v-if="board.matchup.opponentLogo" :src="board.matchup.opponentLogo" alt="" @error="onLogoErr" class="h-4 w-4 shrink-0 rounded bg-dark-border object-cover" />
             </span>
           </div>
+          <!-- Kept a size below the single-sided rows below it: every other row on the page
+               carries one face and one number, and this one carries two of each. 28px and a
+               13px name is the largest this table takes before the nine seats stop fitting on
+               a screen together, which is the only reason to square them off in the first
+               place. -->
           <div v-for="(d, i) in board.matchup.duels" :key="'duel-' + i"
-               class="flex items-center gap-2 border-b border-dark-border/40 py-1.5 last:border-0">
+               class="flex items-center gap-2 border-b border-dark-border/40 py-2 last:border-0">
             <!-- mine -->
             <span class="flex min-w-0 flex-1 items-center gap-1.5" :class="d.edge > 0 ? 'text-dark-text' : 'text-dark-textMuted'">
-              <img v-if="d.mine && d.mine.headshot" :src="d.mine.headshot" :alt="d.mine.name" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
-              <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
+              <img v-if="d.mine && d.mine.headshot" :src="d.mine.headshot" :alt="d.mine.name" loading="lazy" @error="onLogoErr" class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" />
+              <span v-else class="h-7 w-7 shrink-0 rounded-full bg-dark-border" />
               <img v-if="d.mine && d.mine.team" :src="teamLogo(d.mine.team)" alt="" @error="onLogoErr" class="hidden h-3.5 w-3.5 shrink-0 object-contain sm:block" />
               <span class="min-w-0 flex-1 truncate text-[13px]">
                 {{ d.mine ? d.mine.name : '—' }}
@@ -458,7 +471,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               <!-- A scored number and a hoped-for number looked identical. Final is solid,
                    a game in progress pulses, and anything unplayed is dimmed as a forecast. -->
               <span v-if="d.mine && d.mine.play === 'live'" class="live-dot shrink-0" title="Playing now"></span>
-              <span v-if="d.mine" class="w-7 shrink-0 text-right font-mono text-xs"
+              <span v-if="d.mine" class="w-8 shrink-0 text-right font-display text-base font-bold tabular-nums"
                     :class="d.mine.play === 'pre' ? 'text-dark-textMuted/60 italic' : ''">{{ round(d.mine.weekPoints) }}</span>
             </span>
 
@@ -489,8 +502,8 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
                 <span v-if="d.theirs && d.theirs.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>
               </span>
               <img v-if="d.theirs && d.theirs.team" :src="teamLogo(d.theirs.team)" alt="" @error="onLogoErr" class="hidden h-3.5 w-3.5 shrink-0 object-contain sm:block" />
-              <img v-if="d.theirs && d.theirs.headshot" :src="d.theirs.headshot" :alt="d.theirs.name" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
-              <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
+              <img v-if="d.theirs && d.theirs.headshot" :src="d.theirs.headshot" :alt="d.theirs.name" loading="lazy" @error="onLogoErr" class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" />
+              <span v-else class="h-7 w-7 shrink-0 rounded-full bg-dark-border" />
             </span>
           </div>
           <p class="mt-2 font-mono text-[9px] text-dark-textMuted">
@@ -613,7 +626,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             <img v-if="s.headshot" :src="s.headshot" :alt="s.name" loading="lazy" @error="onLogoErr" class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
             <span v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[10px] text-dark-textMuted">{{ s.position }}</span>
             <span class="min-w-0 flex-1">
-              <span class="truncate text-sm font-semibold text-dark-text">
+              <span class="truncate text-base font-semibold text-dark-text">
                 {{ s.name }}
                 <span v-if="s.opportunity === 'backup-elevated'" class="ml-1 rounded bg-amber-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-amber-400" title="Healthy backup — the starter ahead of him is injured">step-up</span>
               </span>
@@ -624,7 +637,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               </span>
             </span>
             <span class="w-20 shrink-0 text-right">
-              <span class="block font-mono text-sm text-dark-text">{{ round(s.weekPoints) }}</span>
+              <span class="block font-display text-lg font-bold tabular-nums text-dark-text">{{ round(s.weekPoints) }}</span>
               <span class="block font-mono text-[9px]">
                 <span :class="posTone(s)">{{ posLabel(s) }}</span>
                 <span v-if="s.flexRank" :class="flexTone(s.flexRank)"> &middot; FLX{{ s.flexRank }}</span>
@@ -641,7 +654,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
       -->
       <section v-if="board.closeCalls.length" class="mb-5 rounded-xl border border-dark-border bg-dark-bg/40 p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Closest calls</h2>
-        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">near coin-flips — the projection barely separates these</p>
+        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">how often the higher projection actually wins a gap this size — measured over 45,468 pairs</p>
         <template v-for="(c, i) in board.closeCalls" :key="'cc-' + i">
           <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
             <span class="w-10 shrink-0 font-mono text-[10px] uppercase text-dark-textMuted">{{ c.slot }}</span>
@@ -652,7 +665,15 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               <span class="text-dark-textMuted">{{ c.sitName }}</span>
               <span class="font-mono text-[11px] text-dark-textMuted"> {{ c.sitPoints.toFixed(1) }}</span>
             </span>
-            <span class="shrink-0 text-right font-mono text-[11px] text-dark-textMuted">by {{ c.gap.toFixed(1) }}</span>
+            <!--
+              The percentage leads, not the gap. "by 1.4" tells a manager nothing he can act on;
+              "53% · coin flip" tells him to stop thinking about it and go spend the time on a
+              decision that moves his week.
+            -->
+            <span class="shrink-0 text-right">
+              <span class="font-mono text-xs" :class="c.coinFlip ? 'text-dark-textMuted' : 'text-dark-text'">{{ pct(c.confidence) }}%</span>
+              <span class="ml-1.5 font-mono text-[9px] uppercase tracking-wide" :class="c.coinFlip ? 'text-[#FF9F43]' : 'text-dark-textMuted'">{{ c.coinFlip ? 'coin flip' : 'to be right' }}</span>
+            </span>
           </div>
         </template>
       </section>
@@ -661,9 +682,9 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
       <section v-if="board.bench.length" class="rounded-xl border border-dark-border bg-dark-bg/40 p-4">
         <h2 class="mb-3 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">Bench</h2>
         <template v-for="b in board.bench" :key="'bn-' + b.playerKey">
-          <div class="flex items-center gap-2.5 border-b border-dark-border/40 py-1 text-sm last:border-0">
-            <img v-if="b.headshot" :src="b.headshot" :alt="b.name" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
-            <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
+          <div class="flex items-center gap-2.5 border-b border-dark-border/40 py-2 text-base last:border-0 sm:gap-3">
+            <img v-if="b.headshot" :src="b.headshot" :alt="b.name" loading="lazy" @error="onLogoErr" class="ufd-face" />
+            <span v-else class="ufd-face" />
             <img v-if="b.team" :src="teamLogo(b.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 shrink-0 object-contain" />
             <span class="min-w-0 flex-1 truncate text-dark-textMuted">
               {{ b.name }} <span class="text-[11px]">{{ b.position }}</span>
@@ -672,7 +693,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             <!-- One line, not a stacked block: the bench is a reference list, and five
                  two-line rows took as much room as the lineup they support. -->
             <span class="shrink-0 font-mono text-[9px] text-dark-textMuted/60">{{ rankLabel(b) }}</span>
-            <span class="w-8 shrink-0 text-right font-mono text-xs text-dark-textMuted">{{ round(b.weekPoints) }}</span>
+            <span class="w-9 shrink-0 text-right font-display text-base font-bold tabular-nums text-dark-textMuted">{{ round(b.weekPoints) }}</span>
           </div>
         </template>
       </section>
@@ -752,7 +773,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
           <p class="mb-1 flex items-center gap-2.5 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/60">
             <span class="min-w-0 flex-1"></span>
             <span class="w-8 shrink-0 text-right" title="How the defence he faces this week ranks against his position. 1 gives up the most.">MTCH</span>
-            <span class="w-10 shrink-0 text-right">PTS</span>
+            <span class="w-10 shrink-0 text-right sm:w-12">PTS</span>
           </p>
 
           <template v-for="(row, i) in boardRows" :key="'bw-' + row.playerKey">
@@ -766,24 +787,39 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               Drawing both as the same solid line is what made the old tiers read as arbitrary:
               a 0.9 got a line while the 0.7 above it did not, and the page never said why.
             -->
-            <div v-if="row.tierBreak" class="flex items-center gap-2 py-1.5">
-              <span class="h-px flex-1" :class="(row.tierSplit || (row.tierSource && row.tierDrop == null)) ? 'bg-dark-border/50' : 'bg-dark-border'"></span>
+            <!--
+              The FIRST tier is labelled too. The rule fires on a CHANGE of tier and the top row
+              changes from nothing, so the best players sat in an unnamed group and the reader's
+              first tier line said "tier 2" — which reads as though one is missing. It carries no
+              drop and no attribution: there is nothing above it, so nobody drew this break.
+            -->
+            <div v-if="row.tierBreak || i === 0" class="flex items-center gap-2 py-1.5">
+              <span class="h-px flex-1" :class="(row.tierSplit || (row.tierSource && row.tierDrop == null && i > 0)) ? 'bg-dark-border/50' : 'bg-dark-border'"></span>
               <span class="font-mono text-[9px] uppercase tracking-wider"
-                    :class="(row.tierSplit || (row.tierSource && row.tierDrop == null)) ? 'text-dark-textMuted/45' : 'text-dark-textMuted/70'">
-                <template v-if="row.tierSource && row.tierDrop == null">tier {{ row.tier }} &middot; {{ weekSource }}'s break &middot; no gap in our points</template>
+                    :class="(row.tierSplit || (row.tierSource && row.tierDrop == null && i > 0)) ? 'text-dark-textMuted/45' : 'text-dark-textMuted/70'">
+                <template v-if="i === 0">tier {{ row.tier }}</template>
+                <template v-else-if="row.tierSource && row.tierDrop == null">tier {{ row.tier }} &middot; {{ weekSource }}'s break &middot; no gap in our points</template>
                 <template v-else-if="row.tierSplit">tier {{ row.tier }} &middot; no cliff &middot; widest gap</template>
                 <template v-else>tier {{ row.tier }} &middot; &minus;{{ round(row.tierDrop ?? 0) }} pts</template>
               </span>
               <span class="h-px flex-1" :class="row.tierSplit ? 'bg-dark-border/50' : 'bg-dark-border'"></span>
             </div>
+            <!--
+              CONTRAST, not scale — the rankings board's rebuild, applied here. The name was
+              14px against 9px secondaries and the points total was set in the same mono as the
+              matchup rank, so no element on the row was louder than any other and the eye had
+              nowhere to land. Name to 16 and the total to 18 gives the roughly 4:1 ratio our
+              published cards run at, for four pixels of row height.
+            -->
             <div
-              class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm last:border-0"
+              class="flex items-center gap-2.5 border-b border-dark-border/40 py-2.5 text-base last:border-0 sm:gap-3"
               :class="OWNER_TEXT[row.owner]"
             >
-              <span class="w-6 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/60">{{ i + 1 }}</span>
-              <img v-if="row.headshot" :src="row.headshot" :alt="row.name" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
-              <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
-              <span class="min-w-0 flex-1 truncate">
+              <span class="ufd-rank">{{ i + 1 }}</span>
+              <img v-if="row.headshot" :src="row.headshot" :alt="row.name" loading="lazy" @error="onLogoErr" class="ufd-face" />
+              <span v-else class="ufd-face" />
+              <span class="min-w-0 flex-1">
+                <span class="block truncate">
                 <span v-if="OWNER_GLYPH[row.owner]">{{ OWNER_GLYPH[row.owner] }} </span>{{ row.name }}
                 <span v-if="row.bye" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]">bye</span>
                 <!-- A cut projection has to say why. A zero with no badge reads as missing
@@ -796,6 +832,20 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
                      bet on whether the man suits up. -->
                 <span v-else-if="row.injuryTag" class="ml-1 font-mono text-[9px] uppercase text-[#d29922]"
                       :title="`${row.injuryTag} — ranked at ${Math.round((WEEKLY_INJURY_DISCOUNT[row.injuryTag.toUpperCase()] ?? 1) * 100)}% of a normal week, because roughly seven in ten play and rarely at full strength. Ranked on what he is worth, not on what he does if he suits up.`">{{ row.injuryTag.slice(0, 1) }}</span>
+                </span>
+                <!-- LINE TWO, ON A PHONE ONLY. Who holds him and who he plays are the two
+                     facts a start/sit turns on, and both hid below the breakpoint — leaving a
+                     phone with a name and a projection and no way to tell a free agent from
+                     the guy your opponent is starting. Labelled, because the header hides with
+                     its columns. -->
+                <span v-if="row.oppRank != null || row.ownerName"
+                      class="mt-0.5 flex items-center gap-2.5 font-mono text-[10px] text-dark-textMuted/70 sm:hidden">
+                  <span v-if="row.oppRank != null" :class="matchupTone(row.oppRank)">
+                    <span class="text-dark-textMuted/50">mtch</span> {{ row.oppRank ?? '—' }}
+                  </span>
+                  <span v-if="row.ownerName" class="truncate" style="max-width:10rem"
+                        :class="row.owner === 'opp' ? 'text-[#e69a4a]/80' : 'text-dark-textMuted/50'">{{ row.ownerName }}</span>
+                </span>
               </span>
               <!-- The opponent gets their crest beside their name; every other manager stays a
                    name in muted type, so the team you are playing is the only one with a face. -->
@@ -818,7 +868,10 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               <span class="w-8 shrink-0 text-right font-mono text-[10px]"
                     :class="matchupTone(row.oppRank ?? null)"
                     :title="matchupTitle(row)">{{ row.oppRank ?? '—' }}</span>
-              <span class="w-10 shrink-0 text-right font-mono text-xs">{{ round(row.weekPoints) }}</span>
+              <!-- ONE LOUD NUMBER PER ROW. It was set in the same 12px mono as the matchup
+                   rank beside it, so the column the board is SORTED by was no more visible
+                   than a tiebreaker. -->
+              <span class="w-10 shrink-0 text-right font-display text-base font-bold tabular-nums sm:w-12 sm:text-lg">{{ round(row.weekPoints) }}</span>
             </div>
           </template>
           <p class="mt-2 font-mono text-[9px] text-dark-textMuted">
@@ -850,7 +903,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             </span>
             <span v-if="r.streamOf > 0" class="shrink-0 rounded bg-dark-border/50 px-1.5 py-0.5 font-mono text-[10px] text-dark-textMuted">startable {{ r.streamWeeks }}/{{ r.streamOf }}</span>
             <span class="w-24 shrink-0 text-right">
-              <span class="block font-mono text-sm text-dark-text">{{ round(r.weekPoints) }}</span>
+              <span class="block font-display text-lg font-bold tabular-nums text-dark-text">{{ round(r.weekPoints) }}</span>
               <span class="block font-mono text-[9px]">
                 <span :class="posTone({ position: r.player.position, posRank: r.posRank })">{{ posLabel({ position: r.player.position, posRank: r.posRank }) }}</span>
                 <span v-if="r.flexRank" :class="flexTone(r.flexRank)"> &middot; FLX{{ r.flexRank }}</span>

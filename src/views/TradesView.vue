@@ -359,7 +359,13 @@ function onLogoError(e: Event) {
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl px-4 py-6 space-y-5">
+  <!--
+    WIDTH FOLLOWS THE COLUMN COUNT, the rankings board's rule — and this page sits at the narrow
+    end of it. It stacks single opportunity cards carrying four things on a row, not a table of
+    seven columns, so the 1024 the rankings board and the POINTS trades page use would strand a
+    name and a value at opposite ends of the card. 896 gives the cards room without that.
+  -->
+  <div class="mx-auto max-w-4xl px-4 py-8 space-y-5">
     <header class="space-y-1">
       <h1 class="font-display text-2xl font-bold text-dark-text">Trades</h1>
       <p class="font-mono text-xs text-dark-textMuted">Who to trade for — ranked by how many categories each move wins you per week.</p>

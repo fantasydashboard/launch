@@ -56,8 +56,8 @@ const partnerClass = (r: 'fair' | 'reach' | 'steal'): string =>
     <!-- GET -->
     <div v-for="(g, gi) in opp.get" :key="'g' + gi" class="flex items-center gap-2 px-4" :class="gi === 0 ? 'pt-2.5' : 'pt-1'">
       <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-primary">{{ gi === 0 ? 'GET' : '' }}</span>
-      <Avatar :src="g.headshot" :label="g.name" cls="h-7 w-7 rounded-full" />
-      <span class="font-display text-[15px] font-bold text-dark-text">{{ g.name }}</span>
+      <Avatar :src="g.headshot" :label="g.name" cls="h-8 w-8 rounded-full" />
+      <span class="font-display text-base font-bold text-dark-text">{{ g.name }}</span>
       <img v-if="g.proLogo" :src="g.proLogo" alt="" @error="onLogoError" class="h-4 w-4 shrink-0 object-contain" />
       <span class="font-mono text-[11px] text-dark-textMuted">{{ g.pos }}</span>
       <ValueBadge :value="g.value" />
@@ -69,8 +69,10 @@ const partnerClass = (r: 'fair' | 'reach' | 'steal'): string =>
     <!-- GIVE -->
     <div v-for="(g, gi) in opp.give" :key="'v' + gi" class="flex items-center gap-2 px-4" :class="gi === 0 ? 'pt-1.5 pb-1' : 'pb-1'" :style="gi === opp.give.length - 1 ? 'padding-bottom:0.75rem' : ''">
       <span class="w-9 shrink-0 font-mono text-[10px] font-bold tracking-wider text-dark-textMuted">{{ gi === 0 ? 'GIVE' : '' }}</span>
-      <Avatar :src="g.headshot" :label="g.name" cls="h-6 w-6 rounded-full" />
-      <span class="text-sm font-semibold text-dark-textSecondary">{{ g.name }}</span>
+      <!-- A step quieter than GET on purpose: the card is a recommendation, and the player
+           arriving is its subject. Still raised in step with it so the row is legible. -->
+      <Avatar :src="g.headshot" :label="g.name" cls="h-7 w-7 rounded-full" />
+      <span class="text-[15px] font-semibold text-dark-textSecondary">{{ g.name }}</span>
       <img v-if="g.proLogo" :src="g.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
       <span class="font-mono text-[11px] text-dark-textMuted">{{ g.pos }}</span>
       <ValueBadge :value="g.value" />

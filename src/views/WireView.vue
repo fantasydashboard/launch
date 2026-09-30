@@ -31,7 +31,7 @@ const onLogoError = (e: Event) => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl px-4 py-6 space-y-3">
+  <div class="mx-auto max-w-5xl px-4 py-8 space-y-3">
     <!-- Page header -->
     <header class="space-y-1">
       <h1 class="font-display text-2xl font-bold text-dark-text">The Wire</h1>
@@ -117,8 +117,8 @@ const onLogoError = (e: Event) => {
           :key="h.key"
           class="mt-2 flex items-center gap-2 font-mono text-[11px]"
         >
-          <Avatar :src="h.headshot" :label="h.name" cls="h-6 w-6 rounded-full" />
-          <span class="font-semibold text-dark-text">{{ h.name }}</span>
+          <Avatar :src="h.headshot" :label="h.name" cls="h-8 w-8 rounded-full" />
+          <span class="truncate font-sans text-base font-semibold text-dark-text">{{ h.name }}</span>
           <img v-if="h.proLogo" :src="h.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
           <span class="text-dark-textMuted">{{ h.pos }}</span>
           <span v-if="h.why" class="text-dark-textMuted">· {{ h.why }}</span>
@@ -191,10 +191,10 @@ const onLogoError = (e: Event) => {
           <div
             v-for="s in vm.streamBoard.starters"
             :key="s.player.key"
-            class="mt-1.5 flex items-center gap-2 font-mono text-[11px]"
+            class="mt-1.5 flex items-center gap-2.5 py-1 font-mono text-[11px] sm:gap-3"
           >
-            <Avatar :src="s.headshot" :label="s.player.name" cls="h-6 w-6 rounded-full" />
-            <span class="font-semibold text-dark-text">{{ s.player.name }}</span>
+            <Avatar :src="s.headshot" :label="s.player.name" cls="h-8 w-8 rounded-full" />
+            <span class="truncate font-sans text-base font-semibold text-dark-text">{{ s.player.name }}</span>
             <img v-if="s.proLogo" :src="s.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
             <span class="text-dark-textMuted">{{ s.rationale }}</span>
             <span
@@ -211,10 +211,10 @@ const onLogoError = (e: Event) => {
           <div
             v-for="r in vm.streamBoard.relievers"
             :key="r.key"
-            class="mt-1.5 flex items-center gap-2 font-mono text-[11px]"
+            class="mt-1.5 flex items-center gap-2.5 py-1 font-mono text-[11px] sm:gap-3"
           >
-            <Avatar :src="r.headshot" :label="r.name" cls="h-6 w-6 rounded-full" />
-            <span class="font-semibold text-dark-text">{{ r.name }}</span>
+            <Avatar :src="r.headshot" :label="r.name" cls="h-8 w-8 rounded-full" />
+            <span class="truncate font-sans text-base font-semibold text-dark-text">{{ r.name }}</span>
             <img v-if="r.proLogo" :src="r.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
             <span class="text-dark-textMuted">{{ r.pos }}</span>
             <span v-if="r.trend >= 3" class="font-mono text-[9px] text-[#F2B33A]" title="rising ownership this week">▲{{ r.trend }}%</span>
@@ -231,7 +231,7 @@ const onLogoError = (e: Event) => {
           :key="d.key"
           class="mt-2 flex items-center gap-2 font-mono text-[11px]"
         >
-          <Avatar :src="d.headshot" :label="d.name" cls="h-6 w-6 rounded-full" />
+          <Avatar :src="d.headshot" :label="d.name" cls="h-8 w-8 rounded-full" />
           <span class="font-semibold text-dark-textSecondary">{{ d.name }}</span>
           <img v-if="d.proLogo" :src="d.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
           <span class="text-dark-textMuted">{{ d.pos }}</span>

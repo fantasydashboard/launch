@@ -82,8 +82,8 @@ const toneOf = (edge: number) =>
       <!-- Mine -->
       <div class="flex min-w-0 flex-1 items-center gap-2">
         <img v-if="s.mine?.headshot" :src="s.mine.headshot" :alt="s.mine.name" loading="lazy"
-             @error="onImgErr" class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" />
-        <span v-else class="h-7 w-7 shrink-0 rounded-full bg-dark-border"></span>
+             @error="onImgErr" class="ufd-face" />
+        <span v-else class="ufd-face"></span>
         <span class="min-w-0">
           <span class="block truncate text-sm"
                 :class="s.mine?.playsToday ? 'text-dark-text' : 'text-dark-textMuted/50'">
@@ -139,8 +139,8 @@ const toneOf = (edge: number) =>
           </span>
         </span>
         <img v-if="s.theirs?.headshot" :src="s.theirs.headshot" :alt="s.theirs.name" loading="lazy"
-             @error="onImgErr" class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" />
-        <span v-else class="h-7 w-7 shrink-0 rounded-full bg-dark-border"></span>
+             @error="onImgErr" class="ufd-face" />
+        <span v-else class="ufd-face"></span>
       </div>
     </div>
 

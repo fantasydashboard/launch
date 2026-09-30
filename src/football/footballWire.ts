@@ -9,7 +9,7 @@ import type { DepthPlayer } from '@/trades/positionalLandscape'
 import { lineupMarginal } from './lineupMarginal'
 import type { PlayerVor } from './footballVor'
 import { startablePositions } from '@/trades/rosterSlots'
-import { indifferenceTiers } from '@/football/indifferenceTiers'
+import { indifferenceTiers } from '@/lib/indifferenceTiers'
 import { canonicalPosition } from '@/trades/rosterSlots'
 
 /** A free agent joined to its VOR row (the Wire's currency). */

@@ -196,7 +196,7 @@ const injuredCount = computed(() =>
 </script>
 
 <template>
-  <div class="mx-auto max-w-4xl px-4 py-6">
+  <div class="mx-auto max-w-5xl px-4 py-6">
     <!-- Header -->
     <div class="mb-5 flex items-center gap-3">
       <img v-if="myTeamLogo" :src="myTeamLogo" alt="" @error="onLogoErr"

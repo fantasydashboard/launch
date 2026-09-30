@@ -107,6 +107,7 @@
           -->
           <div v-if="access.showsPaidColumns"
                class="mb-2 flex items-center gap-2.5 border-b border-dark-border/40 pb-1.5 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted/60 sm:gap-3">
+            <span class="w-5 shrink-0 sm:w-7" />
             <span class="h-7 w-7 shrink-0 sm:h-8 sm:w-8" />
             <span class="min-w-0 flex-1"></span>
             <span class="hidden w-9 shrink-0 text-right lg:block" title="Rest-of-season schedule rank at this player's position">ROS</span>
@@ -117,7 +118,7 @@
             <span class="w-11 shrink-0 text-right sm:w-14">VOR</span>
           </div>
 
-          <template v-for="row in visible" :key="'rk-' + row.playerKey">
+          <template v-for="(row, i) in visible" :key="'rk-' + row.playerKey">
             <!--
               THE TIER BREAK, at the volume it earns.
 
@@ -127,10 +128,18 @@
               it, while the same information is the loudest element on every card we publish.
               A product should not whisper its own differentiator.
             -->
-            <div v-if="row.tierBreak" class="flex items-center gap-3 pb-2 pt-4">
+<!--
+              The FIRST tier is labelled too. It never was, because the rule that draws these
+              lines fires on a CHANGE of tier and the top row changes from nothing — so the best
+              players on the board sat in an unnamed group and the first thing the reader met was
+              "tier 2", which reads as though tier 1 is missing. It carries no drop, because
+              there is nothing above it to have dropped from.
+            -->
+            <div v-if="row.tierBreak || i === 0" class="flex items-center gap-3 pb-2" :class="i === 0 ? 'pt-1' : 'pt-4'">
               <span class="h-px flex-1 bg-[#e69a4a]/30"></span>
               <span class="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-[#e69a4a]">
-                tier {{ row.tier }} &middot; &minus;{{ Math.round(row.tierDrop ?? 0) }} pts
+                <template v-if="i === 0">tier {{ row.tier }}</template>
+                <template v-else>tier {{ row.tier }} &middot; &minus;{{ Math.round(row.tierDrop ?? 0) }} pts</template>
               </span>
               <span class="h-px flex-1 bg-[#e69a4a]/30"></span>
             </div>
@@ -170,9 +179,17 @@
                     :class="mv(row.playerKey)!.dir === 'up' ? 'bg-[#7ee787]' : 'bg-[#FF5C5C]'"
                     :style="{ opacity: 0.25 + 0.75 * mv(row.playerKey)!.intensity }"
                     :title="`${mv(row.playerKey)!.dir === 'up' ? 'Up' : 'Down'} since last week`" />
+              <!--
+                HIS RANK, which this board was the only one of ours not to print. Reading it off
+                the row's position works until a tier line, a filter or the fold moves it, and
+                "who is WR12" is the question the page exists to answer. Narrow and muted on a
+                phone for the same reason every other fixed element here is: the name is what
+                they are all attributes of.
+              -->
+              <span class="ufd-rank">{{ i + 1 }}</span>
               <img v-if="row.headshot" :src="row.headshot" :alt="row.name" loading="lazy" @error="onImgErr"
-                   class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover sm:h-8 sm:w-8" />
-              <span v-else class="h-7 w-7 shrink-0 rounded-full bg-dark-border sm:h-8 sm:w-8" />
+                   class="ufd-face" />
+              <span v-else class="ufd-face" />
               <!--
                 The name carries the state, not just the star beside it.
 
@@ -185,9 +202,42 @@
                 badge is: who is claimable is what the pass sells, and a coloured name would
                 hand it to a reader who has not bought it just as surely as the badge would.
               -->
-              <span class="min-w-0 flex-1 truncate" :class="nameTone(row)">
-                <span v-if="access.scopedToLeague && row.owned" class="text-primary">★ </span>{{ row.name }}
-                <span v-if="active === 'ALL'" class="ml-1 font-mono text-[10px] text-dark-textMuted/70">{{ row.position }}</span>
+              <span class="min-w-0 flex-1" :class="nameTone(row)">
+                <span class="block truncate">
+                  <span v-if="access.scopedToLeague && row.owned" class="text-primary">★ </span>{{ row.name }}
+                  <span v-if="active === 'ALL'" class="ml-1 font-mono text-[10px] text-dark-textMuted/70">{{ row.position }}</span>
+                </span>
+                <!--
+                  LINE TWO, ON A PHONE ONLY.
+
+                  Sixteen of this row's twenty-two fixed columns hide below the breakpoints, so
+                  a phone was getting a rank, a face, a name and a VOR — every number that
+                  JUSTIFIES the rank was desktop-only, paid columns included. Vertical space is
+                  cheap here and horizontal is not, so the row becomes two lines rather than
+                  losing its evidence.
+
+                  Each stat carries its own label because the header row hides with its columns;
+                  an unlabelled strip of numbers on a phone is unreadable. Three of them, chosen
+                  as the ones that explain the number on the right — his rate, his schedule and
+                  his bye — plus the paid column when the reader has bought it, since that is
+                  the one thing he is owed on every device.
+                -->
+                <span v-if="ppgByKey[row.playerKey] !== undefined || difficultyFor(row.team, row.position) || byeByTeam[row.team ?? '']"
+                      class="mt-0.5 flex items-center gap-2.5 font-mono text-[10px] text-dark-textMuted/70 sm:hidden">
+                  <span v-if="ppgByKey[row.playerKey] !== undefined">
+                    <span class="text-dark-textMuted/50">ppg</span> {{ ppgByKey[row.playerKey].toFixed(1) }}
+                  </span>
+                  <span v-if="difficultyFor(row.team, row.position)"
+                        :class="sosTone(difficultyFor(row.team, row.position)!.ros)">
+                    <span class="text-dark-textMuted/50">sos</span> {{ difficultyFor(row.team, row.position)!.ros ?? '—' }}
+                  </span>
+                  <span v-if="byeByTeam[row.team ?? '']">
+                    <span class="text-dark-textMuted/50">bye</span> {{ byeByTeam[row.team!] }}
+                  </span>
+                  <span v-if="access.showsPaidColumns && row.free && addCost[row.playerKey]" class="text-[#2dd4bf]">
+                    <span class="text-[#2dd4bf]/60">add</span> +{{ addCost[row.playerKey].marginal.toFixed(1) }}
+                  </span>
+                </span>
               </span>
               <!--
                 Hidden on a phone, on the same argument the numeric columns are: the headshot

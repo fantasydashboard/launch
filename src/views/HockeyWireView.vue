@@ -8,7 +8,7 @@
 -->
 <template>
   <div class="min-h-screen bg-dark-bg px-4 py-8">
-    <div class="mx-auto max-w-3xl">
+    <div class="mx-auto max-w-5xl">
       <div class="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Free agents</div>
       <h1 class="mt-2 font-display text-3xl font-extrabold tracking-tight text-dark-text">
         The Wire
@@ -48,8 +48,8 @@
           <span class="w-8 shrink-0 text-right font-mono text-[11px] text-dark-textMuted/60">{{ i + 1 }}</span>
           <img v-if="row.player.headshot" :src="row.player.headshot" :alt="row.player.name"
                loading="lazy" @error="onImgErr"
-               class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" />
-          <span v-else class="h-7 w-7 shrink-0 rounded-full bg-dark-border" />
+               class="ufd-face" />
+          <span v-else class="ufd-face" />
 
           <span class="min-w-0 flex-1">
             <span class="block truncate">

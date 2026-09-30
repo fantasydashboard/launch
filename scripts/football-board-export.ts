@@ -77,7 +77,9 @@ const { vorByKey, loading } = useFootballVor({
   season: ref(String((state as any).season ?? '')),
   enabled: ref(true),
   keysAreSleeperIds: ref(true),
-  weeklyHorizon: 0,
+  /* MODE=week needs the weekly maps; the rest-of-season board explicitly does not fetch them,
+     which is why the default horizon is zero here as it is on the public page. */
+  weeklyHorizon: process.env.MODE === 'week' ? 1 : 0,
 })
 
 /* The composable loads asynchronously and there is no promise to await, so poll the flag it
@@ -102,13 +104,21 @@ for (const p of pool.value) {
 const board = buildRankingsBoard({
   entries, positions: [...PUBLIC_POSITIONS], weeksLeft: publicWeeksLeft(currentWeek),
 })
-const all = board.ALL ?? []
+/* MODE=week reorders on vorWeek — next week's edge over a startable body at the position —
+   rather than the rest-of-season value. Same pool, same scoring, same replacement machinery;
+   only the horizon changes. */
+const all = process.env.MODE === 'week'
+  ? [...(board.ALL ?? [])].sort((a: any, b: any) =>
+      (vorByKey.value[b.playerKey]?.vorWeek ?? -1e9) - (vorByKey.value[a.playerKey]?.vorWeek ?? -1e9))
+  : (board.ALL ?? [])
 process.stderr.write(`[export] priced=${entries.length} board=${all.length}\n`)
 
 const lines = ['Overall,Player,Position,Team,VOR']
 all.forEach((r: any, i: number) => {
   const nm = String(r.name).includes(',') ? `"${r.name}"` : r.name
-  lines.push(`${i + 1},${nm},${r.position},${r.team ?? ''},${Number(r.vorRos).toFixed(2)}`)
+  const v = process.env.MODE === 'week'
+    ? (vorByKey.value[r.playerKey]?.vorWeek ?? 0) : Number(r.vorRos)
+  lines.push(`${i + 1},${nm},${r.position},${r.team ?? ''},${Number(v).toFixed(2)}`)
 })
 const out = process.env.OUT ?? 'ours-ros.csv'
 const { writeFileSync } = await import('node:fs')

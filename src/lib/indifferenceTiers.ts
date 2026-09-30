@@ -1,5 +1,6 @@
 /**
- * Tiers that mean "these are the same player".
+ * Tiers that mean "these are the same player". SPORT-NEUTRAL: the rule knows nothing about
+ * football, and the threshold is supplied in whatever unit the board is ranked in.
  *
  * WHAT WAS WRONG. `assignTiers` decides how many tiers a list should have — one per five
  * players, capped at eight — and then cuts at exactly that many of the biggest gaps. On a
@@ -79,4 +80,56 @@ export function indifferenceTiers(
     out[row.playerKey] = tier
   }
   return out
+}
+
+
+/**
+ * The threshold for a board whose unit is NOT football points, as a fraction of the startable
+ * pool's own standard deviation.
+ *
+ * WHY A FRACTION OF SOMETHING, RATHER THAN A NUMBER. Hockey ranks in standard deviations across
+ * the scored categories, or in a points league on its own scoring weights; baseball and
+ * basketball will do the same. `INDIFFERENT_PTS_PER_WEEK` is a football number validated against
+ * a football board, and carrying it across unchanged would be asserting that one point a week of
+ * receiver is one unit of anything else. What ports is the RATIO it represents, not the number.
+ *
+ * WHY THE POOL'S SD, AND NOT THE SPREAD OF THE ROWS ON SCREEN. Our published tier cards scale by
+ * the spread across the ten names they show, which is sound for a card that always shows exactly
+ * ten. It does not survive a page: measured on our own week-4 board, football's threshold is
+ * 0.165 of the spread across the top ten, 0.098 across the top fifty and 0.070 across the top
+ * hundred and fifty — so a page offering 50 rows, 200 rows and a position filter would silently
+ * change what a tier means every time the reader changed the view. A pool's standard deviation
+ * is a property of the pool rather than of an arbitrary cut, so it does not move when the view
+ * does.
+ *
+ * WHERE 0.4 COMES FROM. It is football's own validated threshold, measured. On the week-4 board,
+ * one point a week over the fourteen remaining is 14 points of VOR, and the startable pool — the
+ * seats a league actually fills — has a standard deviation of 35.4, giving 0.396. The same
+ * measurement over an 8-team and a 12-team pool gives 0.390 and 0.393, so the ratio is a property
+ * of how fantasy value is distributed and not of one league's size.
+ *
+ * Football itself deliberately keeps its own constant rather than this derivation: it was checked
+ * by eye against a trusted analyst's board, which is better evidence than any ratio, and a number
+ * that reproduces it to within one percent is evidence FOR the ratio rather than a reason to
+ * replace what it was fitted to.
+ */
+export const INDIFFERENCE_SD_FRACTION = 0.4
+
+/**
+ * Indifference threshold for a board in an arbitrary unit.
+ *
+ * `values` is every ranked value on the board and `seats` how many of them a league actually
+ * starts — the pool is taken from the top of the board because the spread among players nobody
+ * rosters is not a fact about the decisions this page exists to support.
+ *
+ * Returns 0 for an empty or single-valued board, which `indifferenceTiers` reads as "every
+ * distinct value is its own tier" — the honest answer when there is nothing to measure against.
+ */
+export function indifferenceThreshold(values: number[], seats: number): number {
+  if (!values?.length) return 0
+  const pool = [...values].sort((a, b) => b - a).slice(0, Math.max(1, seats))
+  if (pool.length < 2) return 0
+  const mean = pool.reduce((a, b) => a + b, 0) / pool.length
+  const sd = Math.sqrt(pool.reduce((a, b) => a + (b - mean) ** 2, 0) / pool.length)
+  return INDIFFERENCE_SD_FRACTION * sd
 }

@@ -526,7 +526,17 @@ function fairness(myGain: number, theirGain: number): string {
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl px-4 py-6">
+  <!--
+    WIDTH FOLLOWS THE COLUMN COUNT, the rankings board's rule. This page is the wide end of it:
+    the lineup table carries a slot, a league rank, a face, a crest, a name, a bar and a points
+    total, and the analyzer and head-to-head sections below are two-column grids. 1024 is what
+    the rankings board and the League page use.
+
+    The CATEGORY trades page deliberately stays narrower — it stacks single opportunity cards
+    with four things on a row, and the same 1024 would strand them. Width is a consequence of
+    the content, so the two pages differing is the rule working rather than an inconsistency.
+  -->
+  <div class="mx-auto max-w-5xl px-4 py-8">
     <header class="mb-4">
       <h1 class="font-display text-2xl font-bold text-dark-text">Trades</h1>
       <p class="font-mono text-xs text-dark-textMuted">Deals that raise your projected points — and the other guy's too.</p>
@@ -601,17 +611,19 @@ function fairness(myGain: number, theirGain: number): string {
           <span class="font-mono text-[10px] text-dark-textMuted/70">projected points, rest of season · your starter vs every team's</span>
         </div>
         <div class="space-y-1.5 px-4 pb-4 pt-2">
-          <div v-for="(sl, i) in teamModel.slotRanks" :key="'slot-' + i" class="flex items-center gap-3">
+          <!-- CONTRAST, not scale: the name was 14px and the points total 12px mono, so the
+               column this table is ABOUT was the quietest thing on the row. -->
+          <div v-for="(sl, i) in teamModel.slotRanks" :key="'slot-' + i" class="flex items-center gap-3 py-0.5">
             <span class="w-10 shrink-0 font-mono text-xs text-dark-textMuted">{{ sl.slot }}</span>
-            <span class="w-12 shrink-0 text-right font-mono text-sm font-semibold"
+            <span class="w-12 shrink-0 text-right font-display text-base font-bold tabular-nums"
                   :class="sl.starterKey ? slotTone(sl.rank, sl.teams) : 'text-dark-textMuted/50'"
                   :title="sl.starterKey ? leagueRankLabel(sl.rank, sl.teams) : ''">
               {{ sl.starterKey ? ordinal(sl.rank) : '—' }}
             </span>
-            <img v-if="sl.starterKey && headshotOf(sl.starterKey)" :src="headshotOf(sl.starterKey)" :alt="sl.starterName" loading="lazy" @error="onLogoErr" class="h-6 w-6 shrink-0 rounded-full bg-dark-border object-cover" />
-            <span v-else class="h-6 w-6 shrink-0 rounded-full bg-dark-border" />
+            <img v-if="sl.starterKey && headshotOf(sl.starterKey)" :src="headshotOf(sl.starterKey)" :alt="sl.starterName" loading="lazy" @error="onLogoErr" class="ufd-face" />
+            <span v-else class="ufd-face" />
             <img v-if="sl.starterKey && proTeamOf(sl.starterKey)" :src="teamLogo(proTeamOf(sl.starterKey))" alt="" @error="onLogoErr" class="hidden h-3.5 w-3.5 shrink-0 object-contain sm:block" />
-            <span class="w-32 shrink-0 truncate text-sm sm:w-40"
+            <span class="w-32 shrink-0 truncate text-base sm:w-40"
                   :class="sl.starterKey ? 'text-dark-text' : 'italic text-dark-textMuted/60'">
               {{ sl.starterKey ? sl.starterName : 'open slot' }}
             </span>
@@ -619,7 +631,7 @@ function fairness(myGain: number, theirGain: number): string {
               <div v-if="sl.starterKey" class="absolute inset-y-0 left-0 rounded-full" :class="slotBar(sl.rank, sl.teams)"
                    :style="{ width: rankBar(sl.rank, sl.teams) + '%' }" />
             </div>
-            <span class="w-12 shrink-0 text-right font-mono text-xs text-dark-textMuted">
+            <span class="w-12 shrink-0 text-right font-display text-base font-bold tabular-nums text-dark-textSecondary sm:text-lg">
               {{ sl.starterKey ? round(sl.points) : '' }}
             </span>
           </div>

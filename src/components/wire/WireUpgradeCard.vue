@@ -45,7 +45,7 @@ const onLogoError = (e: Event) => {
       <!-- swap -> drop player -->
       <template v-if="u.drop">
         <span class="px-1 font-mono text-[11px] text-dark-textMuted">for</span>
-        <Avatar :src="u.drop.headshot" :label="u.drop.name" cls="h-6 w-6 rounded-full" />
+        <Avatar :src="u.drop.headshot" :label="u.drop.name" cls="h-8 w-8 rounded-full" />
         <span class="text-[13px] font-semibold text-dark-textSecondary">{{ u.drop.name }}</span>
         <img v-if="u.drop.proLogo" :src="u.drop.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
         <span class="font-mono text-[10px] text-dark-textMuted">{{ u.drop.pos }}</span>

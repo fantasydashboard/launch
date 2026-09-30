@@ -308,7 +308,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl px-4 py-6">
+  <div class="mx-auto max-w-5xl px-4 py-8">
     <header class="mb-4">
       <h1 class="font-display text-2xl font-bold text-dark-text">The Wire</h1>
       <p class="font-mono text-xs text-dark-textMuted">Your roster vs the wire &middot; rest of season</p>

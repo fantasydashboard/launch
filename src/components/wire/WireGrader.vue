@@ -95,8 +95,8 @@ const onLogoError = (e: Event) => {
               :class="addSel === p.key ? 'border-primary/50 bg-primary/15' : 'border-dark-border bg-dark-bg hover:border-dark-border/80'"
               @click="toggleAdd(p.key)"
             >
-              <Avatar :src="p.headshot" :label="p.name" cls="h-6 w-6 rounded-full" />
-              <span class="truncate text-[12px] font-semibold text-dark-text">{{ p.name }}</span>
+              <Avatar :src="p.headshot" :label="p.name" cls="h-8 w-8 rounded-full" />
+              <span class="truncate text-base font-semibold text-dark-text">{{ p.name }}</span>
               <img v-if="p.proLogo" :src="p.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
               <span class="font-mono text-[9px] text-dark-textMuted">{{ p.pos }}</span>
               <span v-if="(p.trend ?? 0) >= 3" class="shrink-0 font-mono text-[9px] text-[#F2B33A]" title="rising ownership this week">▲{{ p.trend }}%</span>
@@ -118,7 +118,7 @@ const onLogoError = (e: Event) => {
               :class="dropSel === p.key ? 'border-[#f26d6d]/50 bg-[#f26d6d]/10' : 'border-dark-border bg-dark-bg hover:border-dark-border/80'"
               @click="toggleDrop(p.key)"
             >
-              <Avatar :src="p.headshot" :label="p.name" cls="h-6 w-6 rounded-full" />
+              <Avatar :src="p.headshot" :label="p.name" cls="h-8 w-8 rounded-full" />
               <span class="truncate text-[12px] font-semibold text-dark-textSecondary">{{ p.name }}</span>
               <img v-if="p.proLogo" :src="p.proLogo" alt="" @error="onLogoError" class="h-3.5 w-3.5 shrink-0 object-contain" />
               <span class="font-mono text-[9px] text-dark-textMuted">{{ p.pos }}</span>

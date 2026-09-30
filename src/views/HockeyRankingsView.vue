@@ -124,14 +124,24 @@
           >{{ mode === 'points' ? 'PTS' : 'VALUE' }}</span>
         </div>
 
-        <div v-for="row in visible" :key="row.playerKey"
-             class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm text-dark-text last:border-0">
+        <template v-for="(row, i) in visible" :key="row.playerKey">
+        <!-- The cliff, at the volume the football board gives it: this is the one thing the
+             board knows that a ranked list does not. No drop on the first, because there is
+             nothing above it to have dropped from. -->
+        <div v-if="startsTier(i)" class="flex items-center gap-3 pb-2" :class="i === 0 ? 'pt-1' : 'pt-4'">
+          <span class="h-px flex-1 bg-[#e69a4a]/30"></span>
+          <span class="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-[#e69a4a]">
+            tier {{ tierOf(row.playerKey) }}<template v-if="i > 0"> &middot; &minus;{{ mode === 'points' ? Math.round(tierDrop(i)) : tierDrop(i).toFixed(1) }}</template>
+          </span>
+          <span class="h-px flex-1 bg-[#e69a4a]/30"></span>
+        </div>
+        <div class="flex items-center gap-2.5 border-b border-dark-border/40 py-1.5 text-sm text-dark-text last:border-0">
           <span class="w-8 shrink-0 text-right font-mono text-[11px] text-dark-textMuted/60">{{ row.rank }}</span>
           <img v-if="row.headshot" :src="row.headshot" :alt="row.name" loading="lazy" @error="onImgErr"
                class="h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover" />
           <span v-else class="h-7 w-7 shrink-0 rounded-full bg-dark-border" />
-          <span class="min-w-0 flex-1 truncate">
-            {{ row.name }}
+          <span class="min-w-0 flex-1">
+            <span class="block truncate">{{ row.name }}
             <span class="ml-1 font-mono text-[10px] text-dark-textMuted/70">{{ row.position }} · {{ row.team }}</span>
             <!--
               WHICH columns he wins, not just how many deviations he is worth in total. The sum
@@ -166,6 +176,21 @@
                   class="ml-1 font-mono text-[9px] uppercase text-[#e69a4a]"
                   :title="`Rated off only ${row.gamesPlayed} games — mostly last season and the league average`"
             >{{ row.gamesPlayed }} gp</span>
+            </span>
+            <!-- LINE TWO, ON A PHONE ONLY. Power-play time and scoring rate are what explain
+                 the value on the right, and both hide below the breakpoint — so the phone was
+                 getting a ranked list with none of its reasoning. Labelled, because the header
+                 row hides with its columns. -->
+            <span v-if="row.ppSecondsPerGame || row.pointsPerGame"
+                  class="mt-0.5 flex items-center gap-2.5 font-mono text-[10px] text-dark-textMuted/70 sm:hidden">
+              <span v-if="active !== 'G'">
+                <span class="text-dark-textMuted/50">pp</span> {{ (row.ppSecondsPerGame / 60).toFixed(1) }}
+              </span>
+              <span>
+                <span class="text-dark-textMuted/50">{{ active === 'G' ? 'gs' : 'pts/g' }}</span>
+                {{ active === 'G' ? row.pointsPerGame.toFixed(0) : row.pointsPerGame.toFixed(2) }}
+              </span>
+            </span>
           </span>
           <span v-if="active !== 'G'" class="hidden w-12 shrink-0 text-right font-mono text-[10px] text-dark-textSecondary sm:block">
             {{ (row.ppSecondsPerGame / 60).toFixed(1) }}
@@ -177,6 +202,7 @@
             {{ mode === 'points' ? Math.round(row.value) : row.value.toFixed(1) }}
           </span>
         </div>
+        </template>
 
         <button
           v-if="!expanded && pool.length > visible.length"
@@ -191,6 +217,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useHockeyRankings } from '@/composables/useHockeyRankings'
+import { indifferenceTiers, indifferenceThreshold } from '@/lib/indifferenceTiers'
 
 /*
  * `publicBoard` is set by the /hockeyrankings route: the free board, default scoring, the same
@@ -221,6 +248,41 @@ const pool = computed(() => {
     .map((r, i) => ({ ...r, rank: i + 1 }))
 })
 const visible = computed(() => pool.value.slice(0, expanded.value ? FULL_DEPTH : DEPTH))
+
+/*
+ * TIERS, THE SAME CLAIM THE FOOTBALL BOARD MAKES, IN THIS BOARD'S OWN UNIT.
+ *
+ * A tier is a set of players you should be indifferent between. That rule is sport-neutral; the
+ * THRESHOLD is not, because this page ranks in standard deviations across the scored categories
+ * (or in a points league on its own weights) and football's one-point-a-week means nothing here.
+ * `indifferenceThreshold` derives it from the startable pool's own spread — see the derivation
+ * in lib/indifferenceTiers.ts, where it is checked against football's hand-validated constant.
+ *
+ * Skaters and goalies are measured separately. A goalie's total is built from his own columns
+ * against his own pool, so pricing the two off one number would hand every goalie the spread of
+ * a population he is not in.
+ */
+const SKATER_SEATS = 168
+const GOALIE_SEATS = 24
+
+/* Tiered on the WHOLE column, not the fifty rows on screen: a tier that changed when the reader
+   pressed "show all" would not be a claim about players. */
+const tierByKey = computed<Record<string, number>>(() => {
+  const col = pool.value
+  if (!col.length) return {}
+  const values = col.map((r) => r.value)
+  const threshold = indifferenceThreshold(values, active.value === 'G' ? GOALIE_SEATS : SKATER_SEATS)
+  /* Weeks of 1: these values are already whole-season projections rather than a rest-of-season
+     total that shrinks as the year runs down, so there is nothing to divide by. */
+  return indifferenceTiers(col.map((r) => ({ playerKey: r.playerKey, value: r.value })), 1, threshold)
+})
+
+const tierOf = (key: string) => tierByKey.value[key] ?? 1
+/* The top row starts a tier as surely as any other — see the football board, where labelling
+   only the CHANGES left the best players in an unnamed group under a line reading "tier 2". */
+const startsTier = (i: number) =>
+  i === 0 || tierOf(visible.value[i].playerKey) !== tierOf(visible.value[i - 1].playerKey)
+const tierDrop = (i: number) => (visible.value[i - 1]?.value ?? 0) - (visible.value[i]?.value ?? 0)
 
 /*
  * ESPN's designations, shortened to what fits on a row. ACTIVE never arrives — the feed drops

@@ -22,6 +22,37 @@
 }
 
 @layer components {
+  /*
+   * THE PLAYER ROW: the parts that are genuinely the same everywhere.
+   *
+   * Every board on this site — rankings, This Week, Today, the Wire, My Team, Trades — is the
+   * same object: a face, a name, some quiet chips and one number the list is sorted by. They
+   * had drifted into a dozen scales, most of them a 14px name against 9 or 10px secondaries.
+   * That ratio of 1.4 to 1 is why a board read as one grey block with no entry point; the
+   * cards we publish run about 4 to 1, and the rankings board was rebuilt to match before the
+   * rest of the site followed it here.
+   *
+   * ONLY THE FACE AND THE RANK LIVE HERE. A first attempt also defined the row, the name, the
+   * sorted number and the meta chips, and not one board could use them: the value column
+   * carries a different width and a different colour rule on every board (VOR is signed, a
+   * weekly total is not, a category z is neither), and the row itself carries different
+   * columns by definition. Classes no caller can use are worse than none — they read as the
+   * source of truth while every board quietly does its own thing. A face is a face and a rank
+   * is an index, on every board; those two are shared, and the rest stays where it varies.
+   */
+
+  /* Below about 32px a face is not a face: it takes the space and returns no recognition at
+     all. One size down on a phone, where the name is what matters. */
+  .ufd-face {
+    @apply h-7 w-7 shrink-0 rounded-full bg-dark-border object-cover sm:h-8 sm:w-8;
+  }
+
+  /* His position on the board. Narrow and quiet, because it is an index and not a fact about
+     him — the number a reader is meant to carry away is the one the board is sorted by. */
+  .ufd-rank {
+    @apply w-5 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/60 sm:w-7 sm:text-[11px];
+  }
+
   .card {
     @apply bg-white dark:bg-dark-elevated rounded-card border border-gray-200 dark:border-dark-border shadow-soft;
     background: linear-gradient(135deg, rgba(19, 22, 32, 0.98), rgba(10, 12, 20, 0.98));
