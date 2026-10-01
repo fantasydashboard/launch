@@ -12,7 +12,9 @@ import { buildLeagueStandings, BOARD_SORTS, type StakesTag, type BoardSort } fro
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { seasonStakes } from '@/myteam/seasonStakes'
-import { buildTrajectory } from '@/league/powerTrajectory'
+import { buildTrajectory, type TalentSnapshot } from '@/league/powerTrajectory'
+import { readTalentSnapshots, recordTalentSnapshot } from '@/league/talentSnapshots'
+import { priorSnapshot, powerMovement, standingsMovement } from '@/league/rankMovement'
 import { simulatePlayoffOdds, buildLeverage, type OddsTeam, type GameLeverage } from '@/league/playoffOdds'
 import { buildHotCold } from '@/league/hotCold'
 import { buildStrengthOfSchedule } from '@/league/strengthOfSchedule'
@@ -32,7 +34,10 @@ const source = useActivePointsSource()
 const scoring = useLeagueScoring()
 const trajectory = usePowerTrajectory()
 
+const snapshots = ref<TalentSnapshot[]>([])
+
 function loadAll() {
+  snapshots.value = readTalentSnapshots(leagueStore.activeLeagueId ?? '')
   trajectory.load({ categoryForm: isCategory.value })
   if (isCategory.value) {
     cat.load()
@@ -347,28 +352,34 @@ const hotCold = computed(() => {
 // ── "THE RACE" TRAJECTORY CHART ───────────────────────────────────────────────
 
 /*
- * MOVEMENT SINCE LAST WEEK, from the standings race we already draw.
+ * MOVEMENT SINCE LAST WEEK — of whichever number the board is currently ranking by.
  *
- * `trajectoryView` carries each team's record rank for every completed week, so last week is
- * the point before the last one. Positive means CLIMBED — rank 1 is best, so a team going 3rd
- * to 1st moves +2 while the number falls, and printing the raw difference would show an arrow
- * pointing the wrong way.
+ * Positive means CLIMBED. Rank 1 is best, so a team going 3rd to 1st moves +2 while the
+ * number falls; printing the raw difference points the arrow the wrong way.
  *
- * This is standings movement in both board modes. Power-rank movement would need a weekly
- * snapshot of roster strength, which we do not keep — strength is recomputed from today's
- * rosters every time, so there is no "last week's power rank" to difference against. Worth
- * building, and not worth faking from a number that does not exist.
+ * The two boards move for different reasons and have to be differenced separately. Standings
+ * movement comes out of the results we already reconstruct week by week. Power-rank movement
+ * cannot — strength is recomputed from TODAY's rosters every time, so there is no historical
+ * power rank to look up. What there is instead is a weekly snapshot, written each time the
+ * page loads, which means the arrow is honest but only starts existing from a league's first
+ * visit onward. A team with no earlier snapshot gets no arrow rather than a zero, because
+ * "didn't move" and "we weren't watching yet" are not the same claim.
  */
-const moveByKey = computed<Record<string, number>>(() => {
-  const out: Record<string, number> = {}
-  const tv = trajectoryView.value
-  if (!tv) return out
-  for (const t of tv.teams) {
-    const pts = t.standings
-    if (pts.length < 2) continue
-    out[t.teamKey] = pts[pts.length - 2].rank - pts[pts.length - 1].rank
-  }
-  return out
+const standingsMoveByKey = computed(() => standingsMovement(trajectoryView.value?.teams ?? []))
+const priorTalentSnap = computed<TalentSnapshot | null>(() =>
+  priorSnapshot(snapshots.value, trajectory.currentWeek.value))
+const powerMoveByKey = computed(() =>
+  powerMovement(rankings.value?.rows ?? [], priorTalentSnap.value))
+
+const moveByKey = computed<Record<string, number>>(() =>
+  boardSort.value === 'talent' ? powerMoveByKey.value : standingsMoveByKey.value)
+
+/* The arrow's tooltip has to name the week it is measuring from, or an arrow that has been
+   sitting there for three weeks reads as this week's news. */
+const moveSinceLabel = computed(() => {
+  if (boardSort.value !== 'talent') return 'last week'
+  const w = priorTalentSnap.value?.week
+  return w ? `week ${w}` : 'last week'
 })
 
 /*
@@ -393,6 +404,82 @@ function toggleSort(k: SortKey) {
    something after a column sort. */
 watch(() => boardSort.value, () => { sortKey.value = 'rank' })
 
+/*
+ * DIVISIONS, for the leagues that are actually decided by them.
+ *
+ * A league with divisions does not race ten teams for five spots; it races five for two and
+ * five for two, and a flat table tells its manager the wrong story about who he is chasing.
+ * Off by default because most leagues have none, and the toggle only appears where the
+ * platform says there are some — a control that groups everything into one bucket is worse
+ * than no control.
+ *
+ * Keyed both ways on purpose. The store calls a Sleeper team `sleeper_4`; the pool, and so the
+ * standings, call the same team `4`. Mapping one and not the other is how the playoff schedule
+ * silently simulated a league of strangers earlier today.
+ */
+const divisionByKey = computed<Record<string, { n: number; name: string }>>(() => {
+  const out: Record<string, { n: number; name: string }> = {}
+  for (const t of (leagueStore.yahooTeams ?? []) as any[]) {
+    const n = Number(t?.division)
+    if (!n) continue
+    const entry = { n, name: String(t.division_name || `Division ${n}`) }
+    const raw = String(t.team_key ?? '')
+    if (raw) {
+      out[raw] = entry
+      if (raw.startsWith('sleeper_')) out[raw.slice('sleeper_'.length)] = entry
+    }
+    if (t.team_id) out[String(t.team_id)] = entry
+  }
+  return out
+})
+const hasDivisions = computed(() =>
+  new Set(Object.values(divisionByKey.value).map((d) => d.n)).size >= 2)
+const byDivision = ref(false)
+
+/**
+ * The board as one group, or one group per division.
+ *
+ * Always groups, so the row template below is written once. Ungrouped is a single nameless
+ * group — the alternative is two copies of a nine-column row drifting apart, which is how the
+ * header stopped lining up with its own table this morning.
+ */
+type BoardRow = (typeof standings.value)[number] & { divRank?: number }
+const standingGroups = computed(() => {
+  const rows: BoardRow[] = sortedStandings.value
+  if (!byDivision.value || !hasDivisions.value) return [{ name: '', rows }]
+  const groups = new Map<number, { name: string; rows: BoardRow[] }>()
+  const orphans: BoardRow[] = []
+  for (const r of rows) {
+    const d = divisionByKey.value[r.teamKey]
+    if (!d) { orphans.push(r); continue }
+    if (!groups.has(d.n)) groups.set(d.n, { name: d.name, rows: [] })
+    groups.get(d.n)!.rows.push(r)
+  }
+  const out = [...groups.entries()].sort((a, b) => a[0] - b[0]).map(([, g]) => g)
+  /* A team the platform never assigned is shown rather than dropped — a missing division is a
+     gap in what we know, not a reason to leave a manager off his own league's table. */
+  if (orphans.length) out.push({ name: 'Unassigned', rows: orphans })
+  /*
+   * The number beside a team in a division table is its place IN THAT DIVISION. Carrying the
+   * league-wide rank down a split table puts "1, 4, 5, 7, 9" in the East column, which reads as
+   * a sorting bug rather than as a standings position — and the division spot is the thing a
+   * division league is actually racing for.
+   *
+   * Two teams the league-wide standings call equal stay equal here; only a real separation
+   * advances the number.
+   */
+  for (const g of out) {
+    let place = 0
+    let prevLeagueRank: number | null = null
+    g.rows = g.rows.map((r, i) => {
+      if (prevLeagueRank === null || r.rank !== prevLeagueRank) place = i + 1
+      prevLeagueRank = r.rank
+      return { ...r, divRank: place }
+    })
+  }
+  return out
+})
+
 const sortedStandings = computed(() => {
   const rows = standings.value
   if (sortKey.value === 'rank') return rows
@@ -412,11 +499,34 @@ const sortedStandings = computed(() => {
   return [...rows].sort((a, b) => (sortDesc.value ? val(b) - val(a) : val(a) - val(b)))
 })
 
+/*
+ * Capture this week's power rank once the board is ready, overwriting the current week as
+ * rosters change. Nothing can reconstruct it later, so the only chance to record it is while
+ * it is the present tense.
+ */
+watch(
+  () => [rankings.value, trajectory.currentWeek.value] as const,
+  ([rk, week]) => {
+    const leagueId = leagueStore.activeLeagueId
+    if (!rk || !leagueId || !week) return
+    const ranks: Record<string, number> = {}
+    for (const r of rk.rows) ranks[r.teamKey] = r.strengthRank
+    snapshots.value = recordTalentSnapshot(String(leagueId), week, ranks)
+  },
+  { immediate: true },
+)
+
+/*
+ * The race follows the board. On standings it is the solid record line on its own; on power
+ * rankings the accrued talent snapshots come in as the dashed overlay, so the chart answers
+ * the question the reader is currently asking rather than the other one.
+ */
 const trajectoryView = computed(() => {
   const rows = rankings.value?.rows ?? []
   if (!rows.length) return null
   const meta = rows.map((r) => ({ teamKey: r.teamKey, teamName: r.teamName, isMe: r.teamKey === activeMyTeamKey.value, teamLogo: r.teamLogo }))
-  return buildTrajectory(trajectory.outcomes.value, [], meta) // [] = no talent overlay; League shows just the standings race
+  const snaps = boardSort.value === 'talent' ? snapshots.value : []
+  return buildTrajectory(trajectory.outcomes.value, snaps, meta)
 })
 
 // ── PLAYOFF ODDS ──────────────────────────────────────────────────────────────
@@ -464,6 +574,27 @@ const leagueSos = computed(() => {
   if (!sched.length || !rows.length) return []
   const teams = rows.map((r, i) => ({ teamKey: r.teamKey, teamName: r.teamName, strength: r.strength, standingRank: i + 1 }))
   return buildStrengthOfSchedule(teams, sched.map((w) => ({ matchups: w.matchups })))
+})
+
+/*
+ * THE NEXT FOUR, beside the whole road — the pair the player boards already show.
+ *
+ * Rest-of-season answers "is this team set up to finish well"; the next four answers "what is
+ * about to happen", and they routinely disagree: a soft month inside a brutal run home is a
+ * buy-now window, and the season-long number hides it completely. Same builder, shorter
+ * window, so the two can never be computed differently.
+ */
+const leagueSosNext4 = computed(() => {
+  const sched = trajectory.remainingSchedule.value.slice(0, 4)
+  const rows = standings.value
+  if (!sched.length || !rows.length) return []
+  const teams = rows.map((r, i) => ({ teamKey: r.teamKey, teamName: r.teamName, strength: r.strength, standingRank: i + 1 }))
+  return buildStrengthOfSchedule(teams, sched.map((w) => ({ matchups: w.matchups })))
+})
+const next4RankByKey = computed<Record<string, number>>(() => {
+  const out: Record<string, number> = {}
+  for (const r of leagueSosNext4.value) out[r.teamKey] = r.sosRank
+  return out
 })
 
 // Your own remaining-SOS rank (drives the playoff-path headline).
@@ -555,6 +686,17 @@ const oppName = (k: string) => teamInfo.value.get(k)?.name ?? 'Opponent'
 const teamLogoOf = (k: string) => teamInfo.value.get(k)?.logo
 
 // SOS difficulty bar colour by road tier (independent of standing): easy=green, hard=orange.
+/* The same thirds the bar is coloured on, as a text class — so the next-four figure and the
+   rest-of-season bar beside it can never disagree about what counts as an easy road. */
+const sosBarTone = (sosRank: number, total: number) => {
+  if (!sosRank) return 'text-dark-textMuted/50'
+  const easy = Math.max(1, Math.ceil(total / 3))
+  const hard = total - Math.max(1, Math.floor(total / 3)) + 1
+  if (sosRank <= easy) return 'text-primary'
+  if (sosRank >= hard) return 'text-[#e69a4a]'
+  return 'text-dark-textMuted'
+}
+
 const sosBarColor = (sosRank: number, total: number) => {
   const easy = Math.max(1, Math.ceil(total / 3))
   const hard = total - Math.max(1, Math.floor(total / 3)) + 1
@@ -684,6 +826,20 @@ const sosBarColor = (sosRank: number, total: number) => {
       </div>
 
       <!--
+        DIVISIONS, only where there are some. A toggle that groups a league into one bucket is
+        a control that does nothing, and a control that does nothing teaches a reader to stop
+        reading controls.
+      -->
+      <div v-if="hasDivisions && standings.length" class="mb-2 flex items-center gap-2 font-mono text-[10px]">
+        <span class="uppercase tracking-widest text-dark-textMuted">split by</span>
+        <button type="button"
+                class="rounded-lg border px-2 py-1 uppercase tracking-wider transition-colors"
+                :class="byDivision ? 'border-primary/40 bg-primary/10 text-primary' : 'border-dark-border text-dark-textMuted hover:text-dark-text'"
+                @click="byDivision = !byDivision">divisions</button>
+        <span class="text-dark-textMuted/70">a division league races for its own spots, not the league's</span>
+      </div>
+
+      <!--
         Ten rows all numbered 1 is a correct tie that reads as a broken column. Say which it
         is, rather than leaving the reader to work out whether the page is wrong.
       -->
@@ -756,20 +912,25 @@ const sosBarColor = (sosRank: number, total: number) => {
                     :class="sortKey === 'title' ? 'text-primary' : 'text-dark-textMuted'" @click="toggleSort('title')">title</button>
           </template>
         </div>
+        <template v-for="(grp, gi) in standingGroups" :key="'grp-' + gi">
+        <!-- One group when ungrouped, so the nine-column row below is written exactly once. -->
+        <div v-if="grp.name" class="px-4 py-1.5 font-mono text-[10px] uppercase tracking-widest text-primary/80">
+          {{ grp.name }}
+        </div>
         <div
-          v-for="(r, i) in sortedStandings"
+          v-for="(r, i) in grp.rows"
           :key="r.teamKey"
           class="px-4 py-2.5 flex items-center gap-3"
           :style="r.isMe ? { backgroundColor: primaryTint(6) } : {}"
         >
-          <!-- Position -->
-          <span class="w-6 shrink-0 text-center font-mono text-sm text-dark-textMuted">{{ r.rank }}</span>
+          <!-- Position: in-division when the table is split, league-wide otherwise. -->
+          <span class="w-6 shrink-0 text-center font-mono text-sm text-dark-textMuted">{{ grp.name ? r.divRank : r.rank }}</span>
 
           <!-- Which way they moved since last week. Positive is a CLIMB; rank 1 being best
                means the raw difference points the wrong way. -->
           <span class="w-7 shrink-0 text-center font-mono text-[10px]"
                 :class="(moveByKey[r.teamKey] ?? 0) > 0 ? 'text-primary' : (moveByKey[r.teamKey] ?? 0) < 0 ? 'text-[#FF5C5C]' : 'text-dark-textMuted/30'"
-                :title="moveByKey[r.teamKey] ? `${Math.abs(moveByKey[r.teamKey])} place${Math.abs(moveByKey[r.teamKey]) === 1 ? '' : 's'} ${moveByKey[r.teamKey] > 0 ? 'up' : 'down'} since last week` : 'no change since last week'">
+                :title="moveByKey[r.teamKey] ? `${Math.abs(moveByKey[r.teamKey])} place${Math.abs(moveByKey[r.teamKey]) === 1 ? '' : 's'} ${moveByKey[r.teamKey] > 0 ? 'up' : 'down'} since ${moveSinceLabel}` : (r.teamKey in moveByKey ? `no change since ${moveSinceLabel}` : 'no earlier reading to compare against')">
             <template v-if="(moveByKey[r.teamKey] ?? 0) > 0">▲{{ moveByKey[r.teamKey] }}</template>
             <template v-else-if="(moveByKey[r.teamKey] ?? 0) < 0">▼{{ -moveByKey[r.teamKey] }}</template>
             <template v-else>&middot;</template>
@@ -871,6 +1032,7 @@ const sosBarColor = (sosRank: number, total: number) => {
             </div>
           </template>
         </div>
+        </template>
       </div>
       <p class="mt-2 font-mono text-[10px] text-dark-textMuted">
         <template v-if="playoffOdds">proj = projected final record · % = playoff odds (rest-of-season sim)</template>
@@ -1030,9 +1192,23 @@ const sosBarColor = (sosRank: number, total: number) => {
         <span v-if="sosMovers.length" class="font-mono text-xs text-dark-textMuted">{{ sosMovers.length }} on the move</span>
       </div>
       <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
-        remaining road, easiest to hardest · <span class="text-primary">▲ soft finish</span> (may rise) · <span class="text-[#e69a4a]">⚠ tough finish</span> (may fade)
+        remaining road, easiest to hardest &middot; NEXT4 = the next four weeks only · <span class="text-primary">▲ soft finish</span> (may rise) · <span class="text-[#e69a4a]">⚠ tough finish</span> (may fade)
       </p>
       <div class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
+        <!--
+          Three ordinals in a row with nothing above them is a puzzle, not a table: the reader
+          has to work out that the first number is the road, the second is where they sit and
+          the third is the next month. Name them once at the top and the row reads itself.
+        -->
+        <div class="px-4 py-1.5 flex items-center gap-3">
+          <span class="w-5 shrink-0 text-center font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">ros</span>
+          <span class="w-5 shrink-0"></span>
+          <span class="min-w-0 flex-1"></span>
+          <span class="w-10 shrink-0 text-right font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">place</span>
+          <span class="hidden w-14 shrink-0 text-right font-mono text-[9px] uppercase tracking-wider text-dark-textMuted sm:block">next4</span>
+          <span class="w-16 shrink-0"></span>
+          <span class="w-24 shrink-0"></span>
+        </div>
         <div
           v-for="r in leagueSos"
           :key="r.teamKey"
@@ -1049,7 +1225,16 @@ const sosBarColor = (sosRank: number, total: number) => {
               :style="{ backgroundColor: primaryTint(16) }"
             >you</span>
           </span>
-          <span class="shrink-0 font-mono text-[10px] text-dark-textMuted">{{ ord(r.standingRank) }}</span>
+          <span class="w-10 shrink-0 text-right font-mono text-[10px] text-dark-textMuted">{{ ord(r.standingRank) }}</span>
+          <!-- NEXT FOUR, beside the whole road. 1 = easiest. The two disagreeing is the read:
+               a soft month inside a hard finish is a window, and the season-long figure hides
+               it entirely. -->
+          <span class="hidden w-14 shrink-0 text-right font-mono text-[10px] sm:block"
+                :class="sosBarTone(next4RankByKey[r.teamKey] ?? 0, r.total)"
+                :title="`Next four weeks: ${ord(next4RankByKey[r.teamKey] ?? 0)}-easiest road of ${r.total}`">
+            <template v-if="next4RankByKey[r.teamKey]">{{ ord(next4RankByKey[r.teamKey]) }}</template>
+            <template v-else>&mdash;</template>
+          </span>
           <!-- difficulty bar: longer = harder road -->
           <div class="shrink-0 w-16 h-1.5 relative overflow-hidden rounded-full" :style="{ backgroundColor: 'rgba(255,255,255,0.08)' }">
             <div
@@ -1073,7 +1258,17 @@ const sosBarColor = (sosRank: number, total: number) => {
     <section v-if="trajectoryView && trajectoryView.weeks.length >= 2" class="mb-8">
       <h2 class="font-display text-lg font-bold text-dark-text">The race</h2>
       <p class="mb-3 font-mono text-xs text-dark-textMuted">
-        Standings rank, week by week — rank 1 up top.
+        <!-- On the power board the dashed line only exists from this league's first visit
+             onward — roster strength cannot be reconstructed for a week nobody recorded — so
+             say that rather than let a one-week line read as a flat season. -->
+        <template v-if="boardSort === 'talent' && snapshots.length >= 2">
+          Standings rank solid, power rank dashed — week by week, rank 1 up top.
+        </template>
+        <template v-else-if="boardSort === 'talent'">
+          Standings rank, week by week — rank 1 up top. Power rank joins the chart once there
+          are two weeks of readings; this league has {{ snapshots.length }}.
+        </template>
+        <template v-else>Standings rank, week by week — rank 1 up top.</template>
       </p>
       <div class="rounded-xl border border-dark-border bg-dark-card p-3">
         <PowerTrajectoryChart :trajectory="trajectoryView" />

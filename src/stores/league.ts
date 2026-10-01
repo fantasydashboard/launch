@@ -1154,6 +1154,19 @@ export const useLeagueStore = defineStore('league', () => {
         wins: roster.settings?.wins || 0,
         losses: roster.settings?.losses || 0,
         ties: roster.settings?.ties || 0,
+        /*
+         * DIVISION, which Sleeper has carried all along and we were dropping. The roster says
+         * which one; the league's metadata names them (`division_1`, `division_2`, …). A
+         * league without divisions simply has neither, which reads as undefined rather than as
+         * a missing feature.
+         */
+        division: (roster.settings as { division?: number } | undefined)?.division,
+        division_name: (() => {
+          const d = (roster.settings as { division?: number } | undefined)?.division
+          if (!d) return undefined
+          const meta = (currentLeague.value as { metadata?: Record<string, string> } | null)?.metadata
+          return meta?.[`division_${d}`] || `Division ${d}`
+        })(),
         points_for: pointsFor,
         points_against: pointsAgainst,
         rank: index + 1, // Will be sorted below
