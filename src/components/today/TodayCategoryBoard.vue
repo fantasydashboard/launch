@@ -24,7 +24,19 @@ const props = defineProps<{
   daysRemaining: number
 }>()
 
-const PCT = (p: number) => `${Math.round(p * 100)}%`
+/**
+ * A win chance, never claiming certainty while games remain.
+ *
+ * A four-goal lead in a thin column rounds to 100%, and printing that tells a manager the
+ * column cannot be lost — on a Thursday, with three days of hockey still to play. The model
+ * does not believe that either; it is rounding that says it. Settled weeks are exempt, because
+ * then it is simply true.
+ */
+const PCT = (p: number) => {
+  const raw = p * 100
+  if (props.daysRemaining <= 0) return `${Math.round(raw)}%`
+  return `${Math.min(99, Math.max(1, Math.round(raw)))}%`
+}
 /* Totals span goals (single digits) and save percentage (three decimals), so the format has
    to follow the magnitude or one of the two columns reads as nonsense. */
 function fmt(v: number): string {

@@ -52,14 +52,26 @@ export type Availability = 'out' | 'doubtful' | 'ok'
 
 /* Matched on the whole token, not a prefix: "DTD" must not be swallowed by a rule meant for
    "DL", and DAY_TO_DAY must not match the day-count lists. */
-const OUT_STATUS = /^(OUT|IR|IL\d*|IL|DL|TEN_DAY_DL|FIFTEEN_DAY_DL|SIXTY_DAY_DL|SUSPENSION|NA|PUP|NFI)$/i
+const OUT_STATUS = /^(OUT|IR|IR-?L?T?I?R?|IL\d*|IL|DL|TEN_DAY_DL|FIFTEEN_DAY_DL|SIXTY_DAY_DL|SUSPENSION|NA|PUP|NFI)$/i
 const DOUBTFUL_STATUS = /^(DAY_TO_DAY|DTD|DOUBTFUL|QUESTIONABLE|GTD)$/i
+/*
+ * THE SAME DESIGNATIONS SPELLED OUT, because a feed may hand us either.
+ *
+ * Yahoo publishes both `status` ("IR") and `status_full` ("Injured Reserve"), and our free-agent
+ * parser was keeping the second. Neither "INJURED RESERVE" nor "NOT ACTIVE" matches the token
+ * rules above, so both fell through to the unrecognised-means-doubtful branch — and a player on
+ * injured reserve was ranked as a merely-questionable START, at a 0.6 discount, on tonight's
+ * board. He appeared as a top free-agent add. The parser is fixed to keep the abbreviation, and
+ * these exist so that no OTHER caller holding the long form can be bitten the same way.
+ */
+const OUT_PHRASE = /^(INJURED RESERVE|INJURED_RESERVE|NOT ACTIVE|NOT_ACTIVE|LONG TERM INJURED RESERVE|SUSPENDED|PHYSICALLY UNABLE TO PERFORM|NON[- ]FOOTBALL INJURY)$/i
+const DOUBTFUL_PHRASE = /^(DAY TO DAY|GAME TIME DECISION)$/i
 
 export function availability(status: string | undefined | null): Availability {
   const s = String(status ?? '').trim().toUpperCase()
   if (!s || s === 'ACTIVE') return 'ok'
-  if (OUT_STATUS.test(s)) return 'out'
-  if (DOUBTFUL_STATUS.test(s)) return 'doubtful'
+  if (OUT_STATUS.test(s) || OUT_PHRASE.test(s)) return 'out'
+  if (DOUBTFUL_STATUS.test(s) || DOUBTFUL_PHRASE.test(s)) return 'doubtful'
   /* An unrecognised designation is a designation: something is wrong with him and we do not
      know what. Treated as doubtful rather than fine, because the cost of starting a man who
      cannot play is larger than the cost of ranking a healthy one slightly low. */

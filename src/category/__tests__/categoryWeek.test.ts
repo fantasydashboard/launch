@@ -87,3 +87,52 @@ describe('buildCategoryWeek', () => {
     expect(buildCategoryWeek({ ...base, cats: [] }).cats).toEqual([])
   })
 })
+
+describe('what is worth chasing is what you can actually move', () => {
+  const base = {
+    myStats: {} as Record<string, number>,
+    oppStats: {} as Record<string, number>,
+    oppRemaining: {} as Record<string, number>,
+    days: 4,
+    format: 'each' as const,
+    bodies: 10,
+  }
+
+  /*
+   * THE REGRESSION, from a real league. Ranked by unitValue alone, shutouts led "spend tonight
+   * on" — one shutout swings the column, so its per-unit worth is enormous. But a goalie
+   * produces about a third of one across a whole week, while the same roster puts ninety shots
+   * on net. The board underneath, which prices what players actually produce, was recommending
+   * shooters at the same time. The chase list was the half that was wrong.
+   */
+  it('ranks a column you can move above one you cannot, however decisive a unit is', () => {
+    const week = buildCategoryWeek({
+      ...base,
+      cats: [
+        { key: 'SHO', label: 'SHO', lowerIsBetter: false, isRatio: false },
+        { key: 'SOG', label: 'SOG', lowerIsBetter: false, isRatio: false },
+      ],
+      myStats: { SHO: 0, SOG: 29 },
+      oppStats: { SHO: 0, SOG: 30 },
+      myRemaining: { SHO: 0.3, SOG: 90 },
+      oppRemaining: { SHO: 0.3, SOG: 90 },
+    })
+    expect(week.worthChasing[0]).toBe('SOG')
+  })
+
+  /* A column with nothing left to produce cannot be chased at all, whatever it is worth. */
+  it('drops a column with no production left to come', () => {
+    const week = buildCategoryWeek({
+      ...base,
+      cats: [
+        { key: 'SHO', label: 'SHO', lowerIsBetter: false, isRatio: false },
+        { key: 'SOG', label: 'SOG', lowerIsBetter: false, isRatio: false },
+      ],
+      myStats: { SHO: 0, SOG: 29 },
+      oppStats: { SHO: 0, SOG: 30 },
+      myRemaining: { SHO: 0, SOG: 90 },
+      oppRemaining: { SHO: 0, SOG: 90 },
+    })
+    expect(week.worthChasing).toEqual(['SOG'])
+  })
+})

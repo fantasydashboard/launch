@@ -92,8 +92,19 @@ export function parseFreeAgentPage(data: any): any[] {
         percentOwned = parseFloat(item.percent_owned.value || '0')
         percentDelta = parseFloat(item.percent_owned.delta || '0')
       }
+      /*
+       * THE ABBREVIATION, NOT THE SENTENCE. Yahoo sends both: `status` is "IR" / "NA" / "DTD",
+       * `status_full` is "Injured Reserve" / "Not Active". This used to prefer the long form,
+       * and availability() matches designations as whole tokens — so "INJURED RESERVE" matched
+       * nothing, fell through to its unrecognised-means-doubtful branch, and a man on injured
+       * reserve was priced as questionable and ranked among tonight's best free-agent adds.
+       * The long form is kept only when there is no abbreviation to use.
+       */
       if (item?.status) status = item.status
-      if (item?.status_full) status = item.status_full || status
+      /* `status` and `status_full` arrive as SEPARATE entries in this array, so an else-branch
+         here guards nothing — it only skips the long form within its own item, and the long
+         form then overwrote the abbreviation set by an earlier one. Guard on what we HAVE. */
+      else if (item?.status_full && !status) status = item.status_full
       if (item?.injury_note) injuryNote = item.injury_note
     }
 

@@ -111,3 +111,40 @@ describe('collectFreeAgents', () => {
     expect(got).toHaveLength(25)
   })
 })
+
+/** The same shape, with Yahoo's two injury fields present. */
+function pageWithStatus(status?: string, statusFull?: string) {
+  const entry: Record<string, unknown>[] = [
+    { player_key: '453.p.9' },
+    { player_id: '9' },
+    { name: { full: 'Jason Zucker' } },
+    { editorial_team_abbr: 'BUF' },
+    { display_position: 'LW' },
+  ]
+  if (status !== undefined) entry.push({ status })
+  if (statusFull !== undefined) entry.push({ status_full: statusFull })
+  return { fantasy_content: { league: [{}, { players: { count: 1, 0: { player: [entry] } } }] } }
+}
+
+describe('parseFreeAgentPage injury status', () => {
+  /*
+   * THE REGRESSION. This preferred `status_full`, and availability() matches designations as
+   * whole tokens — "Injured Reserve" matches none of them, so it fell through to the
+   * unrecognised-means-doubtful branch and a player on IR was ranked among tonight's best
+   * free-agent adds at a 0.6 discount instead of being left off the board.
+   */
+  it('keeps the abbreviation when Yahoo sends both', () => {
+    const [p] = parseFreeAgentPage(pageWithStatus('IR', 'Injured Reserve'))
+    expect(p.status).toBe('IR')
+  })
+
+  it('falls back to the long form when there is no abbreviation', () => {
+    const [p] = parseFreeAgentPage(pageWithStatus(undefined, 'Injured Reserve'))
+    expect(p.status).toBe('Injured Reserve')
+  })
+
+  it('leaves a healthy player with no designation at all', () => {
+    const [p] = parseFreeAgentPage(pageWithStatus())
+    expect(p.status).toBe('')
+  })
+})

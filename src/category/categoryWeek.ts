@@ -103,10 +103,27 @@ export function buildCategoryWeek(input: {
     })),
   })
 
-  const best = state.reduce((m, c) => Math.max(m, c.unitValue), 0)
+  /*
+   * WHAT A COLUMN IS WORTH CHASING IS NOT WHAT ONE UNIT OF IT IS WORTH.
+   *
+   * This ranked columns by unitValue alone, and unitValue is the value of ONE unit — so
+   * shutouts came out top of "spend tonight on" in a real league. A shutout is decisive and a
+   * goalie delivers about 0.08 of one per start, which makes it advice nobody can act on; the
+   * ranked board underneath, which prices what players ACTUALLY produce, was meanwhile full of
+   * shooters. One screen telling a manager to chase shutouts and then recommending shooters is
+   * not two opinions, it is a contradiction, and the chase list was the wrong half.
+   *
+   * So a column is ranked by the movement still available in it: what one unit is worth times
+   * how many units your side is still expected to produce. Shots are worth little each and
+   * there are ninety of them left; shutouts are worth a great deal each and there are none
+   * coming. Any constant factor (days, bodies) is common to every column and cancels out of
+   * the ordering, so the expected remaining total is exactly the right quantity.
+   */
+  const movable = (c: CatState) => c.unitValue * Math.max(0, Number(myRemaining[c.key]) || 0)
+  const best = state.reduce((m, c) => Math.max(m, movable(c)), 0)
   const worthChasing = state
-    .filter((c) => c.unitValue > 0 && best > 0 && c.unitValue >= CHASE_FLOOR * best)
-    .sort((a, b) => b.unitValue - a.unitValue)
+    .filter((c) => movable(c) > 0 && best > 0 && movable(c) >= CHASE_FLOOR * best)
+    .sort((a, b) => movable(b) - movable(a))
     .map((c) => c.key)
 
   return {

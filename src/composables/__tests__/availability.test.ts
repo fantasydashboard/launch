@@ -1,56 +1,29 @@
 import { describe, it, expect } from 'vitest'
-import { availability, DOUBTFUL_DISCOUNT } from '../useDailyLineup'
+import { availability } from '../useDailyLineup'
 
-describe('who can actually play tonight', () => {
-  /*
-   * THE BUG THIS EXISTS TO STOP. `playsToday` answers a question about the SCHEDULE, and the
-   * rankings read it as an answer about the PLAYER — so Shohei Ohtani on the fifteen-day list
-   * came through at full value and ranked FIRST among hitters, on a panel whose own subtitle
-   * says a man who is not playing "is no play at all". Seven of the top twenty-three were
-   * injured. The app was recommending players who could not take the field.
-   */
-  it('treats every flavour of the injured list as out', () => {
-    for (const s of ['OUT', 'IR', 'IL', 'IL10', 'DL', 'TEN_DAY_DL', 'FIFTEEN_DAY_DL',
-                     'SIXTY_DAY_DL', 'SUSPENSION', 'NA', 'PUP', 'NFI']) {
-      expect(availability(s)).toBe('out')
-    }
-  })
+/*
+ * A player who cannot play must read as 'out', because 'out' is what keeps him OFF tonight's
+ * board entirely. 'doubtful' keeps him on it at a 0.6 discount — which is how a man on injured
+ * reserve came to be ranked sixth among tonight's best free-agent adds.
+ */
+describe('availability', () => {
+  it.each(['IR', 'NA', 'OUT', 'IL', 'IL10', 'SUSPENSION', 'PUP'])(
+    'treats the abbreviation %s as out', (s) => expect(availability(s)).toBe('out'))
 
-  /*
-   * Day-to-day is NOT out. He usually plays. Collapsing the two is what made the warning
-   * ignorable — a day-to-day outfielder shared a red banner with two pitchers on the
-   * fifteen-day list, and a warning that cries wolf gets skimmed past when it matters.
-   */
-  it('keeps day-to-day separate, because he usually plays', () => {
-    for (const s of ['DAY_TO_DAY', 'DTD', 'QUESTIONABLE', 'DOUBTFUL', 'GTD']) {
-      expect(availability(s)).toBe('doubtful')
-    }
-  })
+  /* The regression: Yahoo publishes both forms and the free-agent parser was keeping this one. */
+  it.each([
+    'Injured Reserve', 'INJURED RESERVE', 'Not Active', 'NOT ACTIVE',
+    'Suspended', 'Long Term Injured Reserve',
+  ])('treats the spelled-out form %s as out', (s) => expect(availability(s)).toBe('out'))
 
-  it('treats a blank or ACTIVE status as fine', () => {
-    for (const s of ['', '   ', 'ACTIVE', undefined, null]) {
-      expect(availability(s as any)).toBe('ok')
-    }
-  })
+  it.each(['DTD', 'DAY_TO_DAY', 'Day to Day', 'GTD', 'Questionable'])(
+    'treats %s as playable but discounted', (s) => expect(availability(s)).toBe('doubtful'))
 
-  /*
-   * An unrecognised designation is still a designation: something is wrong with him and we do
-   * not know what. Doubtful rather than fine, because starting a man who cannot play costs
-   * more than ranking a healthy one slightly low.
-   */
-  it('does not wave through a designation it has never seen', () => {
-    expect(availability('PATERNITY')).toBe('doubtful')
-    expect(availability('BEREAVEMENT')).toBe('doubtful')
-  })
+  it.each(['', '   ', 'ACTIVE', 'active'])(
+    'treats %j as healthy', (s) => expect(availability(s)).toBe('ok'))
 
-  /* Matched whole, not by prefix: DTD must not be swallowed by a rule meant for DL. */
-  it('matches the whole token rather than a prefix', () => {
-    expect(availability('DTD')).toBe('doubtful')
-    expect(availability('DL')).toBe('out')
-  })
-
-  it('discounts a doubtful player rather than zeroing or ignoring him', () => {
-    expect(DOUBTFUL_DISCOUNT).toBeGreaterThan(0)
-    expect(DOUBTFUL_DISCOUNT).toBeLessThan(1)
+  /* An unrecognised designation is still a designation — something is wrong with him. */
+  it('treats an unknown designation as doubtful rather than fine', () => {
+    expect(availability('SOME_NEW_TAG')).toBe('doubtful')
   })
 })

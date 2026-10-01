@@ -115,9 +115,21 @@ const needRankings = useCategoryRankings({
 /* One source for the rows and one for the label, so the number can never be described in
    units it is not in. */
 const rankingRows = computed(() => needRankings.rows.value ?? daily.rankings.value)
+/*
+ * THE UNITS DEPEND ON THE FORMAT, and saying the wrong one is worse than saying nothing.
+ *
+ * scoreLine sums (units he adds) x (what a unit is worth to the objective). In a
+ * most-categories league each column is first weighted by how often it DECIDES the week, so
+ * the sum really is week win probability. In a total-categories league every column is its own
+ * win and carries equal weight, so the same sum is expected COLUMNS gained — a bigger number
+ * measuring a different thing. Calling both "win chance" would have overstated the second by
+ * roughly the number of live columns.
+ */
 const rankingLabel = computed(() =>
   needRankings.rows.value
-    ? 'win chance added tonight, in points'
+    ? categoryWeek.week.value?.format === 'most'
+      ? 'week win chance added tonight, in points'
+      : 'column win chance added tonight, summed over the week'
     : isCategoryLeague.value
       ? 'category value tonight'
       : 'projected points tonight')
