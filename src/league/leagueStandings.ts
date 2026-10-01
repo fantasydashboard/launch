@@ -34,7 +34,6 @@ export const BOARD_SORTS: { key: BoardSort; label: string; hint: string }[] = [
    */
   { key: 'record', label: 'Standings', hint: "what you've banked" },
   { key: 'talent', label: 'Power Rankings', hint: 'the roster you own from here' },
-  { key: 'allplay', label: 'All-play', hint: "your record if you'd played every team, every week" },
 ]
 
 export interface StandingRow {

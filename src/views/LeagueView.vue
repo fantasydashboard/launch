@@ -346,6 +346,71 @@ const hotCold = computed(() => {
 
 // ── "THE RACE" TRAJECTORY CHART ───────────────────────────────────────────────
 
+/*
+ * MOVEMENT SINCE LAST WEEK, from the standings race we already draw.
+ *
+ * `trajectoryView` carries each team's record rank for every completed week, so last week is
+ * the point before the last one. Positive means CLIMBED — rank 1 is best, so a team going 3rd
+ * to 1st moves +2 while the number falls, and printing the raw difference would show an arrow
+ * pointing the wrong way.
+ *
+ * This is standings movement in both board modes. Power-rank movement would need a weekly
+ * snapshot of roster strength, which we do not keep — strength is recomputed from today's
+ * rosters every time, so there is no "last week's power rank" to difference against. Worth
+ * building, and not worth faking from a number that does not exist.
+ */
+const moveByKey = computed<Record<string, number>>(() => {
+  const out: Record<string, number> = {}
+  const tv = trajectoryView.value
+  if (!tv) return out
+  for (const t of tv.teams) {
+    const pts = t.standings
+    if (pts.length < 2) continue
+    out[t.teamKey] = pts[pts.length - 2].rank - pts[pts.length - 1].rank
+  }
+  return out
+})
+
+/*
+ * SORTING THE TABLE ITSELF, which retires a toggle.
+ *
+ * "Rank by" offered Standings / Power Rankings / All-play, and all-play was there because the
+ * column could not be sorted any other way. Columns that sort make that a property of the
+ * table rather than a third mode to explain — so all-play comes out of the toggle and stays as
+ * a column you can click. The two that remain are genuinely different BOARDS: what you banked
+ * against what you own, which is the distinction the page exists to draw.
+ */
+type SortKey = 'rank' | 'record' | 'allplay' | 'talent' | 'proj' | 'playoff' | 'title'
+const sortKey = ref<SortKey>('rank')
+const sortDesc = ref(true)
+function toggleSort(k: SortKey) {
+  if (sortKey.value === k) { sortDesc.value = !sortDesc.value; return }
+  sortKey.value = k
+  /* Best-first on the way in, whichever direction that happens to be for the column. */
+  sortDesc.value = k !== 'rank'
+}
+/* Reverting to 'rank' follows whichever board the reader is on, so the toggle still means
+   something after a column sort. */
+watch(() => boardSort.value, () => { sortKey.value = 'rank' })
+
+const sortedStandings = computed(() => {
+  const rows = standings.value
+  if (sortKey.value === 'rank') return rows
+  const odds = (k: string) => oddsByKey.value.get(k)
+  const val = (r: typeof rows[number]): number => {
+    switch (sortKey.value) {
+      case 'record': return r.wins + 0.5 * r.ties
+      case 'allplay': { const a = allPlayFor(r.teamKey); return a ? a.wins + 0.5 * (a.ties ?? 0) : -1 }
+      case 'talent': return r.strength
+      case 'proj': return odds(r.teamKey)?.projWins ?? -1
+      case 'playoff': return odds(r.teamKey)?.playoffPct ?? -1
+      case 'title': return odds(r.teamKey)?.titlePct ?? -1
+      default: return 0
+    }
+  }
+  return [...rows].sort((a, b) => (sortDesc.value ? val(b) - val(a) : val(a) - val(b)))
+})
+
 const trajectoryView = computed(() => {
   const rows = rankings.value?.rows ?? []
   if (!rows.length) return null
@@ -613,7 +678,6 @@ const sosBarColor = (sosRank: number, total: number) => {
           <span :class="boardSort === 'talent' ? 'text-dark-textSecondary' : ''">power rankings = the roster you own from here</span>
           <template v-if="allPlayReadable">
             <span class="text-dark-border/60"> &middot; </span>
-            <span :class="boardSort === 'allplay' ? 'text-dark-textSecondary' : ''">all-play = luck removed</span>
           </template>
         </span>
       </div>
@@ -645,22 +709,34 @@ const sosBarColor = (sosRank: number, total: number) => {
           <span class="h-8 w-8 shrink-0" />
           <!-- spacer: name column -->
           <span class="min-w-0 flex-1" />
-          <!-- label over text cluster -->
-          <span class="shrink-0 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">
-            <template v-if="playoffOdds">REC · TALENT · PROJ</template>
-            <template v-else>REC · TALENT</template>
-          </span>
-          <!-- label over bar/% column -->
+          <!--
+            REAL COLUMNS, because the old row was not one.
+
+            Record, all-play, talent rank, the two luck notes and the projected record were a
+            run-on sentence of mono text at variable positions, so nothing lined up down the
+            page and comparing two teams meant reading two paragraphs. Every fact now owns a
+            column at a fixed width, which is the whole reason a table beats a list.
+
+            The headers sort. That is what retires the third "rank by" option: all-play was a
+            mode only because the column could not be clicked.
+          -->
+          <button type="button" class="w-14 shrink-0 text-right font-mono text-[9px] uppercase tracking-wider transition-colors hover:text-dark-text"
+                  :class="sortKey === 'record' ? 'text-primary' : 'text-dark-textMuted'" @click="toggleSort('record')">rec</button>
+          <button type="button" class="hidden w-16 shrink-0 text-right font-mono text-[9px] uppercase tracking-wider transition-colors hover:text-dark-text sm:block"
+                  :class="sortKey === 'allplay' ? 'text-primary' : 'text-dark-textMuted'" @click="toggleSort('allplay')">all-play</button>
+          <button type="button" class="w-20 shrink-0 text-right font-mono text-[9px] uppercase tracking-wider transition-colors hover:text-dark-text"
+                  :class="sortKey === 'talent' ? 'text-primary' : 'text-dark-textMuted'" @click="toggleSort('talent')">talent</button>
           <template v-if="playoffOdds">
-            <span class="shrink-0 w-28 text-right font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">PLAYOFF ODDS</span>
-            <span class="hidden w-9 shrink-0 text-right font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70 sm:inline">TITLE</span>
-          </template>
-          <template v-else>
-            <span class="hidden sm:block shrink-0 w-36 text-right font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">ROSTER TALENT</span>
+            <button type="button" class="hidden w-14 shrink-0 text-right font-mono text-[9px] uppercase tracking-wider transition-colors hover:text-dark-text md:block"
+                    :class="sortKey === 'proj' ? 'text-primary' : 'text-dark-textMuted'" @click="toggleSort('proj')">proj</button>
+            <button type="button" class="w-24 shrink-0 text-right font-mono text-[9px] uppercase tracking-wider transition-colors hover:text-dark-text"
+                    :class="sortKey === 'playoff' ? 'text-primary' : 'text-dark-textMuted'" @click="toggleSort('playoff')">playoff</button>
+            <button type="button" class="hidden w-10 shrink-0 text-right font-mono text-[9px] uppercase tracking-wider transition-colors hover:text-dark-text sm:block"
+                    :class="sortKey === 'title' ? 'text-primary' : 'text-dark-textMuted'" @click="toggleSort('title')">title</button>
           </template>
         </div>
         <div
-          v-for="(r, i) in standings"
+          v-for="(r, i) in sortedStandings"
           :key="r.teamKey"
           class="px-4 py-2.5 flex items-center gap-3"
           :style="r.isMe ? { backgroundColor: primaryTint(6) } : {}"
@@ -668,77 +744,67 @@ const sosBarColor = (sosRank: number, total: number) => {
           <!-- Position -->
           <span class="w-6 shrink-0 text-center font-mono text-sm text-dark-textMuted">{{ r.rank }}</span>
 
+          <!-- Which way they moved since last week. Positive is a CLIMB; rank 1 being best
+               means the raw difference points the wrong way. -->
+          <span class="w-7 shrink-0 text-center font-mono text-[10px]"
+                :class="(moveByKey[r.teamKey] ?? 0) > 0 ? 'text-primary' : (moveByKey[r.teamKey] ?? 0) < 0 ? 'text-[#FF5C5C]' : 'text-dark-textMuted/30'"
+                :title="moveByKey[r.teamKey] ? `${Math.abs(moveByKey[r.teamKey])} place${Math.abs(moveByKey[r.teamKey]) === 1 ? '' : 's'} ${moveByKey[r.teamKey] > 0 ? 'up' : 'down'} since last week` : 'no change since last week'">
+            <template v-if="(moveByKey[r.teamKey] ?? 0) > 0">▲{{ moveByKey[r.teamKey] }}</template>
+            <template v-else-if="(moveByKey[r.teamKey] ?? 0) < 0">▼{{ -moveByKey[r.teamKey] }}</template>
+            <template v-else>&middot;</template>
+          </span>
+
           <!-- Logo (falls back to initials) -->
           <TeamAvatar :name="r.teamName" :logo="r.teamLogo" :size="32" />
 
           <!-- Name + YOU badge + stakes -->
           <span class="min-w-0 flex-1 flex items-center gap-2 overflow-hidden">
             <span class="truncate text-sm font-semibold text-dark-text">{{ r.teamName }}</span>
-            <span
-              v-if="r.isMe"
-              class="shrink-0 rounded px-1 font-mono text-[9px] uppercase text-primary"
-              :style="{ backgroundColor: primaryTint(16) }"
-            >you</span>
-            <span
-              v-if="r.stakes === 'clinched'"
-              class="shrink-0 font-mono text-[9px] uppercase tracking-wider text-primary"
-            >clinched</span>
-            <span
-              v-else-if="r.stakes === 'eliminated'"
-              class="shrink-0 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted"
-            >eliminated</span>
-            <span
-              v-else-if="r.stakes === 'bubble'"
-              class="shrink-0 font-mono text-[9px] uppercase tracking-wider text-[#e69a4a]"
-            >bubble</span>
+            <span v-if="r.isMe" class="shrink-0 rounded px-1 font-mono text-[9px] uppercase text-primary"
+                  :style="{ backgroundColor: primaryTint(16) }">you</span>
+            <span v-if="r.stakes === 'clinched'" class="shrink-0 font-mono text-[9px] uppercase tracking-wider text-primary">clinched</span>
+            <span v-else-if="r.stakes === 'eliminated'" class="shrink-0 font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">eliminated</span>
+            <span v-else-if="r.stakes === 'bubble'" class="shrink-0 font-mono text-[9px] uppercase tracking-wider text-[#e69a4a]">bubble</span>
+            <!-- The luck read keeps its place beside the name: it is a sentence about this
+                 team, not a measurement, and it has no column it belongs in. -->
+            <span v-if="r.luck === 'sleeper'" class="hidden shrink-0 text-primary lg:inline" title="Due to rise">▲</span>
+            <span v-else-if="r.luck === 'pretender'" class="hidden shrink-0 text-[#e69a4a] lg:inline" title="Due to fall">▼</span>
+            <span v-for="g in gapNotes(r)" :key="g.text" class="hidden shrink-0 font-mono text-[10px] xl:inline" :class="g.cls">{{ g.text }}</span>
           </span>
 
-          <!-- Text cluster: record · talent rank + luck arrow · proj record (when odds) -->
-          <span class="shrink-0 flex items-center gap-1.5 font-mono text-[11px] text-dark-textMuted">
+          <!-- REC -->
+          <span class="w-14 shrink-0 text-right font-mono text-[11px] text-dark-textSecondary">
             {{ r.wins }}-{{ r.losses }}{{ r.ties ? '-' + r.ties : '' }}
-            <!-- All-play sits beside the real record on purpose: the two disagreeing IS the
-                 read. Hidden until a week has been scored so it can never print 0-0. -->
-            <!-- Was md:inline, so the one number that strips schedule luck out of a record
-                 disappeared on every laptop narrower than 768px. It is the reason to read this
-                 page at all once games are played; it earns a smaller breakpoint. -->
-            <span v-if="allPlayFor(r.teamKey)" class="hidden sm:inline text-dark-textSecondary"
-                  :title="`Scored against every team every week: ${formatAllPlay(allPlayFor(r.teamKey)!)} over ${allPlay.weeksCounted} week${allPlay.weeksCounted === 1 ? '' : 's'}. Schedule luck removed.`">
-              · {{ formatAllPlay(allPlayFor(r.teamKey)!) }} all-play
-            </span>
-            <template v-if="crossRank(r)">
-              <span class="hidden sm:inline text-dark-border/60">·</span>
-              <span class="hidden sm:inline">{{ crossRank(r)!.label }} {{ ord(crossRank(r)!.n) }}</span>
-            </template>
-            <span v-if="r.luck === 'sleeper'" class="hidden sm:inline text-primary" title="Due to rise">▲</span>
-            <span v-else-if="r.luck === 'pretender'" class="hidden sm:inline text-[#e69a4a]" title="Due to fall">▼</span>
-            <!-- Luck, split. Which half it is decides whether there is anything to do. -->
-            <span v-for="g in gapNotes(r)" :key="g.text" class="hidden lg:inline" :class="g.cls">· {{ g.text }}</span>
-            <template v-if="oddsByKey.get(r.teamKey) as any">
-              <span class="hidden sm:inline text-dark-border/60">·</span>
-              <span class="hidden sm:inline font-mono text-[11px] text-dark-textMuted">
-                proj {{ Math.round((oddsByKey.get(r.teamKey)!).projWins) }}-{{ Math.round((oddsByKey.get(r.teamKey)!).projLosses) }}{{ (oddsByKey.get(r.teamKey)!).projTies ? '-' + Math.round((oddsByKey.get(r.teamKey)!).projTies) : '' }}
-              </span>
-            </template>
           </span>
+          <!-- ALL-PLAY: the record with the coin flip taken out. -->
+          <span class="hidden w-16 shrink-0 text-right font-mono text-[11px] text-dark-textMuted sm:block"
+                :title="allPlayFor(r.teamKey) ? `Scored against every team every week, over ${allPlay.weeksCounted} week${allPlay.weeksCounted === 1 ? '' : 's'}. Schedule luck removed.` : ''">
+            {{ allPlayFor(r.teamKey) ? formatAllPlay(allPlayFor(r.teamKey)!) : '—' }}
+          </span>
+          <!-- TALENT: the number and its rank, which is the pair that means something. -->
+          <span class="w-20 shrink-0 text-right font-mono text-[11px] text-dark-textSecondary">
+            {{ Math.round(r.strength) }}<span class="ml-1 text-[9px] text-dark-textMuted">{{ ord(r.talentRank) }}</span>
+          </span>
+          <template v-if="playoffOdds">
+            <span class="hidden w-14 shrink-0 text-right font-mono text-[11px] text-dark-textMuted md:block">
+              <template v-if="oddsByKey.get(r.teamKey)">
+                {{ Math.round((oddsByKey.get(r.teamKey)!).projWins) }}-{{ Math.round((oddsByKey.get(r.teamKey)!).projLosses) }}
+              </template>
+              <template v-else>&mdash;</template>
+            </span>
+          </template>
 
           <!-- Right anchor: playoff % bar when odds exist, talent bar as fallback -->
           <template v-if="oddsByKey.get(r.teamKey) as any">
             <!-- Playoff % bar + label -->
-            <div class="shrink-0 flex items-center gap-2 w-28">
-              <div class="flex-1 relative h-1.5 overflow-hidden rounded-full" :style="{ backgroundColor: 'rgba(255,255,255,0.08)' }">
-                <div
-                  class="absolute inset-y-0 left-0 rounded-full transition-all"
-                  :style="{
-                    width: ((oddsByKey.get(r.teamKey)!).playoffPct * 100) + '%',
-                    backgroundColor: (oddsByKey.get(r.teamKey)!).playoffPct >= 0.5
-                      ? 'var(--color-primary, #C6FF3A)'
-                      : (oddsByKey.get(r.teamKey)!).playoffPct > 0
-                        ? '#e69a4a'
-                        : 'rgba(255,255,255,0.15)'
-                  }"
-                />
-              </div>
-              <span class="w-9 text-right font-mono text-[11px]"
+            <!--
+              NO BAR. It shared this cell with the number and the title, and in the width a
+              column leaves it rendered as a dot — a bar you cannot read the length of is
+              decoration charging rent. The figure is right there and the header sorts on it,
+              which is what the bar was approximating.
+            -->
+            <div class="shrink-0 flex items-center justify-end gap-2 w-24">
+              <span class="w-12 text-right font-mono text-[11px]"
                 :class="(oddsByKey.get(r.teamKey)!).playoffPct >= 0.5 ? 'text-primary' : (oddsByKey.get(r.teamKey)!).playoffPct > 0 ? 'text-[#e69a4a]' : 'text-dark-textMuted'"
               >
                 {{ fmtPct((oddsByKey.get(r.teamKey)!).playoffPct) }}
@@ -750,7 +816,7 @@ const sosBarColor = (sosRank: number, total: number) => {
                 story. Quieter than the odds beside it because making the bracket is the nearer
                 decision; this is the one that says whether the season is worth pushing for.
               -->
-              <span class="hidden w-9 text-right font-mono text-[10px] text-dark-textMuted/70 sm:inline">
+              <span class="hidden w-10 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/70 sm:inline">
                 {{ fmtPct((oddsByKey.get(r.teamKey)!).titlePct) }}
               </span>
             </div>
