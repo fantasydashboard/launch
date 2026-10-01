@@ -55,6 +55,34 @@ const settled = computed(() => props.daysRemaining <= 0)
 const needed = computed(() => Math.floor(props.week.cats.length / 2) + 1)
 const leading = computed(() => props.week.cats.filter((c) => c.winPct > 0.5).length)
 
+/**
+ * How far ahead you are, signed so that POSITIVE always means good.
+ *
+ * GAA and goals-against read the other way, so a raw subtraction prints "-0.01" on a column
+ * you are winning. Reading the sign is the whole point of the column, and a sign that means
+ * different things on different rows is worse than no column at all.
+ */
+const edgeOf = (c: { mine: number; theirs: number; lowerIsBetter: boolean }) =>
+  c.lowerIsBetter ? c.theirs - c.mine : c.mine - c.theirs
+function signed(v: number): string {
+  if (!Number.isFinite(v) || v === 0) return 'level'
+  return (v > 0 ? '+' : '\u2212') + fmt(Math.abs(v))
+}
+
+/*
+ * ONE grid definition, shared by the header row and every data row.
+ *
+ * They were two independent flex rows with hand-matched widths, which is why the headers sat
+ * off their columns and the whole table read as sloppy: "MY TEAM" floated between the cat name
+ * and the number it was supposed to label. Declaring the track list once makes that class of
+ * drift impossible rather than merely fixed.
+ *
+ * The margin and the bar drop away under 640px, where six columns cannot fit — they are the
+ * two a reader can do without, since the totals and the win chance carry the same facts.
+ */
+const GRID = 'grid items-center gap-x-3 grid-cols-[3.5rem_3.5rem_3.5rem_3rem] '
+  + 'sm:grid-cols-[4rem_4rem_4rem_4rem_1fr_3rem]'
+
 const list = (keys: string[]) => keys.join(', ')
 const toneOf = (status: string) =>
   status === 'safe' ? 'text-[#7ee787]' : status === 'gone' ? 'text-[#FF5C5C]' : 'text-dark-text'
@@ -92,34 +120,48 @@ const barOf = (status: string) =>
       <span v-if="week.format === 'most'" class="text-dark-textMuted">
         leading {{ leading }} of {{ week.cats.length }}
       </span>
+      <!-- Said out loud. Sorted by what tonight can still move, the order looks arbitrary to a
+           reader expecting the platform's — and an order you cannot explain reads as a bug. -->
+      <span class="text-dark-textMuted/50">most movable first</span>
     </div>
 
-    <div class="mb-2 flex items-center gap-2 font-mono text-[9px] uppercase tracking-widest text-dark-textMuted/60">
-      <span class="w-14 shrink-0">cat</span>
-      <span class="w-14 shrink-0 text-right">{{ (myName || 'you').slice(0, 10) }}</span>
-      <span class="w-14 shrink-0 text-right">{{ (oppName || 'opp').slice(0, 10) }}</span>
-      <span class="min-w-0 flex-1 text-right">win chance</span>
+    <!-- Headers and rows share GRID, so a column cannot drift off its label. -->
+    <div :class="GRID" class="mb-1 border-b border-dark-border/40 pb-1 font-mono text-[9px] uppercase tracking-widest text-dark-textMuted/60">
+      <span>cat</span>
+      <span class="truncate text-right" :title="myName">{{ myName || 'you' }}</span>
+      <span class="truncate text-right" :title="oppName">{{ oppName || 'opp' }}</span>
+      <span class="hidden text-right sm:block">margin</span>
+      <span class="hidden sm:block"></span>
+      <span class="text-right">win</span>
     </div>
 
-    <div v-for="c in rows" :key="c.key"
-         class="flex items-center gap-2 border-b border-dark-border/40 py-2 text-base last:border-0">
-      <span class="w-14 shrink-0 font-mono text-xs font-semibold uppercase" :class="toneOf(c.status)">
+    <div v-for="c in rows" :key="c.key" :class="GRID"
+         class="border-b border-dark-border/40 py-2 text-base last:border-0">
+      <span class="truncate font-mono text-xs font-semibold uppercase" :class="toneOf(c.status)">
         {{ c.label }}
         <!-- A ratio cannot be chased by adding bodies the way a count can, and a reader who
              does not know which columns are ratios will misread a flat win chance as a bug. -->
         <span v-if="c.isRatio" class="text-dark-textMuted/50" title="A rate — more starts dilute it rather than add to it">%</span>
       </span>
-      <span class="w-14 shrink-0 text-right font-display text-base font-bold tabular-nums"
+      <span class="text-right font-display text-base font-bold tabular-nums"
             :class="c.winPct > 0.5 ? 'text-dark-text' : 'text-dark-textMuted'">{{ fmt(c.mine) }}</span>
-      <span class="w-14 shrink-0 text-right font-display text-base font-bold tabular-nums"
+      <span class="text-right font-display text-base font-bold tabular-nums"
             :class="c.winPct < 0.5 ? 'text-dark-text' : 'text-dark-textMuted'">{{ fmt(c.theirs) }}</span>
-      <span class="flex min-w-0 flex-1 items-center justify-end gap-2">
-        <span class="hidden h-1.5 w-20 overflow-hidden rounded-full bg-dark-border sm:block">
-          <span class="block h-full rounded-full" :class="barOf(c.status)"
-                :style="{ width: `${Math.max(2, Math.min(100, c.winPct * 100))}%` }"></span>
-        </span>
-        <span class="w-10 shrink-0 text-right font-mono text-xs" :class="toneOf(c.status)">{{ PCT(c.winPct) }}</span>
+      <!-- The subtraction a reader was doing in their head, with the sign already corrected
+           for the columns where lower wins. -->
+      <span class="hidden text-right font-mono text-xs tabular-nums sm:block"
+            :class="edgeOf(c) > 0 ? 'text-[#7ee787]' : edgeOf(c) < 0 ? 'text-[#e69a4a]' : 'text-dark-textMuted/50'">
+        {{ signed(edgeOf(c)) }}
       </span>
+      <!-- The bar fills the space the old layout left empty between the totals and the
+           percentage. The tick is the half-way mark, so "which side of even am I on" is
+           readable without comparing the number to 50 every row. -->
+      <span class="relative hidden h-1.5 overflow-hidden rounded-full bg-dark-border sm:block">
+        <span class="block h-full rounded-full" :class="barOf(c.status)"
+              :style="{ width: `${Math.max(2, Math.min(100, c.winPct * 100))}%` }"></span>
+        <span class="absolute inset-y-0 left-1/2 w-px bg-dark-bg/80"></span>
+      </span>
+      <span class="text-right font-mono text-xs tabular-nums" :class="toneOf(c.status)">{{ PCT(c.winPct) }}</span>
     </div>
 
     <!-- WHAT TO DO. The reason this section exists rather than a prettier scoreboard. -->

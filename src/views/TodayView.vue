@@ -153,14 +153,16 @@ const headerSnapshot = computed(() => {
     projWins: Math.round(projWins),
     projLosses: Math.round(projLosses),
     projTies: Math.max(0, week.cats.length - Math.round(projWins) - Math.round(projLosses)),
-    /* The column strip, from the columns we actually scored rather than the list that had not
-       loaded. 'live' is the header's 'tossup' — the only columns a lineup change can move. */
-    categories: week.cats.map((c) => ({
-      statId: c.key,
-      label: c.label,
-      status: (c.status === 'live' ? 'tossup' : c.status) as typeof snap.categories[number]['status'],
-      myWinPct: Math.round(c.winPct * 100),
-    })),
+    /*
+     * CATEGORIES DELIBERATELY LEFT EMPTY, which hides the header's own column strip.
+     *
+     * That strip lists every column with its win chance — the same ten percentages the board
+     * directly below prints, with totals and a verdict beside them. It never used to show
+     * because the list it reads was empty at mount; filling it in made the duplication
+     * visible rather than creating it. One screen should say a thing once, and the board says
+     * it better.
+     */
+    categories: [],
   }
 })
 
