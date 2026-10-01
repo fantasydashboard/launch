@@ -6,6 +6,7 @@ import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { usePowerTrajectory } from '@/composables/usePowerTrajectory'
 import { buildPowerRankings, type PowerTeamInput } from '@/league/powerRankings'
+import { buildCategoryStandings } from '@/league/categoryStandings'
 import { buildAllPlay, formatAllPlay } from '@/league/allPlay'
 import { buildLeagueStandings, BOARD_SORTS, type StakesTag, type BoardSort } from '@/league/leagueStandings'
 import { buildPointsTeam, type PointsPoolPlayer } from '@/myteam/pointsTeam'
@@ -121,6 +122,31 @@ const catRankings = computed(() => {
   return buildPowerRankings(inputs)
 })
 
+/*
+ * EVERY CATEGORY, RANKED — the question a category league is actually decided by.
+ *
+ * The board above gives one strength number per team. That is the right summary and the wrong
+ * tool for this league type: "4th of twelve" says nothing about WHERE, and a category season is
+ * entirely about where. A points manager can read a single total because his league has an
+ * exchange rate between columns; a category manager cannot, because his does not.
+ *
+ * Built from the same engine totals the strength number comes from, so the two cannot disagree.
+ */
+const categoryBoard = computed(() => {
+  if (!isCategory.value) return null
+  const e: any = cat.engine.value
+  const specs = cat.catSpecs.value
+  if (!e?.teamCatTotals?.length || !specs?.length || !cat.myTeamKey.value) return null
+  return buildCategoryStandings(
+    e.teamCatTotals,
+    specs.map((x: any) => ({ statId: x.statId, lowerIsBetter: !!x.lowerIsBetter, side: x.side, isRatio: !!x.isRatio })),
+    cat.myTeamKey.value,
+  )
+})
+/* Ratios want decimals and counting stats do not — printing 1,467.00 hits is noise. */
+const catValue = (v: number) => (Math.abs(v) < 10 ? v.toFixed(3).replace(/^0/, '') : Math.round(v).toLocaleString())
+const teamShort = (key: string) => (cat.teamNameByKey.value.get(key) ?? 'Team').slice(0, 14)
+
 const pointsRankings = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !pointsMyTeamKey.value) return null
   const wl = trajectory.weeksLeft.value
@@ -185,7 +211,7 @@ const boardSort = ref<BoardSort>('talent')
 let sortTouched = false
 const pickSort = (key: BoardSort) => { sortTouched = true; boardSort.value = key }
 const boardHeading = computed(() =>
-  boardSort.value === 'talent' ? 'Rankings' : boardSort.value === 'allplay' ? 'All-play' : 'Standings')
+  boardSort.value === 'talent' ? 'Power Rankings' : boardSort.value === 'allplay' ? 'All-play' : 'Standings')
 watch(allPlayReadable, (readable) => {
   if (readable && !sortTouched) boardSort.value = 'record'
 }, { immediate: true })
@@ -584,7 +610,7 @@ const sosBarColor = (sosRank: number, total: number) => {
         <span class="text-dark-textMuted/70">
           <span :class="boardSort === 'record' ? 'text-dark-textSecondary' : ''">standings = what you've banked</span>
           <span class="text-dark-border/60"> &middot; </span>
-          <span :class="boardSort === 'talent' ? 'text-dark-textSecondary' : ''">rankings = the roster you own from here</span>
+          <span :class="boardSort === 'talent' ? 'text-dark-textSecondary' : ''">power rankings = the roster you own from here</span>
           <template v-if="allPlayReadable">
             <span class="text-dark-border/60"> &middot; </span>
             <span :class="boardSort === 'allplay' ? 'text-dark-textSecondary' : ''">all-play = luck removed</span>
@@ -779,6 +805,55 @@ const sosBarColor = (sosRank: number, total: number) => {
     </section>
 
     <!-- ── YOUR PLAYOFF PATH (leverage + who you're racing) ──────────────────── -->
+    <!--
+      EVERY CATEGORY, for the league type that is decided by them.
+
+      A tile per column: where you stand, and the whole league underneath it. The rank alone
+      would be cheaper and much less useful — 8th in average is a different problem when the
+      seven above you are bunched inside two points than when they are strung out, and only the
+      column shows which. The gap to the place above is printed in the category's own units for
+      the same reason: a tenth of a point of average is a waiver claim, half a run of ERA is not.
+    -->
+    <section v-if="categoryBoard && categoryBoard.columns.length" class="mb-8">
+      <div class="mb-3">
+        <h2 class="font-display text-lg font-bold text-dark-text">Every category</h2>
+        <p class="font-mono text-[11px] text-dark-textMuted">
+          where you stand in each column &middot; projected rest-of-season output
+        </p>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div v-for="col in categoryBoard.columns" :key="'cat-' + col.statId"
+             class="rounded-xl border border-dark-border bg-dark-card p-3">
+          <div class="mb-2 flex items-baseline justify-between gap-2">
+            <span class="font-mono text-[11px] uppercase tracking-widest text-dark-textMuted">
+              {{ cat.labelOf(col.statId) }}
+            </span>
+            <span class="font-display text-lg font-bold tabular-nums"
+                  :class="categoryBoard.strong.includes(col.statId) ? 'text-[#7ee787]'
+                        : categoryBoard.weak.includes(col.statId) ? 'text-[#FF5C5C]' : 'text-dark-text'">
+              {{ ord(col.myRank) }}
+            </span>
+          </div>
+          <!-- A column nobody has scored in yet is not a ranking, and calling it one is how a
+               preseason board tells ten teams they are each in first. -->
+          <p v-if="col.gapToNext === null && col.gapToPrev === null"
+             class="mb-2 font-mono text-[9px] text-dark-textMuted/50">nothing separates the league here yet</p>
+          <p v-else-if="col.gapToNext !== null" class="mb-2 font-mono text-[9px] text-dark-textMuted/70">
+            {{ catValue(col.gapToNext) }} behind {{ ord(col.myRank - 1) }}
+          </p>
+          <p v-else class="mb-2 font-mono text-[9px] text-[#7ee787]/70">top of the league</p>
+          <div class="space-y-0.5">
+            <div v-for="row in col.rows" :key="col.statId + row.teamKey"
+                 class="flex items-baseline justify-between gap-2 rounded px-1 py-0.5 font-mono text-[10px]"
+                 :class="row.teamKey === activeMyTeamKey ? 'bg-primary/10 text-primary' : 'text-dark-textMuted'">
+              <span class="min-w-0 truncate">{{ teamShort(row.teamKey) }}</span>
+              <span class="shrink-0 tabular-nums">{{ catValue(row.value) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section v-if="playoffOdds && myOdds" class="mb-8">
       <div class="mb-2 flex items-baseline justify-between gap-3">
         <h2 class="font-display text-lg font-bold text-dark-text">Your playoff path</h2>

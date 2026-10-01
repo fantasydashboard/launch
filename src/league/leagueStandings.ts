@@ -22,7 +22,9 @@ export const BOARD_SORTS: { key: BoardSort; label: string; hint: string }[] = [
    *
    * The labels were Record / Résumé / Talent, three words for what a reader experiences as
    * two familiar things plus one they have never met. "Standings" is what happened and
-   * "Rankings" is who is actually good — the distinction every sport already makes, and the
+   * "Power Rankings" is who is actually good — the distinction every sport already makes, and
+   * the name it already goes by. Called plain "Rankings" until the nav one tab away started
+   * meaning PLAYER rankings, at which point one word was doing two jobs a click apart. The
    * one this toggle was trying to invent a vocabulary for.
    *
    * Résumé is gone as a sort. It was 65% all-play blended with 35% actual record, which is a
@@ -31,7 +33,7 @@ export const BOARD_SORTS: { key: BoardSort; label: string; hint: string }[] = [
    * people ask for by name, and buildPowerRankings already computes its rank.
    */
   { key: 'record', label: 'Standings', hint: "what you've banked" },
-  { key: 'talent', label: 'Rankings', hint: 'the roster you own from here' },
+  { key: 'talent', label: 'Power Rankings', hint: 'the roster you own from here' },
   { key: 'allplay', label: 'All-play', hint: "your record if you'd played every team, every week" },
 ]
 
