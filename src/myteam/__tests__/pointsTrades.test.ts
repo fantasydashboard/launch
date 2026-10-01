@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildPointsTrades, MIN_GAIN_PER_WEEK } from '../pointsTrades'
+import { offerSignature, offerSignatureByCost, buildPointsTrades, MIN_GAIN_PER_WEEK } from '../pointsTrades'
 import { buildBaseballValue } from '../playerValue'
 import type { PointsPoolPlayer } from '../pointsTeam'
 import type { FGProjection } from '@/services/projectionService'
@@ -231,5 +231,54 @@ describe('a trade has to be worth proposing', () => {
     // Stated per week and multiplied by the weeks left, rather than a bare season point —
     // which is what the constant used to be while its comment claimed otherwise.
     expect(MIN_GAIN_PER_WEEK).toBe(1)
+  })
+})
+
+describe('the same deal wearing a different hat', () => {
+  /*
+   * The interchangeable body varies on BOTH sides. Going out: "Gustavsson for Tavares +
+   * Zibanejad" and "Gustavsson for Tavares + Stone", both +72. Coming back: "Brady Tkachuk +
+   * Matthew Tkachuk for Malkin + Zibanejad" and "Brady Tkachuk + Verhaeghe for Malkin +
+   * Zibanejad", both +24. Same partner, same gain, same decision — and at a board that stops
+   * at ten, each copy costs a real alternative its slot.
+   *
+   * Each signature requires a WHOLE SIDE to match. Keying on the headline piece instead was
+   * tried and was too coarse — it merged a bench-for-bench alternative into an unrelated deal
+   * and let a worse-for-you offer stand in for a better one. Both failures are pinned by the
+   * buildPointsTrades tests above.
+   */
+  const side = (key: string, points: number): any =>
+    ({ playerKey: key, name: key, position: 'C', points })
+
+  const idea = (gets: any[], gives: any[], myGain = 72): any => ({
+    gets, gives, oppTeamKey: 'opp', oppTeamName: 'Opp', myGain, theirGain: 5,
+    kind: 'winWin', odds: 0.55, rung: 'fair', spots: 1, pitch: '', note: '',
+  })
+
+  it('collapses a swapped body on the way OUT', () => {
+    const a = idea([side('gustavsson', 307)], [side('tavares', 272), side('zibanejad', 263)])
+    const b = idea([side('gustavsson', 307)], [side('tavares', 272), side('stone', 215)])
+    expect(offerSignature(a)).toBe(offerSignature(b))
+  })
+
+  it('collapses a swapped body on the way BACK', () => {
+    const a = idea([side('tkachuk', 295), side('mtkachuk', 228)], [side('malkin', 269)], 24)
+    const b = idea([side('tkachuk', 295), side('verhaeghe', 218)], [side('malkin', 269)], 24)
+    expect(offerSignatureByCost(a)).toBe(offerSignatureByCost(b))
+  })
+
+  it('does not merge two deals that differ on BOTH sides', () => {
+    const a = idea([side('gustavsson', 307)], [side('tavares', 272)])
+    const b = idea([side('knight', 290)], [side('malkin', 269)])
+    expect(offerSignature(a)).not.toBe(offerSignature(b))
+    expect(offerSignatureByCost(a)).not.toBe(offerSignatureByCost(b))
+  })
+
+  it('keeps a different gain, and a different partner', () => {
+    const base = idea([side('gustavsson', 307)], [side('tavares', 272)], 72)
+    expect(offerSignature(base))
+      .not.toBe(offerSignature(idea([side('gustavsson', 307)], [side('tavares', 272)], 51)))
+    expect(offerSignature(base))
+      .not.toBe(offerSignature({ ...base, oppTeamKey: 'other' }))
   })
 })

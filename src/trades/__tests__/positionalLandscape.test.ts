@@ -96,9 +96,12 @@ describe('positionRowsFor', () => {
   it('football → skill positions', () => {
     expect(positionRowsFor('football')).toEqual(['QB', 'RB', 'WR', 'TE'])
   })
+  /* Hockey used to be asserted here, as one of the sports that "fell through" to baseball.
+     It has its own rows now — see the block at the end of this file for what that cost. An
+     unknown sport still falls through, which is the rule this test exists for. */
   it('baseball / unknown → MLB positions', () => {
     expect(positionRowsFor('baseball')).toEqual(['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'])
-    expect(positionRowsFor('hockey')).toEqual(['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'])
+    expect(positionRowsFor('cricket')).toEqual(['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'])
   })
 })
 
@@ -140,5 +143,41 @@ describe('the seating engine has to know the sport too', () => {
   it('coversSlot answers the same question the same way', () => {
     expect(coversSlot(['PG'], 'G', 'basketball')).toBe(true)
     expect(coversSlot(['LW'], 'G', 'hockey')).toBe(false)
+  })
+})
+
+describe('which positions a sport is ranked across', () => {
+  /*
+   * positionRowsFor was `sport === 'football' ? NFL : MLB`, so HOCKEY GOT BASEBALL'S ROWS —
+   * C, 1B, 2B, 3B, SS, OF, SP, RP. The only token the two sports share is C, and every other
+   * row was filtered out by `present()` because no hockey player is first-base eligible.
+   *
+   * The whole positional half of the Trades page is built on this list: the landscape grid,
+   * the best-partner fits, the head-to-head columns and "your leverage". All of them were
+   * answering about centres only — on a league whose slots are UTIL/F/D/G and which has no
+   * centre slot at all.
+   */
+  it('ranks hockey across hockey positions', () => {
+    const rows = positionRowsFor('hockey')
+    expect(rows).toEqual(expect.arrayContaining(['C', 'LW', 'RW', 'D', 'G']))
+    expect(rows).not.toContain('1B')
+    expect(rows).not.toContain('SP')
+  })
+
+  it('ranks basketball across basketball positions', () => {
+    const rows = positionRowsFor('basketball')
+    expect(rows).toEqual(expect.arrayContaining(['PG', 'SG', 'SF', 'PF', 'C']))
+    expect(rows).not.toContain('OF')
+  })
+
+  it('leaves football and baseball as they were', () => {
+    expect(positionRowsFor('football')).toEqual(['QB', 'RB', 'WR', 'TE'])
+    expect(positionRowsFor('baseball')).toEqual(['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'])
+  })
+
+  /* An unknown sport keeps the baseball list rather than returning nothing: a grid with no
+     rows reads as "this league has no positions", which is never true. */
+  it('falls back to baseball for a sport it does not know', () => {
+    expect(positionRowsFor('cricket')).toEqual(positionRowsFor('baseball'))
   })
 })

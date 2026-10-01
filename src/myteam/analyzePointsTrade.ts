@@ -1,5 +1,6 @@
 import { buildPointsTeam, type PointsPoolPlayer, type PointsTeamModel } from '@/myteam/pointsTeam'
 import type { ValueByKey } from '@/myteam/playerValue'
+import { emptySeatWarning } from './emptySeatCost'
 
 /**
  * Judge a trade somebody actually offered you.
@@ -251,7 +252,7 @@ export function analyzePointsTrade(input: {
   }
   if (myGain <= 0) warnings.push('Your starting lineup does not improve.')
   if (gives.length > gets.length) {
-    warnings.push(`You send ${gives.length} and get ${gets.length} back — the roster spots you free still have to be filled, and byes get harder.`)
+    warnings.push(emptySeatWarning(sport ?? '', gives.length, gets.length))
   }
   const myMove = move(myTeamKey)
   const theirMove = move(partnerKey)

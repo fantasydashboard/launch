@@ -11,6 +11,8 @@ import { useFootballVor } from '@/composables/useFootballVor'
 import { useFootballScoring } from '@/composables/useFootballScoring'
 import { buildPointsTrades } from '@/myteam/pointsTrades'
 import { buildPointsTeam } from '@/myteam/pointsTeam'
+import { shortTeamLabels } from '@/lib/shortTeamLabel'
+import { emptySeatCost } from '@/myteam/emptySeatCost'
 import { buildPointsTradeLandscape } from '@/myteam/pointsTradeLandscape'
 import { buildRosterCompare } from '@/myteam/rosterCompare'
 import { useDynastyValues } from '@/composables/useDynastyValues'
@@ -26,7 +28,7 @@ import RankingPicker from '@/components/RankingPicker.vue'
 import { useCustomRankings } from '@/composables/useCustomRankings'
 import { reseatRos, reseatValues } from '@/composables/useFootballWire'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
-import { leagueRankTone, leagueRankBar, leagueRankWidth, leagueRankLabel } from '@/lib/leagueRankTone'
+import { leagueRankTone, leagueRankBar, leagueRankLabel } from '@/lib/leagueRankTone'
 import { startableCounts, startableFraction } from '@/trades/rosterSlots'
 import { startableRankTone } from '@/lib/startableRankTone'
 import { teamLogoFor } from '@/players/teamLogo'
@@ -86,6 +88,8 @@ const valuesState = computed(() => valueState({
   hasValues: Object.keys(valueByKey.value).length > 0,
 }))
 const valuesReady = computed(() => valuesState.value === 'ready')
+/* Hockey has no byes — see src/myteam/emptySeatCost.ts. */
+const seatCost = computed(() => emptySeatCost(leagueStore.activeSport))
 
 // Football VOR (shared engine). Replacement is calibrated on rostered players here
 // (empty free-agent list) — cross-team ranking is unaffected; Trades stays self-contained.
@@ -302,7 +306,15 @@ const landscape = computed(() => {
   return buildPointsTradeLandscape(
     pool.value, tradeValues.value, fgByKey.value, myTeamKey.value, teamNames.value,
     leagueStore.activeSport, analysisVor.value,
-    leagueStore.activeSport === 'football' ? rosterSlots.value : undefined,
+    /*
+     * The league's OWN slots, for every sport that publishes them — not football alone.
+     *
+     * Hockey passed undefined, so the landscape fell through to positionRowsFor() and, before
+     * that function knew about hockey, to baseball's rows. Even now the real slots are the
+     * better answer: they say this league starts ten forwards and five defencemen, which the
+     * standard row list cannot. Baseball keeps the fallback it was written with.
+     */
+    leagueStore.activeSport === 'baseball' ? undefined : rosterSlots.value,
   )
 })
 
@@ -322,7 +334,23 @@ const teamModel = computed(() => {
   if (!pool.value.length || !Object.keys(rosterSlots.value).length || !myTeamKey.value) return null
   return buildPointsTeam(pool.value, tradeValues.value, myTeamKey.value, rosterSlots.value, { sport: leagueStore.activeSport })
 })
-const rankBar = (rank: number, teams: number) => leagueRankWidth(rank, teams)
+/**
+ * HOW LONG A SEAT'S BAR IS: what it produces, not where it ranks.
+ *
+ * The bar used to encode the RANK and the number beside it the POINTS, so the two contradicted
+ * each other on every row. David Pastrnak carried the largest number on the board — 247, the
+ * best forward on the roster — beside a bar about a tenth as long as Cale Makar's at 240,
+ * because Pastrnak ranks tenth among the league's forwards and Makar ranks fourth. A reader
+ * scanning the bars concludes Pastrnak is the weakest thing in the lineup.
+ *
+ * Length is now the points, against the biggest number on the panel. Rank has not been thrown
+ * away — it is the colour and the ordinal, which is where a comparison belongs. Two facts per
+ * row, each legible, neither arguing with the other.
+ */
+const maxSlotPoints = computed(() =>
+  Math.max(1, ...(teamModel.value?.slotRanks ?? []).map((s) => Number(s.points) || 0)))
+const pointsBar = (points: number) =>
+  Math.max(2, Math.min(100, (Number(points) || 0) / maxSlotPoints.value * 100))
 
 /**
  * Colour a positional rank by where it sits in the STARTABLE pool rather than by the raw
@@ -631,13 +659,18 @@ const comparePartnerName = computed(
   () => compareOptions.value.find((o) => o.key === comparePartner.value)?.name ?? 'them',
 )
 
-// Short column label for the heatmap (initials / first chars of the team name).
-function shortName(name: string): string {
-  const cleaned = (name || '').replace(/[^A-Za-z0-9 ]/g, '').trim()
-  const parts = cleaned.split(/\s+/).filter(Boolean)
-  const abbr = parts.length > 1 ? parts.map((w) => w[0]).join('') : cleaned.slice(0, 3)
-  return (abbr || 'TM').toUpperCase().slice(0, 3)
-}
+/*
+ * Short column labels for the heatmap, decided across the WHOLE set.
+ *
+ * This abbreviated each name on its own, so a twelve-team league printed "MM" above both
+ * Makar's Mark and Mitch Muffin — two columns a reader cannot attach to a team. Uniqueness is
+ * a property of the set and cannot be settled one name at a time. See lib/shortTeamLabel.ts.
+ */
+const columnLabels = computed<Record<string, string>>(() => {
+  const keys = landscape.value?.teamKeys ?? []
+  const labels = shortTeamLabels(keys.map((k) => landscape.value?.teamNames[k] ?? ''))
+  return Object.fromEntries(keys.map((k, i) => [k, labels[i]]))
+})
 function heatClass(rank: number, teams: number): string {
   if (!rank) return 'text-dark-textMuted/40'
   const f = rank / teams
@@ -775,7 +808,7 @@ function fairness(myGain: number, theirGain: number): string {
               <!-- A bar is a claim about where this seat stands. With no value behind it every
                    seat ranked first and every bar drew full — maximum confidence, no data. -->
               <div v-if="sl.starterKey && valuesReady && sl.points > 0" class="absolute inset-y-0 left-0 rounded-full" :class="slotBar(sl.rank, sl.teams)"
-                   :style="{ width: rankBar(sl.rank, sl.teams) + '%' }" />
+                   :style="{ width: pointsBar(sl.points) + '%' }" />
             </div>
             <span class="w-12 shrink-0 text-right font-display text-base font-bold tabular-nums text-dark-textSecondary sm:text-lg">
               {{ sl.starterKey && valuesReady ? round(sl.points) : '' }}
@@ -1219,7 +1252,7 @@ function fairness(myGain: number, theirGain: number): string {
               Both lineups improve — theirs by {{ idea.theirGain }}. {{ fairness(idea.myGain, idea.theirGain) }}.
             </template>
             <template v-if="idea.spots > 0">
-              Frees {{ idea.spots }} roster spot{{ idea.spots > 1 ? 's' : '' }} you'll have to fill — thinner cover for byes.
+              Frees {{ idea.spots }} roster spot{{ idea.spots > 1 ? 's' : '' }} you'll have to fill — {{ seatCost }}.
             </template>
           </p>
 
@@ -1279,7 +1312,7 @@ function fairness(myGain: number, theirGain: number): string {
               <tr>
                 <th class="px-2 py-1.5"></th>
                 <th v-for="t in landscape.teamKeys" :key="t" class="px-1.5 py-1.5" :class="t === myTeamKey ? 'text-primary' : 'text-dark-textMuted'">
-                  {{ t === myTeamKey ? 'YOU' : shortName(landscape.teamNames[t]) }}
+                  {{ t === myTeamKey ? 'YOU' : (columnLabels[t] ?? '') }}
                 </th>
               </tr>
             </thead>

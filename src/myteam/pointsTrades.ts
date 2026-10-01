@@ -27,6 +27,34 @@ export interface TradeSide {
   vor?: number // football: value over replacement (season). undefined for baseball.
 }
 
+/**
+ * Two cards that are the same decision.
+ *
+ * The interchangeable body varies on BOTH sides. Going out: "Gustavsson for Tavares +
+ * Zibanejad" and "Gustavsson for Tavares + Stone", both +72. Coming back: "Brady Tkachuk +
+ * Matthew Tkachuk for Malkin + Zibanejad" and "Brady Tkachuk + Verhaeghe for Malkin +
+ * Zibanejad", both +24. Same partner, same gain, same decision — and at a board that stops at
+ * ten, each copy costs a real alternative its slot.
+ *
+ * TWO SIGNATURES, EACH REQUIRING A WHOLE SIDE TO MATCH, rather than one keyed on the headline
+ * piece. Headline-matching was tried and was too coarse: it merged a bench-for-bench
+ * alternative into an unrelated deal, and let a worse-for-you offer stand in for a better one.
+ * Requiring one side to be identical only collapses what is genuinely the same trade with the
+ * balancing body swapped.
+ */
+const keysOf = (side: TradeSide[]): string =>
+  side.map((p) => p.playerKey).sort().join(',')
+
+/** Same partner, same return, same gain — the give-side body is the only thing that moved. */
+export function offerSignature(idea: Pick<TradeIdea, 'oppTeamKey' | 'gets' | 'myGain'>): string {
+  return `get:${idea.oppTeamKey}|${keysOf(idea.gets)}|${Math.round(idea.myGain)}`
+}
+
+/** Same partner, same cost, same gain — the get-side sweetener is the only thing that moved. */
+export function offerSignatureByCost(idea: Pick<TradeIdea, 'oppTeamKey' | 'gives' | 'myGain'>): string {
+  return `give:${idea.oppTeamKey}|${keysOf(idea.gives)}|${Math.round(idea.myGain)}`
+}
+
 export interface TradeIdea {
   /** What leaves your roster. Two bodies in a consolidation. */
   gives: TradeSide[]
@@ -401,19 +429,38 @@ export function buildPointsTrades(
    * to fall through to asks nobody would send. Same-player-different-price is a real choice a
    * manager makes, so allow a target to appear twice, and spread across partners instead.
    */
+  /*
+   * One card per offer, and the cheapest version of it.
+   *
+   * Two deals from the same partner for the same player at the same gain differ only in which
+   * interchangeable body goes out with it — the board printed both, and at ten cards that is
+   * two slots a genuine alternative could have had. Where they tie on gain, prefer the one
+   * that costs less; where they tie on that too, the likelier one.
+   */
   const sendable = ideas.filter((i) => i.odds >= MIN_SENDABLE_ODDS)
   const getCount = new Map<string, number>()
   const giveCount = new Map<string, number>()
   const perPartner = new Map<string, number>()
   const seenExact = new Set<string>()
+  const seenOffer = new Set<string>()
   const out: TradeIdea[] = []
   for (const idea of sendable) {
+    /* The exact set, and then the OFFER — same partner, same return, same price — so an
+       interchangeable throw-in cannot mint a second card. See offerSignature. */
     const sig = [...idea.gives, ...idea.gets].map((p) => p.playerKey).sort().join('|')
     if (seenExact.has(sig)) continue
+    /* The same decision with the balancing body swapped, on either side. The list is already
+       ordered by what the board ranks on, so the first version seen is the one it would have
+       led with — keeping it preserves the existing order exactly. */
+    const byReturn = offerSignature(idea)
+    const byCost = offerSignatureByCost(idea)
+    if (seenOffer.has(byReturn) || seenOffer.has(byCost)) continue
     if (idea.gets.some((g) => (getCount.get(g.playerKey) ?? 0) >= 2)) continue
     if (idea.gives.some((g) => (giveCount.get(g.playerKey) ?? 0) >= 4)) continue
     if ((perPartner.get(idea.oppTeamKey) ?? 0) >= 3) continue
     seenExact.add(sig)
+    seenOffer.add(byReturn)
+    seenOffer.add(byCost)
     for (const g of idea.gets) getCount.set(g.playerKey, (getCount.get(g.playerKey) ?? 0) + 1)
     for (const g of idea.gives) giveCount.set(g.playerKey, (giveCount.get(g.playerKey) ?? 0) + 1)
     perPartner.set(idea.oppTeamKey, (perPartner.get(idea.oppTeamKey) ?? 0) + 1)

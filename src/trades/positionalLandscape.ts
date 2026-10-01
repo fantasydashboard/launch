@@ -30,11 +30,34 @@ export const SURPLUS_FLEX = new Set(['UTIL', 'DH', 'IF', 'MI', 'CI', '2B/SS', '1
 
 const MLB_POSITION_ROWS = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
 const NFL_POSITION_ROWS = ['QB', 'RB', 'WR', 'TE']
+const NHL_POSITION_ROWS = ['C', 'LW', 'RW', 'D', 'G']
+const NBA_POSITION_ROWS = ['PG', 'SG', 'SF', 'PF', 'C']
 
-/** Concrete positions worth ranking/comparing for a sport (flex/util are overflow, not a
- *  target position; football K/DEF are low-value / no-projection in v1). */
+/**
+ * Concrete positions worth ranking and comparing, for a sport.
+ *
+ * Flex and utility seats are overflow rather than a target position, so they are not rows;
+ * football K and DEF are left out as low-value and unprojected in v1.
+ *
+ * THIS WAS A BINARY — football, or else baseball — so HOCKEY GOT BASEBALL'S ROWS. The only
+ * token the two vocabularies share is C, and every other row was filtered out downstream by
+ * `present()` because no hockey player is first-base eligible. One row survived, labelled C.
+ *
+ * The whole positional half of the Trades page is built on this list: the landscape grid, the
+ * best-partner fits, the head-to-head columns and the "your leverage" line. For hockey all of
+ * them were answering about centres and nothing else — on leagues whose slots are UTIL/F/D/G
+ * and which have no centre slot at all.
+ *
+ * Baseball stays the fallback for a sport we do not serve: a grid with no rows reads as "this
+ * league has no positions", which is never true, and wrong-and-visible beats empty.
+ */
 export function positionRowsFor(sport: string): string[] {
-  return sport === 'football' ? [...NFL_POSITION_ROWS] : [...MLB_POSITION_ROWS]
+  switch (String(sport || '').toLowerCase()) {
+    case 'football': return [...NFL_POSITION_ROWS]
+    case 'hockey': return [...NHL_POSITION_ROWS]
+    case 'basketball': return [...NBA_POSITION_ROWS]
+    default: return [...MLB_POSITION_ROWS]
+  }
 }
 
 /** A player below this cross-role value isn't a startable body — depth filler, not surplus. */
