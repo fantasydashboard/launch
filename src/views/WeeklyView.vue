@@ -1,20 +1,46 @@
 <script setup lang="ts">
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { computed, ref, watch } from 'vue'
-import { useWeeklyBoard } from '@/composables/useWeeklyBoard'
-import { winPctFromMargin, WEEKLY_INJURY_DISCOUNT } from '@/football/weeklyBoard'
+import { useWeeklyBoard, type WeeklyCompareMode } from '@/composables/useWeeklyBoard'
+import { winPctFromMargin, WEEKLY_INJURY_DISCOUNT, RULED_OUT } from '@/football/weeklyBoard'
 import { useWinProbTrend } from '@/composables/useWinProbTrend'
 import MatchupWinProbChart from '@/components/matchup/MatchupWinProbChart.vue'
 import { useLeagueStore } from '@/stores/league'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { startableCounts, startableFraction } from '@/trades/rosterSlots'
 import { startableRankTone } from '@/lib/startableRankTone'
-import RankingPicker from '@/components/RankingPicker.vue'
+import PublishWeeklyRankings from '@/components/PublishWeeklyRankings.vue'
 import SeasonPassGate from '@/components/SeasonPassGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const { hasFullAccess, accessKnown, accessCheckFailed, isAdmin } = useFeatureAccess()
-const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes, weekSource, spectator, sourceTiers } = useWeeklyBoard()
+const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes, weekSource, spectator, publishedWeek, reloadPublished, nflSeason, compareMode } = useWeeklyBoard()
+
+/* Admin-only: compare the published blend against our numbers alone and the analyst's order
+   alone. Remembered in this browser only; nobody else's board changes. */
+const COMPARE_KEY = 'ufd:weeklyCompareMode'
+const COMPARE_MODES: { id: WeeklyCompareMode; label: string }[] = [
+  { id: 'blend', label: 'Blend' },
+  { id: 'ufd', label: 'UFD only' },
+  { id: 'analyst', label: 'Analyst only' },
+]
+watch(isAdmin, (admin) => {
+  if (!admin) { compareMode.value = 'blend'; return }
+  try {
+    const saved = localStorage.getItem(COMPARE_KEY) as WeeklyCompareMode | null
+    if (saved && COMPARE_MODES.some((m) => m.id === saved)) compareMode.value = saved
+  } catch { /* private mode */ }
+}, { immediate: true })
+watch(compareMode, (m) => {
+  if (!isAdmin.value) return
+  try { localStorage.setItem(COMPARE_KEY, m) } catch { /* private mode */ }
+})
+
+/* Lineup rows are built on the cut value, not the ranking value the board shows. Say so. */
+function cutTitle(tag: string, benched = false): string {
+  const pct = Math.round((WEEKLY_INJURY_DISCOUNT[tag.toUpperCase()] ?? 1) * 100)
+  return `${tag}: lineup advice counts him at ${pct}% because roughly seven in ten play${benched ? ' — which is why he can sit behind a lower-ranked player' : ''}.`
+}
 
 /*
  * Header totals are summed from the ROUNDED row values, not rounded from the raw sum.
@@ -628,6 +654,10 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             <span class="min-w-0 flex-1">
               <span class="truncate text-base font-semibold text-dark-text">
                 {{ s.name }}
+                <span v-if="s.injuryTag && RULED_OUT.has(s.injuryTag)" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]"
+                      :title="`Ruled ${s.injuryTag.toLowerCase()} — projected at zero`">{{ s.injuryTag }}</span>
+                <span v-else-if="s.injuryTag" class="ml-1 font-mono text-[9px] uppercase text-[#d29922]"
+                      :title="cutTitle(s.injuryTag)">{{ s.injuryTag.slice(0, 1) }}</span>
                 <span v-if="s.opportunity === 'backup-elevated'" class="ml-1 rounded bg-amber-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-amber-400" title="Healthy backup — the starter ahead of him is injured">step-up</span>
               </span>
               <span class="flex items-center gap-1 text-xs text-dark-textMuted">
@@ -689,6 +719,10 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             <span class="min-w-0 flex-1 truncate text-dark-textMuted">
               {{ b.name }} <span class="text-[11px]">{{ b.position }}</span>
               <span v-if="b.bye" class="ml-1 text-[10px] text-[#FF5C5C]">BYE</span>
+              <span v-if="b.injuryTag && RULED_OUT.has(b.injuryTag)" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]"
+                    :title="`Ruled ${b.injuryTag.toLowerCase()} — projected at zero`">{{ b.injuryTag }}</span>
+              <span v-else-if="b.injuryTag" class="ml-1 font-mono text-[9px] uppercase text-[#d29922]"
+                    :title="cutTitle(b.injuryTag, true)">{{ b.injuryTag.slice(0, 1) }}</span>
             </span>
             <!-- One line, not a stacked block: the bench is a reference list, and five
                  two-line rows took as much room as the lineup they support. -->
@@ -748,12 +782,25 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             or offering a way back to ours.
           -->
           <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <RankingPicker v-if="isAdmin" kind="week" />
+            <PublishWeeklyRankings v-if="isAdmin" :season="nflSeason || new Date().getFullYear()"
+                                   :published="publishedWeek" :current-week="currentWeek" @published="reloadPublished" />
             <!-- weekSource was destructured in this file and never rendered, so a board being
                  driven by an uploaded list looked identical to one on our own numbers. -->
-            <span v-if="weekSource !== 'UFD'" class="font-mono text-[10px] text-dark-textMuted/70">
-              {{ weekSource }}'s order<template v-if="sourceTiers"> and tiers</template> &middot; our points
-            </span>
+            <div class="flex flex-wrap items-center gap-2">
+              <div v-if="isAdmin && publishedWeek" class="flex gap-1" title="Admin only: compare boards. Users always see the blend.">
+                <button
+                  v-for="m in COMPARE_MODES"
+                  :key="'cmp-' + m.id"
+                  class="rounded px-2 py-0.5 font-mono text-[10px] transition-colors"
+                  :class="compareMode === m.id ? 'bg-dark-border text-dark-text' : 'text-dark-textMuted hover:text-dark-text'"
+                  @click="compareMode = m.id"
+                >{{ m.label }}</button>
+              </div>
+              <span v-if="isAdmin && publishedWeek && compareMode !== 'blend'" class="font-mono text-[10px] text-[#d29922]">
+                Comparing: {{ compareMode === 'ufd' ? 'UFD only' : 'analyst only' }} · users see the blend
+              </span>
+              <span v-else-if="weekSource !== 'UFD'" class="font-mono text-[10px] text-dark-textMuted/70">UFD weekly rankings</span>
+            </div>
           </div>
           <div class="mb-2 flex flex-wrap gap-1.5">
             <button
@@ -794,11 +841,10 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               drop and no attribution: there is nothing above it, so nobody drew this break.
             -->
             <div v-if="row.tierBreak || i === 0" class="flex items-center gap-2 py-1.5">
-              <span class="h-px flex-1" :class="(row.tierSplit || (row.tierSource && row.tierDrop == null && i > 0)) ? 'bg-dark-border/50' : 'bg-dark-border'"></span>
+              <span class="h-px flex-1" :class="row.tierSplit ? 'bg-dark-border/50' : 'bg-dark-border'"></span>
               <span class="font-mono text-[9px] uppercase tracking-wider"
-                    :class="(row.tierSplit || (row.tierSource && row.tierDrop == null && i > 0)) ? 'text-dark-textMuted/45' : 'text-dark-textMuted/70'">
+                    :class="row.tierSplit ? 'text-dark-textMuted/45' : 'text-dark-textMuted/70'">
                 <template v-if="i === 0">tier {{ row.tier }}</template>
-                <template v-else-if="row.tierSource && row.tierDrop == null">tier {{ row.tier }} &middot; {{ weekSource }}'s break &middot; no gap in our points</template>
                 <template v-else-if="row.tierSplit">tier {{ row.tier }} &middot; no cliff &middot; widest gap</template>
                 <template v-else>tier {{ row.tier }} &middot; &minus;{{ round(row.tierDrop ?? 0) }} pts</template>
               </span>
@@ -831,7 +877,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
                      badge tells him it is a priced risk: the rank he is looking at is already a
                      bet on whether the man suits up. -->
                 <span v-else-if="row.injuryTag" class="ml-1 font-mono text-[9px] uppercase text-[#d29922]"
-                      :title="`${row.injuryTag} — ranked at ${Math.round((WEEKLY_INJURY_DISCOUNT[row.injuryTag.toUpperCase()] ?? 1) * 100)}% of a normal week, because roughly seven in ten play and rarely at full strength. Ranked on what he is worth, not on what he does if he suits up.`">{{ row.injuryTag.slice(0, 1) }}</span>
+                      :title="`${row.injuryTag}: ranked as if he plays. Lineup advice counts him at ${Math.round((WEEKLY_INJURY_DISCOUNT[row.injuryTag.toUpperCase()] ?? 1) * 100)}% because roughly seven in ten play.`">{{ row.injuryTag.slice(0, 1) }}</span>
                 </span>
                 <!-- LINE TWO, ON A PHONE ONLY. Who holds him and who he plays are the two
                      facts a start/sit turns on, and both hid below the breakpoint — leaving a

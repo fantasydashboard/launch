@@ -18,6 +18,8 @@ export interface WeeklyStarter {
   home: boolean
   bye: boolean
   opportunity: OpportunityTag
+  /** The injury designation the lineup acts on (discounted or zeroed); '' when healthy. */
+  injuryTag?: string
   /** Whether his game is ahead of us, on now, or done. */
   play: PlayState
   inCurrent: boolean // manager already has him starting
@@ -45,6 +47,8 @@ export interface WeeklyBenchRow {
   weekPoints: number
   bye: boolean
   opportunity: OpportunityTag
+  /** The injury designation the lineup acts on (discounted or zeroed); '' when healthy. */
+  injuryTag?: string
   /**
    * Rank THIS WEEK at his own position, and among everyone eligible for a flex slot, over
    * every player rostered in the league PLUS the free agents — because the waiver wire is
@@ -664,6 +668,15 @@ export function buildWeeklyBoard(input: {
   const week = (key: string): number =>
     // Banked points already happened; discounting them would be a claim about the past.
     banked(key) ? actualPoints![key] : (vorByKey[key]?.pointsNextWeek ?? 0) * injuryFactor(key)
+  /*
+   * TWO NUMBERS SINCE 2026-10-01. The RANK is "where he lands if he plays", which is how
+   * a ranking is read and how the analyst we blend with ranks. Ruled-out is still zero,
+   * because that one is not a guess. The LINEUP keeps the expected-value cut above, so the
+   * optimiser never starts a coin-flip at full value.
+   */
+  const rankFactor = (key: string): number => (RULED_OUT.has(tagByKey.get(key) ?? '') ? 0 : 1)
+  const rankPts = (key: string): number =>
+    banked(key) ? actualPoints![key] : (vorByKey[key]?.pointsNextWeek ?? 0) * rankFactor(key)
   const meta = new Map(pool.map((p) => [p.playerKey, p]))
   const teamOf = (key: string) => (meta.get(key)?.proTeam ?? '').toUpperCase()
   // An empty map means the schedule is unknown (fetch failed / unsupported week),
@@ -690,14 +703,14 @@ export function buildWeeklyBoard(input: {
   const rankable: { key: string; pos: string; pts: number }[] = []
   for (const p of pool) {
     if (byeOf(p.playerKey)) continue
-    rankable.push({ key: p.playerKey, pos: normPosOf(p.position), pts: week(p.playerKey) })
+    rankable.push({ key: p.playerKey, pos: normPosOf(p.position), pts: rankPts(p.playerKey) })
   }
   for (const fa of freeAgents) {
     const k = faKey(fa)
     if (!vorByKey[k]) continue
     const t = (fa.team ?? '').toUpperCase()
     if (scheduleKnown && !opponentByTeam[t]) continue
-    rankable.push({ key: k, pos: normPosOf(fa.position), pts: week(k) })
+    rankable.push({ key: k, pos: normPosOf(fa.position), pts: rankPts(k) })
   }
   const rankIn = (rows: { key: string; pts: number }[]): Map<string, number> =>
     new Map([...rows].sort((a, b) => b.pts - a.pts).map((r, i) => [r.key, i + 1] as const))
@@ -747,6 +760,7 @@ export function buildWeeklyBoard(input: {
         home: homeOf(key),
         bye: byeOf(key),
         opportunity: oppTag(key),
+        injuryTag: tagByKey.get(key) ?? '',
         inCurrent: currentSet.has(key),
         ...ranksOf(key),
       })
@@ -765,6 +779,7 @@ export function buildWeeklyBoard(input: {
       weekPoints: week(p.playerKey),
       bye: byeOf(p.playerKey),
       opportunity: oppTag(p.playerKey),
+      injuryTag: tagByKey.get(p.playerKey) ?? '',
       ...ranksOf(p.playerKey),
     }))
     .sort((a, b) => b.weekPoints - a.weekPoints)
@@ -1099,6 +1114,7 @@ export function buildWeeklyBoard(input: {
               home: homeOf(k),
               bye: byeOf(k),
               opportunity: oppTag(k),
+              injuryTag: tagByKey.get(k) ?? '',
               inCurrent: true,
               ...ranksOf(k),
             } as WeeklyStarter
@@ -1200,7 +1216,7 @@ export function buildWeeklyBoard(input: {
     position: normPosOf(position),
     team,
     headshot,
-    weekPoints: week(key),
+    weekPoints: rankPts(key),
     ...ranksOf(key),
     owner,
     ownerName,

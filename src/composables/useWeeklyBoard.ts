@@ -5,19 +5,21 @@ import { useFootballVor } from '@/composables/useFootballVor'
 import { useFootballScoring } from '@/composables/useFootballScoring'
 import { sleeperService } from '@/services/sleeper'
 import { opponentMap } from '@/football/footballBye'
-import { buildWeeklyBoard, type WeeklyBoard } from '@/football/weeklyBoard'
+import { buildWeeklyBoard, RULED_OUT, type WeeklyBoard } from '@/football/weeklyBoard'
 import { useThisWeekOpponent } from '@/composables/useThisWeekOpponent'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
 import { seasonStakes, type Stakes } from '@/myteam/seasonStakes'
-import { useCustomRankings } from '@/composables/useCustomRankings'
-import { applyRankingOrder } from '@/draft/room/customRankings'
+import { fetchPublishedWeekly, type PublishedWeekly } from '@/services/weeklyRankings'
+import { blendBoardWithList } from '@/football/weeklyBlend'
 import { getImpliedTeamTotals, getGameStates, type GameState } from '@/services/gameLines'
 import { getSeasonLines } from '@/services/playerUsage'
 import { buildAllowed, rankAllowed } from '@/football/defenseAllowed'
 import { startingSlotOrder } from '@/trades/rosterSlots'
 import { adjustQbForEnvironment, meanImplied, type ImpliedTotals } from '@/football/gameEnvironment'
 import type { SleeperRoster } from '@/types/sleeper'
+
+export type WeeklyCompareMode = 'blend' | 'ufd' | 'analyst'
 
 /**
  * The football "This Week" board: optimal weekly lineup vs the manager's set
@@ -36,9 +38,19 @@ export function useWeeklyBoard(): {
   weekSource: ComputedRef<string>
   /** True when the active weekly list declares its own tiers and the board is using them. */
   sourceTiers: ComputedRef<boolean>
+  /** The published weekly list for this week, when one exists. */
+  publishedWeek: Ref<PublishedWeekly | null>
+  reloadPublished: () => Promise<void>
+  /**
+   * Admin-only comparison of the three boards. Everyone else stays on 'blend'; the view only
+   * lets an admin change it, and it never touches what is published.
+   */
+  compareMode: Ref<WeeklyCompareMode>
   /** True when the viewer is in this league without a roster — no lineup, no matchup. */
   spectator: ComputedRef<boolean>
   outlook: ComputedRef<ReturnType<typeof useSeasonOutlook>['outlook']['value']>
+  /** NFL season the board is live for (0 until the state loads). */
+  nflSeason: Ref<number>
 } {
   const leagueStore = useLeagueStore()
   const isFootball = computed(() => leagueStore.activeSport === 'football')
@@ -64,6 +76,14 @@ export function useWeeklyBoard(): {
   const currentWeek = ref(0)
   const opponentByTeam = ref<Record<string, { opp: string; home: boolean }>>({})
   const scheduleLoading = ref(false)
+  const publishedWeek = ref<PublishedWeekly | null>(null)
+  const compareMode = ref<WeeklyCompareMode>('blend')
+  const nflSeason = ref(0)
+  async function reloadPublished() {
+    publishedWeek.value = live.value && nflSeason.value && currentWeek.value
+      ? await fetchPublishedWeekly('football', nflSeason.value, currentWeek.value)
+      : null
+  }
 
   async function loadWeek() {
     if (!isFootball.value) { live.value = false; return }
@@ -73,10 +93,12 @@ export function useWeeklyBoard(): {
       const st = String(state.season_type || '')
       live.value = st === 'regular' || st === 'post'
       currentWeek.value = Number(state.week) || 0
+      nflSeason.value = Number(state.season) || 0
       opponentByTeam.value =
         live.value && currentWeek.value
           ? opponentMap(await sleeperService.getNflSchedule(state.season, currentWeek.value, st))
           : {}
+      await reloadPublished()
     } catch (e) {
       console.error('[useWeeklyBoard] load failed', e)
       live.value = false
@@ -106,24 +128,12 @@ export function useWeeklyBoard(): {
   })
   const hasCurrentLineup = computed(() => currentStarters.value.length > 0)
 
-  /*
-   * An uploaded weekly list drives EVERYTHING here, not just the order of a list. Earlier I
-   * left this out precisely because a reorder would have been a lie next to a lineup chosen
-   * by an optimiser that ignored it — a control labelled "your rankings" that the headline
-   * recommendation overrules is worse than no control.
-   *
-   * applyRankingOrder re-seats our projected points onto the analyst's order: ranked players
-   * take the point values already occupied by that slot on our board, unranked players keep
-   * their own. So the optimiser, the closest calls, the streamers and the board all move
-   * together, and every number on screen is still a projection rather than a rank pretending
-   * to be one.
-   */
-  const weekRankings = useCustomRankings('week')
   const nameByKey = computed(() => {
-    const m = new Map<string, { name: string; position: string; team: string }>()
-    for (const p of src.pool.value) m.set(p.playerKey, { name: p.name, position: p.position ?? '', team: p.proTeam ?? '' })
+    const m = new Map<string, { name: string; position: string; team: string; status: string }>()
+    const status = (s: unknown) => String(s ?? '').toUpperCase().trim()
+    for (const p of src.pool.value) m.set(p.playerKey, { name: p.name, position: p.position ?? '', team: p.proTeam ?? '', status: status(p.status) })
     for (const fa of src.freeAgents.value)
-      m.set(fa.playerKey ?? `fa:${fa.name}`, { name: fa.name, position: fa.position ?? '', team: fa.team ?? '' })
+      m.set(fa.playerKey ?? `fa:${fa.name}`, { name: fa.name, position: fa.position ?? '', team: fa.team ?? '', status: status(fa.status) })
     return m
   })
   /*
@@ -183,7 +193,7 @@ export function useWeeklyBoard(): {
     const base = vorByKey.value
     const implied = impliedTotals.value
     const mean = meanImplied(implied)
-    if (!mean || !Object.keys(base).length) return base
+    if (blendedPoints.value || !mean || !Object.keys(base).length) return base
     const out: typeof base = {}
     for (const [k, v] of Object.entries(base)) {
       const meta = nameByKey.value.get(k)
@@ -195,47 +205,40 @@ export function useWeeklyBoard(): {
     return out
   })
 
-  const effectiveVor = computed(() => {
-    const base = environmentVor.value
-    if (!weekRankings.enabled.value || !Object.keys(base).length) return base
-    const named = Object.keys(base).map((k) => ({
-      playerKey: k,
-      name: nameByKey.value.get(k)?.name ?? '',
-      position: nameByKey.value.get(k)?.position ?? '',
-    }))
-    const { rankByKey } = weekRankings.match(named)
-    if (!Object.keys(rankByKey).length) return base
-
+  /*
+   * The published weekly list blended into our points per position (see weeklyBlend), or null
+   * when there is no list OR it blended to nothing — a row that matches no one must behave
+   * exactly like no list, so everything downstream gates on this rather than on the row.
+   *
+   * Built from the un-adjusted base (vorByKey) so it cannot loop through environmentVor.
+   * The ladder is the players who can actually play this week: ruled-out and bye players are
+   * dropped before it is built (as position-tiers.py does) and keep their base value.
+   */
+  const blendedPoints = computed<Record<string, number> | null>(() => {
+    const base = vorByKey.value
+    const list = publishedWeek.value
+    // 'ufd' is the board exactly as it is with no list, QB environment adjustment included.
+    if (!list || compareMode.value === 'ufd' || !Object.keys(base).length) return null
     const normPos = (p: string) => (p || '').toUpperCase().split(/[,/|]/)[0].trim()
-    const entries = Object.entries(base).map(([k, v]) => ({
-      playerKey: k, value: v.pointsNextWeek, position: normPos(nameByKey.value.get(k)?.position ?? ''),
-    }))
-
-    /*
-     * Scoped per position when the list was built from per-position files.
-     *
-     * Analyst weekly rankings arrive one file per position and each restarts at rank 1, so a
-     * global re-seat would treat the best quarterback and the best running back as tied for
-     * first and hand out point values accordingly. Grouping first keeps a rank meaning what
-     * the file meant: first AT THAT POSITION.
-     *
-     * A single cross-position list keeps the old global behaviour, because for that shape the
-     * ranks genuinely are one order.
-     */
-    let reseated: Record<string, number>
-    if (weekRankings.partPositions.value.length) {
-      reseated = {}
-      const byPos = new Map<string, typeof entries>()
-      for (const e of entries) byPos.set(e.position, [...(byPos.get(e.position) ?? []), e])
-      for (const group of byPos.values()) Object.assign(reseated, applyRankingOrder(group, rankByKey))
-    } else {
-      reseated = applyRankingOrder(entries, rankByKey)
-    }
-
-    const out: typeof base = {}
+    const scheduleKnown = Object.keys(opponentByTeam.value).length > 0
+    const names: { playerKey: string; name: string; position: string }[] = []
+    const entries: { playerKey: string; value: number; position: string }[] = []
     for (const [k, v] of Object.entries(base)) {
-      out[k] = { ...v, pointsNextWeek: reseated[k] ?? v.pointsNextWeek }
+      const meta = nameByKey.value.get(k)
+      if (meta && RULED_OUT.has(meta.status)) continue
+      if (scheduleKnown && !opponentByTeam.value[(meta?.team ?? '').toUpperCase()]) continue
+      const position = normPos(meta?.position ?? '')
+      entries.push({ playerKey: k, value: v.pointsNextWeek, position })
+      names.push({ playerKey: k, name: meta?.name ?? '', position })
     }
+    return blendBoardWithList(entries, names, list.body, compareMode.value === 'analyst' ? 1 : 0.5)
+  })
+
+  const effectiveVor = computed(() => {
+    const blended = blendedPoints.value
+    if (!blended) return environmentVor.value
+    const out: typeof vorByKey.value = {}
+    for (const [k, v] of Object.entries(vorByKey.value)) out[k] = { ...v, pointsNextWeek: blended[k] ?? v.pointsNextWeek }
     return out
   })
 
@@ -244,24 +247,8 @@ export function useWeeklyBoard(): {
    * following along. sleeperMyTeamKey returns '' for them because no roster's owner_id
    * matches, and everything personal on this page is correctly empty as a result.
    */
-  /*
-   * The tiers the active weekly list declares, when it declares any.
-   *
-   * The analyst files carry a Tier column and the parser has always read it — matchRankings
-   * returns tierByKey and the Draft Room has used it for a while. This board never asked,
-   * so it derived its own cliffs from our points while sitting under a header naming
-   * somebody else's order. Their tiering is the better answer: it is a judgement about who
-   * is interchangeable this week, from the person whose order the reader chose.
-   */
-  const weekTierByKey = computed<Record<string, number>>(() => {
-    if (!weekRankings.enabled.value || !weekRankings.hasOwnTiers.value) return {}
-    const named = Object.keys(environmentVor.value).map((k) => ({
-      playerKey: k,
-      name: nameByKey.value.get(k)?.name ?? '',
-      position: nameByKey.value.get(k)?.position ?? '',
-    }))
-    return weekRankings.match(named).tierByKey
-  })
+  /* Tiers are drawn on the blended points, so no source declares its own. */
+  const weekTierByKey = computed<Record<string, number>>(() => ({}))
 
   const starterSlots = computed(() =>
     startingSlotOrder(
@@ -353,7 +340,11 @@ export function useWeeklyBoard(): {
     myTeamName: src.myTeamName, myTeamLogo: src.myTeamLogo,
     stakes, outlook, spectator,
     /** Whose weekly numbers are driving the page — 'UFD' unless a list is active. */
-    weekSource: computed(() => (weekRankings.enabled.value ? weekRankings.sourceName.value : 'UFD')),
-    sourceTiers: computed(() => Object.keys(weekTierByKey.value).length > 0),
+    weekSource: computed(() => (blendedPoints.value ? 'UFD weekly rankings' : 'UFD')),
+    sourceTiers: computed(() => false),
+    publishedWeek,
+    reloadPublished,
+    compareMode,
+    nflSeason,
   }
 }
