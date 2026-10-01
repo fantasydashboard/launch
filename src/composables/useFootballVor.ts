@@ -1,4 +1,5 @@
 import { computed, ref, watch, type Ref } from 'vue'
+import { calibrateProjection } from '@/football/positionCalibration'
 import { sleeperService } from '@/services/sleeper'
 import { useLeagueStore } from '@/stores/league'
 import { fetchSeasonProjectionStats, fetchWeekProjectionStats } from '@/services/footballProjections'
@@ -132,8 +133,16 @@ export function useFootballVor(inputs: {
       }
       const opportunityByKey = tagOpportunity(oppPlayers)
       const seasonProj = buildFootballProjectionsByKey(projPlayers.value, seasonStats, meta, scoring)
+      /*
+       * CALIBRATED ON THE WAY IN, so everything downstream runs on one honest scale: the blend,
+       * VOR, the lineup totals the landscape ranks, the trade verdicts and the playoff odds that
+       * come off those totals. Quarterbacks only, and four seasons say so — see
+       * positionCalibration.ts. Applied to the PROJECTION, never to what a man actually scored.
+       */
       const projectedByKey: Record<string, number> = {}
-      for (const [k, v] of Object.entries(seasonProj)) projectedByKey[k] = v.points
+      for (const [k, v] of Object.entries(seasonProj)) {
+        projectedByKey[k] = calibrateProjection(v.points, positionByKey.value[k])
+      }
 
       /*
        * Update the forecast with the season so far, rather than shipping it untouched.
@@ -170,7 +179,7 @@ export function useFootballVor(inputs: {
       try {
         const wkStats = await fetchWeekProjectionStats(season, currentWeek)
         const wkProj = buildFootballProjectionsByKey(projPlayers.value, wkStats, meta, scoring)
-        for (const [k, v] of Object.entries(wkProj)) forwardRateByKey[k] = v.points
+        for (const [k, v] of Object.entries(wkProj)) forwardRateByKey[k] = calibrateProjection(v.points, positionByKey.value[k])
       } catch { /* no forward week, no second opinion */ }
 
       /* How much that second opinion counts is position-specific: quarterback and tight end
