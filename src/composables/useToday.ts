@@ -5,6 +5,7 @@ import { useMyRoster } from '@/composables/useMyRoster'
 import { useFullSeasonCategoryData } from '@/composables/useFullSeasonCategoryData'
 import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { isYahooCategoryLeague as isYahooCategoryScoringType } from '@/composables/useIsCategoryLeague'
+import { resolveScoringType } from '@/lib/scoringType'
 import { getLeagueType } from '@/config/sports'
 import { classifyCategory } from '@/myteam/categorySide'
 import { isLowerBetter } from '@/players/direction'
@@ -115,6 +116,43 @@ export function useToday(): {
   const isEspnPointsLeague = computed(
     () => leagueStore.activePlatform === 'espn' && espnPoints.supported.value === true,
   )
+
+  /* Yahoo's league settings payload, fetched in load() for the add budget. Declared here
+     because the scoring type below is read off it, and that has to sit above its consumers. */
+  const yahooSettings = ref<any>(null)
+
+  /**
+   * The league's own scoring-type string, resolved per platform.
+   *
+   * THREE SOURCES, IN ORDER OF AUTHORITY, because each is absent in cases the next one covers:
+   *
+   * 1. Yahoo's own settings response. ESPN never writes the store field on this path at all —
+   *    its category detection runs through useEspnCategoryTeamData, which fetches the league
+   *    and checks scoringType itself — so for ESPN we report what that check established.
+   * 2. The store's live league.
+   * 3. The saved league. This is the one that mattered: a Yahoo league whose live record has
+   *    no scoring_type made getLeagueType fall through to its 'points' default, so
+   *    isPointsLeague called a category league a points league — while useDailyLineup's own
+   *    isCategory, which DOES consult savedLeagues, called it a category league. One page,
+   *    two contradictory beliefs about one league, and the lineup panel printed "category
+   *    value" while the matchup rendered the points-league seat-by-seat board.
+   *
+   * NOTE ON ESPN MOST-CATEGORIES. espnService.mapScoringType has no case for
+   * H2H_MOST_CATEGORIES and falls through to 'H2H_POINTS', and useEspnCategoryTeamData treats
+   * anything but 'H2H_CATEGORY' as unsupported. So an ESPN most-categories league is read as a
+   * points league app-wide today. That is a real gap, it predates this, and it is NOT papered
+   * over here: guessing 'most' for leagues we cannot identify would be worse than saying
+   * nothing, because the two formats want opposite behaviour in a losing week.
+   */
+  const scoringType = computed<string | undefined>(() => {
+    const id = leagueStore.activeLeagueId
+    return resolveScoringType({
+      espnCategory: isEspnCategoryLeague.value,
+      yahoo: yahooSettings.value?.league_scoring_type,
+      live: leagueStore.currentLeague?.scoring_type,
+      saved: (leagueStore.savedLeagues?.find((l: any) => l.league_id === id) as any)?.scoring_type,
+    })
+  })
   const isYahooPointsLeague = computed(
     () => leagueStore.activePlatform === 'yahoo' && isPointsLeague.value,
   )
@@ -401,9 +439,7 @@ export function useToday(): {
   // Points vs category, for baseValue's branch (categories.value is empty for a
   // points league on both platforms today, so this currently only tilts which
   // empty/degenerate path a points league takes — see the report for detail).
-  const isPointsLeague = computed(
-    () => getLeagueType(leagueStore.currentLeague?.scoring_type ?? undefined) === 'points',
-  )
+  const isPointsLeague = computed(() => getLeagueType(scoringType.value) === 'points')
 
   // League points weights (for the points-league daily base value). Loaded alongside the
   // other sources; empty until loaded, which keeps the board on its loading/empty state.
@@ -495,8 +531,7 @@ export function useToday(): {
   const scheduleLoaded = ref(false)
   const playsToday = (team: string) => (schedule.value.gamesByTeam[team] ?? 0) > 0
 
-  // ── Yahoo add-limit inputs (league settings + my-team weekly-adds/FAAB) ────────
-  const yahooSettings = ref<any>(null)
+  // ── Yahoo add-limit inputs (my-team weekly-adds/FAAB; settings live above) ────
   const yahooAddInfo = ref<{ weeklyAddsUsed: number | null; faabBalance: number | null }>({ weeklyAddsUsed: null, faabBalance: null })
 
   // ── FanGraphs matcher — best-effort opposing-SP quality, degrades to null ────
@@ -883,42 +918,6 @@ export function useToday(): {
     return boardInputsReady.value && pointsScoringReady.value
   })
   const isLoading = computed(() => !dataReady.value)
-
-  /**
-   * The league's own scoring-type string, resolved per platform.
-   *
-   * WHY THIS IS NOT JUST currentLeague.scoring_type. That field is populated off Yahoo's
-   * settings, where 'head' and 'headone' arrive verbatim. ESPN never writes it on this path at
-   * all — its category detection runs through useEspnCategoryTeamData, which fetches the league
-   * and checks scoringType itself — so reading the store alone returns undefined for every ESPN
-   * category league, and anything downstream that needs the FORMAT (not just the boolean) would
-   * silently get nothing.
-   *
-   * NOTE ON ESPN MOST-CATEGORIES. espnService.mapScoringType has no case for
-   * H2H_MOST_CATEGORIES and falls through to 'H2H_POINTS', and useEspnCategoryTeamData treats
-   * anything but 'H2H_CATEGORY' as unsupported. So an ESPN most-categories league is read as a
-   * points league app-wide today. That is a real gap, it predates this, and it is NOT papered
-   * over here: an ESPN league that reaches the category path is 'H2H_CATEGORY', and that is
-   * what this reports. Guessing 'most' for leagues we cannot identify would be worse than
-   * saying nothing, because the two formats want opposite behaviour in a losing week.
-   */
-  const scoringType = computed<string | undefined>(() => {
-    if (isEspnCategoryLeague.value) return 'H2H_CATEGORY'
-    /*
-     * Yahoo's own answer first. The store's copy is populated on some league-load paths and
-     * not others — a league identified as "category" from its MATCHUPS rather than its
-     * settings never gets one — so the cached string is absent exactly where the distinction
-     * matters most. This payload is already being fetched for the add budget; see
-     * yahooService.getLeagueSettings for why the field had to be rescued from the response.
-     */
-    const fromYahoo = yahooSettings.value?.league_scoring_type
-    if (fromYahoo) return String(fromYahoo)
-    const fromStore = leagueStore.currentLeague?.scoring_type
-    if (fromStore) return fromStore
-    const id = leagueStore.activeLeagueId
-    return (leagueStore.savedLeagues?.find((l: any) => l.league_id === id) as any)?.scoring_type
-      || undefined
-  })
 
   return { vm, loading: isLoading, error, load, isPoints: isPointsLeague, budget: addBudget, categories, scoringType }
 }
