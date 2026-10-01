@@ -8,8 +8,11 @@ import DailyLineupPanel from '@/components/today/DailyLineupPanel.vue'
 import DailyRankingsPanel from '@/components/today/DailyRankingsPanel.vue'
 import TodayMatchupHeader from '@/components/today/TodayMatchupHeader.vue'
 import TodayMatchupSpots from '@/components/today/TodayMatchupSpots.vue'
+import TodayCategoryBoard from '@/components/today/TodayCategoryBoard.vue'
 import { useDailyMatchup } from '@/composables/useDailyMatchup'
 import { useThisWeekMatchup } from '@/composables/useThisWeekMatchup'
+import { useCategoryWeek } from '@/composables/useCategoryWeek'
+import { useCategoryRankings } from '@/composables/useCategoryRankings'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import SeasonBreakPanel from '@/components/today/SeasonBreakPanel.vue'
 import WireAddsPanel from '@/components/today/WireAddsPanel.vue'
@@ -30,7 +33,7 @@ const words = computed(() => wordsFor(leagueStore.activeSport))
  */
 const daily = useDailyLineup()
 
-const { vm, loading, error, load, isPoints, categories } = useToday()
+const { vm, loading, error, load, isPoints, categories, scoringType } = useToday()
 /*
  * THE MATCHUP BELONGS ON THIS PAGE, NOT ITS OWN TAB. The reason to care who you are playing
  * is that it changes what you do tonight — comfortably ahead you conserve moves, behind in
@@ -64,6 +67,61 @@ const matchup = useDailyMatchup({
   playsToday: daily.playsToday,
   isCategory: daily.isCategory,
 })
+/*
+ * WHERE YOU STAND COLUMN BY COLUMN, for the leagues that are scored that way.
+ *
+ * A category league was being shown the points-league matchup: your man against the man
+ * opposite, with a POINTS margin beside each pair — a currency the league does not keep score
+ * in. This answers the question that league actually asks, and it is deliberately assembled
+ * from pieces already on this page rather than its own fetches: the same roster pool, the same
+ * slate, the same hockey feed. Two sources for one matchup is how the two halves of a screen
+ * end up disagreeing.
+ *
+ * It yields null — and the seat-by-seat board stays — whenever any input is missing or the
+ * format is one we do not score (roto). See useCategoryWeek: absent is a better answer than
+ * a confident board built out of zeros.
+ */
+const categoryWeek = useCategoryWeek({
+  snapshot: thisWeek.snapshot,
+  pool: daily.pool,
+  myTeamKey: daily.myTeamKey,
+  /* The pairing useDailyMatchup already resolved. One fetch, one opponent — two instances on
+     one page could describe two different matchups. */
+  opponentKey: matchup.opponentKey,
+  /* The WEEK's slate, not tonight's — a column is won over the days that are left, and the
+     spread of each one scales with how many games are still to come. */
+  gamesByTeam: computed(() => daily.weekSchedule.value.gamesByTeam ?? {}),
+  categories: daily.hockeyCategories,
+  projectionOf: daily.hockeyProjectionOf,
+  scoringType,
+})
+
+/*
+ * TONIGHT'S BOARD, RANKED BY WHAT THE WEEK NEEDS.
+ *
+ * The list was sorted by total category value — how good a player is across every column,
+ * which is a draft question. Tonight's question is narrower: if goals are banked and you are
+ * two shots behind, the useful man is the volume shooter and not the better player. Same rows,
+ * re-priced against the live state of the week.
+ *
+ * Null whenever the week could not be built or has nothing left in play, and the board then
+ * renders exactly as it did before. See useCategoryRankings.
+ */
+const needRankings = useCategoryRankings({
+  rankings: daily.rankings,
+  week: categoryWeek.week,
+  projectionOf: daily.hockeyProjectionOf,
+})
+/* One source for the rows and one for the label, so the number can never be described in
+   units it is not in. */
+const rankingRows = computed(() => needRankings.rows.value ?? daily.rankings.value)
+const rankingLabel = computed(() =>
+  needRankings.rows.value
+    ? 'win chance added tonight, in points'
+    : isCategoryLeague.value
+      ? 'category value tonight'
+      : 'projected points tonight')
+
 /* Category specs drive the column strip; a points league passes none and gets the score. */
 onMounted(() => {
   thisWeek.load((categories.value ?? []).map((c) => ({ statId: c.statId, label: c.label })))
@@ -72,6 +130,8 @@ onMounted(() => {
      shipped. */
   teamSource.load()
   daily.load()
+  /* This also resolves who you are playing, which the category week needs by pool team key —
+     thisWeek only carries the opponent's NAME. */
   matchup.load()
 })
 
@@ -232,8 +292,17 @@ const showFailed = computed(() => error.value === 'failed')
                              :me-name="myName" :opp-name="oppName" />
       </section>
 
-      <!-- 1b. SEAT BY SEAT — the section football leans on, asked about tonight. -->
-      <TodayMatchupSpots v-if="matchup.snapshot.value"
+      <!-- 1b. YOUR CATEGORIES, for a league scored by columns — and the seat-by-seat board for
+           one scored by points. The category board replaces it rather than joining it: a
+           points margin per seat is not a thing a category manager can act on, and showing
+           both would be showing the same matchup in two currencies. The `v-else-if` is what
+           keeps this safe — if the week cannot be built, the old board is still what renders. -->
+      <TodayCategoryBoard v-if="isCategoryLeague && categoryWeek.week.value"
+                          :week="categoryWeek.week.value"
+                          :my-name="myName"
+                          :opp-name="oppName"
+                          :days-remaining="thisWeek.snapshot.value?.daysRemaining ?? 0" />
+      <TodayMatchupSpots v-else-if="matchup.snapshot.value"
                          :spots="matchup.snapshot.value.spots"
                          :opp-name="matchup.snapshot.value.opp.name"
                          :my-name="matchup.snapshot.value.me.name"
@@ -308,7 +377,8 @@ const showFailed = computed(() => error.value === 'failed')
                      :value-label="daily.valueLabel.value" />
 
       <DailyRankingsPanel v-if="!onBreak && daily.canValue.value"
-                          :rows="daily.rankings.value"
+                          :rows="rankingRows"
+                          :value-label="rankingLabel"
                           :scarcity="daily.scarcity.value"
                           :opp-name="matchup.snapshot.value?.opp.name"
                           :slot-order="Object.keys(teamSource.rosterSlots.value ?? {})" />

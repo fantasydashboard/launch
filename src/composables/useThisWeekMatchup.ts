@@ -24,11 +24,22 @@ export interface ThisWeekSnapshot {
   platform: 'yahoo' | 'espn'
 }
 
-// Days left until the end of the standard fantasy week (Sun). Snapshot-grade
-// approximation; the full Matchup view has exact per-week dates.
+/*
+ * Days of games still to come, today included, through the standard fantasy week's Sunday end.
+ *
+ * TODAY IS A REMAINING DAY. This used to return `7 - dow`, which counts tomorrow onward and so
+ * reported ZERO all Sunday — with a full Sunday slate still to play, every column read as
+ * decided and `completed` said the week was over. It also understated the variance on every
+ * other day by one day's worth, which quietly made every lead look safer than it was.
+ *
+ * Still snapshot-grade: it assumes the Mon-Sun week rather than reading the league's own
+ * matchup dates, which the full Matchup view does. After Sunday's last game it reads 1 instead
+ * of 0 for a few hours; an overstated day at the very end of a week is a far smaller error
+ * than declaring the biggest slate of the week settled before it starts.
+ */
 function daysUntilWeekEnd(): number {
   const dow = new Date().getDay() // 0 = Sun
-  return dow === 0 ? 0 : 7 - dow
+  return dow === 0 ? 1 : 8 - dow
 }
 
 export function useThisWeekMatchup() {

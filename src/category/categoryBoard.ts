@@ -60,14 +60,28 @@ export function buildCategoryState(input: {
      the chance of being the decider in a most-categories one. See pivotalWeights. */
   const weights = pivotalWeights(probs, format)
 
-  return cats.map((c, i) => ({
-    ...c,
-    winPct: probs[i],
-    status: catStatus(probs[i]),
-    unitValue: c.isRatio
-      ? 0
-      : catLeverage(c.mine, c.theirs, c.sigma, days, c.lowerIsBetter) * (weights[i] ?? 0),
-  }))
+  return cats.map((c, i) => {
+    const status = catStatus(probs[i])
+    return {
+      ...c,
+      winPct: probs[i],
+      status,
+      /*
+       * A SETTLED COLUMN IS WORTH NOTHING, AND IT HAS TO BE EXACTLY NOTHING.
+       *
+       * Leverage is a normal density, so it decays towards zero without ever arriving: a
+       * twenty-goal lead with a day left prices at about 1e-18. That is zero to any reader and
+       * NOT zero to a comparison. `unitValue > 0` stayed true for every dead column, so a
+       * fully settled week still looked like it had live ones, a board could be "ranked" by
+       * float residue, and a man who only piles up a column you had already banked was still
+       * credited with helping you in it. The status buckets are where settled is decided, so
+       * the snap belongs with them.
+       */
+      unitValue: c.isRatio || status !== 'live'
+        ? 0
+        : catLeverage(c.mine, c.theirs, c.sigma, days, c.lowerIsBetter) * (weights[i] ?? 0),
+    }
+  })
 }
 
 export interface LineScore {

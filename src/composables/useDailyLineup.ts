@@ -912,6 +912,13 @@ export function useDailyLineup() {
     leagueSize,
     startableByPos,
     schedule,
+    /*
+     * The hockey feed's own pieces, surfaced so the category week can be assembled without a
+     * SECOND useHockeyValue — two instances would fetch the NHL feed twice and could disagree
+     * about the same league, which is the failure mergeFeed exists to prevent.
+     */
+    hockeyCategories: hockeyValue.categories,
+    hockeyProjectionOf: hockeyValue.projectionOf,
     /** True when the slate could not be read — the page says so rather than showing a dark night. */
     scheduleFailed,
     /** Try the slate again now. The banner's button; the tab also does it on its own. */

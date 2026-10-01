@@ -26,7 +26,20 @@ import { teamLogoFor } from '@/players/teamLogo'
 import { availability, type RankedRow } from '@/composables/useDailyLineup'
 
 const props = defineProps<{
-  rows: RankedRow[]
+  /**
+   * The board. Rows may carry `helps` — the columns a start actually moves — when the list has
+   * been scored against a category week rather than by raw value. See useCategoryRankings.
+   */
+  rows: Array<RankedRow & { need?: number; helps?: string[] }>
+  /**
+   * What the loud number on each row MEANS.
+   *
+   * This used to be hardcoded as "projected points tonight", which was wrong for every
+   * category league on the page — the column held category value, and in a need-weighted
+   * board it holds percentage points of category win chance. A number whose units are
+   * misstated is worse than one with no label, because the reader does arithmetic with it.
+   */
+  valueLabel?: string
   /** The league's own slot order, so the filters read the way its lineup page does. */
   slotOrder?: string[]
   /** Where tonight is cheap and where it is bare — the read above the list. */
@@ -115,15 +128,31 @@ const positions = computed(() => {
  * only worth drawing when the number that justifies it can be shown.
  */
 const MIN_TIER_DROP = 0.05
+/**
+ * The number this board is actually about — ONE accessor, used everywhere.
+ *
+ * A need-weighted category board arrives sorted by `need` (percentage points of category win
+ * chance) while `today` still holds the season-long value the rows were built with. Reading
+ * one field for the order and the other for the number printed beside it would produce a list
+ * whose loud column is not monotone down the page — the clearest possible signal that a board
+ * is broken, arrived at by the two halves of it disagreeing about what it ranks. `today` is
+ * deliberately left alone rather than overwritten: a field quietly holding a different unit
+ * than its name says is how this codebase's worst bugs have started.
+ */
+const valueOf = (r: { need?: number; today: number }) => r.need ?? r.today
 const tiers = computed(() =>
-  assignTiers(shown.value.map((r) => ({ playerKey: r.playerKey, value: r.today })), MIN_TIER_DROP))
+  assignTiers(shown.value.map((r) => ({ playerKey: r.playerKey, value: valueOf(r) })), MIN_TIER_DROP))
 const tierOf = (key: string) => tiers.value[key] ?? 1
 /** True on the first row of a new tier, which is where the divider is drawn. */
 /* The top row starts a tier as surely as any other. It never drew a line, because this test
    asked whether the tier had CHANGED and the first row changes from nothing — leaving the best
    players on the board in an unnamed group above a line that says "tier 2". */
 const startsTier = (i: number) => i === 0 || tierOf(shown.value[i].playerKey) !== tierOf(shown.value[i - 1].playerKey)
-const tierDrop = (i: number) => (shown.value[i - 1]?.today ?? 0) - (shown.value[i]?.today ?? 0)
+const tierDrop = (i: number) => {
+  const above = shown.value[i - 1]
+  const here = shown.value[i]
+  return (above ? valueOf(above) : 0) - (here ? valueOf(here) : 0)
+}
 
 const filter = ref('ALL')
 
@@ -192,7 +221,7 @@ const OWNER_TONE: Record<string, string> = {
    chip reads as filled without a background fighting the row beneath it. */
 const OWNER_CHIP_ON = OWNER_CHIP_OUTLINE
 /** Fourth state: the man you are actually playing this week. */
-const isOpp = (r: RankedRow) =>
+const isOpp = (r: { owner: string; ownerName: string }) =>
   !!props.oppName && r.owner === 'rostered' && r.ownerName === props.oppName
 
 const hasScarcity = computed(() =>
@@ -204,7 +233,7 @@ const hasScarcity = computed(() =>
     <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
       Tonight's rankings
       <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">
-        &middot; your roster, the wire and the league &middot; projected points tonight
+        &middot; your roster, the wire and the league &middot; {{ valueLabel ?? 'projected points tonight' }}
       </span>
     </h2>
     <p class="mb-3 font-mono text-[10px] text-dark-textMuted/60">
@@ -305,6 +334,17 @@ const hasScarcity = computed(() =>
           <template v-if="r.team">
             &middot; <img :src="logo(r.team)" alt="" @error="onLogoErr" class="h-3 w-3 object-contain" />{{ r.team }}
           </template>
+          <!-- WHICH COLUMNS HE MOVES, when the board knows. Without it a need-weighted
+               ranking is unexplainable: the reader sees a 4th-round waiver body above a star
+               and has no way to tell that it is because he shoots and you are losing shots.
+
+               His best TWO, not all of them. In a nine-category league a good skater moves
+               most of the live columns, so the full list came out near-identical on every row
+               — four tags of noise that discriminate nothing. The number is what separates
+               these players; this says what kind of help it is. -->
+          <template v-if="r.helps?.length">
+            &middot; <span class="text-[#7ee787]">{{ r.helps.slice(0, 2).join(' ') }}</span>
+          </template>
         </span>
       </span>
       <span class="shrink-0 font-mono text-[10px]" :class="OWNER_TONE[r.owner]">
@@ -312,7 +352,7 @@ const hasScarcity = computed(() =>
       </span>
       <!-- One loud number per row, as on the rankings board: this is the column the list is
            sorted by and it was set no larger than the owner's name beside it. -->
-      <span class="w-14 shrink-0 text-right font-display text-base font-bold tabular-nums text-dark-text sm:text-lg">{{ one(r.today) }}</span>
+      <span class="w-14 shrink-0 text-right font-display text-base font-bold tabular-nums text-dark-text sm:text-lg">{{ one(valueOf(r)) }}</span>
     </div>
     </template>
 

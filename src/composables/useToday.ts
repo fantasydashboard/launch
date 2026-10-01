@@ -74,6 +74,8 @@ export function useToday(): {
   load: () => Promise<void>
   isPoints: ComputedRef<boolean>
   budget: ComputedRef<AddBudget>
+  /** The league's own scoring-type string, resolved per platform. See the definition below. */
+  scoringType: ComputedRef<string | undefined>
   /** The columns a category league is decided in, with labels — the matchup header reads these. */
   categories: ComputedRef<{ statId: string; label: string }[]>
 } {
@@ -882,5 +884,32 @@ export function useToday(): {
   })
   const isLoading = computed(() => !dataReady.value)
 
-  return { vm, loading: isLoading, error, load, isPoints: isPointsLeague, budget: addBudget, categories }
+  /**
+   * The league's own scoring-type string, resolved per platform.
+   *
+   * WHY THIS IS NOT JUST currentLeague.scoring_type. That field is populated off Yahoo's
+   * settings, where 'head' and 'headone' arrive verbatim. ESPN never writes it on this path at
+   * all — its category detection runs through useEspnCategoryTeamData, which fetches the league
+   * and checks scoringType itself — so reading the store alone returns undefined for every ESPN
+   * category league, and anything downstream that needs the FORMAT (not just the boolean) would
+   * silently get nothing.
+   *
+   * NOTE ON ESPN MOST-CATEGORIES. espnService.mapScoringType has no case for
+   * H2H_MOST_CATEGORIES and falls through to 'H2H_POINTS', and useEspnCategoryTeamData treats
+   * anything but 'H2H_CATEGORY' as unsupported. So an ESPN most-categories league is read as a
+   * points league app-wide today. That is a real gap, it predates this, and it is NOT papered
+   * over here: an ESPN league that reaches the category path is 'H2H_CATEGORY', and that is
+   * what this reports. Guessing 'most' for leagues we cannot identify would be worse than
+   * saying nothing, because the two formats want opposite behaviour in a losing week.
+   */
+  const scoringType = computed<string | undefined>(() => {
+    if (isEspnCategoryLeague.value) return 'H2H_CATEGORY'
+    const fromStore = leagueStore.currentLeague?.scoring_type
+    if (fromStore) return fromStore
+    const id = leagueStore.activeLeagueId
+    return (leagueStore.savedLeagues?.find((l: any) => l.league_id === id) as any)?.scoring_type
+      || undefined
+  })
+
+  return { vm, loading: isLoading, error, load, isPoints: isPointsLeague, budget: addBudget, categories, scoringType }
 }

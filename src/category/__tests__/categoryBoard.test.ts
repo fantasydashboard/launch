@@ -110,3 +110,40 @@ describe('scoreLine — what a player is worth tonight', () => {
     expect(scoreLine({ BLK: 9 }, state).score).toBe(0)
   })
 })
+
+describe('a settled column is worth exactly nothing', () => {
+  /*
+   * Leverage is a normal density: it decays towards zero without arriving, so a dead column
+   * used to price at about 1e-18. Zero to a reader, not zero to `> 0` — which let a fully
+   * settled week look live and let a banked column be named as one a player "helps" in.
+   */
+  it('snaps a banked column to zero rather than a float crumb', () => {
+    const [banked] = buildCategoryState({
+      cats: [{ key: 'G', label: 'G', mine: 40, theirs: 5, sigma: 1, lowerIsBetter: false, isRatio: false }],
+      days: 1,
+      format: 'each',
+    })
+    expect(banked.status).toBe('safe')
+    expect(banked.unitValue).toBe(0)
+  })
+
+  it('snaps a lost column to zero as well', () => {
+    const [gone] = buildCategoryState({
+      cats: [{ key: 'A', label: 'A', mine: 5, theirs: 40, sigma: 1, lowerIsBetter: false, isRatio: false }],
+      days: 1,
+      format: 'each',
+    })
+    expect(gone.status).toBe('gone')
+    expect(gone.unitValue).toBe(0)
+  })
+
+  it('still prices a column that is genuinely in play', () => {
+    const [live] = buildCategoryState({
+      cats: [{ key: 'SOG', label: 'SOG', mine: 100, theirs: 100, sigma: 6, lowerIsBetter: false, isRatio: false }],
+      days: 2,
+      format: 'each',
+    })
+    expect(live.status).toBe('live')
+    expect(live.unitValue).toBeGreaterThan(0)
+  })
+})

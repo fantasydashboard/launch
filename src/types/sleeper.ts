@@ -21,6 +21,15 @@ export interface SleeperLeague {
     [key: string]: any
   }
   scoring_settings: Record<string, number>
+  /**
+   * The league's scoring format, as its own platform names it.
+   *
+   * Sleeper does not publish this — the store reuses this shape as its `currentLeague` for
+   * Yahoo and ESPN leagues too, and assigns Yahoo's 'head' / 'headone' / 'roto' and ESPN's
+   * 'H2H_CATEGORY' into it. Readers were already going through `currentLeague.scoring_type`
+   * and taking a type error for it; declaring it is what the store actually does.
+   */
+  scoring_type?: string
   roster_positions: string[]
   previous_league_id?: string
   metadata?: {

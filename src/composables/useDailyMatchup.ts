@@ -145,6 +145,8 @@ export function useDailyMatchup(inputs: {
   snapshot: ComputedRef<DailyMatchupSnapshot | null>
   loading: Ref<boolean>
   load: () => void
+  /** Who you are playing, by pool team key. Empty until the pairing resolves. */
+  opponentKey: ComputedRef<string>
 } {
   const leagueStore = useLeagueStore()
   const oppSvc = useThisWeekOpponent()
@@ -313,5 +315,13 @@ export function useDailyMatchup(inputs: {
     }
   })
 
-  return { snapshot, loading, load }
+  /*
+   * The opponent, by pool team key — exposed rather than left private.
+   *
+   * The category week needs the opponent's side of the pool totalled, and a second
+   * useThisWeekOpponent in the view would mean two fetches of the same pairing on one page,
+   * free to land in either order and to disagree about who you are playing. That is the
+   * failure every "exposed rather than re-fetched" note in this file exists to prevent.
+   */
+  return { snapshot, loading, load, opponentKey: computed(() => oppSvc.opponent.value?.opponentKey ?? '') }
 }
