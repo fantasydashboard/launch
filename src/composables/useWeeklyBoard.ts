@@ -19,6 +19,8 @@ import { startingSlotOrder } from '@/trades/rosterSlots'
 import { adjustQbForEnvironment, meanImplied, type ImpliedTotals } from '@/football/gameEnvironment'
 import type { SleeperRoster } from '@/types/sleeper'
 
+export type WeeklyCompareMode = 'blend' | 'ufd' | 'analyst'
+
 /**
  * The football "This Week" board: optimal weekly lineup vs the manager's set
  * lineup + streamers. `live` gates on the NFL state's season_type (regular/post);
@@ -39,6 +41,11 @@ export function useWeeklyBoard(): {
   /** The published weekly list for this week, when one exists. */
   publishedWeek: Ref<PublishedWeekly | null>
   reloadPublished: () => Promise<void>
+  /**
+   * Admin-only comparison of the three boards. Everyone else stays on 'blend'; the view only
+   * lets an admin change it, and it never touches what is published.
+   */
+  compareMode: Ref<WeeklyCompareMode>
   /** True when the viewer is in this league without a roster — no lineup, no matchup. */
   spectator: ComputedRef<boolean>
   outlook: ComputedRef<ReturnType<typeof useSeasonOutlook>['outlook']['value']>
@@ -70,6 +77,7 @@ export function useWeeklyBoard(): {
   const opponentByTeam = ref<Record<string, { opp: string; home: boolean }>>({})
   const scheduleLoading = ref(false)
   const publishedWeek = ref<PublishedWeekly | null>(null)
+  const compareMode = ref<WeeklyCompareMode>('blend')
   const nflSeason = ref(0)
   async function reloadPublished() {
     publishedWeek.value = live.value && nflSeason.value && currentWeek.value
@@ -209,7 +217,8 @@ export function useWeeklyBoard(): {
   const blendedPoints = computed<Record<string, number> | null>(() => {
     const base = vorByKey.value
     const list = publishedWeek.value
-    if (!list || !Object.keys(base).length) return null
+    // 'ufd' is the board exactly as it is with no list, QB environment adjustment included.
+    if (!list || compareMode.value === 'ufd' || !Object.keys(base).length) return null
     const normPos = (p: string) => (p || '').toUpperCase().split(/[,/|]/)[0].trim()
     const scheduleKnown = Object.keys(opponentByTeam.value).length > 0
     const names: { playerKey: string; name: string; position: string }[] = []
@@ -222,7 +231,7 @@ export function useWeeklyBoard(): {
       entries.push({ playerKey: k, value: v.pointsNextWeek, position })
       names.push({ playerKey: k, name: meta?.name ?? '', position })
     }
-    return blendBoardWithList(entries, names, list.body)
+    return blendBoardWithList(entries, names, list.body, compareMode.value === 'analyst' ? 1 : 0.5)
   })
 
   const effectiveVor = computed(() => {
@@ -335,6 +344,7 @@ export function useWeeklyBoard(): {
     sourceTiers: computed(() => false),
     publishedWeek,
     reloadPublished,
+    compareMode,
     nflSeason,
   }
 }

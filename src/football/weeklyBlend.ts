@@ -22,6 +22,8 @@ export function blendWithAnalyst(
   entries: BlendEntry[],
   rankByKey: Record<string, number>,
   lastRankByPos?: Record<string, number>,
+  /** Share given to the analyst. 0.5 is the published blend; 1 is his order alone (admin compare). */
+  analystWeight = 0.5,
 ): Record<string, number> {
   const out: Record<string, number> = {}
   const byPos = new Map<string, BlendEntry[]>()
@@ -40,7 +42,7 @@ export function blendWithAnalyst(
     for (const e of group) {
       const r = Math.max(1, Math.round(rankByKey[e.playerKey] ?? lastRank + 1))
       const mapped = ladder[Math.min(r, ladder.length) - 1]
-      out[e.playerKey] = (e.value + mapped) / 2
+      out[e.playerKey] = e.value * (1 - analystWeight) + mapped * analystWeight
     }
   }
   return out
@@ -51,6 +53,7 @@ export function blendBoardWithList(
   entries: BlendEntry[],
   names: { playerKey: string; name: string; position: string }[],
   text: string,
+  analystWeight = 0.5,
 ): Record<string, number> | null {
   const wide = splitWideRankings(text)
   const parts = (wide?.parts ?? []).filter((p) => BLENDED_POSITIONS.has(p.position.toUpperCase()))
@@ -65,7 +68,7 @@ export function blendBoardWithList(
     lastRankByPos[pos] = Math.max(...parsed.map(p => p.rank))
   }
   if (!Object.keys(rankByKey).length) return null
-  return blendWithAnalyst(entries, rankByKey, lastRankByPos)
+  return blendWithAnalyst(entries, rankByKey, lastRankByPos, analystWeight)
 }
 
 const TEAM_ALIAS: Record<string, string> = { JAC: 'JAX', WSH: 'WAS', LA: 'LAR' }

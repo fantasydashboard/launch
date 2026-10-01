@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { computed, ref, watch } from 'vue'
-import { useWeeklyBoard } from '@/composables/useWeeklyBoard'
+import { useWeeklyBoard, type WeeklyCompareMode } from '@/composables/useWeeklyBoard'
 import { winPctFromMargin, WEEKLY_INJURY_DISCOUNT, RULED_OUT } from '@/football/weeklyBoard'
 import { useWinProbTrend } from '@/composables/useWinProbTrend'
 import MatchupWinProbChart from '@/components/matchup/MatchupWinProbChart.vue'
@@ -14,7 +14,27 @@ import SeasonPassGate from '@/components/SeasonPassGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const { hasFullAccess, accessKnown, accessCheckFailed, isAdmin } = useFeatureAccess()
-const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes, weekSource, spectator, publishedWeek, reloadPublished, nflSeason } = useWeeklyBoard()
+const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes, weekSource, spectator, publishedWeek, reloadPublished, nflSeason, compareMode } = useWeeklyBoard()
+
+/* Admin-only: compare the published blend against our numbers alone and the analyst's order
+   alone. Remembered in this browser only; nobody else's board changes. */
+const COMPARE_KEY = 'ufd:weeklyCompareMode'
+const COMPARE_MODES: { id: WeeklyCompareMode; label: string }[] = [
+  { id: 'blend', label: 'Blend' },
+  { id: 'ufd', label: 'UFD only' },
+  { id: 'analyst', label: 'Analyst only' },
+]
+watch(isAdmin, (admin) => {
+  if (!admin) { compareMode.value = 'blend'; return }
+  try {
+    const saved = localStorage.getItem(COMPARE_KEY) as WeeklyCompareMode | null
+    if (saved && COMPARE_MODES.some((m) => m.id === saved)) compareMode.value = saved
+  } catch { /* private mode */ }
+}, { immediate: true })
+watch(compareMode, (m) => {
+  if (!isAdmin.value) return
+  try { localStorage.setItem(COMPARE_KEY, m) } catch { /* private mode */ }
+})
 
 /* Lineup rows are built on the cut value, not the ranking value the board shows. Say so. */
 function cutTitle(tag: string, benched = false): string {
@@ -766,7 +786,21 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
                                    :published="publishedWeek" :current-week="currentWeek" @published="reloadPublished" />
             <!-- weekSource was destructured in this file and never rendered, so a board being
                  driven by an uploaded list looked identical to one on our own numbers. -->
-            <span v-if="weekSource !== 'UFD'" class="font-mono text-[10px] text-dark-textMuted/70">UFD weekly rankings</span>
+            <div class="flex flex-wrap items-center gap-2">
+              <div v-if="isAdmin && publishedWeek" class="flex gap-1" title="Admin only: compare boards. Users always see the blend.">
+                <button
+                  v-for="m in COMPARE_MODES"
+                  :key="'cmp-' + m.id"
+                  class="rounded px-2 py-0.5 font-mono text-[10px] transition-colors"
+                  :class="compareMode === m.id ? 'bg-dark-border text-dark-text' : 'text-dark-textMuted hover:text-dark-text'"
+                  @click="compareMode = m.id"
+                >{{ m.label }}</button>
+              </div>
+              <span v-if="isAdmin && publishedWeek && compareMode !== 'blend'" class="font-mono text-[10px] text-[#d29922]">
+                Comparing: {{ compareMode === 'ufd' ? 'UFD only' : 'analyst only' }} · users see the blend
+              </span>
+              <span v-else-if="weekSource !== 'UFD'" class="font-mono text-[10px] text-dark-textMuted/70">UFD weekly rankings</span>
+            </div>
           </div>
           <div class="mb-2 flex flex-wrap gap-1.5">
             <button

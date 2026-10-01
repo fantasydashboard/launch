@@ -182,3 +182,31 @@ describe('detectListWeek', () => {
     expect(result?.share).toBe(1.0)
   })
 })
+
+describe('analyst weight (admin compare views)', () => {
+  const te = [
+    { playerKey: 'mcb', value: 13.8, position: 'TE' },
+    { playerKey: 'bow', value: 12.2, position: 'TE' },
+    { playerKey: 'fan', value: 10.0, position: 'TE' },
+  ]
+  it('at weight 1 every ranked player takes his analyst slot outright', () => {
+    const out = blendWithAnalyst(te, { fan: 1, mcb: 2, bow: 3 }, undefined, 1)
+    expect(out.fan).toBeCloseTo(13.8)
+    expect(out.mcb).toBeCloseTo(12.2)
+    expect(out.bow).toBeCloseTo(10.0)
+  })
+  it('defaults to the 50/50 blend', () => {
+    const a = blendWithAnalyst(te, { fan: 1, mcb: 2, bow: 3 })
+    expect(a.fan).toBeCloseTo((10.0 + 13.8) / 2)
+  })
+  it('passes the weight through blendBoardWithList', () => {
+    const text = '"QB Rank","QB Player","TE Rank","TE Player"\n"1","Nobody","1","Harold Fannin"\n"2","Nobody Two","2","Trey McBride"'
+    const names = [
+      { playerKey: 'mcb', name: 'Trey McBride', position: 'TE' },
+      { playerKey: 'bow', name: 'Brock Bowers', position: 'TE' },
+      { playerKey: 'fan', name: 'Harold Fannin', position: 'TE' },
+    ]
+    const out = blendBoardWithList(te, names, text, 1)!
+    expect(out.fan).toBeCloseTo(13.8)
+  })
+})
