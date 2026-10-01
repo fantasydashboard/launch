@@ -10,6 +10,7 @@ import { useAuthStore } from '@/stores/auth'
 import { usePlatformsStore } from '@/stores/platforms'
 import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
+import { sleeperService } from '@/services/sleeper'
 import type { Sport } from '@/types/supabase'
 import type { WeekOutcomes, Outcome } from '@/league/powerTrajectory'
 import type { ScheduleWeek } from '@/league/playoffOdds'
@@ -230,12 +231,96 @@ export function usePowerTrajectory() {
   // for a player's per-week projection). weeksLeft = regular-season weeks remaining incl. current
   // = playoff_week_start − current_week, clamped to ≥ 1 (a completed league yields 1). Outcomes
   // stay empty (the standings-race chart simply hides), which is fine for football in-season v1.
-  function loadSleeper(): WeekOutcomes[] {
+  /**
+   * Sleeper, which was a stub returning nothing.
+   *
+   * ESPN and Yahoo both fetched their matchups here; Sleeper set two numbers and returned an
+   * empty array, so `remainingSchedule` stayed empty for every Sleeper league. Four sections of
+   * the League page are gated on that schedule — playoff odds, championship odds, the schedule
+   * outlook and the trajectory chart — so all four silently did not exist on the platform a lot
+   * of football leagues actually run on. Nothing errored; the page simply fell through to its
+   * no-schedule layout and looked finished.
+   *
+   * Sleeper pairs teams by `matchup_id` rather than naming an opponent, so two rosters sharing
+   * one are playing each other.
+   *
+   * KEYED AS THE BARE ROSTER ID, because that is what `useSleeperLeaguePool` puts on a pool
+   * player (`teamKey: String(r.roster_id)`) and therefore what the standings and power rankings
+   * are keyed by. The store's own team list uses `sleeper_<id>` for the SAME teams, and a first
+   * version of this used that — the schedule then named teams the simulator had never heard of,
+   * so every matchup was silently dropped and every team finished on exactly the record it
+   * started with. It looked like a working playoff-odds column: ">99%" for everyone above the
+   * cut and "<1%" for everyone below, which is what you get when nothing is left to play.
+   */
+  async function loadSleeper(leagueKey: string): Promise<WeekOutcomes[]> {
     const leagueStore = useLeagueStore()
     const cw = leagueStore.currentWeek
+    const ew = Math.max(cw, leagueStore.playoffWeekStart - 1)   // last REGULAR-season week
     currentWeek.value = cw
     weeksLeft.value = Math.max(1, leagueStore.playoffWeekStart - cw)
-    return []
+    const leagueId = leagueKey.startsWith('sleeper_') ? leagueKey.slice('sleeper_'.length) : leagueKey
+    const key = (rosterId: number | string) => String(rosterId)
+
+    /** One week's matchups, grouped into pairs by matchup_id. */
+    const pairsFor = async (week: number): Promise<[string, string][]> => {
+      const rows = await sleeperService.getMatchups(leagueId, week)
+      const byId = new Map<number, typeof rows>()
+      for (const r of rows ?? []) {
+        if (r?.matchup_id == null || r?.roster_id == null) continue
+        const list = byId.get(r.matchup_id) ?? []
+        list.push(r)
+        byId.set(r.matchup_id, list)
+      }
+      const out: [string, string][] = []
+      /* Exactly two to a matchup. A bye or a broken group is skipped rather than guessed at —
+         inventing an opponent would put a phantom win into every simulated season. */
+      for (const list of byId.values()) {
+        if (list.length === 2) out.push([key(list[0].roster_id), key(list[1].roster_id)])
+      }
+      return out
+    }
+
+    /* Weeks already played, for the trajectory. Sleeper reports no winner, so the higher score
+       takes it — which is the rule the league itself applies. */
+    const past = await Promise.all(
+      Array.from({ length: Math.max(0, cw - 1) }, (_, i) => i + 1).map(async (week): Promise<WeekOutcomes | null> => {
+        try {
+          const rows = await sleeperService.getMatchups(leagueId, week)
+          const byId = new Map<number, typeof rows>()
+          for (const r of rows ?? []) {
+            if (r?.matchup_id == null || r?.roster_id == null) continue
+            byId.set(r.matchup_id, [...(byId.get(r.matchup_id) ?? []), r])
+          }
+          const results: Record<string, 'W' | 'L' | 'T'> = {}
+          const points: Record<string, number> = {}
+          for (const list of byId.values()) {
+            if (list.length !== 2) continue
+            const [a, c] = list
+            points[key(a.roster_id)] = Number(a.points ?? 0)
+            points[key(c.roster_id)] = Number(c.points ?? 0)
+            const pa = Number(a.points ?? 0)
+            const pc = Number(c.points ?? 0)
+            if (pa === pc) { results[key(a.roster_id)] = 'T'; results[key(c.roster_id)] = 'T' }
+            else if (pa > pc) { results[key(a.roster_id)] = 'W'; results[key(c.roster_id)] = 'L' }
+            else { results[key(a.roster_id)] = 'L'; results[key(c.roster_id)] = 'W' }
+          }
+          return Object.keys(results).length ? { week, results, points } : null
+        } catch { return null }
+      }),
+    )
+
+    const sched = await Promise.all(
+      Array.from({ length: Math.max(0, ew - cw + 1) }, (_, i) => cw + i).map(
+        async (week): Promise<ScheduleWeek | null> => {
+          try {
+            const matchups = await pairsFor(week)
+            return matchups.length ? { week, matchups } : null
+          } catch { return null }
+        },
+      ),
+    )
+    remainingSchedule.value = sched.filter((w): w is ScheduleWeek => w != null)
+    return past.filter((w): w is WeekOutcomes => w != null)
   }
 
   async function load(opts?: { categoryForm?: boolean }) {
@@ -250,7 +335,7 @@ export function usePowerTrajectory() {
         platform === 'espn'
           ? await loadEspn(leagueKey)
           : platform === 'sleeper'
-            ? loadSleeper()
+            ? await loadSleeper(leagueKey)
             : await loadYahoo(leagueKey, opts?.categoryForm)
       if (leagueStore.activeLeagueId !== requested) return
       outcomes.value = result
