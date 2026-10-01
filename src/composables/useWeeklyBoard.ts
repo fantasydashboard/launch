@@ -42,6 +42,8 @@ export function useWeeklyBoard(): {
   /** True when the viewer is in this league without a roster — no lineup, no matchup. */
   spectator: ComputedRef<boolean>
   outlook: ComputedRef<ReturnType<typeof useSeasonOutlook>['outlook']['value']>
+  /** NFL season the board is live for (0 until the state loads). */
+  nflSeason: Ref<number>
 } {
   const leagueStore = useLeagueStore()
   const isFootball = computed(() => leagueStore.activeSport === 'football')
@@ -313,5 +315,6 @@ export function useWeeklyBoard(): {
     sourceTiers: computed(() => false),
     publishedWeek,
     reloadPublished,
+    nflSeason,
   }
 }

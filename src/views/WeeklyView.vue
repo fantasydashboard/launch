@@ -9,12 +9,12 @@ import { useLeagueStore } from '@/stores/league'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { startableCounts, startableFraction } from '@/trades/rosterSlots'
 import { startableRankTone } from '@/lib/startableRankTone'
-import RankingPicker from '@/components/RankingPicker.vue'
+import PublishWeeklyRankings from '@/components/PublishWeeklyRankings.vue'
 import SeasonPassGate from '@/components/SeasonPassGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const { hasFullAccess, accessKnown, accessCheckFailed, isAdmin } = useFeatureAccess()
-const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes, weekSource, spectator, sourceTiers } = useWeeklyBoard()
+const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes, weekSource, spectator, publishedWeek, reloadPublished, nflSeason } = useWeeklyBoard()
 
 /*
  * Header totals are summed from the ROUNDED row values, not rounded from the raw sum.
@@ -748,12 +748,11 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             or offering a way back to ours.
           -->
           <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <RankingPicker v-if="isAdmin" kind="week" />
+            <PublishWeeklyRankings v-if="isAdmin" :season="nflSeason || new Date().getFullYear()"
+                                   :published="publishedWeek" @published="reloadPublished" />
             <!-- weekSource was destructured in this file and never rendered, so a board being
                  driven by an uploaded list looked identical to one on our own numbers. -->
-            <span v-if="weekSource !== 'UFD'" class="font-mono text-[10px] text-dark-textMuted/70">
-              {{ weekSource }}'s order<template v-if="sourceTiers"> and tiers</template> &middot; our points
-            </span>
+            <span v-if="weekSource !== 'UFD'" class="font-mono text-[10px] text-dark-textMuted/70">UFD weekly rankings</span>
           </div>
           <div class="mb-2 flex flex-wrap gap-1.5">
             <button
@@ -794,11 +793,10 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
               drop and no attribution: there is nothing above it, so nobody drew this break.
             -->
             <div v-if="row.tierBreak || i === 0" class="flex items-center gap-2 py-1.5">
-              <span class="h-px flex-1" :class="(row.tierSplit || (row.tierSource && row.tierDrop == null && i > 0)) ? 'bg-dark-border/50' : 'bg-dark-border'"></span>
+              <span class="h-px flex-1" :class="row.tierSplit ? 'bg-dark-border/50' : 'bg-dark-border'"></span>
               <span class="font-mono text-[9px] uppercase tracking-wider"
-                    :class="(row.tierSplit || (row.tierSource && row.tierDrop == null && i > 0)) ? 'text-dark-textMuted/45' : 'text-dark-textMuted/70'">
+                    :class="row.tierSplit ? 'text-dark-textMuted/45' : 'text-dark-textMuted/70'">
                 <template v-if="i === 0">tier {{ row.tier }}</template>
-                <template v-else-if="row.tierSource && row.tierDrop == null">tier {{ row.tier }} &middot; {{ weekSource }}'s break &middot; no gap in our points</template>
                 <template v-else-if="row.tierSplit">tier {{ row.tier }} &middot; no cliff &middot; widest gap</template>
                 <template v-else>tier {{ row.tier }} &middot; &minus;{{ round(row.tierDrop ?? 0) }} pts</template>
               </span>
@@ -831,7 +829,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
                      badge tells him it is a priced risk: the rank he is looking at is already a
                      bet on whether the man suits up. -->
                 <span v-else-if="row.injuryTag" class="ml-1 font-mono text-[9px] uppercase text-[#d29922]"
-                      :title="`${row.injuryTag} — ranked at ${Math.round((WEEKLY_INJURY_DISCOUNT[row.injuryTag.toUpperCase()] ?? 1) * 100)}% of a normal week, because roughly seven in ten play and rarely at full strength. Ranked on what he is worth, not on what he does if he suits up.`">{{ row.injuryTag.slice(0, 1) }}</span>
+                      :title="`${row.injuryTag}: ranked as if he plays. Lineup advice counts him at ${Math.round((WEEKLY_INJURY_DISCOUNT[row.injuryTag.toUpperCase()] ?? 1) * 100)}% because roughly seven in ten play.`">{{ row.injuryTag.slice(0, 1) }}</span>
                 </span>
                 <!-- LINE TWO, ON A PHONE ONLY. Who holds him and who he plays are the two
                      facts a start/sit turns on, and both hid below the breakpoint — leaving a
