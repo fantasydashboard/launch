@@ -87,9 +87,16 @@ export function detectListWeek(
     if (opp >= 0) cols.push([i, opp])
   })
   const pairs = new Set<string>()
+  const isTeamCode = (s: string) => /^[A-Za-z]{2,3}$/.test(s)
   for (const line of lines.slice(1)) {
     const cells = splitCsvLine(line)
-    for (const [t, o] of cols) if (cells[t]?.trim() && cells[o]?.trim()) pairs.add(pairKey(cells[t], cells[o]))
+    for (const [t, o] of cols) {
+      const teamVal = cells[t]?.trim()
+      const oppVal = cells[o]?.trim()
+      if (teamVal && oppVal && isTeamCode(teamVal) && isTeamCode(oppVal)) {
+        pairs.add(pairKey(teamVal, oppVal))
+      }
+    }
   }
   if (!pairs.size) return null
   let best: { week: number; share: number } | null = null

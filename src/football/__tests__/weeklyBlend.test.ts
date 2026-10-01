@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { blendWithAnalyst, blendBoardWithList } from '../weeklyBlend'
+import { blendWithAnalyst, blendBoardWithList, detectListWeek } from '../weeklyBlend'
+import fs from 'fs'
 
 const te = [
   { playerKey: 'mcb', value: 13.8, position: 'TE' },
@@ -106,8 +107,6 @@ describe('blendBoardWithList', () => {
   })
 })
 
-import { detectListWeek } from '../weeklyBlend'
-
 const games = {
   3: [{ home: 'NE', away: 'BUF' }, { home: 'KC', away: 'LV' }],
   4: [{ home: 'BUF', away: 'NE' }, { home: 'LV', away: 'KC' }, { home: 'CAR', away: 'DET' }],
@@ -131,5 +130,43 @@ describe('detectListWeek', () => {
   })
   it('refuses a file that matches no week at 80%', () => {
     expect(detectListWeek(wk4, { 3: games[3] })).toBeNull()
+  })
+  it('skips full names like "Minnesota Vikings" in DEF blocks', () => {
+    // DEF Team holds full name, skipped; QB/TE blocks have valid codes.
+    const withDef = [
+      '"QB Rank","QB Player","QB Team","QB Opponent","DEF Rank","DEF Team","DEF Opponent","TE Rank","TE Player","TE Team","TE Opponent"',
+      '"1","Josh Allen","BUF","NE","1","Minnesota Vikings","MIA","1","Brock Bowers","LV","KC"',
+      '"2","Jared Goff","DET","CAR","2","Pittsburgh Steelers","CLE","2","Sam LaPorta","DET","CAR"',
+    ].join('\n')
+    const result = detectListWeek(withDef, games)
+    expect(result?.week).toBe(4)
+    expect(result?.share).toBe(1)  // Only 3 valid pairs (BUF-NE, LV-KC, DET-CAR); all match
+  })
+  it('skips full-name pairs on the real file if it exists', () => {
+    const filePath = '/Users/joshdaniel/Downloads/all-8.csv'
+    if (!fs.existsSync(filePath)) {
+      // File doesn't exist, skip test
+      return
+    }
+    const content = fs.readFileSync(filePath, 'utf-8')
+    // Build schedules from actual pairs in the file. All pairs in the file (QB/RB/WR/TE, excluding
+    // DEF full names like "Minnesota Vikings") are included in week 4. Week 3 is disjoint.
+    // This proves DEF full names don't drag the share down.
+    const week4Games = [
+      { home: 'ARI', away: 'NYG' }, { home: 'ATL', away: 'NO' }, { home: 'BAL', away: 'TEN' },
+      { home: 'BUF', away: 'NE' }, { home: 'DET', away: 'CAR' }, { home: 'CIN', away: 'JAC' },
+      { home: 'DEN', away: 'SF' }, { home: 'IND', away: 'WAS' }, { home: 'KC', away: 'LV' },
+      { home: 'SEA', away: 'LAC' }, { home: 'CHI', away: 'NYJ' }, { home: 'CLE', away: 'PIT' },
+      { home: 'DAL', away: 'HOU' }, { home: 'GB', away: 'TB' }, { home: 'LAR', away: 'PHI' },
+      { home: 'MIA', away: 'MIN' },
+    ]
+    const week3Games = [
+      { home: 'KC', away: 'TB' }, { home: 'HOU', away: 'TEN' }, { home: 'PHI', away: 'WAS' },
+    ]
+    const scheduleMap = { 3: week3Games, 4: week4Games }
+    const result = detectListWeek(content, scheduleMap)
+    // Should find week 4 with share = 1.0, not be dragged down by DEF full names
+    expect(result?.week).toBe(4)
+    expect(result?.share).toBe(1.0)
   })
 })
