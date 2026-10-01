@@ -1489,3 +1489,88 @@ describe('Questionable: ranked as if he plays, started on the cut value', () => 
     expect(find('rbOut').posRank).toBeGreaterThan(3)
   })
 })
+
+describe('seating the lineup by kickoff', () => {
+  const THU = Date.parse('2026-10-02T00:15Z')
+  const SUN = Date.parse('2026-10-04T17:00Z')
+  const MNF = Date.parse('2026-10-06T00:15Z')
+  /* rb1 is the Thursday back and the optimiser's third-best RB, so by value alone he lands in
+     the flex — the seat that has to stay live. */
+  const kickoffs = { BUF: SUN, KC: THU, SF: SUN, DAL: MNF, GB: SUN, NYG: SUN }
+  const vorByKey: Record<string, PlayerVor> = {
+    qb: pv(300), rb1: pv(150), rb2: pv(200), rb3: pv(180), rb4: pv(10), opp: pv(999),
+  }
+  const build = (extra: Record<string, unknown> = {}) =>
+    buildWeeklyBoard({
+      pool, vorByKey, slots, myTeamKey: 'me',
+      currentStarters: ['qb', 'rb1', 'rb2', 'rb3'],
+      freeAgents: [], opponentByTeam: opp, kickoffs, ...extra,
+    })
+
+  it('keeps the Thursday back out of the flex and leaves the latest kickoff in it', () => {
+    const board = build()
+    const flex = board.starters.find((s) => s.slot === 'FLEX')!
+    expect(flex.playerKey).toBe('rb3') // DAL, Monday night
+    const rb1 = board.starters.find((s) => s.playerKey === 'rb1')!
+    expect(rb1.slot).toBe('RB')
+  })
+
+  it('starts the same players it would have without any kickoffs', () => {
+    const withKo = build().starters.map((s) => s.playerKey).sort()
+    const without = buildWeeklyBoard({
+      pool, vorByKey, slots, myTeamKey: 'me',
+      currentStarters: ['qb', 'rb1', 'rb2', 'rb3'],
+      freeAgents: [], opponentByTeam: opp,
+    }).starters.map((s) => s.playerKey).sort()
+    expect(withKo).toEqual(without)
+  })
+
+  it('projects exactly the same total — a seat change is not a lineup change', () => {
+    const sum = (b: ReturnType<typeof build>) => b.starters.reduce((t, s) => t + s.weekPoints, 0)
+    const without = buildWeeklyBoard({
+      pool, vorByKey, slots, myTeamKey: 'me',
+      currentStarters: ['qb', 'rb1', 'rb2', 'rb3'],
+      freeAgents: [], opponentByTeam: opp,
+    })
+    expect(sum(build())).toBeCloseTo(sum(without), 6)
+  })
+
+  it('recommends no start/sit move, because nobody is being started or sat', () => {
+    expect(build().moves).toEqual([])
+  })
+
+  it('carries each starter’s kickoff for the row to show', () => {
+    const board = build()
+    expect(board.starters.find((s) => s.playerKey === 'rb1')!.kickoff).toBe(THU)
+    expect(board.starters.find((s) => s.playerKey === 'rb3')!.kickoff).toBe(MNF)
+  })
+
+  it('tells a manager whose own lineup seats the Thursday back in the flex', () => {
+    const board = build({
+      starterSlots: ['QB', 'RB', 'RB', 'FLEX'],
+      myStarterKeys: ['qb', 'rb2', 'rb3', 'rb1'], // rb1 (Thursday) in the flex
+    })
+    expect(board.seatMoves.map((m) => m.playerKey).sort()).toEqual(['rb1', 'rb3'])
+    expect(board.seatMoves.find((m) => m.playerKey === 'rb1')!.toSlot).toBe('RB')
+  })
+
+  it('says nothing about a lineup that is already seated right', () => {
+    const board = build({
+      starterSlots: ['QB', 'RB', 'RB', 'FLEX'],
+      myStarterKeys: ['qb', 'rb1', 'rb2', 'rb3'], // Thursday back already at RB
+    })
+    expect(board.seatMoves).toEqual([])
+  })
+
+  it('re-seats nothing when the scoreboard could not be read', () => {
+    const board = buildWeeklyBoard({
+      pool, vorByKey, slots, myTeamKey: 'me',
+      currentStarters: ['qb', 'rb1', 'rb2', 'rb3'],
+      freeAgents: [], opponentByTeam: opp, kickoffs: {},
+      starterSlots: ['QB', 'RB', 'RB', 'FLEX'],
+      myStarterKeys: ['qb', 'rb2', 'rb3', 'rb1'],
+    })
+    expect(board.seatMoves).toEqual([])
+    expect(board.starters.every((s) => s.kickoff === null)).toBe(true)
+  })
+})

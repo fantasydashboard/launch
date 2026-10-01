@@ -3,6 +3,7 @@ import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { computed, ref, watch } from 'vue'
 import { useWeeklyBoard, type WeeklyCompareMode } from '@/composables/useWeeklyBoard'
 import { winPctFromMargin, WEEKLY_INJURY_DISCOUNT, RULED_OUT } from '@/football/weeklyBoard'
+import { kickoffLabel, isEarlyKickoff } from '@/football/kickoffLabel'
 import { useWinProbTrend } from '@/composables/useWinProbTrend'
 import MatchupWinProbChart from '@/components/matchup/MatchupWinProbChart.vue'
 import { useLeagueStore } from '@/stores/league'
@@ -664,6 +665,13 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
                 {{ s.position }}
                 <template v-if="s.bye"> · <span class="text-[#FF5C5C]">BYE</span></template>
                 <template v-else-if="s.opponent"> · {{ s.home ? 'vs' : '@' }} <img :src="teamLogo(s.opponent)" alt="" @error="onLogoErr" class="h-3 w-3 object-contain" />{{ s.opponent }}</template>
+                <!-- When the seat locks. The reason the lineup is ordered the way it is, and
+                     useless as a claim unless the reader can see it on the row. -->
+                <template v-if="kickoffLabel(s.kickoff)">
+                  · <span class="font-mono text-[10px]"
+                          :class="isEarlyKickoff(s.kickoff) ? 'text-dark-textMuted' : 'text-[#7ee787]'"
+                          :title="isEarlyKickoff(s.kickoff) ? 'Locks early — seated in a fixed slot so the flex stays open' : 'Locks late — this seat can still be changed after the early games'">{{ kickoffLabel(s.kickoff) }}</span>
+                </template>
               </span>
             </span>
             <span class="w-20 shrink-0 text-right">
@@ -672,6 +680,43 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
                 <span :class="posTone(s)">{{ posLabel(s) }}</span>
                 <span v-if="s.flexRank" :class="flexTone(s.flexRank)"> &middot; FLX{{ s.flexRank }}</span>
               </span>
+            </span>
+          </div>
+        </template>
+      </section>
+
+      <!--
+        SEATING, which is not a start/sit and must not read as one.
+        
+        Zero projected points are at stake and the section says so in its first line, because a
+        manager who follows a recommendation and watches his projection not move learns that
+        this page recommends things worth nothing. What IS at stake is Sunday morning: football
+        locks each player at his own kickoff, and you replace a scratched starter in his own
+        seat, so a Thursday back sitting in the flex has spent the only seat that any of
+        RB/WR/TE could have filled.
+      -->
+      <section v-if="!spectator && board.seatMoves.length" class="mb-5 rounded-xl border border-dark-border bg-dark-bg/40 p-4">
+        <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-dark-textMuted">
+          Lineup order
+          <span class="font-mono text-[10px] normal-case text-dark-textMuted/70">· same players, same projection</span>
+        </h2>
+        <p class="mb-3 font-mono text-[10px] leading-relaxed text-dark-textMuted">
+          Your flex is the only seat any of RB/WR/TE can fill. Spend it on a player who kicks off
+          late and it is still yours to use when Sunday's inactives land; spend it on an early
+          game and a scratched back can only be answered with another back.
+        </p>
+        <template v-for="m in board.seatMoves" :key="'seat-' + m.playerKey">
+          <div class="flex items-center gap-3 border-b border-dark-border/40 py-2 last:border-0">
+            <span class="min-w-0 flex-1 text-sm">
+              <span class="text-dark-text">{{ m.name }}</span>
+              <span class="ml-1.5 font-mono text-[10px] uppercase text-dark-textMuted">{{ m.position }}</span>
+              <span v-if="kickoffLabel(m.kickoff)" class="ml-1.5 font-mono text-[10px]"
+                    :class="isEarlyKickoff(m.kickoff) ? 'text-[#d29922]' : 'text-[#7ee787]'">{{ kickoffLabel(m.kickoff) }}</span>
+            </span>
+            <span class="shrink-0 font-mono text-[11px]">
+              <span class="text-dark-textMuted">{{ m.fromSlot }}</span>
+              <span class="mx-1.5 text-dark-textMuted/60">&rarr;</span>
+              <span class="text-primary">{{ m.toSlot }}</span>
             </span>
           </div>
         </template>

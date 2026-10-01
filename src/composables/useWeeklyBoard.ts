@@ -12,7 +12,7 @@ import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
 import { seasonStakes, type Stakes } from '@/myteam/seasonStakes'
 import { fetchPublishedWeekly, type PublishedWeekly } from '@/services/weeklyRankings'
 import { blendBoardWithList } from '@/football/weeklyBlend'
-import { getImpliedTeamTotals, getGameStates, type GameState } from '@/services/gameLines'
+import { getImpliedTeamTotals, getGameStates, getKickoffs, type GameState, type Kickoffs } from '@/services/gameLines'
 import { getSeasonLines } from '@/services/playerUsage'
 import { buildAllowed, rankAllowed } from '@/football/defenseAllowed'
 import { startingSlotOrder } from '@/trades/rosterSlots'
@@ -147,10 +147,15 @@ export function useWeeklyBoard(): {
   /* Which games have kicked off, from the same scoreboard. Loaded beside the totals rather
      than inside them so a failure in one never silently decides the other. */
   const gameStates = ref<Record<string, GameState>>({})
+  /* When each team plays, for seating the lineup. Wanted on a Saturday, days before any game
+     state exists — `live` is "the season is on", not "the games are on", so this loads with
+     the rest of the slate rather than waiting for kickoff. */
+  const kickoffs = ref<Kickoffs>({})
   watch(live, async (isLive) => {
     if (!isLive) return
     impliedTotals.value = await getImpliedTeamTotals()
     gameStates.value = await getGameStates()
+    kickoffs.value = await getKickoffs()
   }, { immediate: true })
 
   /*
@@ -290,6 +295,9 @@ export function useWeeklyBoard(): {
       oppStarterKeys: oppSvc.opponent.value?.opponentStarters ?? [],
       actualPoints: oppSvc.opponent.value?.actualPoints ?? {},
       gameStates: gameStates.value,
+      /* Seats the lineup: early kickoffs into rigid slots, the latest into the flex, so the
+         widest seat is still open if somebody is ruled out on Sunday morning. */
+      kickoffs: kickoffs.value,
       /* The league's own slot order, so a set lineup can be read positionally instead of
          re-solved. Without it a receiver lands in the flex because that is where the solver
          would have played him, not where his manager did. */

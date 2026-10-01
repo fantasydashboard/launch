@@ -16,11 +16,17 @@ import { impliedFromLine, type ImpliedTotals } from '@/football/gameEnvironment'
  * "average game". An unpriced game is unknown, not neutral.
  */
 const ENDPOINT = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard'
-const CACHE_KEY = 'ufd:nflGameLines'
+/* v2: the cached shape gained kickoffs. A v1 entry read back under the new shape would look
+   like a successful fetch that found no kickoff times, which silently disables seat ordering
+   for six hours — a new key expires the old ones instead. */
+const CACHE_KEY = 'ufd:nflGameLines:v2'
 const TTL_MS = 6 * 60 * 60 * 1000
 const TIMEOUT_MS = 12000
 
-interface Cached { at: number; implied: ImpliedTotals }
+/** NFL team abbreviation -> this week's kickoff, ms since epoch. */
+export type Kickoffs = Record<string, number>
+
+interface Cached { at: number; implied: ImpliedTotals; kickoffs: Kickoffs }
 
 let memo: Cached | null = null
 
@@ -69,13 +75,36 @@ export function impliedFromScoreboard(payload: any): ImpliedTotals {
   return out
 }
 
-function readCache(): ImpliedTotals | null {
+/**
+ * Each team -> when its game this week kicks off.
+ *
+ * Teams on a bye are simply ABSENT, because the scoreboard only lists games being played. That
+ * absence is load-bearing: a caller distinguishes "on a bye, never locks" from "we could not
+ * read the scoreboard" by whether the whole map is empty, so an unparseable date is dropped
+ * rather than defaulted to anything.
+ */
+export function kickoffsFromScoreboard(payload: any): Kickoffs {
+  const out: Kickoffs = {}
+  for (const event of payload?.events ?? []) {
+    const comp = event?.competitions?.[0]
+    const at = Date.parse(String(comp?.date ?? event?.date ?? ''))
+    if (!Number.isFinite(at)) continue
+    for (const c of comp?.competitors ?? []) {
+      const abbr = normalizeProTeam(c?.team?.abbreviation)
+      if (abbr) out[abbr] = at
+    }
+  }
+  return out
+}
+
+function readCache(): Cached | null {
   try {
     const raw = localStorage.getItem(CACHE_KEY)
     if (!raw) return null
     const c = JSON.parse(raw) as Cached
     if (!c || Date.now() - c.at > TTL_MS) return null
-    return c.implied
+    if (!c.implied || !c.kickoffs) return null
+    return c
   } catch {
     return null
   }
@@ -133,11 +162,22 @@ export async function getGameStates(): Promise<Record<string, GameState>> {
   }
 }
 
-export async function getImpliedTeamTotals(): Promise<ImpliedTotals> {
-  if (memo && Date.now() - memo.at <= TTL_MS) return memo.implied
+/**
+ * The week's slate: implied totals and kickoff times, from ONE read of the scoreboard.
+ *
+ * Both move on the scale of days, so they share the six-hour cache. They are fetched together
+ * because they come out of the same payload, and fetching it twice to answer two questions
+ * about the same sixteen games is a round trip spent on nothing.
+ *
+ * An empty result is "we could not read it", never "there are no games" — every consumer has
+ * to treat it that way, because guessing the other way empties a roster or reseats a lineup on
+ * no evidence.
+ */
+async function getWeekSlate(): Promise<{ implied: ImpliedTotals; kickoffs: Kickoffs }> {
+  if (memo && Date.now() - memo.at <= TTL_MS) return memo
   const cached = readCache()
   if (cached) {
-    memo = { at: Date.now(), implied: cached }
+    memo = cached
     return cached
   }
 
@@ -145,15 +185,28 @@ export async function getImpliedTeamTotals(): Promise<ImpliedTotals> {
   const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS)
   try {
     const res = await fetch(ENDPOINT, { signal: ctl.signal })
-    if (!res.ok) return {}
-    const implied = impliedFromScoreboard(await res.json())
-    if (!Object.keys(implied).length) return {}
-    memo = { at: Date.now(), implied }
+    if (!res.ok) return { implied: {}, kickoffs: {} }
+    const payload = await res.json()
+    const implied = impliedFromScoreboard(payload)
+    const kickoffs = kickoffsFromScoreboard(payload)
+    /* Cached when EITHER half came back. A week ESPN has not priced yet still has a schedule,
+       and dropping the whole payload over missing odds took the kickoffs down with it. */
+    if (!Object.keys(implied).length && !Object.keys(kickoffs).length) return { implied: {}, kickoffs: {} }
+    memo = { at: Date.now(), implied, kickoffs }
     try { localStorage.setItem(CACHE_KEY, JSON.stringify(memo)) } catch { /* private mode */ }
-    return implied
+    return memo
   } catch {
-    return {}
+    return { implied: {}, kickoffs: {} }
   } finally {
     clearTimeout(timer)
   }
+}
+
+export async function getImpliedTeamTotals(): Promise<ImpliedTotals> {
+  return (await getWeekSlate()).implied
+}
+
+/** This week's kickoff per NFL team, or an empty map when the scoreboard cannot be read. */
+export async function getKickoffs(): Promise<Kickoffs> {
+  return (await getWeekSlate()).kickoffs
 }

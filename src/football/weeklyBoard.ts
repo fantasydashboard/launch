@@ -1,4 +1,5 @@
 import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
+import { orderSeatsByKickoff } from '@/football/flexOrder'
 import { parseEligible, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import type { PlayerVor } from './footballVor'
 import type { OpportunityTag } from './footballOpportunity'
@@ -22,6 +23,11 @@ export interface WeeklyStarter {
   injuryTag?: string
   /** Whether his game is ahead of us, on now, or done. */
   play: PlayState
+  /**
+   * When his game kicks off, ms since epoch. `null` on a bye and when the scoreboard could not
+   * be read — the two are told apart by whether ANY starter has one.
+   */
+  kickoff: number | null
   inCurrent: boolean // manager already has him starting
   /**
    * Rank THIS WEEK at his own position, and among everyone eligible for a flex slot, over
@@ -278,6 +284,24 @@ export function winPctFromMargin(margin: number): number {
   return Math.max(1, Math.min(99, Math.round(100 / (1 + Math.exp(-margin / 16)))))
 }
 
+/**
+ * A seat change that costs nothing: same player, same projection, different chair.
+ *
+ * Deliberately NOT a WeeklyMove. A move changes who scores for you; this does not, and putting
+ * the two in one list teaches a manager that some of the page's recommendations are worth
+ * nothing — after which he stops acting on the ones that are.
+ */
+export interface WeeklySeatMove {
+  playerKey: string
+  name: string
+  position: string
+  /** Where his manager has him now, and where he belongs. */
+  fromSlot: string
+  toSlot: string
+  /** His kickoff, ms. Null only if the scoreboard lost him between seating and reporting. */
+  kickoff: number | null
+}
+
 /** One of the opponent's projected starters. */
 export interface OppStarter {
   slot: string
@@ -475,6 +499,13 @@ export interface WeeklyBoard {
    */
   /** Starting slots with nobody in them. Points forfeited, not merely lost. */
   emptySlots: number
+  /**
+   * Seat changes to the lineup the manager has ALREADY SET that cost nothing: same players,
+   * same projection, but early kickoffs moved into rigid seats so the flex stays live. Empty
+   * when the lineup is already ordered right, when no lineup is published, or when the
+   * scoreboard could not be read.
+   */
+  seatMoves: WeeklySeatMove[]
   board: Record<string, WeeklyBoardRow[]>
   /** Positions with rows, in canonical order, FLEX last. Drives the picker. */
   boardPositions: string[]
@@ -571,6 +602,12 @@ export function buildWeeklyBoard(input: {
    */
   gameStates?: Record<string, 'pre' | 'in' | 'post'>
   /**
+   * NFL team -> this week's kickoff in ms. Drives WHICH SEAT each starter takes; see
+   * football/flexOrder. Teams on a bye are absent, and an empty map means the scoreboard could
+   * not be read, in which case nothing is re-seated.
+   */
+  kickoffs?: Record<string, number>
+  /**
    * The league's starting slots IN ORDER, one entry per seat — QB, RB, RB, WR, WR, TE, FLEX…
    *
    * A set lineup is published positionally: the nth starter fills the nth slot. Without this
@@ -594,7 +631,7 @@ export function buildWeeklyBoard(input: {
   tierByKey?: Record<string, number>
 }): WeeklyBoard {
   const { matchupRankByPos } = input
-  const { pool, vorByKey, slots, myTeamKey, currentStarters, freeAgents, opponentByTeam, oppTeamKey, oppTeamName, oppTeamLogo, teamNames, tierByKey, oppStarterKeys, actualPoints, gameStates, starterSlots, myStarterKeys } = input
+  const { pool, vorByKey, slots, myTeamKey, currentStarters, freeAgents, opponentByTeam, oppTeamKey, oppTeamName, oppTeamLogo, teamNames, tierByKey, oppStarterKeys, actualPoints, gameStates, starterSlots, myStarterKeys, kickoffs } = input
   /*
    * What a player is worth to this week's score.
    *
@@ -735,7 +772,34 @@ export function buildWeeklyBoard(input: {
     status: p.onIL ? 'IL' : '',
   }))
   const myAssign = assignSlots(myDepth, slots, 0)
-  const assigned = myAssign.assignedByPos
+
+  /*
+   * WHICH SEAT, once the optimiser has settled WHO.
+   *
+   * assignSlots fills the scarcest slots first with the highest value left, so whoever ranked
+   * lowest fell into the flex — a Thursday back as often as a Monday one. Football locks each
+   * player at his own kickoff, and you replace a scratched starter in HIS OWN seat, so a
+   * Thursday back in the flex spends the widest seat on the board before the week begins. The
+   * re-seat is points-neutral by construction; see football/flexOrder for the argument.
+   */
+  const kickoffAt = (key: string): number => {
+    if (!kickoffs || !Object.keys(kickoffs).length) return Infinity
+    const team = (meta.get(key)?.proTeam ?? '').toUpperCase()
+    return kickoffs[team] ?? Infinity
+  }
+  const kickoffOrNull = (key: string): number | null => {
+    const at = kickoffAt(key)
+    return Number.isFinite(at) ? at : null
+  }
+  const eligibleOf = (key: string): string[] => {
+    const p = myPlayers.find((x) => x.playerKey === key)
+    return p ? parseEligible(p) : []
+  }
+  const assigned = orderSeatsByKickoff({
+    assigned: myAssign.assignedByPos,
+    eligibleOf,
+    kickoffOf: kickoffAt,
+  }).assigned
   /* A slot you never filled scores zero — the loudest, cheapest thing to warn about, and it
      was stranded on the Matchup page when that tab was hidden for football. */
   const emptySlots = myAssign.unfilled.length
@@ -751,6 +815,7 @@ export function buildWeeklyBoard(input: {
         slot,
         playerKey: key,
         play: playState(key),
+        kickoff: kickoffOrNull(key),
         name: p?.name ?? '—',
         position: p?.position ?? '',
         team: p?.proTeam,
@@ -767,6 +832,28 @@ export function buildWeeklyBoard(input: {
     }
   }
   starters.sort((a, b) => slotIdx(a.slot) - slotIdx(b.slot) || b.weekPoints - a.weekPoints)
+
+  /*
+   * The same seating question asked of the lineup the manager ACTUALLY SET.
+   *
+   * The panel above shows the optimiser's lineup; this is advice about theirs, and the two are
+   * different claims. Only possible where the platform publishes a set lineup positionally
+   * (Sleeper today) — without it we would be re-seating a lineup we had to guess at, and
+   * telling someone to move a player they never started is worse than saying nothing.
+   */
+  const mySeatedNow = seatPositionally(
+    myStarterKeys ?? [],
+    starterSlots,
+    new Set(myPlayers.map((p) => p.playerKey)),
+  )
+  const seatMoves: WeeklySeatMove[] = (
+    mySeatedNow ? orderSeatsByKickoff({ assigned: mySeatedNow, eligibleOf, kickoffOf: kickoffAt }).moved : []
+  ).map((m) => ({
+    ...m,
+    name: meta.get(m.playerKey)?.name ?? '—',
+    position: meta.get(m.playerKey)?.position ?? '',
+    kickoff: kickoffOrNull(m.playerKey),
+  }))
 
   const bench: WeeklyBenchRow[] = myPlayers
     .filter((p) => !startedSet.has(p.playerKey))
@@ -1105,6 +1192,7 @@ export function buildWeeklyBoard(input: {
               slot,
               playerKey: k,
               play: playState(k),
+              kickoff: kickoffOrNull(k),
               name: p?.name ?? '—',
               position: p?.position ?? '',
               team: p?.proTeam,
@@ -1470,5 +1558,5 @@ export function buildWeeklyBoard(input: {
   }
   scarcity.sort((a, b) => a.bestFreeRank - b.bestFreeRank)
 
-  return { starters, bench, moves, streamers, closeCalls, matchup, byeStarters, emptySlots, board, boardPositions, scarcity }
+  return { starters, bench, moves, streamers, closeCalls, matchup, byeStarters, emptySlots, seatMoves, board, boardPositions, scarcity }
 }
