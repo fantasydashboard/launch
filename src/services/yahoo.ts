@@ -1011,13 +1011,28 @@ export class YahooFantasyService {
 
   /**
    * Get league settings including scoring type, divisions, etc.
+   *
+   * THE SCORING TYPE WAS IN THIS RESPONSE AND WAS BEING DROPPED. Yahoo answers with
+   * `league: [meta, { settings: [...] }]` — the SETTINGS half is what every caller wants, but
+   * the META half is where `scoring_type` lives, and returning only `settings[0]` threw it
+   * away. Callers then fell back to the store's cached string, which is populated on some
+   * paths and not others; a league detected as "category" via its matchups rather than its
+   * settings had no scoring type at all, so anything needing the FORMAT (head vs headone, not
+   * merely "is it category") got nothing.
+   *
+   * Attached under its own name rather than merged blindly: `settings` has its own keys and a
+   * future Yahoo field called `scoring_type` inside settings must not be shadowed by this one.
    */
   async getLeagueSettings(leagueKey: string): Promise<any> {
     const data = await this.apiRequest(
       `/league/${leagueKey}/settings?format=json`
     )
-    
+
     const settings = data.fantasy_content?.league?.[1]?.settings?.[0]
+    const meta = data.fantasy_content?.league?.[0]
+    if (settings && typeof settings === 'object' && meta?.scoring_type) {
+      settings.league_scoring_type = String(meta.scoring_type)
+    }
     return settings
   }
 

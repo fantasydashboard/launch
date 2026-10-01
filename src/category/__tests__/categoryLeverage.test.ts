@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  catWinProb, catLeverage, catStatus, pivotalWeights, PIVOTAL_EACH,
+  catWinProb, catLeverage, catStatus, pivotalWeights, PIVOTAL_EACH, weekOdds
 } from '../categoryLeverage'
 
 /**
@@ -123,5 +123,46 @@ describe('pivotalWeights — what the league format does to the objective', () =
   it('handles a single category and an empty list without blowing up', () => {
     expect(pivotalWeights([0.5], 'most')).toHaveLength(1)
     expect(pivotalWeights([], 'most')).toEqual([])
+  })
+})
+
+describe('weekOdds', () => {
+  it('is certain when every column is certain', () => {
+    const o = weekOdds([1, 1, 1])
+    expect(o.winPct).toBeCloseTo(100)
+    expect(o.projWins).toBe(3)
+    expect(o.projLosses).toBe(0)
+  })
+
+  it('is a loss when every column is lost', () => {
+    const o = weekOdds([0, 0, 0])
+    expect(o.lossPct).toBeCloseTo(100)
+    expect(o.projWins).toBe(0)
+  })
+
+  /* An even number of coin-flip columns ties a meaningful share of the time, and reporting
+     that as a loss is the error the three-way split exists to prevent. */
+  it('reports a tie as its own outcome, not as a loss', () => {
+    const o = weekOdds([0.5, 0.5])
+    expect(o.tiePct).toBeCloseTo(50)
+    expect(o.winPct).toBeCloseTo(25)
+    expect(o.lossPct).toBeCloseTo(25)
+  })
+
+  it('cannot tie on an odd number of columns', () => {
+    expect(weekOdds([0.5, 0.5, 0.5]).tiePct).toBe(0)
+  })
+
+  it('sums to a hundred', () => {
+    const o = weekOdds([0.7, 0.2, 0.55, 0.9, 0.33, 0.48])
+    expect(o.winPct + o.tiePct + o.lossPct).toBeCloseTo(100)
+  })
+
+  it('projects the columns won as the sum of their chances', () => {
+    expect(weekOdds([0.7, 0.2, 0.6]).projWins).toBe(1.5)
+  })
+
+  it('has no opinion with no columns', () => {
+    expect(weekOdds([])).toEqual({ winPct: 0, tiePct: 0, lossPct: 0, projWins: 0, projLosses: 0 })
   })
 })

@@ -122,6 +122,48 @@ const rankingLabel = computed(() =>
       ? 'category value tonight'
       : 'projected points tonight')
 
+/*
+ * THE HEADER SAID "WIN CHANCE UNAVAILABLE" DIRECTLY ABOVE TEN WIN CHANCES.
+ *
+ * Two separate causes, both answered by sourcing the number from the week we now build:
+ *
+ * 1. thisWeek.load is called once at mount with the league's category list, and that list is
+ *    still loading at mount — so the overall odds were computed over ZERO columns and came
+ *    back as a certain tie, which the header correctly refuses to print.
+ * 2. Even with the columns, it simulates against services/categoryWinProbability's hardcoded
+ *    volatility table, which contains no hockey stat ids — so every hockey column falls back
+ *    to a daily spread of 5. Against a GAA of 2.0 that is not an approximation.
+ *
+ * The week's own odds come from per-column spreads derived from each roster's projected
+ * volume, so they are both available and meaningful. The snapshot is REPLACED field by field
+ * rather than the header being taught a second shape: everything else it reads — opponent
+ * name, logo, days — is still the snapshot's own.
+ */
+const headerSnapshot = computed(() => {
+  const snap = thisWeek.snapshot.value
+  const week = categoryWeek.week.value
+  if (!snap || !week) return snap
+  const { winPct, tiePct, lossPct, projWins, projLosses } = week.odds
+  return {
+    ...snap,
+    winPct,
+    tiePct,
+    lossPct,
+    myWinPct: winPct + tiePct / 2,
+    projWins: Math.round(projWins),
+    projLosses: Math.round(projLosses),
+    projTies: Math.max(0, week.cats.length - Math.round(projWins) - Math.round(projLosses)),
+    /* The column strip, from the columns we actually scored rather than the list that had not
+       loaded. 'live' is the header's 'tossup' — the only columns a lineup change can move. */
+    categories: week.cats.map((c) => ({
+      statId: c.key,
+      label: c.label,
+      status: (c.status === 'live' ? 'tossup' : c.status) as typeof snap.categories[number]['status'],
+      myWinPct: Math.round(c.winPct * 100),
+    })),
+  }
+})
+
 /* Category specs drive the column strip; a points league passes none and gets the score. */
 onMounted(() => {
   thisWeek.load((categories.value ?? []).map((c) => ({ statId: c.statId, label: c.label })))
@@ -274,7 +316,7 @@ const showFailed = computed(() => error.value === 'failed')
       <!-- 1. WHERE THE WEEK STANDS -->
       <TodayMatchupHeader
         :daily="matchup.snapshot.value"
-        :snapshot="thisWeek.snapshot.value"
+        :snapshot="headerSnapshot"
         :my-team-name="daily.myTeamName.value || teamSource.myTeamName.value"
         :my-team-logo="daily.myTeamLogo.value || teamSource.myTeamLogo.value"
         :is-category="isCategoryLeague" />

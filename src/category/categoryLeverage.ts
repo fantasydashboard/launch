@@ -142,6 +142,80 @@ export const PIVOTAL_EACH = 1
  * and a 0-9 week both correctly stop paying for anything, and the board turns its attention to
  * the columns that can still swing it.
  */
+/**
+ * The distribution of how many columns you take, given each column's own chance.
+ *
+ * Columns are treated as independent, which is the same assumption pivotalWeights already
+ * makes below. It is not quite true — a roster that goes cold loses goals and assists together
+ * — but the dependence is weak next to the per-column noise, and the alternative is a
+ * covariance matrix nobody can estimate from one week of play.
+ */
+export function columnsWonDistribution(ps: number[]): number[] {
+  let dist = [1]
+  for (const raw of ps) {
+    const p = Math.min(1, Math.max(0, Number(raw) || 0))
+    const next = new Array(dist.length + 1).fill(0)
+    for (let k = 0; k < dist.length; k++) {
+      next[k] += dist[k] * (1 - p)
+      next[k + 1] += dist[k] * p
+    }
+    dist = next
+  }
+  return dist
+}
+
+export interface WeekOdds {
+  /** Chance you take more columns than your opponent. These three sum to 100. */
+  winPct: number
+  tiePct: number
+  lossPct: number
+  /** Columns you are on course to win and lose, to one decimal. */
+  projWins: number
+  projLosses: number
+}
+
+/**
+ * Your odds of taking the week, out of the per-column chances.
+ *
+ * WHY THIS IS NOT THE EXISTING MONTE CARLO. services/categoryWinProbability simulates this
+ * with ten thousand draws against a hardcoded per-stat volatility table — and that table has
+ * no hockey stat ids in it at all, so every hockey column falls back to a daily spread of 5.
+ * Against a GAA of 2.0 that is not approximate, it is meaningless, and it returns ~50% for
+ * everything. The spread here is derived from the roster's own projected volume (see
+ * categorySigma), and once each column's chance is honest the week's odds are a closed-form
+ * sum over them rather than a simulation.
+ *
+ * A TIE IS NOT A LOSS, and a 6-6 week is common enough that folding it into either side
+ * misstates the picture — so all three are reported.
+ */
+export function weekOdds(ps: number[]): WeekOdds {
+  if (!ps.length) return { winPct: 0, tiePct: 0, lossPct: 0, projWins: 0, projLosses: 0 }
+
+  const n = ps.length
+  const dist = columnsWonDistribution(ps)
+
+  let win = 0
+  let tie = 0
+  let loss = 0
+  for (let k = 0; k <= n; k++) {
+    const p = dist[k] ?? 0
+    /* k columns to you, n - k to them. */
+    if (k * 2 > n) win += p
+    else if (k * 2 === n) tie += p
+    else loss += p
+  }
+
+  const expected = ps.reduce((sum, p) => sum + Math.min(1, Math.max(0, Number(p) || 0)), 0)
+  const round1 = (x: number) => Math.round(x * 10) / 10
+  return {
+    winPct: win * 100,
+    tiePct: tie * 100,
+    lossPct: loss * 100,
+    projWins: round1(expected),
+    projLosses: round1(n - expected),
+  }
+}
+
 export function pivotalWeights(ps: number[], format: CategoryFormat): number[] {
   if (!ps.length) return []
   if (format === 'each') return ps.map(() => PIVOTAL_EACH)

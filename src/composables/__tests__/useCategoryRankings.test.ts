@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { ref } from 'vue'
 import { useCategoryRankings } from '../useCategoryRankings'
 import { buildCategoryState } from '@/category/categoryBoard'
+import { weekOdds } from '@/category/categoryLeverage'
 import type { CategoryWeek } from '@/category/categoryWeek'
 import type { RankedRow } from '../useDailyLineup'
 
@@ -32,6 +33,7 @@ function week(over: Partial<CategoryWeek> = {}): CategoryWeek {
     safe: cats.filter((c) => c.status === 'safe').length,
     gone: cats.filter((c) => c.status === 'gone').length,
     worthChasing: ['SOG'],
+    odds: weekOdds(cats.map((c) => c.winPct)),
     ...over,
   }
 }

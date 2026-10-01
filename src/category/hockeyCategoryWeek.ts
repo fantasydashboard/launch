@@ -1,6 +1,7 @@
 import { buildCategoryWeek, type CategoryWeek, type WeekCat } from './categoryWeek'
 import { rosterExpectation } from './rosterExpectation'
 import type { CategoryFormat } from './categoryLeverage'
+import { RATE_VOLUME } from '@/hockey/hockeyCategoryValue'
 
 /**
  * A hockey category week, assembled from the two id spaces it lives across.
@@ -13,16 +14,37 @@ import type { CategoryFormat } from './categoryLeverage'
  */
 
 /**
+ * The volume we can actually PROJECT a rate over, where it differs from the platform's own.
+ *
+ * GAA is goals per sixty minutes, so its natural denominator is time on ice — but our hockey
+ * projections carry appearances, not minutes, and a denominator of zero makes the spread
+ * meaningless. Appearances are the honest exposure we have. Only columns that need the
+ * substitution appear here; everything else takes RATE_VOLUME's own answer.
+ */
+const PROJECTED_VOLUME: Record<string, string> = {
+  GAA: 'GP',
+}
+
+/**
  * The hockey columns that are ratios, and the volume each is measured over.
  *
- * Save percentage is saves over shots faced; goals-against average is goals per sixty minutes,
- * for which appearances are the honest exposure we actually project. Everything else in hockey
- * is a count.
+ * DERIVED FROM RATE_VOLUME, NOT RESTATED. This was a second hand-written list naming only
+ * SVPCT and GAA, while the hockey value module had known about TOIG and WINPCT all along —
+ * so an ESPN league with time-on-ice as a column had its per-game minutes SUMMED across the
+ * roster and scored by addition, and the board reported 1156.7 against 1156 at a tidy 51%.
+ * Two lists for one fact is how that happens; there is now one list and this reads it.
+ *
+ * A proportion is bounded in [0,1] and a rate is not, which is the only distinction
+ * ratioSigma needs — and the platforms spell every proportion with a PCT suffix.
  */
-export const HOCKEY_RATIOS: Record<string, { kind: 'proportion' | 'rate'; volumeKey: string }> = {
-  SVPCT: { kind: 'proportion', volumeKey: 'SA' },
-  GAA: { kind: 'rate', volumeKey: 'GP' },
-}
+export const HOCKEY_RATIOS: Record<string, { kind: 'proportion' | 'rate'; volumeKey: string }> =
+  Object.fromEntries(Object.entries(RATE_VOLUME).map(([key, volume]) => [
+    key,
+    {
+      kind: key.toUpperCase().endsWith('PCT') ? 'proportion' as const : 'rate' as const,
+      volumeKey: PROJECTED_VOLUME[key] ?? volume,
+    },
+  ]))
 
 export interface HockeyWeekInput {
   /** The league's columns, carrying both our key and the platform's stat id. */

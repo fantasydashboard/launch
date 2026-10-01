@@ -1,6 +1,6 @@
 import { buildCategoryState, type CatState } from './categoryBoard'
 import { dailySigma, ratioSigma } from './categorySigma'
-import type { CategoryFormat } from './categoryLeverage'
+import { weekOdds, type CategoryFormat, type WeekOdds } from './categoryLeverage'
 
 /**
  * The state of your category week — the one call a surface makes.
@@ -37,6 +37,12 @@ export interface CategoryWeek {
   gone: number
   /** Columns worth spending tonight on, richest first. Empty when the week is settled. */
   worthChasing: string[]
+  /**
+   * Your odds of taking the week, derived from the columns rather than simulated against a
+   * guessed volatility table. See weekOdds — and the note there on why the existing Monte
+   * Carlo cannot answer this for hockey at all.
+   */
+  odds: WeekOdds
 }
 
 /** Below this share of the best column, chasing it is not a plan. */
@@ -106,6 +112,10 @@ export function buildCategoryWeek(input: {
   return {
     cats: state,
     format,
+    /* Ratio columns are not PRICED (see categoryBoard) but they are still columns you win or
+       lose, so every one of them counts towards the week. Dropping them here would have
+       reported a nine-category league's odds over seven. */
+    odds: weekOdds(state.map((c) => c.winPct)),
     live: state.filter((c) => c.status === 'live').length,
     safe: state.filter((c) => c.status === 'safe').length,
     gone: state.filter((c) => c.status === 'gone').length,

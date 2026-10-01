@@ -904,6 +904,15 @@ export function useToday(): {
    */
   const scoringType = computed<string | undefined>(() => {
     if (isEspnCategoryLeague.value) return 'H2H_CATEGORY'
+    /*
+     * Yahoo's own answer first. The store's copy is populated on some league-load paths and
+     * not others — a league identified as "category" from its MATCHUPS rather than its
+     * settings never gets one — so the cached string is absent exactly where the distinction
+     * matters most. This payload is already being fetched for the add budget; see
+     * yahooService.getLeagueSettings for why the field had to be rescued from the response.
+     */
+    const fromYahoo = yahooSettings.value?.league_scoring_type
+    if (fromYahoo) return String(fromYahoo)
     const fromStore = leagueStore.currentLeague?.scoring_type
     if (fromStore) return fromStore
     const id = leagueStore.activeLeagueId

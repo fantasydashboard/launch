@@ -1,4 +1,4 @@
-import { computed, type ComputedRef, type Ref } from 'vue'
+import { computed, watch, type ComputedRef, type Ref } from 'vue'
 import { categoryFormatOf } from '@/category/categoryFormat'
 import { hockeyCategoryWeek } from '@/category/hockeyCategoryWeek'
 import type { CategoryWeek } from '@/category/categoryWeek'
@@ -60,6 +60,35 @@ export function useCategoryWeek(inputs: CategoryWeekInputs): {
     if (!Object.keys(inputs.gamesByTeam.value ?? {}).length) return 'no-schedule'
     return null
   })
+
+  /*
+   * WHY THERE IS NO BOARD, on demand.
+   *
+   * Every gate below fails as ABSENCE — the page keeps the view it had and says nothing — which
+   * is the right behaviour for a reader and useless for diagnosing a league I cannot open. The
+   * same probe pattern as ?ptsaudit and ?catadd: opt-in, costs nothing when off, and reports
+   * the inputs rather than the conclusion so the answer does not depend on my guess about
+   * which one is missing.
+   */
+  const probe = computed(() => {
+    if (typeof window === 'undefined') return null
+    if (!new URLSearchParams(window.location.search).has('catwhy')) return null
+    return {
+      reason: reason.value,
+      scoringType: inputs.scoringType.value ?? '(none)',
+      format: format.value ?? '(unrecognised)',
+      categories: inputs.categories.value?.length ?? 0,
+      categoryKeys: (inputs.categories.value ?? []).map((c) => `${c.key}:${c.statId}`).join(','),
+      hasSnapshot: !!inputs.snapshot.value,
+      statIdsOnScoreboard: Object.keys(inputs.snapshot.value?.myStats ?? {}).join(','),
+      opponentKey: inputs.opponentKey.value || '(none)',
+      myTeamKey: inputs.myTeamKey.value || '(none)',
+      clubsWithGamesLeft: Object.keys(inputs.gamesByTeam.value ?? {}).length,
+      poolSize: inputs.pool.value?.length ?? 0,
+      daysRemaining: inputs.snapshot.value?.daysRemaining ?? null,
+    }
+  })
+  watch(probe, (p) => { if (p) console.log('[catwhy]', p) }, { immediate: true })
 
   const week = computed<CategoryWeek | null>(() => {
     if (reason.value) return null
