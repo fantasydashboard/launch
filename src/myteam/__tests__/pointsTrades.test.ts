@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { offerSignature, offerSignatureByCost, gainJustifiesCost, buildPointsTrades, MIN_GAIN_PER_WEEK } from '../pointsTrades'
 import { MIN_SENDABLE_ODDS } from '../tradeStrategy'
+import { injuryTier } from '../injuryStatus'
 import { buildBaseballValue } from '../playerValue'
 import type { PointsPoolPlayer } from '../pointsTeam'
 import type { FGProjection } from '@/services/projectionService'
@@ -324,5 +325,52 @@ describe('one-in-five is not a trade suggestion', () => {
    */
   it('sets the sendable floor above a one-in-five chance', () => {
     expect(MIN_SENDABLE_ODDS).toBeGreaterThan(0.2)
+  })
+})
+
+describe('the board and the analyzer have to read injury the same way', () => {
+  /*
+   * THE TWO HALVES OF THE TRADES PAGE DISAGREED ABOUT THE SAME TRADE.
+   *
+   * The board offered "give John Tavares and Mark Stone, get Filip Gustavsson" and headlined
+   * it "+72 PTS TO YOU". Opening that exact deal in "analyze a trade you were offered"
+   * returned "BAD FOR YOU · +0 · your starting lineup does not improve · Filip Gustavsson sits
+   * on reserve, so nothing above credits him with a lineup spot."
+   *
+   * Both are built from the same pool and differed on ONE line. buildPointsTrades read
+   * `status: p.onIL ? "IL" : ""` — the flag alone — while buildPointsTeam, which the analyzer
+   * runs on, reads `injuryTier(p.status, p.onIL)`, which also understands the status STRING.
+   * So a man who is out by status but not flagged was seatable on one half of the page and
+   * barred on the other, and the page argued with itself in public.
+   *
+   * The analyzer's reading is the better-informed one, so the board moves to it. Offering a
+   * trade for somebody you cannot start is the exact shape of "unrealistic deal" this page is
+   * being cleaned up to stop printing.
+   */
+  const slots = { OF: 1, SP: 1 }
+  const rows = [
+    bat('A_OF1', 'A', 'OF', 40), bat('A_OF2', 'A', 'OF', 38), arm('A_SP1', 'A', 5),
+    bat('B_OF1', 'B', 'OF', 10), arm('B_SP1', 'B', 18),
+  ]
+  const pool = rows.map((r) => r.p)
+  const fg: Record<string, FGProjection | null> = {}
+  rows.forEach((r) => (fg[r.p.playerKey] = r.fg))
+
+  it('offers the healthy version of the deal', () => {
+    const ideas = buildPointsTrades(pool, buildBaseballValue(fg, weights), 'A', slots, {})
+    expect(ideas.some((i) => i.gets.some((g) => g.playerKey === 'B_SP1'))).toBe(true)
+  })
+
+  it('does not offer a player who is OUT by status string, flag or no flag', () => {
+    /* Yahoo and ESPN both spell this on `status`; `onIL` stays false for a day-to-day OUT. */
+    const hurt = pool.map((p) => (p.playerKey === 'B_SP1' ? { ...p, status: 'OUT' } : p))
+    const ideas = buildPointsTrades(hurt, buildBaseballValue(fg, weights), 'A', slots, {})
+    expect(ideas.some((i) => i.gets.some((g) => g.playerKey === 'B_SP1'))).toBe(false)
+  })
+
+  it('still bars a player the IL flag names, which already worked', () => {
+    const flagged = pool.map((p) => (p.playerKey === 'B_SP1' ? { ...p, onIL: true } : p))
+    const ideas = buildPointsTrades(flagged, buildBaseballValue(fg, weights), 'A', slots, {})
+    expect(ideas.some((i) => i.gets.some((g) => g.playerKey === 'B_SP1'))).toBe(false)
   })
 })

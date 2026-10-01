@@ -15,6 +15,7 @@ import {
 } from '@/myteam/tradeStrategy'
 import { parseEligible, type PointsPoolPlayer } from '@/myteam/pointsTeam'
 import { canonicalPosition } from '@/trades/rosterSlots'
+import { injuryTier } from './injuryStatus'
 import { type ValueByKey } from '@/myteam/playerValue'
 
 export interface TradeSide {
@@ -113,6 +114,28 @@ export const MIN_GAIN_PER_WEEK = 1
 
 const ASK_MAX_LOSS_RATIO = 1.5
 
+/**
+ * Whether a body can be seated — read the way the ANALYZER reads it.
+ *
+ * THE TWO HALVES OF THIS PAGE DISAGREED ABOUT THE SAME TRADE. The board offered "give John
+ * Tavares and Mark Stone, get Filip Gustavsson" at "+72 PTS TO YOU"; opening that exact deal
+ * in "analyze a trade you were offered" answered "BAD FOR YOU · +0 · your starting lineup does
+ * not improve · Filip Gustavsson sits on reserve".
+ *
+ * Both are built from the same pool and differed on one line. This file read `p.onIL` alone;
+ * buildPointsTeam, which the analyzer runs on, reads `injuryTier(p.status, p.onIL)` — which
+ * also understands the status STRING. A man out by status but not flagged was therefore
+ * seatable on one half of the page and barred on the other.
+ *
+ * The analyzer's reading is the better-informed one, so this moves to it. Offering a trade for
+ * somebody you cannot start is the exact shape of unrealistic deal this page is being cleaned
+ * up to stop printing.
+ */
+function unavailableStatus(p: PointsPoolPlayer): string {
+  const tier = injuryTier(p.status, p.onIL)
+  return tier === 'il' || tier === 'out' ? 'IL' : ''
+}
+
 /** How many cards the board shows at most. */
 const OUT_LIMIT = 10
 
@@ -196,7 +219,7 @@ export function buildPointsTrades(
     const pts = valueByKey[p.playerKey]?.total ?? 0
     ptsByKey.set(p.playerKey, pts)
     meta.set(p.playerKey, p)
-    const dp: Dp = { playerKey: p.playerKey, teamKey: p.teamKey, eligiblePositions: parseEligible(p, sport), value: pts, points: pts, status: p.onIL ? 'IL' : '' }
+    const dp: Dp = { playerKey: p.playerKey, teamKey: p.teamKey, eligiblePositions: parseEligible(p, sport), value: pts, points: pts, status: unavailableStatus(p) }
     ;(byTeam.get(p.teamKey) ?? byTeam.set(p.teamKey, []).get(p.teamKey)!).push(dp)
   }
 
