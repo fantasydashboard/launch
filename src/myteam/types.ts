@@ -14,7 +14,15 @@ export interface PlayerCategoryContrib {
 export interface CatSpec {
   statId: string
   lowerIsBetter: boolean
-  side: 'hit' | 'pit'
+  /**
+   * Which half of a roster competes in this column.
+   *
+   * Baseball's two sides, plus hockey's. ECW does not read it — a skater simply carries no
+   * saves, so he contributes nothing to that column by arithmetic rather than by filtering —
+   * but the field is on the spec, and labelling a hockey column 'pit' to satisfy the type
+   * would make every spec dumped in a console lie about the sport it came from.
+   */
+  side: 'hit' | 'pit' | 'skater' | 'goalie'
   isRatio: boolean
   volumeStatId?: string // statId of the volume stat for a ratio cat (IP / AB / PA)
 }

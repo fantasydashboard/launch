@@ -141,3 +141,24 @@ describe('a category a team has no entry in', () => {
     expect(s.columns[0].myRank).toBe(2)
   })
 })
+
+describe('printing a column', () => {
+  it('marks a rate column as a ratio and a counting column as not', () => {
+    const totals = [
+      { teamId: 'A', cats: { ERA: { value: 3.2, num: 32, den: 10 }, HR: { value: 40 } } },
+      { teamId: 'B', cats: { ERA: { value: 4.1, num: 41, den: 10 }, HR: { value: 30 } } },
+    ]
+    const board = buildCategoryStandings(
+      totals,
+      [
+        { statId: 'ERA', lowerIsBetter: true, isRatio: true },
+        { statId: 'HR', lowerIsBetter: false, isRatio: false },
+      ],
+      'A',
+    )
+    expect(board.columns.find((c) => c.statId === 'ERA')!.isRatio).toBe(true)
+    /* The one that matters: a COUNT near zero (a hockey plus-minus) must not be mistaken for a
+       rate by the display just because it is small. */
+    expect(board.columns.find((c) => c.statId === 'HR')!.isRatio).toBe(false)
+  })
+})

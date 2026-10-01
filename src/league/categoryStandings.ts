@@ -54,6 +54,12 @@ export interface CategoryColumn {
   statId: string
   side?: string
   lowerIsBetter: boolean
+  /**
+   * A rate rather than a count. Carried through to the display because how a number should be
+   * PRINTED is a fact about the column, not about how big the number happens to be: formatting
+   * on magnitude alone printed a hockey team's plus-minus of -2 as "-3.819".
+   */
+  isRatio: boolean
   /** Every team, best first. */
   rows: CategoryTeamRow[]
   /** Where the viewing team sits, 0 when he is not in this league's totals. */
@@ -141,6 +147,7 @@ export function buildCategoryStandings(
       statId: spec.statId,
       side: spec.side,
       lowerIsBetter: spec.lowerIsBetter,
+      isRatio: !!spec.isRatio,
       rows,
       myRank: mine?.rank ?? 0,
       myValue: mine?.value ?? 0,

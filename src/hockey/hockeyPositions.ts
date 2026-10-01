@@ -97,7 +97,7 @@ export const NON_STARTING_SLOTS = new Set(['BENCH', 'IR'])
  * The union is kept because two callers legitimately want "every id we can name" — the manual
  * category chooser and the unverified-id check — but nothing that reads a PLAYER may use it.
  */
-const SKATER_STAT_BY_ID: Record<number, string> = {
+export const SKATER_STAT_BY_ID: Record<number, string> = {
   // ── skaters ──
   13: 'G',        // goals    — league scores it 2.0; MacKinnon 53
   14: 'A',        // assists  — league scores it 1.0; MacKinnon 80
@@ -135,7 +135,7 @@ const SKATER_STAT_BY_ID: Record<number, string> = {
   34: 'GP2',
 }
 
-const GOALIE_STAT_BY_ID: Record<number, string> = {
+export const GOALIE_STAT_BY_ID: Record<number, string> = {
   /*
    * GAMES IS NUMBERED THE SAME AT BOTH POSITIONS, and splitting the map without noticing that
    * left goalies with no games at all — caught by the test that fixes a goalie's appearances

@@ -17,6 +17,17 @@ import type { CatSpec } from '@/myteam/value'
 import { buildEngine } from '@/trades/engine'
 import { ecwByTeam } from '@/trades/standings'
 import { espnStatNamesForSport } from '@/myteam/espn/statNames'
+import { useHockeyValue } from '@/composables/useHockeyValue'
+import { platformFromLeagueId } from '@/hockey/platformFromLeagueId'
+import { buildHockeyTeamTotals, hockeyCatSpecs, hockeyProjectionCoverage } from '@/hockey/hockeyTeamTotals'
+
+/**
+ * Below this share of priced rosters the ECW number is withheld rather than shown quietly
+ * wrong. A real NHL roster matches our feed almost entirely, so a figure this low means the
+ * join is broken, not that the league is unusual — and the .000 this path replaced was itself
+ * a confident number with nothing behind it.
+ */
+const MIN_HOCKEY_COVERAGE = 0.5
 
 /** Parse an ESPN league key `espn_{sport}_{leagueId}_{season}`. */
 function parseEspnKey(key: string): { sport: Sport; leagueId: string; season: number } | null {
@@ -56,6 +67,48 @@ export function useCategoryStrength() {
   // ESPN source (self-detects H2H_CATEGORY).
   const espn = useEspnCategoryTeamData()
 
+  /*
+   * HOCKEY RUNS ON ITS OWN PROJECTIONS, because it cannot run on these.
+   *
+   * Everything above prices players through FanGraphs — `matchFG({ full_name, mlb_team })`.
+   * A hockey roster matches none of it and the pool carries no raw stats, so the engine summed
+   * nothing: every team tied at zero in every column and the League page reported .000
+   * categories won for all of them, with power rankings falling back to whatever a week of
+   * counting stats had produced. The NHL feed the draft board, the Wire and Today already
+   * price from is the answer, and using it here is also what keeps those four surfaces from
+   * holding four opinions about the same roster.
+   *
+   * The league id is not the same string on both platforms — ESPN wants the bare numeric id
+   * out of our composite key, Yahoo wants the key whole. Sending one to the other's endpoint
+   * resolves to nothing, and a league with no settings has no columns.
+   */
+  const isHockey = computed(() => leagueStore.activeSport === 'hockey')
+  const hockeyPlatform = computed(() => platformFromLeagueId(leagueStore.activeLeagueId))
+  const hockeyLeagueId = computed(() => {
+    const raw = String(leagueStore.activeLeagueId ?? '')
+    if (hockeyPlatform.value === 'yahoo') return raw
+    const parts = raw.split('_')
+    return parts.length >= 4 && parts[0] === 'espn' ? parts[2] : ''
+  })
+  const hockeySeason = computed(() => {
+    const parts = String(leagueStore.activeLeagueId ?? '').split('_')
+    const fromKey = parts.length >= 4 ? parseInt(parts[3], 10) : NaN
+    if (Number.isFinite(fromKey) && fromKey > 2000) return fromKey
+    const now = new Date()
+    return now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear()
+  })
+  /* Sleeper has no hockey, and falls out of this on the id shape rather than on a name check. */
+  const hockeyServes = computed(() =>
+    isHockey.value && !!hockeyLeagueId.value && hockeyPlatform.value !== 'sleeper')
+  const hockeyValue = useHockeyValue({
+    leagueId: hockeyLeagueId,
+    platform: hockeyPlatform,
+    season: hockeySeason,
+    enabled: hockeyServes,
+    weeksLeft: computed(() =>
+      Math.max(1, Math.round(26 * (1 - (leagueStore.seasonFractionComplete ?? 0))))),
+  })
+
   // ESPN team W/L records, keyed `espn_<id>` to match the standings/pool teamKeys. The category
   // standings carry only per-category wins, not the head-to-head W/L record, so we source the
   // record the same way the points Power Rankings path does — from getTeamsWithRosters' team
@@ -67,6 +120,11 @@ export function useCategoryStrength() {
 
   // === Platform-neutral inputs into the trade engine (mirrors TradesView) ===
   const pool = computed(() => {
+    /* The remap below translates ESPN's BASEBALL player-stat id space into the league's
+       category ids. Hockey's totals come from the projection feed, not from these stats, so
+       the raw pool is what it needs — and running a baseball id map over hockey ids would
+       invent stats rather than find none. */
+    if (isHockey.value) return isEspn.value ? espn.pool.value : yahooLeague.pool.value
     if (isEspn.value) {
       // ESPN player-level season stats are keyed in a DIFFERENT stat-id space than the
       // league's category statIds (e.g. player R=2/HR=3/TB=19/RBI=4 vs category
@@ -144,7 +202,12 @@ export function useCategoryStrength() {
     else for (const c of categories.value) m.set(c.statId, isLowerBetter(c.label || c.name || c.statId))
     return m
   })
+  /** The league's columns, from its own settings — ESPN's scoringItems or Yahoo's categories. */
+  const hockeySpecs = computed<CatSpec[]>(() =>
+    hockeyServes.value ? hockeyCatSpecs(hockeyValue.categories.value) : [])
+
   const catSpecs = computed<CatSpec[]>(() => {
+    if (isHockey.value) return hockeySpecs.value
     const findStatId = (names: string[]) => categories.value.find((c) => names.includes((c.label || c.name || '').toUpperCase().trim()))?.statId
     const ipStatId = findStatId(['IP', 'INNINGS PITCHED'])
     const abStatId = findStatId(['AB', 'AT BATS', 'PA', 'PLATE APPEARANCES'])
@@ -154,7 +217,10 @@ export function useCategoryStrength() {
       return { statId: c.statId, lowerIsBetter, side, isRatio, volumeStatId: resolveVolumeStatId(isRatio, side, ipStatId, abStatId) }
     })
   })
-  const labelOf = (statId: string) => categories.value.find((c) => c.statId === statId)?.label ?? statId
+  /* A hockey statId is already the column's name ('G', 'SVPCT') — there is no separate label
+     to look up, and falling through to the baseball list would return the id anyway. */
+  const labelOf = (statId: string) =>
+    isHockey.value ? statId : (categories.value.find((c) => c.statId === statId)?.label ?? statId)
 
   // Value baseline anchored to the STARTABLE projected-player universe (same as Trades / My Team).
   const valueBaselineSvc = useValueBaseline()
@@ -179,11 +245,38 @@ export function useCategoryStrength() {
       : null,
   )
 
-  // ECW per team — the category strength signal. Empty until the engine assembles.
+  /* How much of the league the NHL feed could actually price. Exposed so a surface can say
+     so, and used to withhold the number entirely when the join has clearly failed. */
+  const hockeyCoverage = computed(() => {
+    if (!isHockey.value) return 1
+    const roster = pool.value.map((p) => ({ playerKey: p.playerKey, teamKey: p.teamKey, name: p.name }))
+    return hockeyProjectionCoverage({ roster, projectionFor: (x) => hockeyValue.projectionOf.value(x) })
+  })
+
+  const hockeyTotals = computed(() => {
+    if (!isHockey.value || !hockeySpecs.value.length) return []
+    if (hockeyCoverage.value < MIN_HOCKEY_COVERAGE) return []
+    return buildHockeyTeamTotals({
+      roster: pool.value.map((p) => ({ playerKey: p.playerKey, teamKey: p.teamKey, name: p.name })),
+      projectionFor: (x) => hockeyValue.projectionOf.value(x),
+      cats: hockeySpecs.value,
+    })
+  })
+
+  /**
+   * Per-team projected category totals — the one input everything downstream ranks on.
+   *
+   * Exposed in its own right rather than reached through `engine`, because for hockey there is
+   * no engine to reach through: the totals come straight off the NHL projections.
+   */
+  const teamCatTotals = computed(() =>
+    isHockey.value ? hockeyTotals.value : (engine.value?.teamCatTotals ?? []))
+
+  // ECW per team — the category strength signal. Empty until the totals assemble.
   const strengths = computed<{ teamKey: string; strength: number }[]>(() => {
-    const e = engine.value
-    if (!e || !catSpecs.value.length) return []
-    return ecwByTeam(e.teamCatTotals, catSpecs.value).map((r) => ({ teamKey: r.teamId, strength: r.strength }))
+    const totals = teamCatTotals.value
+    if (!totals.length || !catSpecs.value.length) return []
+    return ecwByTeam(totals, catSpecs.value).map((r) => ({ teamKey: r.teamId, strength: r.strength }))
   })
 
   // teamKey -> record/name/logo for the luck comparison. ESPN from the team-record fetch;
@@ -216,9 +309,10 @@ export function useCategoryStrength() {
     return me ? String(me.team_key) : ''
   })
 
-  const loading = computed(() =>
-    isEspn.value ? espn.loading.value || espnRecordsLoading.value : yahooLeague.loading.value,
-  )
+  const loading = computed(() => {
+    const base = isEspn.value ? espn.loading.value || espnRecordsLoading.value : yahooLeague.loading.value
+    return isHockey.value ? base || hockeyValue.loading.value : base
+  })
 
   // Fetch ESPN team W/L records (keyed `espn_<id>`) — see espnRecords note above.
   async function loadEspnRecords() {
@@ -257,6 +351,13 @@ export function useCategoryStrength() {
   }
 
   function load() {
+    if (isHockey.value) {
+      /* The NHL feed and the league's own settings. The FanGraphs baseline below prices
+         nothing here, so asking for it would only be a request that cannot answer. */
+      hockeyValue.load()
+      if (isEspn.value) { espn.load(); loadEspnRecords() } else { yahooLeague.load() }
+      return
+    }
     valueBaselineSvc.load()
     if (isEspn.value) {
       espn.load()
@@ -276,5 +377,9 @@ export function useCategoryStrength() {
     strengths, teamMeta, myTeamKey, catCount, loading, load,
     // Exposed for the League page's all-team landscape (already computed above).
     engine, fgByKey, catSpecs, labelOf, teamNameByKey, pool,
+    /** The totals every category surface ranks on, whichever sport produced them. */
+    teamCatTotals,
+    /** Hockey only: the share of rostered players the NHL feed could price. 1 elsewhere. */
+    hockeyCoverage,
   }
 }

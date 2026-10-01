@@ -139,17 +139,27 @@ const catRankings = computed(() => {
  */
 const categoryBoard = computed(() => {
   if (!isCategory.value) return null
-  const e: any = cat.engine.value
+  /* The totals, not the engine that happens to produce them for baseball — hockey has no
+     engine and reaching through one is what left this board empty for a whole sport. */
+  const totals = cat.teamCatTotals.value
   const specs = cat.catSpecs.value
-  if (!e?.teamCatTotals?.length || !specs?.length || !cat.myTeamKey.value) return null
+  if (!totals?.length || !specs?.length || !cat.myTeamKey.value) return null
   return buildCategoryStandings(
-    e.teamCatTotals,
+    totals,
     specs.map((x: any) => ({ statId: x.statId, lowerIsBetter: !!x.lowerIsBetter, side: x.side, isRatio: !!x.isRatio })),
     cat.myTeamKey.value,
   )
 })
-/* Ratios want decimals and counting stats do not — printing 1,467.00 hits is noise. */
-const catValue = (v: number) => (Math.abs(v) < 10 ? v.toFixed(3).replace(/^0/, '') : Math.round(v).toLocaleString())
+/*
+ * Ratios want decimals and counting stats do not — printing 1,467.00 hits is noise.
+ *
+ * The column decides, not the magnitude. Switching on size worked while every small number on
+ * the page was an average, and then a hockey league arrived where plus-minus is a COUNT that
+ * lives near zero: a team on -2 was printed "-3.819", three decimals of precision on a figure
+ * that has none, in a column whose other teams read 62 and 53.
+ */
+const catValue = (v: number, isRatio = false) =>
+  (isRatio ? v.toFixed(3).replace(/^0/, '').replace(/^-0/, '-') : Math.round(v).toLocaleString())
 const teamShort = (key: string) => (cat.teamNameByKey.value.get(key) ?? 'Team').slice(0, 14)
 
 const pointsRankings = computed(() => {
@@ -1110,7 +1120,7 @@ const sosBarColor = (sosRank: number, total: number) => {
           <p v-if="col.gapToNext === null && col.gapToPrev === null"
              class="mb-2 font-mono text-[9px] text-dark-textMuted/50">nothing separates the league here yet</p>
           <p v-else-if="col.gapToNext !== null" class="mb-2 font-mono text-[9px] text-dark-textMuted/70">
-            {{ catValue(col.gapToNext) }} behind {{ ord(col.myRank - 1) }}
+            {{ catValue(col.gapToNext, col.isRatio) }} behind {{ ord(col.myRank - 1) }}
           </p>
           <p v-else class="mb-2 font-mono text-[9px] text-[#7ee787]/70">top of the league</p>
           <div class="space-y-0.5">
@@ -1118,7 +1128,7 @@ const sosBarColor = (sosRank: number, total: number) => {
                  class="flex items-baseline justify-between gap-2 rounded px-1 py-0.5 font-mono text-[10px]"
                  :class="row.teamKey === activeMyTeamKey ? 'bg-primary/10 text-primary' : 'text-dark-textMuted'">
               <span class="min-w-0 truncate">{{ teamShort(row.teamKey) }}</span>
-              <span class="shrink-0 tabular-nums">{{ catValue(row.value) }}</span>
+              <span class="shrink-0 tabular-nums">{{ catValue(row.value, col.isRatio) }}</span>
             </div>
           </div>
         </div>
