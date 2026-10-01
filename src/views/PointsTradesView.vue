@@ -13,6 +13,7 @@ import { buildPointsTrades } from '@/myteam/pointsTrades'
 import { buildPointsTeam } from '@/myteam/pointsTeam'
 import { shortTeamLabels } from '@/lib/shortTeamLabel'
 import { emptySeatCost } from '@/myteam/emptySeatCost'
+import { bestBodyAt } from '@/myteam/bestAtPosition'
 import { buildPointsTradeLandscape } from '@/myteam/pointsTradeLandscape'
 import { buildRosterCompare } from '@/myteam/rosterCompare'
 import { useDynastyValues } from '@/composables/useDynastyValues'
@@ -90,6 +91,21 @@ const valuesState = computed(() => valueState({
 const valuesReady = computed(() => valuesState.value === 'ready')
 /* Hockey has no byes — see src/myteam/emptySeatCost.ts. */
 const seatCost = computed(() => emptySeatCost(leagueStore.activeSport))
+
+/*
+ * WHICH body, not just which position.
+ *
+ * The best-partners panel told you the same thing about four different managers — "you buy C"
+ * four times over. Every line was true and four identical recommendations are not four pieces
+ * of information; the question at that point is WHICH centre, and the answer is in the pool.
+ */
+const buyTargetAt = (teamKey: string, position: string): string => {
+  const best = bestBodyAt({
+    pool: pool.value, valueByKey: tradeValues.value, teamKey, position,
+    sport: leagueStore.activeSport,
+  })
+  return best?.name ?? ''
+}
 
 // Football VOR (shared engine). Replacement is calibrated on rostered players here
 // (empty free-agent list) — cross-team ranking is unaffected; Trades stays self-contained.
@@ -1288,7 +1304,9 @@ function fairness(myGain: number, theirGain: number): string {
             <span class="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px]">
               <template v-if="p.youBuy.length">
                 <span class="text-dark-textMuted">you buy</span>
-                <span v-for="x in p.youBuy" :key="'b' + x" class="text-primary">{{ x }}</span>
+                <span v-for="x in p.youBuy" :key="'b' + x" class="text-primary">
+                  {{ x }}<span v-if="buyTargetAt(p.teamKey, x)" class="text-dark-textMuted"> ({{ buyTargetAt(p.teamKey, x) }})</span>
+                </span>
               </template>
               <template v-if="p.theyNeed.length">
                 <span class="text-dark-textMuted">they need</span>

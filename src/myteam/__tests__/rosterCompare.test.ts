@@ -130,3 +130,58 @@ describe('a body we cannot price is not depth', () => {
     expect(d.mine.map((b) => b.playerKey)).toContain('nemec')
   })
 })
+
+describe('a body can only be in one seat at a time', () => {
+  /*
+   * The head-to-head listed Steven Stamkos as C +339 AND as RW +339, and Evgeni Malkin at C,
+   * LW and RW. Every line was true — he is eligible at all of them — but the DEPTH VERDICT
+   * ("they're deeper at C, RW, D, G") summed the top bodies covering each position, so one
+   * man inflated three columns at once. A roster of three-position forwards read as deep
+   * everywhere while having one body to put in one seat.
+   *
+   * What "deeper at C" should mean is what each roster actually FIELDS there. So the starter
+   * totals now come from the lineup solve: a body seated at RW no longer counts toward C. The
+   * display lists still show everyone eligible, because "who could fill this seat" is a real
+   * question — it is the verdict that had to stop double-counting.
+   */
+  const hk = (key: string, team: string, elig: string, name = key): any =>
+    ({ playerKey: key, name, position: elig, teamKey: team, eligiblePositions: elig.split(','), proTeam: 'TBL' })
+
+  /* One C slot, one RW slot. I have a C/RW swingman and an RW-only body. */
+  const pool = [
+    hk('swing', 'me', 'C,RW', 'Steven Stamkos'),
+    hk('rwOnly', 'me', 'RW', 'Lucas Raymond'),
+    hk('theirC', 'them', 'C', 'Tim Stutzle'),
+    hk('theirRW', 'them', 'RW', 'David Pastrnak'),
+  ]
+  const valueByKey: any = {
+    swing: { total: 339, games: 82 }, rwOnly: { total: 310, games: 82 },
+    theirC: { total: 353, games: 82 }, theirRW: { total: 341, games: 82 },
+  }
+  const cmp = buildRosterCompare({
+    pool, valueByKey, fgByKey: {}, myTeamKey: 'me', theirTeamKey: 'them',
+    slots: { C: 1, RW: 1 }, sport: 'hockey',
+  })!
+
+  it('counts the swingman toward one position, not both', () => {
+    const c = cmp.positions.find((x) => x.position === 'C')!
+    const rw = cmp.positions.find((x) => x.position === 'RW')!
+    const counted = [c.myStarterValue, rw.myStarterValue].filter((v) => v === 339).length
+    expect(counted).toBe(1)
+  })
+
+  it('still lists him under every position he could fill', () => {
+    const rw = cmp.positions.find((x) => x.position === 'RW')!
+    expect(rw.mine.map((b) => b.playerKey)).toContain('swing')
+  })
+
+  it('marks only the seated body as a starter', () => {
+    const rw = cmp.positions.find((x) => x.position === 'RW')!
+    expect(rw.mine.filter((b) => b.starter)).toHaveLength(1)
+  })
+
+  it('leaves a single-position roster unchanged', () => {
+    const c = cmp.positions.find((x) => x.position === 'C')!
+    expect(c.theirStarterValue).toBe(353)
+  })
+})

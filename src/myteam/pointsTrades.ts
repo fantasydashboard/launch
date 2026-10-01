@@ -499,60 +499,76 @@ export function buildPointsTrades(
    * that costs less; where they tie on that too, the likelier one.
    */
   const sendable = ideas.filter((i) => i.odds >= MIN_SENDABLE_ODDS)
+  return selectDeals(sendable, OUT_LIMIT)
+}
+
+/**
+ * Which deals make the board, in two passes: BREADTH FIRST, DEPTH AS FILLER.
+ *
+ * The live ESPN board gave Rock'em Sock'em five of its six cards. The old cap scaled with how
+ * many partners survived the odds floor — once the no-hopers were gone only two or three
+ * managers remained, each was allowed more room, and one of them took the board. A manager
+ * reading ten deals wants to know who in the LEAGUE to talk to.
+ *
+ * So the first pass takes at most two from anybody. The second comes back round and fills
+ * whatever is left from the best of the rest, which is what keeps a league with one viable
+ * partner from showing two cards and silence. Breadth costs nothing when there is breadth to
+ * be had, and nothing is given up when there isn't.
+ *
+ * The input is already ordered by what the board ranks on, so taking in order preserves it.
+ */
+export function selectDeals(sendable: TradeIdea[], limit: number): TradeIdea[] {
   const getCount = new Map<string, number>()
   const giveCount = new Map<string, number>()
   const perPartner = new Map<string, number>()
   const seenExact = new Set<string>()
   const seenOffer = new Set<string>()
   const seenPartnerTarget = new Set<string>()
-  /* Spread the board across the league: with eleven partners that is two each, with one it is
-     the whole board. A fixed cap does one of those two jobs and not the other. */
-  const partnerCount = new Set(sendable.map((i) => i.oppTeamKey)).size
-  const perPartnerCap = Math.min(OUT_LIMIT, Math.max(2, Math.ceil(OUT_LIMIT / Math.max(1, partnerCount))))
+  const taken = new Set<TradeIdea>()
   const out: TradeIdea[] = []
-  for (const idea of sendable) {
-    /* The exact set, and then the OFFER — same partner, same return, same price — so an
-       interchangeable throw-in cannot mint a second card. See offerSignature. */
-    const sig = [...idea.gives, ...idea.gets].map((p) => p.playerKey).sort().join('|')
-    if (seenExact.has(sig)) continue
-    /* The same decision with the balancing body swapped, on either side. The list is already
-       ordered by what the board ranks on, so the first version seen is the one it would have
-       led with — keeping it preserves the existing order exactly. */
-    const byReturn = offerSignature(idea)
-    const byCost = offerSignatureByCost(idea)
-    if (seenOffer.has(byReturn) || seenOffer.has(byCost)) continue
-    if (idea.gets.some((g) => (getCount.get(g.playerKey) ?? 0) >= 2)) continue
-    if (idea.gives.some((g) => (giveCount.get(g.playerKey) ?? 0) >= 4)) continue
-    /*
-     * ONE CARD PER PARTNER-AND-TARGET, and two per partner.
-     *
-     * The live board ran THE WOLL OF SHAME three times in a row — +72 for Gustavsson, then
-     * Jack Eichel at +63 and again at +61. The last two are the same player from the same
-     * manager two points apart; the gain-matching signature above cannot see that, because 63
-     * and 61 are different numbers. "Same player at a different price" was deliberate, but it
-     * belongs ACROSS partners, not three deep with one of them. The per-partner cap drops to
-     * capped per partner for the same reason: ten slots should cover the league, not one
-     * manager. The cap SCALES with how many partners there are — a twelve-team league gets two
-     * apiece, and a league with one possible partner still gets a full board rather than two
-     * cards and silence.
-     *
-     * SHAPE IS PART OF THE KEY, because it is part of the decision. For one target a 2-for-1
-     * and a roster-neutral 2-for-2 are different offers — one costs you a roster spot and the
-     * other does not — and collapsing them removed a real alternative the search exists to
-     * find. Two cards two points apart in the SAME shape are the repetition; these are not.
-     */
-    const partnerTarget = `${idea.oppTeamKey}|${biggest(idea.gets)}|${idea.shape ?? ''}`
-    if (seenPartnerTarget.has(partnerTarget)) continue
-    if ((perPartner.get(idea.oppTeamKey) ?? 0) >= perPartnerCap) continue
-    seenExact.add(sig)
-    seenOffer.add(byReturn)
-    seenOffer.add(byCost)
-    seenPartnerTarget.add(partnerTarget)
-    for (const g of idea.gets) getCount.set(g.playerKey, (getCount.get(g.playerKey) ?? 0) + 1)
-    for (const g of idea.gives) giveCount.set(g.playerKey, (giveCount.get(g.playerKey) ?? 0) + 1)
-    perPartner.set(idea.oppTeamKey, (perPartner.get(idea.oppTeamKey) ?? 0) + 1)
-    out.push(idea)
-    if (out.length >= OUT_LIMIT) break
+
+  const sweep = (perPartnerCap: number) => {
+    for (const idea of sendable) {
+      if (out.length >= limit) return
+      if (taken.has(idea)) continue
+      /* The exact set, and then the OFFER — same partner, same return, same price — so an
+         interchangeable throw-in cannot mint a second card. See offerSignature. */
+      const sig = [...idea.gives, ...idea.gets].map((p) => p.playerKey).sort().join('|')
+      if (seenExact.has(sig)) continue
+      /* The same decision with the balancing body swapped, on either side. */
+      const byReturn = offerSignature(idea)
+      const byCost = offerSignatureByCost(idea)
+      if (seenOffer.has(byReturn) || seenOffer.has(byCost)) continue
+      if (idea.gets.some((g) => (getCount.get(g.playerKey) ?? 0) >= 2)) continue
+      if (idea.gives.some((g) => (giveCount.get(g.playerKey) ?? 0) >= 4)) continue
+      /*
+       * ONE CARD PER PARTNER-AND-TARGET. The board once ran one manager three deep — +72 for
+       * Gustavsson, then Jack Eichel at +63 and again at +61 — and the gain-matching signature
+       * cannot see that 63 and 61 are the same decision.
+       *
+       * SHAPE IS PART OF THE KEY, because it is part of the decision: for one target a 2-for-1
+       * and a roster-neutral 2-for-2 are different offers, one costs you a roster spot, and
+       * collapsing them removed a real alternative the search exists to find.
+       */
+      const partnerTarget = `${idea.oppTeamKey}|${biggest(idea.gets)}|${idea.shape ?? ''}`
+      if (seenPartnerTarget.has(partnerTarget)) continue
+      if ((perPartner.get(idea.oppTeamKey) ?? 0) >= perPartnerCap) continue
+
+      seenExact.add(sig)
+      seenOffer.add(byReturn)
+      seenOffer.add(byCost)
+      seenPartnerTarget.add(partnerTarget)
+      for (const g of idea.gets) getCount.set(g.playerKey, (getCount.get(g.playerKey) ?? 0) + 1)
+      for (const g of idea.gives) giveCount.set(g.playerKey, (giveCount.get(g.playerKey) ?? 0) + 1)
+      perPartner.set(idea.oppTeamKey, (perPartner.get(idea.oppTeamKey) ?? 0) + 1)
+      taken.add(idea)
+      out.push(idea)
+    }
   }
+
+  const BREADTH_CAP = 2
+  sweep(BREADTH_CAP)
+  if (out.length < limit) sweep(limit)
   return out
 }
+

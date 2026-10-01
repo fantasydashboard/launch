@@ -10,7 +10,7 @@
  * Pure, and deliberately opinion-free: it ranks and pairs, it does not propose deals. The
  * deal engine (pointsTrades) stays the only thing allowed to claim a swap helps you.
  */
-import { coversSlot, positionRowsFor } from '@/trades/positionalLandscape'
+import { assignSlots, coversSlot, positionRowsFor, type DepthPlayer } from '@/trades/positionalLandscape'
 import { lineupEligFor } from '@/trades/lineupEligibility'
 import { startablePositions } from '@/trades/rosterSlots'
 import type { PointsPoolPlayer } from '@/myteam/pointsTeam'
@@ -127,6 +127,36 @@ export function buildRosterCompare(input: {
       }))
       .sort((a, b) => b.value - a.value)
 
+  /*
+   * WHO EACH ROSTER ACTUALLY FIELDS AT EACH POSITION — one body, one seat.
+   *
+   * The verdict used to sum the top bodies COVERING a position, so Steven Stamkos counted as
+   * C +339 and as RW +339, and Evgeni Malkin counted at C, LW and RW. Every line was true — he
+   * is eligible at all of them — and the depth comparison was nonsense: a roster of
+   * three-position forwards read as deep everywhere while having one body to put in one seat,
+   * and "they're deeper at C, RW, D, G" was built on the triple count.
+   *
+   * The lineup solve already answers this question for the Today board and the standings, so
+   * it answers it here too. The display lists below still show everyone eligible, because "who
+   * could fill this seat" is a real question — it was the VERDICT that had to stop
+   * double-counting.
+   */
+  const seatedByTeam = new Map<string, Record<string, string[]>>()
+  for (const teamKey of [myTeamKey, theirTeamKey]) {
+    const bodies: DepthPlayer[] = pool
+      .filter((p) => p.teamKey === teamKey && priced(p.playerKey))
+      .map((p) => ({
+        playerKey: p.playerKey,
+        teamKey,
+        eligiblePositions: lineupEligFor(p, fgByKey),
+        value: valueOf(p.playerKey),
+        status: '',
+      }))
+    seatedByTeam.set(teamKey, assignSlots(bodies, slots, 0, sport).assignedByPos)
+  }
+  const seatedAt = (teamKey: string, pos: string): Set<string> =>
+    new Set(seatedByTeam.get(teamKey)?.[pos] ?? [])
+
   const out: ComparePosition[] = []
   for (const position of positions) {
     // Positional rank is computed over everyone eligible there, league-wide — the same list
@@ -144,11 +174,13 @@ export function buildRosterCompare(input: {
     /* How many bodies "count" here is how many the league starts at the position. Judging a
        position on its single best body is what let one elite back read as a surplus while the
        roster behind him was thin — the same mistake the landscape used to make. */
-    const depth = Math.max(1, Math.floor(Number(slots[position] ?? 1)) || 1)
-    for (const list of [mine, theirs]) list.forEach((b, i) => (b.starter = i < depth))
+    const mySeated = seatedAt(myTeamKey, position)
+    const theirSeated = seatedAt(theirTeamKey, position)
+    mine.forEach((b) => (b.starter = mySeated.has(b.playerKey)))
+    theirs.forEach((b) => (b.starter = theirSeated.has(b.playerKey)))
 
-    const myStarterValue = mine.slice(0, depth).reduce((s, b) => s + b.value, 0)
-    const theirStarterValue = theirs.slice(0, depth).reduce((s, b) => s + b.value, 0)
+    const myStarterValue = mine.filter((b) => b.starter).reduce((s, b) => s + b.value, 0)
+    const theirStarterValue = theirs.filter((b) => b.starter).reduce((s, b) => s + b.value, 0)
     out.push({
       position,
       mine,

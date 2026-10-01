@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { offerSignature, offerSignatureByCost, gainJustifiesCost, buildPointsTrades, MIN_GAIN_PER_WEEK } from '../pointsTrades'
+import { offerSignature, offerSignatureByCost, gainJustifiesCost, selectDeals, buildPointsTrades, MIN_GAIN_PER_WEEK } from '../pointsTrades'
 import { MIN_SENDABLE_ODDS } from '../tradeStrategy'
-import { injuryTier } from '../injuryStatus'
 import { buildBaseballValue } from '../playerValue'
 import type { PointsPoolPlayer } from '../pointsTeam'
 import type { FGProjection } from '@/services/projectionService'
@@ -372,5 +371,58 @@ describe('the board and the analyzer have to read injury the same way', () => {
     const flagged = pool.map((p) => (p.playerKey === 'B_SP1' ? { ...p, onIL: true } : p))
     const ideas = buildPointsTrades(flagged, buildBaseballValue(fg, weights), 'A', slots, {})
     expect(ideas.some((i) => i.gets.some((g) => g.playerKey === 'B_SP1'))).toBe(false)
+  })
+})
+
+describe('breadth before depth', () => {
+  /*
+   * The live ESPN board gave Rock'em Sock'em five of its six cards. The cap scaled with how
+   * many partners survived the odds floor — once the no-hopers were gone only two or three
+   * managers remained, so each was allowed more room, and one of them took the board.
+   *
+   * A manager reading ten deals wants to know who in the LEAGUE to talk to. Two passes fix it
+   * without shortening the board: the first takes at most two from anybody, the second comes
+   * back round and fills whatever is left over from the best of the rest. Breadth first, depth
+   * only as filler.
+   */
+  const idea = (partner: string, rank: number): any => ({
+    oppTeamKey: partner, oppTeamName: partner, myGain: 100 - rank, theirGain: 5,
+    gets: [{ playerKey: `${partner}-get-${rank}`, points: 200 }],
+    gives: [{ playerKey: `${partner}-give-${rank}`, points: 100 }],
+    kind: 'winWin', odds: 0.5, rung: 'fair', shape: '1for1', spots: 0,
+  })
+
+  it('gives every partner a turn before anyone gets a third', () => {
+    /* A sorted list where one partner holds the top six. */
+    const list = [
+      ...[0, 1, 2, 3, 4, 5].map((i) => idea('hog', i)),
+      idea('b', 6), idea('c', 7), idea('d', 8),
+    ]
+    const out = selectDeals(list, 10)
+    const fromHog = out.filter((i) => i.oppTeamKey === 'hog').length
+    expect(out.map((i) => i.oppTeamKey)).toContain('b')
+    expect(out.map((i) => i.oppTeamKey)).toContain('c')
+    expect(out.map((i) => i.oppTeamKey)).toContain('d')
+    /* Hog may fill leftover slots, but only after everybody else has had two. */
+    const firstPass = out.slice(0, 5).filter((i) => i.oppTeamKey === 'hog').length
+    expect(firstPass).toBeLessThanOrEqual(2)
+    expect(fromHog).toBeGreaterThanOrEqual(2)
+  })
+
+  it('still fills the board when only one partner is viable', () => {
+    const only = [0, 1, 2, 3, 4, 5].map((i) => idea('solo', i))
+    expect(selectDeals(only, 10)).toHaveLength(6)
+  })
+
+  it('never exceeds the limit', () => {
+    const many = Array.from({ length: 40 }, (_, i) => idea(`p${i % 8}`, i))
+    expect(selectDeals(many, 10)).toHaveLength(10)
+  })
+
+  it('keeps the ranking order within what it selects', () => {
+    const list = [idea('a', 0), idea('b', 1), idea('a', 2), idea('c', 3)]
+    const out = selectDeals(list, 10)
+    const gains = out.map((i) => i.myGain)
+    expect([...gains].sort((x, y) => y - x)).toEqual(gains)
   })
 })
