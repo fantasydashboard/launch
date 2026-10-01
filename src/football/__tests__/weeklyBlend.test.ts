@@ -105,3 +105,31 @@ describe('blendBoardWithList', () => {
     expect(blendBoardWithList(entries, names, 'nothing here')).toBeNull()
   })
 })
+
+import { detectListWeek } from '../weeklyBlend'
+
+const games = {
+  3: [{ home: 'NE', away: 'BUF' }, { home: 'KC', away: 'LV' }],
+  4: [{ home: 'BUF', away: 'NE' }, { home: 'LV', away: 'KC' }, { home: 'CAR', away: 'DET' }],
+}
+const wk4 = [
+  '"QB Rank","QB Player","QB Team","QB Opponent","TE Rank","TE Player","TE Team","TE Opponent"',
+  '"1","Josh Allen","BUF","NE","1","Brock Bowers","LV","KC"',
+  '"2","Jared Goff","DET","CAR","2","Sam LaPorta","DET","CAR"',
+].join('\n')
+
+describe('detectListWeek', () => {
+  it('finds the week whose schedule the file matches', () => {
+    expect(detectListWeek(wk4, games)?.week).toBe(4)
+  })
+  it('ignores home/away order and JAC/JAX spelling', () => {
+    // wk4 lists BUF vs NE from the away side; the schedule has BUF at home. Same game.
+    expect(detectListWeek(wk4, games)?.share).toBe(1)
+    const jac = { 4: [{ home: 'JAX', away: 'CIN' }] }
+    const t2 = '"QB Rank","QB Player","QB Team","QB Opponent","RB Rank","RB Player","RB Team","RB Opponent"\n"1","Trevor Lawrence","JAC","CIN","1","Chase Brown","CIN","JAC"'
+    expect(detectListWeek(t2, jac)?.week).toBe(4)
+  })
+  it('refuses a file that matches no week at 80%', () => {
+    expect(detectListWeek(wk4, { 3: games[3] })).toBeNull()
+  })
+})

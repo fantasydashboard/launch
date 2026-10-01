@@ -1,4 +1,4 @@
-import { splitWideRankings, parseRankings, matchRankings } from '@/draft/room/customRankings'
+import { splitWideRankings, parseRankings, matchRankings, splitCsvLine } from '@/draft/room/customRankings'
 
 /**
  * HALF SLEEPER, HALF A HUMAN RANKER (2026-10-01).
@@ -62,4 +62,42 @@ export function blendBoardWithList(
   }
   if (!Object.keys(rankByKey).length) return null
   return blendWithAnalyst(entries, rankByKey, lastRankByPos)
+}
+
+const TEAM_ALIAS: Record<string, string> = { JAC: 'JAX', WSH: 'WAS', LA: 'LAR' }
+const team = (t: string) => { const u = (t || '').trim().toUpperCase(); return TEAM_ALIAS[u] ?? u }
+const pairKey = (a: string, b: string) => [team(a), team(b)].sort().join('-')
+
+/**
+ * Which NFL week a wide analyst sheet is for, read from its own Team/Opponent columns.
+ * Typed-in weeks get mistyped; the file already says which games it covers.
+ */
+export function detectListWeek(
+  text: string,
+  gamesByWeek: Record<number, { home: string; away: string }[]>,
+): { week: number; share: number } | null {
+  const lines = (text || '').split(/\r?\n/).filter((l) => l.trim())
+  if (lines.length < 2) return null
+  const header = splitCsvLine(lines[0].replace(/﻿/g, ''))
+  const cols: [number, number][] = []
+  header.forEach((h, i) => {
+    const m = /^(\w+)\s+Team$/i.exec(h.trim())
+    if (!m) return
+    const opp = header.findIndex((x) => x.trim().toLowerCase() === `${m[1].toLowerCase()} opponent`)
+    if (opp >= 0) cols.push([i, opp])
+  })
+  const pairs = new Set<string>()
+  for (const line of lines.slice(1)) {
+    const cells = splitCsvLine(line)
+    for (const [t, o] of cols) if (cells[t]?.trim() && cells[o]?.trim()) pairs.add(pairKey(cells[t], cells[o]))
+  }
+  if (!pairs.size) return null
+  let best: { week: number; share: number } | null = null
+  for (const [w, games] of Object.entries(gamesByWeek)) {
+    const sched = new Set(games.map((g) => pairKey(g.home, g.away)))
+    const hit = [...pairs].filter((p) => sched.has(p)).length
+    const share = hit / pairs.size
+    if (!best || share > best.share) best = { week: Number(w), share }
+  }
+  return best && best.share >= 0.8 ? best : null
 }
