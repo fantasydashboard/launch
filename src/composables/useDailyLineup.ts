@@ -3,6 +3,7 @@ import { useLeagueStore } from '@/stores/league'
 import { useActivePointsSource, resolveLeagueSize } from '@/composables/useActivePointsSource'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
+import { isNonStarting } from '@/trades/rosterSlots'
 import { startableCounts } from '@/trades/rosterSlots'
 import { getNhlSchedule } from '@/services/nhlSchedule'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
@@ -621,8 +622,18 @@ export function useDailyLineup() {
       const i = order.indexOf(slot)
       return i === -1 ? order.length : i
     }
+    /*
+     * STARTING SEATS ONLY. This filtered on `startedSlot` being TRUTHY, and "BN" is truthy —
+     * so the bench was counted as part of what you are starting.
+     *
+     * What that did: the panel compares this against the optimal and calls the difference the
+     * reason to change anything. With the bench folded in, the current total came out equal to
+     * the optimal total, the difference was zero, and the page printed "your lineup is
+     * optimal" over a board where five real players sat behind men with no game. The one
+     * question this page exists to answer, answered backwards.
+     */
     return rows.value
-      .filter((r) => r.startedSlot)
+      .filter((r) => r.startedSlot && !isNonStarting(r.startedSlot))
       .sort((a, b) => {
         const d = rank(a.startedSlot!) - rank(b.startedSlot!)
         if (d !== 0) return d

@@ -9,7 +9,7 @@ const NON_STARTING = new Set(['BN', 'BE', 'IL', 'NA', 'IR', 'DL', 'TAXI', 'BENCH
  * every team's" drew two rows reading "open slot": holes in a lineup that has no such holes.
  * Stripping the suffix is enough, and it is the only thing these spellings vary by.
  */
-function isNonStarting(pos: string): boolean {
+export function isNonStarting(pos: string): boolean {
   const up = String(pos || '').trim().toUpperCase()
   return NON_STARTING.has(up) || NON_STARTING.has(up.replace(/\+$/, ''))
 }

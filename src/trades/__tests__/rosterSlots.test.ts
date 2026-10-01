@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { startableCounts, startableFraction, startablePositions, parseRosterSlots, flexEligibility, FLEX_ELIGIBILITY, DEFAULT_SLOTS, canonicalPosition } from '../rosterSlots'
+import { isNonStarting, startableCounts, startableFraction, startablePositions, parseRosterSlots, flexEligibility, FLEX_ELIGIBILITY, DEFAULT_SLOTS, canonicalPosition } from '../rosterSlots'
 
 describe('canonicalPosition and the letter D', () => {
   /*
@@ -597,5 +597,48 @@ describe('basketball, the sport FLEX_ELIGIBILITY predicted would break the merge
   it('keeps the hockey G concrete and the hockey F a forward seat', () => {
     expect(flexEligibility('G', 'hockey')).toBeUndefined()
     expect(flexEligibility('F', 'hockey')).toEqual(['C', 'LW', 'RW'])
+  })
+})
+
+describe('isNonStarting, exported because the Today board needs it', () => {
+  /*
+   * THE TODAY PAGE CALLED A LINEUP OPTIMAL WHILE FIVE REAL PLAYERS SAT ON ITS BENCH.
+   *
+   *   your lineup           optimal
+   *   C   Bo Horvat 0.0     C   Steven Stamkos
+   *   C   Alex Laferriere   C   Mika Zibanejad
+   *   LW  Brandon Hagel     LW  Kirill Kaprizov
+   *   LW  Evgeni Malkin 0.0 LW  Brandon Hagel
+   *   BN  Kirill Kaprizov   ...
+   *   BN  Steven Stamkos
+   *
+   * Two completely different lineups, both reporting 35.5 projected points, under the words
+   * "your lineup is optimal".
+   *
+   * `current` filtered rows on `r.startedSlot` being TRUTHY, and "BN" is truthy. So the bench
+   * was counted as part of what you are starting, the current total came out equal to the
+   * optimal total, the difference was zero, and the page concluded there was nothing to
+   * change. The one question the page exists to answer, answered backwards.
+   */
+  it('names the seats you do not start from', () => {
+    for (const slot of ['BN', 'BE', 'BENCH', 'IL', 'IR', 'NA', 'DL', 'TAXI']) {
+      expect(isNonStarting(slot)).toBe(true)
+    }
+  })
+
+  it('and the plus-suffixed ones Yahoo sends', () => {
+    expect(isNonStarting('IR+')).toBe(true)
+    expect(isNonStarting('IL+')).toBe(true)
+  })
+
+  it('leaves a real starting slot alone', () => {
+    for (const slot of ['C', 'LW', 'RW', 'D', 'G', 'UTIL', 'F', 'QB', 'FLEX']) {
+      expect(isNonStarting(slot)).toBe(false)
+    }
+  })
+
+  it('is case-insensitive, because the platforms are not consistent', () => {
+    expect(isNonStarting('bn')).toBe(true)
+    expect(isNonStarting(' Bench ')).toBe(true)
   })
 })

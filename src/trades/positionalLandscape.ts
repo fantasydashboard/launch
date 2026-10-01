@@ -1,4 +1,5 @@
 import { FLEX_ELIGIBILITY, flexEligibility } from './rosterSlots'
+import { injuryTier } from '@/myteam/injuryStatus'
 
 /** A pool player reduced to what positional depth needs. value = cross-role 0..100. */
 export interface DepthPlayer {
@@ -65,9 +66,33 @@ export const STARTABLE_BAR = 45
 /** surplus saturates at this many giveable extras; need saturates at this many unmet slots. */
 const SAT = 2
 
+/**
+ * Whether a body cannot be seated at all — WILL NOT play, not MIGHT not.
+ *
+ * This read "any status that is not blank, ACTIVE or HEALTHY", and assignSlots drops injured
+ * bodies from the solve entirely. So a questionable player was barred from his own seat.
+ *
+ * What that cost, on a live Today board:
+ *
+ *   LW  Brandon Hagel     4.4
+ *   LW  Evgeni Malkin     0.0 · no game   <- starting
+ *   BN  Kirill Kaprizov   5.0             <- benched, has a game, is an LW
+ *
+ * with "your lineup is optimal" printed underneath. Five points left on the bench by the page
+ * whose entire job is "set your lineup, start the right players", and it said the lineup could
+ * not be improved.
+ *
+ * The caller has ALREADY discounted a doubtful man's projection for the doubt — see
+ * DOUBTFUL_DISCOUNT in useDailyLineup. Barring him on top counts it twice, and the second
+ * count costs the whole seat rather than a fraction of it.
+ *
+ * injuryTier already draws the line between "might not play" and "will not": out and il bar,
+ * dtd does not. Using it here is also what keeps this engine agreeing with the rest of the
+ * product, which has read injury through that function for a long time.
+ */
 const isInjured = (s?: string): boolean => {
-  const u = (s ?? '').toUpperCase()
-  return u !== '' && u !== 'ACTIVE' && u !== 'HEALTHY'
+  const tier = injuryTier(s)
+  return tier === 'out' || tier === 'il'
 }
 
 /** Which concrete sub-positions a slot accepts (flex slots expand; concrete slots are themselves).

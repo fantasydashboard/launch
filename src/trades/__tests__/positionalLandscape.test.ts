@@ -181,3 +181,56 @@ describe('which positions a sport is ranked across', () => {
     expect(positionRowsFor('cricket')).toEqual(positionRowsFor('baseball'))
   })
 })
+
+describe('day-to-day is not out', () => {
+  /*
+   * THE TODAY PAGE CALLED A LINEUP OPTIMAL WHILE LEAVING FIVE POINTS ON THE BENCH.
+   *
+   *   LW  Brandon Hagel     4.4
+   *   LW  Evgeni Malkin     0.0 · no game   <- starting
+   *   BN  Kirill Kaprizov   5.0             <- benched, has a game, is an LW
+   *
+   * and underneath, "your lineup is optimal".
+   *
+   * isInjured treated ANY status that was not blank, ACTIVE or HEALTHY as injured, and
+   * assignSlots drops injured bodies from the solve entirely. So a questionable player — one
+   * who is expected to play, and whose projection has ALREADY been discounted for the doubt by
+   * the caller — was barred from his own seat, which a nought-point body with no game then
+   * filled. Barring him on top of the discount counts the doubt twice, and the second count
+   * costs the whole seat.
+   *
+   * Out and IL still bar: those are men who will not play. The line is between "might not"
+   * and "will not", which is exactly what injuryTier already draws.
+   */
+  const P2 = (key: string, elig: string[], value: number, status: string): DepthPlayer =>
+    ({ playerKey: key, teamKey: 'me', eligiblePositions: elig, value, status })
+
+  const slots = { LW: 2 }
+
+  it('seats a day-to-day player ahead of a healthy body worth nothing', () => {
+    const a = assignSlots([
+      P2('dtd', ['LW'], 5.0, 'DTD'),
+      P2('zero', ['LW'], 0.0, ''),
+    ], slots, 0)
+    expect(a.assignedByPos.LW).toContain('dtd')
+  })
+
+  it('treats the questionable spellings the platforms actually send as playable', () => {
+    for (const status of ['DTD', 'Q', 'QUESTIONABLE', 'GTD', 'DAY_TO_DAY']) {
+      const a = assignSlots([P2('x', ['LW'], 5, status)], { LW: 1 }, 0)
+      expect(a.assignedByPos.LW ?? []).toContain('x')
+    }
+  })
+
+  it('still bars a man who will not play', () => {
+    for (const status of ['OUT', 'O', 'IL', 'IR', 'NA']) {
+      const a = assignSlots([P2('x', ['LW'], 99, status)], { LW: 1 }, 0)
+      expect(a.assignedByPos.LW ?? []).not.toContain('x')
+    }
+  })
+
+  it('leaves a blank status playable, as it always was', () => {
+    const a = assignSlots([P2('x', ['LW'], 5, '')], { LW: 1 }, 0)
+    expect(a.assignedByPos.LW).toContain('x')
+  })
+})
