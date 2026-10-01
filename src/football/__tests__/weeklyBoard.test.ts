@@ -1370,11 +1370,11 @@ describe('a player who is not playing', () => {
     }
   })
 
-  /* Questionable is a discount, not a zero — he probably plays. */
-  it('discounts a questionable player without benching him', () => {
+  /* Questionable is not a zero — he probably plays. Board rows now carry the full projection
+     (ranking value; see the weekly-analyst-blend plan, Task 3); the discount lives in the lineup. */
+  it('keeps a questionable player on the board at full projection', () => {
     const hurt = rows('Questionable').find((r) => r.playerKey === 'hurt')!
-    expect(hurt.weekPoints).toBeGreaterThan(0)
-    expect(hurt.weekPoints).toBeLessThan(18)
+    expect(hurt.weekPoints).toBe(18)
     expect(hurt.ruledOut).toBe(false)
   })
 
@@ -1456,5 +1456,32 @@ describe('a tier line that came from an uploaded list', () => {
 
   it('keeps the line itself, because the list is what the reader asked to see', () => {
     expect(build({ q0: 1, q1: 1, q2: 2, q3: 2 }).filter((r) => r.tierBreak)).toHaveLength(1)
+  })
+})
+
+describe('Questionable: ranked as if he plays, started on the cut value', () => {
+  const qpool = [
+    { playerKey: 'qb', name: 'My QB', position: 'QB', teamKey: 'me', proTeam: 'BUF' },
+    { playerKey: 'rbQ', name: 'Hurt Back', position: 'RB', teamKey: 'me', proTeam: 'KC', status: 'Questionable' },
+    { playerKey: 'rbH', name: 'Healthy Back', position: 'RB', teamKey: 'me', proTeam: 'SF' },
+    { playerKey: 'rb3', name: 'Third Back', position: 'RB', teamKey: 'me', proTeam: 'DAL' },
+    { playerKey: 'rbOut', name: 'Out Back', position: 'RB', teamKey: 'me', proTeam: 'GB', status: 'Out' },
+  ] as PointsPoolPlayer[]
+  const vor = { qb: pv(20), rbQ: pv(18), rbH: pv(14), rb3: pv(10), rbOut: pv(25) }
+  const b = buildWeeklyBoard({
+    pool: qpool, vorByKey: vor, slots: { QB: 1, RB: 1 }, myTeamKey: 'me', currentStarters: [],
+    freeAgents: [], opponentByTeam: opp,
+  })
+  const find = (k: string) => [...b.starters, ...b.bench].find((r) => r.playerKey === k)!
+
+  it('ranks the Questionable back on his full projection', () => {
+    expect(find('rbQ').posRank).toBe(1) // 18 beats 14, no 0.65 cut in the ranking
+  })
+  it('still starts the healthy back, because the lineup uses 18 x 0.65 = 11.7', () => {
+    expect(b.starters.some((s) => s.playerKey === 'rbH')).toBe(true)
+    expect(b.starters.some((s) => s.playerKey === 'rbQ')).toBe(false)
+  })
+  it('keeps a ruled-Out player at zero in the ranking too', () => {
+    expect(find('rbOut').posRank).toBeGreaterThan(3)
   })
 })
