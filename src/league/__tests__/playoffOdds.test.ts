@@ -91,3 +91,68 @@ describe('buildLeverage', () => {
     }
   })
 })
+
+describe('championship odds', () => {
+  const league: OddsTeam[] = Array.from({ length: 8 }, (_, i) => ({
+    teamKey: `t${i}`, strength: 130 - i * 6, wins: 0, losses: 0, ties: 0, pointsFor: 1000 - i * 10,
+  }))
+  /* A plain round robin: everybody plays somebody every week, nobody twice in a week. */
+  const schedule: ScheduleWeek[] = Array.from({ length: 7 }, (_, w) => {
+    const ids = league.map((t) => t.teamKey)
+    const fixed = ids[0]
+    const rot = ids.slice(1)
+    for (let r = 0; r < w; r++) rot.unshift(rot.pop() as string)
+    const order = [fixed, ...rot]
+    const matchups: [string, string][] = []
+    for (let i = 0; i < order.length / 2; i++) matchups.push([order[i], order[order.length - 1 - i]])
+    return { week: w + 1, matchups }
+  })
+  const run = (spots: number) =>
+    simulatePlayoffOdds(league, schedule, { playoffSpots: spots, sims: 1500, rng: mulberry(9) }).results
+
+  /* A fixed stream, so a title share cannot wobble between runs of the suite. */
+  function mulberry(seed: number) {
+    let a = seed >>> 0
+    return () => {
+      a = (a + 0x6d2b79f5) >>> 0
+      let t = Math.imul(a ^ (a >>> 15), 1 | a)
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    }
+  }
+
+  it('hands out exactly one title per simulated season', () => {
+    expect(run(4).reduce((a, b) => a + b.titlePct, 0)).toBeCloseTo(1, 1)
+  })
+
+  it('never gives a title to a team that cannot reach the bracket', () => {
+    for (const row of run(4)) expect(row.titlePct).toBeLessThanOrEqual(row.playoffPct + 1e-9)
+  })
+
+  it('separates reaching the bracket from winning it, which is the point', () => {
+    /*
+     * The last seed in makes the playoffs far more often than it wins them, so a page showing
+     * only playoff odds tells a bubble team and a juggernaut nearly the same story.
+     */
+    const best = [...run(4)].sort((a, b) => b.playoffPct - a.playoffPct)[0]
+    expect(best.playoffPct).toBeGreaterThan(best.titlePct)
+  })
+
+  it('favours the stronger roster', () => {
+    const by = Object.fromEntries(run(4).map((x) => [x.teamKey, x.titlePct]))
+    expect(by.t0).toBeGreaterThan(by.t3)
+  })
+
+  it('still adds to one when the field is not a power of two', () => {
+    // 6 into an 8-slot bracket: the top two sit out the first round.
+    expect(run(6).reduce((a, b) => a + b.titlePct, 0)).toBeCloseTo(1, 1)
+    expect(run(3).reduce((a, b) => a + b.titlePct, 0)).toBeCloseTo(1, 1)
+  })
+
+  it('gives the whole title to the only qualifier in a one-spot league', () => {
+    const r = run(1)
+    expect(r.reduce((a, b) => a + b.titlePct, 0)).toBeCloseTo(1, 1)
+    const top = [...r].sort((a, b) => b.titlePct - a.titlePct)[0]
+    expect(top.titlePct).toBeCloseTo(top.playoffPct, 2)
+  })
+})

@@ -13,6 +13,12 @@ export interface ScheduleWeek {
 export interface OddsResult {
   teamKey: string
   playoffPct: number // 0..1
+  /**
+   * Odds of winning the thing, which is not the same question as reaching the bracket and is
+   * often the opposite answer: a team that limps in as the last seed makes the playoffs far
+   * more often than it wins them, and a bye is worth more than a seed.
+   */
+  titlePct: number
   projWins: number
   projLosses: number
   projTies: number
@@ -65,11 +71,13 @@ export function simulatePlayoffOdds(
   const winSum = new Map<string, number>()
   const lossSum = new Map<string, number>()
   const seedSum = new Map<string, number>()
+  const titleSum = new Map<string, number>()
   for (const t of teams) {
     made.set(t.teamKey, 0)
     winSum.set(t.teamKey, 0)
     lossSum.set(t.teamKey, 0)
     seedSum.set(t.teamKey, 0)
+    titleSum.set(t.teamKey, 0)
   }
 
   for (let s = 0; s < sims; s++) {
@@ -115,12 +123,57 @@ export function simulatePlayoffOdds(
       lossSum.set(row.k, lossSum.get(row.k)! + row.l)
       if (i < spots) made.set(row.k, made.get(row.k)! + 1)
     })
+
+    /*
+     * THE BRACKET, run inside the same sim so the seeding and the title come from one season
+     * rather than two independent ones. Reaching the bracket and winning it are different
+     * questions and frequently opposite answers — the last seed in gets there far more often
+     * than it wins, and a first-round bye is worth more than a place.
+     *
+     * Highest against lowest each round, byes to the top seeds when the field is not a power
+     * of two, which is how every fantasy platform draws it. Rounds use the same head-to-head
+     * probability the regular season does, so a team is not suddenly a different team in
+     * December.
+     */
+    let field = seeded.slice(0, spots).map((r) => r.k)
+    if (field.length) {
+      let size = 1
+      while (size < field.length) size *= 2
+      const byes = size - field.length
+      let alive = field.slice(byes)          // the seeds that have to play round one
+      const waiting = field.slice(0, byes)   // the seeds that do not
+      while (alive.length > 1) {
+        const next: string[] = []
+        for (let i = 0, j = alive.length - 1; i < j; i++, j--) {
+          const hi = alive[i]
+          const lo = alive[j]
+          const p = matchupWinProb(strengthOf.get(hi) ?? 0, strengthOf.get(lo) ?? 0, scale)
+          next.push(rng() < p ? hi : lo)
+        }
+        if (alive.length % 2) next.push(alive[(alive.length - 1) / 2])
+        alive = next
+      }
+      field = [...waiting, ...alive]
+      while (field.length > 1) {
+        const next: string[] = []
+        for (let i = 0, j = field.length - 1; i < j; i++, j--) {
+          const hi = field[i]
+          const lo = field[j]
+          const p = matchupWinProb(strengthOf.get(hi) ?? 0, strengthOf.get(lo) ?? 0, scale)
+          next.push(rng() < p ? hi : lo)
+        }
+        if (field.length % 2) next.push(field[(field.length - 1) / 2])
+        field = next
+      }
+      if (field[0]) titleSum.set(field[0], (titleSum.get(field[0]) ?? 0) + 1)
+    }
   }
 
   const results: OddsResult[] = teams
     .map((t) => ({
       teamKey: t.teamKey,
       playoffPct: made.get(t.teamKey)! / sims,
+      titlePct: (titleSum.get(t.teamKey) ?? 0) / sims,
       projWins: winSum.get(t.teamKey)! / sims,
       projLosses: lossSum.get(t.teamKey)! / sims,
       projTies: t.ties,

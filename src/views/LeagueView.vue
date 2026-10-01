@@ -653,6 +653,7 @@ const sosBarColor = (sosRank: number, total: number) => {
           <!-- label over bar/% column -->
           <template v-if="playoffOdds">
             <span class="shrink-0 w-28 text-right font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">PLAYOFF ODDS</span>
+            <span class="hidden w-9 shrink-0 text-right font-mono text-[9px] uppercase tracking-wider text-dark-textMuted/70 sm:inline">TITLE</span>
           </template>
           <template v-else>
             <span class="hidden sm:block shrink-0 w-36 text-right font-mono text-[9px] uppercase tracking-wider text-dark-textMuted">ROSTER TALENT</span>
@@ -741,6 +742,16 @@ const sosBarColor = (sosRank: number, total: number) => {
                 :class="(oddsByKey.get(r.teamKey)!).playoffPct >= 0.5 ? 'text-primary' : (oddsByKey.get(r.teamKey)!).playoffPct > 0 ? 'text-[#e69a4a]' : 'text-dark-textMuted'"
               >
                 {{ fmtPct((oddsByKey.get(r.teamKey)!).playoffPct) }}
+              </span>
+              <!--
+                AND THE TITLE, which is a different question with a frequently opposite answer.
+                The last seed in reaches the bracket far more often than it wins it, so a column
+                of playoff odds alone tells a bubble team and a juggernaut nearly the same
+                story. Quieter than the odds beside it because making the bracket is the nearer
+                decision; this is the one that says whether the season is worth pushing for.
+              -->
+              <span class="hidden w-9 text-right font-mono text-[10px] text-dark-textMuted/70 sm:inline">
+                {{ fmtPct((oddsByKey.get(r.teamKey)!).titlePct) }}
               </span>
             </div>
           </template>
