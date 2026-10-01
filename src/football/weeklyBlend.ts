@@ -18,21 +18,24 @@ const posOf = (p: string) => (p || '').toUpperCase().split(/[,/|]/)[0].trim()
 export function blendWithAnalyst(
   entries: BlendEntry[],
   rankByKey: Record<string, number>,
+  lastRankByPos?: Record<string, number>,
 ): Record<string, number> {
   const out: Record<string, number> = {}
   const byPos = new Map<string, BlendEntry[]>()
   for (const e of entries) {
     out[e.playerKey] = e.value
     const p = posOf(e.position)
-    byPos.set(p, [...(byPos.get(p) ?? []), e])
+    if (!byPos.has(p)) byPos.set(p, [])
+    byPos.get(p)!.push(e)
   }
   for (const group of byPos.values()) {
     const ranks = group.map((e) => rankByKey[e.playerKey]).filter((r): r is number => typeof r === 'number')
     if (!ranks.length) continue                      // the list says nothing about this position
-    const lastRank = Math.max(...ranks)
+    const pos = posOf(group[0].position)
+    const lastRank = lastRankByPos?.[pos] ?? Math.max(...ranks)
     const ladder = group.map((e) => e.value).sort((a, b) => b - a)
     for (const e of group) {
-      const r = rankByKey[e.playerKey] ?? lastRank + 1
+      const r = Math.max(1, Math.round(rankByKey[e.playerKey] ?? lastRank + 1))
       const mapped = ladder[Math.min(r, ladder.length) - 1]
       out[e.playerKey] = (e.value + mapped) / 2
     }
@@ -49,12 +52,14 @@ export function blendBoardWithList(
   const wide = splitWideRankings(text)
   if (!wide || !wide.parts.length) return null
   const rankByKey: Record<string, number> = {}
+  const lastRankByPos: Record<string, number> = {}
   for (const part of wide.parts) {
     const pos = part.position.toUpperCase()
     const pool = names.filter((n) => posOf(n.position) === pos)
     const parsed = parseRankings(part.text).map((r) => ({ ...r, position: pos }))
     Object.assign(rankByKey, matchRankings(parsed, pool).rankByKey)
+    lastRankByPos[pos] = Math.max(...parsed.map(p => p.rank))
   }
   if (!Object.keys(rankByKey).length) return null
-  return blendWithAnalyst(entries, rankByKey)
+  return blendWithAnalyst(entries, rankByKey, lastRankByPos)
 }

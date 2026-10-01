@@ -43,6 +43,24 @@ describe('blendWithAnalyst', () => {
     const out = blendWithAnalyst(ladder, { t2: 10 })
     expect(out.t2).toBeCloseTo((10.0 + 8.6) / 2)
   })
+
+  it('uses lastRankByPos to respect analyst opinion beyond matched players', () => {
+    // Analyst ranked: A(1), B(2), Ghost(3, not in pool). Pool has A, B, C, D.
+    // Without lastRankByPos: C unranked at slot 3 (after matched max 2) -> ladder[2] = 15
+    // With lastRankByPos: C unranked at slot 4 (after analyst max 3) -> ladder[3] = 10
+    const ladder = [
+      { playerKey: 'a', value: 25, position: 'TE' },
+      { playerKey: 'b', value: 20, position: 'TE' },
+      { playerKey: 'c', value: 15, position: 'TE' },
+      { playerKey: 'd', value: 10, position: 'TE' },
+    ]
+    const rankByKey = { a: 1, b: 2 }  // only matched players
+    const lastRankByPos = { TE: 3 }   // analyst ranked up to 3, even though ghost didn't match
+    const out = blendWithAnalyst(ladder, rankByKey, lastRankByPos)
+    // C at slot 4 (3+1) -> ladder[min(4,4)-1] = ladder[3] = 10; avg(15,10) = 12.5
+    expect(out.c).toBeCloseTo((15 + 10) / 2)
+    // Without lastRankByPos it would be slot 3 -> ladder[2] = 15; avg(15,15) = 15
+  })
 })
 
 const WIDE = [
@@ -72,9 +90,15 @@ describe('blendBoardWithList', () => {
   })
 
   it('matches across a generational suffix', () => {
-    const text = WIDE.replace('Lamar Jackson', 'Lamar Jackson Jr.')
-    const out = blendBoardWithList(entries, names, text)!
-    expect(out.lamar).toBeCloseTo(21.9)   // still matched at QB2, not pushed past the end
+    // Swap QB order: Lamar Jr. at QB1, Allen at QB2; verify Lamar is matched at position 1
+    const swappedWide = [
+      '"QB Rank","QB Player","QB Team","QB Opponent","QB Tier","TE Rank","TE Player","TE Team","TE Opponent","TE Tier","FLEX Rank","FLEX Player","FLEX Team","FLEX Pos"',
+      '"1","Lamar Jackson Jr.","BAL","TEN","1","1","Brock Bowers","LV","KC","1","1","Jahmyr Gibbs","DET","RB"',
+      '"2","Josh Allen","BUF","NE","1","2","Trey McBride","ARI","NYG","1","2","Bijan Robinson","ATL","RB"',
+    ].join('\n')
+    const out = blendBoardWithList(entries, names, swappedWide)!
+    // Lamar matched at QB1: ladder[0] = 23.1, avg with 21.9 = 22.5
+    expect(out.lamar).toBeCloseTo((21.9 + 23.1) / 2)
   })
 
   it('returns null for text with no usable positions', () => {
