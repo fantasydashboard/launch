@@ -1,6 +1,6 @@
 import { computed, ref, watch, type Ref } from 'vue'
 import type { ValueByKey, PlayerValue } from '@/myteam/playerValue'
-import { buildHockeyValue } from '@/hockey/hockeyValue'
+import { buildHockeyValue, type HockeyProjection } from '@/hockey/hockeyValue'
 import { weightsFromScoringItems } from '@/hockey/hockeyLeague'
 import { useNhlFeed } from '@/composables/useNhlFeed'
 import { normalizeName } from '@/hockey/hockeyProjectionSource'
@@ -358,6 +358,20 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
     return key ? categoryValueByKey.value[key] ?? null : null
   })
 
+  /**
+   * His RAW projected line, by name — the same bridge, for callers that need the stats
+   * themselves rather than a value.
+   *
+   * The category week model derives a column's spread from what a roster is expected to
+   * produce, which means it needs goals and shots rather than standard deviations. Projections
+   * are keyed by ESPN player id and a Yahoo roster arrives with Yahoo keys, so it needs the
+   * name bridge exactly as the two value lookups above do.
+   */
+  const projectionOf = computed(() => (p: { name?: string }): HockeyProjection | null => {
+    const key = merged.value.keyByName[normalizeName(String(p?.name ?? ''))]
+    return key ? merged.value.projections[key] ?? null : null
+  })
+
   return {
     valueByKey,
     categoryValueByKey,
@@ -370,5 +384,6 @@ export function useHockeyValue(inputs: HockeyValueInputs) {
     load,
     weights,
     projections: computed(() => merged.value.projections),
+    projectionOf,
   }
 }

@@ -45,7 +45,6 @@ const CHASE_FLOOR = 0.1
 function sigmaFor(
   cat: WeekCat,
   myStats: Record<string, number>,
-  oppStats: Record<string, number>,
   myRemaining: Record<string, number>,
   oppRemaining: Record<string, number>,
   days: number,
@@ -92,7 +91,7 @@ export function buildCategoryWeek(input: {
       label: c.label,
       mine: Number(myStats[c.key]) || 0,
       theirs: Number(oppStats[c.key]) || 0,
-      sigma: sigmaFor(c, myStats, oppStats, myRemaining, oppRemaining, days, bodies),
+      sigma: sigmaFor(c, myStats, myRemaining, oppRemaining, days, bodies),
       lowerIsBetter: c.lowerIsBetter,
       isRatio: c.isRatio,
     })),
