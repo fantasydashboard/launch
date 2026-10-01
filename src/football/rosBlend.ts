@@ -129,7 +129,14 @@ export const FORWARD_WEIGHT_BY_POS: Record<string, number> = {
 export const PRIOR_GAMES_BY_POS: Record<string, number> = {
   QB: 12,
   RB: 3,
-  WR: 8,
+  // 8 was the sweep's best cell; 12 is on the same plateau (WR MAE 3.497 at 8, 3.514 at 12 on
+  // 2025) and is a deliberate lean toward the forecast. A rest-of-season board should say what
+  // happens next, and at receiver the only input that learns a changed ROLE is the box score, so
+  // it was carrying more of the board than a sample of two or three games deserves. The
+  // receiver fix that actually adds information is a role signal (target share, routes); until
+  // one exists, trust the forecast more. Decided 2026-09-30 after Davante Adams read WR10 against
+  // an outside WR18 almost entirely on three games.
+  WR: 12,
   TE: 12,
 }
 

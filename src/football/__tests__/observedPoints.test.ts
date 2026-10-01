@@ -128,7 +128,7 @@ describe('per-position constants', () => {
   it('holds the swept prior for each position', () => {
     expect(priorGamesFor('QB')).toBe(12)
     expect(priorGamesFor('RB')).toBe(3)
-    expect(priorGamesFor('WR')).toBe(8)
+    expect(priorGamesFor('WR')).toBe(12)
     expect(priorGamesFor('TE')).toBe(12)
   })
 
@@ -145,7 +145,9 @@ describe('per-position constants', () => {
     // The whole principle in one assertion: twenty touches a week stabilise faster than four
     // targets, so the position with the thinnest sample leans hardest on the forecast.
     expect(priorGamesFor('RB')).toBeLessThan(priorGamesFor('WR'))
-    expect(priorGamesFor('WR')).toBeLessThan(priorGamesFor('TE'))
+    // WR was raised to TE's level on purpose (2026-09-30): at receiver the prior is a
+    // deliberate lean toward the forecast, not the sweep's best cell. Never ABOVE a tight end.
+    expect(priorGamesFor('WR')).toBeLessThanOrEqual(priorGamesFor('TE'))
   })
 
   it('falls back for anything it does not recognise', () => {

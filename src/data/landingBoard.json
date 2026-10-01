@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-30",
+  "generatedAt": "2026-10-01",
   "season": "2026",
   "teams": 12,
   "rows": [
@@ -12,27 +12,27 @@
       "flag": ""
     },
     {
-      "name": "Lamar Jackson",
-      "pos": "QB",
-      "adp": "3.08",
-      "ours": "5.07",
-      "rounds": -1.9,
+      "name": "Jeremiyah Love",
+      "pos": "RB",
+      "adp": "3.02",
+      "ours": "4.06",
+      "rounds": -1.3,
       "flag": "fade"
+    },
+    {
+      "name": "Colston Loveland",
+      "pos": "TE",
+      "adp": "4.05",
+      "ours": "3.02",
+      "rounds": 1.3,
+      "flag": "value"
     },
     {
       "name": "Mike Evans",
       "pos": "WR",
       "adp": "6.01",
-      "ours": "4.01",
-      "rounds": 2,
-      "flag": "value"
-    },
-    {
-      "name": "Christian Watson",
-      "pos": "WR",
-      "adp": "6.03",
-      "ours": "5.02",
-      "rounds": 1.1,
+      "ours": "3.07",
+      "rounds": 2.5,
       "flag": "value"
     }
   ]
