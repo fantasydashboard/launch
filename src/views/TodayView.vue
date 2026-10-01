@@ -166,6 +166,23 @@ const headerSnapshot = computed(() => {
   }
 })
 
+/* Everything the gate depends on, plus the page-level facts the composable cannot see. */
+const catwhyRows = computed<Record<string, unknown> | null>(() => {
+  const p = categoryWeek.probe.value
+  if (!p) return null
+  return {
+    ...p,
+    platform: String(leagueStore.activePlatform ?? ''),
+    sport: String(leagueStore.activeSport ?? ''),
+    week: String(leagueStore.currentWeek ?? ''),
+    isCategoryLeague: isCategoryLeague.value,
+    thisWeekLoading: thisWeek.loading.value,
+    thisWeekLoaded: thisWeek.loaded.value,
+    canValue: daily.canValue.value,
+    poolTeamKeys: [...new Set((daily.pool.value ?? []).map((x: any) => x.teamKey))].join(' | ').slice(0, 220),
+  }
+})
+
 /* Category specs drive the column strip; a points league passes none and gets the score. */
 onMounted(() => {
   thisWeek.load((categories.value ?? []).map((c) => ({ statId: c.statId, label: c.label })))
@@ -334,6 +351,28 @@ const showFailed = computed(() => error.value === 'failed')
         </div>
         <MatchupWinProbChart :points="trend.points" :projected="trend.projected"
                              :me-name="myName" :opp-name="oppName" />
+      </section>
+
+      <!--
+        ?catwhy=1 — WHY THERE IS NO COLUMN BOARD.
+        Every gate in useCategoryWeek fails as absence: the page keeps the view it had and says
+        nothing, which is right for a reader and useless for diagnosing a league I cannot open.
+        On screen rather than in the console, because a screenshot is the thing that actually
+        gets sent back.
+      -->
+      <section v-if="categoryWeek.probe.value"
+               class="mb-5 overflow-x-auto rounded-xl border border-[#e69a4a]/40 bg-dark-card p-4">
+        <h2 class="mb-2 font-mono text-[10px] uppercase tracking-widest text-[#e69a4a]">
+          catwhy &middot; why this league shows no category board
+        </h2>
+        <table class="w-full font-mono text-[11px]">
+          <tbody>
+            <tr v-for="(v, k) in catwhyRows" :key="k" class="border-b border-dark-border/40 last:border-0">
+              <td class="py-1 pr-4 align-top whitespace-nowrap text-dark-textMuted">{{ k }}</td>
+              <td class="py-1 break-all text-dark-text">{{ v }}</td>
+            </tr>
+          </tbody>
+        </table>
       </section>
 
       <!-- 1b. YOUR CATEGORIES, for a league scored by columns — and the seat-by-seat board for

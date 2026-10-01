@@ -44,6 +44,8 @@ export function useCategoryWeek(inputs: CategoryWeekInputs): {
   week: ComputedRef<CategoryWeek | null>
   /** Why there is nothing to show, when there is nothing to show. */
   reason: ComputedRef<string | null>
+  /** The gate's inputs, for ?catwhy=1. Null unless that flag is set. */
+  probe: ComputedRef<Record<string, unknown> | null>
 } {
   /*
    * Which objective the league scores by. Null means we do not recognise the format — roto, or
@@ -81,6 +83,10 @@ export function useCategoryWeek(inputs: CategoryWeekInputs): {
       categoryKeys: (inputs.categories.value ?? []).map((c) => `${c.key}:${c.statId}`).join(','),
       hasSnapshot: !!inputs.snapshot.value,
       statIdsOnScoreboard: Object.keys(inputs.snapshot.value?.myStats ?? {}).join(','),
+      /* The values, not just the keys — an empty scoreboard and a scoreboard of zeros are
+         different problems and they look identical from a key list. */
+      myStatsSample: JSON.stringify(inputs.snapshot.value?.myStats ?? {}).slice(0, 200),
+      oppStatsSample: JSON.stringify(inputs.snapshot.value?.oppStats ?? {}).slice(0, 200),
       opponentKey: inputs.opponentKey.value || '(none)',
       myTeamKey: inputs.myTeamKey.value || '(none)',
       clubsWithGamesLeft: Object.keys(inputs.gamesByTeam.value ?? {}).length,
@@ -107,5 +113,5 @@ export function useCategoryWeek(inputs: CategoryWeekInputs): {
     })
   })
 
-  return { week, reason }
+  return { week, reason, probe }
 }
