@@ -42,6 +42,10 @@ export interface TradeSide {
  * Requiring one side to be identical only collapses what is genuinely the same trade with the
  * balancing body swapped.
  */
+/** The headline body on a side — what a manager names the deal by. */
+const biggest = (side: TradeSide[]): string =>
+  [...side].sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0))[0]?.playerKey ?? ''
+
 const keysOf = (side: TradeSide[]): string =>
   side.map((p) => p.playerKey).sort().join(',')
 
@@ -108,6 +112,38 @@ export interface TradeIdea {
 export const MIN_GAIN_PER_WEEK = 1
 
 const ASK_MAX_LOSS_RATIO = 1.5
+
+/** How many cards the board shows at most. */
+const OUT_LIMIT = 10
+
+/**
+ * The gain has to be worth the best body leaving.
+ *
+ * The board put this under "Best deals": give Mika Zibanejad (263) AND Valeri Nichushkin (262)
+ * — 525 points of real bodies — receive Mathew Barzal (272), for a lineup gain of THREE. The
+ * engine was right that neither man started for this roster, and it captioned the card
+ * "favors them — easy yes". It is still a trade no human sends.
+ *
+ * MIN_GAIN_PER_WEEK is an ABSOLUTE floor of one point, which a 525-for-272 swap clears
+ * trivially. What was missing is a RELATIVE one: if you are sending a genuine starter, the
+ * deal has to move your lineup by something you would notice.
+ *
+ * Measured against the best body going out, not the sum, because that is the man the other
+ * manager is actually buying and the one you will miss. Five per cent is deliberately low — it
+ * exists to kill "two 260s for a 272, gain 3", not to second-guess every modest upgrade: a
+ * 40-point bench body for +8 is fine business and survives.
+ */
+const MIN_GAIN_VS_BEST_GIVEN = 0.05
+
+/** Whether a gain justifies the best player it costs. See MIN_GAIN_VS_BEST_GIVEN. */
+export function gainJustifiesCost(
+  myGain: number, gives: Array<{ points?: number }>,
+): boolean {
+  const best = Math.max(0, ...gives.map((g) => Number(g?.points) || 0))
+  /* Nothing priced leaving means nothing to justify — the absolute floor still applies. */
+  if (best <= 0) return true
+  return myGain >= MIN_GAIN_VS_BEST_GIVEN * best
+}
 
 interface Dp extends DepthPlayer {
   points: number
@@ -259,6 +295,8 @@ export function buildPointsTrades(
      */
     const spots = outMine.length - outTheirs.length
     if (myGain < MIN_GAIN_PER_WEEK) return
+    /* An absolute floor is not enough when what leaves is a starter. See gainJustifiesCost. */
+    if (!gainJustifiesCost(myGain, outMine)) return
     const theirNew = optimal([...theirDp.filter((p) => !theirKeys.has(p.playerKey)), ...outMine], slots, sport)
     const theirGain = theirNew.total - theirBase.total
 
@@ -443,6 +481,11 @@ export function buildPointsTrades(
   const perPartner = new Map<string, number>()
   const seenExact = new Set<string>()
   const seenOffer = new Set<string>()
+  const seenPartnerTarget = new Set<string>()
+  /* Spread the board across the league: with eleven partners that is two each, with one it is
+     the whole board. A fixed cap does one of those two jobs and not the other. */
+  const partnerCount = new Set(sendable.map((i) => i.oppTeamKey)).size
+  const perPartnerCap = Math.min(OUT_LIMIT, Math.max(2, Math.ceil(OUT_LIMIT / Math.max(1, partnerCount))))
   const out: TradeIdea[] = []
   for (const idea of sendable) {
     /* The exact set, and then the OFFER — same partner, same return, same price — so an
@@ -457,15 +500,36 @@ export function buildPointsTrades(
     if (seenOffer.has(byReturn) || seenOffer.has(byCost)) continue
     if (idea.gets.some((g) => (getCount.get(g.playerKey) ?? 0) >= 2)) continue
     if (idea.gives.some((g) => (giveCount.get(g.playerKey) ?? 0) >= 4)) continue
-    if ((perPartner.get(idea.oppTeamKey) ?? 0) >= 3) continue
+    /*
+     * ONE CARD PER PARTNER-AND-TARGET, and two per partner.
+     *
+     * The live board ran THE WOLL OF SHAME three times in a row — +72 for Gustavsson, then
+     * Jack Eichel at +63 and again at +61. The last two are the same player from the same
+     * manager two points apart; the gain-matching signature above cannot see that, because 63
+     * and 61 are different numbers. "Same player at a different price" was deliberate, but it
+     * belongs ACROSS partners, not three deep with one of them. The per-partner cap drops to
+     * capped per partner for the same reason: ten slots should cover the league, not one
+     * manager. The cap SCALES with how many partners there are — a twelve-team league gets two
+     * apiece, and a league with one possible partner still gets a full board rather than two
+     * cards and silence.
+     *
+     * SHAPE IS PART OF THE KEY, because it is part of the decision. For one target a 2-for-1
+     * and a roster-neutral 2-for-2 are different offers — one costs you a roster spot and the
+     * other does not — and collapsing them removed a real alternative the search exists to
+     * find. Two cards two points apart in the SAME shape are the repetition; these are not.
+     */
+    const partnerTarget = `${idea.oppTeamKey}|${biggest(idea.gets)}|${idea.shape ?? ''}`
+    if (seenPartnerTarget.has(partnerTarget)) continue
+    if ((perPartner.get(idea.oppTeamKey) ?? 0) >= perPartnerCap) continue
     seenExact.add(sig)
     seenOffer.add(byReturn)
     seenOffer.add(byCost)
+    seenPartnerTarget.add(partnerTarget)
     for (const g of idea.gets) getCount.set(g.playerKey, (getCount.get(g.playerKey) ?? 0) + 1)
     for (const g of idea.gives) giveCount.set(g.playerKey, (giveCount.get(g.playerKey) ?? 0) + 1)
     perPartner.set(idea.oppTeamKey, (perPartner.get(idea.oppTeamKey) ?? 0) + 1)
     out.push(idea)
-    if (out.length >= 10) break
+    if (out.length >= OUT_LIMIT) break
   }
   return out
 }

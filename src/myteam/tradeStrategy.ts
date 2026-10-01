@@ -75,7 +75,15 @@ export function singleSlotPositions(slots: Record<string, number>): Set<string> 
  * Printing a number that low is not honesty about a marginal deal — nobody sends it, and it
  * pushes real ones down the page.
  */
-export const MIN_SENDABLE_ODDS = 0.15
+/**
+ * Below this, a deal is not a suggestion — it is noise wearing a label.
+ *
+ * Was 0.15, which put cards at 18% and 20% — "nothing they need, costs them 78" — on the same
+ * board as genuine win-wins at 55-65%. Calling them LONG SHOT is honest and does not make them
+ * worth a slot: the board stops at ten, and each one-in-five displaces a deal that might
+ * actually happen. A quarter is the floor for something worth the message you have to send.
+ */
+export const MIN_SENDABLE_ODDS = 0.25
 
 /**
  * A same-position one-for-one is pointless wherever the position has a single seat.

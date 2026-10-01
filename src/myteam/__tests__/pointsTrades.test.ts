@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { offerSignature, offerSignatureByCost, buildPointsTrades, MIN_GAIN_PER_WEEK } from '../pointsTrades'
+import { offerSignature, offerSignatureByCost, gainJustifiesCost, buildPointsTrades, MIN_GAIN_PER_WEEK } from '../pointsTrades'
+import { MIN_SENDABLE_ODDS } from '../tradeStrategy'
 import { buildBaseballValue } from '../playerValue'
 import type { PointsPoolPlayer } from '../pointsTeam'
 import type { FGProjection } from '@/services/projectionService'
@@ -280,5 +281,48 @@ describe('the same deal wearing a different hat', () => {
       .not.toBe(offerSignature(idea([side('gustavsson', 307)], [side('tavares', 272)], 51)))
     expect(offerSignature(base))
       .not.toBe(offerSignature({ ...base, oppTeamKey: 'other' }))
+  })
+})
+
+describe('a deal has to be worth the body it costs', () => {
+  /*
+   * The live hockey board put this under "Best deals": give Mika Zibanejad (263) AND Valeri
+   * Nichushkin (262) — 525 points of real bodies — receive Mathew Barzal (272), for a lineup
+   * gain of THREE. The engine was right that neither man started for this roster, and it even
+   * captioned it "favors them — easy yes". It is still a trade no human sends.
+   *
+   * MIN_GAIN_PER_WEEK is an absolute floor of one point, which a 525-for-272 swap clears
+   * trivially. The missing guard is relative: if you are sending a genuine starter, the deal
+   * has to actually move your lineup. Measured against the BEST body leaving, because that is
+   * the one the other manager is really buying and the one you will miss.
+   */
+  it('rejects a swap whose gain is trivial beside the best player leaving', () => {
+    expect(gainJustifiesCost(3, [{ points: 263 }, { points: 262 }] as any)).toBe(false)
+  })
+
+  it('accepts a consolidation that genuinely moves the lineup', () => {
+    /* The same two bodies out, but +72 back — a real upgrade, and it survived. */
+    expect(gainJustifiesCost(72, [{ points: 263 }, { points: 262 }] as any)).toBe(true)
+  })
+
+  it('lets a small gain stand when what leaves is small too', () => {
+    /* Giving up a 40-point bench body for +8 is a fine piece of business. */
+    expect(gainJustifiesCost(8, [{ points: 40 }] as any)).toBe(true)
+  })
+
+  it('never divides by zero when nothing priced is leaving', () => {
+    expect(gainJustifiesCost(5, [] as any)).toBe(true)
+    expect(gainJustifiesCost(5, [{ points: 0 }] as any)).toBe(true)
+  })
+})
+
+describe('one-in-five is not a trade suggestion', () => {
+  /*
+   * The board carried cards at 18% and 20% — "nothing they need, costs them 78" — beside
+   * genuine win-wins at 55-65%. A long shot labelled as such is still a long shot, and at ten
+   * slots each one displaces a deal that might actually happen.
+   */
+  it('sets the sendable floor above a one-in-five chance', () => {
+    expect(MIN_SENDABLE_ODDS).toBeGreaterThan(0.2)
   })
 })

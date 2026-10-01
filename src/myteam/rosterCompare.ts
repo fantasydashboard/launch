@@ -78,10 +78,26 @@ export function buildRosterCompare(input: {
   const valueOf = (key: string): number =>
     useVor ? (vorByKey![key]?.vorRos ?? 0) : (valueByKey[key]?.total ?? 0)
 
+  /*
+   * WHETHER WE HAVE A NUMBER FOR HIM AT ALL, which is a different question from whether the
+   * number is zero.
+   *
+   * The head-to-head listed "Simon Nemec D56·#224 +0": a player with no projection, given a
+   * rank at his position and a rank overall. Both were computed from a zero that means "we
+   * have nothing on him". A rank built on an absent projection looks exactly like a measured
+   * one, and it pads the depth count this page then uses to say where you are deep.
+   *
+   * A player who IS priced at zero stays — a genuine replacement-level body is worth about
+   * nothing, and that is a measurement. Absent and worthless are different claims.
+   */
+  const priced = (key: string): boolean =>
+    useVor ? vorByKey?.[key] !== undefined : valueByKey[key] !== undefined
+
   /* One ranking pass over the whole league pool, so both columns are measured against the
      same population — a player's rank must not depend on which roster he happens to sit on. */
   const overallRank = new Map(
     [...pool]
+      .filter((p) => priced(p.playerKey))
       .sort((a, b) => valueOf(b.playerKey) - valueOf(a.playerKey))
       .map((p, i) => [p.playerKey, i + 1] as const),
   )
@@ -97,7 +113,7 @@ export function buildRosterCompare(input: {
     posRank: Map<string, number>,
   ): CompareBody[] =>
     pool
-      .filter((p) => p.teamKey === teamKey && coversPos(p, pos))
+      .filter((p) => p.teamKey === teamKey && coversPos(p, pos) && priced(p.playerKey))
       .map((p) => ({
         playerKey: p.playerKey,
         name: p.name,
@@ -117,7 +133,7 @@ export function buildRosterCompare(input: {
     // both columns are drawn from, so the two sides are directly comparable.
     const posRank = new Map(
       pool
-        .filter((p) => coversPos(p, position))
+        .filter((p) => coversPos(p, position) && priced(p.playerKey))
         .sort((a, b) => valueOf(b.playerKey) - valueOf(a.playerKey))
         .map((p, i) => [p.playerKey, i + 1] as const),
     )

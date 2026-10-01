@@ -86,3 +86,47 @@ describe('buildRosterCompare', () => {
     })).toBeNull()
   })
 })
+
+describe('a body we cannot price is not depth', () => {
+  /*
+   * The live hockey head-to-head listed "Simon Nemec D56·#224 +0" — a player with no
+   * projection, given a rank at his position and a rank overall. Both numbers are computed
+   * from a zero that means "we have nothing on him", not "he is worth nothing".
+   *
+   * valueOf returned `valueByKey[key]?.total ?? 0`, which conflates the two. A rank built on
+   * an absent projection looks exactly like a measured one, and it pads the depth count the
+   * page then uses to decide where you are deep.
+   */
+  const hk = (key: string, team: string, pos: string): any =>
+    ({ playerKey: key, name: key, position: pos, teamKey: team, eligiblePositions: [pos], proTeam: 'NJD' })
+  const hkPool = [
+    hk('myD1', 'me', 'D'), hk('myD2', 'me', 'D'), hk('nemec', 'me', 'D'),
+    hk('thD1', 'them', 'D'),
+  ]
+  /* nemec has no entry at all — not an entry of zero. */
+  const valueByKey: any = {
+    myD1: { total: 300, games: 82 },
+    myD2: { total: 200, games: 82 },
+    thD1: { total: 250, games: 82 },
+  }
+
+  const cmp = buildRosterCompare({
+    pool: hkPool, valueByKey, fgByKey: {}, myTeamKey: 'me', theirTeamKey: 'them',
+    slots: { D: 4 }, sport: 'hockey',
+  })!
+
+  it('leaves the unpriced body out of the comparison entirely', () => {
+    const d = cmp.positions.find((x) => x.position === 'D')!
+    expect(d.mine.map((b) => b.playerKey)).toEqual(['myD1', 'myD2'])
+  })
+
+  it('keeps a player who IS priced at zero, because that is a measurement', () => {
+    const withZero = buildRosterCompare({
+      pool: hkPool, fgByKey: {}, myTeamKey: 'me', theirTeamKey: 'them',
+      slots: { D: 4 }, sport: 'hockey',
+      valueByKey: { ...valueByKey, nemec: { total: 0, games: 82 } } as any,
+    })!
+    const d = withZero.positions.find((x) => x.position === 'D')!
+    expect(d.mine.map((b) => b.playerKey)).toContain('nemec')
+  })
+})
