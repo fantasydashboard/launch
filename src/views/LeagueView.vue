@@ -380,7 +380,7 @@ const moveByKey = computed<Record<string, number>>(() => {
  * a column you can click. The two that remain are genuinely different BOARDS: what you banked
  * against what you own, which is the distinction the page exists to draw.
  */
-type SortKey = 'rank' | 'record' | 'allplay' | 'talent' | 'proj' | 'playoff' | 'title'
+type SortKey = 'rank' | 'record' | 'allplay' | 'talent' | 'resume' | 'proj' | 'playoff' | 'title'
 const sortKey = ref<SortKey>('rank')
 const sortDesc = ref(true)
 function toggleSort(k: SortKey) {
@@ -402,6 +402,7 @@ const sortedStandings = computed(() => {
       case 'record': return r.wins + 0.5 * r.ties
       case 'allplay': { const a = allPlayFor(r.teamKey); return a ? a.wins + 0.5 * (a.ties ?? 0) : -1 }
       case 'talent': return r.strength
+      case 'resume': return -r.resumeRank          // rank 1 is best, so invert for a desc sort
       case 'proj': return odds(r.teamKey)?.projWins ?? -1
       case 'playoff': return odds(r.teamKey)?.playoffPct ?? -1
       case 'title': return odds(r.teamKey)?.titlePct ?? -1
@@ -703,8 +704,16 @@ const sosBarColor = (sosRank: number, total: number) => {
       <div v-else class="rounded-xl border border-dark-border bg-dark-card divide-y divide-dark-border/40">
         <!-- Column header row -->
         <div class="px-4 py-1 flex items-center gap-3 border-b border-dark-border/40">
+          <!--
+            One spacer per fixed column in the row below, in the same order and at the same
+            width. The movement column was added to the row and not to this header, so every
+            label sat one column to the left of the numbers it named — which is worse than no
+            header, because it reads as a header that works.
+          -->
           <!-- spacer: position number -->
           <span class="w-6 shrink-0" />
+          <!-- spacer: movement arrow -->
+          <span class="w-7 shrink-0" />
           <!-- spacer: logo -->
           <span class="h-8 w-8 shrink-0" />
           <!-- spacer: name column -->
@@ -727,7 +736,19 @@ const sosBarColor = (sosRank: number, total: number) => {
           <button type="button" class="w-20 shrink-0 text-right font-mono text-[9px] uppercase tracking-wider transition-colors hover:text-dark-text"
                   :class="sortKey === 'talent' ? 'text-primary' : 'text-dark-textMuted'" @click="toggleSort('talent')">talent</button>
           <template v-if="playoffOdds">
-            <button type="button" class="hidden w-14 shrink-0 text-right font-mono text-[9px] uppercase tracking-wider transition-colors hover:text-dark-text md:block"
+            <!--
+              THE COLUMN THAT CHANGES WITH THE BOARD.
+
+              Power Rankings used to reorder the same ten rows and show nothing new, which made
+              it look like a sort rather than a second reading. The ranking has components the
+              table never exposed — this swaps the projected record, which is a standings
+              number, for the résumé rank, which is the power ranking's own input: all-play
+              weighted with the actual record, i.e. the season you have really had.
+            -->
+            <button v-if="boardSort === 'talent'" type="button"
+                    class="hidden w-14 shrink-0 text-right font-mono text-[9px] uppercase tracking-wider transition-colors hover:text-dark-text md:block"
+                    :class="sortKey === 'resume' ? 'text-primary' : 'text-dark-textMuted'" @click="toggleSort('resume')">résumé</button>
+            <button v-else type="button" class="hidden w-14 shrink-0 text-right font-mono text-[9px] uppercase tracking-wider transition-colors hover:text-dark-text md:block"
                     :class="sortKey === 'proj' ? 'text-primary' : 'text-dark-textMuted'" @click="toggleSort('proj')">proj</button>
             <button type="button" class="w-24 shrink-0 text-right font-mono text-[9px] uppercase tracking-wider transition-colors hover:text-dark-text"
                     :class="sortKey === 'playoff' ? 'text-primary' : 'text-dark-textMuted'" @click="toggleSort('playoff')">playoff</button>
@@ -786,7 +807,11 @@ const sosBarColor = (sosRank: number, total: number) => {
             {{ Math.round(r.strength) }}<span class="ml-1 text-[9px] text-dark-textMuted">{{ ord(r.talentRank) }}</span>
           </span>
           <template v-if="playoffOdds">
-            <span class="hidden w-14 shrink-0 text-right font-mono text-[11px] text-dark-textMuted md:block">
+            <span v-if="boardSort === 'talent'" class="hidden w-14 shrink-0 text-right font-mono text-[11px] text-dark-textMuted md:block"
+                  title="All-play weighted with the actual record — the season you have really had, which is what the power ranking is built on.">
+              {{ ord(r.resumeRank) }}
+            </span>
+            <span v-else class="hidden w-14 shrink-0 text-right font-mono text-[11px] text-dark-textMuted md:block">
               <template v-if="oddsByKey.get(r.teamKey)">
                 {{ Math.round((oddsByKey.get(r.teamKey)!).projWins) }}-{{ Math.round((oddsByKey.get(r.teamKey)!).projLosses) }}
               </template>
@@ -803,8 +828,15 @@ const sosBarColor = (sosRank: number, total: number) => {
               decoration charging rent. The figure is right there and the header sorts on it,
               which is what the bar was approximating.
             -->
-            <div class="shrink-0 flex items-center justify-end gap-2 w-24">
-              <span class="w-12 text-right font-mono text-[11px]"
+            <!--
+              TWO CELLS, because the header is two columns. Nesting the title inside the
+              playoff cell made the data row one column shorter than its own header, and the
+              flex name column absorbed the difference — so every label sat 52px left of the
+              figures it named. A header that is merely NEAR the right column is worse than
+              none; it reads as working.
+            -->
+            <div class="shrink-0 flex items-center justify-end w-24">
+              <span class="w-full text-right font-mono text-[11px]"
                 :class="(oddsByKey.get(r.teamKey)!).playoffPct >= 0.5 ? 'text-primary' : (oddsByKey.get(r.teamKey)!).playoffPct > 0 ? 'text-[#e69a4a]' : 'text-dark-textMuted'"
               >
                 {{ fmtPct((oddsByKey.get(r.teamKey)!).playoffPct) }}
@@ -816,10 +848,10 @@ const sosBarColor = (sosRank: number, total: number) => {
                 story. Quieter than the odds beside it because making the bracket is the nearer
                 decision; this is the one that says whether the season is worth pushing for.
               -->
-              <span class="hidden w-10 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/70 sm:inline">
-                {{ fmtPct((oddsByKey.get(r.teamKey)!).titlePct) }}
-              </span>
             </div>
+            <span class="hidden w-10 shrink-0 text-right font-mono text-[10px] text-dark-textMuted/70 sm:block">
+              {{ fmtPct((oddsByKey.get(r.teamKey)!).titlePct) }}
+            </span>
           </template>
           <template v-else>
             <!-- Talent bar + value fallback (no schedule) -->
