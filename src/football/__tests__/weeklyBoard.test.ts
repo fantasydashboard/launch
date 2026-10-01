@@ -1481,6 +1481,10 @@ describe('Questionable: ranked as if he plays, started on the cut value', () => 
     expect(b.starters.some((s) => s.playerKey === 'rbH')).toBe(true)
     expect(b.starters.some((s) => s.playerKey === 'rbQ')).toBe(false)
   })
+  it('tags the Questionable bench row so lineup rows can explain the cut', () => {
+    expect(b.bench.find((r) => r.playerKey === 'rbQ')!.injuryTag).toBe('QUESTIONABLE')
+    expect(b.bench.find((r) => r.playerKey === 'rb3')!.injuryTag).toBe('')
+  })
   it('keeps a ruled-Out player at zero in the ranking too', () => {
     expect(find('rbOut').posRank).toBeGreaterThan(3)
   })

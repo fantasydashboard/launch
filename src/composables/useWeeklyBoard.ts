@@ -5,7 +5,7 @@ import { useFootballVor } from '@/composables/useFootballVor'
 import { useFootballScoring } from '@/composables/useFootballScoring'
 import { sleeperService } from '@/services/sleeper'
 import { opponentMap } from '@/football/footballBye'
-import { buildWeeklyBoard, type WeeklyBoard } from '@/football/weeklyBoard'
+import { buildWeeklyBoard, RULED_OUT, type WeeklyBoard } from '@/football/weeklyBoard'
 import { useThisWeekOpponent } from '@/composables/useThisWeekOpponent'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { useSeasonOutlook } from '@/composables/useSeasonOutlook'
@@ -121,10 +121,11 @@ export function useWeeklyBoard(): {
   const hasCurrentLineup = computed(() => currentStarters.value.length > 0)
 
   const nameByKey = computed(() => {
-    const m = new Map<string, { name: string; position: string; team: string }>()
-    for (const p of src.pool.value) m.set(p.playerKey, { name: p.name, position: p.position ?? '', team: p.proTeam ?? '' })
+    const m = new Map<string, { name: string; position: string; team: string; status: string }>()
+    const status = (s: unknown) => String(s ?? '').toUpperCase().trim()
+    for (const p of src.pool.value) m.set(p.playerKey, { name: p.name, position: p.position ?? '', team: p.proTeam ?? '', status: status(p.status) })
     for (const fa of src.freeAgents.value)
-      m.set(fa.playerKey ?? `fa:${fa.name}`, { name: fa.name, position: fa.position ?? '', team: fa.team ?? '' })
+      m.set(fa.playerKey ?? `fa:${fa.name}`, { name: fa.name, position: fa.position ?? '', team: fa.team ?? '', status: status(fa.status) })
     return m
   })
   /*
@@ -184,7 +185,7 @@ export function useWeeklyBoard(): {
     const base = vorByKey.value
     const implied = impliedTotals.value
     const mean = meanImplied(implied)
-    if (publishedWeek.value || !mean || !Object.keys(base).length) return base
+    if (blendedPoints.value || !mean || !Object.keys(base).length) return base
     const out: typeof base = {}
     for (const [k, v] of Object.entries(base)) {
       const meta = nameByKey.value.get(k)
@@ -196,20 +197,39 @@ export function useWeeklyBoard(): {
     return out
   })
 
-  /* The published weekly list is blended into our points per position (see weeklyBlend). */
-  const effectiveVor = computed(() => {
-    const base = environmentVor.value
+  /*
+   * The published weekly list blended into our points per position (see weeklyBlend), or null
+   * when there is no list OR it blended to nothing — a row that matches no one must behave
+   * exactly like no list, so everything downstream gates on this rather than on the row.
+   *
+   * Built from the un-adjusted base (vorByKey) so it cannot loop through environmentVor.
+   * The ladder is the players who can actually play this week: ruled-out and bye players are
+   * dropped before it is built (as position-tiers.py does) and keep their base value.
+   */
+  const blendedPoints = computed<Record<string, number> | null>(() => {
+    const base = vorByKey.value
     const list = publishedWeek.value
-    if (!list || !Object.keys(base).length) return base
+    if (!list || !Object.keys(base).length) return null
     const normPos = (p: string) => (p || '').toUpperCase().split(/[,/|]/)[0].trim()
-    const entries = Object.entries(base).map(([k, v]) => ({
-      playerKey: k, value: v.pointsNextWeek, position: normPos(nameByKey.value.get(k)?.position ?? ''),
-    }))
-    const names = entries.map((e) => ({ playerKey: e.playerKey, name: nameByKey.value.get(e.playerKey)?.name ?? '', position: e.position }))
-    const blended = blendBoardWithList(entries, names, list.body)
-    if (!blended) return base
-    const out: typeof base = {}
-    for (const [k, v] of Object.entries(base)) out[k] = { ...v, pointsNextWeek: blended[k] ?? v.pointsNextWeek }
+    const scheduleKnown = Object.keys(opponentByTeam.value).length > 0
+    const names: { playerKey: string; name: string; position: string }[] = []
+    const entries: { playerKey: string; value: number; position: string }[] = []
+    for (const [k, v] of Object.entries(base)) {
+      const meta = nameByKey.value.get(k)
+      if (meta && RULED_OUT.has(meta.status)) continue
+      if (scheduleKnown && !opponentByTeam.value[(meta?.team ?? '').toUpperCase()]) continue
+      const position = normPos(meta?.position ?? '')
+      entries.push({ playerKey: k, value: v.pointsNextWeek, position })
+      names.push({ playerKey: k, name: meta?.name ?? '', position })
+    }
+    return blendBoardWithList(entries, names, list.body)
+  })
+
+  const effectiveVor = computed(() => {
+    const blended = blendedPoints.value
+    if (!blended) return environmentVor.value
+    const out: typeof vorByKey.value = {}
+    for (const [k, v] of Object.entries(vorByKey.value)) out[k] = { ...v, pointsNextWeek: blended[k] ?? v.pointsNextWeek }
     return out
   })
 
@@ -311,7 +331,7 @@ export function useWeeklyBoard(): {
     myTeamName: src.myTeamName, myTeamLogo: src.myTeamLogo,
     stakes, outlook, spectator,
     /** Whose weekly numbers are driving the page — 'UFD' unless a list is active. */
-    weekSource: computed(() => (publishedWeek.value ? 'UFD weekly rankings' : 'UFD')),
+    weekSource: computed(() => (blendedPoints.value ? 'UFD weekly rankings' : 'UFD')),
     sourceTiers: computed(() => false),
     publishedWeek,
     reloadPublished,

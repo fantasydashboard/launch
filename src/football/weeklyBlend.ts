@@ -13,6 +13,9 @@ import { splitWideRankings, parseRankings, matchRankings, splitCsvLine } from '@
  */
 export interface BlendEntry { playerKey: string; value: number; position: string }
 
+/** Only the four skill positions are blended; a DEF/K block in the sheet is ignored. */
+const BLENDED_POSITIONS = new Set(['QB', 'RB', 'WR', 'TE'])
+
 const posOf = (p: string) => (p || '').toUpperCase().split(/[,/|]/)[0].trim()
 
 export function blendWithAnalyst(
@@ -50,10 +53,11 @@ export function blendBoardWithList(
   text: string,
 ): Record<string, number> | null {
   const wide = splitWideRankings(text)
-  if (!wide || !wide.parts.length) return null
+  const parts = (wide?.parts ?? []).filter((p) => BLENDED_POSITIONS.has(p.position.toUpperCase()))
+  if (!parts.length) return null
   const rankByKey: Record<string, number> = {}
   const lastRankByPos: Record<string, number> = {}
-  for (const part of wide.parts) {
+  for (const part of parts) {
     const pos = part.position.toUpperCase()
     const pool = names.filter((n) => posOf(n.position) === pos)
     const parsed = parseRankings(part.text).map((r) => ({ ...r, position: pos }))

@@ -84,6 +84,18 @@ describe('blendBoardWithList', () => {
     { playerKey: 'bow', value: 12.2, position: 'TE' },
   ]
 
+  it('ignores a DEF block even when a pool entry matches its name', () => {
+    const sheet = [
+      '"QB Rank","QB Player","QB Team","QB Opponent","QB Tier","DEF Rank","DEF Player","DEF Team","DEF Opponent","DEF Tier"',
+      '"1","Lamar Jackson","BAL","TEN","1","1","Josh Allen","BUF","NE","1"',
+    ].join('\n')
+    const defNames = [...names, { playerKey: 'defAllen', name: 'Josh Allen', position: 'DEF' }]
+    const defEntries = [...entries, { playerKey: 'defAllen', value: 8, position: 'DEF' }]
+    const out = blendBoardWithList(defEntries, defNames, sheet)!
+    expect(out.defAllen).toBe(8)
+    expect(out.lamar).toBeCloseTo((21.9 + 23.1) / 2)   // the QB block still blends
+  })
+
   it('parses a wide sheet, ignores FLEX, and blends per position', () => {
     const out = blendBoardWithList(entries, names, WIDE)!
     expect(out.bow).toBeCloseTo((12.2 + 13.8) / 2)

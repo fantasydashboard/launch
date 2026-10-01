@@ -2,7 +2,7 @@
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { computed, ref, watch } from 'vue'
 import { useWeeklyBoard } from '@/composables/useWeeklyBoard'
-import { winPctFromMargin, WEEKLY_INJURY_DISCOUNT } from '@/football/weeklyBoard'
+import { winPctFromMargin, WEEKLY_INJURY_DISCOUNT, RULED_OUT } from '@/football/weeklyBoard'
 import { useWinProbTrend } from '@/composables/useWinProbTrend'
 import MatchupWinProbChart from '@/components/matchup/MatchupWinProbChart.vue'
 import { useLeagueStore } from '@/stores/league'
@@ -15,6 +15,12 @@ import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const { hasFullAccess, accessKnown, accessCheckFailed, isAdmin } = useFeatureAccess()
 const { board, live, currentWeek, hasCurrentLineup, loading, myTeamName, myTeamLogo, stakes, weekSource, spectator, publishedWeek, reloadPublished, nflSeason } = useWeeklyBoard()
+
+/* Lineup rows are built on the cut value, not the ranking value the board shows. Say so. */
+function cutTitle(tag: string, benched = false): string {
+  const pct = Math.round((WEEKLY_INJURY_DISCOUNT[tag.toUpperCase()] ?? 1) * 100)
+  return `${tag}: lineup advice counts him at ${pct}% because roughly seven in ten play${benched ? ' — which is why he can sit behind a lower-ranked player' : ''}.`
+}
 
 /*
  * Header totals are summed from the ROUNDED row values, not rounded from the raw sum.
@@ -628,6 +634,10 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             <span class="min-w-0 flex-1">
               <span class="truncate text-base font-semibold text-dark-text">
                 {{ s.name }}
+                <span v-if="s.injuryTag && RULED_OUT.has(s.injuryTag)" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]"
+                      :title="`Ruled ${s.injuryTag.toLowerCase()} — projected at zero`">{{ s.injuryTag }}</span>
+                <span v-else-if="s.injuryTag" class="ml-1 font-mono text-[9px] uppercase text-[#d29922]"
+                      :title="cutTitle(s.injuryTag)">{{ s.injuryTag.slice(0, 1) }}</span>
                 <span v-if="s.opportunity === 'backup-elevated'" class="ml-1 rounded bg-amber-500/15 px-1 py-0.5 font-mono text-[9px] uppercase text-amber-400" title="Healthy backup — the starter ahead of him is injured">step-up</span>
               </span>
               <span class="flex items-center gap-1 text-xs text-dark-textMuted">
@@ -689,6 +699,10 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
             <span class="min-w-0 flex-1 truncate text-dark-textMuted">
               {{ b.name }} <span class="text-[11px]">{{ b.position }}</span>
               <span v-if="b.bye" class="ml-1 text-[10px] text-[#FF5C5C]">BYE</span>
+              <span v-if="b.injuryTag && RULED_OUT.has(b.injuryTag)" class="ml-1 font-mono text-[9px] uppercase text-[#FF5C5C]"
+                    :title="`Ruled ${b.injuryTag.toLowerCase()} — projected at zero`">{{ b.injuryTag }}</span>
+              <span v-else-if="b.injuryTag" class="ml-1 font-mono text-[9px] uppercase text-[#d29922]"
+                    :title="cutTitle(b.injuryTag, true)">{{ b.injuryTag.slice(0, 1) }}</span>
             </span>
             <!-- One line, not a stacked block: the bench is a reference list, and five
                  two-line rows took as much room as the lineup they support. -->
@@ -749,7 +763,7 @@ const onLogoErr = (e: Event) => ((e.target as HTMLElement).style.display = 'none
           -->
           <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
             <PublishWeeklyRankings v-if="isAdmin" :season="nflSeason || new Date().getFullYear()"
-                                   :published="publishedWeek" @published="reloadPublished" />
+                                   :published="publishedWeek" :current-week="currentWeek" @published="reloadPublished" />
             <!-- weekSource was destructured in this file and never rendered, so a board being
                  driven by an uploaded list looked identical to one on our own numbers. -->
             <span v-if="weekSource !== 'UFD'" class="font-mono text-[10px] text-dark-textMuted/70">UFD weekly rankings</span>

@@ -18,6 +18,8 @@ export interface WeeklyStarter {
   home: boolean
   bye: boolean
   opportunity: OpportunityTag
+  /** The injury designation the lineup acts on (discounted or zeroed); '' when healthy. */
+  injuryTag?: string
   /** Whether his game is ahead of us, on now, or done. */
   play: PlayState
   inCurrent: boolean // manager already has him starting
@@ -45,6 +47,8 @@ export interface WeeklyBenchRow {
   weekPoints: number
   bye: boolean
   opportunity: OpportunityTag
+  /** The injury designation the lineup acts on (discounted or zeroed); '' when healthy. */
+  injuryTag?: string
   /**
    * Rank THIS WEEK at his own position, and among everyone eligible for a flex slot, over
    * every player rostered in the league PLUS the free agents — because the waiver wire is
@@ -756,6 +760,7 @@ export function buildWeeklyBoard(input: {
         home: homeOf(key),
         bye: byeOf(key),
         opportunity: oppTag(key),
+        injuryTag: tagByKey.get(key) ?? '',
         inCurrent: currentSet.has(key),
         ...ranksOf(key),
       })
@@ -774,6 +779,7 @@ export function buildWeeklyBoard(input: {
       weekPoints: week(p.playerKey),
       bye: byeOf(p.playerKey),
       opportunity: oppTag(p.playerKey),
+      injuryTag: tagByKey.get(p.playerKey) ?? '',
       ...ranksOf(p.playerKey),
     }))
     .sort((a, b) => b.weekPoints - a.weekPoints)
@@ -1108,6 +1114,7 @@ export function buildWeeklyBoard(input: {
               home: homeOf(k),
               bye: byeOf(k),
               opportunity: oppTag(k),
+              injuryTag: tagByKey.get(k) ?? '',
               inCurrent: true,
               ...ranksOf(k),
             } as WeeklyStarter
