@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sideOf, groupPoolByTeam, toHockeyCategories, rankDropOptions } from '../useHockeyWire'
+import { sideOf, groupPoolByTeam, toHockeyCategories, rankDropOptions, topUsablePicks } from '../useHockeyWire'
 import type { CatSpec } from '@/myteam/types'
 
 describe('sideOf', () => {
@@ -123,5 +123,18 @@ describe('rankDropOptions', () => {
     const out = rankDropOptions(roster, totals, stats)
     expect(out.find((d) => d.playerKey === 'goalie')!.side).toBe('goalie')
     expect(out.find((d) => d.playerKey === 'star')!.side).toBe('skater')
+  })
+})
+
+describe('topUsablePicks', () => {
+  it('ranks by usable games, ties by category gain, drops players with none', () => {
+    const rows = [
+      { key: 'a', name: 'A', position: 'C', usable: 1.0, delta: 0.9 },
+      { key: 'b', name: 'B', position: 'D', usable: 3.5, delta: 0.2 },
+      { key: 'c', name: 'C', position: 'LW', usable: 3.5, delta: 0.4 },
+      { key: 'd', name: 'D', position: 'RW', usable: 0, delta: 2.0 },
+      { key: 'e', name: 'E', position: 'C', usable: null, delta: 1.0 },
+    ]
+    expect(topUsablePicks(rows).map((r) => r.key)).toEqual(['c', 'b', 'a'])
   })
 })

@@ -1,4 +1,6 @@
 import { computed, ref, watch, type ComputedRef } from 'vue'
+import { useUsableWeek } from '@/composables/useUsableWeek'
+import { skaterPositions, DEFAULT_SKATER_SLOTS, type UsableRosterPlayer, type SkaterSlots, type Night, type OpenMap } from '@/hockey/usableGames'
 import { useLeagueStore } from '@/stores/league'
 import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { useNhlFeed } from '@/composables/useNhlFeed'
@@ -33,7 +35,11 @@ import type { CatSpec } from '@/myteam/types'
 /** Skaters and goalies cannot replace one another, which is all `side` has ever meant. */
 export type HockeySide = 'skater' | 'goalie'
 
+export type UsableScore = NonNullable<ReturnType<ReturnType<typeof useUsableWeek>['scoreOf']>>
+
 export interface HockeyWireRow extends WireUpgrade {
+  /** Games he plays this week that would land in an open slot of yours; null when unscorable. */
+  usable: UsableScore | null
   /** What this player would replace, named rather than left as a key. */
   dropName: string
   side: HockeySide
@@ -48,6 +54,31 @@ export interface HockeyWireVm {
   loading: boolean
   /** Why there is nothing to show, when there is nothing to show. */
   problem: string
+  /** The remaining nights and the lineup slots you leave open on each. */
+  week: { ready: boolean; nights: Night[]; open: OpenMap }
+  /** The adds that fill the most open slots, for the week panel. */
+  picks: UsablePick[]
+}
+
+export interface UsablePick {
+  key: string
+  name: string
+  position: string
+  usable: number
+  value: number
+  valueLabel: string
+  dropName?: string
+}
+
+/** The adds with the most usable games, ties broken by what they do to the categories. */
+export function topUsablePicks(
+  rows: { key: string; name: string; position: string; usable: number | null; delta: number; dropName?: string }[],
+  n = 5,
+) {
+  return rows
+    .filter((r): r is typeof r & { usable: number } => r.usable != null && r.usable > 0)
+    .sort((a, b) => b.usable - a.usable || b.delta - a.delta)
+    .slice(0, n)
 }
 
 export function sideOf(position: string): HockeySide {
@@ -94,21 +125,47 @@ export function useHockeyWire(): {
   const statsFor = (playerKey: string): Record<string, number> =>
     merged.value.projections[playerKey]?.stats ?? {}
 
+  /* The league's own starting slots when ESPN gave us a hockey lineup, else the usual one.
+     `F` (a flexible forward seat) has no home in the skater model, so it joins UTIL. */
+  const slots = computed<SkaterSlots>(() => {
+    const rs = team.rosterSlots.value ?? {}
+    if (!['C', 'LW', 'RW', 'D'].some((k) => rs[k] > 0)) return DEFAULT_SKATER_SLOTS
+    return { C: rs.C ?? 0, LW: rs.LW ?? 0, RW: rs.RW ?? 0, D: rs.D ?? 0, UTIL: (rs.UTIL ?? 0) + (rs.F ?? 0) }
+  })
+
+  /* Your roster as the usable-games model reads it. The rate only decides who sits first on a
+     crowded night, so the league z-total will do, and 1 when the merge has never heard of him. */
+  const myUsableRoster = computed<UsableRosterPlayer[]>(() => {
+    const cats = (team.cats.value ?? []) as CatSpec[]
+    const totalByKey = cats.length
+      ? buildHockeyCategoryValue({ projections: merged.value.projections, categories: toHockeyCategories(cats) }).totalByKey
+      : {}
+    return (team.rosterPlayers.value ?? []).map((p: any) => ({
+      key: String(p.playerKey),
+      team: p.team,
+      positions: skaterPositions(p.position),
+      rate: totalByKey[String(p.playerKey)] ?? 1,
+      out: !!p.onIL,
+    }))
+  })
+  const week = useUsableWeek(myUsableRoster, slots)
+
   const vm = computed<HockeyWireVm>(() => {
+    const emptyWeek = { ready: week.ready.value, nights: week.nights.value, open: week.open.value }
     const loading = team.loading.value || feedLoading.value
     const cats = team.cats.value as CatSpec[]
     const categories = cats?.map((c) => String(c.statId)) ?? []
 
-    if (loading) return { rows: [], categories, loading: true, problem: '' }
+    if (loading) return { rows: [], categories, loading: true, problem: '', week: emptyWeek, picks: [] }
     if (!team.supported.value) {
-      return { rows: [], categories, loading: false, problem: 'This league is not one we can read yet.' }
+      return { rows: [], categories, loading: false, problem: 'This league is not one we can read yet.', week: emptyWeek, picks: [] }
     }
     if (!cats?.length) {
-      return { rows: [], categories, loading: false, problem: 'This league published no categories, so nothing can be scored.' }
+      return { rows: [], categories, loading: false, problem: 'This league published no categories, so nothing can be scored.', week: emptyWeek, picks: [] }
     }
     const myTeamId = String(team.myTeamId.value ?? '')
     if (!myTeamId) {
-      return { rows: [], categories, loading: false, problem: 'We could not tell which team is yours in this league.' }
+      return { rows: [], categories, loading: false, problem: 'We could not tell which team is yours in this league.', week: emptyWeek, picks: [] }
     }
 
     /*
@@ -125,7 +182,7 @@ export function useHockeyWire(): {
      */
     const grouped = groupPoolByTeam(team.pool.value ?? [], statsFor)
     if (grouped.length < 2) {
-      return { rows: [], categories, loading: false, problem: 'We could not read the other rosters in this league.' }
+      return { rows: [], categories, loading: false, problem: 'We could not read the other rosters in this league.', week: emptyWeek, picks: [] }
     }
     const leagueTotals = aggregateTeamCatTotals(grouped, cats)
 
@@ -159,7 +216,7 @@ export function useHockeyWire(): {
     }))
 
     if (!freeAgents.length) {
-      return { rows: [], categories, loading: false, problem: 'No free agents came back from ESPN for this league.' }
+      return { rows: [], categories, loading: false, problem: 'No free agents came back from ESPN for this league.', week: emptyWeek, picks: [] }
     }
 
     const nameByKey = new Map<string, string>()
@@ -172,13 +229,22 @@ export function useHockeyWire(): {
         side: sideOf(u.player.position),
         percentOwned: freeAgents.find((f) => f.playerKey === u.player.key)?.percentOwned ?? null,
         injuryStatus: merged.value.projections[u.player.key]?.injuryStatus ?? null,
+        usable: week.scoreOf({ team: u.player.team, positions: skaterPositions(u.player.position), rate: 1 }),
       }))
+    const picks = topUsablePicks(
+      rows.map((r) => ({
+        key: r.player.key, name: r.player.name, position: r.player.position,
+        usable: r.usable?.usable ?? null, delta: r.deltaEcw, dropName: r.dropName,
+      })),
+    ).map((r) => ({ ...r, value: r.delta, valueLabel: `+${r.delta.toFixed(2)} ECW` }))
 
     return {
       rows,
       categories,
       loading: false,
       problem: rows.length ? '' : 'Nothing on the wire improves your standings right now.',
+      week: emptyWeek,
+      picks,
     }
   })
 

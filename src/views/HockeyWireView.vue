@@ -34,7 +34,17 @@
         <p class="text-sm text-dark-textSecondary">{{ vm.problem }}</p>
       </div>
 
-      <div v-else class="mt-4 rounded-xl border border-dark-border bg-dark-card p-4">
+      <div v-else-if="vm.week.ready" class="mt-4">
+        <UsableWeekPanel v-if="vm.week.ready" :nights="vm.week.nights" :open="vm.week.open" :picks="vm.picks" />
+        <div v-if="vm.week.ready" class="mb-2 mt-3 flex gap-2 font-mono text-[11px]">
+          <button v-for="o in SORTS" :key="o.id" @click="sortMode = o.id"
+                  class="rounded-lg border px-2.5 py-1 transition-colors"
+                  :class="sortMode === o.id ? 'border-primary text-dark-text' : 'border-dark-border text-dark-textMuted hover:text-dark-text'"
+          >{{ o.label }}</button>
+        </div>
+      </div>
+
+      <div v-if="!vm.loading && !vm.problem" class="mt-2 rounded-xl border border-dark-border bg-dark-card p-4">
         <div class="mb-2 flex items-center gap-2.5 border-b border-dark-border/40 pb-1.5 font-mono text-[9px] uppercase tracking-wide text-dark-textMuted/60">
           <span class="w-8 shrink-0"></span>
           <span class="h-7 w-7 shrink-0"></span>
@@ -43,7 +53,7 @@
           <span class="w-14 shrink-0 text-right" title="Categories won per week this swap is worth">+CATS</span>
         </div>
 
-        <div v-for="(row, i) in vm.rows.slice(0, shown)" :key="row.player.key"
+        <div v-for="(row, i) in sortedRows.slice(0, shown)" :key="row.player.key"
              class="flex items-center gap-2.5 border-b border-dark-border/40 py-2.5 text-base text-dark-text last:border-0 sm:gap-3">
           <span class="ufd-rank">{{ i + 1 }}</span>
           <img v-if="row.player.headshot" :src="row.player.headshot" :alt="row.player.name"
@@ -63,6 +73,7 @@
                       ? 'bg-[#e69a4a]/20 text-[#e69a4a]' : 'bg-[#ef4444]/20 text-[#ef4444]'"
               >{{ injuryLabel(row.injuryStatus) }}</span>
             </span>
+            <UsableStrip v-if="row.usable" :by-night="row.usable.byNight" :usable="row.usable.usable" :games="row.usable.games" />
             <!--
               THE MOVE, not just the player. A waiver row that names an add without naming the
               drop leaves the reader to do the hard half themselves — and the drop is the half
@@ -101,10 +112,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useHockeyWire } from '@/composables/useHockeyWire'
+import UsableStrip from '@/components/hockey/UsableStrip.vue'
+import UsableWeekPanel from '@/components/hockey/UsableWeekPanel.vue'
 
 const { vm } = useHockeyWire()
+
+const SORTS = [
+  { id: 'best', label: 'Best overall' },
+  { id: 'week', label: 'This week (usable)' },
+] as const
+const sortMode = ref<'best' | 'week'>('best')
+const sortedRows = computed(() =>
+  sortMode.value === 'week'
+    ? [...vm.value.rows].sort((a, b) => (b.usable?.usable ?? 0) - (a.usable?.usable ?? 0) || b.deltaEcw - a.deltaEcw)
+    : vm.value.rows,
+)
 
 const shown = ref(25)
 
