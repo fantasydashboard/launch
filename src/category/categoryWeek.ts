@@ -28,8 +28,20 @@ export interface WeekCat {
   volumeKey?: string
 }
 
+/**
+ * A column of the week, carrying what chasing it is actually worth.
+ *
+ * `unitValue` prices ONE unit; `movable` prices the units still to come. They rank columns
+ * very differently — shutouts top the first and bottom the second — and the two must not be
+ * used for the same decision in different places. See the note on worthChasing below.
+ */
+export interface WeekCatState extends CatState {
+  /** Unit value times the units your side is still expected to produce. The chase ordering. */
+  movable: number
+}
+
 export interface CategoryWeek {
-  cats: CatState[]
+  cats: WeekCatState[]
   format: CategoryFormat
   /** Counts a manager reads in one glance. */
   live: number
@@ -119,23 +131,34 @@ export function buildCategoryWeek(input: {
    * coming. Any constant factor (days, bodies) is common to every column and cancels out of
    * the ordering, so the expected remaining total is exactly the right quantity.
    */
-  const movable = (c: CatState) => c.unitValue * Math.max(0, Number(myRemaining[c.key]) || 0)
-  const best = state.reduce((m, c) => Math.max(m, movable(c)), 0)
-  const worthChasing = state
-    .filter((c) => movable(c) > 0 && best > 0 && movable(c) >= CHASE_FLOOR * best)
-    .sort((a, b) => movable(b) - movable(a))
+  /*
+   * Computed ONCE and carried on the column, not recomputed by every reader. The board's row
+   * order and the "spend tonight on" line are the same judgement, and when they were two
+   * expressions they disagreed on screen: the table was sorted by unit value under a heading
+   * that said "most movable first", so it led with shutouts while the advice underneath named
+   * shots. One quantity with one name cannot drift like that.
+   */
+  const priced: WeekCatState[] = state.map((c) => ({
+    ...c,
+    movable: c.unitValue * Math.max(0, Number(myRemaining[c.key]) || 0),
+  }))
+
+  const best = priced.reduce((m, c) => Math.max(m, c.movable), 0)
+  const worthChasing = priced
+    .filter((c) => c.movable > 0 && best > 0 && c.movable >= CHASE_FLOOR * best)
+    .sort((a, b) => b.movable - a.movable)
     .map((c) => c.key)
 
   return {
-    cats: state,
+    cats: priced,
     format,
     /* Ratio columns are not PRICED (see categoryBoard) but they are still columns you win or
        lose, so every one of them counts towards the week. Dropping them here would have
        reported a nine-category league's odds over seven. */
-    odds: weekOdds(state.map((c) => c.winPct)),
-    live: state.filter((c) => c.status === 'live').length,
-    safe: state.filter((c) => c.status === 'safe').length,
-    gone: state.filter((c) => c.status === 'gone').length,
+    odds: weekOdds(priced.map((c) => c.winPct)),
+    live: priced.filter((c) => c.status === 'live').length,
+    safe: priced.filter((c) => c.status === 'safe').length,
+    gone: priced.filter((c) => c.status === 'gone').length,
     worthChasing,
   }
 }

@@ -54,9 +54,15 @@ function fmt(v: number): string {
  * deliberately not at the top competing for attention they do not deserve.
  */
 const ORDER: Record<string, number> = { live: 0, safe: 1, gone: 2 }
+/*
+ * Sorted by what chasing the column is WORTH, which is the same number the advice below ranks
+ * on. This used to sort by unitValue — the worth of one unit — under a heading that says "most
+ * movable first", so the table led with shutouts (one is decisive, none are coming) while the
+ * line underneath told you to spend on shots. The heading was right and the sort was wrong.
+ */
 const rows = computed(() =>
   [...props.week.cats].sort((a, b) =>
-    (ORDER[a.status] - ORDER[b.status]) || (b.unitValue - a.unitValue)))
+    (ORDER[a.status] - ORDER[b.status]) || (b.movable - a.movable)))
 
 const chase = computed(() => props.week.worthChasing.slice(0, 3))
 const gone = computed(() => props.week.cats.filter((c) => c.status === 'gone').map((c) => c.key))

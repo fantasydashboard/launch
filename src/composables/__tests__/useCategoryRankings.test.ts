@@ -28,7 +28,8 @@ function week(over: Partial<CategoryWeek> = {}): CategoryWeek {
     format: 'each',
   })
   return {
-    cats, format: 'each',
+    cats: cats.map((c) => ({ ...c, movable: c.unitValue })),
+    format: 'each',
     live: cats.filter((c) => c.status === 'live').length,
     safe: cats.filter((c) => c.status === 'safe').length,
     gone: cats.filter((c) => c.status === 'gone').length,
@@ -123,7 +124,8 @@ describe('the tags describe what sets a player apart, not what is biggest', () =
       format: 'each',
     })
     return {
-      cats, format: 'each',
+      cats: cats.map((c) => ({ ...c, movable: c.unitValue })),
+      format: 'each',
       live: cats.length, safe: 0, gone: 0,
       worthChasing: ['SOG', 'HIT'],
       odds: weekOdds(cats.map((c) => c.winPct)),
