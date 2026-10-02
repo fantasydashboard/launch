@@ -1,13 +1,19 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { useActivePointsSource } from '@/composables/useActivePointsSource'
 import { useLeagueScoring } from '@/composables/useLeagueScoring'
 import { buildPointsWire, type Swap } from '@/myteam/pointsWire'
-import { buildPointsTeam } from '@/myteam/pointsTeam'
+import { buildPointsTeam, parseEligible } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
+import { getNhlSchedule } from '@/services/nhlSchedule'
+import { useUsableWeek } from '@/composables/useUsableWeek'
+import { skaterPositions, usableFor, DEFAULT_SKATER_SLOTS, type SkaterSlots, type UsableRosterPlayer } from '@/hockey/usableGames'
+import { pointsUsablePicks } from '@/hockey/pointsUsablePicks'
+import UsableStrip from '@/components/hockey/UsableStrip.vue'
+import UsableWeekPanel from '@/components/hockey/UsableWeekPanel.vue'
 import { mlbTeamLogo } from '@/players/mlbTeamLogo'
 import { nflTeamLogo } from '@/players/nflTeamLogo'
 import { nhlTeamLogo } from '@/players/nhlTeamLogo'
@@ -46,7 +52,10 @@ async function loadSchedule() {
   const fmt = (d: Date) => d.toISOString().slice(0, 10)
   const end = new Date(today)
   end.setDate(today.getDate() + ((7 - today.getDay()) % 7))
-  schedule.value = await getWeekSchedule(fmt(today), fmt(end))
+  /* Hockey was reading the MLB schedule, so its rows carried baseball game counts. */
+  schedule.value = isHockey.value
+    ? await getNhlSchedule(fmt(today), fmt(end))
+    : await getWeekSchedule(fmt(today), fmt(end))
 }
 
 function loadAll() {
@@ -284,6 +293,76 @@ const wire = computed(() => {
   return buildPointsWire(freeAgents.value, valueOf.value, schedule.value, rosterBodies.value)
 })
 
+/*
+ * Hockey only: how many of this week's games each add can actually be started in, given who
+ * you already have seated each night. Built lazily so baseball and football never fetch the
+ * NHL week.
+ */
+const usableWeek = shallowRef<ReturnType<typeof useUsableWeek> | null>(null)
+const myUsableRoster = computed<UsableRosterPlayer[]>(() => {
+  if (!isHockey.value) return []
+  return pool.value.filter((p) => p.teamKey === myTeamKey.value).map((p) => {
+    const v = valueByKey.value[p.playerKey]
+    return {
+      key: p.playerKey,
+      team: p.proTeam ?? '',
+      positions: skaterPositions(parseEligible(p, 'hockey')),
+      rate: v && v.games > 0 ? v.total / v.games : 0,
+      out: !!p.onIL,
+    }
+  })
+})
+/* The league's own seats. `F` is the forward flex (C/LW/RW only) and stays apart from UTIL. */
+const usableSlots = computed<SkaterSlots>(() => {
+  const rs = rosterSlots.value ?? {}
+  const d = DEFAULT_SKATER_SLOTS
+  return {
+    C: rs.C ?? d.C, LW: rs.LW ?? d.LW, RW: rs.RW ?? d.RW, D: rs.D ?? d.D,
+    UTIL: rs.UTIL ?? d.UTIL, F: rs.F ?? d.F,
+  }
+})
+watch(isHockey, (h) => {
+  if (h && !usableWeek.value) usableWeek.value = useUsableWeek(myUsableRoster, usableSlots)
+}, { immediate: true })
+
+const faUsable = computed(() => {
+  const out: Record<string, ReturnType<typeof usableFor> | null> = {}
+  const uw = usableWeek.value
+  if (!isHockey.value || !uw) return out
+  for (const fa of freeAgents.value) {
+    const v = valueOf.value(fa)
+    out[fa.playerKey] = uw.scoreOf({
+      team: fa.team,
+      positions: skaterPositions(fa.eligiblePositions?.length ? fa.eligiblePositions : fa.position),
+      rate: v && v.games > 0 ? v.total / v.games : 0,
+    })
+  }
+  return out
+})
+const usablePicks = computed(() => pointsUsablePicks(
+  freeAgents.value.map((fa) => {
+    const v = valueOf.value(fa)
+    return {
+      key: fa.playerKey, name: fa.name, position: fa.position,
+      perGame: v && v.games > 0 ? v.total / v.games : 0,
+      usable: faUsable.value[fa.playerKey]?.usable ?? null,
+    }
+  }),
+).map((r) => ({ ...r, value: r.points, valueLabel: `${r.points.toFixed(1)} pts this week` })))
+
+type HockeySort = 'best' | 'week'
+const hockeySort = ref<HockeySort>('best')
+const HOCKEY_SORTS = [
+  { id: 'best', label: 'Best overall' },
+  { id: 'week', label: 'This week (usable)' },
+] as const
+const swapRows = computed(() => {
+  const rows = wire.value?.swaps ?? []
+  if (!isHockey.value || hockeySort.value === 'best') return rows
+  const weekPts = (s: Swap) => s.add.perGame * (faUsable.value[s.add.player.playerKey]?.usable ?? 0)
+  return [...rows].sort((a, b) => weekPts(b) - weekPts(a))
+})
+
 // Drop candidates: your weakest rostered bodies (lowest projected points).
 const drops = computed(() => [...(teamModel.value?.rosterRows ?? [])].sort((a, b) => a.points - b.points).slice(0, 5))
 
@@ -323,7 +402,14 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
       <section v-if="wire.swaps.length" class="mb-5 rounded-xl border border-primary/40 bg-dark-card p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-primary">★ Best upgrades</h2>
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">add a free agent, cut your weakest body — the points you'd gain</p>
-        <template v-for="(s, i) in wire.swaps" :key="'sw-' + i">
+        <UsableWeekPanel v-if="isHockey && usableWeek?.ready.value" :nights="usableWeek.nights.value" :open="usableWeek.open.value" :picks="usablePicks" />
+        <div v-if="isHockey && usableWeek?.ready.value" class="mb-2 mt-3 flex gap-2 font-mono text-[11px]">
+          <button v-for="o in HOCKEY_SORTS" :key="o.id" @click="hockeySort = o.id"
+                  class="rounded-lg border px-2.5 py-1 transition-colors"
+                  :class="hockeySort === o.id ? 'border-primary text-dark-text' : 'border-dark-border text-dark-textMuted hover:text-dark-text'"
+          >{{ o.label }}</button>
+        </div>
+        <template v-for="(s, i) in swapRows" :key="'sw-' + i">
           <div class="flex items-center gap-3 border-b border-dark-border/40 py-2.5 last:border-0">
             <img v-if="s.add.player.headshot" :src="s.add.player.headshot" :alt="s.add.player.name" loading="lazy" class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
             <span v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[10px] text-dark-textMuted">{{ s.add.player.position }}</span>
@@ -335,6 +421,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
               <span class="block text-xs text-dark-textMuted">
                 <span class="font-mono text-[10px] uppercase">drop</span> {{ s.dropName }} <span class="opacity-60">({{ round(dropDisplay(s)) }})</span>
               </span>
+              <UsableStrip v-if="isHockey && faUsable[s.add.player.playerKey]" :by-night="faUsable[s.add.player.playerKey]!.byNight" :usable="faUsable[s.add.player.playerKey]!.usable" :games="faUsable[s.add.player.playerKey]!.games" />
             </span>
             <span class="shrink-0 text-right">
               <span class="font-mono text-sm font-bold text-primary">+{{ round(upgradeDisplay(s)) }}</span>
