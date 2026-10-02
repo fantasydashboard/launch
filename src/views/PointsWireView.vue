@@ -562,6 +562,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
                 <span class="flex items-center gap-1 text-xs text-dark-textMuted">
                   {{ r.player.position }} · <img :src="teamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 object-contain" /> {{ r.player.team }}
                 </span>
+                <UsableStrip v-if="isHockey && faUsable[r.player.playerKey]" :by-night="faUsable[r.player.playerKey]!.byNight" :usable="faUsable[r.player.playerKey]!.usable" :games="faUsable[r.player.playerKey]!.games" />
               </span>
               <span v-for="c in r.chips" :key="c" class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary">{{ c }}</span>
               <span class="w-16 shrink-0 text-right">
