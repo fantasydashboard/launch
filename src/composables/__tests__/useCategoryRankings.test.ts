@@ -110,3 +110,76 @@ describe('useCategoryRankings', () => {
     expect(rows.value).toBeNull()
   })
 })
+
+describe('the tags describe what sets a player apart, not what is biggest', () => {
+  /** A week where shots and hits are both live and nothing is settled. */
+  function openWeek(): CategoryWeek {
+    const cats = buildCategoryState({
+      cats: [
+        { key: 'SOG', label: 'SOG', mine: 100, theirs: 100, sigma: 6, lowerIsBetter: false, isRatio: false },
+        { key: 'HIT', label: 'HIT', mine: 20, theirs: 20, sigma: 3, lowerIsBetter: false, isRatio: false },
+      ],
+      days: 3,
+      format: 'each',
+    })
+    return {
+      cats, format: 'each',
+      live: cats.length, safe: 0, gone: 0,
+      worthChasing: ['SOG', 'HIT'],
+      odds: weekOdds(cats.map((c) => c.winPct)),
+    }
+  }
+
+  /*
+   * THE REGRESSION, from a live board. Shots are the highest-volume counting stat in hockey, so
+   * the man's biggest column is shots for nearly every skater alive — and the board printed
+   * "SOG" on all ten rows, which cannot explain why row one beats row ten.
+   */
+  it('does not name a column that every player on the board fills', () => {
+    const everyone: Record<string, { stats: Record<string, number> }> = {
+      A: { stats: { SOG: 240, HIT: 80, GP: 80 } },
+      B: { stats: { SOG: 244, HIT: 82, GP: 80 } },
+      C: { stats: { SOG: 236, HIT: 78, GP: 80 } },
+    }
+    const { rows } = useCategoryRankings({
+      rankings: ref([row('A'), row('B'), row('C')]),
+      week: ref(openWeek()),
+      projectionOf: ref((p: { name?: string }) => everyone[p.name ?? ''] ?? null),
+    })
+    /* Three interchangeable skaters: nobody stands out, so nobody is labelled as if he did. */
+    expect(rows.value?.every((r) => r.helps.length === 0)).toBe(true)
+  })
+
+  it('names the column where a player genuinely beats the field', () => {
+    const pool: Record<string, { stats: Record<string, number> }> = {
+      Typical1: { stats: { SOG: 240, HIT: 80, GP: 80 } },
+      Typical2: { stats: { SOG: 240, HIT: 80, GP: 80 } },
+      Banger: { stats: { SOG: 240, HIT: 300, GP: 80 } },
+    }
+    const { rows } = useCategoryRankings({
+      rankings: ref([row('Typical1'), row('Typical2'), row('Banger')]),
+      week: ref(openWeek()),
+      projectionOf: ref((p: { name?: string }) => pool[p.name ?? ''] ?? null),
+    })
+    const banger = rows.value?.find((r) => r.name === 'Banger')
+    expect(banger?.helps).toEqual(['HIT'])
+    /* And the men he is being compared against stay unlabelled rather than all claiming hits. */
+    expect(rows.value?.find((r) => r.name === 'Typical1')?.helps).toEqual([])
+  })
+
+  /* The number still measures total movement, so the board's ORDER is unchanged by any of
+     this — a distinctive player is not automatically the most valuable start. */
+  it('still ranks by total movement, not by distinctiveness', () => {
+    const pool: Record<string, { stats: Record<string, number> }> = {
+      Everything: { stats: { SOG: 400, HIT: 200, GP: 80 } },
+      OnlyHits: { stats: { SOG: 40, HIT: 260, GP: 80 } },
+      Typical: { stats: { SOG: 240, HIT: 80, GP: 80 } },
+    }
+    const { rows } = useCategoryRankings({
+      rankings: ref([row('OnlyHits'), row('Typical'), row('Everything')]),
+      week: ref(openWeek()),
+      projectionOf: ref((p: { name?: string }) => pool[p.name ?? ''] ?? null),
+    })
+    expect(rows.value?.[0].name).toBe('Everything')
+  })
+})

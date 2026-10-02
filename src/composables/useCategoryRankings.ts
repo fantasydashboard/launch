@@ -1,5 +1,6 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
 import { scoreLine } from '@/category/categoryBoard'
+import { medianLine, standoutColumns } from '@/category/standout'
 import { perGameLine } from '@/category/nightlyLine'
 import type { CategoryWeek } from '@/category/categoryWeek'
 import type { RankedRow } from './useDailyLineup'
@@ -44,7 +45,15 @@ export interface CategoryRankedRow extends RankedRow {
    * week, so a start in a column that cannot swing the matchup is worth near nothing.
    */
   need: number
-  /** The columns he actually moves, his best first — the sentence beside the number. */
+  /**
+   * What he is distinctively good at, among the men you could start tonight — his best first.
+   *
+   * NOT the columns he moves most. Every skater takes shots, so "biggest column" named shots on
+   * every row of the board and explained nothing about why one man was above another. This is
+   * measured against the typical line in the same pool, so the columns everyone fills go quiet
+   * and what is left is the reason to pick him. Empty when he beats the pool nowhere, which is
+   * a real answer rather than a missing one.
+   */
   helps: string[]
 }
 
@@ -65,15 +74,29 @@ export function useCategoryRankings(inputs: {
      */
     if (!week.cats.some((c) => c.unitValue > 0)) return null
 
-    const scored: CategoryRankedRow[] = []
+    /*
+     * Resolve every line FIRST, because the tags need a yardstick and the yardstick is this
+     * pool. A baseline drawn from anything else — last season, the league as a whole — would
+     * describe a different set of choices than the one on screen.
+     */
+    const resolved: Array<{ row: RankedRow; line: Record<string, number> }> = []
     for (const r of inputs.rankings.value ?? []) {
       const line = perGameLine(inputs.projectionOf.value({ name: r.name })?.stats)
       /* No line is no verdict. He stays off this board rather than being ranked last, which
          would say he is a worse play than the man above him instead of an unknown one. */
       if (!line) continue
-      const { score, helps } = scoreLine(line, week.cats)
-      scored.push({ ...r, need: score * AS_PCT_POINTS, helps })
+      resolved.push({ row: r, line })
     }
+
+    const baseline = medianLine(resolved.map((x) => x.line), week.cats.map((c) => c.key))
+
+    const scored = resolved.map(({ row, line }) => ({
+      ...row,
+      /* The TOTAL movement this start buys, which is what the board sorts on. */
+      need: scoreLine(line, week.cats).score * AS_PCT_POINTS,
+      /* How he DIFFERS from the alternatives, which is what the label should say. */
+      helps: standoutColumns(line, week.cats, baseline),
+    }))
 
     return scored.sort((a, b) => b.need - a.need)
   })
