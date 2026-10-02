@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { parseNhlSchedule, nhlAbbrVariants, getNhlSchedule, clearNhlScheduleCache } from '../nhlSchedule'
+import { parseNhlNights, parseNhlSchedule, nhlAbbrVariants, getNhlSchedule, clearNhlScheduleCache } from '../nhlSchedule'
 
 /*
  * `gameType: 2` on every fixture, because the live endpoint puts it on every fixture. These
@@ -262,5 +262,26 @@ describe('getNhlSchedule caching', () => {
     const second = await getNhlSchedule('2026-09-29', '2026-09-29')
     expect(second.failed).toBeFalsy()
     expect(Object.keys(second.gamesByTeam).length).toBeGreaterThan(0)
+  })
+})
+
+const nightsPayload = { gameWeek: [
+  { date: '2026-10-06', games: [
+    { gameType: 2, homeTeam: { abbrev: 'LAK' }, awayTeam: { abbrev: 'TOR' } },
+    { gameType: 1, homeTeam: { abbrev: 'BOS' }, awayTeam: { abbrev: 'NYR' } },   // preseason: ignored
+  ] },
+  { date: '2026-10-07', games: [] },
+  { date: '2026-10-08', games: [{ gameType: 2, homeTeam: { abbrev: 'NJD' }, awayTeam: { abbrev: 'SJS' } }] },
+] }
+
+describe('parseNhlNights', () => {
+  it('one Night per date in range, regular-season teams only, all spellings keyed', () => {
+    const nights = parseNhlNights(nightsPayload, '2026-10-06', '2026-10-08')
+    expect(nights.map((n) => n.date)).toEqual(['2026-10-06', '2026-10-07', '2026-10-08'])
+    expect(nights[0].teams.has('LAK')).toBe(true)
+    expect(nights[0].teams.has('LA')).toBe(true)      // ESPN spelling matches too
+    expect(nights[0].teams.has('BOS')).toBe(false)    // preseason dropped
+    expect(nights[1].teams.size).toBe(0)
+    expect(nights[2].teams.has('NJ')).toBe(true)
   })
 })

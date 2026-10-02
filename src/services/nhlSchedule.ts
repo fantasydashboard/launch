@@ -1,4 +1,5 @@
 import type { WeekSchedule } from './mlbSchedule'
+import type { Night } from '@/hockey/usableGames'
 
 /**
  * Who plays, and when, from the NHL's own public API.
@@ -181,6 +182,36 @@ export async function getNhlSchedule(from: string, to: string): Promise<WeekSche
   const parsed = parseNhlSchedule(payload, from, to)
   cache.set(key, parsed)
   return parsed
+}
+
+/**
+ * The slate as one Night per date, for the daily-usable-games model, which needs to know WHICH
+ * nights a team plays, not just how many. Every spelling of each club is keyed so a roster's
+ * "LA" and the schedule's "LAK" both match. Same gameType filter as parseNhlSchedule.
+ */
+export function parseNhlNights(data: unknown, from: string, to: string): Night[] {
+  const weeks = ((data as any)?.gameWeek ?? []) as { date?: string; games?: any[] }[]
+  const byDate = new Map<string, Set<string>>()
+  for (const day of weeks) {
+    const date = String(day?.date ?? '')
+    if (!date || date < from || date > to) continue
+    const teams = byDate.get(date) ?? new Set<string>()
+    for (const g of day.games ?? []) {
+      if (!COUNTING_GAME_TYPES.has(Number(g?.gameType))) continue
+      for (const side of [g?.homeTeam?.abbrev, g?.awayTeam?.abbrev]) {
+        if (side) for (const v of nhlAbbrVariants(String(side))) teams.add(v)
+      }
+    }
+    byDate.set(date, teams)
+  }
+  return [...byDate.keys()].sort().map((date) => ({ date, teams: byDate.get(date)! }))
+}
+
+/** Per-night slate over the shared payload fetch, so this adds no request. `failed` is not "dark". */
+export async function getNhlWeekNights(from: string, to: string): Promise<{ nights: Night[]; failed: boolean }> {
+  const payload = await weekPayload(from)
+  if (payload == null) return { nights: [], failed: true }
+  return { nights: parseNhlNights(payload, from, to), failed: false }
 }
 
 /**
