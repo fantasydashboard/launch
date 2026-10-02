@@ -10,10 +10,10 @@
 export type SkaterPos = 'C' | 'LW' | 'RW' | 'D'
 export interface Night { date: string; teams: Set<string> }
 export interface UsableRosterPlayer { key: string; team: string; positions: SkaterPos[]; rate: number; out?: boolean }
-export interface SkaterSlots { C: number; LW: number; RW: number; D: number; UTIL: number }
+export interface SkaterSlots { C: number; LW: number; RW: number; D: number; UTIL: number; F?: number }
 export type OpenMap = Record<string, Record<SkaterPos, number>>
 
-export const DEFAULT_SKATER_SLOTS: SkaterSlots = { C: 2, LW: 2, RW: 2, D: 4, UTIL: 1 }
+export const DEFAULT_SKATER_SLOTS: SkaterSlots = { C: 2, LW: 2, RW: 2, D: 4, UTIL: 1, F: 0 }
 const POSITIONS: SkaterPos[] = ['C', 'LW', 'RW', 'D']
 
 export function skaterPositions(raw: string | string[] | undefined): SkaterPos[] {
@@ -28,17 +28,22 @@ export function skaterPositions(raw: string | string[] | undefined): SkaterPos[]
 
 /** One night: which positions still have a spot after this roster's players with a game are seated. */
 function openOn(roster: UsableRosterPlayer[], slots: SkaterSlots, teams: Set<string>): Record<SkaterPos, number> {
-  const free: Record<SkaterPos | 'UTIL', number> = { ...slots }
+  const free: Record<SkaterPos | 'UTIL' | 'F', number> = { ...slots, F: slots.F ?? 0 }
+  /* Single-position players seat first, so a C/LW does not take C when LW was free and push a
+     pure C into UTIL. Within each group the best player seats first. */
   const playing = roster
     .filter((p) => !p.out && p.positions.length && teams.has(p.team))
-    .sort((a, b) => b.rate - a.rate)
+    .sort((a, b) => (a.positions.length - b.positions.length) || (b.rate - a.rate))
   for (const p of playing) {
     const pos = p.positions.find((x) => free[x] > 0)
     if (pos) free[pos]--
+    else if (free.F > 0 && p.positions.some((x) => x !== 'D')) free.F--
     else if (free.UTIL > 0) free.UTIL--
   }
   const out = {} as Record<SkaterPos, number>
-  for (const pos of POSITIONS) out[pos] = free[pos] > 0 || free.UTIL > 0 ? 1 : 0
+  for (const pos of POSITIONS) {
+    out[pos] = free[pos] > 0 || (pos !== 'D' && free.F > 0) || free.UTIL > 0 ? 1 : 0
+  }
   return out
 }
 

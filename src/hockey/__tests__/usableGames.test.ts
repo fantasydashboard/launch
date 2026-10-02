@@ -70,3 +70,23 @@ describe('openShare and usableFor', () => {
     expect(u.byNight.map((n) => n.plays)).toEqual([true, true, false])
   })
 })
+
+describe('openNights: F slot and seating order', () => {
+  it('a free F seat opens forwards but never D', () => {
+    const slots = { C: 2, LW: 2, RW: 2, D: 4, F: 1, UTIL: 0 }
+    const r = [
+      p('c1','A','C'), p('c2','A','C'), p('l1','A','LW'), p('l2','A','LW'), p('r1','A','RW'), p('r2','A','RW'),
+      p('d1','A','D'), p('d2','A','D'), p('d3','A','D'), p('d4','A','D'),
+    ]
+    const o = openNights(r, slots, [night('n', 'A')]).n
+    expect(o.C).toBe(1)
+    expect(o.D).toBe(0)
+  })
+
+  it('seats single-position players first so a C/LW does not push a pure C into UTIL', () => {
+    const slots = { C: 2, LW: 2, RW: 0, D: 0, UTIL: 1 }
+    const r = [p('x','A','C,LW',3), p('y','A','C',2.9), p('z','A','C',2.8)]
+    const o = openNights(r, slots, [night('n', 'A')]).n
+    expect(o.C).toBe(1)
+  })
+})

@@ -126,15 +126,15 @@ export function useHockeyWire(): {
     merged.value.projections[playerKey]?.stats ?? {}
 
   /* The league's own starting slots when ESPN gave us a hockey lineup, else the usual one.
-     `F` (a flexible forward seat) has no home in the skater model, so it joins UTIL. */
+     `F` is the flexible forward seat (C/LW/RW only), kept apart from UTIL so D never reads open. */
   const slots = computed<SkaterSlots>(() => {
     const rs = team.rosterSlots.value ?? {}
     if (!['C', 'LW', 'RW', 'D'].some((k) => rs[k] > 0)) return DEFAULT_SKATER_SLOTS
-    return { C: rs.C ?? 0, LW: rs.LW ?? 0, RW: rs.RW ?? 0, D: rs.D ?? 0, UTIL: (rs.UTIL ?? 0) + (rs.F ?? 0) }
+    return { C: rs.C ?? 0, LW: rs.LW ?? 0, RW: rs.RW ?? 0, D: rs.D ?? 0, UTIL: rs.UTIL ?? 0, F: rs.F ?? 0 }
   })
 
   /* Your roster as the usable-games model reads it. The rate only decides who sits first on a
-     crowded night, so the league z-total will do, and 1 when the merge has never heard of him. */
+     crowded night, so the league z-total will do, and 0 when the merge has never heard of him. */
   const myUsableRoster = computed<UsableRosterPlayer[]>(() => {
     const cats = (team.cats.value ?? []) as CatSpec[]
     const totalByKey = cats.length
@@ -144,7 +144,7 @@ export function useHockeyWire(): {
       key: String(p.playerKey),
       team: p.team,
       positions: skaterPositions(p.position),
-      rate: totalByKey[String(p.playerKey)] ?? 1,
+      rate: totalByKey[String(p.playerKey)] ?? 0,
       out: !!p.onIL,
     }))
   })
