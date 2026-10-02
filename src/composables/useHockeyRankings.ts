@@ -1,6 +1,7 @@
 import { computed, ref, type ComputedRef } from 'vue'
 import { useNhlFeed } from '@/composables/useNhlFeed'
 import { mergeFeed } from '@/hockey/mergeFeed'
+import { goalieRankInput } from '@/hockey/goalieRankInput'
 import { seasonHorizon } from '@/hockey/seasonHorizon'
 import { usePowerTrajectory } from '@/composables/usePowerTrajectory'
 import {
@@ -370,15 +371,12 @@ export function useHockeyRankings(options: HockeyRankingsOptions = {}): {
   })
 
   const builtGoalies = computed<HockeyRankRow[]>(() => {
-    const rows = feed.value.goalies
+    /* The projection, not this season's box score. See src/hockey/goalieRankInput.ts. */
+    const rows = goalieRankInput(feed.value.goalieProjections, feed.value.goalies)
     if (!rows.length) return []
     const projections: Record<string, any> = {}
     for (const g of rows) {
-      projections[String(g.playerId)] = {
-        playerKey: String(g.playerId),
-        position: 'G',
-        stats: { W: g.wins, SV: g.saves, SHO: g.shutouts, GA: g.goalsAgainst, GP: g.gamesStarted },
-      }
+      projections[String(g.playerId)] = { playerKey: String(g.playerId), position: 'G', stats: g.stats }
     }
     const { totalByKey, perCategoryByKey } = buildHockeyCategoryValue({
       projections, categories: GOALIE_CATEGORIES, draftablePlayers: DRAFTABLE_G,
@@ -388,19 +386,21 @@ export function useHockeyRankings(options: HockeyRankingsOptions = {}): {
       const g = byId.get(key)
       return {
         playerKey: key,
-        name: g?.goalieFullName ?? key,
+        name: g?.name ?? key,
         position: 'G',
-        team: String(g?.teamAbbrevs ?? '').split(',').pop()?.trim() ?? '',
-        headshot: g ? headshot(g.playerId, g.teamAbbrevs, feed.value.season) : '',
+        team: g?.team ?? '',
+        headshot: g ? headshot(g.playerId, g.team, feed.value.season) : '',
         wins: topCategories(perCategoryByKey[key]),
         value,
         injuryStatus: null,
-        /* Starts, not points. A goalie with eight starts in nine team games is a different
-           asset from a fifty-fifty tandem no matter how the rate stats compare. */
-        pointsPerGame: g?.gamesStarted ?? 0,
+        /* Starts, not points. A goalie with sixty starts is a different asset from a
+           fifty-fifty tandem no matter how the rate stats compare. */
+        pointsPerGame: g?.starts ?? 0,
         ppSecondsPerGame: 0,
-        confidence: g && g.gamesStarted > 0 ? 1 : 0,
-        gamesPlayed: g?.gamesStarted ?? 0,
+        confidence: g && g.starts > 0 ? 1 : 0,
+        /* Not "rated off N games": a projection is built on seasons, and the thin-sample chip
+           would read "rated off only 1 game" for a starter one game into October. */
+        gamesPlayed: 0,
         rank: 0,
       }
     }).sort((a, b) => b.value - a.value)
