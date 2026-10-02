@@ -71,3 +71,54 @@ describe('nhl-stats relay paging', () => {
     expect(new Set(ids).size).toBeLessThan(250)
   })
 })
+
+describe('nhl-stats relay rosters', () => {
+  const roster = (team) => ({
+    ok: true,
+    json: async () => ({
+      forwards: [{ id: team.charCodeAt(0) * 1000 + team.charCodeAt(1), firstName: { default: 'F' }, lastName: { default: team } }],
+      defensemen: [], goalies: [],
+    }),
+  })
+
+  it('returns every active player once all clubs answer, cached for hours', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => roster(String(url).split('/roster/')[1].split('/')[0])))
+    const res = mockRes()
+    await handler({ query: { rosters: 'current' } }, res)
+    expect(res.code).toBe(200)
+    expect(res.body.teams).toBe(32)
+    expect(res.body.players).toHaveLength(32)
+    expect(res.body.players[0]).toMatchObject({ name: 'F ANA', team: 'ANA' })
+    expect(res.headers['Cache-Control']).toMatch(/s-maxage=21600/)
+  })
+
+  it('refuses a partial pull rather than calling a missing club retired', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      const team = String(url).split('/roster/')[1].split('/')[0]
+      return ['BOS', 'BUF', 'CAR'].includes(team) ? { ok: false, status: 429 } : roster(team)
+    }))
+    const res = mockRes()
+    await handler({ query: { rosters: 'current' } }, res)
+    expect(res.code).toBe(502)
+    expect(res.headers['Cache-Control']).toBe('s-maxage=300')
+  })
+
+  it('retries a throttled club once', async () => {
+    const { activeRosters } = await import('../nhl-stats.js')
+    let first = true
+    const f = vi.fn(async (url) => {
+      const team = String(url).split('/roster/')[1].split('/')[0]
+      if (team === 'BOS' && first) { first = false; return { ok: false, status: 429 } }
+      return roster(team)
+    })
+    const out = await activeRosters(f, 0)
+    expect(out.teams).toBe(32)
+    expect(f).toHaveBeenCalledTimes(33)
+  })
+
+  it('rejects any other roster request', async () => {
+    const res = mockRes()
+    await handler({ query: { rosters: 'LAK' } }, res)
+    expect(res.code).toBe(400)
+  })
+})

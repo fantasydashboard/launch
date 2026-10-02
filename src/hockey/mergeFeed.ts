@@ -35,6 +35,7 @@ export function mergeFeed(
     rates: feed.rates,
     historyGames: feed.historyGames,
     goalieProjections: feed.goalieProjections,
+    ...(feed.active ? { active: feed.active } : {}),
   }
   /* Absent rather than empty: `missing` means "columns this league scores that we cannot
      price", and an empty list is a different claim from no list at all. */

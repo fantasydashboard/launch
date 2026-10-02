@@ -71,7 +71,7 @@ if ((feed.agesKnown ?? 0) < 500) {
 process.stderr.write(`[export] rates=${feed.rates.length} espn=${feed.espn.length} ages=${feed.agesKnown} mode=${MODE} baseline=${feed.baseline ? `${feed.baseline.skatersMatched}/${feed.baseline.goaliesMatched}@${feed.baseline.fetchedAt}` : 'NONE'}\n`)
 if (process.env.REQUIRE_BASELINE === '1' && !feed.baseline) throw new Error('baseline required but not blended')
 
-const merged = mergeHockeyProjections({ espn: feed.espn as any, rates: feed.rates as any, historyGames: feed.historyGames, goalieProjections: feed.goalieProjections })
+const merged = mergeHockeyProjections({ espn: feed.espn as any, rates: feed.rates as any, historyGames: feed.historyGames, goalieProjections: feed.goalieProjections, ...(feed.active ? { active: feed.active } : {}) })
 /*
  * THE JOIN'S HEALTH, PRINTED. A rate row that fails to find its ESPN row does not vanish — it
  * keeps an `nhl:` key, which the filter below drops, while ESPN's unclaimed row stays in the
@@ -79,7 +79,7 @@ const merged = mergeHockeyProjections({ espn: feed.espn as any, rates: feed.rate
  * 66 skaters under our name. If `refused` climbs, that is happening again.
  */
 const rungs: any = (merged as any).joinRungs ?? {}
-process.stderr.write(`[export] join exact=${rungs.exact} eligible=${rungs.eligible} uniqueName=${rungs.uniqueName} refused=${rungs.refused} noEspnRow=${rungs.noEspnRow}\n`)
+process.stderr.write(`[export] join exact=${rungs.exact} eligible=${rungs.eligible} uniqueName=${rungs.uniqueName} refused=${rungs.refused} noEspnRow=${rungs.noEspnRow} offRoster=${feed.active ? merged.offRoster : 'NO-LIST'}\n`)
 const projections = Object.fromEntries(Object.entries(merged.projections).filter(([k]) => !k.startsWith('nhl:')))
 
 const rules: any = {

@@ -304,3 +304,38 @@ describe('teamByKey against the payload production actually receives', () => {
     expect(teamByKey['3900']).toBeUndefined()
   })
 })
+
+describe('mergeHockeyProjections — players on no NHL roster', () => {
+  const kopitar = rate({ playerId: 8471685, name: 'Anze Kopitar', team: 'LAK' })
+  const kopitarEspn = espnPlayer({ playerKey: '3183', name: 'Anze Kopitar' })
+  const active = { ids: new Set([8478402]), names: new Set([normalizeName('Connor McDavid'), normalizeName('Juuse Saros')]) }
+
+  it('leaves out a player on no roster with no injury tag — and does not re-add him from ESPN', () => {
+    const r = mergeHockeyProjections({ espn: [espnPlayer(), kopitarEspn], rates: [rate(), kopitar], active })
+    expect(Object.keys(r.projections)).toEqual(['3900'])
+    expect(r.offRoster).toBe(1)
+  })
+
+  it('keeps an injured player even when his club roster omits him', () => {
+    const hurt = espnPlayer({ playerKey: '3183', name: 'Anze Kopitar', injuryStatus: 'INJURY_RESERVE' })
+    const r = mergeHockeyProjections({ espn: [espnPlayer(), hurt], rates: [rate(), kopitar], active })
+    expect(r.projections['3183']).toBeDefined()
+    expect(r.offRoster).toBe(0)
+  })
+
+  it('checks ESPN-only rows (goalies) by name', () => {
+    const goalies = [
+      espnPlayer({ playerKey: 'g1', name: 'Juuse Saros', position: 'G', stats: { GP: 60 } }),
+      espnPlayer({ playerKey: 'g2', name: 'Retired Goalie', position: 'G', stats: { GP: 40 } }),
+    ]
+    const r = mergeHockeyProjections({ espn: [espnPlayer(), ...goalies], rates: [rate()], active })
+    expect(r.projections.g1).toBeDefined()
+    expect(r.projections.g2).toBeUndefined()
+  })
+
+  it('removes nobody without a roster list', () => {
+    const r = mergeHockeyProjections({ espn: [espnPlayer(), kopitarEspn], rates: [rate(), kopitar] })
+    expect(Object.keys(r.projections).sort()).toEqual(['3183', '3900'])
+    expect(r.offRoster).toBe(0)
+  })
+})

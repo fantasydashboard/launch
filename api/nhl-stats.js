@@ -21,6 +21,7 @@
 // Two shapes, one relay:
 //   /api/nhl-stats?report=skater/summary&seasonId=20252026   -> paged stats, all rows
 //   /api/nhl-stats?schedule=2026-10-08                        -> that date's game week
+//   /api/nhl-stats?rosters=current                            -> every active NHL player
 
 const STATS = 'https://api.nhle.com/stats/rest/en'
 const WEB = 'https://api-web.nhle.com/v1'
@@ -47,6 +48,58 @@ const ALLOWED = new Set(['skater/summary', 'skater/timeonice', 'skater/realtime'
  */
 const SORT = encodeURIComponent(JSON.stringify([{ property: 'playerId', direction: 'ASC' }]))
 
+/* The 32 clubs, as the roster endpoint spells them. */
+export const TEAMS = ['ANA', 'BOS', 'BUF', 'CAR', 'CBJ', 'CGY', 'CHI', 'COL', 'DAL', 'DET', 'EDM', 'FLA',
+  'LAK', 'MIN', 'MTL', 'NJD', 'NSH', 'NYI', 'NYR', 'OTT', 'PHI', 'PIT', 'SEA', 'SJS', 'STL', 'TBL', 'TOR',
+  'UTA', 'VAN', 'VGK', 'WPG', 'WSH']
+/* Fewer clubs than this answering is a broken pull, not a league that shrank. Every player on a
+   missing club would read as retired, so a partial list is refused rather than served. */
+const MIN_TEAMS = 30
+
+/**
+ * Who is on an NHL roster right now, as one compact list.
+ *
+ * WHY IT EXISTS. ESPN kept listing Anze Kopitar after he retired: a full-season projection on
+ * LA, no injury tag, 1% owned, and so the top add on a category Wire. Nothing in a projection
+ * feed says a player has stopped playing. The clubs' current rosters do. Thirty-two fetches
+ * happen here, once per edge-cache window, so a page asks one question instead of thirty-two.
+ */
+export async function activeRosters(fetchImpl = fetch, retryMs = 700) {
+  const players = []
+  let teams = 0
+  /* Four at a time, one retry on a throttle. The NHL answers a burst of thirty-two with 429s,
+     and a pull that loses three clubs is refused outright — so pacing is what makes it land. */
+  const get = (team) => fetchImpl(`${WEB}/roster/${team}/current`, { signal: AbortSignal.timeout(8000) })
+  for (let i = 0; i < TEAMS.length; i += 4) {
+    const batch = await Promise.all(TEAMS.slice(i, i + 4).map(async (team) => {
+      try {
+        let r = await get(team)
+        if (r.status === 429) {
+          await new Promise((done) => setTimeout(done, retryMs))
+          r = await get(team)
+        }
+        if (!r.ok) return null
+        const j = await r.json()
+        return { team, j }
+      } catch {
+        return null
+      }
+    }))
+    for (const got of batch) {
+      if (!got) continue
+      const list = ['forwards', 'defensemen', 'goalies'].flatMap((k) => (Array.isArray(got.j?.[k]) ? got.j[k] : []))
+      if (!list.length) continue
+      teams++
+      for (const p of list) {
+        const id = Number(p?.id)
+        const name = `${p?.firstName?.default ?? ''} ${p?.lastName?.default ?? ''}`.trim()
+        if (Number.isFinite(id) && name) players.push({ id, name, team: got.team })
+      }
+    }
+  }
+  return { teams, players }
+}
+
 const PAGE = 100
 /* A full season is ~940 skaters. The ceiling is here so a malformed `total` cannot spin this
    function until it times out — it bounds the loop, it does not shape normal responses. */
@@ -56,9 +109,23 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=3600')
 
-  const { report, seasonId, schedule } = req.query ?? {}
+  const { report, seasonId, schedule, rosters } = req.query ?? {}
 
   try {
+    if (rosters) {
+      if (rosters !== 'current') return res.status(400).json({ error: 'rosters must be "current"' })
+      const { teams, players } = await activeRosters()
+      if (teams < MIN_TEAMS) {
+        /* Briefly cached: an uncached failure has every page load fire thirty-two more requests
+           at an upstream that is already refusing them. Five minutes, then it tries again. */
+        res.setHeader('Cache-Control', 's-maxage=300')
+        return res.status(502).json({ error: `only ${teams} of ${TEAMS.length} rosters answered` })
+      }
+      /* Rosters move by the day, not the minute — six hours keeps 32 fetches rare. */
+      res.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate=21600')
+      return res.status(200).json({ fetchedAt: new Date().toISOString(), teams, players })
+    }
+
     if (schedule) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(String(schedule))) {
         return res.status(400).json({ error: 'schedule must be YYYY-MM-DD' })

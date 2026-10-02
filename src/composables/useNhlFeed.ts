@@ -11,6 +11,7 @@ import { projectGoalies, type GoalieProjection } from '@/hockey/goalieProjection
 import { goalieMatcher } from '@/hockey/goalieNameMatch'
 import type { EspnHockeyPlayer } from '@/hockey/hockeyProjectionSource'
 import { fetchBaseline } from '@/hockey/fetchBaseline'
+import { fetchActiveRoster, type ActiveRoster } from '@/hockey/fetchActiveRoster'
 import { applyBaseline } from '@/hockey/baselineBlend'
 
 /**
@@ -54,6 +55,11 @@ export interface NhlFeed {
   agesKnown?: number
   /** Present only when the public baseline answered and was blended in; absent means the board is ours alone. */
   baseline?: { fetchedAt: string; skatersMatched: number; goaliesMatched: number }
+  /**
+   * Who is on an NHL roster now. Present only once the season has started and the list loaded;
+   * absent means nobody is removed for being off a roster. See src/hockey/fetchActiveRoster.ts.
+   */
+  active?: ActiveRoster
 }
 
 const EMPTY: NhlFeed = { rates: [], goalies: [], espn: [], season: '', started: false, historyGames: new Map(), agesKnown: 0, goalieProjections: [] }
@@ -113,6 +119,7 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
    */
   // Started with the other fetches, awaited at the end. Never rejects: null means no baseline.
   const baselineP = fetchBaseline()
+  const activeP = fetchActiveRoster()
   const [current, currentIce, prior, priorIce, curG, priorG, curRt, priorRt, espn,
          prior2, prior2Rt, prior3, prior3Rt, bios, priorG2, priorG3] =
     await Promise.all([
@@ -325,6 +332,9 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
   )
 
   const baseline = await baselineP
+  /* Only in season: a summer roster is missing every unsigned player and every prospect who
+     will make the team in camp, and reading those as retired would empty a draft board. */
+  const active = started ? await activeP : null
   const withBaseline = applyBaseline(rates, goalieProjections, baseline)
 
   return {
@@ -337,6 +347,7 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
     season: started ? seasonId(year) : seasonId(year - 1),
     started,
     ...(withBaseline.baseline ? { baseline: withBaseline.baseline } : {}),
+    ...(active ? { active } : {}),
   }
 }
 
