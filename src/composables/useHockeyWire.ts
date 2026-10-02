@@ -6,7 +6,8 @@ import { useEspnCategoryTeamData } from '@/composables/useEspnCategoryTeamData'
 import { useNhlFeed } from '@/composables/useNhlFeed'
 import { mergeFeed } from '@/hockey/mergeFeed'
 import { aggregateTeamCatTotals } from '@/trades/standings'
-import { buildHockeyCategoryValue, type HockeyCategory } from '@/hockey/hockeyCategoryValue'
+import { buildHockeyCategoryValue, RATE_VOLUME, type HockeyCategory } from '@/hockey/hockeyCategoryValue'
+import { HOCKEY_STAT_BY_ID, LOWER_IS_BETTER } from '@/hockey/hockeyPositions'
 import { rankUpgrades, type WireFreeAgent, type WireDropOption, type WireUpgrade } from '@/wire/wireUpgrades'
 import type { CatSpec } from '@/myteam/types'
 
@@ -139,7 +140,7 @@ export function useHockeyWire(): {
   /* Your roster as the usable-games model reads it. The rate only decides who sits first on a
      crowded night, so the league z-total will do, and 0 when the merge has never heard of him. */
   const myUsableRoster = computed<UsableRosterPlayer[]>(() => {
-    const cats = (team.cats.value ?? []) as CatSpec[]
+    const cats = hockeyCatSpecs(team.cats.value)
     const totalByKey = cats.length
       ? buildHockeyCategoryValue({ projections: merged.value.projections, categories: toHockeyCategories(cats) }).totalByKey
       : {}
@@ -156,8 +157,8 @@ export function useHockeyWire(): {
   const vm = computed<HockeyWireVm>(() => {
     const emptyWeek = { ready: week.ready.value, nights: week.nights.value, open: week.open.value }
     const loading = team.loading.value || feedLoading.value
-    const cats = team.cats.value as CatSpec[]
-    const categories = cats?.map((c) => String(c.statId)) ?? []
+    const cats = hockeyCatSpecs(team.cats.value)
+    const categories = cats.map((c) => hockeyCatLabel(c.statId))
 
     if (loading) return { rows: [], categories, loading: true, problem: '', week: emptyWeek, picks: [] }
     if (!team.supported.value) {
@@ -166,7 +167,10 @@ export function useHockeyWire(): {
     if (!cats?.length) {
       return { rows: [], categories, loading: false, problem: 'This league published no categories, so nothing can be scored.', week: emptyWeek, picks: [] }
     }
-    const myTeamId = String(team.myTeamId.value ?? '')
+    /* Same normalising as groupPoolByTeam, which strips `espn_` off every team key. Without it
+       your own team was never found among the league totals, every add scored exactly zero,
+       and the Wire said nothing on it improves your standings. */
+    const myTeamId = String(team.myTeamId.value ?? '').replace(/^espn_/, '')
     if (!myTeamId) {
       return { rows: [], categories, loading: false, problem: 'We could not tell which team is yours in this league.', week: emptyWeek, picks: [] }
     }
@@ -225,9 +229,18 @@ export function useHockeyWire(): {
     const nameByKey = new Map<string, string>()
     for (const p of team.rosterPlayers.value ?? []) nameByKey.set(String(p.playerKey), p.name)
 
+    /*
+     * Only swaps that still help once their drop is assigned. rankUpgrades screens each free
+     * agent against your weakest player, then hands later ones your next-weakest so the list
+     * does not repeat one drop — which, twenty rows down, meant "drop Auston Matthews for Matt
+     * Grzelcyk" printed as an upgrade of +-0.11. A swap that costs you is not a suggestion.
+     */
     const rows = rankUpgrades({ freeAgents, leagueTotals, myTeamId, cats, dropOptions })
+      .filter((u) => u.deltaEcw >= MIN_GAIN_ECW)
       .map((u) => ({
         ...u,
+        fixes: u.fixes.map(hockeyCatLabel),
+        holds: u.holds.map(hockeyCatLabel),
         dropName: u.dropKey ? nameByKey.get(u.dropKey) ?? u.dropKey : '',
         side: sideOf(u.player.position),
         percentOwned: freeAgents.find((f) => f.playerKey === u.player.key)?.percentOwned ?? null,
@@ -276,6 +289,44 @@ export function groupPoolByTeam(
 }
 
 /** The league's own columns, in the shape the hockey value model reads them. */
+/** How a hockey column reads to a person. Keys not listed already read fine (W, G, A, PIM, SOG). */
+export const HOCKEY_CAT_LABEL: Record<string, string> = {
+  SVPCT: 'SV%', PLUSMINUS: '+/-', TOIG: 'TOI/G', SHO: 'SO', HITS: 'HIT', WINPCT: 'W%', PTS: 'P',
+}
+export const hockeyCatLabel = (key: string) => HOCKEY_CAT_LABEL[key] ?? key
+
+const KNOWN_KEYS = new Set(Object.values(HOCKEY_STAT_BY_ID))
+/** rankUpgrades' own screening threshold, applied again after drops are assigned. */
+const MIN_GAIN_ECW = 0.05
+
+const GOALIE_CAT_KEYS = new Set(['W', 'L', 'SA', 'GA', 'SV', 'SHO', 'GAA', 'SVPCT', 'WINPCT', 'OTL', 'DEC'])
+
+/**
+ * The league's categories as the hockey engine reads them.
+ *
+ * ESPN's breakdown hands categories over as its own stat NUMBERS ('13' for goals) with its own
+ * lower-is-better flags, while every projection the Wire scores is keyed by name ('G'). Read
+ * as-is, every team total came out zero, the header printed "1 · 10 · 11 · 13…", and ESPN's
+ * flags called plus/minus a column you want low and GAA one you want high. Numbers are mapped
+ * to names through the same table the projections use, the direction comes from the hockey
+ * list rather than the platform's, and GAA and SV% carry the volume they are earned over.
+ * A category already named (or one we cannot name) passes through unchanged.
+ */
+export function hockeyCatSpecs(raw: { statId: string | number; lowerIsBetter?: boolean }[] | null | undefined): CatSpec[] {
+  return (raw ?? []).map((c) => {
+    const id = String(c.statId)
+    const key = /^\d+$/.test(id) ? (HOCKEY_STAT_BY_ID[Number(id)] ?? id) : id
+    const volume = RATE_VOLUME[key]
+    return {
+      statId: key,
+      lowerIsBetter: KNOWN_KEYS.has(key) ? LOWER_IS_BETTER.has(key) : !!c.lowerIsBetter,
+      side: GOALIE_CAT_KEYS.has(key) ? 'goalie' : 'skater',
+      isRatio: !!volume,
+      ...(volume ? { volumeStatId: volume } : {}),
+    }
+  })
+}
+
 export function toHockeyCategories(cats: CatSpec[]): HockeyCategory[] {
   /* statId is 0 because it exists only so a surface can explain where a column came from, and
      here the column came from the league's own category list rather than from an id lookup. */

@@ -138,3 +138,34 @@ describe('topUsablePicks', () => {
     expect(topUsablePicks(rows).map((r) => r.key)).toEqual(['c', 'b', 'a'])
   })
 })
+
+describe('hockeyCatSpecs', () => {
+  it('names ESPN stat numbers and takes the direction from hockey, not the platform', async () => {
+    const { hockeyCatSpecs } = await import('../useHockeyWire')
+    // Ottawa's real list, with ESPN's flags as they came back (plus/minus "negative", GAA not).
+    const raw = [
+      { statId: '1', lowerIsBetter: false }, { statId: '10', lowerIsBetter: false },
+      { statId: '11', lowerIsBetter: false }, { statId: '13', lowerIsBetter: false },
+      { statId: '15', lowerIsBetter: true }, { statId: '38', lowerIsBetter: false },
+    ]
+    const out = hockeyCatSpecs(raw)
+    expect(out.map((c) => c.statId)).toEqual(['W', 'GAA', 'SVPCT', 'G', 'PLUSMINUS', 'PPP'])
+    expect(out.find((c) => c.statId === 'GAA')).toMatchObject({ lowerIsBetter: true, side: 'goalie', isRatio: true, volumeStatId: 'TOI' })
+    expect(out.find((c) => c.statId === 'SVPCT')).toMatchObject({ lowerIsBetter: false, isRatio: true, volumeStatId: 'SA' })
+    expect(out.find((c) => c.statId === 'PLUSMINUS')).toMatchObject({ lowerIsBetter: false, side: 'skater', isRatio: false })
+  })
+
+  it('passes named and unknown categories through', async () => {
+    const { hockeyCatSpecs } = await import('../useHockeyWire')
+    expect(hockeyCatSpecs([{ statId: 'G', lowerIsBetter: false }, { statId: '999', lowerIsBetter: true }]))
+      .toMatchObject([{ statId: 'G', lowerIsBetter: false }, { statId: '999', lowerIsBetter: true }])
+    expect(hockeyCatSpecs(null)).toEqual([])
+  })
+})
+
+describe('hockeyCatLabel', () => {
+  it('reads like the column a manager knows', async () => {
+    const { hockeyCatLabel } = await import('../useHockeyWire')
+    expect(['SVPCT', 'PLUSMINUS', 'TOIG', 'G', 'GAA'].map(hockeyCatLabel)).toEqual(['SV%', '+/-', 'TOI/G', 'G', 'GAA'])
+  })
+})
