@@ -4,9 +4,27 @@ export interface GoalieRankInput {
   playerId: number
   name: string
   team: string
-  /** Projected starts — what the GS column shows and the W/SV/SHO/GA totals are built on. */
+  /** Projected starts — what the GS column shows and the volume behind every column. */
   starts: number
-  stats: { W: number; SV: number; SHO: number; GA: number; GP: number }
+  /**
+   * The standard goalie columns plus the volume each rate is earned over: SV% over shots
+   * faced (SA), GAA over minutes in net (TOI, starts × 60). The units only need to agree
+   * across goalies, since impact is measured against the pool.
+   */
+  stats: { W: number; SHO: number; SVPCT: number; SA: number; GAA: number; TOI: number; GP: number }
+}
+
+function statsOf(starts: number, wins: number, shutouts: number, saves: number, goalsAgainst: number) {
+  const shotsAgainst = saves + goalsAgainst
+  return {
+    W: wins,
+    SHO: shutouts,
+    SVPCT: shotsAgainst > 0 ? saves / shotsAgainst : NaN,
+    SA: shotsAgainst,
+    GAA: starts > 0 ? goalsAgainst / starts : NaN,
+    TOI: starts * 60,
+    GP: starts,
+  }
 }
 
 interface GoalieSummaryRow {
@@ -44,7 +62,7 @@ export function goalieRankInput(
         name: g.name,
         team: String(g.team ?? '').split(',').pop()?.trim() ?? '',
         starts: g.starts,
-        stats: { W: g.wins, SV: g.saves, SHO: g.shutouts, GA: g.goalsAgainst, GP: g.starts },
+        stats: statsOf(g.starts, g.wins, g.shutouts, g.saves, g.goalsAgainst),
       }))
   }
   return summary.map((g) => ({
@@ -52,6 +70,6 @@ export function goalieRankInput(
     name: g.goalieFullName,
     team: String(g.teamAbbrevs ?? '').split(',').pop()?.trim() ?? '',
     starts: g.gamesStarted,
-    stats: { W: g.wins, SV: g.saves, SHO: g.shutouts, GA: g.goalsAgainst, GP: g.gamesStarted },
+    stats: statsOf(g.gamesStarted, g.wins, g.shutouts, g.saves, g.goalsAgainst),
   }))
 }

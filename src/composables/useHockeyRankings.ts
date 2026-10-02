@@ -82,15 +82,23 @@ export const DEFAULT_CATEGORIES: HockeyCategory[] = [
  * exists rather than being bolted onto the skater set.
  *
  * GAA reverses: a lower goals-against average wins the column.
+ *
+ * THE STANDARD SET, AND RATES WHERE THE STANDARD HAS RATES. This used to score saves and total
+ * goals against. Total goals against punishes playing: a goalie with sixty starts concedes more
+ * than one with forty at the same quality, so Hellebuyck sat 17th and Shesterkin 14th behind
+ * tandem goalies. ESPN's default goalie columns are W, GAA, SV% and SO (src/hockey/manualRules.ts
+ * already says so), and the category engine already prices a rate as impact — distance from the
+ * pool average times the volume behind it — so a backup's twenty good starts count for twenty
+ * starts, not sixty. See RATE_VOLUME in src/hockey/hockeyCategoryValue.ts.
  */
 /** Columns that belong to goalies, so the skater pass can exclude them. */
 const GOALIE_KEYS = new Set(['W', 'L', 'SV', 'SHO', 'GA', 'GAA', 'SVPCT', 'SA', 'OTL', 'DEC'])
 
 export const GOALIE_CATEGORIES: HockeyCategory[] = [
   { key: 'W', statId: 1, reverse: false },
-  { key: 'SV', statId: 6, reverse: false },
+  { key: 'GAA', statId: 10, reverse: true },
+  { key: 'SVPCT', statId: 11, reverse: false },
   { key: 'SHO', statId: 7, reverse: false },
-  { key: 'GA', statId: 4, reverse: true },
 ]
 
 /** A 12-team league rostering ~14 skaters apiece. The pool the z-scores are measured over. */
