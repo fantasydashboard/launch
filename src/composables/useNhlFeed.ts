@@ -10,6 +10,8 @@ import { regressShooting } from '@/hockey/shootingRegression'
 import { projectGoalies, type GoalieProjection } from '@/hockey/goalieProjection'
 import { goalieMatcher } from '@/hockey/goalieNameMatch'
 import type { EspnHockeyPlayer } from '@/hockey/hockeyProjectionSource'
+import { fetchBaseline } from '@/hockey/fetchBaseline'
+import { blendSkaterRates, blendGoalieProjections } from '@/hockey/baselineBlend'
 
 /**
  * The hockey feed, fetched once and shared by every surface that needs it.
@@ -50,6 +52,8 @@ export interface NhlFeed {
    * social card whose numbers quietly reverted. Anything that cares can now check.
    */
   agesKnown?: number
+  /** Present only when the public baseline answered and was blended in; absent means the board is ours alone. */
+  baseline?: { fetchedAt: string; skatersMatched: number; goaliesMatched: number }
 }
 
 const EMPTY: NhlFeed = { rates: [], goalies: [], espn: [], season: '', started: false, historyGames: new Map(), agesKnown: 0, goalieProjections: [] }
@@ -107,6 +111,8 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
    * transition itself, so there is no date logic here deciding when to "switch over". A rule
    * like that is wrong for a week every year and nobody notices.
    */
+  // Started with the other fetches, awaited at the end. Never rejects: null means no baseline.
+  const baselineP = fetchBaseline()
   const [current, currentIce, prior, priorIce, curG, priorG, curRt, priorRt, espn,
          prior2, prior2Rt, prior3, prior3Rt, bios, priorG2, priorG3] =
     await Promise.all([
@@ -318,15 +324,26 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
     espnStarts.size ? espnStarts : undefined,
   )
 
+  const baseline = await baselineP
+  const withBaseline = baseline
+    ? {
+        skaters: blendSkaterRates(rates, baseline),
+        goalies: blendGoalieProjections(goalieProjections, baseline),
+      }
+    : null
+
   return {
     historyGames,
     agesKnown: bornById.size,
-    goalieProjections,
-    rates,
+    goalieProjections: withBaseline ? withBaseline.goalies.goalies : goalieProjections,
+    rates: withBaseline ? withBaseline.skaters.rates : rates,
     goalies: curG.length ? curG : priorG,
     espn,
     season: started ? seasonId(year) : seasonId(year - 1),
     started,
+    ...(baseline && withBaseline
+      ? { baseline: { fetchedAt: baseline.fetchedAt, skatersMatched: withBaseline.skaters.matched, goaliesMatched: withBaseline.goalies.matched } }
+      : {}),
   }
 }
 
