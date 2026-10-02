@@ -36,7 +36,7 @@ export function blendSkaterRates(rates: SkaterRate[], baseline: Baseline, w = BA
     }
     pg.points = (pg.goals ?? 0) + (pg.assists ?? 0)
     const ppShare = r.perGame.ppPoints > 0 ? (r.perGame.ppGoals ?? 0) / r.perGame.ppPoints : 1 / 3
-    if (Number.isFinite(pg.ppPoints)) pg.ppGoals = pg.ppPoints * ppShare
+    if (Number.isFinite(pg.ppPoints)) pg.ppGoals = pg.ppPoints * Math.min(1, ppShare)
     return { ...r, perGame: pg }
   })
   return { rates: out, matched }
@@ -57,4 +57,24 @@ export function blendGoalieProjections(goalies: GoalieProjection[], baseline: Ba
              saves, goalsAgainst: g.shotsAgainst - saves }
   })
   return { goalies: out, matched }
+}
+
+/**
+ * The blend step, fenced. A malformed baseline must leave the board exactly as it was, so any
+ * throw returns our numbers untouched and no `baseline` field.
+ */
+export function applyBaseline(rates: SkaterRate[], goalies: GoalieProjection[], baseline: Baseline | null) {
+  if (!baseline) return { rates, goalieProjections: goalies }
+  try {
+    const sk = blendSkaterRates(rates, baseline)
+    const gl = blendGoalieProjections(goalies, baseline)
+    return {
+      rates: sk.rates,
+      goalieProjections: gl.goalies,
+      baseline: { fetchedAt: baseline.fetchedAt, skatersMatched: sk.matched, goaliesMatched: gl.matched },
+    }
+  } catch (e) {
+    console.warn('[hockey baseline] blend failed, using our rates', e)
+    return { rates, goalieProjections: goalies }
+  }
 }

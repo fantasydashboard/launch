@@ -11,7 +11,7 @@ import { projectGoalies, type GoalieProjection } from '@/hockey/goalieProjection
 import { goalieMatcher } from '@/hockey/goalieNameMatch'
 import type { EspnHockeyPlayer } from '@/hockey/hockeyProjectionSource'
 import { fetchBaseline } from '@/hockey/fetchBaseline'
-import { blendSkaterRates, blendGoalieProjections } from '@/hockey/baselineBlend'
+import { applyBaseline } from '@/hockey/baselineBlend'
 
 /**
  * The hockey feed, fetched once and shared by every surface that needs it.
@@ -325,25 +325,18 @@ async function loadFeed(espnSeason: number): Promise<NhlFeed> {
   )
 
   const baseline = await baselineP
-  const withBaseline = baseline
-    ? {
-        skaters: blendSkaterRates(rates, baseline),
-        goalies: blendGoalieProjections(goalieProjections, baseline),
-      }
-    : null
+  const withBaseline = applyBaseline(rates, goalieProjections, baseline)
 
   return {
     historyGames,
     agesKnown: bornById.size,
-    goalieProjections: withBaseline ? withBaseline.goalies.goalies : goalieProjections,
-    rates: withBaseline ? withBaseline.skaters.rates : rates,
+    goalieProjections: withBaseline.goalieProjections,
+    rates: withBaseline.rates,
     goalies: curG.length ? curG : priorG,
     espn,
     season: started ? seasonId(year) : seasonId(year - 1),
     started,
-    ...(baseline && withBaseline
-      ? { baseline: { fetchedAt: baseline.fetchedAt, skatersMatched: withBaseline.skaters.matched, goaliesMatched: withBaseline.goalies.matched } }
-      : {}),
+    ...(withBaseline.baseline ? { baseline: withBaseline.baseline } : {}),
   }
 }
 

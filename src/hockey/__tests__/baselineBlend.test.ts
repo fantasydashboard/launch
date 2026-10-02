@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { blendSkaterRates, blendGoalieProjections, type Baseline } from '../baselineBlend'
+import { describe, it, expect, vi } from 'vitest'
+import { blendSkaterRates, blendGoalieProjections, applyBaseline, type Baseline } from '../baselineBlend'
 
 const rate = (playerId: number, perGame: Record<string, number>) => ({
   playerId, name: `P${playerId}`, position: 'C', team: 'COL', gamesPlayed: 80,
@@ -63,5 +63,35 @@ describe('blendGoalieProjections', () => {
   it('leaves a goalie with 0 starts unchanged', () => {
     const z = { ...g, starts: 0, wins: 0, shutouts: 0 }
     expect(blendGoalieProjections([z], base).goalies[0]).toEqual(z)
+  })
+})
+
+describe('ppGoals share clamp', () => {
+  it('never lets ppGoals exceed ppPoints', () => {
+    const odd = rate(1, { goals: 0.4, assists: 0.6, ppPoints: 0.1, ppGoals: 0.5 })
+    const g = blendSkaterRates([odd], base).rates[0].perGame
+    expect(g.ppGoals).toBeLessThanOrEqual(g.ppPoints)
+  })
+})
+
+describe('applyBaseline', () => {
+  const ours = [rate(1, { goals: 0.4, assists: 0.6, ppPoints: 0.3, ppGoals: 0.1 })] as any
+  const goalies = [{ playerId: 9, starts: 60, wins: 30, shutouts: 3, shotsAgainst: 1500, savePct: 0.91, saves: 1365, goalsAgainst: 135 }] as any
+  it('returns our numbers and no baseline field with no baseline', () => {
+    const out = applyBaseline(ours, goalies, null)
+    expect(out.rates).toBe(ours); expect(out.goalieProjections).toBe(goalies); expect(out.baseline).toBeUndefined()
+  })
+  it('blends and reports matches', () => {
+    const out = applyBaseline(ours, goalies, base)
+    expect(out.rates[0].perGame.goals).toBeCloseTo(0.5)
+    expect(out.baseline).toEqual({ fetchedAt: base.fetchedAt, skatersMatched: 1, goaliesMatched: 1 })
+  })
+  it('keeps our numbers untouched when the blend throws', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const bad = { fetchedAt: 't', skaters: [null], goalies: [] } as any
+    const out = applyBaseline(ours, goalies, bad)
+    expect(out.rates).toBe(ours); expect(out.goalieProjections).toBe(goalies); expect(out.baseline).toBeUndefined()
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
   })
 })

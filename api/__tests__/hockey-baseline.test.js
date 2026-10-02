@@ -44,17 +44,49 @@ describe('handler', () => {
   const res = () => { const r = { headers: {}, statusCode: 0, body: null,
     setHeader(k, v) { this.headers[k] = v }, status(c) { this.statusCode = c; return this },
     json(b) { this.body = b; return this }, end() { return this } }; return r }
+  const many = Array.from({ length: 320 }, (_, i) => sk(i + 1))
+  const goalies = (n = 35, extra = {}) => Array.from({ length: n }, (_, i) => gk(i + 1, extra))
+  const serve = (skRows, glPage) => vi.stubGlobal('fetch', vi.fn(async (url) => ({ ok: true,
+    text: async () => (String(url).includes('goalie') ? glPage : page(skRows)) })))
+  const run = async () => { const r = res(); await handler({ method: 'GET', query: {} }, r); return r }
+  const expect502 = (r) => { expect(r.statusCode).toBe(502); expect(r.headers['Cache-Control']).toBeUndefined() }
+
   it('502s when the skater table is too small', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => page([sk(1)]) })))
-    const r = res(); await handler({ method: 'GET', query: {} }, r)
-    expect(r.statusCode).toBe(502)
+    serve([sk(1)], page(goalies()))
+    expect502(await run())
   })
   it('serves a cached baseline when both tables are healthy', async () => {
-    const many = Array.from({ length: 320 }, (_, i) => sk(i + 1))
-    vi.stubGlobal('fetch', vi.fn(async (url) => ({ ok: true, text: async () => page(String(url).includes('goalie') ? [gk(9)] : many) })))
-    const r = res(); await handler({ method: 'GET', query: {} }, r)
+    serve(many, page(goalies()))
+    const r = await run()
     expect(r.statusCode).toBe(200)
     expect(r.body.skaters).toHaveLength(320)
+    expect(r.body.goalies).toHaveLength(35)
     expect(r.headers['Cache-Control']).toMatch(/s-maxage=86400/)
+  })
+  it('502s when fetch throws or answers not-ok', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline') }))
+    expect502(await run())
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 503 })))
+    expect502(await run())
+  })
+  it('502s when the goalie page has no tableData', async () => {
+    serve(many, '<html></html>')
+    expect502(await run())
+  })
+  it('502s with fewer than 30 usable goalies', async () => {
+    serve(many, page(goalies(29)))
+    expect502(await run())
+  })
+  it('drops an out-of-range goalie (sv 91.2)', async () => {
+    serve(many, page([...goalies(30), gk(999, { sv_pct_season_proj: 91.2 })]))
+    const r = await run()
+    expect(r.statusCode).toBe(200)
+    expect(r.body.goalies.map((g) => g.playerId)).not.toContain(999)
+    expect(r.body.goalies).toHaveLength(30)
+  })
+  it('502s when the skater scale is not per-season', async () => {
+    const perGame = Array.from({ length: 320 }, (_, i) => sk(i + 1, { g_season_proj: 0.5 }))
+    serve(perGame, page(goalies()))
+    expect502(await run())
   })
 })

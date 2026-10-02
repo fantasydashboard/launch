@@ -6,12 +6,15 @@
 //
 // Rates come from the FULL-SEASON columns divided by 84 games. Their rest-of-season columns
 // zero out about 70 skaters and give the rest a flat 84 games, so they are not usable as totals.
-// Anything that doesn't look like their real table is a 502, never a partial baseline.
+// Anything that doesn't look like their real table is a 502, never a partial baseline: fewer
+// than 300 skaters, fewer than 30 usable goalies (gs >= 5, sv 0.8-1, win rate 0-1, shutout rate
+// 0-0.5), a missing table, or a skater scale that is not per-season (median goals/game 0.05-0.6).
 
 const SKATERS_URL = 'https://5v5hockey.com/ros-projections-embedded/'
 const GOALIES_URL = 'https://5v5hockey.com/goalie-ros-projections-embedded/'
 const SEASON_GP = 84
 const MIN_SKATERS = 300
+const MIN_GOALIES = 30
 const SKATER_KEYS = { goals: 'g', assists: 'a', plusMinus: 'plus_minus', penaltyMinutes: 'pim',
   ppPoints: 'ppp', shots: 'sog', hits: 'hit', blockedShots: 'blk' }
 
@@ -66,7 +69,8 @@ export function toBaseline(skaterRows, goalieRows, fetchedAt) {
   for (const g of goalieRows ?? []) {
     const id = num(g?.player_nhl_id), gs = num(g?.gs_season_proj)
     const w = num(g?.w_season_proj), so = num(g?.so_season_proj), sv = num(g?.sv_pct_season_proj)
-    if (id === null || seenG.has(id) || !gs || gs <= 0 || w === null || so === null || sv === null) continue
+    if (id === null || seenG.has(id) || gs === null || w === null || so === null || sv === null) continue
+    if (!(gs >= 5) || sv < 0.8 || sv > 1 || w < 0 || w / gs > 1 || so < 0 || so / gs > 0.5) continue
     seenG.add(id)
     goalies.push({ playerId: id, name: String(g.player_name ?? ''), savePct: sv, winsPerStart: w / gs, shutoutsPerStart: so / gs })
   }
@@ -74,7 +78,7 @@ export function toBaseline(skaterRows, goalieRows, fetchedAt) {
 }
 
 async function page(url) {
-  const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (UFD baseline; once daily)' } })
+  const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (UFD baseline; once daily)' }, signal: AbortSignal.timeout(8000) })
   if (!r.ok) throw new Error(`${url} -> ${r.status}`)
   return extractTableData(await r.text())
 }
@@ -86,9 +90,18 @@ export default async function handler(req, res) {
   try {
     const [sk, gl] = await Promise.all([page(SKATERS_URL), page(GOALIES_URL)])
     if (!sk) return res.status(502).json({ error: 'skater table not found' })
-    const baseline = toBaseline(sk, gl ?? [], new Date().toISOString())
+    if (!gl) return res.status(502).json({ error: 'goalie table not found' })
+    const baseline = toBaseline(sk, gl, new Date().toISOString())
     if (baseline.skaters.length < MIN_SKATERS) {
       return res.status(502).json({ error: `only ${baseline.skaters.length} usable skaters` })
+    }
+    if (baseline.goalies.length < MIN_GOALIES) {
+      return res.status(502).json({ error: `only ${baseline.goalies.length} usable goalies` })
+    }
+    const gpg = baseline.skaters.map((s) => s.perGame.goals).filter((g) => g > 0).sort((a, b) => a - b)
+    const median = gpg.length ? gpg[Math.floor(gpg.length / 2)] : 0
+    if (!(median >= 0.05 && median <= 0.6)) {
+      return res.status(502).json({ error: `skater scale looks wrong (median goals/game ${median.toFixed(3)})` })
     }
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=86400')
     return res.status(200).json(baseline)
