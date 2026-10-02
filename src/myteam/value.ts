@@ -14,6 +14,29 @@ const PIT_BUDGET_SHARE = 0.3
 // trade value (freely replaceable depth), so studs aren't compared against bench filler.
 const REPLACEMENT_QUANTILE = 0.35
 
+/** A spec set is hockey's when it names hockey's two sides. */
+function isHockeyCats(cats: CatSpec[]): boolean {
+  return cats.some((c) => c.side === 'skater' || c.side === 'goalie')
+}
+
+/**
+ * How the league's trade value splits between the two role slots.
+ *
+ * Baseball keeps the auction convention, 70/30, which is a statement about a market rather than
+ * about a category sheet. Hockey has no such convention here, so the split comes from the
+ * LEAGUE'S OWN COLUMNS: a sheet where three of nine categories are won in goal gives a third of
+ * its value to goalies. Hardcoding baseball's number would have been close for a standard nine
+ * and badly wrong for a league that scores five goalie columns out of ten — and the number
+ * would then be a guess nobody could check, instead of a count anybody can.
+ */
+function budgetShareFor(cats: CatSpec[]): { hitter: number; pitcher: number } {
+  if (!isHockeyCats(cats)) return { hitter: HIT_BUDGET_SHARE, pitcher: PIT_BUDGET_SHARE }
+  const goalie = cats.filter((c) => c.side === 'goalie').length
+  if (!goalie || goalie === cats.length) return { hitter: HIT_BUDGET_SHARE, pitcher: PIT_BUDGET_SHARE }
+  const share = goalie / cats.length
+  return { hitter: 1 - share, pitcher: share }
+}
+
 function isPitcherPos(position: string): boolean {
   return (position || '')
     .split(/[,/|]/)
@@ -23,8 +46,25 @@ function isHitterPos(position: string): boolean {
   const tokens = (position || '').split(/[,/|]/).map((t) => t.trim().toUpperCase()).filter(Boolean)
   return tokens.some((t) => !['SP', 'RP', 'P'].includes(t))
 }
-function participatesBySide(position: string, side: 'hit' | 'pit'): boolean {
-  return side === 'pit' ? isPitcherPos(position) : isHitterPos(position)
+/** Hockey's goalie, who is the only one who can appear in a save-percentage column. */
+function isGoaliePos(position: string): boolean {
+  return (position || '').split(/[,/|]/).some((t) => t.trim().toUpperCase() === 'G')
+}
+/**
+ * Does a player compete in this column at all?
+ *
+ * THE DEFAULT BRANCH IS WHY HOCKEY NEEDED ITS OWN CASE. `isHitterPos` answers "is any of his
+ * positions not a pitcher", which a hockey GOALIE satisfies — so under the old two-way test a
+ * goalie participated in goals, assists and shots on goal, and every skater column was pooled
+ * against netminders projected to score none of them.
+ */
+function participatesBySide(position: string, side: CatSpec['side']): boolean {
+  switch (side) {
+    case 'pit': return isPitcherPos(position)
+    case 'goalie': return isGoaliePos(position)
+    case 'skater': return !isGoaliePos(position)
+    default: return isHitterPos(position)
+  }
 }
 
 /**
@@ -128,9 +168,20 @@ export function computeValueBaseline(universe: ValuePoolPlayer[], cats: CatSpec[
   return out
 }
 
-/** Classify a player's role. Two-way (both pitcher and hitter eligible) is assigned
- *  to whichever side they participate in more categories (tie -> hitter). */
+/**
+ * Classify a player into one of the two ROLE SLOTS.
+ *
+ * The slots are named for baseball and are not only baseball's: they are the two groups that
+ * get their own replacement level and their own share of the league's trade value. Hockey's
+ * goalies take the minority slot for exactly the reason pitchers do — they are scarce, they
+ * compete only against each other, and comparing a netminder's category total against a
+ * winger's would price both wrongly.
+ *
+ * Two-way (eligible both ways) is assigned to whichever side they participate in more
+ * categories; a tie goes to the majority slot.
+ */
 function playerRole(player: ValuePoolPlayer, cats: CatSpec[]): 'hitter' | 'pitcher' {
+  if (isHockeyCats(cats)) return isGoaliePos(player.position) ? 'pitcher' : 'hitter'
   const pitcher = isPitcherPos(player.position)
   const hitter = isHitterPos(player.position)
   if (pitcher && !hitter) return 'pitcher'
@@ -266,7 +317,7 @@ export function computeRosterValue(
     hitter: quantile(scoresByRole.hitter, REPLACEMENT_QUANTILE),
     pitcher: quantile(scoresByRole.pitcher, REPLACEMENT_QUANTILE),
   }
-  const budgetShare = { hitter: HIT_BUDGET_SHARE, pitcher: PIT_BUDGET_SHARE }
+  const budgetShare = budgetShareFor(cats)
   const sumVorByRole = { hitter: 0, pitcher: 0 }
   for (const p of pool) {
     const role = roleOf.get(p.playerKey)!

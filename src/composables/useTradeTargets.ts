@@ -114,13 +114,16 @@ export function useTradeTargets(inputs: {
   myTeamKey: Ref<string | null>
   teamNameByKey: Ref<Map<string, string>>
   teamLogoByKey?: Ref<Map<string, string>>
-  seasonFraction: number
+  /* A Ref, because it is not a constant: a hockey league needs 1 (its pool already holds
+     projections) and a baseball league needs the real figure, and reading it once at setup
+     froze whichever league happened to be open when this page mounted. */
+  seasonFraction: Ref<number>
   labelOf: (statId: string) => string
   // Universe-anchored value baseline (z vs the startable projected-player pool) + clamp, so
   // Trades values match My Team — see computeValueBaseline / useValueBaseline. Optional: absent,
   // value falls back to pool-relative z (the old behavior).
   baseline?: Ref<ValueBaseline | null>
-  zClamp?: number
+  zClamp?: Ref<number | undefined>
   // Actual season-pace stats per playerKey for the sell-high/buy-low PERCEIVED leg. Pass when the
   // `pool` is projection-only (FG ROS, no raw stats); else timing has nothing to diverge from.
   perceivedStatsByKey?: Ref<Record<string, Record<string, number>>>
@@ -144,7 +147,7 @@ export function useTradeTargets(inputs: {
     const byTeam = new Map<string, PoolPlayer[]>()
     for (const p of pool) {
       if (!p.teamKey) continue
-      eff.set(p.playerKey, { playerKey: p.playerKey, stats: toEffectiveStats(p.stats, fg[p.playerKey] ?? null, cats, inputs.seasonFraction) })
+      eff.set(p.playerKey, { playerKey: p.playerKey, stats: toEffectiveStats(p.stats, fg[p.playerKey] ?? null, cats, inputs.seasonFraction.value) })
       ;(byTeam.get(p.teamKey) ?? byTeam.set(p.teamKey, []).get(p.teamKey)!).push(p)
     }
     if (!byTeam.has(myKey)) return null
@@ -160,7 +163,7 @@ export function useTradeTargets(inputs: {
     //    ratio cat like ERA, but keeps full credit for counting cats like SV/HLD/K).
     //  - marketValue: the CROSS-ROLE percentile (hitter and pitcher on one scale), so deal
     //    evenness and the value meter are comparable across positions.
-    const valueOpts = { baseline: inputs.baseline?.value ?? undefined, zClamp: inputs.zClamp }
+    const valueOpts = { baseline: inputs.baseline?.value ?? undefined, zClamp: inputs.zClamp?.value }
     const valued = computeRosterValue(
       pool.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: eff.get(p.playerKey)!.stats })),
       pool.map((p) => p.playerKey),
@@ -177,7 +180,7 @@ export function useTradeTargets(inputs: {
     //     Overperformer → sell-high; underperformer → buy-low. Powers the timing mode and the
     //     buy/sell side badges. Unmatched players have perceived == ros → no signal. ---
     const perceivedValued = computeRosterValue(
-      pool.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: inputs.perceivedStatsByKey?.value?.[p.playerKey] ?? toEffectiveStats(p.stats, null, cats, inputs.seasonFraction) })),
+      pool.map((p) => ({ playerKey: p.playerKey, position: p.position, stats: inputs.perceivedStatsByKey?.value?.[p.playerKey] ?? toEffectiveStats(p.stats, null, cats, inputs.seasonFraction.value) })),
       pool.map((p) => p.playerKey),
       cats,
       valueOpts,

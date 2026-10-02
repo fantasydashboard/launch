@@ -19,6 +19,7 @@ import OpportunityCard from '@/components/trades/OpportunityCard.vue'
 import LeagueLandscape from '@/components/trades/LeagueLandscape.vue'
 import { useLeagueLandscape } from '@/composables/useLeagueLandscape'
 import { buildEngine } from '@/trades/engine'
+import { useHockeyCategoryLeague } from '@/composables/useHockeyCategoryLeague'
 import { analyzeTrade } from '@/trades/analyzeTrade'
 import { teamLogoFor } from '@/players/teamLogo'
 import Avatar from '@/components/trades/Avatar.vue'
@@ -90,12 +91,33 @@ function retry() {
     loadRoster()
     yahooLeague.load()
   }
+  /* The NHL feed, which is what prices a hockey league. Self-disabling elsewhere. */
+  hockey.load()
 }
 
 // === Unified, platform-neutral inputs into the trade engine ===
+/*
+ * HOCKEY, which this page used to have nothing to say about.
+ *
+ * Every input below is priced through FanGraphs. A hockey roster matches none of it, so the
+ * engine produced no values, no landscape and no standings deltas — the page rendered "no
+ * dominant surplus, no glaring holes, no moves improve your standings", which reads like a
+ * considered verdict on a roster and was actually the sound of an empty pipeline.
+ *
+ * There is no parallel engine here. The NHL feed's projections go in as the pool's own stats
+ * with a season fraction of 1, which is exactly what `toEffectiveStats` passes through
+ * untouched — so the existing generator, analyzer and landscape all work on them. The same
+ * assembly feeds the League page, so the two tabs cannot disagree.
+ */
+const rawHockeyPool = computed(() =>
+  (isEspn.value ? espn.pool.value : yahooLeague.pool.value)
+    .map((p) => ({ playerKey: p.playerKey, teamKey: p.teamKey, name: p.name, position: p.position })))
+const hockey = useHockeyCategoryLeague(rawHockeyPool)
+
 // Yahoo ranks/values off the PROJECTED pool (FG ROS), but its light rows carry no headshots —
 // backfill those from useMyRoster's actual pool (by playerKey) so deal-card avatars survive.
 const pool = computed(() => {
+  if (hockey.serves.value) return hockey.pool.value as unknown as typeof espn.pool.value
   if (isEspn.value) return espn.pool.value
   const shots = new Map(yPool.value.map((p) => [p.playerKey, (p as { headshot?: string }).headshot]))
   return yahooLeague.pool.value.map((p) => ({
@@ -103,12 +125,17 @@ const pool = computed(() => {
     headshot: (p as { headshot?: string }).headshot || shots.get(p.playerKey) || '',
   }))
 })
-const fgByKey = computed(() => (isEspn.value ? espn.fgByKey.value : yahooLeague.fgByKey.value))
+/* No FanGraphs row exists for a skater, and an empty map is what makes `toEffectiveStats`
+   pass the NHL projections through as they are. */
+const fgByKey = computed(() =>
+  hockey.serves.value ? {} : (isEspn.value ? espn.fgByKey.value : yahooLeague.fgByKey.value))
 const statcastByKey = computed(() => (isEspn.value ? espn.statcastByKey.value : yStatcast.value))
 // Actual season-pace stats per playerKey (from useMyRoster) — the perceived leg for sell-high,
 // since the projected pool has no raw stats. ESPN's pool has raw stats, so it needs no override.
 const perceivedStatsByKey = computed<Record<string, Record<string, number>>>(() => {
-  if (isEspn.value) return {}
+  /* Hockey has no season-to-date pace here yet, so there is nothing for the projection to
+     diverge FROM — which means no buy-low or sell-high read, rather than a made-up one. */
+  if (hockey.serves.value || isEspn.value) return {}
   const out: Record<string, Record<string, number>> = {}
   for (const p of yPool.value) out[p.playerKey] = toEffectiveStats(p.stats, null, catSpecs.value, seasonFraction.value)
   return out
@@ -127,6 +154,7 @@ const lowerBetterByStat = computed(() => {
   return m
 })
 const catSpecs = computed<CatSpec[]>(() => {
+  if (hockey.serves.value) return hockey.catSpecs.value
   const findStatId = (names: string[]) => categories.value.find((c) => names.includes((c.label || c.name || '').toUpperCase().trim()))?.statId
   const ipStatId = findStatId(['IP', 'INNINGS PITCHED'])
   const abStatId = findStatId(['AB', 'AT BATS', 'PA', 'PLATE APPEARANCES'])
@@ -136,7 +164,9 @@ const catSpecs = computed<CatSpec[]>(() => {
     return { statId: c.statId, lowerIsBetter, side, isRatio, volumeStatId: resolveVolumeStatId(isRatio, side, ipStatId, abStatId) }
   })
 })
-const labelOf = (statId: string) => categories.value.find((c) => c.statId === statId)?.label ?? statId
+/* A hockey statId is already the column's name ('G', 'SVPCT') — there is nothing to look up. */
+const labelOf = (statId: string) =>
+  hockey.serves.value ? statId : (categories.value.find((c) => c.statId === statId)?.label ?? statId)
 
 // Value baseline anchored to the STARTABLE projected-player pool, identical to My Team, so a
 // player's "VS ALL" value is the SAME number on both pages (the roster legend promises this).
@@ -144,8 +174,25 @@ const labelOf = (statId: string) => categories.value.find((c) => c.statId === st
 const valueBaselineSvc = useValueBaseline()
 valueBaselineSvc.load()
 const ZCLAMP = 8
+/*
+ * THE LOOSE CLAMP IS HALF OF A PAIR, and hockey only has the other half.
+ *
+ * 8 goes with the FanGraphs universe baseline: z measured against every projected player in the
+ * sport, where a genuine star's best column really is six standard deviations out and clipping
+ * it at three would flatten him into the pack. Hockey has no such baseline here, so its z is
+ * measured against the twelve rosters in this league — and at that scale a one-column
+ * specialist (the enforcer who leads the league in penalty minutes and does nothing else) sits
+ * four or five deviations up and would be priced like a star.
+ *
+ * Passing nothing restores value.ts's own default, which is the number chosen FOR pool-relative
+ * z. This is not a hockey tuning constant; it is declining to apply a loosening whose
+ * precondition is absent.
+ */
+const engineZClamp = computed(() => (hockey.serves.value ? undefined : ZCLAMP))
 const valueBaseline = computed(() =>
-  valueBaselineSvc.ready.value ? valueBaselineSvc.build(catSpecs.value, labelOf) : null,
+  /* The baseline is built from the FanGraphs universe, which contains no hockey players. Asking
+     for one would return a degenerate spread and flatten every skater onto the same value. */
+  !hockey.serves.value && valueBaselineSvc.ready.value ? valueBaselineSvc.build(catSpecs.value, labelOf) : null,
 )
 
 // Per-team category WIN counts — ESPN from standings (perCategoryWins), Yahoo from the
@@ -198,7 +245,17 @@ const teamLogoByKey = computed(() => {
   return m
 })
 
-const { view } = useTradeTargets({ pool, fgByKey, statcastByKey, catSpecs, teamCatWins, myTeamKey, teamNameByKey, teamLogoByKey, seasonFraction: seasonFraction.value, labelOf, baseline: valueBaseline, zClamp: ZCLAMP, perceivedStatsByKey })
+/*
+ * ONE for hockey, and the reason is the whole trick.
+ *
+ * `toEffectiveStats` extrapolates a counting stat by dividing it by the fraction of the season
+ * played, which is right for stats a player has already accumulated and wrong for the NHL
+ * feed's numbers — those are season PROJECTIONS already. Dividing one by 0.05 in week one
+ * would project it twice and report a winger for four hundred goals.
+ */
+const engineSeasonFraction = computed(() => (hockey.serves.value ? 1 : seasonFraction.value))
+
+const { view } = useTradeTargets({ pool, fgByKey, statcastByKey, catSpecs, teamCatWins, myTeamKey, teamNameByKey, teamLogoByKey, seasonFraction: engineSeasonFraction, labelOf, baseline: valueBaseline, zClamp: engineZClamp, perceivedStatsByKey })
 
 // --- Custom trade analyzer: evaluate a SPECIFIC deal you have in mind ---
 const analyzerOpen = ref(false)
@@ -209,7 +266,7 @@ const anGet = ref<string[]>([])
 // guarded only on an empty roster so we don't churn before data loads.
 const engine = computed(() =>
   pool.value.length
-    ? buildEngine({ pool: pool.value, fgByKey: fgByKey.value, statcastByKey: statcastByKey.value, cats: catSpecs.value, teamCatWins: teamCatWins.value, seasonFraction: seasonFraction.value, labelOf, baseline: valueBaseline.value ?? undefined, zClamp: ZCLAMP, perceivedStatsByKey: perceivedStatsByKey.value })
+    ? buildEngine({ pool: pool.value, fgByKey: fgByKey.value, statcastByKey: statcastByKey.value, cats: catSpecs.value, teamCatWins: teamCatWins.value, seasonFraction: engineSeasonFraction.value, labelOf, baseline: valueBaseline.value ?? undefined, zClamp: engineZClamp.value, perceivedStatsByKey: perceivedStatsByKey.value })
     : null,
 )
 // --- Positional dimension: win-win / reach / consolidate by roster slot ---
@@ -239,9 +296,16 @@ const { view: posView } = usePositionalTargets({
   catLandscape, statIds: statIdsRef, myTeamKey, teamNameByKey, teamLogoByKey, labelOf,
 })
 // --- Unified opportunity list (merges category + positional deals, one ranked list) ---
+/*
+ * Which half of the roster a column belongs to, for tying a positional hole to a category need.
+ *
+ * Two buckets is all this consumer wants, and hockey's two map onto them exactly: a goalie
+ * column behaves like a pitching one (scarce specialists, their own replacement level), a
+ * skater column like a hitting one.
+ */
 const catSideById = computed(() => {
   const m = new Map<string, 'hit' | 'pit'>()
-  for (const c of catSpecs.value) m.set(c.statId, c.side)
+  for (const c of catSpecs.value) m.set(c.statId, c.side === 'pit' || c.side === 'goalie' ? 'pit' : 'hit')
   return m
 })
 const { hero, ranked, mutualCount, pressLeverage } = useTradeOpportunities({
