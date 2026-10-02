@@ -28,7 +28,8 @@ function week(over: Partial<CategoryWeek> = {}): CategoryWeek {
     format: 'each',
   })
   return {
-    cats, format: 'each',
+    cats: cats.map((c) => ({ ...c, movable: c.unitValue })),
+    format: 'each',
     live: cats.filter((c) => c.status === 'live').length,
     safe: cats.filter((c) => c.status === 'safe').length,
     gone: cats.filter((c) => c.status === 'gone').length,
@@ -123,7 +124,8 @@ describe('the tags describe what sets a player apart, not what is biggest', () =
       format: 'each',
     })
     return {
-      cats, format: 'each',
+      cats: cats.map((c) => ({ ...c, movable: c.unitValue })),
+      format: 'each',
       live: cats.length, safe: 0, gone: 0,
       worthChasing: ['SOG', 'HIT'],
       odds: weekOdds(cats.map((c) => c.winPct)),
@@ -181,5 +183,37 @@ describe('the tags describe what sets a player apart, not what is biggest', () =
       projectionOf: ref((p: { name?: string }) => pool[p.name ?? ''] ?? null),
     })
     expect(rows.value?.[0].name).toBe('Everything')
+  })
+})
+
+describe('a day-to-day man is a less likely start', () => {
+  /*
+   * The seats and the wire adds already discount him. Without the same discount here, this
+   * board would rank him above them and the two halves of one page would disagree about the
+   * same player on the same night.
+   */
+  it('discounts him by the same factor the rest of the page uses', () => {
+    const line = { stats: { SOG: 300, GP: 80 } }
+    const healthy = { ...row('Healthy'), status: 'ACTIVE' }
+    const dtd = { ...row('Doubtful'), status: 'DTD' }
+    const { rows } = useCategoryRankings({
+      rankings: ref([healthy, dtd]),
+      week: ref(week()),
+      projectionOf: ref(() => line),
+    })
+    const a = rows.value!.find((r) => r.name === 'Healthy')!.need
+    const b = rows.value!.find((r) => r.name === 'Doubtful')!.need
+    expect(b / a).toBeCloseTo(0.6, 5)
+  })
+
+  /* A man who is out never reaches this board at all — he is filtered upstream — so the only
+     discount this needs to know about is the day-to-day one. */
+  it('leaves a healthy man undiscounted', () => {
+    const { rows } = useCategoryRankings({
+      rankings: ref([{ ...row('Healthy'), status: '' }]),
+      week: ref(week()),
+      projectionOf: ref(() => ({ stats: { SOG: 300, GP: 80 } })),
+    })
+    expect(rows.value![0].need).toBeGreaterThan(0)
   })
 })

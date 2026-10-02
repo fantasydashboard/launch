@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch, watchEffect } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useToday } from '@/composables/useToday'
 import { wordsFor } from '@/lib/sportWords'
-import { useDailyLineup } from '@/composables/useDailyLineup'
+import { useDailyLineup, type NightlyValue } from '@/composables/useDailyLineup'
+import { scoreLine } from '@/category/categoryBoard'
+import { perGameLine } from '@/category/nightlyLine'
 import DailyLineupPanel from '@/components/today/DailyLineupPanel.vue'
 import DailyRankingsPanel from '@/components/today/DailyRankingsPanel.vue'
 import TodayMatchupHeader from '@/components/today/TodayMatchupHeader.vue'
@@ -31,7 +33,17 @@ const words = computed(() => wordsFor(leagueStore.activeSport))
  * manager wants. The first is "who do I start tonight out of what I already have", and the
  * page never answered it. This sits above the move board for that reason.
  */
-const daily = useDailyLineup()
+/*
+ * ONE CURRENCY FOR THE PAGE.
+ *
+ * Filled in below, once the category week resolves. Declared here because useDailyLineup needs
+ * it at construction and the week is built FROM useDailyLineup's own pieces — the ref is what
+ * lets the two be assembled in that order without either knowing about the other. Nothing the
+ * week reads depends on this value, so there is no cycle.
+ */
+const nightlyValue = ref<NightlyValue | null>(null)
+const nightlyLabel = ref<string | null>(null)
+const daily = useDailyLineup({ nightlyValue, valueLabel: nightlyLabel })
 
 const { vm, loading, error, load, isPoints, categories, scoringType } = useToday()
 /*
@@ -176,6 +188,35 @@ const headerSnapshot = computed(() => {
      */
     categories: [],
   }
+})
+
+/*
+ * THE WHOLE PAGE ON THE SAME NUMBER, once there is a week to price against.
+ *
+ * The lineup panel and the "free and better than someone you're starting" list were still on
+ * the season-long category value, which came out at 1.0 for essentially every man with a game
+ * — so that list offered three different players at exactly +1.0 (1.0 minus a 0.0 that only
+ * meant "no game tonight"), while the rankings below it already knew one was worth 17.5 and
+ * another 15.0. Re-priced at the source, so every panel that draws from it moves together
+ * rather than each learning about categories separately.
+ *
+ * Cleared the moment the week cannot be built, which puts the page back exactly as it was.
+ */
+watchEffect(() => {
+  const week = categoryWeek.week.value
+  if (!week) {
+    nightlyValue.value = null
+    nightlyLabel.value = null
+    return
+  }
+  const projectionOf = daily.hockeyProjectionOf.value
+  nightlyValue.value = (p) => {
+    const line = perGameLine(projectionOf({ name: p.name })?.stats)
+    return line ? scoreLine(line, week.cats).score * 100 : null
+  }
+  nightlyLabel.value = week.format === 'most'
+    ? 'win chance added'
+    : 'column win chance added'
 })
 
 /* Everything the gate depends on, plus the page-level facts the composable cannot see. */

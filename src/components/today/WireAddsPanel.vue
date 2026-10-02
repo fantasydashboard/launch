@@ -26,15 +26,28 @@ const logo = (abbr?: string) => teamLogoFor(leagueStore.activeSport, abbr)
 function onImgErr(e: Event) { (e.target as HTMLImageElement).style.display = 'none' }
 const one = (n: number) => n.toFixed(1)
 const shown = computed(() => props.adds)
+/*
+ * When every row is an empty seat, the heading has to say so.
+ *
+ * "Better than someone you're starting" is literally true of a man with no game — he is in the
+ * lineup and he scores nothing — but it is read as "better than that player", which is a
+ * different and much stronger claim about Auston Matthews. The heading is the most prominent
+ * text on the block, so it is the part that has to be right.
+ */
+const allEmptySeats = computed(() =>
+  shown.value.length > 0 && shown.value.every((u) => !u.over.playsToday))
 </script>
 
 <template>
   <section v-if="shown.length" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
     <h2 class="font-display text-xs font-semibold uppercase tracking-wide text-primary">
-      &#9733; Free and better than someone you're starting
+      &#9733;
+      <template v-if="allEmptySeats">Free, and playing tonight &mdash; your seats are empty</template>
+      <template v-else>Free and better than someone you're starting</template>
     </h2>
     <p class="mb-3 font-mono text-[10px] text-dark-textMuted">
-      tonight only &mdash; the drop is the other half of the decision
+      tonight only &mdash; the drop is the other half of the decision.
+      A seat whose man has no game is empty, not lost: filling it costs you nothing you were using.
     </p>
 
     <div v-for="u in shown" :key="u.add.playerKey"
@@ -55,11 +68,30 @@ const shown = computed(() => props.adds)
 
       <span class="shrink-0 text-right">
         <span class="block font-mono text-sm font-bold text-primary">+{{ one(u.gain) }}</span>
-        <span class="block font-mono text-[10px] text-dark-textMuted">
+        <!--
+          AN IDLE MAN IS NOT A MAN YOU ARE BEATING.
+          "over Auston Matthews at F" printed beside a large number reads as "drop Matthews",
+          and on a night when he simply has no game that is catastrophic advice stated
+          confidently. The seat is empty tonight, the gain is somebody against nobody, and the
+          row has to say which of the two it is — the arithmetic was never wrong, the sentence
+          was.
+        -->
+        <span v-if="!u.over.playsToday" class="block font-mono text-[10px] text-dark-textMuted">
+          fills {{ u.slot || 'the seat' }} &mdash; {{ u.over.name }} has no game
+        </span>
+        <span v-else class="block font-mono text-[10px] text-dark-textMuted">
           over {{ u.over.name }}<template v-if="u.slot"> at {{ u.slot }}</template>
         </span>
         <span v-if="u.drop" class="block font-mono text-[10px] text-dark-textMuted/60">
           drop {{ u.drop.name }}
+        </span>
+        <!--
+          And an add with nobody to cut is not an add. This used to render nothing at all, so
+          the row looked like a free move — on a night when every bench body is idle, which is
+          exactly when this panel has the most to say, there is no safe drop to name.
+        -->
+        <span v-else class="block font-mono text-[10px] text-[#e69a4a]/80">
+          needs a roster spot
         </span>
       </span>
     </div>

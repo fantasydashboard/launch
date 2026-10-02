@@ -68,7 +68,8 @@ if ((feed.agesKnown ?? 0) < 500) {
     `only ${feed.agesKnown ?? 0} birth dates loaded — the aging curve would be skipped silently. `
     + `Point BASE at a host whose relay serves skater/bios (BASE=http://localhost:5173 during development).`)
 }
-process.stderr.write(`[export] rates=${feed.rates.length} espn=${feed.espn.length} ages=${feed.agesKnown} mode=${MODE}\n`)
+process.stderr.write(`[export] rates=${feed.rates.length} espn=${feed.espn.length} ages=${feed.agesKnown} mode=${MODE} baseline=${feed.baseline ? `${feed.baseline.skatersMatched}/${feed.baseline.goaliesMatched}@${feed.baseline.fetchedAt}` : 'NONE'}\n`)
+if (process.env.REQUIRE_BASELINE === '1' && !feed.baseline) throw new Error('baseline required but not blended')
 
 const merged = mergeHockeyProjections({ espn: feed.espn as any, rates: feed.rates as any, historyGames: feed.historyGames, goalieProjections: feed.goalieProjections })
 /*

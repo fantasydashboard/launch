@@ -19,6 +19,7 @@ import { projectGames } from '@/myteam/yourMove/projectRemainingWeek'
 import type { BenchPlayer } from '@/myteam/yourMove/generators/startSitGenerator'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { getNhlSchedule } from '@/services/nhlSchedule'
+import { readSlateWithRetry } from '@/services/scheduleRetry'
 import { useHockeyValue } from '@/composables/useHockeyValue'
 import { platformFromLeagueId } from '@/hockey/platformFromLeagueId'
 import { isDailySport } from '@/today/dailySports'
@@ -873,9 +874,8 @@ export function useToday(): {
          and MLB share ten team abbreviations, so it returns plausible counts for the wrong
          fixtures, which is how the Matchup came to tell a hockey manager he out-gamed his
          opponent by five. */
-      schedule.value = leagueStore.activeSport === 'hockey'
-        ? await getNhlSchedule(today, today)
-        : await getWeekSchedule(today, today)
+      const readSlate = leagueStore.activeSport === 'hockey' ? getNhlSchedule : getWeekSchedule
+      schedule.value = await readSlateWithRetry(() => readSlate(today, today))
       /*
        * "Could not read the slate" and "nobody plays tonight" are different sentences, and the
        * page says the second one out loud. A schedule that failed to load renders as every seat

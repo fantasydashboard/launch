@@ -136,3 +136,35 @@ describe('what is worth chasing is what you can actually move', () => {
     expect(week.worthChasing).toEqual(['SOG'])
   })
 })
+
+describe('the table order and the advice are one judgement', () => {
+  /*
+   * They were two expressions of the same idea and they disagreed on a live board: the table
+   * sorted by unitValue under a heading reading "most movable first", so it led with SHO —
+   * one shutout decides the column and none are coming — while the line underneath correctly
+   * told the manager to spend on shots. `movable` is now carried on the column so both read
+   * the same number.
+   */
+  it('carries the chase value on each column, matching the chase order', () => {
+    const week = buildCategoryWeek({
+      cats: [
+        { key: 'SHO', label: 'SHO', lowerIsBetter: false, isRatio: false },
+        { key: 'SOG', label: 'SOG', lowerIsBetter: false, isRatio: false },
+      ],
+      myStats: { SHO: 0, SOG: 38 },
+      oppStats: { SHO: 0, SOG: 48 },
+      myRemaining: { SHO: 0.3, SOG: 90 },
+      oppRemaining: { SHO: 0.3, SOG: 90 },
+      days: 3,
+      format: 'each',
+      bodies: 10,
+    })
+    const byMovable = [...week.cats].sort((a, b) => b.movable - a.movable).map((c) => c.key)
+    expect(byMovable[0]).toBe('SOG')
+    expect(week.worthChasing[0]).toBe('SOG')
+
+    /* And the two orderings genuinely differ, so the test is not passing by coincidence. */
+    const byUnit = [...week.cats].sort((a, b) => b.unitValue - a.unitValue).map((c) => c.key)
+    expect(byUnit[0]).toBe('SHO')
+  })
+})

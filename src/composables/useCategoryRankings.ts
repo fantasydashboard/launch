@@ -3,7 +3,7 @@ import { scoreLine } from '@/category/categoryBoard'
 import { medianLine, standoutColumns } from '@/category/standout'
 import { perGameLine } from '@/category/nightlyLine'
 import type { CategoryWeek } from '@/category/categoryWeek'
-import type { RankedRow } from './useDailyLineup'
+import { availability, DOUBTFUL_DISCOUNT, type RankedRow } from './useDailyLineup'
 
 /**
  * Tonight's board, ranked by what your week actually needs.
@@ -92,8 +92,14 @@ export function useCategoryRankings(inputs: {
 
     const scored = resolved.map(({ row, line }) => ({
       ...row,
-      /* The TOTAL movement this start buys, which is what the board sorts on. */
-      need: scoreLine(line, week.cats).score * AS_PCT_POINTS,
+      /*
+       * The TOTAL movement this start buys, which is what the board sorts on — discounted for
+       * a day-to-day man, who is a real but less likely start. The same discount the seats and
+       * the wire adds already apply; without it this board would rank him above them and the
+       * two halves of the page would disagree about the same player.
+       */
+      need: scoreLine(line, week.cats).score * AS_PCT_POINTS
+        * (availability(row.status) === 'doubtful' ? DOUBTFUL_DISCOUNT : 1),
       /* How he DIFFERS from the alternatives, which is what the label should say. */
       helps: standoutColumns(line, week.cats, baseline),
     }))

@@ -1,4 +1,4 @@
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted, type Ref } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useActivePointsSource, resolveLeagueSize } from '@/composables/useActivePointsSource'
 import { usePointsValue } from '@/composables/usePointsValue'
@@ -151,8 +151,52 @@ const ymd = (d: Date) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
-export function useDailyLineup() {
+/**
+ * A man's worth TONIGHT, in whatever currency the page has decided to speak.
+ *
+ * Null means this currency cannot price him — which is not the same as zero, and the board
+ * already distinguishes the two through `priced`.
+ */
+export type NightlyValue = (p: { playerKey?: string; name?: string }) => number | null
+
+export interface DailyLineupOptions {
+  /**
+   * Re-prices every seat, every bench body and every upgrade in one stroke.
+   *
+   * WHY THIS EXISTS. A category league's daily value came out at 1.0 for essentially everyone
+   * with a game — the flat column the whole leverage engine was built to replace — and it was
+   * still driving the lineup panel and the "free and better than someone you're starting"
+   * list. That list offered three different players at exactly +1.0, which is not a ranking of
+   * anything: it was 1.0 minus 0.0, and the 0.0 only meant "no game tonight". Meanwhile the
+   * rankings below it knew one of those men was worth 17.5 and another 15.0.
+   *
+   * The fix is one currency for the page, not a second opinion bolted beside the first — so
+   * the override lands on the single resolver every panel already draws from, rather than
+   * each panel learning about categories.
+   */
+  nightlyValue?: Ref<NightlyValue | null>
+  /** What that currency is called, for the panels that print a total. */
+  valueLabel?: Ref<string | null>
+}
+
+export function useDailyLineup(opts: DailyLineupOptions = {}) {
   const leagueStore = useLeagueStore()
+
+  /**
+   * One man's value tonight, with the override applied when the page is speaking a different
+   * currency. An override that cannot price him returns unpriced rather than zero: a man we
+   * cannot value is not a man worth nothing, and the panels already say so.
+   */
+  const nightlyFor = (
+    p: { playerKey?: string; name?: string },
+    fallbackPerGame: number,
+    fallbackPriced: boolean,
+  ): { perGame: number; priced: boolean } => {
+    const f = opts.nightlyValue?.value
+    if (!f) return { perGame: fallbackPerGame, priced: fallbackPriced }
+    const v = f(p)
+    return v == null ? { perGame: 0, priced: false } : { perGame: v, priced: true }
+  }
 
   /*
    * A CATEGORY LEAGUE HAS A DIFFERENT SOURCE, and using the wrong one is not a degraded
@@ -545,7 +589,8 @@ export function useDailyLineup() {
     return mine.map((p) => {
       const v = valueFor(p)
       const priced = !!v && v.games > 0
-      const perGame = priced ? v!.total / v!.games : 0
+      const base = priced ? v!.total / v!.games : 0
+      const { perGame, priced: pricedNow } = nightlyFor(p, base, priced)
       const avail = availability(p.status)
       /* His team having a game is not the same as him having one. */
       const plays = playsToday(p.proTeam ?? '') && avail !== 'out'
@@ -571,7 +616,7 @@ export function useDailyLineup() {
         posRank: plays ? (posRankByKey.value.get(p.playerKey)?.rank ?? null) : null,
         posCount: plays ? (posRankByKey.value.get(p.playerKey)?.count ?? null) : null,
         posStartable: plays ? (startableByPos.value[primaryPosition(p.position ?? '')] ?? null) : null,
-        priced,
+        priced: pricedNow,
       }
     })
   })
@@ -823,7 +868,9 @@ export function useDailyLineup() {
 
     for (const p of source.pool.value) {
       const v = valueFor(p)
-      const perGame = v && v.games > 0 ? v.total / v.games : 0
+      /* Through the SAME resolver as the seats, or wireAdds below compares a free agent priced
+         one way against a starter priced another — and it does exactly that comparison. */
+      const { perGame } = nightlyFor(p, v && v.games > 0 ? v.total / v.games : 0, !!v)
       const avail = availability(p.status)
       /* Out is out: he is absent from the board entirely, for the same reason a man on a dark
          night is. Ranking him low would say he is a worse play than the name above him, when
@@ -854,7 +901,7 @@ export function useDailyLineup() {
        * let one of them stay wrong.
        */
       const v = valueFor(fa)
-      const perGame = v && v.games > 0 ? v.total / v.games : 0
+      const { perGame } = nightlyFor(fa, v && v.games > 0 ? v.total / v.games : 0, !!v)
       if (!perGame) continue
       out.push({
         playerKey: fa.playerKey ?? `fa:${fa.name}`, name: fa.name,
@@ -942,7 +989,9 @@ export function useDailyLineup() {
        which the page was rendering as the same permanent sentence. */
     categoryUnsupported,
     /** Points, or standard deviations — the panels say which so a number is never bare. */
-    valueLabel: computed(() => (isCategory.value ? 'category value' : 'projected points')),
+    valueLabel: computed(() =>
+      opts.valueLabel?.value
+      ?? (isCategory.value ? 'category value' : 'projected points')),
   }
 }
 

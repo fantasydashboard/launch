@@ -134,6 +134,16 @@ const games = computed(() => {
           <template v-else-if="isCategory && catOdds">
             proj {{ catOdds.projWins }}&ndash;{{ catOdds.projLosses }}<span
               v-if="catOdds.projTies">&ndash;{{ catOdds.projTies }}</span>
+            <!--
+              THE MISSING THIRD. A ten-column week projected 5-5 shows about 33% to win, which
+              reads as losing badly next to a scoreline that says dead even. The other
+              two-thirds are not all losses: a third of them is a TIE, which is a real outcome
+              in a category league and is why the number cannot be 50 in an even matchup.
+              Named only when it is big enough to be the explanation.
+            -->
+            <span v-if="catOdds.tiePct >= 5" class="text-dark-textMuted/60">
+              &middot; {{ Math.round(catOdds.tiePct) }}% tie
+            </span>
           </template>
           <template v-else-if="winPct != null">to win</template>
           <template v-else>so far</template>
