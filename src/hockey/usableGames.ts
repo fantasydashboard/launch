@@ -27,12 +27,14 @@ export function skaterPositions(raw: string | string[] | undefined): SkaterPos[]
 }
 
 /** One night: which positions still have a spot after this roster's players with a game are seated. */
+const upTeam = (t: string | undefined) => String(t ?? '').trim().toUpperCase()
+
 function openOn(roster: UsableRosterPlayer[], slots: SkaterSlots, teams: Set<string>): Record<SkaterPos, number> {
   const free: Record<SkaterPos | 'UTIL' | 'F', number> = { ...slots, F: slots.F ?? 0 }
   /* Single-position players seat first, so a C/LW does not take C when LW was free and push a
      pure C into UTIL. Within each group the best player seats first. */
   const playing = roster
-    .filter((p) => !p.out && p.positions.length && teams.has(p.team))
+    .filter((p) => !p.out && p.positions.length && teams.has(upTeam(p.team)))
     .sort((a, b) => (a.positions.length - b.positions.length) || (b.rate - a.rate))
   for (const p of playing) {
     const pos = p.positions.find((x) => free[x] > 0)
@@ -75,7 +77,7 @@ export function usableFor(
   let games = 0
   let usable = 0
   const byNight = nights.map((n) => {
-    const plays = n.teams.has(player.team)
+    const plays = n.teams.has(upTeam(player.team))
     const o = plays ? Math.max(0, ...player.positions.map((p) => open[n.date]?.[p] ?? 0)) : 0
     if (plays) { games++; usable += o }
     return { date: n.date, plays, open: o }

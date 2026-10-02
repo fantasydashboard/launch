@@ -9,6 +9,14 @@ describe('pointsUsablePicks', () => {
     ])
     expect(r.map((x) => [x.key, x.points])).toEqual([['b', 7], ['a', 3]])
   })
+  it('drops picks that score nothing', () => {
+    const r = pointsUsablePicks([
+      { key: 'a', name: 'A', position: 'C', perGame: 0, usable: 3 },
+      { key: 'b', name: 'B', position: 'C', perGame: -1, usable: 2 },
+      { key: 'c', name: 'C', position: 'C', perGame: 1, usable: 1 },
+    ])
+    expect(r.map((x) => x.key)).toEqual(['c'])
+  })
   it('drops unscored players and honours n', () => {
     const r = pointsUsablePicks([
       { key: 'a', name: 'A', position: 'C', perGame: 3, usable: null },

@@ -133,6 +133,9 @@ export function useHockeyWire(): {
     return { C: rs.C ?? 0, LW: rs.LW ?? 0, RW: rs.RW ?? 0, D: rs.D ?? 0, UTIL: rs.UTIL ?? 0, F: rs.F ?? 0 }
   })
 
+  /* Multi-position eligibility when the platform sent it, else the single listed position. */
+  const eligibleOf = (p: any) => (p.eligiblePositions?.length ? p.eligiblePositions : p.position)
+
   /* Your roster as the usable-games model reads it. The rate only decides who sits first on a
      crowded night, so the league z-total will do, and 0 when the merge has never heard of him. */
   const myUsableRoster = computed<UsableRosterPlayer[]>(() => {
@@ -143,7 +146,7 @@ export function useHockeyWire(): {
     return (team.rosterPlayers.value ?? []).map((p: any) => ({
       key: String(p.playerKey),
       team: p.team,
-      positions: skaterPositions(p.position),
+      positions: skaterPositions(eligibleOf(p)),
       rate: totalByKey[String(p.playerKey)] ?? 0,
       out: !!p.onIL,
     }))

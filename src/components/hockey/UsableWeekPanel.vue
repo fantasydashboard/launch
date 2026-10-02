@@ -25,7 +25,8 @@ const anyOpen = computed(() => cells.value.some((c) => c.f || c.d))
     </div>
     <p v-if="!anyOpen" class="text-sm text-dark-textMuted">Your lineup is full every night this week, so a pickup only helps as a swap.</p>
     <template v-else>
-      <p class="mb-1 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Best pickups for those nights</p>
+      <p v-if="!picks.length" class="text-sm text-dark-textMuted">No free agent has a usable game this week.</p>
+      <p v-else class="mb-1 font-mono text-[10px] uppercase tracking-wider text-dark-textMuted">Best pickups for those nights</p>
       <div v-for="p in picks" :key="p.key" class="flex items-center gap-2 border-b border-dark-border/50 py-1.5 text-sm">
         <span class="font-medium">{{ p.name }}</span>
         <span class="font-mono text-[10px] text-dark-textMuted">{{ p.position }}</span>

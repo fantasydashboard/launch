@@ -90,3 +90,16 @@ describe('openNights: F slot and seating order', () => {
     expect(o.C).toBe(1)
   })
 })
+
+describe('team strings', () => {
+  it('matches a roster team with stray case and whitespace', () => {
+    const r = usableFor({ team: 'bos ', positions: ['C'], rate: 2 }, [night('2026-10-05', 'BOS')], { '2026-10-05': { C: 1, LW: 0, RW: 0, D: 0 } })
+    expect(r.games).toBe(1)
+    expect(r.usable).toBe(1)
+  })
+  it('seats a roster player whose team has stray case', () => {
+    const one = [p('x', 'bos ', 'C')]
+    const o = openNights(one, { C: 1, LW: 0, RW: 0, D: 0, UTIL: 0 }, [night('2026-10-05', 'BOS')])
+    expect(o['2026-10-05'].C).toBe(0)
+  })
+})

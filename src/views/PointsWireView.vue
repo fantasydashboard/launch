@@ -9,6 +9,7 @@ import { buildPointsTeam, parseEligible } from '@/myteam/pointsTeam'
 import { usePointsValue } from '@/composables/usePointsValue'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
 import { getNhlSchedule } from '@/services/nhlSchedule'
+import { weekBounds } from '@/hockey/usableWeek'
 import { useUsableWeek } from '@/composables/useUsableWeek'
 import { skaterPositions, usableFor, DEFAULT_SKATER_SLOTS, type SkaterSlots, type UsableRosterPlayer } from '@/hockey/usableGames'
 import { pointsUsablePicks } from '@/hockey/pointsUsablePicks'
@@ -54,7 +55,7 @@ async function loadSchedule() {
   end.setDate(today.getDate() + ((7 - today.getDay()) % 7))
   /* Hockey was reading the MLB schedule, so its rows carried baseball game counts. */
   schedule.value = isHockey.value
-    ? await getNhlSchedule(fmt(today), fmt(end))
+    ? await getNhlSchedule(weekBounds(today).from, weekBounds(today).to)
     : await getWeekSchedule(fmt(today), fmt(end))
 }
 
@@ -315,20 +316,20 @@ const myUsableRoster = computed<UsableRosterPlayer[]>(() => {
 /* The league's own seats. `F` is the forward flex (C/LW/RW only) and stays apart from UTIL. */
 const usableSlots = computed<SkaterSlots>(() => {
   const rs = rosterSlots.value ?? {}
-  const d = DEFAULT_SKATER_SLOTS
-  return {
-    C: rs.C ?? d.C, LW: rs.LW ?? d.LW, RW: rs.RW ?? d.RW, D: rs.D ?? d.D,
-    UTIL: rs.UTIL ?? rs.Util ?? d.UTIL, F: rs.F ?? d.F,
-  }
+  if (!['C', 'LW', 'RW', 'D', 'F'].some((k) => rs[k] > 0)) return DEFAULT_SKATER_SLOTS
+  return { C: rs.C ?? 0, LW: rs.LW ?? 0, RW: rs.RW ?? 0, D: rs.D ?? 0, UTIL: rs.UTIL ?? rs.Util ?? 0, F: rs.F ?? 0 }
 })
 watch(isHockey, (h) => {
   if (h && !usableWeek.value) usableWeek.value = useUsableWeek(myUsableRoster, usableSlots)
 }, { immediate: true })
 
+/* With no roster every night reads open, which would print a full strip on every row. */
+const usableReady = computed(() => !!usableWeek.value?.ready.value && myUsableRoster.value.length > 0)
+
 const faUsable = computed(() => {
   const out: Record<string, ReturnType<typeof usableFor> | null> = {}
   const uw = usableWeek.value
-  if (!isHockey.value || !uw) return out
+  if (!isHockey.value || !uw || !myUsableRoster.value.length) return out
   for (const fa of freeAgents.value) {
     const v = valueOf.value(fa)
     out[fa.playerKey] = uw.scoreOf({
@@ -364,7 +365,7 @@ const HOCKEY_SORTS = [
 ] as const
 const swapRows = computed(() => {
   const rows = wire.value?.swaps ?? []
-  if (!isHockey.value || !usableWeek.value?.ready.value || hockeySort.value === 'best') return rows
+  if (!isHockey.value || !usableReady.value || hockeySort.value === 'best') return rows
   const weekPts = (s: Swap) => s.add.perGame * (faUsable.value[s.add.player.playerKey]?.usable ?? 0)
   return [...rows].sort((a, b) => weekPts(b) - weekPts(a))
 })
@@ -404,9 +405,9 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
 
     <template v-else>
       <template v-if="!isFootball">
-      <div v-if="isHockey && usableWeek?.ready.value" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
-        <UsableWeekPanel v-if="isHockey && usableWeek?.ready.value" :nights="usableWeek.nights.value" :open="usableWeek.open.value" :picks="usablePicks" />
-        <div v-if="isHockey && usableWeek?.ready.value" class="mb-3 mt-3 flex gap-2 font-mono text-[11px]">
+      <div v-if="isHockey && usableReady" class="mb-5">
+        <UsableWeekPanel :nights="usableWeek!.nights.value" :open="usableWeek!.open.value" :picks="usablePicks" />
+        <div class="mb-3 mt-3 flex gap-2 font-mono text-[11px]">
           <button v-for="o in HOCKEY_SORTS" :key="o.id" @click="hockeySort = o.id"
                   class="rounded-lg border px-2.5 py-1 transition-colors"
                   :class="hockeySort === o.id ? 'border-primary text-dark-text' : 'border-dark-border text-dark-textMuted hover:text-dark-text'"
@@ -417,7 +418,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
       <section v-if="wire.swaps.length" class="mb-5 rounded-xl border border-primary/40 bg-dark-card p-4">
         <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-primary">★ Best upgrades</h2>
         <p class="mb-3 font-mono text-[10px] text-dark-textMuted">add a free agent, cut your weakest body — the points you'd gain</p>
-        <template v-for="(s, i) in swapRows" :key="'sw-' + i">
+        <template v-for="s in swapRows" :key="'sw-' + s.add.player.playerKey">
           <div class="flex items-center gap-3 border-b border-dark-border/40 py-2.5 last:border-0">
             <img v-if="s.add.player.headshot" :src="s.add.player.headshot" :alt="s.add.player.name" loading="lazy" class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
             <span v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dark-border font-mono text-[10px] text-dark-textMuted">{{ s.add.player.position }}</span>
