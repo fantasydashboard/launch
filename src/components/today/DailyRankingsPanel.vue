@@ -129,6 +129,17 @@ const positions = computed(() => {
  */
 const MIN_TIER_DROP = 0.05
 /**
+ * And a share of the board's own scale, because an absolute floor only suits one board.
+ *
+ * 0.05 was chosen against projected points, where the leader sits around twenty. A
+ * need-weighted category board leads at twenty-one but is far more tightly packed, so the same
+ * floor drew a line at every -0.3 — a one-percent gap presented as a cliff, with its own
+ * caption offering the evidence against it. A tier is only worth drawing when the drop is
+ * large relative to what the board is measuring, so the threshold scales with the leader and
+ * the old floor stays as a lower bound for boards whose numbers are small.
+ */
+const TIER_SHARE = 0.04
+/**
  * The number this board is actually about — ONE accessor, used everywhere.
  *
  * A need-weighted category board arrives sorted by `need` (percentage points of category win
@@ -140,8 +151,12 @@ const MIN_TIER_DROP = 0.05
  * than its name says is how this codebase's worst bugs have started.
  */
 const valueOf = (r: { need?: number; today: number }) => r.need ?? r.today
+const tierFloor = computed(() => {
+  const top = shown.value.length ? Math.abs(valueOf(shown.value[0])) : 0
+  return Math.max(MIN_TIER_DROP, TIER_SHARE * top)
+})
 const tiers = computed(() =>
-  assignTiers(shown.value.map((r) => ({ playerKey: r.playerKey, value: valueOf(r) })), MIN_TIER_DROP))
+  assignTiers(shown.value.map((r) => ({ playerKey: r.playerKey, value: valueOf(r) })), tierFloor.value))
 const tierOf = (key: string) => tiers.value[key] ?? 1
 /** True on the first row of a new tier, which is where the divider is drawn. */
 /* The top row starts a tier as surely as any other. It never drew a line, because this test

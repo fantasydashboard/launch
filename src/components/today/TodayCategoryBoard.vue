@@ -92,8 +92,8 @@ function signed(v: number): string {
  * The margin and the bar drop away under 640px, where six columns cannot fit — they are the
  * two a reader can do without, since the totals and the win chance carry the same facts.
  */
-const GRID = 'grid items-center gap-x-3 grid-cols-[3.5rem_3.5rem_3.5rem_3rem] '
-  + 'sm:grid-cols-[4rem_4rem_4rem_4rem_1fr_3rem]'
+const GRID = 'grid items-center gap-x-3 grid-cols-[3.5rem_3.5rem_3rem_3.5rem] '
+  + 'sm:grid-cols-[4rem_4rem_4rem_1fr_3rem_4rem]'
 
 const list = (keys: string[]) => keys.join(', ')
 const toneOf = (status: string) =>
@@ -137,14 +137,22 @@ const barOf = (status: string) =>
       <span class="text-dark-textMuted/50">most movable first</span>
     </div>
 
-    <!-- Headers and rows share GRID, so a column cannot drift off its label. -->
+    <!--
+      Headers and rows share GRID, so a column cannot drift off its label.
+
+      YOUR TOTAL AND THEIRS SIT ON OPPOSITE SIDES, with the margin, the bar and the win chance
+      between them — the same geometry as the seat-by-seat board a points league gets, and the
+      shape the matchup actually has. Both totals adjacent in one block read as a table of
+      numbers; split around the bar they read as two teams, and the bar becomes the ground
+      being fought over rather than a decoration at the end of the row.
+    -->
     <div :class="GRID" class="mb-1 border-b border-dark-border/40 pb-1 font-mono text-[9px] uppercase tracking-widest text-dark-textMuted/60">
       <span>cat</span>
       <span class="truncate text-right" :title="myName">{{ myName || 'you' }}</span>
-      <span class="truncate text-right" :title="oppName">{{ oppName || 'opp' }}</span>
       <span class="hidden text-right sm:block">margin</span>
       <span class="hidden sm:block"></span>
       <span class="text-right">win</span>
+      <span class="truncate" :title="oppName">{{ oppName || 'opp' }}</span>
     </div>
 
     <div v-for="c in rows" :key="c.key" :class="GRID"
@@ -157,8 +165,6 @@ const barOf = (status: string) =>
       </span>
       <span class="text-right font-display text-base font-bold tabular-nums"
             :class="c.winPct > 0.5 ? 'text-dark-text' : 'text-dark-textMuted'">{{ fmt(c.mine) }}</span>
-      <span class="text-right font-display text-base font-bold tabular-nums"
-            :class="c.winPct < 0.5 ? 'text-dark-text' : 'text-dark-textMuted'">{{ fmt(c.theirs) }}</span>
       <!-- The subtraction a reader was doing in their head, with the sign already corrected
            for the columns where lower wins. -->
       <span class="hidden text-right font-mono text-xs tabular-nums sm:block"
@@ -174,6 +180,10 @@ const barOf = (status: string) =>
         <span class="absolute inset-y-0 left-1/2 w-px bg-dark-bg/80"></span>
       </span>
       <span class="text-right font-mono text-xs tabular-nums" :class="toneOf(c.status)">{{ PCT(c.winPct) }}</span>
+      <!-- Their side of the column, left-aligned so the two totals face each other across the
+           bar rather than both hugging the same edge. -->
+      <span class="font-display text-base font-bold tabular-nums"
+            :class="c.winPct < 0.5 ? 'text-dark-text' : 'text-dark-textMuted'">{{ fmt(c.theirs) }}</span>
     </div>
 
     <!-- WHAT TO DO. The reason this section exists rather than a prettier scoreboard. -->
