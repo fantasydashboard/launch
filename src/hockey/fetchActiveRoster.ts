@@ -6,7 +6,21 @@ export interface ActiveRoster {
   ids: Set<number>
   /** The same players by normalized name, for rows that carry no NHL id (ESPN-only goalies). */
   names: Set<string>
+  /**
+   * `surname|CLUB`, for when the two feeds spell a first name differently: ESPN's "Sam
+   * Montembeault" is the NHL's "Samuel", and a name-only check called MTL's starter retired.
+   */
+  surnameTeam: Set<string>
 }
+
+/* ESPN and the NHL spell four clubs differently. */
+const CLUB: Record<string, string> = { LA: 'LAK', NJ: 'NJD', SJ: 'SJS', TB: 'TBL' }
+export const canonClub = (team: string | null | undefined) => {
+  const t = String(team ?? '').trim().toUpperCase()
+  return CLUB[t] ?? t
+}
+export const surnameTeamKey = (surname: string, team: string | null | undefined) =>
+  `${normalizeName(surname)}|${canonClub(team)}`
 
 /**
  * Every player on an NHL roster right now, or null.
@@ -22,14 +36,17 @@ export async function fetchActiveRoster(url = '/api/nhl-stats?rosters=current'):
     if (!/json/i.test(res.headers.get('content-type') ?? '')) return null
     const b = await res.json()
     const players = Array.isArray(b?.players) ? b.players : []
-    if (players.length < 600) { console.warn(`[nhl rosters] only ${players.length} players; ignoring`); return null }
+    if (players.length < 600 || Number(b?.teams) < 32) { console.warn(`[nhl rosters] only ${players.length} players; ignoring`); return null }
     const ids = new Set<number>()
     const names = new Set<string>()
+    const surnameTeam = new Set<string>()
     for (const p of players) {
       if (Number.isFinite(p?.id)) ids.add(p.id)
       if (typeof p?.name === 'string' && p.name) names.add(normalizeName(p.name))
+      const last = typeof p?.last === 'string' && p.last ? p.last : String(p?.name ?? '').split(' ').pop()
+      if (last && p?.team) surnameTeam.add(surnameTeamKey(last, p.team))
     }
-    return { fetchedAt: String(b.fetchedAt ?? ''), ids, names }
+    return { fetchedAt: String(b.fetchedAt ?? ''), ids, names, surnameTeam }
   } catch (e) {
     console.warn('[nhl rosters] unavailable', e)
     return null

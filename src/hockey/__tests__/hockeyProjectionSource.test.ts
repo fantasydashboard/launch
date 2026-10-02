@@ -333,6 +333,16 @@ describe('mergeHockeyProjections — players on no NHL roster', () => {
     expect(r.projections.g2).toBeUndefined()
   })
 
+  it('accepts a different first-name spelling when surname and club match', () => {
+    const withClub = { ...active, surnameTeam: new Set(['montembeault|MTL']) }
+    const sam = espnPlayer({ playerKey: 'g3', name: 'Sam Montembeault', position: 'G', proTeamId: 10, stats: { GP: 61 } } as any)
+    const r = mergeHockeyProjections({ espn: [espnPlayer(), sam], rates: [rate()], active: withClub })
+    expect(r.projections.g3).toBeDefined()
+    // Same surname on another club is not him.
+    const elsewhere = { ...active, surnameTeam: new Set(['montembeault|TOR']) }
+    expect(mergeHockeyProjections({ espn: [espnPlayer(), sam], rates: [rate()], active: elsewhere }).projections.g3).toBeUndefined()
+  })
+
   it('removes nobody without a roster list', () => {
     const r = mergeHockeyProjections({ espn: [espnPlayer(), kopitarEspn], rates: [rate(), kopitar] })
     expect(Object.keys(r.projections).sort()).toEqual(['3183', '3900'])

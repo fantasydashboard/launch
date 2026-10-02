@@ -52,9 +52,10 @@ const SORT = encodeURIComponent(JSON.stringify([{ property: 'playerId', directio
 export const TEAMS = ['ANA', 'BOS', 'BUF', 'CAR', 'CBJ', 'CGY', 'CHI', 'COL', 'DAL', 'DET', 'EDM', 'FLA',
   'LAK', 'MIN', 'MTL', 'NJD', 'NSH', 'NYI', 'NYR', 'OTT', 'PHI', 'PIT', 'SEA', 'SJS', 'STL', 'TBL', 'TOR',
   'UTA', 'VAN', 'VGK', 'WPG', 'WSH']
-/* Fewer clubs than this answering is a broken pull, not a league that shrank. Every player on a
-   missing club would read as retired, so a partial list is refused rather than served. */
-const MIN_TEAMS = 30
+/* Every club, or nothing. A missing club is not a league that shrank: every healthy player on it
+   would read as off all rosters and vanish from the boards. Measured: a throttled pull that lost
+   only Anaheim would have dropped Anaheim's whole lineup. A partial list is refused, not served. */
+const MIN_TEAMS = TEAMS.length
 
 /**
  * Who is on an NHL roster right now, as one compact list.
@@ -92,8 +93,9 @@ export async function activeRosters(fetchImpl = fetch, retryMs = 700) {
       teams++
       for (const p of list) {
         const id = Number(p?.id)
-        const name = `${p?.firstName?.default ?? ''} ${p?.lastName?.default ?? ''}`.trim()
-        if (Number.isFinite(id) && name) players.push({ id, name, team: got.team })
+        const last = String(p?.lastName?.default ?? '').trim()
+        const name = `${p?.firstName?.default ?? ''} ${last}`.trim()
+        if (Number.isFinite(id) && name) players.push({ id, name, last, team: got.team })
       }
     }
   }

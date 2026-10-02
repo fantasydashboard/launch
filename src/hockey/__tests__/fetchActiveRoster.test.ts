@@ -9,7 +9,7 @@ afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('fetchActiveRoster', () => {
   it('returns ids and normalized names', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ok({ fetchedAt: 't', players: [...players(700), { id: 9, name: 'Anže Kopitar' }] })))
+    vi.stubGlobal('fetch', vi.fn(async () => ok({ fetchedAt: 't', teams: 32, players: [...players(700), { id: 9, name: 'Anže Kopitar' }] })))
     const r = await fetchActiveRoster()
     expect(r?.ids.has(9)).toBe(true)
     expect(r?.names.has(normalizeName('Anze Kopitar'))).toBe(true)
@@ -17,7 +17,13 @@ describe('fetchActiveRoster', () => {
 
   it('refuses a list too short to be the whole league', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
-    vi.stubGlobal('fetch', vi.fn(async () => ok({ players: players(300) })))
+    vi.stubGlobal('fetch', vi.fn(async () => ok({ teams: 32, players: players(300) })))
+    expect(await fetchActiveRoster()).toBeNull()
+  })
+
+  it('refuses a list missing any club', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.stubGlobal('fetch', vi.fn(async () => ok({ teams: 31, players: players(700) })))
     expect(await fetchActiveRoster()).toBeNull()
   })
 

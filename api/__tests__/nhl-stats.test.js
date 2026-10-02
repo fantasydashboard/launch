@@ -95,7 +95,7 @@ describe('nhl-stats relay rosters', () => {
   it('refuses a partial pull rather than calling a missing club retired', async () => {
     vi.stubGlobal('fetch', vi.fn(async (url) => {
       const team = String(url).split('/roster/')[1].split('/')[0]
-      return ['BOS', 'BUF', 'CAR'].includes(team) ? { ok: false, status: 429 } : roster(team)
+      return team === 'ANA' ? { ok: false, status: 429 } : roster(team)
     }))
     const res = mockRes()
     await handler({ query: { rosters: 'current' } }, res)

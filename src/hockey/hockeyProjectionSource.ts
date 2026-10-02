@@ -6,6 +6,7 @@ import { joinEspnRows, ESPN_POSITION } from './espnRateJoin'
 import { goalieMatcher } from './goalieNameMatch'
 /* Re-exported below: it was defined here first and the rest of the app imports it from here. */
 import { normalizeName } from './normalizeName'
+import { surnameTeamKey } from './fetchActiveRoster'
 export { normalizeName }
 import type { HockeyProjection } from './hockeyValue'
 import { NHL_TEAMS } from '@/services/espn'
@@ -128,7 +129,7 @@ export interface MergeInput {
    * to play the games his projection counts. The injury clause is what keeps a star on long-term
    * injured reserve, whom a club roster may omit, on the board. Absent, nobody is removed.
    */
-  active?: { ids: Set<number>; names: Set<string> }
+  active?: { ids: Set<number>; names: Set<string>; surnameTeam?: Set<string> }
 }
 
 export interface MergeResult {
@@ -173,9 +174,10 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
   const { espn, rates, leagueKeys = [], fullSeason = 82, historyGames, goalieProjections, active } = input
   let offRoster = 0
   /* Off every roster, and nothing to say he is merely hurt. See MergeInput.active. */
-  const offEveryRoster = (playerId: number | null, name: string, injuryStatus: string | null | undefined) =>
+  const offEveryRoster = (playerId: number | null, name: string, injuryStatus: string | null | undefined, team?: string) =>
     !!active && !injuryStatus &&
-    !(playerId != null && active.ids.has(playerId)) && !active.names.has(normalizeName(name))
+    !(playerId != null && active.ids.has(playerId)) && !active.names.has(normalizeName(name)) &&
+    !(team && active.surnameTeam?.has(surnameTeamKey(String(name).trim().split(/\s+/).pop() ?? '', team)))
 
   /*
    * The join, done once so the games lookup and the metadata lookup cannot disagree — and done
@@ -261,7 +263,7 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
        he is not in. The prefix is what stops an NHL id from ever colliding with an ESPN one. */
     const key = e ? e.playerKey : `nhl:${r.playerId}`
     if (e) claimed.add(e.playerKey)
-    if (offEveryRoster(r.playerId, r.name, e?.injuryStatus)) { offRoster++; continue }
+    if (offEveryRoster(r.playerId, r.name, e?.injuryStatus, e?.proTeamId != null ? NHL_TEAMS[e.proTeamId] : undefined)) { offRoster++; continue }
     out[key] = {
       ...built,
       playerKey: key,
@@ -302,7 +304,7 @@ export function mergeHockeyProjections(input: MergeInput): MergeResult {
    */
   for (const p of espn) {
     if (claimed.has(p.playerKey)) continue
-    if (offEveryRoster(null, p.name, p.injuryStatus)) { offRoster++; continue }
+    if (offEveryRoster(null, p.name, p.injuryStatus, p.proTeamId != null ? NHL_TEAMS[p.proTeamId] : undefined)) { offRoster++; continue }
     /*
      * ESPN'S OWN GAMES, CLAMPED. Its projections run to 84 for nineteen players, which is two
      * more than the schedule has. The rate-model branch clamps because it multiplies by games;
