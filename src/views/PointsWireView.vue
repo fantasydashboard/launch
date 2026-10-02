@@ -318,7 +318,7 @@ const usableSlots = computed<SkaterSlots>(() => {
   const d = DEFAULT_SKATER_SLOTS
   return {
     C: rs.C ?? d.C, LW: rs.LW ?? d.LW, RW: rs.RW ?? d.RW, D: rs.D ?? d.D,
-    UTIL: rs.UTIL ?? d.UTIL, F: rs.F ?? d.F,
+    UTIL: rs.UTIL ?? rs.Util ?? d.UTIL, F: rs.F ?? d.F,
   }
 })
 watch(isHockey, (h) => {
@@ -348,7 +348,13 @@ const usablePicks = computed(() => pointsUsablePicks(
       usable: faUsable.value[fa.playerKey]?.usable ?? null,
     }
   }),
-).map((r) => ({ ...r, value: r.points, valueLabel: `${r.points.toFixed(1)} pts this week` })))
+).map((r) => {
+  const sw = (wire.value?.swaps ?? []).find((x) => x.add.player.playerKey === r.key)
+  return {
+    ...r, value: r.points, valueLabel: `${r.points.toFixed(1)} pts this week`,
+    dropName: sw?.dropName, gain: sw ? `+${round(upgradeDisplay(sw))} pts ROS` : undefined,
+  }
+}))
 
 type HockeySort = 'best' | 'week'
 const hockeySort = ref<HockeySort>('best')
@@ -358,7 +364,7 @@ const HOCKEY_SORTS = [
 ] as const
 const swapRows = computed(() => {
   const rows = wire.value?.swaps ?? []
-  if (!isHockey.value || hockeySort.value === 'best') return rows
+  if (!isHockey.value || !usableWeek.value?.ready.value || hockeySort.value === 'best') return rows
   const weekPts = (s: Swap) => s.add.perGame * (faUsable.value[s.add.player.playerKey]?.usable ?? 0)
   return [...rows].sort((a, b) => weekPts(b) - weekPts(a))
 })
@@ -398,17 +404,19 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
 
     <template v-else>
       <template v-if="!isFootball">
-      <!-- 1. BEST UPGRADES — concrete add→drop swaps, the headline move -->
-      <section v-if="wire.swaps.length" class="mb-5 rounded-xl border border-primary/40 bg-dark-card p-4">
-        <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-primary">★ Best upgrades</h2>
-        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">add a free agent, cut your weakest body — the points you'd gain</p>
+      <div v-if="isHockey && usableWeek?.ready.value" class="mb-5 rounded-xl border border-dark-border bg-dark-card p-4">
         <UsableWeekPanel v-if="isHockey && usableWeek?.ready.value" :nights="usableWeek.nights.value" :open="usableWeek.open.value" :picks="usablePicks" />
-        <div v-if="isHockey && usableWeek?.ready.value" class="mb-2 mt-3 flex gap-2 font-mono text-[11px]">
+        <div v-if="isHockey && usableWeek?.ready.value" class="mb-3 mt-3 flex gap-2 font-mono text-[11px]">
           <button v-for="o in HOCKEY_SORTS" :key="o.id" @click="hockeySort = o.id"
                   class="rounded-lg border px-2.5 py-1 transition-colors"
                   :class="hockeySort === o.id ? 'border-primary text-dark-text' : 'border-dark-border text-dark-textMuted hover:text-dark-text'"
           >{{ o.label }}</button>
         </div>
+      </div>
+      <!-- 1. BEST UPGRADES — concrete add→drop swaps, the headline move -->
+      <section v-if="wire.swaps.length" class="mb-5 rounded-xl border border-primary/40 bg-dark-card p-4">
+        <h2 class="mb-1 font-display text-xs font-semibold uppercase tracking-wide text-primary">★ Best upgrades</h2>
+        <p class="mb-3 font-mono text-[10px] text-dark-textMuted">add a free agent, cut your weakest body — the points you'd gain</p>
         <template v-for="(s, i) in swapRows" :key="'sw-' + i">
           <div class="flex items-center gap-3 border-b border-dark-border/40 py-2.5 last:border-0">
             <img v-if="s.add.player.headshot" :src="s.add.player.headshot" :alt="s.add.player.name" loading="lazy" class="h-8 w-8 shrink-0 rounded-full bg-dark-border object-cover" />
@@ -448,6 +456,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
               <span class="flex items-center gap-1 text-xs text-dark-textMuted">
                 {{ r.player.position }} · <img :src="teamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 object-contain" /> {{ r.player.team }}
               </span>
+              <UsableStrip v-if="isHockey && faUsable[r.player.playerKey]" :by-night="faUsable[r.player.playerKey]!.byNight" :usable="faUsable[r.player.playerKey]!.usable" :games="faUsable[r.player.playerKey]!.games" />
             </span>
             <span class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary">{{ r.startsThisWeek }} starts</span>
             <span class="w-12 shrink-0 text-right font-mono text-sm text-dark-text">{{ round(isFootball ? r.perGame : r.points) }}</span>
@@ -464,6 +473,7 @@ const loading = computed(() => source.loading.value || source.freeAgentsLoading.
               <span class="flex items-center gap-1 text-xs text-dark-textMuted">
                 {{ r.player.position }} · <img :src="teamLogo(r.player.team)" alt="" @error="onLogoErr" class="h-3.5 w-3.5 object-contain" /> {{ r.player.team }}
               </span>
+              <UsableStrip v-if="isHockey && faUsable[r.player.playerKey]" :by-night="faUsable[r.player.playerKey]!.byNight" :usable="faUsable[r.player.playerKey]!.usable" :games="faUsable[r.player.playerKey]!.games" />
             </span>
             <span v-for="c in r.chips" :key="c" class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary">{{ c }}</span>
             <span class="shrink-0 rounded bg-dark-border/50 px-1.5 py-0.5 font-mono text-[10px] text-dark-textMuted">{{ r.gamesThisWeek }} games</span>
