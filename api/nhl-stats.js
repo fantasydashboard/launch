@@ -68,15 +68,16 @@ const MIN_TEAMS = TEAMS.length
 export async function activeRosters(fetchImpl = fetch, retryMs = 700) {
   const players = []
   let teams = 0
-  /* Four at a time, one retry on a throttle. The NHL answers a burst of thirty-two with 429s,
-     and a pull that loses three clubs is refused outright — so pacing is what makes it land. */
+  /* Two at a time, and up to three retries on a throttle with a growing wait. Measured in
+     production on 2026-10-03: four at a time with one retry still lost eight clubs to 429s, and a
+     pull that loses any club is refused outright — so pacing is what makes it land at all. */
   const get = (team) => fetchImpl(`${WEB}/roster/${team}/current`, { signal: AbortSignal.timeout(8000) })
-  for (let i = 0; i < TEAMS.length; i += 4) {
-    const batch = await Promise.all(TEAMS.slice(i, i + 4).map(async (team) => {
+  for (let i = 0; i < TEAMS.length; i += 2) {
+    const batch = await Promise.all(TEAMS.slice(i, i + 2).map(async (team) => {
       try {
         let r = await get(team)
-        if (r.status === 429) {
-          await new Promise((done) => setTimeout(done, retryMs))
+        for (let attempt = 1; r.status === 429 && attempt <= 3; attempt++) {
+          await new Promise((done) => setTimeout(done, retryMs * attempt))
           r = await get(team)
         }
         if (!r.ok) return null

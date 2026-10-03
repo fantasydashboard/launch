@@ -31,7 +31,9 @@ export const surnameTeamKey = (surname: string, team: string | null | undefined)
  */
 export async function fetchActiveRoster(url = '/api/nhl-stats?rosters=current'): Promise<ActiveRoster | null> {
   try {
-    const res = await fetch(url, typeof AbortSignal?.timeout === 'function' ? { signal: AbortSignal.timeout(8000) } : undefined)
+    /* Fifteen seconds: a cold relay pull paces 32 clubs against the NHL's throttle, and the feed
+       only needs this list at the end, after its own slower fetches. */
+    const res = await fetch(url, typeof AbortSignal?.timeout === 'function' ? { signal: AbortSignal.timeout(15000) } : undefined)
     if (!res.ok) { console.warn(`[nhl rosters] ${url} -> ${res.status}`); return null }
     if (!/json/i.test(res.headers.get('content-type') ?? '')) return null
     const b = await res.json()
