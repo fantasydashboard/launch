@@ -8,7 +8,7 @@ import type { RankedRow } from '../useDailyLineup'
 
 function row(name: string): RankedRow {
   return {
-    playerKey: name, name, position: 'C', team: 'TOR', today: 0,
+    playerKey: name, name, position: 'C', team: 'TOR', today: 0, seasonValue: 0,
     status: '', owner: 'free', ownerName: '',
   }
 }

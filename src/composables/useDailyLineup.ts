@@ -4,6 +4,7 @@ import { useActivePointsSource, resolveLeagueSize } from '@/composables/useActiv
 import { usePointsValue } from '@/composables/usePointsValue'
 import { assignSlots, type DepthPlayer } from '@/trades/positionalLandscape'
 import { isNonStarting } from '@/trades/rosterSlots'
+import { cheapestDroppable, addIsWorthTheCut } from '@/today/droppable'
 import { startableCounts } from '@/trades/rosterSlots'
 import { getNhlSchedule } from '@/services/nhlSchedule'
 import { getWeekSchedule, type WeekSchedule } from '@/services/mlbSchedule'
@@ -89,6 +90,8 @@ export interface RankedRow {
   position: string
   team: string
   today: number
+  /** Rest-of-season worth, before any nightly re-pricing. See DailyRow.seasonValue. */
+  seasonValue: number
   status: string
   owner: 'mine' | 'rostered' | 'free'
   ownerName: string
@@ -104,6 +107,15 @@ export interface DailyRow {
   today: number
   /** His rate per game played, which is what `today` is drawn from. */
   perGame: number
+  /**
+   * What he is worth over the REST OF THE SEASON, before any nightly re-pricing.
+   *
+   * Kept separate because "should he start tonight" and "is he expendable" are different
+   * questions with different answers. A star whose categories do not suit this week scores low
+   * tonight and is not remotely a cut — which is exactly how the wire panel came to propose
+   * dropping Brayden Point three times in one evening. See today/droppable.
+   */
+  seasonValue: number
   playsToday: boolean
   status: string
   /** The slot he fills in the optimal lineup, or null when he is benched there. */
@@ -602,6 +614,7 @@ export function useDailyLineup(opts: DailyLineupOptions = {}) {
         position: p.position,
         team: p.proTeam ?? '',
         perGame,
+        seasonValue: priced ? v!.total : 0,
         today: plays ? perGame * factor : 0,
         playsToday: plays,
         status: p.status ?? '',
@@ -818,11 +831,16 @@ export function useDailyLineup(opts: DailyLineupOptions = {}) {
     const free = rankings.value.filter((r) => r.owner === 'free')
     if (!free.length) return []
 
-    /* Who leaves. The cheapest man who could have played tonight — not the lowest score on
-       the roster, which on any given night is whoever happens to be idle. */
-    const droppable = bench.value
-      .filter((b) => availability(b.status) !== 'out' && b.playsToday)
-      .sort((a, b) => a.today - b.today)[0] ?? null
+    /*
+     * Who leaves — the least valuable body over the REST OF THE SEASON.
+     *
+     * This used to be the cheapest man who could play tonight, ranked on tonight's score. On a
+     * full Saturday slate that handed back a star: Brayden Point scored low only because he is
+     * an assists player and assists were the column we were losing, and all three streaming
+     * adds then proposed cutting him permanently for about three points of one evening.
+     * Tonight's number answers "should he start". This question is a different one.
+     */
+    const droppable = cheapestDroppable(bench.value, { availability })
 
     const taken = new Set<string>()
     const out: { add: RankedRow; over: DailyRow; gain: number; slot: string; drop: DailyRow | null }[] = []
@@ -833,6 +851,13 @@ export function useDailyLineup(opts: DailyLineupOptions = {}) {
           && positionsFit(f.position, seat.slot ?? ''),
       )
       if (!better) continue
+      /*
+       * And refuse it outright when the cut is worth more than the arrival. The panel prints
+       * the gain in bold and the cost in small grey text, so a one-night gain against a
+       * permanent loss does not read as the trade it is — the arithmetic has to decline it
+       * rather than the layout implying it is fine.
+       */
+      if (!addIsWorthTheCut(better.seasonValue, droppable)) continue
       taken.add(better.playerKey)
       out.push({ add: better, over: seat, gain: better.today - seat.today, slot: seat.slot ?? '', drop: droppable })
     }
@@ -879,6 +904,7 @@ export function useDailyLineup(opts: DailyLineupOptions = {}) {
       out.push({
         playerKey: p.playerKey, name: p.name, headshot: p.headshot, position: p.position,
         team: p.proTeam ?? '',
+        seasonValue: v?.total ?? 0,
         today: perGame * (avail === 'doubtful' ? DOUBTFUL_DISCOUNT : 1),
         status: p.status ?? '',
         owner: p.teamKey === mineKey ? 'mine' : 'rostered',
@@ -907,6 +933,7 @@ export function useDailyLineup(opts: DailyLineupOptions = {}) {
         playerKey: fa.playerKey ?? `fa:${fa.name}`, name: fa.name,
         headshot: (fa as any).headshot, position: fa.position,
         team: fa.team ?? '',
+        seasonValue: v?.total ?? 0,
         today: perGame * (faAvail === 'doubtful' ? DOUBTFUL_DISCOUNT : 1),
         status: fa.status ?? '',
         owner: 'free', ownerName: '',
